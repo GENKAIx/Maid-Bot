@@ -137,6 +137,41 @@ function renderCourses() {
   }
   pendingPopped.clear();
   lastMarks = now;
+  settle(list);
+}
+
+// Плашка нужна, пока сегодня есть что отметить. Отметили — через несколько секунд прячется;
+// навести на горничную (или на саму плашку) — снова видна.
+const TUCK_AFTER_MARK = 4000;
+const TUCK_AFTER_PEEK = 2500;
+let tuckTimer = 0;
+let wasOpen = null;
+let peeking = false;
+const openToday = (list) => list.some((h) => h.course.some((x) => x.day === data.day && (pending.get(`${h.id}:${x.day}`) ?? x.s) === "today"));
+function tuck(on, ms = 0) {
+  clearTimeout(tuckTimer);
+  const box = $("#courses");
+  if (!on) return box.classList.remove("tucked");
+  if (ms) tuckTimer = setTimeout(() => { if (!peeking) box.classList.add("tucked"); }, ms);
+  else box.classList.add("tucked");
+}
+function settle(list) {
+  const open = openToday(list);
+  if (open) tuck(false);
+  else if (wasOpen) tuck(true, TUCK_AFTER_MARK);
+  else if (wasOpen === null && !peeking) tuck(true);
+  wasOpen = open;
+}
+for (const el of [$("#maid"), $("#courses")]) {
+  el.addEventListener("mouseenter", () => {
+    peeking = true;
+    tuck(false);
+  });
+  el.addEventListener("mouseleave", () => {
+    peeking = false;
+    const list = data ? coursesOf(data) : [];
+    if (list.length && !openToday(list)) tuck(true, TUCK_AFTER_PEEK);
+  });
 }
 
 // Брызги вокруг пупырки: кольцо и несколько точек.

@@ -404,7 +404,7 @@ function reportRegions() {
   const rects = [];
   for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#courses")]) {
     if (el.offsetParent === null) continue;
-    if (el.classList.contains("hidden")) continue;
+    if (el.classList.contains("hidden") || el.classList.contains("tucked")) continue;
     const r = el.getBoundingClientRect();
     if (r.width && r.height) rects.push({ x: r.left, y: r.top, w: r.width, h: r.height });
   }
