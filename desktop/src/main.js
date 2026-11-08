@@ -210,6 +210,8 @@ function createWidget() {
   setGrab(false);
   widget.once("ready-to-show", () => widget.showInactive());
   widget.on("moved", rememberWidget);
+  widget.on("focus", () => flog("win-focus"));
+  widget.on("blur", () => flog("win-blur"));
   widget.on("closed", () => (widget = null));
 }
 
@@ -230,6 +232,8 @@ let regions = [];
 // Иначе щелчок приходил в окно без фокуса, а widget.focus() из фона Windows не даёт (защита от кражи фокуса) —
 // печатать получалось только со второго щелчка.
 let overChat = false;
+const flog = (...a) => { if (process.env.MAID_FOCUS_LOG) fs.appendFileSync(process.env.MAID_FOCUS_LOG, `${Date.now() % 100000} ${a.join(" ")} focused=${widget?.isFocused()} focusable=${widget?.isFocusable?.()}
+`); };
 setInterval(() => {
   if (!widget || widget.isDestroyed() || grabbed || typing || drag) return;
   const b = widget.getBounds();
@@ -245,10 +249,12 @@ setInterval(() => {
   if (chat !== overChat) {
     overChat = chat;
     widget.setFocusable(chat);
+    flog("overChat", chat);
   }
 }, 30);
 function setGrab(on) {
   grabbed = on;
+  flog("grab", on);
   if (!widget) return;
   mouseOn = null;
   applyMouse();
@@ -377,6 +383,7 @@ let typing = false;
 ipcMain.on("focus-input", (_e, on) => {
   if (!widget) return;
   typing = Boolean(on);
+  flog("focus-input", on, "grabbed", grabbed);
   applyMouse();
   if (on) {
     widget.setFocusable(true);
