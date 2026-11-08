@@ -141,7 +141,7 @@ function createWidget() {
 let hovering = false;
 function applyMouse() {
   if (!widget) return;
-  widget.setIgnoreMouseEvents(!(grabbed || hovering), { forward: true });
+  widget.setIgnoreMouseEvents(!(grabbed || hovering || typing), { forward: true });
 }
 function setGrab(on) {
   grabbed = on;
@@ -254,8 +254,11 @@ ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
 ipcMain.on("hover", (_e, on) => { hovering = Boolean(on); applyMouse(); });
 // Печатать в строке чата можно, только если окно принимает фокус; после — снова «сквозное».
+let typing = false;
 ipcMain.on("focus-input", (_e, on) => {
   if (!widget) return;
+  typing = Boolean(on);
+  applyMouse();
   if (on) {
     widget.setFocusable(true);
     widget.focus();

@@ -141,8 +141,12 @@ async function sendChat() {
   }
 }
 $("#chat").onsubmit = (e) => { e.preventDefault(); sendChat(); };
-chatInput.addEventListener("focus", () => maid.focusInput(true));
-chatInput.addEventListener("blur", () => maid.focusInput(false));
+// Окно «сквозное» и без фокуса: навёл на строку чата — окно принимает мышь и клавиатуру, ушёл и не печатаешь — отдаёт.
+const chatBox = $("#chat");
+chatBox.addEventListener("mouseenter", () => maid.focusInput(true));
+chatBox.addEventListener("mousedown", () => { maid.focusInput(true); setTimeout(() => chatInput.focus(), 30); });
+chatBox.addEventListener("mouseleave", () => { if (document.activeElement !== chatInput && !grabbed) maid.focusInput(false); });
+chatInput.addEventListener("blur", () => { if (!grabbed) maid.focusInput(false); });
 chatInput.addEventListener("keydown", (e) => { if (e.key === "Escape") chatInput.blur(); });
 function hideBubble() {
   $("#bubble").classList.add("hidden");
@@ -234,7 +238,7 @@ maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.
 maid.on("opacity", (o) => ($("#w").style.opacity = String(o)));
 
 // Пока курсор над фигуркой, облачком или строкой чата, окно принимает мышь (иначе клики идут сквозь него).
-for (const el of [$("#maid"), $("#bubble"), $("#chat")]) {
+for (const el of [$("#maid"), $("#bubble")]) {
   el.addEventListener("mouseenter", () => !grabbed && maid.hover(true));
   el.addEventListener("mouseleave", () => !grabbed && maid.hover(false));
 }
