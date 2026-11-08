@@ -12,7 +12,17 @@ const DEFAULTS = {
   widget: { show: true, x: null, y: null, display: null, opacity: 0.92 },
   tracker: { enabled: true, games: ["dota2.exe", "cs2.exe", "VALORANT-Win64-Shipping.exe", "League of Legends.exe", "GenshinImpact.exe", "Minecraft.Windows.exe"] },
   keys: { quick: "Alt+Shift+Space", grab: "Alt+Shift+M" },
+  autostart: true,
 };
+
+// Настройки лежат в одной папке и в разработке, и в установленной программе (иначе после установки пропал бы ключ).
+app.setPath("userData", path.join(app.getPath("appData"), "maid-desktop"));
+
+// Запуск вместе с Windows — только у установленной программы (в разработке это был бы electron.exe).
+function applyAutostart() {
+  if (!app.isPackaged) return;
+  app.setLoginItemSettings({ openAtLogin: Boolean(settings.autostart), path: process.execPath, args: ["--hidden"] });
+}
 
 const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
 let settings = structuredClone(DEFAULTS);
@@ -208,6 +218,8 @@ function refreshTray() {
     { label: widget ? "Скрыть виджет" : "Показать виджет", click: () => toggleWidget() },
     { label: `Взять/отпустить виджет (${settings.keys.grab.replace("Control", "Ctrl")})`, enabled: Boolean(widget), click: () => setGrab(!grabbed) },
     { type: "separator" },
+    { label: "Запускать с Windows", type: "checkbox", checked: Boolean(settings.autostart), enabled: app.isPackaged,
+      click: (it) => { settings.autostart = it.checked; saveSettings(); applyAutostart(); } },
     { label: "Выход", click: () => { quitting = true; app.quit(); } },
   ]));
 }
@@ -260,6 +272,8 @@ ipcMain.handle("settings:set", (_e, patch) => {
   settings = { ...settings, ...patch, widget: { ...settings.widget, ...patch.widget }, tracker: { ...settings.tracker, ...patch.tracker }, keys: { ...settings.keys, ...patch.keys } };
   saveSettings();
   registerKeys();
+  applyAutostart();
+  refreshTray();
   widget?.webContents.send("opacity", settings.widget.opacity);
   if (patch.widget && "show" in patch.widget) toggleWidget(patch.widget.show);
   if (patch.tracker) startTracker();
@@ -308,6 +322,7 @@ app.whenReady().then(() => {
   tray.on("click", () => showMain());
   refreshTray();
   registerKeys();
+  applyAutostart();
   if (settings.widget.show) createWidget();
   if (!settings.token) showMain(true);
   else if (process.argv.includes("--show")) showMain();
