@@ -7,18 +7,16 @@
 </head>
 <body class="widget">
   <div class="stage" id="stage">
-    <div class="bubble hidden" id="bubble">
-      <div class="bubble-text" id="bubbleText"></div>
-      <div class="bubble-cards" id="bubbleCards"></div>
-      <div class="bubble-actions" id="bubbleActions"></div>
-    </div>
-
-    <!-- Горничная стоит за панелью: нижний край фигурки закрыт её верхом. -->
+    <!-- Горничная стоит за правым краем панели (низ фигурки закрыт её верхом), облачко с ответами — слева от неё. -->
     <div class="perch" id="perch">
+      <div class="bubble hidden" id="bubble">
+        <div class="bubble-text" id="bubbleText"></div>
+        <div class="bubble-cards" id="bubbleCards"></div>
+        <div class="bubble-actions" id="bubbleActions"></div>
+      </div>
       <div class="maid" id="maid" title="Щелчок — свернуть/развернуть панель · двойной — записать · ПКМ — взять/отпустить">
-        <img class="face" id="face" src="../assets/maid/idle.png" alt="" draggable="false" />
-        <video class="think" id="think" src="../assets/maid/think.webm" muted loop playsinline></video>
-        <div class="zzz" id="zzz">z<span>z</span><span>z</span></div>
+        <img class="face" id="face" src="../assets/maid/sleep.webp" alt="" draggable="false" />
+        <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
       </div>
     </div>
 

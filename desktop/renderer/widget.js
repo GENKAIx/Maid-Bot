@@ -10,10 +10,8 @@ let state = "idle"; // idle | think | sleep
 let bubbleTimer = 0;
 // Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
 let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true } };
-const MAID_W = { s: 140, m: 170, l: 210 };
+const MAID_W = { s: 160, m: 196, l: 236 };
 
-const face = $("#face");
-const think = $("#think");
 
 // --- звуки ---
 const SOUNDS = {};
@@ -39,24 +37,11 @@ function setState(s) {
   const m = $("#maid");
   m.classList.toggle("thinking", s === "think");
   m.classList.toggle("sleeping", s === "sleep");
-  if (s === "think") think.play().catch(() => {});
-  else think.pause();
-  if (s === "sleep") face.src = "../assets/maid/blink.png";
-  else if (s === "idle") face.src = "../assets/maid/idle.png";
 }
 function isNight() {
   const h = new Date().getHours();
   return h >= 23 || h < 7;
 }
-// Моргание: раз в 3–7 с на 130 мс.
-function blink() {
-  if (state === "idle") {
-    face.src = "../assets/maid/blink.png";
-    setTimeout(() => state === "idle" && (face.src = "../assets/maid/idle.png"), 130);
-  }
-  setTimeout(blink, 3000 + Math.random() * 4000);
-}
-setTimeout(blink, 2500);
 setInterval(() => {
   if (state === "think") return;
   const want = isNight() ? "sleep" : "idle";
@@ -243,20 +228,20 @@ function setCollapsed(on) {
 // --- настройки виджета ---
 function applyCfg() {
   const st = $("#stage");
-  st.classList.remove("side-left", "side-center", "side-right");
+  st.classList.remove("side-left", "side-right");
   st.classList.add(`side-${cfg.side}`);
   st.classList.toggle("no-maid", cfg.side === "none");
   const w = MAID_W[cfg.size] ?? MAID_W.m;
   st.style.setProperty("--maid-w", `${w}px`);
-  // За панелью прячется низ фигурки — корсет; голова и плечи над краем.
-  st.style.setProperty("--peek", `${Math.round(w * 0.27)}px`);
+  // За панелью прячется только низ корсета — фигурка почти целиком над краем.
+  st.style.setProperty("--peek", `${Math.round(w * 0.13)}px`);
   $("#w").style.opacity = String(cfg.opacity);
   $("#next").classList.toggle("hidden", !cfg.sections.next || prefsOpen);
 }
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections } };
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections } };
   applyCfg();
   if (prefsOpen) drawPrefs();
 }
@@ -288,7 +273,7 @@ function drawPrefs() {
   $("#prefs").innerHTML = `
     <div class="pref"><span>Показывать на панели</span><div class="checks">${SECTIONS.map(([k, t]) =>
       `<label class="tick"><input type="checkbox" data-sec="${k}" ${cfg.sections[k] ? "checked" : ""}/>${t}</label>`).join("")}</div></div>
-    <div class="pref"><span>Горничная</span>${seg("side", cfg.side, [["left", "Слева"], ["center", "В центре"], ["right", "Справа"], ["none", "Скрыть"]])}</div>
+    <div class="pref"><span>Горничная</span>${seg("side", cfg.side, [["left", "Слева"], ["right", "Справа"], ["none", "Скрыть"]])}</div>
     <div class="pref"><span>Размер горничной</span>${seg("size", cfg.size, [["s", "Меньше"], ["m", "Обычная"], ["l", "Больше"]])}</div>
     <div class="pref"><span>Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%</span><input type="range" id="prefOpacity" min="0.4" max="1" step="0.02" value="${cfg.opacity}" /></div>
     <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>

@@ -24,12 +24,16 @@ function applyAutostart() {
   app.setLoginItemSettings({ openAtLogin: Boolean(settings.autostart), path: process.execPath, args: ["--hidden"] });
 }
 
+const WIDGET_W = 620;
 const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
 let settings = structuredClone(DEFAULTS);
 function loadSettings() {
   try {
     const s = JSON.parse(fs.readFileSync(settingsFile(), "utf8"));
     settings = { ...DEFAULTS, ...s, widget: { ...DEFAULTS.widget, ...s.widget }, tracker: { ...DEFAULTS.tracker, ...s.tracker }, keys: { ...DEFAULTS.keys, ...s.keys } };
+    // Окно виджета стало шире слева (там облачко): панель остаётся там, где её поставили.
+    if (settings.widget.x != null && settings.widget.width !== WIDGET_W) settings.widget.x -= WIDGET_W - (settings.widget.width ?? 340);
+    settings.widget.width = WIDGET_W;
   } catch {
     settings = structuredClone(DEFAULTS);
   }
@@ -102,7 +106,7 @@ function showMain(settingsOnly = false) {
 // --- виджет ---
 // Окно горничной: горничная выглядывает из-за верхнего края панели. cur — куда окно уже передвинули (иначе — сохранённое место).
 function widgetBounds(cur) {
-  const w = 340;
+  const w = WIDGET_W;
   const h = 760;
   const displays = screen.getAllDisplays();
   const d = displays.find((x) => x.id === settings.widget.display) ?? screen.getPrimaryDisplay();
