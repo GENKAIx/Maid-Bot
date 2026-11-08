@@ -92,14 +92,14 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 
 .bubble {
   position: relative; max-width: 300px; margin: 0 8px 8px 8px; padding: 10px 12px; border-radius: 14px; font-size: 13px; line-height: 1.35;
-  background: rgba(255, 255, 255, .96); color: #241a2e; box-shadow: 0 6px 20px rgba(0,0,0,.3); white-space: pre-wrap;
+  background: rgba(255, 255, 255, .96); color: #241a2e; box-shadow: 0 6px 20px rgba(0,0,0,.3);
   animation: pop .2s ease; transition: opacity .25s;
 }
 .bubble::after { content: ""; position: absolute; right: 70px; bottom: -8px; border: 8px solid transparent; border-top-color: rgba(255,255,255,.96); border-bottom: 0; }
 .bubble.hidden { opacity: 0; pointer-events: none; }
 .bubble.angry { background: #ffe3e3; } .bubble.angry::after { border-top-color: #ffe3e3; }
 .bubble.happy, .bubble.proud { background: #ecfdf3; } .bubble.happy::after, .bubble.proud::after { border-top-color: #ecfdf3; }
-.bubble-text { max-height: 170px; overflow: auto; }
+.bubble-text { max-height: 170px; overflow: auto; white-space: pre-wrap; }
 .bubble-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .bubble-actions:empty { display: none; }
 .bubble-actions button { background: #f1ecf8; color: #241a2e; border-color: #e0d6ee; padding: 4px 10px; font-size: 12px; }
