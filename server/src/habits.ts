@@ -43,6 +43,8 @@ export interface HabitDay {
   plannedDays: number;
   /** Курс со сроком («каждый день месяц»): каждый день срока. Прошедший день без «сделал» — промах. */
   course: CourseDay[] | null;
+  /** Вчера по расписанию и не отмечено «сделал» — «none» (можно спасти задним числом), иначе его отметка; не по расписанию — null. */
+  yesterday: "done" | "skipped" | "none" | null;
 }
 
 /** done — сделано; miss — прошёл без отметки или «пропуск»; today — сегодня, ещё не отмечено; wait — впереди; rest — не по расписанию. */
@@ -70,6 +72,12 @@ export function courseDays(h: HabitRow, marks: Map<string, MarkRow["status"]>, t
   return out.length > COURSE_MAX_DAYS ? null : out;
 }
 
+function yesterdayOf(h: HabitRow, marks: Map<string, MarkRow["status"]>, day: string): HabitDay["yesterday"] {
+  const y = addDays(day, -1);
+  if (y < h.start_date || !dueOn({ ...h, status: "active" }, y)) return null;
+  return marks.get(y) ?? "none";
+}
+
 /** Что из привычек идёт в этот день, с отметками и сериями. */
 export async function habitsOfDay(store: Store, u: User, day: string): Promise<HabitDay[]> {
   const list = (await store.habitsOn(u.id, day)).filter((h) => dueOn(h, day));
@@ -92,6 +100,7 @@ export async function habitsOfDay(store: Store, u: User, day: string): Promise<H
       doneDays: [...done].filter((d) => d <= end && (h.end_date || d > addDays(day, -30))).length,
       plannedDays: planned,
       course: courseDays(h, byDay, day),
+      yesterday: yesterdayOf(h, byDay, day),
     };
   });
 }

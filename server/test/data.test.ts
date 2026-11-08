@@ -75,6 +75,19 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     assert.deepEqual(c.slice(0, 5).map((x) => x.s), ["done", "miss", "miss", "today", "wait"]);
     await pipe.markHabit(u, h.id, "2026-11-11", "skipped", "telegram");
     assert.equal((await habitsOfDay(store, u, "2026-11-11"))[0].course![3].s, "miss");
+
+    // Пропуск вчера можно спасти задним числом: «вчера» видно, отметка вчерашнего дня не рвёт серию.
+    assert.equal((await habitsOfDay(store, u, "2026-11-08"))[0].yesterday, null);
+    assert.equal((await habitsOfDay(store, u, "2026-11-09"))[0].yesterday, "done");
+    await pipe.markHabit(u, h.id, "2026-11-12", "done", "telegram");
+    const before = (await habitsOfDay(store, u, "2026-11-13"))[0];
+    assert.equal(before.yesterday, "done");
+    assert.equal((await habitsOfDay(store, u, "2026-11-14"))[0].yesterday, "none");
+    assert.equal((await habitsOfDay(store, u, "2026-11-14"))[0].streak, 0);
+    await pipe.markHabit(u, h.id, "2026-11-13", "done", "web");
+    const after = (await habitsOfDay(store, u, "2026-11-14"))[0];
+    assert.equal(after.yesterday, "done");
+    assert.equal(after.streak, 2);
     await store.close();
   });
 

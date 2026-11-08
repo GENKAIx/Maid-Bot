@@ -69,7 +69,7 @@ export async function dayJson(store: Store, u: User, day: string) {
     diary: await store.diaryOf(u.id, day),
     habits: (await habitsOfDay(store, u, day)).map((d) => ({
       id: d.habit.id, title: d.habit.title, times: d.times, status: d.status, streak: d.streak, done: d.doneDays, planned: d.plannedDays,
-      start: d.habit.start_date, end: d.habit.end_date, course: d.course,
+      start: d.habit.start_date, end: d.habit.end_date, course: d.course, yesterday: d.yesterday,
     })),
     metrics: await store.metricsRange(u.id, day, day),
     money: await store.moneyRange(u.id, day, day),
