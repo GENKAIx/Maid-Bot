@@ -172,6 +172,7 @@ async function sendChat() {
   const text = chatInput.value.trim();
   if (!text || sending) return;
   chatInput.value = "";
+  fitChat();
   await ask("/api/input", { text, id: crypto.randomUUID() }, text.length > 40 ? text.slice(0, 40) + "…" : text);
 }
 async function ask(path, body, waiting) {
@@ -241,9 +242,18 @@ const chatBox = $("#chat");
 chatBox.addEventListener("mousedown", () => { maid.focusInput(true); chatInput.focus(); setTimeout(() => chatInput.focus(), 30); });
 chatBox.addEventListener("mouseleave", () => { if (document.activeElement !== chatInput && !grabbed) maid.focusInput(false); });
 chatInput.addEventListener("blur", () => { if (!grabbed) maid.focusInput(false); });
+// Enter — отправить, Shift+Enter — новая строка; поле растёт по тексту (до пяти строк, дальше прокрутка).
+function fitChat() {
+  chatInput.style.height = "auto";
+  chatInput.style.height = `${chatInput.scrollHeight + 2}px`;
+}
+chatInput.addEventListener("input", fitChat);
 chatInput.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
-  chatInput.blur();
+  if (e.key === "Escape") return chatInput.blur();
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    $("#chat").requestSubmit();
+  }
 });
 function hideBubble() {
   $("#bubble").classList.add("hidden");
