@@ -1,24 +1,24 @@
 // Часы планов — круглый циферблат слева от панели: планы дня цветными дугами от начала до конца, названия — в списке под часами.
 // Сами не висят: выезжают, когда планы меняются (добавили, перенесли, удалили — здесь, в Telegram или с телефона)
 // или когда их смотрят (щелчок по строке «ближайший план»), и прячутся через несколько секунд, если мышь не над ними.
-// Вид — настройка виджета «Часы планов»: 12 часов (по умолчанию: до полудня — синее внутреннее кольцо, после — оранжевое
-// внешнее, поверх), 24 часа или выключены.
+// Вид — настройка виджета «Часы планов»: 12 часов (по умолчанию: до полудня — внутреннее кольцо, после — внешнее,
+// поверх), 24 часа или выключены. У каждого плана свой цвет — на дуге и у кружка в списке.
 
 const CLOCK_SIZE = 280;
 const CX = CLOCK_SIZE / 2;
 const DISC_R = 90; // циферблат
 // Ряды дуг. 24 часа: перекрывающиеся планы уходят во второй ряд, снаружи. 12 часов: внутренний — до полудня, внешний — после.
 const LANES = { "24": [{ r: 106, w: 20 }, { r: 127, w: 15 }], "12": [{ r: 106, w: 17 }, { r: 126, w: 17 }] };
-const HALF_COLORS = ["#6fb6ff", "#ffa25c"]; // до полудня, после
 const CLOCK_SHOWN = 12_000;
 const NO_END_MIN = 60; // план без времени конца — дуга на час
-const ARC_COLORS = ["#ffd76a", "#8fe3c8", "#c9b6ff", "#ffb39a", "#9fd3ff"];
+const ARC_COLORS = ["#6fb6ff", "#ffa25c", "#7fe0b0", "#ff7fa6", "#ffd45c", "#b59bff", "#5fd6e0", "#f08a6e"];
 
 let clockDay = null; // какой день показан (YYYY-MM-DD)
 let clockHideTimer = 0;
 let clockHover = false;
 let clockFresh = new Set(); // id планов, которые только что добавили или поменяли, — подсвечиваются
 let clockGone = []; // только что удалённые — тают на своих местах
+let clockColors = new Map(); // id плана → цвет: по порядку времени, чтобы соседние планы не совпадали
 let lastPlans = null; // id → JSON плана, чтобы заметить изменения
 
 const minutesOf = (t) => {
@@ -26,7 +26,7 @@ const minutesOf = (t) => {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
 function colorOf(e) {
-  if (cfg.clock !== "24") return HALF_COLORS[(minutesOf(e.time) ?? 0) >= 720 ? 1 : 0];
+  if (clockColors.has(e.id)) return clockColors.get(e.id);
   let h = 0;
   for (const ch of e.title) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return ARC_COLORS[h % ARC_COLORS.length];
@@ -94,8 +94,7 @@ function arcSvg(x, mode, nowMin, { gone = false } = {}) {
   const now = !gone && x.from <= nowMin && nowMin < x.to && clockDay === data?.day;
   const cls = ["plan-arc", past && "past", now && "now", clockFresh.has(x.e.id) && "fresh", gone && "gone"].filter(Boolean).join(" ");
   const when = `${x.e.time}${x.e.end_time ? `–${x.e.end_time}` : ""}`;
-  const color = mode === "12" ? HALF_COLORS[x.lane] : colorOf(x.e);
-  return `<g class="${cls}" color="${color}">
+  return `<g class="${cls}" color="${colorOf(x.e)}">
     <title>${esc(when)} · ${esc(x.e.title)}</title>
     <path class="edge" d="${arcPath(lane.r, b0, b1)}" stroke-width="${lane.w + 3}" />
     <path class="band" d="${arcPath(lane.r, b0, b1)}" stroke-width="${lane.w}" />
@@ -109,6 +108,7 @@ function drawClock() {
   const d = new Date();
   const nowMin = d.getHours() * 60 + d.getMinutes();
   const list = plansOf(clockDay);
+  clockColors = new Map(layout(list, "24").map((x, i) => [x.e.id, ARC_COLORS[i % ARC_COLORS.length]]));
   // Внешнее кольцо (после полудня) рисуется позже — лежит поверх внутреннего.
   const arcs = layout(list, mode).sort((p, q) => p.lane - q.lane);
   const gone = layout(clockGone, mode);
@@ -138,7 +138,6 @@ function drawClock() {
   const [hx0, hy0] = polar(7, handA);
 
   const dayName = clockDay === data.day ? "Сегодня" : humanDay(clockDay);
-  const key = mode === "12" ? `<span class="pc-key"><i data-c="${HALF_COLORS[0]}"></i>до 12<i data-c="${HALF_COLORS[1]}"></i>после</span>` : "";
   // Список под часами: время и название, цвет — как у дуги; прошедшие бледнее, идущий сейчас — ярче.
   const today = clockDay === data.day;
   const item = (e, cls) => ({ at: minutesOf(e.time) ?? 1441, keep: cls.includes("fresh") || cls.includes("gone"),
@@ -163,7 +162,7 @@ function drawClock() {
   const legend = rows.length ? `<ul class="pc-list">${shownRows.map((r) => r.html).join("")}${more ? `<li class="more">и ещё ${more}</li>` : ""}</ul>` : "";
 
   box.innerHTML = `
-    <div class="pc-head"><b>${esc(dayName)}</b><span>${list.length ? `${list.length} ${planWord(list.length)}` : "планов нет"}</span>${key}</div>
+    <div class="pc-head"><b>${esc(dayName)}</b><span>${list.length ? `${list.length} ${planWord(list.length)}` : "планов нет"}</span></div>
     <svg viewBox="0 0 ${CLOCK_SIZE} ${CLOCK_SIZE}" width="${CLOCK_SIZE}" height="${CLOCK_SIZE}" aria-label="Планы на ${esc(dayName)}">
       <circle class="orbit" cx="${CX}" cy="${CX}" r="${LANES[mode][0].r}" />
       ${mode === "12" ? `<circle class="orbit" cx="${CX}" cy="${CX}" r="${LANES[mode][1].r}" />` : ""}
@@ -178,7 +177,7 @@ function drawClock() {
     </svg>
     ${legend}`;
   // Цвет меток — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
-  for (const d of box.querySelectorAll(".dot[data-c]:not(.none), .pc-key i")) d.style.background = d.dataset.c;
+  for (const d of box.querySelectorAll(".dot[data-c]:not(.none)")) d.style.background = d.dataset.c;
 }
 const planWord = (n) => (n % 10 === 1 && n % 100 !== 11 ? "план" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "плана" : "планов");
 
