@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+.git
+.env
+data
+web/dist
+desktop/node_modules
+Старый проект
+docs
+*.md
+Validation

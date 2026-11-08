@@ -1,0 +1,31 @@
+# VPS: Caddy на 80/443 (HTTPS сам) + горничная. Другие сервисы добавляются сюда же
+# и получают свою строку в Caddyfile. Запуск: cd /srv && docker compose up -d --build
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      - MAID_DOMAIN=${MAID_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [web]
+
+  maid:
+    build: ./maid
+    restart: unless-stopped
+    env_file: ./maid/.env
+    volumes:
+      - maid_data:/data
+    networks: [web]
+    expose: ["3000"]
+
+volumes:
+  caddy_data:
+  caddy_config:
+  maid_data:
+
+networks:
+  web:

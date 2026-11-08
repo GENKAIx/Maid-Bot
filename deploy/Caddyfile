@@ -1,0 +1,6 @@
+# Домены → контейнеры. HTTPS Caddy выпускает сам (Let's Encrypt), когда домен указывает на этот сервер.
+# Новый сервис: ещё один блок «имя.домен { reverse_proxy контейнер:порт }».
+{$MAID_DOMAIN:maid.localhost} {
+    encode gzip
+    reverse_proxy maid:3000
+}
