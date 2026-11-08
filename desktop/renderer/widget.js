@@ -370,7 +370,14 @@ $("#prefs").addEventListener("input", (e) => {
   $("#w").style.opacity = String(cfg.opacity);
   e.target.previousElementSibling.textContent = `Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%`;
 });
+// Кнопка в шапке — полная версия приложения; настройки виджета — правым щелчком по ней (или если они уже открыты — закрыть).
 $("#gear").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (prefsOpen) return togglePrefs(false);
+  maid.openMain();
+});
+$("#gear").addEventListener("contextmenu", (e) => {
+  e.preventDefault();
   e.stopPropagation();
   togglePrefs();
 });
