@@ -68,6 +68,7 @@ export async function dayJson(store: Store, u: User, day: string) {
     diary: await store.diaryOf(u.id, day),
     habits: (await habitsOfDay(store, u, day)).map((d) => ({
       id: d.habit.id, title: d.habit.title, times: d.times, status: d.status, streak: d.streak, done: d.doneDays, planned: d.plannedDays,
+      start: d.habit.start_date, end: d.habit.end_date, course: d.course,
     })),
     metrics: await store.metricsRange(u.id, day, day),
     money: await store.moneyRange(u.id, day, day),
@@ -143,7 +144,7 @@ export function createApi(deps: ApiDeps) {
     if (data === "snooze") {
       const buttons: Button[] = all.filter((d) => d !== "snooze").map((d) => {
         const h = d.match(HABIT);
-        return { text: h ? (h[3] === "done" ? "✅ Сделал" : "➖ Пропуск") : d, data: d };
+        return { text: h ? (h[3] === "done" ? "✅ Да" : "✖ Нет") : d, data: d };
       });
       const first = buttons[0]?.data.match(HABIT);
       const title = first ? (await store.habit(Number(first[1])))?.title : undefined;

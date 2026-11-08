@@ -177,6 +177,78 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .bar { display: none; gap: 6px; }
 .w.grab .bar { display: flex; }
 
+/* --- курс над горничной: дни пупырками, как у поп-ита --- */
+.courses { position: absolute; z-index: 4; right: 6px; bottom: calc(var(--maid-w, 196px) * 1.08); width: min(270px, calc(var(--maid-w, 196px) + 70px)); pointer-events: auto; }
+.stage.side-left .courses { right: auto; left: 6px; }
+.stage.side-left .course::after { right: auto; left: calc(var(--maid-w, 196px) / 2 - 10px); }
+.stage.no-maid .courses, .courses.hidden { display: none; }
+.course { position: relative; padding: 9px 11px 10px; border-radius: 16px; background: rgba(29, 24, 48, .9); border: 1px solid rgba(255, 255, 255, .1);
+  backdrop-filter: blur(14px); box-shadow: 0 10px 26px rgba(0, 0, 0, .35); color: var(--text); }
+/* Хвостик — вниз, к голове горничной. */
+.course::after { content: ""; position: absolute; bottom: -7px; right: calc(var(--maid-w, 196px) / 2 - 10px); width: 12px; height: 12px; transform: rotate(45deg);
+  background: rgba(29, 24, 48, .9); border-right: 1px solid rgba(255, 255, 255, .1); border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.course.enter { animation: courseIn .42s cubic-bezier(.2, .9, .3, 1.25) both; }
+@keyframes courseIn { from { opacity: 0; transform: translateY(10px) scale(.9); } to { opacity: 1; transform: none; } }
+.c-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-bottom: 7px; }
+.c-ico { color: var(--accent); flex: none; }
+.c-title { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-len { color: var(--muted); white-space: nowrap; }
+.c-score { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.c-score b { color: var(--accent-2); font-weight: 750; }
+.pips { display: flex; flex-wrap: wrap; gap: 4px; }
+.pip { --c: #8b6cf0; --hi: #c9b6ff; --lo: #4b2fa8; position: relative; width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center;
+  font-style: normal; font-size: 10px; font-weight: 800; line-height: 1; color: #fff; cursor: default;
+  transition: transform .12s, box-shadow .12s; }
+.course.dense .pip { width: 13px; height: 13px; font-size: 8px; gap: 3px; }
+/* Впереди — выпуклая пупырка: свет сверху-слева, тень снизу. */
+.pip.wait, .pip.today { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.28), rgba(255,255,255,.05) 55%), rgba(139, 108, 240, .22);
+  box-shadow: inset 0 -2px 2px rgba(0,0,0,.28), inset 0 1px 1px rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.3); }
+.pip.today { cursor: pointer; background: radial-gradient(circle at 35% 30%, var(--hi), var(--c) 60%, var(--lo));
+  box-shadow: inset 0 -2px 2px rgba(0,0,0,.25), inset 0 1px 1px rgba(255,255,255,.5), 0 2px 3px rgba(0,0,0,.35); animation: todayPulse 1.6s ease-in-out infinite; }
+.pip.today:hover { transform: scale(1.15); }
+.pip.today:active { transform: scale(.88); }
+@keyframes todayPulse { 0%, 100% { box-shadow: inset 0 -2px 2px rgba(0,0,0,.25), inset 0 1px 1px rgba(255,255,255,.5), 0 0 0 0 rgba(183,156,255,.6); }
+  50% { box-shadow: inset 0 -2px 2px rgba(0,0,0,.25), inset 0 1px 1px rgba(255,255,255,.5), 0 0 0 5px rgba(183,156,255,0); } }
+/* Сделано — вдавлена внутрь. */
+.pip.done { cursor: pointer; background: radial-gradient(circle at 60% 70%, rgba(255,255,255,.18), transparent 60%), var(--accent-2);
+  box-shadow: inset 0 2px 3px rgba(0,0,0,.35), inset 0 -1px 1px rgba(255,255,255,.3); color: #12392a; }
+.pip.miss { cursor: pointer; background: rgba(255, 138, 154, .16); color: var(--bad); box-shadow: inset 0 0 0 1.5px rgba(255, 138, 154, .55); font-size: 9px; }
+.course.dense .pip.miss { font-size: 7px; }
+.pip.rest { background: transparent; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); transform: scale(.55); }
+.pip.rise { animation: pipRise .38s cubic-bezier(.2, .9, .3, 1.6) both; }
+@keyframes pipRise { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: none; } }
+.pip.rest.rise { animation-name: pipRiseRest; }
+@keyframes pipRiseRest { from { opacity: 0; transform: scale(.1); } to { opacity: 1; transform: scale(.55); } }
+.pip.pressed { animation: pipPress .42s cubic-bezier(.3, 1.6, .4, 1) both; }
+@keyframes pipPress { 0% { transform: scale(1); } 25% { transform: scale(.62); } 60% { transform: scale(1.22); } 100% { transform: scale(1); } }
+.pip.crossed { animation: pipCross .4s ease both; }
+@keyframes pipCross { 0% { transform: scale(1); } 30% { transform: scale(.8) rotate(-12deg); } 60% { transform: scale(1.1) rotate(8deg); } 100% { transform: none; } }
+.pip.nope { animation: nope .3s ease; }
+@keyframes nope { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.pip .ring, .check .ring, .mark .ring { position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--accent-2); animation: ring .5s ease-out forwards; pointer-events: none; }
+@keyframes ring { from { transform: scale(.6); opacity: 1; } to { transform: scale(2.3); opacity: 0; } }
+.pip .spark, .check .spark, .mark .spark { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: var(--accent-2);
+  animation: spark .55s ease-out forwards; pointer-events: none; }
+.pip .spark:nth-child(2n), .check .spark:nth-child(2n), .mark .spark:nth-child(2n) { background: var(--accent); }
+.pip .spark:nth-child(3n), .check .spark:nth-child(3n), .mark .spark:nth-child(3n) { background: var(--warn); }
+@keyframes spark { from { transform: translate(0, 0) scale(1); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(.3); opacity: 0; } }
+.chips { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.chip { position: relative; display: flex; align-items: center; gap: 6px; padding: 4px 8px 6px; border-radius: 9px; background: rgba(255,255,255,.05); border: 1px solid transparent; font-size: 12px; text-align: left; overflow: hidden; }
+.chip span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip b { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.chip s { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.08); }
+.chip s::after { content: ""; position: absolute; inset: 0; width: calc(var(--p) * 100%); border-radius: 2px; background: var(--accent-2); }
+.course.finished { border-color: rgba(79, 208, 154, .45); }
+.course.party { animation: party .6s cubic-bezier(.3, 1.6, .4, 1); }
+@keyframes party { 0% { transform: scale(1); } 30% { transform: scale(1.06) rotate(-1.5deg); } 60% { transform: scale(.98) rotate(1deg); } 100% { transform: none; } }
+.confetti { position: absolute; top: 40%; width: 6px; height: 9px; border-radius: 2px; animation: confetti 1.3s cubic-bezier(.2, .7, .4, 1) forwards; pointer-events: none; }
+@keyframes confetti { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 90px)) rotate(var(--rot)); opacity: 0; } }
+/* Галочки списка — тоже «чпок». */
+.w .check, .w .mark { position: relative; }
+.w .check.done { background: var(--accent-2); border-color: var(--accent-2); }
+.w .check.pressed, .w .mark.pressed { animation: pipPress .42s cubic-bezier(.3, 1.6, .4, 1) both; }
+.w .check:active, .w .mark:active { transform: translateY(2px) scale(.85); }
+
 /* --- быстрый ввод --- */
 body.quick { background: transparent; }
 .q { margin: 10px; padding: 10px; border-radius: 16px; background: rgba(29, 24, 48, .97); border: 1px solid var(--line); box-shadow: 0 14px 40px rgba(0,0,0,.45), 0 0 0 3px rgba(183,156,255,.18); }

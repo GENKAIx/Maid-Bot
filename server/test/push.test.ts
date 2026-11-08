@@ -37,7 +37,7 @@ test("push: подпись кнопок — верная проходит, чу�
   const p = push.payload(u, "<b>Заголовок</b>\nтело &lt;x&gt;", buttons);
   assert.equal(p.title, "Заголовок");
   assert.equal(p.body, "тело <x>");
-  assert.deepEqual(p.actions.map((a) => a.title), ["✅ Сделал", "➖ Пропуск", "⏰ Через 30 мин"]);
+  assert.deepEqual(p.actions.map((a) => a.title), ["✅ Да", "✖ Нет", "⏰ Через 30 мин"]);
   await store.close();
 });
 

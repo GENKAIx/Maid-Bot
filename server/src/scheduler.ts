@@ -17,11 +17,22 @@ export interface Button {
 }
 export type Send = (u: User, text: string, emotion: Emotion, buttons?: Button[]) => Promise<void>;
 
-/** Кнопки «сделал / пропуск» для привычки на день. */
+/** Кнопки «да / нет» для привычки на день: «нет» — пропуск (в курсе — крестик за день). */
 export const habitButtons = (habitId: number, day: string): Button[] => [
-  { text: "✅ Сделал", data: `habit:${habitId}:${day}:done` },
-  { text: "➖ Пропуск", data: `habit:${habitId}:${day}:skipped` },
+  { text: "✅ Да", data: `habit:${habitId}:${day}:done` },
+  { text: "✖ Нет", data: `habit:${habitId}:${day}:skipped` },
 ];
+
+/** Привычку без своего времени спросить вечером — за час до вечернего итога, но не позже 20:00. */
+export function habitAskTime(u: Pick<User, "evening_time">): string {
+  const [h, m] = u.evening_time.split(":").map(Number);
+  const t = Math.min(20 * 60, Math.max(0, h * 60 + m - 60));
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
+
+/** Вопрос горничной про привычку: «Витамины — сегодня сделали?», с серией, если есть. */
+export const habitQuestion = (title: string, streak: number) =>
+  `🔁 ${esc(title)} — сегодня сделали?${streak >= 2 ? ` (серия ${streak} 🔥)` : ""}`;
 
 /** Запланировать «за N минут» до плана со временем. */
 export async function planEventReminders(store: Store, u: User, e: EventRow, now: Date) {
@@ -99,15 +110,14 @@ export class Scheduler {
     return m >= 0 && m <= late;
   }
 
-  /** Привычки со временем: напомнить в своё время, если ещё не отмечена. */
+  /** Привычки: спросить в своё время (или вечером, если времени нет), пока не отмечена. */
   private async habits(u: User, now: Date) {
     const today = dayKey(now, u.tz);
     for (const d of await habitsOfDay(this.store, u, today)) {
       if (d.status) continue;
-      for (const t of d.times) {
+      for (const t of d.times.length ? d.times : [habitAskTime(u)]) {
         if (!this.due(u, t, now, HABIT_LATE_MIN) || !(await this.store.once(`habit:${d.habit.id}:${today}:${t}`))) continue;
-        await this.safeSend(u, `🔁 Пора: ${esc(d.habit.title)}${d.streak >= 2 ? ` (серия ${d.streak} 🔥)` : ""}`, "neutral",
-          habitButtons(d.habit.id, today));
+        await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today));
       }
     }
   }

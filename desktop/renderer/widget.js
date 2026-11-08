@@ -96,6 +96,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       const m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/);
       try {
         if (m) {
+          if (m[3] === "done") popTone(3); else popTone(-5, { vol: 0.2, soft: true });
           const r = await maid.api("POST", `/api/habits/${m[1]}/mark`, { status: m[3], day: m[2] });
           say(r.text, { ms: 5000 });
           maid.changed();
@@ -166,6 +167,7 @@ function render() {
   if (!data) {
     $("#next").innerHTML = `<span class="muted">Нет связи с сервером</span>`;
     $("#body").innerHTML = "";
+    renderCourses();
     return;
   }
   $("#day").textContent = humanDay(data.day);
@@ -175,13 +177,15 @@ function render() {
     const when = m === null ? (next.date_iso === data.day ? "сегодня" : humanDay(next.date_iso)) : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : `в ${next.time}`;
     $("#next").innerHTML = `<b>${esc(when)}</b> · ${esc(next.title)}`;
   } else $("#next").innerHTML = `<span class="muted">Планов нет</span>`;
-  const habits = (sec.habits ? data.habits ?? [] : []).map((h) => `<li><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : ""}</span></li>`);
+  // Курсы со сроком — плашкой над горничной, в списке только обычные привычки.
+  const habits = (sec.habits ? data.habits ?? [] : []).filter((h) => !h.course?.length).map((h) => `<li><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : ""}</span></li>`);
   const tasks = data.tasks.slice(0, 5).map((t) => `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`);
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   $("#body").innerHTML =
     (habits.length ? `<h4>Привычки</h4><ul class="list">${habits.join("")}</ul>` : "") +
     (sec.tasks ? `<h4>Задачи${data.tasks.length > 5 ? ` · ${data.tasks.length}` : ""}</h4>${tasks.length ? `<ul class="list">${tasks.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
+  renderCourses();
 }
 
 let lastJson = "";
@@ -263,6 +267,7 @@ function togglePrefs(on = !prefsOpen) {
   $("#w").classList.toggle("prefs-open", on);
   applyCfg();
   if (on) drawPrefs();
+  renderCourses();
 }
 const SECTIONS = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"], ["soon", "Скоро"]];
 function seg(name, value, opts) {
@@ -351,7 +356,7 @@ maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
 function reportRegions() {
   const rects = [];
-  for (const el of [$("#w"), $("#bubble"), $("#maid")]) {
+  for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#courses")]) {
     if (el.offsetParent === null) continue;
     if (el.classList.contains("hidden")) continue;
     const r = el.getBoundingClientRect();
@@ -379,14 +384,27 @@ $("#release").onclick = () => maid.grab(false);
 $("#body").addEventListener("click", async (e) => {
   const id = e.target.dataset?.done;
   const habit = e.target.dataset?.habit;
-  if (!grabbed) return;
-  if (id) {
-    await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
-    maid.changed();
-  } else if (habit) {
-    const was = e.target.classList.contains("done");
-    await maid.api("POST", `/api/habits/${habit}/mark`, { status: was ? "skipped" : "done" });
-    maid.changed();
+  try {
+    if (id) {
+      // Галочка задачи: чпок и брызги сразу, потом сервер.
+      e.target.classList.add("done", "pressed");
+      popTone(4);
+      burst(e.target);
+      await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
+      maid.changed();
+    } else if (habit) {
+      const was = e.target.classList.contains("done");
+      e.target.classList.toggle("done", !was);
+      e.target.classList.add("pressed");
+      if (was) popTone(-5, { vol: 0.2, soft: true });
+      else { popTone(2); burst(e.target); }
+      await maid.api("POST", `/api/habits/${habit}/mark`, { status: was ? "skipped" : "done" });
+      maid.changed();
+    }
+  } catch (err) {
+    play("oops");
+    say(err.message, { ms: 6000 });
+    load();
   }
 });
 

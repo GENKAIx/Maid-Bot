@@ -41,6 +41,33 @@ export interface HabitDay {
   /** Сделано из запланированного за срок (или за 30 дней, если срока нет). */
   doneDays: number;
   plannedDays: number;
+  /** Курс со сроком («каждый день месяц»): каждый день срока. Прошедший день без «сделал» — промах. */
+  course: CourseDay[] | null;
+}
+
+/** done — сделано; miss — прошёл без отметки или «пропуск»; today — сегодня, ещё не отмечено; wait — впереди; rest — не по расписанию. */
+export interface CourseDay {
+  day: string;
+  s: "done" | "miss" | "today" | "wait" | "rest";
+}
+
+/** Не больше ~3 месяцев: длиннее — это уже не курс, а привычка, плашка с днями не нужна. */
+export const COURSE_MAX_DAYS = 92;
+
+export function courseDays(h: HabitRow, marks: Map<string, MarkRow["status"]>, today: string): CourseDay[] | null {
+  if (!h.end_date) return null;
+  const out: CourseDay[] = [];
+  for (let d = h.start_date; d <= h.end_date && out.length <= COURSE_MAX_DAYS; d = addDays(d, 1)) {
+    const m = marks.get(d);
+    const s: CourseDay["s"] = !dueOn({ ...h, status: "active" }, d) ? "rest"
+      : m === "done" ? "done"
+      : m === "skipped" ? "miss"
+      : d < today ? "miss"
+      : d === today ? "today"
+      : "wait";
+    out.push({ day: d, s });
+  }
+  return out.length > COURSE_MAX_DAYS ? null : out;
 }
 
 /** Что из привычек идёт в этот день, с отметками и сериями. */
@@ -53,6 +80,7 @@ export async function habitsOfDay(store: Store, u: User, day: string): Promise<H
     const own = marks.filter((m) => m.habit_id === h.id);
     const done = new Set(own.filter((m) => m.status === "done").map((m) => m.day_key));
     const today = own.find((m) => m.day_key === day);
+    const byDay = new Map(own.map((m) => [m.day_key, m.status] as const));
     const end = h.end_date ?? day;
     let planned = 0;
     for (let d = h.end_date ? h.start_date : addDays(day, -29); d <= end; d = addDays(d, 1)) if (dueOn(h, d)) planned++;
@@ -63,6 +91,7 @@ export async function habitsOfDay(store: Store, u: User, day: string): Promise<H
       streak: streak(h, done, day),
       doneDays: [...done].filter((d) => d <= end && (h.end_date || d > addDays(day, -30))).length,
       plannedDays: planned,
+      course: courseDays(h, byDay, day),
     };
   });
 }
