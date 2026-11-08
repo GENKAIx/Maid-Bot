@@ -229,6 +229,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 Правила:
 - Одно сообщение может содержать много всего сразу: дневник, планы, задачи, даты — разбери всё.
 - Обычный рассказ о дне — это дневник. Будущее с датой/временем («встреча завтра в 15») — events.
+  Дело с точным временем, даже без даты («Озон в 20:00», «забрать посылку в 18:30») — events на ближайший такой час.
   Дело без конкретного времени («надо купить лампочку») — tasks. День рождения, годовщина — dates.
 - Сон: время отбоя и подъёма только если они названы. НЕ выдумывай время подъёма. Сны — в конец текста раздела sleep.
 - Еда: только то, что съедено/выпито. «Купил продукты» — это notes, не food.
@@ -273,6 +274,16 @@ const SECTION_ALIASES: Record<string, Section> = {
   sport: "sport", спорт: "sport", health: "health", здоровье: "health", hobby: "hobby", хобби: "hobby",
   mood: "mood", настроение: "mood",
 };
+
+/** Время прямо в названии дела: «Озон в 20:00», «забрать посылку 18.30». Без двоеточия/точки («в 7») — не время. */
+export function timeInTitle(title: string): { title: string; time: string } | null {
+  const m = title.match(/(?:^|\s)(?:в|к|до)?\s*(\d{1,2}[:.]\d{2})(?=\s|$|[,;!)])/i);
+  if (!m) return null;
+  const time = normalizeTime(m[1]);
+  if (!time) return null;
+  const rest = (title.slice(0, m.index) + " " + title.slice((m.index ?? 0) + m[0].length)).replace(/\s+/g, " ").replace(/\s+([,;!)])/g, "$1").trim();
+  return { title: rest || title, time };
+}
 
 /** Проверить и привести ответ модели. Неверные даты и время отбрасываются, а не угадываются. */
 export function normalize(raw: unknown, ctx: { today: string; now: string; text: string }): Parsed {
@@ -322,12 +333,17 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     });
   }
 
-  const tasks = r.tasks.map((t) => ({
-    title: t.title,
-    priority: t.priority ?? "normal",
-    due: day(t.due_date, "tasks.due_date"),
-    category: t.category ?? "",
-  }));
+  // Дело с точным временем («Озон в 20:00») — это план с напоминанием, а не задача.
+  const tasks: Parsed["tasks"] = [];
+  for (const t of r.tasks) {
+    const due = day(t.due_date, "tasks.due_date");
+    const at = timeInTitle(t.title);
+    if (at && (due ?? ctx.today) >= ctx.today) {
+      events.push({ title: at.title, date: due ?? (at.time > ctx.now ? ctx.today : addDays(ctx.today, 1)), time: at.time, endTime: null, details: "" });
+      continue;
+    }
+    tasks.push({ title: t.title, priority: t.priority ?? "normal", due, category: t.category ?? "" });
+  }
 
   const dates: Parsed["dates"] = [];
   for (const d of r.dates) {
