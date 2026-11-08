@@ -242,7 +242,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .check, .w .mark { position: relative; }
 .w .check.done { background: var(--accent-2); border-color: var(--accent-2); }
 .w .check.pressed, .w .mark.pressed { animation: pipPress .42s cubic-bezier(.3, 1.6, .4, 1) both; }
-.w .check:active, .w .mark:active { transform: translateY(2px) scale(.85); }
+.w .check:active, .w .mark:active { transform: scale(.85); }
 
 /* --- быстрый ввод --- */
 body.quick { background: transparent; }
@@ -278,3 +278,7 @@ body.quick { background: transparent; }
 .composer .rec-wave { height: 30px; }
 @keyframes recBlink { to { visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+
+/* Отметки задач и привычек в одном списке — одного размера и на одной линии с текстом */
+.w .list li { align-items: center; }
+.w .list .check, .w .list .mark { width: 16px; height: 16px; border-radius: 4px; transform: none; font-size: 11px; line-height: 1; }
