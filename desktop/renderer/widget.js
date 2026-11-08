@@ -237,11 +237,18 @@ maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"
 maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null }));
 maid.on("opacity", (o) => ($("#w").style.opacity = String(o)));
 
-// Пока курсор над фигуркой, облачком или строкой чата, окно принимает мышь (иначе клики идут сквозь него).
-for (const el of [$("#maid"), $("#bubble")]) {
-  el.addEventListener("mouseenter", () => !grabbed && maid.hover(true));
-  el.addEventListener("mouseleave", () => !grabbed && maid.hover(false));
+// Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
+// (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
+function reportRegions() {
+  const rects = [];
+  for (const el of [$("#w"), $("#bubble"), $("#maid")]) {
+    if (el.classList.contains("hidden")) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width && r.height) rects.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+  }
+  maid.regions(rects);
 }
+setInterval(reportRegions, 300);
 let clickTimer = 0;
 $("#maid").addEventListener("click", () => {
   clearTimeout(clickTimer);

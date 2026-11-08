@@ -139,13 +139,32 @@ function createWidget() {
 /** Взять виджет: можно таскать и кликать. Отпустить: клики идут сквозь него в окна под ним,
  * кроме фигурки и облачка — пока курсор над ними, мышь включается (hover). */
 let hovering = false;
+let mouseOn = null;
 function applyMouse() {
   if (!widget) return;
-  widget.setIgnoreMouseEvents(!(grabbed || hovering || typing), { forward: true });
+  const on = Boolean(grabbed || hovering || typing);
+  if (on === mouseOn) return;
+  mouseOn = on;
+  widget.setIgnoreMouseEvents(!on, { forward: true });
 }
+// Опрос курсора: над панелью/облачком/фигуркой — окно принимает мышь, иначе клики идут сквозь.
+let regions = [];
+setInterval(() => {
+  if (!widget || widget.isDestroyed() || grabbed || typing) return;
+  const b = widget.getBounds();
+  const c = screen.getCursorScreenPoint();
+  const x = c.x - b.x;
+  const y = c.y - b.y;
+  const inside = x >= 0 && y >= 0 && x < b.width && y < b.height && regions.some((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+  if (inside !== hovering) {
+    hovering = inside;
+    applyMouse();
+  }
+}, 60);
 function setGrab(on) {
   grabbed = on;
   if (!widget) return;
+  mouseOn = null;
   applyMouse();
   widget.setFocusable(on);
   if (on) widget.focus();
@@ -248,11 +267,17 @@ ipcMain.handle("settings:set", (_e, patch) => {
   return settings;
 });
 ipcMain.handle("tracker:now", trackOnce);
+// Отладка: electron . --inspect → в инспекторе main maidDebug()
+global.maidDebug = () => ({
+  grabbed, hovering, typing, regions, mouseOn, focused: widget?.isFocused(), focusable: widget?.isFocusable?.(),
+  bounds: widget?.getBounds(), cursor: screen.getCursorScreenPoint(),
+});
 ipcMain.on("changed", () => broadcast("changed", null));
 ipcMain.on("open-main", () => showMain());
 ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
-ipcMain.on("hover", (_e, on) => { hovering = Boolean(on); applyMouse(); });
+ipcMain.on("hover", () => {});
+ipcMain.on("regions", (_e, list) => { regions = Array.isArray(list) ? list : []; });
 // Печатать в строке чата можно, только если окно принимает фокус; после — снова «сквозное».
 let typing = false;
 ipcMain.on("focus-input", (_e, on) => {
@@ -262,7 +287,11 @@ ipcMain.on("focus-input", (_e, on) => {
   if (on) {
     widget.setFocusable(true);
     widget.focus();
-  } else if (!grabbed) widget.setFocusable(false);
+  } else if (!grabbed) {
+    widget.setFocusable(false);
+    hovering = false;
+    applyMouse();
+  }
 });
 ipcMain.on("quick-show", showQuick);
 ipcMain.on("thinking", (_e, on) => widget?.webContents.send("thinking", on));

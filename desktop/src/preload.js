@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld("maid", {
   widgetReady: () => ipcRenderer.send("widget-ready"),
   /** Строка чата получила/потеряла фокус: окну нужна клавиатура. */
   focusInput: (on) => ipcRenderer.send("focus-input", on),
+  /** Где на окне что-то есть (панель, облачко, фигурка) — там окно принимает мышь, остальное сквозное. */
+  regions: (list) => ipcRenderer.send("regions", list),
   on: (channel, fn) => {
     if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },
