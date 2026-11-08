@@ -184,16 +184,18 @@ function render() {
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
 }
 
-let retry = 0;
+let lastJson = "";
 async function load() {
-  clearTimeout(retry);
   try {
-    data = await maid.api("GET", "/api/today");
+    const fresh = await maid.api("GET", "/api/today");
+    const json = JSON.stringify(fresh);
+    data = fresh;
+    // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.
+    if (json === lastJson) return;
+    lastJson = json;
   } catch {
-    // Нет связи — не ждать минуту до следующего опроса, а пробовать каждые 5 с; старые данные пока оставить.
-    if (!data) render();
-    retry = setTimeout(load, 5000);
-    return;
+    // Нет связи — старые данные пока оставить, следующий опрос через 5 с.
+    if (data) return;
   }
   render();
 }
@@ -391,8 +393,9 @@ $("#body").addEventListener("click", async (e) => {
 setCollapsed(Boolean(localStorage.getItem("maid.collapsed")));
 setState(isNight() ? "sleep" : "idle");
 setInterval(render, 15_000);
-setInterval(load, 60_000);
-setInterval(pollNotices, 20_000);
+// Что записано из Telegram или с телефона — появляется здесь через несколько секунд.
+setInterval(load, 5_000);
+setInterval(pollNotices, 5_000);
 loadCfg().then(load);
 pollNotices();
 maid.widgetReady();
