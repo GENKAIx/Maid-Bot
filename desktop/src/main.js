@@ -106,6 +106,10 @@ function widgetBounds() {
     x = p.x + p.width - w - 12;
     y = p.y + p.height - h;
   }
+  // Не вылезать за рабочую область (под панель задач): окно стало выше прежнего виджета.
+  const area = screen.getDisplayMatching({ x, y, width: w, height: h }).workArea;
+  x = Math.min(Math.max(x, area.x), area.x + area.width - w);
+  y = Math.min(Math.max(y, area.y), area.y + area.height - h);
   return { x, y, width: w, height: h };
 }
 
@@ -119,7 +123,7 @@ function createWidget() {
   // Выше полноэкранных окон и игр в оконном режиме.
   widget.setAlwaysOnTop(true, "screen-saver");
   widget.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  widget.setOpacity(settings.widget.opacity);
+  // Прозрачность — только у панели (в renderer); сама фигурка всегда непрозрачная.
   widget.loadFile(page("widget.html"));
   setGrab(false);
   widget.once("ready-to-show", () => widget.showInactive());
@@ -232,11 +236,12 @@ function broadcast(channel, data) {
 // --- связь с окнами ---
 ipcMain.handle("api", (_e, method, p, body) => api(method, p, body));
 ipcMain.handle("settings:get", () => ({ ...settings, tracker: { ...settings.tracker, state: trackerState } }));
+ipcMain.on("widget-ready", (e) => e.sender.send("opacity", settings.widget.opacity));
 ipcMain.handle("settings:set", (_e, patch) => {
   settings = { ...settings, ...patch, widget: { ...settings.widget, ...patch.widget }, tracker: { ...settings.tracker, ...patch.tracker }, keys: { ...settings.keys, ...patch.keys } };
   saveSettings();
   registerKeys();
-  if (widget) widget.setOpacity(settings.widget.opacity);
+  widget?.webContents.send("opacity", settings.widget.opacity);
   if (patch.widget && "show" in patch.widget) toggleWidget(patch.widget.show);
   if (patch.tracker) startTracker();
   broadcast("changed", null);

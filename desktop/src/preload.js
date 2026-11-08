@@ -16,7 +16,8 @@ contextBridge.exposeInMainWorld("maid", {
   /** Горничная думает (запрос ушёл) / ответила — показать состояние и облачко. */
   thinking: (on) => ipcRenderer.send("thinking", on),
   reply: (r) => ipcRenderer.send("reply", r),
+  widgetReady: () => ipcRenderer.send("widget-ready"),
   on: (channel, fn) => {
-    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
+    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },
 });

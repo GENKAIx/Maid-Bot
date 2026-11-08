@@ -156,6 +156,7 @@ maid.on("grab", (on) => {
 maid.on("changed", load);
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
 maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 9000 }));
+maid.on("opacity", (o) => ($("#w").style.opacity = String(o)));
 
 // Пока курсор над фигуркой или облачком, окно принимает мышь (иначе клики идут сквозь него).
 for (const el of [$("#maid"), $("#bubble")]) {
@@ -200,3 +201,4 @@ setInterval(pollNotices, 20_000);
 hint();
 load();
 pollNotices();
+maid.widgetReady();
