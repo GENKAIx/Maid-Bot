@@ -1,8 +1,9 @@
-import type { ActivityRow, DateRow, DiaryRow, EventRow, Store, TaskRow, User } from "./db.ts";
-import { SECTIONS, TRACKER_SECTIONS, type Section } from "./parse.ts";
+import type { ActivityRow, DateRow, DiaryRow, EventRow, MetricRow, MoneyRow, Store, TaskRow, User } from "./db.ts";
+import { habitLine, habitsOfDay } from "./habits.ts";
+import { HEALTH_TOPICS, SECTIONS, TRACKER_SECTIONS, type Section } from "./parse.ts";
 import { addDays, daysBetween, durationHuman, humanDay, nextYearly } from "./time.ts";
 
-// Готовые тексты для бота, десктопа и зеркала. Telegram — HTML.
+// Готовые тексты для бота и приложения. Telegram — HTML.
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -57,6 +58,8 @@ export function diaryBySection(rows: DiaryRow[]): Map<string, string[]> {
   return m;
 }
 
+export const topicName = (t: string) => HEALTH_TOPICS[t] ?? t;
+
 export const sectionName = (s: string) =>
   (SECTIONS as Record<string, string>)[s] ?? (TRACKER_SECTIONS as Record<string, string>)[s] ?? (s === "summary" ? "Саммари" : s);
 
@@ -69,32 +72,63 @@ export function activityLines(rows: ActivityRow[]): string[] {
     }
     const games = a.games.reduce((s, g) => s + g.sec, 0);
     if (games > 0) out.push(`🎮 ${durationHuman(games)}: ${esc(a.games.map((g) => `${g.name} ${durationHuman(g.sec)}`).join(", "))}`);
-    if (a.steps) out.push(`🚶 ${a.steps.toLocaleString("ru-RU")} шагов`);
   }
   return out;
 }
 
-export function todayText(store: Store, u: User, today: string): string {
+const num = (v: number) => (Number.isInteger(v) ? v.toLocaleString("ru-RU") : v.toLocaleString("ru-RU", { maximumFractionDigits: 2 }));
+
+/** Показатели дня одной строкой: «Вес 85,3 кг · Шаги 5 124». У одного ключа берём последнее значение. */
+export function metricLine(rows: Pick<MetricRow, "key" | "label" | "value" | "unit">[]): string {
+  const last = new Map<string, Pick<MetricRow, "key" | "label" | "value" | "unit">>();
+  for (const r of rows) last.set(r.key, r);
+  return [...last.values()].map((m) => `${esc(m.label)} ${num(m.value)}${m.unit ? " " + esc(m.unit) : ""}`).join(" · ");
+}
+
+export function moneyLine(m: Pick<MoneyRow, "kind" | "amount" | "currency" | "category" | "note">): string {
+  const sign = m.kind === "income" ? "+" : "−";
+  const what = [m.category, m.note].filter(Boolean).join(", ");
+  return `${sign}${num(m.amount)} ${esc(m.currency)}${what ? " — " + esc(what) : ""}`;
+}
+
+/** Итоги по валютам: доход и расход. */
+export function moneyTotals(rows: MoneyRow[]): { currency: string; income: number; expense: number }[] {
+  const m = new Map<string, { currency: string; income: number; expense: number }>();
+  for (const r of rows) {
+    const t = m.get(r.currency) ?? { currency: r.currency, income: 0, expense: 0 };
+    t[r.kind] += r.amount;
+    m.set(r.currency, t);
+  }
+  return [...m.values()];
+}
+
+export async function todayText(store: Store, u: User, today: string): Promise<string> {
   const parts: string[] = [`<b>${humanDay(today)}</b>`];
-  const evs = store.eventsBetween(u.id, today, today);
+  const evs = await store.eventsBetween(u.id, today, today);
   parts.push(evs.length ? `\n<b>Планы</b>\n${evs.map((e) => "• " + eventLine(e)).join("\n")}` : "\nПланов на сегодня нет.");
-  const tasks = store.openTasks(u.id).slice(0, 7);
+  const habits = await habitsOfDay(store, u, today);
+  if (habits.length) parts.push(`\n<b>Привычки</b>\n${habits.map(habitLine).join("\n")}`);
+  const tasks = (await store.openTasks(u.id)).slice(0, 7);
   if (tasks.length) parts.push(`\n<b>Задачи</b>\n${tasks.map((t) => "• " + taskLine(t, today)).join("\n")}`);
-  const dates = upcomingDates(store.activeDates(u.id), today, 7);
+  const dates = upcomingDates(await store.activeDates(u.id), today, 7);
   if (dates.length) parts.push(`\n<b>Скоро</b>\n${dates.map((d) => "• " + dateLine(d)).join("\n")}`);
-  const diary = diaryBySection(store.diaryOf(u.id, today).filter((r) => r.section !== "summary"));
+  const diary = diaryBySection((await store.diaryOf(u.id, today)).filter((r) => r.section !== "summary"));
   if (diary.size) {
     parts.push(
       `\n<b>Дневник</b>\n${[...diary].map(([s, l]) => `${sectionName(s)}: ${esc(l.join("; "))}`).join("\n")}`,
     );
   }
-  const act = activityLines(store.activityOf(u.id, today));
+  const metrics = metricLine(await store.metricsRange(u.id, today, today));
+  if (metrics) parts.push(`\n📊 ${metrics}`);
+  const money = await store.moneyRange(u.id, today, today);
+  if (money.length) parts.push(`\n<b>Деньги</b>\n${money.map((m) => "• " + moneyLine(m)).join("\n")}`);
+  const act = activityLines(await store.activityOf(u.id, today));
   if (act.length) parts.push("\n" + act.join("\n"));
   return parts.join("\n");
 }
 
-export function plansText(store: Store, u: User, today: string, days = 14): string {
-  const evs = store.eventsBetween(u.id, today, addDays(today, days));
+export async function plansText(store: Store, u: User, today: string, days = 14): Promise<string> {
+  const evs = await store.eventsBetween(u.id, today, addDays(today, days));
   if (!evs.length) return `На ${days} дней вперёд планов нет.`;
   const lines: string[] = [];
   let last = "";
@@ -108,40 +142,49 @@ export function plansText(store: Store, u: User, today: string, days = 14): stri
   return lines.join("\n").trim();
 }
 
-export function tasksText(store: Store, u: User, today: string): string {
-  const tasks = store.openTasks(u.id);
+export async function tasksText(store: Store, u: User, today: string): Promise<string> {
+  const tasks = await store.openTasks(u.id);
   if (!tasks.length) return "Открытых задач нет. Чисто.";
   return `<b>Задачи (${tasks.length})</b>\n` + tasks.map((t) => `• ${taskLine(t, today)} <code>#${t.id}</code>`).join("\n");
 }
 
-export function datesText(store: Store, u: User, today: string): string {
-  const list = upcomingDates(store.activeDates(u.id), today, 366);
+export async function datesText(store: Store, u: User, today: string): Promise<string> {
+  const list = upcomingDates(await store.activeDates(u.id), today, 366);
   if (!list.length) return "Важных дат пока нет. Напишите, например: «у мамы день рождения 14 марта».";
   return "<b>Важные даты</b>\n" + list.map((d) => `• ${dateLine(d)} <code>#${d.row.id}</code>`).join("\n");
 }
 
-export function memoryText(store: Store, u: User): string {
-  const list = store.activeMemory(u.id);
+export async function memoryText(store: Store, u: User): Promise<string> {
+  const list = await store.activeMemory(u.id);
   if (!list.length) return "Пока ничего не запомнила о вас.";
   return "<b>Что я помню</b>\n" + list.map((m) => `• ${m.subject ? esc(m.subject) + ": " : ""}${esc(m.text)} <code>#${m.id}</code>`).join("\n");
 }
 
 /** Дни дневника одним текстом — для ответа на вопрос о прошлом. */
-export function diaryDigest(store: Store, u: User, from: string, to: string): string {
-  const rows = store.diaryRange(u.id, from, to);
-  const act = store.activityRange(u.id, from, to);
+export async function diaryDigest(store: Store, u: User, from: string, to: string): Promise<string> {
+  const rows = await store.diaryRange(u.id, from, to);
+  const act = await store.activityRange(u.id, from, to);
   const days = new Map<string, string[]>();
-  for (const r of rows) {
-    const l = days.get(r.day_key) ?? [];
-    l.push(`${sectionName(r.section)}: ${r.text}`);
-    days.set(r.day_key, l);
+  const add = (day: string, line: string) => {
+    const l = days.get(day) ?? [];
+    l.push(line);
+    days.set(day, l);
+  };
+  for (const r of rows) add(r.day_key, `${sectionName(r.section)}${r.topic ? " / " + topicName(r.topic) : ""}: ${r.text}`);
+  const metrics = await store.metricsRange(u.id, from, to);
+  for (const day of new Set(metrics.map((m) => m.day_key))) add(day, "Показатели: " + metricLine(metrics.filter((m) => m.day_key === day)));
+  for (const m of await store.moneyRange(u.id, from, to)) add(m.day_key, "Деньги: " + moneyLine(m));
+  const habits = new Map((await store.activeHabits(u.id)).map((h) => [h.id, h.title]));
+  for (const mk of await store.marksOf(u.id, from, to)) {
+    const t = habits.get(mk.habit_id) ?? (await store.habit(mk.habit_id))?.title;
+    if (t) add(mk.day_key, `Привычка «${t}»: ${mk.status === "done" ? "сделано" : "пропуск"}`);
   }
   for (const a of act) {
     const l = days.get(a.day_key) ?? [];
     l.push(...activityLines([a]).map((s) => s.replace(/<[^>]+>/g, "")));
     days.set(a.day_key, l);
   }
-  for (const e of store.allEvents(u.id).filter((e) => e.date_iso >= from && e.date_iso <= to)) {
+  for (const e of (await store.allEvents(u.id)).filter((e) => e.date_iso >= from && e.date_iso <= to)) {
     const l = days.get(e.date_iso) ?? [];
     l.push(`План: ${e.time ?? "весь день"} ${e.title} (${e.status})`);
     days.set(e.date_iso, l);
@@ -150,7 +193,13 @@ export function diaryDigest(store: Store, u: User, from: string, to: string): st
 }
 
 /** Короткий список того, что изменилось — ответ после записи. */
-export function changesList(c: { sections: Section[]; summary: boolean; events: number; tasks: number; dates: number; memory: number; edits: string[] }): string[] {
+export function changesList(c: {
+  sections: Section[]; summary: boolean; events: number; tasks: number; dates: number; memory: number;
+  metrics?: Pick<MetricRow, "key" | "label" | "value" | "unit">[];
+  money?: Pick<MoneyRow, "kind" | "amount" | "currency" | "category" | "note">[];
+  habits?: string[];
+  edits: string[];
+}): string[] {
   const out: string[] = [];
   if (c.sections.length) out.push("📓 " + [...new Set(c.sections)].map((s) => SECTIONS[s]).join(", "));
   else if (c.summary) out.push("📓 Саммари");
@@ -158,6 +207,9 @@ export function changesList(c: { sections: Section[]; summary: boolean; events: 
   if (c.tasks) out.push(`✅ задач: ${c.tasks}`);
   if (c.dates) out.push(`🎂 дат: ${c.dates}`);
   if (c.memory) out.push(`🧠 запомнила: ${c.memory}`);
+  if (c.metrics?.length) out.push("📊 " + metricLine(c.metrics));
+  for (const m of c.money ?? []) out.push("💰 " + moneyLine(m));
+  for (const h of c.habits ?? []) out.push(`🔁 новая привычка: ${esc(h)}`);
   out.push(...c.edits);
   return out;
 }

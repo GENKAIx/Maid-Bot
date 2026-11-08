@@ -34,13 +34,11 @@ export const config = {
     model: env("LLM_MODEL", "gpt-4o-mini"),
   },
   port: Number(env("PORT", "3000")),
+  /** Postgres (Render). Если задан — главнее файла SQLite. */
+  databaseUrl: env("DATABASE_URL"),
   dbFile: fromRoot(env("DB_FILE", "data/maid.sqlite")),
   defaultTimezone: env("DEFAULT_TIMEZONE", "Europe/Moscow"),
   desktopToken: env("DESKTOP_TOKEN"),
-  sheets: {
-    serviceAccountFile: fromRoot(env("GOOGLE_SERVICE_ACCOUNT_FILE")),
-    spreadsheetId: env("SHEETS_SPREADSHEET_ID"),
-  },
 };
 
 export type Config = typeof config;

@@ -1,15 +1,20 @@
 import crypto from "node:crypto";
 import http from "node:http";
 import { z } from "zod";
-import { config } from "./config.ts";
+import { login, tokenHash, userByToken } from "./auth.ts";
 import type { Store, User } from "./db.ts";
-import type { Pipeline } from "./pipeline.ts";
-import type { Send } from "./scheduler.ts";
 import { ActivityInput, recordActivity } from "./activity.ts";
-import { upcomingDates } from "./report.ts";
-import { addDays, dayKey } from "./time.ts";
+import { habitMonth, habitsOfDay } from "./habits.ts";
+import { HEALTH_TOPICS, METRICS } from "./parse.ts";
+import type { Pipeline } from "./pipeline.ts";
+import { moneyTotals, upcomingDates } from "./report.ts";
+import type { Send } from "./scheduler.ts";
+import { addDays, dayKey, isDayKey } from "./time.ts";
 
-// HTTP: API для десктопа (Bearer-ключ из /token или DESKTOP_TOKEN) и webhook Telegram.
+// HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
+// и webhook Telegram.
+
+export { userByToken } from "./auth.ts";
 
 export interface ApiDeps {
   store: Store;
@@ -22,19 +27,6 @@ class HttpError extends Error {
   constructor(public status: number, msg: string) {
     super(msg);
   }
-}
-
-const safeEq = (a: string, b: string) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-
-export function userByToken(store: Store, token: string): User | undefined {
-  if (!token) return undefined;
-  const id = store.kvGet(`token:${token}`);
-  if (id) return store.user(Number(id));
-  if (config.desktopToken && safeEq(token, config.desktopToken)) {
-    const owner = config.allowedChatIds[0];
-    return store.ensureUser(owner ?? "local", "", config.defaultTimezone);
-  }
-  return undefined;
 }
 
 async function readJson(req: http.IncomingMessage): Promise<unknown> {
@@ -59,18 +51,37 @@ function parseBody<T extends z.ZodTypeAny>(schema: T, body: unknown): z.infer<T>
   return r.data;
 }
 
-export function todayJson(store: Store, u: User, now = new Date()) {
+const Day = z.string().refine(isDayKey, "день YYYY-MM-DD");
+
+export async function todayJson(store: Store, u: User, now = new Date()) {
   const today = dayKey(now, u.tz);
   return {
     day: today,
     persona: u.persona,
-    events: store.eventsBetween(u.id, today, today),
-    upcoming: store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
-    tasks: store.openTasks(u.id),
-    dates: upcomingDates(store.activeDates(u.id), today, 30).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age })),
-    diary: store.diaryOf(u.id, today),
-    activity: store.activityOf(u.id, today),
+    events: await store.eventsBetween(u.id, today, today),
+    upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
+    tasks: await store.openTasks(u.id),
+    dates: upcomingDates(await store.activeDates(u.id), today, 30).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age })),
+    diary: await store.diaryOf(u.id, today),
+    habits: (await habitsOfDay(store, u, today)).map((d) => ({
+      id: d.habit.id, title: d.habit.title, times: d.times, status: d.status, streak: d.streak, done: d.doneDays, planned: d.plannedDays,
+    })),
+    metrics: await store.metricsRange(u.id, today, today),
+    money: await store.moneyRange(u.id, today, today),
+    activity: await store.activityOf(u.id, today),
   };
+}
+
+/** Поиск по дневнику: раздел, подраздел, слова (без учёта регистра, кириллица тоже). */
+export async function searchDiary(store: Store, u: User, q: { section?: string; topic?: string; text?: string; from?: string; to?: string }) {
+  let rows = q.from || q.to
+    ? await store.diaryRange(u.id, q.from ?? "0000-01-01", q.to ?? "9999-12-31")
+    : q.section ? await store.diarySection(u.id, q.section) : await store.diaryRange(u.id, "0000-01-01", "9999-12-31");
+  if (q.section) rows = rows.filter((r) => r.section === q.section);
+  if (q.topic) rows = rows.filter((r) => r.topic === q.topic);
+  const words = (q.text ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length) rows = rows.filter((r) => words.every((w) => r.text.toLowerCase().includes(w)));
+  return rows.reverse().slice(0, 500);
 }
 
 export function createApi(deps: ApiDeps) {
@@ -79,40 +90,102 @@ export function createApi(deps: ApiDeps) {
   async function route(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? "/", "http://local");
     const p = url.pathname;
+    const q = (k: string) => url.searchParams.get(k) ?? undefined;
+    const m = req.method ?? "GET";
     if (p === "/health") return { ok: true };
-    if (p === "/webhook" && req.method === "POST" && deps.webhook) {
+    if (p === "/webhook" && m === "POST" && deps.webhook) {
       await deps.webhook(req, res);
       return undefined;
     }
     if (!p.startsWith("/api/")) throw new HttpError(404, "нет такого адреса");
 
-    const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
-    const u = userByToken(store, token);
-    if (!u) throw new HttpError(401, "нужен ключ (команда /token в боте)");
-    const m = req.method ?? "GET";
+    if (m === "POST" && p === "/api/login") {
+      const b = parseBody(
+        z.object({ login: z.string().min(1).max(80), password: z.string().min(1).max(200), label: z.string().max(80).optional() }),
+        await readJson(req),
+      );
+      const token = await login(store, b.login, b.password, b.label ?? "web");
+      if (!token) throw new HttpError(401, "неверный логин или пароль");
+      return { token };
+    }
 
+    const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+    const u = await userByToken(store, token);
+    if (!u) throw new HttpError(401, "нужен вход (логин и пароль) или ключ");
+
+    if (m === "POST" && p === "/api/logout") {
+      await store.dropSession(tokenHash(token));
+      return { ok: true };
+    }
+    const today = dayKey(new Date(), u.tz);
+    if (m === "GET" && p === "/api/me") {
+      const { password_hash: _, ...me } = u;
+      return { ...me, sessions: await store.sessionsOf(u.id) };
+    }
     if (m === "GET" && p === "/api/today") return todayJson(store, u);
     if (m === "GET" && p === "/api/tasks") return store.openTasks(u.id);
-    if (m === "GET" && p === "/api/dates") return todayJson(store, u).dates;
-    if (m === "GET" && p === "/api/events") {
-      const today = dayKey(new Date(), u.tz);
-      return store.eventsBetween(u.id, url.searchParams.get("from") ?? today, url.searchParams.get("to") ?? addDays(today, 30));
-    }
+    if (m === "GET" && p === "/api/dates") return (await todayJson(store, u)).dates;
+    if (m === "GET" && p === "/api/events") return store.eventsBetween(u.id, q("from") ?? today, q("to") ?? addDays(today, 30));
     const task = p.match(/^\/api\/tasks\/(\d+)$/);
     if (m === "POST" && task) {
       const { status } = parseBody(z.object({ status: z.enum(["open", "done", "cancelled"]) }), await readJson(req));
-      const t = store.task(Number(task[1]));
+      const t = await store.task(Number(task[1]));
       if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
-      store.updateTask(t.id, { status });
+      await store.updateTask(t.id, { status });
       return store.task(t.id);
     }
+
+    // Привычки: сетка месяца и отметка.
+    if (m === "GET" && p === "/api/habits") {
+      const month = q("month") ?? today.slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(month)) throw new HttpError(400, "month: YYYY-MM");
+      return { month, today: await habitsOfDay(store, u, today), habits: await habitMonth(store, u, month) };
+    }
+    const mark = p.match(/^\/api\/habits\/(\d+)\/mark$/);
+    if (m === "POST" && mark) {
+      const b = parseBody(z.object({ status: z.enum(["done", "skipped"]).default("done"), day: Day.optional() }), await readJson(req));
+      return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.status, "web") };
+    }
+
+    // Деньги и показатели за период.
+    if (m === "GET" && p === "/api/money") {
+      const rows = await store.moneyRange(u.id, q("from") ?? addDays(today, -30), q("to") ?? today);
+      return { rows, totals: moneyTotals(rows) };
+    }
+    if (m === "GET" && p === "/api/metrics") {
+      return {
+        known: METRICS,
+        keys: await store.metricKeys(u.id),
+        rows: await store.metricsRange(u.id, q("from") ?? addDays(today, -30), q("to") ?? today, q("key")),
+      };
+    }
+    // Шаги с айфона (Быстрые команды): {steps, day?}. Одно значение на день — повтор заменяет.
+    if (m === "POST" && p === "/api/steps") {
+      const b = parseBody(z.object({ steps: z.coerce.number().int().min(0).max(200_000), day: Day.optional() }), await readJson(req));
+      const day = b.day ?? today;
+      await store.setDayMetric({ user_id: u.id, day_key: day, key: "steps", label: "Шаги", value: b.steps, unit: "", source: "iphone" });
+      return { day, steps: b.steps };
+    }
+
+    // Дневник и поиск (здоровье — по подразделам).
+    if (m === "GET" && p === "/api/diary") {
+      return searchDiary(store, u, { section: q("section"), topic: q("topic"), text: q("q"), from: q("from"), to: q("to") });
+    }
+    if (m === "GET" && p === "/api/health/topics") {
+      const used = await store.diaryTopics(u.id, "health");
+      return used.map((t) => ({ ...t, name: HEALTH_TOPICS[t.topic] ?? t.topic }));
+    }
+
     if (m === "POST" && p === "/api/input") {
-      const b = parseBody(z.object({ text: z.string().trim().min(1).max(4000), id: z.string().max(80).optional(), ask: z.boolean().optional() }), await readJson(req));
+      const b = parseBody(
+        z.object({ text: z.string().trim().min(1).max(4000), id: z.string().max(80).optional(), ask: z.boolean().optional() }),
+        await readJson(req),
+      );
       return pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: b.text, chatOnly: b.ask });
     }
     if (m === "POST" && p === "/api/undo") {
       const b = parseBody(z.object({ messageId: z.number().int().optional() }), await readJson(req));
-      return { text: pipeline.undo(u, b.messageId) };
+      return { text: await pipeline.undo(u, b.messageId) };
     }
     if (m === "POST" && p === "/api/activity") {
       const b = parseBody(ActivityInput, await readJson(req));

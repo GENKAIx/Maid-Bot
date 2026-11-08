@@ -6,11 +6,12 @@ import { Store } from "./db.ts";
 import { callLlm, llmReady } from "./llm.ts";
 import { Pipeline } from "./pipeline.ts";
 import { Scheduler, type Send } from "./scheduler.ts";
-import { SheetsMirror, sheetsReady } from "./sheets.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
+// База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
 
-const store = new Store(config.dbFile);
+const store = await Store.open(config.databaseUrl || config.dbFile);
+console.log(`[start] база: ${config.databaseUrl ? "Postgres" : "SQLite " + config.dbFile}`);
 const pipeline = new Pipeline(store, callLlm);
 
 if (!llmReady()) console.warn("[start] LLM_API_KEY не задан — разбор сообщений не работает");
@@ -30,17 +31,6 @@ if (send) {
   scheduler.start();
 }
 
-let mirror: SheetsMirror | null = null;
-if (sheetsReady()) {
-  mirror = new SheetsMirror(store, () => {
-    const owner = config.allowedChatIds[0];
-    return owner ? store.userByChat(owner) : store.users()[0];
-  });
-  store.onChange = (tbl, userId) => mirror!.mark(tbl, userId);
-  mirror.start();
-  console.log("[start] зеркало в Google Таблицу включено");
-} else console.warn("[start] Google Таблица не подключена — зеркало выключено");
-
 const server = createApi({ store, pipeline, send, webhook });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
@@ -56,10 +46,9 @@ server.listen(config.port, async () => {
 
 const shutdown = async () => {
   scheduler?.stop();
-  mirror?.stop();
-  await mirror?.flush();
   if (tg && !config.publicUrl) await tg.bot.stop();
   server.close();
+  await store.close();
   process.exit(0);
 };
 process.on("SIGINT", shutdown);

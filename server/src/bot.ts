@@ -1,9 +1,10 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Bot, InlineKeyboard, InputFile, type Context } from "grammy";
 import { config, ROOT } from "./config.ts";
+import { issueToken } from "./auth.ts";
 import type { Store, User } from "./db.ts";
+import { habitLine, habitsOfDay } from "./habits.ts";
 import type { Pipeline, Reply } from "./pipeline.ts";
 import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, memoryText, plansText, tasksText, todayText } from "./report.ts";
@@ -21,7 +22,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   const bot = new Bot(config.telegramToken);
 
   const allowed = (chatId: string) => config.allowedChatIds.includes(chatId);
-  const userOf = (ctx: Context): User | null => {
+  const userOf = async (ctx: Context): Promise<User | null> => {
     const chat = String(ctx.chat?.id ?? "");
     if (!chat || !allowed(chat)) return null;
     return store.ensureUser(chat, ctx.from?.first_name ?? "", config.defaultTimezone);
@@ -51,22 +52,22 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   });
 
   bot.command("start", async (ctx) => {
-    const u = userOf(ctx);
+    const u = await userOf(ctx);
     if (!u) return;
     await ctx.reply(
       "Я ваша горничная. Пишите как есть — что было за день, что запланировано, что не забыть. " +
         "Я сама разложу: дневник, планы, задачи, важные даты.\n\n" +
         "/today — сегодня\n/plans — планы\n/tasks — задачи\n/dates — важные даты\n/memory — что я помню\n" +
         "/ask текст — просто поговорить\n/undo — отменить последнее\n/summary — итог дня\n/persona — характер\n" +
-        "/token — ключ для приложения на ПК",
+        "/habits — привычки на сегодня\n/token — ключ для приложения на ПК",
     );
   });
   bot.command("chatid", (ctx) => ctx.reply(`chat id: <code>${ctx.chat.id}</code>`, { parse_mode: "HTML" }));
 
-  const view = (fn: (u: User, today: string) => string) => async (ctx: Context) => {
-    const u = userOf(ctx);
+  const view = (fn: (u: User, today: string) => Promise<string>) => async (ctx: Context) => {
+    const u = await userOf(ctx);
     if (!u) return;
-    await ctx.reply(fn(u, dayKey(new Date(), u.tz)), { parse_mode: "HTML" });
+    await ctx.reply(await fn(u, dayKey(new Date(), u.tz)), { parse_mode: "HTML" });
   };
   bot.command("today", view((u, d) => todayText(store, u, d)));
   bot.command("plans", view((u, d) => plansText(store, u, d)));
@@ -74,21 +75,32 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   bot.command("dates", view((u, d) => datesText(store, u, d)));
   bot.command("memory", view((u) => memoryText(store, u)));
 
+  bot.command("habits", async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return;
+    const today = dayKey(new Date(), u.tz);
+    const list = await habitsOfDay(store, u, today);
+    if (!list.length) return ctx.reply("На сегодня привычек нет. Напишите, например: «каждый день в 8 утра зарядка, 30 дней».");
+    const kb = new InlineKeyboard();
+    for (const d of list) if (!d.status) kb.text(`✅ ${d.habit.title}`.slice(0, 60), `habit:${d.habit.id}:${today}:done`).row();
+    await ctx.reply(`<b>Привычки сегодня</b>\n${list.map(habitLine).join("\n")}`, { parse_mode: "HTML", reply_markup: kb });
+  });
+
   bot.command("summary", async (ctx) => {
-    const u = userOf(ctx);
+    const u = await userOf(ctx);
     const s = scheduler();
     if (!u || !s) return;
     await ctx.reply(await s.eveningText(u, dayKey(new Date(), u.tz)), { parse_mode: "HTML" });
   });
 
   bot.command("undo", async (ctx) => {
-    const u = userOf(ctx);
+    const u = await userOf(ctx);
     if (!u) return;
-    await ctx.reply(pipeline.undo(u));
+    await ctx.reply(await pipeline.undo(u));
   });
 
   bot.command("ask", async (ctx) => {
-    const u = userOf(ctx);
+    const u = await userOf(ctx);
     if (!u || !ctx.message) return;
     const text = ctx.match.trim();
     if (!text) return ctx.reply("Напишите после /ask, о чём поговорить.");
@@ -97,7 +109,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   });
 
   bot.command("persona", async (ctx) => {
-    const u = userOf(ctx);
+    const u = await userOf(ctx);
     if (!u) return;
     const kb = new InlineKeyboard();
     for (const p of Object.values(PERSONAS)) kb.text(`${p.id === u.persona ? "● " : ""}${p.name}`, `persona:${p.id}`).row();
@@ -105,31 +117,39 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   });
 
   bot.command("token", async (ctx) => {
-    const u = userOf(ctx);
+    const u = await userOf(ctx);
     if (!u) return;
-    const token = crypto.randomBytes(24).toString("base64url");
-    store.kvSet(`token:${token}`, String(u.id));
+    const token = await issueToken(store, u.id, "telegram /token");
     await ctx.reply(`Ключ для приложения на ПК (никому не показывайте):\n<code>${token}</code>`, { parse_mode: "HTML" });
   });
 
+  bot.callbackQuery(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/, async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return ctx.answerCallbackQuery();
+    const [, id, day, status] = ctx.match;
+    const text = await pipeline.markHabit(u, Number(id), day, status as "done" | "skipped", "telegram");
+    await ctx.answerCallbackQuery({ text: text.replace(/<[^>]+>/g, "").slice(0, 190) });
+    await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  });
+
   bot.callbackQuery(/^(undo|note|persona):(.+)$/, async (ctx) => {
-    const u = userOf(ctx);
+    const u = await userOf(ctx);
     if (!u) return ctx.answerCallbackQuery();
     const [, kind, arg] = ctx.match;
     let text: string;
     if (kind === "persona") {
       if (!PERSONAS[arg]) return ctx.answerCallbackQuery();
-      store.updateUser(u.id, { persona: arg });
+      await store.updateUser(u.id, { persona: arg });
       text = `Теперь я — ${PERSONAS[arg].name.toLowerCase()}.`;
-    } else if (kind === "undo") text = pipeline.undo(u, Number(arg));
-    else text = pipeline.asNote(u, Number(arg));
+    } else if (kind === "undo") text = await pipeline.undo(u, Number(arg));
+    else text = await pipeline.asNote(u, Number(arg));
     await ctx.answerCallbackQuery({ text: text.slice(0, 190) });
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
     await ctx.reply(text);
   });
 
   bot.on("message:text", async (ctx) => {
-    const u = userOf(ctx);
+    const u = await userOf(ctx);
     if (!u) return;
     await ctx.replyWithChatAction("typing").catch(() => {});
     const r = await pipeline.handle({
@@ -141,10 +161,19 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
 
   bot.catch((e) => console.error("[bot]", e.error));
 
-  const send: Send = async (u, text, emotion) => {
+  const send: Send = async (u, text, emotion, buttons) => {
+    if (!u.chat_id) return;
+    let markup: InlineKeyboard | undefined;
+    if (buttons?.length) {
+      markup = new InlineKeyboard();
+      for (const b of buttons) markup.text(b.text, b.data);
+    }
     const img = emotionImage(u.persona, emotion);
-    if (img && text.length <= 1000) await bot.api.sendPhoto(u.chat_id, new InputFile(img), { caption: text, parse_mode: "HTML" });
-    else await bot.api.sendMessage(u.chat_id, text, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
+    if (img && text.length <= 1000) {
+      await bot.api.sendPhoto(u.chat_id, new InputFile(img), { caption: text, parse_mode: "HTML", reply_markup: markup });
+    } else {
+      await bot.api.sendMessage(u.chat_id, text, { parse_mode: "HTML", reply_markup: markup, link_preview_options: { is_disabled: true } });
+    }
   };
 
   return { bot, send };

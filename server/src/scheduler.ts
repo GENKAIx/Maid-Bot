@@ -1,26 +1,42 @@
 import type { EventRow, Store, User } from "./db.ts";
+import { habitLine, habitsOfDay } from "./habits.ts";
 import type { LlmCall } from "./llm.ts";
 import { persona, type Emotion } from "./personas.ts";
-import { activityLines, dateLine, diaryBySection, esc, eventLine, plansText, sectionName, todayText, upcomingDates } from "./report.ts";
+import {
+  activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, plansText, sectionName, todayText, upcomingDates,
+} from "./report.ts";
 import { addDays, dayKey, humanDay, timeOf, zonedToUtc } from "./time.ts";
 
 // Напоминания и итоги. Всё состояние — в базе (reminders, kv), поэтому перезапуск ничего не теряет,
 // а повторный запуск не шлёт то же самое дважды.
 
-export type Send = (u: User, text: string, emotion: Emotion) => Promise<void>;
+/** Кнопка под уведомлением: текст и что вернуть боту (callback) или приложению. */
+export interface Button {
+  text: string;
+  data: string;
+}
+export type Send = (u: User, text: string, emotion: Emotion, buttons?: Button[]) => Promise<void>;
+
+/** Кнопки «сделал / пропуск» для привычки на день. */
+export const habitButtons = (habitId: number, day: string): Button[] => [
+  { text: "✅ Сделал", data: `habit:${habitId}:${day}:done` },
+  { text: "➖ Пропуск", data: `habit:${habitId}:${day}:skipped` },
+];
 
 /** Запланировать «за N минут» до плана со временем. */
-export function planEventReminders(store: Store, u: User, e: EventRow, now: Date) {
+export async function planEventReminders(store: Store, u: User, e: EventRow, now: Date) {
   if (!e.time || e.status !== "active") return;
   const start = zonedToUtc(e.date_iso, e.time, u.tz);
   const due = new Date(start.getTime() - u.event_lead_min * 60_000);
   if (due <= now) return;
   const lead = u.event_lead_min >= 60 && u.event_lead_min % 60 === 0 ? `${u.event_lead_min / 60} ч` : `${u.event_lead_min} мин`;
-  store.addReminder(u.id, "event", e.id, due, `⏰ Через ${lead}: ${eventLine(e)}`);
+  await store.addReminder(u.id, "event", e.id, due, `⏰ Через ${lead}: ${eventLine(e)}`);
 }
 
 /** Окно, в котором ещё не поздно прислать дайджест после простоя сервера. */
 const LATE_MIN = 180;
+/** Напоминание о привычке позже часа уже не шлём. */
+const HABIT_LATE_MIN = 60;
 
 function minutesOf(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -45,44 +61,60 @@ export class Scheduler {
     if (this.busy) return;
     this.busy = true;
     try {
-      for (const r of this.store.dueReminders(now)) {
-        const u = this.store.user(r.user_id);
+      for (const r of await this.store.dueReminders(now)) {
+        const u = await this.store.user(r.user_id);
         if (!u) continue;
         // Устарело больше чем на час (сервер спал) — не будим зря.
         const late = now.getTime() - new Date(r.due_at).getTime() > 60 * 60_000;
         if (!late) await this.safeSend(u, r.text, "neutral");
-        this.store.markReminder(r.id, late ? "cancelled" : "sent");
+        await this.store.markReminder(r.id, late ? "cancelled" : "sent");
       }
-      for (const u of this.store.users()) await this.daily(u, now);
+      for (const u of await this.store.users()) {
+        await this.daily(u, now);
+        await this.habits(u, now);
+      }
     } finally {
       this.busy = false;
     }
   }
 
-  private due(u: User, at: string, now: Date) {
+  private due(u: User, at: string, now: Date, late = LATE_MIN) {
     const m = minutesOf(timeOf(now, u.tz)) - minutesOf(at);
-    return m >= 0 && m <= LATE_MIN;
+    return m >= 0 && m <= late;
+  }
+
+  /** Привычки со временем: напомнить в своё время, если ещё не отмечена. */
+  private async habits(u: User, now: Date) {
+    const today = dayKey(now, u.tz);
+    for (const d of await habitsOfDay(this.store, u, today)) {
+      if (d.status) continue;
+      for (const t of d.times) {
+        if (!this.due(u, t, now, HABIT_LATE_MIN) || !(await this.store.once(`habit:${d.habit.id}:${today}:${t}`))) continue;
+        await this.safeSend(u, `🔁 Пора: ${esc(d.habit.title)}${d.streak >= 2 ? ` (серия ${d.streak} 🔥)` : ""}`, "neutral",
+          habitButtons(d.habit.id, today));
+      }
+    }
   }
 
   private async daily(u: User, now: Date) {
     const today = dayKey(now, u.tz);
     const s = this.store;
-    if (this.due(u, u.morning_time, now) && s.once(`morning:${u.id}:${today}`)) {
-      await this.safeSend(u, `☀️ Доброе утро.\n\n${todayText(s, u, today)}`, "happy");
-      for (const d of upcomingDates(s.activeDates(u.id), today, 7)) {
-        if ([7, 1, 0].includes(d.inDays) && s.once(`date:${d.row.id}:${d.on}:${d.inDays}`)) {
+    if (this.due(u, u.morning_time, now) && (await s.once(`morning:${u.id}:${today}`))) {
+      await this.safeSend(u, `☀️ Доброе утро.\n\n${await todayText(s, u, today)}`, "happy");
+      for (const d of upcomingDates(await s.activeDates(u.id), today, 7)) {
+        if ([7, 1, 0].includes(d.inDays) && (await s.once(`date:${d.row.id}:${d.on}:${d.inDays}`))) {
           await this.safeSend(u, `🎂 ${dateLine(d)}`, d.inDays === 0 ? "happy" : "neutral");
         }
       }
     }
-    if (this.due(u, u.tomorrow_time, now) && s.once(`tomorrow:${u.id}:${today}`)) {
+    if (this.due(u, u.tomorrow_time, now) && (await s.once(`tomorrow:${u.id}:${today}`))) {
       const tomorrow = addDays(today, 1);
-      const evs = s.eventsBetween(u.id, tomorrow, tomorrow);
+      const evs = await s.eventsBetween(u.id, tomorrow, tomorrow);
       if (evs.length) {
         await this.safeSend(u, `🌙 Завтра, ${humanDay(tomorrow)}:\n${evs.map((e) => "• " + eventLine(e)).join("\n")}`, "neutral");
       }
     }
-    if (this.due(u, u.evening_time, now) && s.once(`evening:${u.id}:${today}`)) {
+    if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
       await this.safeSend(u, await this.eveningText(u, today), "proud");
     }
   }
@@ -90,23 +122,29 @@ export class Scheduler {
   /** Вечерний итог: сводка фактами + несколько строк в голосе горничной. */
   async eveningText(u: User, today: string): Promise<string> {
     const s = this.store;
-    const diary = diaryBySection(s.diaryOf(u.id, today));
+    const diary = diaryBySection(await s.diaryOf(u.id, today));
     const facts: string[] = [];
     for (const [sec, lines] of diary) {
       if (sec === "summary" || sec === "tags") continue;
       facts.push(`${sectionName(sec)}: ${lines.join("; ")}`);
     }
-    const act = activityLines(s.activityOf(u.id, today)).map((l) => l.replace(/<[^>]+>/g, ""));
-    const done = s.allTasks(u.id).filter((t) => t.done_at && dayKey(new Date(t.done_at), u.tz) === today);
-    const plans = s.allEvents(u.id).filter((e) => e.date_iso === today && e.status !== "deleted");
+    const act = activityLines(await s.activityOf(u.id, today)).map((l) => l.replace(/<[^>]+>/g, ""));
+    const done = (await s.allTasks(u.id)).filter((t) => t.done_at && dayKey(new Date(t.done_at), u.tz) === today);
+    const plans = (await s.allEvents(u.id)).filter((e) => e.date_iso === today && e.status !== "deleted");
+    const habits = await habitsOfDay(s, u, today);
+    const metrics = metricLine(await s.metricsRange(u.id, today, today));
+    const money = await s.moneyRange(u.id, today, today);
     const head = [
       `<b>Итог дня, ${humanDay(today)}</b>`,
       ...facts.map((f) => "• " + esc(f)),
       ...act,
+      metrics ? `📊 ${metrics}` : "",
+      ...money.map((m) => "💰 " + moneyLine(m)),
+      ...habits.map(habitLine),
       done.length ? `✔ сделано задач: ${done.length}` : "",
       plans.length ? `📅 планов было: ${plans.length}` : "",
     ].filter(Boolean);
-    if (facts.length === 0 && act.length === 0 && done.length === 0) head.push("Сегодня записей нет.");
+    if (head.length === 1) head.push("Сегодня записей нет.");
     if (!this.llm) return head.join("\n");
     const summaries = diary.get("summary")?.join("\n") ?? "";
     try {
@@ -116,7 +154,11 @@ export class Scheduler {
           content: `${persona(u.persona).voice}\nНапиши 3–6 коротких строк вечернего итога дня для хозяина: что было хорошо, ` +
             `что тревожит (сон, еда, игры, несделанное), один совет на завтра. Только по фактам ниже, без выдумок, без заголовков.`,
         },
-        { role: "user", content: `${head.join("\n").replace(/<[^>]+>/g, "")}\n\nЗаписи дня:\n${summaries || "нет"}\n\nЗавтра:\n${plansText(s, u, addDays(today, 1), 0).replace(/<[^>]+>/g, "")}` },
+        {
+          role: "user",
+          content: `${head.join("\n").replace(/<[^>]+>/g, "")}\n\nЗаписи дня:\n${summaries || "нет"}\n\nЗавтра:\n${
+            (await plansText(s, u, addDays(today, 1), 0)).replace(/<[^>]+>/g, "")}`,
+        },
       ], { temperature: 0.6 });
       return `${head.join("\n")}\n\n${esc(words.trim())}`;
     } catch (e) {
@@ -125,9 +167,9 @@ export class Scheduler {
     }
   }
 
-  private async safeSend(u: User, text: string, emotion: Emotion) {
+  private async safeSend(u: User, text: string, emotion: Emotion, buttons?: Button[]) {
     try {
-      await this.send(u, text, emotion);
+      await this.send(u, text, emotion, buttons);
     } catch (e) {
       console.error("[send]", u.id, e);
     }
