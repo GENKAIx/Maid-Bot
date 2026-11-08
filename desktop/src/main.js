@@ -45,12 +45,24 @@ function saveSettings() {
 
 async function api(method, p, body) {
   if (!settings.token) throw new Error("Нет ключа: напишите боту /token и вставьте его в настройках.");
-  const res = await fetch(settings.server.replace(/\/$/, "") + p, {
+  const url = settings.server.replace(/\/$/, "") + p;
+  const opts = {
     method,
     headers: { Authorization: `Bearer ${settings.token}`, "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(90_000),
-  });
+  };
+  // Соединение иногда рвётся (VPN, сон компьютера) — «fetch failed» без ответа сервера. Повторить ещё дважды;
+  // POST тоже: сервер его не получил, раз ответа нет вовсе.
+  let res;
+  for (let i = 0; ; i++) {
+    try {
+      res = await fetch(url, { ...opts, signal: AbortSignal.timeout(90_000) });
+      break;
+    } catch (e) {
+      if (i >= 2 || e?.name === "TimeoutError") throw e;
+      await new Promise((r) => setTimeout(r, 700 * (i + 1)));
+    }
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error ?? `сервер ${res.status}`);
   return data;
@@ -141,16 +153,29 @@ ipcMain.on("widget-drag", (_e, phase) => {
   if (!widget || widget.isDestroyed()) return;
   const c = screen.getCursorScreenPoint();
   if (phase === "start") {
+    clearInterval(drag?.timer);
     drag = { cx: c.x, cy: c.y, b: widget.getBounds() };
+    // Окно ведёт таймер, а не события мыши: окно без фокуса получает их неровно, и оно отставало от курсора.
+    drag.timer = setInterval(followCursor, 16);
   } else if (phase === "move" && drag) {
-    // setBounds с прежним размером: на экранах с разным масштабом setPosition у Windows меняет размер окна.
-    widget.setBounds({ x: drag.b.x + c.x - drag.cx, y: drag.b.y + c.y - drag.cy, width: drag.b.width, height: drag.b.height });
+    followCursor();
   } else if (phase === "end" && drag) {
+    clearInterval(drag.timer);
     drag = null;
     widget.setBounds(widgetBounds(widget.getBounds()));
     rememberWidget();
   }
 });
+function followCursor() {
+  if (!drag || !widget || widget.isDestroyed()) return;
+  const c = screen.getCursorScreenPoint();
+  const x = drag.b.x + c.x - drag.cx;
+  const y = drag.b.y + c.y - drag.cy;
+  const now = widget.getBounds();
+  if (now.x === x && now.y === y) return;
+  // setBounds с прежним размером: на экранах с разным масштабом setPosition у Windows меняет размер окна.
+  widget.setBounds({ x, y, width: drag.b.width, height: drag.b.height });
+}
 ipcMain.on("widget-reset", () => {
   settings.widget = { ...settings.widget, x: null, y: null, display: null };
   saveSettings();

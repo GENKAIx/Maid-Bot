@@ -184,11 +184,16 @@ function render() {
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
 }
 
+let retry = 0;
 async function load() {
+  clearTimeout(retry);
   try {
     data = await maid.api("GET", "/api/today");
   } catch {
-    data = null;
+    // Нет связи — не ждать минуту до следующего опроса, а пробовать каждые 5 с; старые данные пока оставить.
+    if (!data) render();
+    retry = setTimeout(load, 5000);
+    return;
   }
   render();
 }
@@ -210,12 +215,6 @@ async function pollNotices() {
   } catch {
     /* нет связи — молчим */
   }
-}
-
-async function hint() {
-  const s = await maid.settings();
-  const k = (x) => x.replace("Control", "Ctrl");
-  $("#hint").textContent = grabbed ? "Тащите за любое место · ПКМ по горничной — отпустить" : `${k(s.keys.grab)} — взять · ${k(s.keys.quick)} — записать`;
 }
 
 function setCollapsed(on) {
@@ -326,12 +325,20 @@ const endDrag = (e) => {
 };
 head.addEventListener("pointerup", endDrag);
 head.addEventListener("pointercancel", endDrag);
+// Захват потерян или кнопку отпустили где-то ещё — окно не должно остаться приклеенным к курсору.
+const dropDrag = () => {
+  if (!head.classList.contains("dragging")) return;
+  head.classList.remove("dragging");
+  maid.dragWidget("end");
+};
+head.addEventListener("lostpointercapture", dropDrag);
+document.addEventListener("pointerup", dropDrag);
+window.addEventListener("blur", dropDrag);
 
 // --- связь с main и мышь ---
 maid.on("grab", (on) => {
   grabbed = on;
   $("#stage").classList.toggle("grab", on);
-  hint();
 });
 maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
@@ -386,7 +393,6 @@ setState(isNight() ? "sleep" : "idle");
 setInterval(render, 15_000);
 setInterval(load, 60_000);
 setInterval(pollNotices, 20_000);
-hint();
 loadCfg().then(load);
 pollNotices();
 maid.widgetReady();
