@@ -31,12 +31,45 @@ const KIND = {
   metric: ["📊", "Показатель"], money: ["💰", "Деньги"], habit: ["🔁", "Привычка"], mark: ["✔", "Отметка"], edit: ["✎", "Правка"],
 };
 
+// --- горничная: 20 анимаций (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации») ---
+// Основа — ждёт / думает / спит / нет связи; на события она на несколько секунд реагирует (react), потом возвращается к основе.
+const MOODS = ["idle", "think", "sleep", "happy", "proud", "angry", "sad", "worried", "surprised", "neutral",
+  "hello", "listen", "write", "done", "remind", "clean", "tea", "streak", "offline", "bow"];
+for (const n of MOODS) new Image().src = `../assets/maid/${n}.webp`;
+// Эмоция ответа сервера → анимация.
+const EMOTION_MOOD = { neutral: "neutral", happy: "happy", proud: "proud", angry: "angry", sad: "sad", worried: "worried",
+  surprised: "surprised", thinking: "think", sleepy: "sleep" };
+let mood = "";
+let moodUntil = 0;
+let moodTimer = 0;
+let online = true;
+function baseMood() {
+  if (state === "think") return "think";
+  if (!online) return "offline";
+  return state === "sleep" ? "sleep" : "idle";
+}
+function showMood(n) {
+  if (n === mood || !MOODS.includes(n)) return;
+  mood = n;
+  $("#face").src = `../assets/maid/${n}.webp`;
+}
+function react(n, ms = 6000) {
+  clearTimeout(moodTimer);
+  moodUntil = Date.now() + ms;
+  showMood(n);
+  moodTimer = setTimeout(() => { moodUntil = 0; showMood(baseMood()); }, ms);
+}
+function settle() {
+  if (Date.now() < moodUntil) return;
+  showMood(baseMood());
+}
+
 // --- состояния ---
 function setState(s) {
   state = s;
-  const m = $("#maid");
-  m.classList.toggle("thinking", s === "think");
-  m.classList.toggle("sleeping", s === "sleep");
+  // Думает — сразу, поверх любой реакции.
+  if (s === "think") { clearTimeout(moodTimer); moodUntil = 0; }
+  settle();
 }
 function isNight() {
   const h = new Date().getHours();
@@ -46,10 +79,16 @@ setInterval(() => {
   if (state === "think") return;
   const want = isNight() ? "sleep" : "idle";
   if (want !== state) setState(want);
+  // Изредка, пока ничего не происходит, — занимается своим: чай (утром чаще), уборка, поклон.
+  else if (state === "idle" && online && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.1) {
+    const h = new Date().getHours();
+    const pick = h < 11 && Math.random() < 0.5 ? "tea" : ["tea", "clean", "clean", "bow"][Math.floor(Math.random() * 4)];
+    react(pick, 6000);
+  }
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [] } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null } = {}) {
   const b = $("#bubble");
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
   if (days.length) text = text.replace(/\n📅 .*$/, "");
@@ -96,7 +135,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       const m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/);
       try {
         if (m) {
-          if (m[3] === "done") popTone(3); else popTone(-5, { vol: 0.2, soft: true });
+          if (m[3] === "done") { popTone(3); react("streak", 4000); } else { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
           const r = await maid.api("POST", `/api/habits/${m[1]}/mark`, { status: m[3], day: m[2] });
           say(r.text, { ms: 5000 });
           maid.changed();
@@ -107,7 +146,12 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     };
   });
   b.className = `bubble ${emotion}`;
-  $("#maid").classList.toggle("grumpy", emotion === "angry" || emotion === "sad");
+  // Реакция горничной: записала что-то — пишет, отметила — галочка, иначе по эмоции ответа.
+  if (text !== "…") {
+    const marked = changes.some((c) => c.kind === "mark" || c.kind === "habit");
+    const pick = as ?? (marked ? "done" : changes.length ? "write" : EMOTION_MOOD[emotion] ?? "neutral");
+    react(pick, Math.max(4000, Math.min(ms || 9000, 9000)));
+  }
   if (sound) play(sound);
   clearTimeout(bubbleTimer);
   if (ms) bubbleTimer = setTimeout(hideBubble, ms + changes.length * 900);
@@ -148,7 +192,6 @@ chatInput.addEventListener("blur", () => { if (!grabbed) maid.focusInput(false);
 chatInput.addEventListener("keydown", (e) => { if (e.key === "Escape") chatInput.blur(); });
 function hideBubble() {
   $("#bubble").classList.add("hidden");
-  $("#maid").classList.remove("grumpy");
   maid.hover(false);
 }
 
@@ -194,11 +237,13 @@ async function load() {
     const fresh = await maid.api("GET", "/api/today");
     const json = JSON.stringify(fresh);
     data = fresh;
+    if (!online) { online = true; settle(); }
     // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.
     if (json === lastJson) return;
     lastJson = json;
   } catch {
     // Нет связи — старые данные пока оставить, следующий опрос через 5 с.
+    if (online) { online = false; settle(); }
     if (data) return;
   }
   render();
@@ -216,7 +261,8 @@ async function pollNotices() {
     for (const n of rows.reverse()) {
       lastNotice = Math.max(lastNotice, n.id);
       const emotion = /🎮/.test(n.text) ? "angry" : n.emotion;
-      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey" });
+      // Напоминание с кнопками — звонит в колокольчик.
+      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey", mood: n.buttons.length ? "remind" : null });
     }
   } catch {
     /* нет связи — молчим */
@@ -372,6 +418,7 @@ $("#maid").addEventListener("click", () => {
 });
 $("#maid").addEventListener("dblclick", () => {
   clearTimeout(clickTimer);
+  react("listen", 5000);
   maid.openQuick();
 });
 $("#maid").addEventListener("contextmenu", (e) => {
@@ -390,14 +437,15 @@ $("#body").addEventListener("click", async (e) => {
       e.target.classList.add("done", "pressed");
       popTone(4);
       burst(e.target);
+      react("done", 4000);
       await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
       maid.changed();
     } else if (habit) {
       const was = e.target.classList.contains("done");
       e.target.classList.toggle("done", !was);
       e.target.classList.add("pressed");
-      if (was) popTone(-5, { vol: 0.2, soft: true });
-      else { popTone(2); burst(e.target); }
+      if (was) { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
+      else { popTone(2); burst(e.target); react("streak", 4000); }
       await maid.api("POST", `/api/habits/${habit}/mark`, { status: was ? "skipped" : "done" });
       maid.changed();
     }
@@ -410,6 +458,7 @@ $("#body").addEventListener("click", async (e) => {
 
 setCollapsed(Boolean(localStorage.getItem("maid.collapsed")));
 setState(isNight() ? "sleep" : "idle");
+if (!isNight()) react("hello", 4500);
 setInterval(render, 15_000);
 // Что записано из Telegram или с телефона — появляется здесь через несколько секунд.
 setInterval(load, 5_000);

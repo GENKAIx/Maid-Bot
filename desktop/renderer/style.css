@@ -94,18 +94,8 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .mark.skipped { background: var(--muted); border-color: var(--muted); color: var(--ink); }
 
 /* --- горничная --- */
-.maid { position: relative; flex: none; width: var(--maid-w, 196px); aspect-ratio: 420 / 480; cursor: pointer; transform-origin: 50% 100%; animation: breathe 4.2s ease-in-out infinite; }
+.maid { position: relative; flex: none; width: var(--maid-w, 196px); aspect-ratio: 400 / 427; cursor: pointer; }
 .maid img { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; pointer-events: none; }
-/* Думает: над головой три точки. */
-.maid .dots { display: none; position: absolute; left: 18%; top: 4%; gap: 4px; padding: 6px 9px; border-radius: 12px; background: rgba(255,255,255,.95); box-shadow: 0 4px 12px rgba(0,0,0,.25); }
-.maid .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); animation: dot 1s ease-in-out infinite; }
-.maid .dots i:nth-child(2) { animation-delay: .15s; } .maid .dots i:nth-child(3) { animation-delay: .3s; }
-.maid.thinking .dots { display: flex; }
-@keyframes dot { 0%, 100% { opacity: .35; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
-.maid.grumpy { animation: grumpy .5s ease-in-out infinite; filter: saturate(1.2); }
-.maid.sleeping { animation: breathe 6s ease-in-out infinite; }
-@keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.018); } }
-@keyframes grumpy { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
 @keyframes zz { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(10px, -16px); } }
 
 .bubble {
