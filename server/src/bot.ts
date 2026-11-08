@@ -176,5 +176,11 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     }
   };
 
-  return { bot, send };
+  /** Файл в чат (резервная копия). */
+  const sendFile = async (u: User, name: string, data: Buffer, caption: string) => {
+    if (!u.chat_id) return;
+    await bot.api.sendDocument(u.chat_id, new InputFile(data, name), { caption });
+  };
+
+  return { bot, send, sendFile };
 }

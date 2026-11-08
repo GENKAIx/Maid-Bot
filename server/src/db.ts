@@ -193,6 +193,18 @@ CREATE TABLE IF NOT EXISTS actions (
   created_at TEXT NOT NULL
 );
 `,
+  // Шаг 2: push-подписки браузеров и кнопки у отложенных напоминаний.
+  `
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  keys_json TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  last_ok TEXT
+);
+ALTER TABLE reminders ADD COLUMN buttons TEXT NOT NULL DEFAULT '';
+`,
 ];
 
 export interface User {
@@ -329,6 +341,16 @@ export interface ReminderRow {
   due_at: string;
   text: string;
   status: string;
+  /** JSON-массив кнопок (scheduler.Button) или пусто. */
+  buttons: string;
+}
+export interface PushSub {
+  endpoint: string;
+  user_id: number;
+  keys_json: string;
+  label: string;
+  created_at: string;
+  last_ok: string | null;
 }
 export interface ActivityRow {
   user_id: number;
@@ -746,11 +768,38 @@ export class Store {
   }
 
   // --- напоминания ---
-  async addReminder(userId: number, refKind: string, refId: number, dueAt: Date, text: string) {
+  async addReminder(userId: number, refKind: string, refId: number, dueAt: Date, text: string, buttons = "") {
     await this.run(
-      "INSERT INTO reminders (user_id, ref_kind, ref_id, due_at, text) VALUES (?, ?, ?, ?, ?) ON CONFLICT (ref_kind, ref_id, due_at) DO NOTHING",
-      userId, refKind, refId, dueAt.toISOString(), text,
+      "INSERT INTO reminders (user_id, ref_kind, ref_id, due_at, text, buttons) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (ref_kind, ref_id, due_at) DO NOTHING",
+      userId, refKind, refId, dueAt.toISOString(), text, buttons,
     );
+  }
+
+  // --- push-подписки ---
+  async addPushSub(s: { endpoint: string; userId: number; keys: unknown; label: string }) {
+    await this.run(
+      `INSERT INTO push_subs (endpoint, user_id, keys_json, label, created_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (endpoint) DO UPDATE SET user_id = excluded.user_id, keys_json = excluded.keys_json, label = excluded.label`,
+      s.endpoint, s.userId, JSON.stringify(s.keys), s.label, now(),
+    );
+  }
+  pushSubsOf(userId: number): Promise<PushSub[]> {
+    return this.all<PushSub>("SELECT * FROM push_subs WHERE user_id = ? ORDER BY created_at", userId);
+  }
+  async dropPushSub(endpoint: string) {
+    await this.run("DELETE FROM push_subs WHERE endpoint = ?", endpoint);
+  }
+  async touchPushSub(endpoint: string) {
+    await this.run("UPDATE push_subs SET last_ok = ? WHERE endpoint = ?", now(), endpoint);
+  }
+  allHabits(userId: number): Promise<HabitRow[]> {
+    return this.all<HabitRow>("SELECT * FROM habits WHERE user_id = ? ORDER BY id", userId);
+  }
+  allDates(userId: number): Promise<DateRow[]> {
+    return this.all<DateRow>("SELECT * FROM dates WHERE user_id = ? ORDER BY id", userId);
+  }
+  allMemory(userId: number): Promise<MemoryRow[]> {
+    return this.all<MemoryRow>("SELECT * FROM memory WHERE user_id = ? ORDER BY id", userId);
   }
   async cancelReminders(refKind: string, refId: number) {
     await this.run("UPDATE reminders SET status = 'cancelled' WHERE ref_kind = ? AND ref_id = ? AND status = 'pending'", refKind, refId);

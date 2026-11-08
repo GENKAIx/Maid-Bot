@@ -33,6 +33,12 @@ export async function planEventReminders(store: Store, u: User, e: EventRow, now
   await store.addReminder(u.id, "event", e.id, due, `⏰ Через ${lead}: ${eventLine(e)}`);
 }
 
+/** Отложить уведомление: то же самое через N минут (кнопка «Через 30 мин» в push). */
+export async function snooze(store: Store, u: User, text: string, buttons: Button[], minutes: number, now = new Date()) {
+  const due = new Date(now.getTime() + minutes * 60_000);
+  await store.addReminder(u.id, "snooze", now.getTime(), due, text, buttons.length ? JSON.stringify(buttons) : "");
+}
+
 /** Окно, в котором ещё не поздно прислать дайджест после простоя сервера. */
 const LATE_MIN = 180;
 /** Напоминание о привычке позже часа уже не шлём. */
@@ -47,7 +53,8 @@ export class Scheduler {
   private timer: NodeJS.Timeout | null = null;
   private busy = false;
 
-  constructor(private store: Store, private llm: LlmCall | null, private send: Send) {}
+  /** backup — раз в сутки (03:30 по часам пользователя) отправить резервную копию, если есть куда. */
+  constructor(private store: Store, private llm: LlmCall | null, private send: Send, private backup?: (u: User) => Promise<void>) {}
 
   start(everyMs = 30_000) {
     this.timer = setInterval(() => void this.tick(), everyMs);
@@ -66,12 +73,21 @@ export class Scheduler {
         if (!u) continue;
         // Устарело больше чем на час (сервер спал) — не будим зря.
         const late = now.getTime() - new Date(r.due_at).getTime() > 60 * 60_000;
-        if (!late) await this.safeSend(u, r.text, "neutral");
+        let buttons: Button[] | undefined;
+        try {
+          buttons = r.buttons ? (JSON.parse(r.buttons) as Button[]) : undefined;
+        } catch {
+          buttons = undefined;
+        }
+        if (!late) await this.safeSend(u, r.text, "neutral", buttons);
         await this.store.markReminder(r.id, late ? "cancelled" : "sent");
       }
       for (const u of await this.store.users()) {
         await this.daily(u, now);
         await this.habits(u, now);
+        if (this.backup && this.due(u, "03:30", now, 300) && (await this.store.once(`backup:${u.id}:${dayKey(now, u.tz)}`))) {
+          await this.backup(u).catch((e) => console.error("[backup]", u.id, e));
+        }
       }
     } finally {
       this.busy = false;

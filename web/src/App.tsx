@@ -8,6 +8,7 @@ import { Health } from "./screens/Health";
 import { Login } from "./screens/Login";
 import { Money } from "./screens/Money";
 import { Plans } from "./screens/Plans";
+import { Settings } from "./screens/Settings";
 import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
 
@@ -22,6 +23,7 @@ const TABS = [
   { id: "health", path: "/health", title: "Здоровье", icon: "❤️", more: true },
   { id: "money", path: "/money", title: "Деньги", icon: "💰", more: true },
   { id: "stats", path: "/stats", title: "Статистика", icon: "📊", more: true },
+  { id: "settings", path: "/settings", title: "Настройки", icon: "⚙️", more: true },
 ];
 
 export function App() {
@@ -58,6 +60,7 @@ export function App() {
     : tab === "health" ? <Health version={version} />
     : tab === "money" ? <Money version={version} />
     : tab === "stats" ? <Stats version={version} />
+    : tab === "settings" ? <Settings onLogout={logout} />
     : <Today version={version} onChanged={onChanged} />;
 
   const item = (t: (typeof TABS)[number]) => (
@@ -77,13 +80,11 @@ export function App() {
           <span className="nav-icon">⋯</span><span>Ещё</span>
         </button>
         <div className="spacer" />
-        <button className="ghost nav-item nav-logout" onClick={logout}>Выйти</button>
       </nav>
       {more && (
         <div className="sheet-back" onClick={() => setMore(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             {TABS.filter((t) => t.more).map(item)}
-            <button className="nav-item" onClick={logout}><span className="nav-icon">🚪</span><span>Выйти</span></button>
           </div>
         </div>
       )}

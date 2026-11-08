@@ -1,0 +1,48 @@
+# Render Blueprint: сервер (Web Service) + Postgres. Создание: Render → New → Blueprint → этот репозиторий.
+# Секреты (TELEGRAM_BOT_TOKEN, LLM_API_KEY, VAPID_*) вписываются в Environment после создания.
+services:
+  - type: web
+    name: maid
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm ci && npm run build
+    startCommand: npm run server
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: maid-db
+          property: connectionString
+      - key: PUBLIC_URL
+        fromService:
+          type: web
+          name: maid
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DEFAULT_TIMEZONE
+        value: Europe/Moscow
+      - key: LLM_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: LLM_MODEL
+        value: anthropic/claude-sonnet-4.5
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ALLOWED_CHAT_IDS
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+
+databases:
+  - name: maid-db
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"

@@ -9,9 +9,11 @@ import { ActivityInput, recordActivity } from "./activity.ts";
 import { habitMonth, habitsOfDay } from "./habits.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import type { Pipeline } from "./pipeline.ts";
+import { backupName, exportJson } from "./backup.ts";
+import { Push } from "./push.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
-import type { Send } from "./scheduler.ts";
-import { addDays, dayKey, isDayKey } from "./time.ts";
+import { habitButtons, snooze, type Button, type Send } from "./scheduler.ts";
+import { addDays, dayKey, isDayKey, isTime } from "./time.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -25,6 +27,7 @@ export interface ApiDeps {
   webhook?: (req: http.IncomingMessage, res: http.ServerResponse) => unknown;
   /** Папка собранного веб-приложения; пусто — не отдавать. */
   webDir?: string;
+  push?: Push;
 }
 
 class HttpError extends Error {
@@ -95,16 +98,22 @@ async function serveStatic(dir: string, pathname: string, res: http.ServerRespon
   const safe = path.normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
   let file = path.join(dir, safe);
   if (!file.startsWith(dir)) return false;
-  const exists = async (f: string) => (await fs.promises.stat(f).catch(() => null))?.isFile() ?? false;
-  if (!(await exists(file))) {
+  const statOf = async (f: string) => {
+    const st = await fs.promises.stat(f).catch(() => null);
+    return st?.isFile() ? st : null;
+  };
+  let st = await statOf(file);
+  if (!st) {
     if (path.extname(safe)) return false;
     file = path.join(dir, "index.html");
-    if (!(await exists(file))) return false;
+    st = await statOf(file);
+    if (!st) return false;
   }
   const ext = path.extname(file).toLowerCase();
   const immutable = /\/assets\//.test(file.replace(/\\/g, "/"));
   res.writeHead(200, {
     "Content-Type": MIME[ext] ?? "application/octet-stream",
+    "Content-Length": st.size,
     "Cache-Control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
   });
   await new Promise<void>((ok, fail) => fs.createReadStream(file).on("error", fail).on("end", ok).pipe(res));
@@ -125,6 +134,24 @@ export async function searchDiary(store: Store, u: User, q: { section?: string; 
 
 export function createApi(deps: ApiDeps) {
   const { store, pipeline } = deps;
+
+  /** Кнопка из уведомления (push): отметка привычки или «отложить» — то же, что callback в боте. */
+  async function runButton(u: User, data: string, all: string[]): Promise<string> {
+    const HABIT = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/;
+    const habit = data.match(HABIT);
+    if (habit) return pipeline.markHabit(u, Number(habit[1]), habit[2], habit[3] as "done" | "skipped", "push");
+    if (data === "snooze") {
+      const buttons: Button[] = all.filter((d) => d !== "snooze").map((d) => {
+        const h = d.match(HABIT);
+        return { text: h ? (h[3] === "done" ? "✅ Сделал" : "➖ Пропуск") : d, data: d };
+      });
+      const first = buttons[0]?.data.match(HABIT);
+      const title = first ? (await store.habit(Number(first[1])))?.title : undefined;
+      await snooze(store, u, title ? `🔁 Напоминаю: ${title}` : "🔔 Напоминаю", buttons, Push.snoozeMinutes);
+      return `Напомню через ${Push.snoozeMinutes} мин.`;
+    }
+    throw new HttpError(400, "неизвестная кнопка");
+  }
 
   async function route(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? "/", "http://local");
@@ -151,6 +178,17 @@ export function createApi(deps: ApiDeps) {
       return { token };
     }
 
+    // Кнопка в push-уведомлении: без входа, по подписи сервера (см. push.ts).
+    if (m === "POST" && p === "/api/push/act") {
+      if (!deps.push?.ready) throw new HttpError(404, "push выключен");
+      const b = parseBody(z.object({ act: z.string().min(1).max(4000), action: z.coerce.number().int().min(0).max(9) }), await readJson(req));
+      const a = deps.push.action(b.act, b.action);
+      if (!a) throw new HttpError(403, "кнопка устарела");
+      const owner = await store.user(a.userId);
+      if (!owner) throw new HttpError(404, "нет пользователя");
+      return { text: await runButton(owner, a.data, a.all) };
+    }
+
     const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
     const u = await userByToken(store, token);
     if (!u) throw new HttpError(401, "нужен вход (логин и пароль) или ключ");
@@ -163,6 +201,53 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/me") {
       const { password_hash: _, ...me } = u;
       return { ...me, sessions: await store.sessionsOf(u.id) };
+    }
+    if (m === "POST" && p === "/api/settings") {
+      const Time = z.string().refine(isTime, "время ЧЧ:ММ");
+      const b = parseBody(z.object({
+        name: z.string().trim().max(80).optional(),
+        persona: z.string().max(40).optional(),
+        morning_time: Time.optional(), tomorrow_time: Time.optional(), evening_time: Time.optional(),
+        event_lead_min: z.coerce.number().int().min(5).max(24 * 60).optional(),
+        game_alerts: z.coerce.number().int().min(0).max(1).optional(),
+        game_first_min: z.coerce.number().int().min(15).max(24 * 60).optional(),
+        game_every_min: z.coerce.number().int().min(15).max(24 * 60).optional(),
+      }), await readJson(req));
+      await store.updateUser(u.id, b);
+      const { password_hash: _, ...me } = (await store.user(u.id))!;
+      return me;
+    }
+    if (m === "GET" && p === "/api/backup") {
+      const data = await exportJson(store, u.id);
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${backupName(u.login)}"`,
+      });
+      res.end(JSON.stringify(data));
+      return undefined;
+    }
+
+    // Web Push: ключ, подписка браузера, проверка.
+    if (m === "GET" && p === "/api/push/key") return { key: deps.push?.ready ? deps.push.publicKey : "", subs: await store.pushSubsOf(u.id) };
+    if (m === "POST" && p === "/api/push/subscribe") {
+      if (!deps.push?.ready) throw new HttpError(404, "push выключен: нет ключей VAPID на сервере");
+      const b = parseBody(z.object({
+        endpoint: z.string().url().max(2000), keys: z.object({ p256dh: z.string(), auth: z.string() }), label: z.string().max(80).optional(),
+      }), await readJson(req));
+      await store.addPushSub({ endpoint: b.endpoint, userId: u.id, keys: b.keys, label: b.label ?? "web" });
+      return { ok: true };
+    }
+    if (m === "POST" && p === "/api/push/unsubscribe") {
+      const b = parseBody(z.object({ endpoint: z.string().max(2000) }), await readJson(req));
+      const own = (await store.pushSubsOf(u.id)).some((s) => s.endpoint === b.endpoint);
+      if (own) await store.dropPushSub(b.endpoint);
+      return { ok: own };
+    }
+    if (m === "POST" && p === "/api/push/test") {
+      if (!deps.push?.ready) throw new HttpError(404, "push выключен");
+      const sent = await deps.push.send(u, "🔔 Проверка уведомлений\nЕсли вы это видите — всё работает.", "happy",
+        (await store.habitsOn(u.id, today)).slice(0, 1).map((h) => habitButtons(h.id, today)[0]));
+      return { sent };
     }
     if (m === "GET" && p === "/api/today") return todayJson(store, u);
     if (m === "GET" && p === "/api/day") {

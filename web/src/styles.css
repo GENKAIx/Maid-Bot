@@ -186,6 +186,13 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 
 /* вторая пачка: планы, здоровье, деньги, статистика */
 .nav-more, .sheet-back { display: none; }
+.btn { display: inline-block; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 14px; color: inherit; text-decoration: none; }
+.btn:hover { border-color: var(--accent); }
+.form { display: grid; gap: 10px; }
+.form label { display: grid; gap: 4px; color: var(--muted); font-size: 13.5px; }
+.form label.row { grid-template-columns: auto 1fr; align-items: center; }
+.form input[type="checkbox"] { width: 18px; height: 18px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .nav-more-group { display: contents; }
 .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 16px; }
 .week-day { background: var(--panel); border-radius: 14px; padding: 10px; box-shadow: var(--shadow); min-height: 96px; font-size: 13px; }
@@ -238,7 +245,7 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .metric-grid .sub { margin-top: 0; }
 
 @media (max-width: 760px) {
-  .nav-more-group, .nav-logout { display: none; }
+  .nav-more-group { display: none; }
   .nav-more { display: flex; }
   .sheet-back { display: block; position: fixed; inset: 0; background: rgba(40, 30, 60, .35); z-index: 20; animation: reveal .2s ease; }
   .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; padding: 12px 12px calc(70px + env(safe-area-inset-bottom)); display: grid; gap: 4px; animation: up .25s ease; }

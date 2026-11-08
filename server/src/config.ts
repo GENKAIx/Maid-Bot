@@ -39,6 +39,12 @@ export const config = {
   dbFile: fromRoot(env("DB_FILE", "data/maid.sqlite")),
   defaultTimezone: env("DEFAULT_TIMEZONE", "Europe/Moscow"),
   desktopToken: env("DESKTOP_TOKEN"),
+  /** Web Push: ключи VAPID (npm --workspace server run vapid), subject — mailto: или https://. Пусто — push выключен. */
+  push: {
+    publicKey: env("VAPID_PUBLIC_KEY"),
+    privateKey: env("VAPID_PRIVATE_KEY"),
+    subject: env("VAPID_SUBJECT", "mailto:maid@example.com"),
+  },
   /** Собранное веб-приложение (npm --workspace web run build); сервер отдаёт его с корня. */
   webDir: fromRoot(env("WEB_DIR", "web/dist")),
 };
