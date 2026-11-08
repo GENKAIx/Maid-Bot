@@ -51,7 +51,13 @@ export function Today({ version, onChanged }: { version: number; onChanged: () =
 
   return (
     <div className="screen">
-      <h2 className="screen-title">{humanDay(d.day)}</h2>
+      <header className="day-hero">
+        <span className="day-num">{humanDay(d.day).split(" ")[0]}</span>
+        <div>
+          <h2 className="day-name">{humanDay(d.day).split(" ").slice(1).join(" ")}</h2>
+          <p className="day-sum">{daySummary(d.events.length, d.tasks.length, habitsDone, d.habits.length)}</p>
+        </div>
+      </header>
 
       {rings.length > 0 && (
         <div className="rings reveal">
@@ -74,7 +80,7 @@ export function Today({ version, onChanged }: { version: number; onChanged: () =
           )}
         </Card>
 
-        <Card title="Привычки" className="reveal" action={<button className="link" onClick={() => navigate("/habits")}>месяц →</button>}>
+        <Card title="Привычки" className="reveal" action={<button className="link" onClick={() => navigate("/habits")}>Весь месяц</button>}>
           {d.habits.length ? (
             <ul className="list">
               {d.habits.map((h) => (
@@ -120,7 +126,7 @@ export function Today({ version, onChanged }: { version: number; onChanged: () =
           ) : <Empty>Ближайший месяц спокойный</Empty>}
         </Card>
 
-        <Card title="Дневник" className="reveal wide" action={<button className="link" onClick={() => navigate(`/diary/${d.day}`)}>все дни →</button>}>
+        <Card title="Дневник" className="reveal wide" action={<button className="link" onClick={() => navigate(`/diary/${d.day}`)}>Все дни</button>}>
           {sections.length ? (
             <div className="diary-sections">
               {sections.map((s) => (
@@ -172,4 +178,20 @@ export function EventList({ events, withDay = false }: { events: EventRow[]; wit
       ))}
     </ul>
   );
+}
+
+function plural(n: number, one: string, few: string, many: string) {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+}
+
+/** Одна строка о дне: что впереди и что уже сделано. */
+function daySummary(events: number, tasks: number, done: number, habits: number) {
+  const bits: string[] = [];
+  if (events) bits.push(`${events} ${plural(events, "план", "плана", "планов")}`);
+  if (tasks) bits.push(`${tasks} ${plural(tasks, "открытая задача", "открытые задачи", "открытых задач")}`);
+  if (habits) bits.push(done === habits ? "все привычки отмечены" : `привычки ${done} из ${habits}`);
+  if (!bits.length) return "Свободный день. Напишите внизу, что было или что запланировать.";
+  const t = bits.join(", ");
+  return `Сегодня ${t}.`;
 }

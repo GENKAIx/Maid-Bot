@@ -73,7 +73,7 @@ export function Composer({ onChanged }: { onChanged: () => void }) {
           ref={area}
           value={text}
           rows={1}
-          placeholder="Что было, что запланировать, что не забыть…"
+          placeholder="Что было или что запланировать…"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) void send();

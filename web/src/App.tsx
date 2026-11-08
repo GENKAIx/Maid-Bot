@@ -11,19 +11,20 @@ import { Plans } from "./screens/Plans";
 import { Settings } from "./screens/Settings";
 import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
+import { Icon } from "./icons";
 
 // Каркас: вход, навигация (слева на ПК; снизу на телефоне — четыре экрана и «Ещё»), экран, строка ввода.
 // version растёт после каждой записи — экраны перечитывают данные.
 
 const TABS = [
-  { id: "today", path: "/", title: "Сегодня", icon: "☀️" },
-  { id: "diary", path: "/diary", title: "Дневник", icon: "📖" },
-  { id: "plans", path: "/plans", title: "Планы", icon: "📅" },
-  { id: "habits", path: "/habits", title: "Привычки", icon: "✅" },
-  { id: "health", path: "/health", title: "Здоровье", icon: "❤️", more: true },
-  { id: "money", path: "/money", title: "Деньги", icon: "💰", more: true },
-  { id: "stats", path: "/stats", title: "Статистика", icon: "📊", more: true },
-  { id: "settings", path: "/settings", title: "Настройки", icon: "⚙️", more: true },
+  { id: "today", path: "/", title: "Сегодня", icon: "today" },
+  { id: "diary", path: "/diary", title: "Дневник", icon: "diary" },
+  { id: "plans", path: "/plans", title: "Планы", icon: "plans" },
+  { id: "habits", path: "/habits", title: "Привычки", icon: "habits" },
+  { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true },
+  { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
+  { id: "stats", path: "/stats", title: "Статистика", icon: "stats", more: true },
+  { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
 ];
 
 export function App() {
@@ -65,7 +66,7 @@ export function App() {
 
   const item = (t: (typeof TABS)[number]) => (
     <a key={t.id} className={`nav-item ${tab === t.id ? "on" : ""}`} href={t.path} onClick={(e) => { e.preventDefault(); navigate(t.path); }}>
-      <span className="nav-icon">{t.icon}</span><span>{t.title}</span>
+      <span className="nav-icon"><Icon name={t.icon} /></span><span>{t.title}</span>
     </a>
   );
   const inMore = TABS.some((t) => t.more && t.id === tab);
@@ -77,7 +78,7 @@ export function App() {
         {TABS.filter((t) => !t.more).map(item)}
         <div className="nav-more-group">{TABS.filter((t) => t.more).map(item)}</div>
         <button className={`nav-item nav-more ${more || inMore ? "on" : ""}`} onClick={() => setMore(!more)}>
-          <span className="nav-icon">⋯</span><span>Ещё</span>
+          <span className="nav-icon"><Icon name="more" /></span><span>Ещё</span>
         </button>
         <div className="spacer" />
       </nav>
