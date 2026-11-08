@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'" />
+  <title>Горничная</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <nav>
+      <h1>🧹 Горничная</h1>
+      <a data-tab="today" class="on">Сегодня</a>
+      <a data-tab="plans">Планы</a>
+      <a data-tab="tasks">Задачи</a>
+      <a data-tab="dates">Важные даты</a>
+      <div class="spacer"></div>
+      <a data-tab="settings">Настройки</a>
+    </nav>
+    <main>
+      <div class="content" id="content"></div>
+      <div id="toast"></div>
+      <form class="composer" id="composer">
+        <textarea id="input" placeholder="Что было, что запланировать, что не забыть… (Enter — отправить, Shift+Enter — новая строка)"></textarea>
+        <button class="primary" type="submit">Записать</button>
+      </form>
+    </main>
+  </div>
+  <script src="common.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

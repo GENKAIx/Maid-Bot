@@ -1,0 +1,11 @@
+{
+  "name": "maidbot",
+  "private": true,
+  "workspaces": ["server", "desktop"],
+  "scripts": {
+    "server": "npm --workspace server run start",
+    "dev": "npm --workspace server run dev",
+    "test": "npm --workspace server run test",
+    "desktop": "npm --workspace desktop run start"
+  }
+}
