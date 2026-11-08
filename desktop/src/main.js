@@ -73,7 +73,7 @@ function showMain(settingsOnly = false) {
   }
   if (!mainWin) {
     mainWin = new BrowserWindow({
-      width: 1060, height: 760, minWidth: 640, minHeight: 480, title: "Горничная", icon: icon(), backgroundColor: local ? "#1d1b22" : "#f6f3fb",
+      width: 1060, height: 760, minWidth: 640, minHeight: 480, title: "Горничная", icon: icon(), backgroundColor: local ? "#1d1830" : "#f4f3f8",
       webPreferences: local ? prefs : { contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
     mainWin.isLocal = local;
