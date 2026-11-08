@@ -137,15 +137,17 @@ function renderCourses() {
   }
   pendingPopped.clear();
   lastMarks = now;
-  settle(list);
+  settle(list, prev && [...now].some(([id, m]) => prev.has(id) && prev.get(id) !== m));
 }
 
-// Плашка нужна, пока сегодня есть что отметить. Отметили — через несколько секунд прячется;
-// навести на горничную (или на саму плашку) — снова видна.
+// Плашка видна при запуске и в новый день, пока сегодня есть что отметить. Любая отметка (здесь, в облачке, в Telegram,
+// хоть за прошлые дни) — через несколько секунд прячется; навести на горничную (или на саму плашку) — снова видна.
 const TUCK_AFTER_MARK = 4000;
 const TUCK_AFTER_PEEK = 2500;
 let tuckTimer = 0;
 let wasOpen = null;
+let shownDay = null;
+let wanted = false; // показывать без наведения: новый день и сегодня ещё не отмечено
 let peeking = false;
 const openToday = (list) => list.some((h) => h.course.some((x) => x.day === data.day && (pending.get(`${h.id}:${x.day}`) ?? x.s) === "today"));
 function tuck(on, ms = 0) {
@@ -155,11 +157,18 @@ function tuck(on, ms = 0) {
   if (ms) tuckTimer = setTimeout(() => { if (!peeking) box.classList.add("tucked"); }, ms);
   else box.classList.add("tucked");
 }
-function settle(list) {
+function settle(list, marked) {
   const open = openToday(list);
-  if (open) tuck(false);
-  else if (wasOpen) tuck(true, TUCK_AFTER_MARK);
-  else if (wasOpen === null && !peeking) tuck(true);
+  const newDay = shownDay !== data.day;
+  shownDay = data.day;
+  if (marked || (wasOpen && !open)) {
+    wanted = false;
+    tuck(true, TUCK_AFTER_MARK);
+  } else if (newDay) {
+    wanted = open;
+    if (open) tuck(false);
+    else if (!peeking) tuck(true);
+  }
   wasOpen = open;
 }
 for (const el of [$("#maid"), $("#courses")]) {
@@ -169,8 +178,7 @@ for (const el of [$("#maid"), $("#courses")]) {
   });
   el.addEventListener("mouseleave", () => {
     peeking = false;
-    const list = data ? coursesOf(data) : [];
-    if (list.length && !openToday(list)) tuck(true, TUCK_AFTER_PEEK);
+    if (!wanted) tuck(true, TUCK_AFTER_PEEK);
   });
 }
 
