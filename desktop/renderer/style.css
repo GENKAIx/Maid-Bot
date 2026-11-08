@@ -55,6 +55,8 @@ main { display: flex; flex-direction: column; min-width: 0; }
 .list li { display: flex; gap: 10px; align-items: baseline; }
 .list .time { color: var(--accent); min-width: 50px; font-variant-numeric: tabular-nums; }
 .list .check { cursor: pointer; width: 16px; height: 16px; border: 1.5px solid var(--muted); border-radius: 4px; flex: none; transform: translateY(2px); }
+.w .list li.did { opacity: .5; }
+.w .list li.did > span:last-child { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .35); }
 .list .check:hover { border-color: var(--accent-2); background: #8fd3c133; }
 .high { color: var(--warn); }
 .empty { color: var(--muted); }
@@ -171,6 +173,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .courses { position: absolute; z-index: 4; right: 6px; bottom: calc(var(--maid-w, 196px) * 1.08); width: min(270px, calc(var(--maid-w, 196px) + 70px)); pointer-events: auto; }
 .stage.side-left .courses { right: auto; left: 6px; }
 .courses { transition: opacity .45s ease, transform .45s cubic-bezier(.3, 1.4, .5, 1); transform-origin: 50% 100%; }
+.courses { pointer-events: none; }
 .courses.tucked { opacity: 0; transform: translateY(10px) scale(.92); pointer-events: none; transition: opacity .35s ease, transform .35s ease; }
 .stage.side-left .course::after { right: auto; left: calc(var(--maid-w, 196px) / 2 - 10px); }
 .stage.no-maid .courses, .courses.hidden { display: none; }

@@ -1,6 +1,6 @@
 // Курсы («пить Аевит каждый день месяц») — плашка над горничной: дни срока пупырками, как у поп-ита.
 // Отмеченный день — вдавленная пупырка с галочкой, прошедший без отметки — крестик (сервер решает сам), сегодня — пульсирует.
-// Щелчок по сегодняшней (или прошедшей) пупырке — отметить; звук и анимация только у того, что поменялось.
+// Плашка только показывает: отмечают в списке «Задачи» (или в облачке, в Telegram). Звук и анимация — у того, что поменялось.
 
 // --- звук поп-ита: синтез WebAudio, без файлов ---
 let actx = null;
@@ -137,19 +137,15 @@ function renderCourses() {
   }
   pendingPopped.clear();
   lastMarks = now;
-  settle(list, prev && [...now].some(([id, m]) => prev.has(id) && prev.get(id) !== m));
+  settleCourses(prev && [...now].some(([id, m]) => prev.has(id) && prev.get(id) !== m));
 }
 
-// Плашка видна при запуске и в новый день, пока сегодня есть что отметить. Любая отметка (здесь, в облачке, в Telegram,
-// хоть за прошлые дни) — через несколько секунд прячется; навести на горничную (или на саму плашку) — снова видна.
+// Плашка сама не висит: появляется, когда отметили день (видно, как вдавилась пупырка), и прячется через несколько секунд;
+// навести на горничную — снова видна, пока курсор на ней.
 const TUCK_AFTER_MARK = 4000;
 const TUCK_AFTER_PEEK = 2500;
 let tuckTimer = 0;
-let wasOpen = null;
-let shownDay = null;
-let wanted = false; // показывать без наведения: новый день и сегодня ещё не отмечено
 let peeking = false;
-const openToday = (list) => list.some((h) => h.course.some((x) => x.day === data.day && (pending.get(`${h.id}:${x.day}`) ?? x.s) === "today"));
 function tuck(on, ms = 0) {
   clearTimeout(tuckTimer);
   const box = $("#courses");
@@ -157,30 +153,20 @@ function tuck(on, ms = 0) {
   if (ms) tuckTimer = setTimeout(() => { if (!peeking) box.classList.add("tucked"); }, ms);
   else box.classList.add("tucked");
 }
-function settle(list, marked) {
-  const open = openToday(list);
-  const newDay = shownDay !== data.day;
-  shownDay = data.day;
-  if (marked || (wasOpen && !open)) {
-    wanted = false;
-    tuck(true, TUCK_AFTER_MARK);
-  } else if (newDay) {
-    wanted = open;
-    if (open) tuck(false);
-    else if (!peeking) tuck(true);
-  }
-  wasOpen = open;
-}
-for (const el of [$("#maid"), $("#courses")]) {
-  el.addEventListener("mouseenter", () => {
-    peeking = true;
+function settleCourses(marked) {
+  if (marked) {
     tuck(false);
-  });
-  el.addEventListener("mouseleave", () => {
-    peeking = false;
-    if (!wanted) tuck(true, TUCK_AFTER_PEEK);
-  });
+    tuck(true, TUCK_AFTER_MARK);
+  } else if (!peeking && !tuckTimer) tuck(true);
 }
+$("#maid").addEventListener("mouseenter", () => {
+  peeking = true;
+  tuck(false);
+});
+$("#maid").addEventListener("mouseleave", () => {
+  peeking = false;
+  tuck(true, TUCK_AFTER_PEEK);
+});
 
 // Брызги вокруг пупырки: кольцо и несколько точек.
 function burst(pip, delay = 0) {
@@ -222,61 +208,4 @@ function celebrate(el) {
   say("Курс пройден до конца! Горжусь тобой, хозяин ✨", { emotion: "proud", ms: 7000 });
 }
 
-// Щелчок по пупырке: звук и брызги сразу, отметка — на сервер.
 const pendingPopped = new Set();
-async function pressPip(pip) {
-  const id = Number(pip.dataset.c);
-  const day = pip.dataset.day;
-  const h = coursesOf(data).find((x) => x.id === id);
-  const x = h?.course.find((c) => c.day === day);
-  if (!x) return;
-  const s = pending.get(`${id}:${day}`) ?? x.s;
-  if (s === "wait" || s === "rest") {
-    pip.classList.remove("nope");
-    void pip.offsetWidth;
-    pip.classList.add("nope");
-    popTone(-7, { vol: 0.14, soft: true });
-    return;
-  }
-  // Сделано → «не сделал» (крестик), иначе → сделано. Как у поп-ита: можно вдавить и вытолкнуть обратно.
-  const want = s === "done" ? "skipped" : "done";
-  const key = `${id}:${day}`;
-  pending.set(key, want === "done" ? "done" : "miss");
-  if (want === "done") {
-    popTone(Number(pip.dataset.i) % 12);
-    burst(pip);
-    pendingPopped.add(key);
-    pip.className = "pip done pressed";
-    pip.textContent = "✓";
-  } else {
-    popTone(-5, { vol: 0.2, soft: true });
-    pip.className = "pip miss crossed";
-    pip.textContent = "✕";
-  }
-  try {
-    await maid.api("POST", `/api/habits/${id}/mark`, { status: want, day });
-    await load();
-  } catch (e) {
-    pending.delete(key);
-    play("oops");
-    say(e.message, { ms: 6000 });
-    renderCourses();
-    return;
-  } finally {
-    pending.delete(key);
-  }
-  maid.changed();
-}
-
-$("#courses").addEventListener("click", (e) => {
-  const pip = e.target.closest(".pip");
-  if (pip) return pressPip(pip);
-  const chip = e.target.closest("[data-show]");
-  if (chip) {
-    shownCourse = Number(chip.dataset.show);
-    localStorage.setItem("maid.course", String(shownCourse));
-    lastMarks = null;
-    popTone(2, { vol: 0.16, soft: true });
-    renderCourses();
-  }
-});

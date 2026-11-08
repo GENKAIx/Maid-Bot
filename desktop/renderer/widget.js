@@ -220,13 +220,29 @@ function render() {
     const when = m === null ? (next.date_iso === data.day ? "сегодня" : humanDay(next.date_iso)) : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : `в ${next.time}`;
     $("#next").innerHTML = `<b>${esc(when)}</b> · ${esc(next.title)}`;
   } else $("#next").innerHTML = `<span class="muted">Планов нет</span>`;
-  // Курсы со сроком — плашкой над горничной, в списке только обычные привычки.
-  const habits = (sec.habits ? data.habits ?? [] : []).filter((h) => !h.course?.length).map((h) => `<li><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : ""}</span></li>`);
-  const tasks = data.tasks.slice(0, 5).map((t) => `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`);
+  // Один список «Задачи» вместо отдельных разделов. Порядок:
+  //   1) ежедневное на сегодня, ещё не отмеченное (привычки и курсы — «Пить Аевит · день 9 из 30»);
+  //   2) задачи: сначала важные, потом обычные, потом «когда-нибудь»;
+  //   3) ежедневное, уже отмеченное сегодня, — внизу бледным (щелчок — передумать).
+  const daily = (sec.habits ? data.habits ?? [] : []).filter((h) => h.course?.find((x) => x.day === data.day)?.s !== "rest");
+  const dayItem = (h) => {
+    const i = h.course?.length ? h.course.findIndex((x) => x.day === data.day) : -1;
+    const sub = i >= 0 ? ` <span class="muted">· день ${i + 1} из ${h.course.length}</span>` : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
+    return `<li class="${h.status ? "did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${sub}</span></li>`;
+  };
+  const RANK = { high: 0, normal: 1, low: 2 };
+  const tasks = [...data.tasks].sort((a, b) => (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
+  const shownTasks = tasks.slice(0, 6);
+  const todo = daily.filter((h) => !h.status);
+  const items = [
+    ...todo.map(dayItem),
+    ...(sec.tasks ? shownTasks : []).map((t) => `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`),
+    ...daily.filter((h) => h.status).map(dayItem),
+  ];
+  const left = todo.length + (sec.tasks ? data.tasks.length : 0);
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   $("#body").innerHTML =
-    (habits.length ? `<h4>Привычки</h4><ul class="list">${habits.join("")}</ul>` : "") +
-    (sec.tasks ? `<h4>Задачи${data.tasks.length > 5 ? ` · ${data.tasks.length}` : ""}</h4>${tasks.length ? `<ul class="list">${tasks.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
+    (sec.tasks || daily.length ? `<h4>Задачи${left > 3 ? ` · ${left}` : ""}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   renderCourses();
 }
@@ -402,9 +418,9 @@ maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
 function reportRegions() {
   const rects = [];
-  for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#courses")]) {
+  for (const el of [$("#w"), $("#bubble"), $("#maid")]) {
     if (el.offsetParent === null) continue;
-    if (el.classList.contains("hidden") || el.classList.contains("tucked")) continue;
+    if (el.classList.contains("hidden")) continue;
     const r = el.getBoundingClientRect();
     if (r.width && r.height) rects.push({ x: r.left, y: r.top, w: r.width, h: r.height });
   }
