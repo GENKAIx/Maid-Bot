@@ -39,6 +39,8 @@ export const config = {
   dbFile: fromRoot(env("DB_FILE", "data/maid.sqlite")),
   defaultTimezone: env("DEFAULT_TIMEZONE", "Europe/Moscow"),
   desktopToken: env("DESKTOP_TOKEN"),
+  /** Собранное веб-приложение (npm --workspace web run build); сервер отдаёт его с корня. */
+  webDir: fromRoot(env("WEB_DIR", "web/dist")),
 };
 
 export type Config = typeof config;

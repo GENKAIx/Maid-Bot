@@ -546,6 +546,15 @@ export class Store {
       "SELECT DISTINCT day_key FROM diary WHERE user_id = ? AND deleted = 0 ORDER BY day_key", userId,
     )).map((r) => r.day_key);
   }
+  /** Дни, где есть записи, и сколько их — для навигации по дневнику. */
+  diaryDayCounts(userId: number): Promise<{ day: string; n: number }[]> {
+    return this.all<{ day: string; n: number }>(
+      "SELECT day_key AS day, COUNT(*) AS n FROM diary WHERE user_id = ? AND deleted = 0 GROUP BY day_key ORDER BY day_key", userId,
+    ).then((rows) => rows.map((r) => ({ day: r.day, n: Number(r.n) })));
+  }
+  diaryRow(id: number): Promise<(DiaryRow & { user_id: number; deleted: number }) | undefined> {
+    return this.get<DiaryRow & { user_id: number; deleted: number }>("SELECT * FROM diary WHERE id = ?", id);
+  }
   async setDiaryDeleted(id: number, deleted: boolean) {
     await this.run("UPDATE diary SET deleted = ? WHERE id = ?", deleted ? 1 : 0, id);
   }

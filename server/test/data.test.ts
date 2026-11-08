@@ -1,6 +1,9 @@
 import { PGlite } from "@electric-sql/pglite";
 import ExcelJS from "exceljs";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import { createApi, searchDiary } from "../src/api.ts";
@@ -137,6 +140,17 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       assert.ok(JSON.stringify(month.habits).includes(day));
       assert.equal((await habitsOfDay(store, u, day))[0].status, "done");
 
+      // Веб-приложение: любой день, список дней, удаление записи.
+      const d1 = (await call("/api/day?day=2026-11-01", undefined, token)).json;
+      assert.deepEqual(d1.diary.map((r: any) => r.text), ["Болела голова после экрана"]);
+      assert.equal((await call("/api/day?day=2026-13-01", undefined, token)).status, 400);
+      const days = (await call("/api/diary/days", undefined, token)).json;
+      assert.deepEqual(days, [{ day: "2026-11-01", n: 1 }, { day: "2026-11-02", n: 1 }, { day: "2026-11-03", n: 1 }]);
+      const del = await fetch(`${base}/api/diary/${d1.diary[0].id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      assert.equal(del.status, 200);
+      assert.equal((await call("/api/day?day=2026-11-01", undefined, token)).json.diary.length, 0);
+      assert.equal((await fetch(`${base}/api/diary/999999`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } })).status, 404);
+
       await call("/api/logout", {}, token);
       assert.equal((await call("/api/today", undefined, token)).status, 401);
     } finally {
@@ -240,3 +254,33 @@ function sampleWorkbook(): ExcelJS.Workbook {
   inc.addRow(["Март", 3402, 264106]);
   return wb;
 }
+
+test("сервер отдаёт собранное веб-приложение: файл по пути, иначе index.html; наружу из папки не выйти", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "maid-web-"));
+  fs.mkdirSync(path.join(dir, "assets"));
+  fs.writeFileSync(path.join(dir, "index.html"), "<!doctype html><title>Горничная</title>");
+  fs.writeFileSync(path.join(dir, "assets", "app-abc.js"), "console.log(1)");
+  const store = await Store.open(":memory:");
+  const pipe = new Pipeline(store, async () => "{}");
+  const server = createApi({ store, pipeline: pipe, webDir: dir }).listen(0);
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    const index = await fetch(`${base}/`);
+    assert.equal(index.status, 200);
+    assert.match(index.headers.get("content-type") ?? "", /text\/html/);
+    assert.match(await index.text(), /Горничная/);
+    const deep = await fetch(`${base}/diary/2026-11-01`);
+    assert.equal(deep.status, 200);
+    assert.match(await deep.text(), /Горничная/);
+    const js = await fetch(`${base}/assets/app-abc.js`);
+    assert.equal(js.status, 200);
+    assert.match(js.headers.get("cache-control") ?? "", /immutable/);
+    assert.equal((await fetch(`${base}/assets/missing.js`)).status, 404);
+    assert.equal((await fetch(`${base}/api/nothing`)).status, 401); // API — только со входом
+    assert.equal((await fetch(`${base}/..%2F..%2Fpackage.json`)).status, 404); // не выше папки
+  } finally {
+    server.close();
+    await store.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

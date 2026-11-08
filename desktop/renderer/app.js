@@ -1,6 +1,8 @@
 // Главное окно: сегодня, планы, задачи, даты, настройки и поле ввода (как сообщение боту).
 
-let tab = "today";
+// Главное окно теперь показывает веб-приложение с сервера; эта страница открывается для настроек
+// (из трея или пока нет ключа) и как запасной вид, если сервер недоступен.
+let tab = new URLSearchParams(location.search).get("tab") === "settings" ? "settings" : "today";
 let today = null;
 
 const content = $("#content");
@@ -98,6 +100,7 @@ function show(t) {
   render();
 }
 document.querySelectorAll("nav a").forEach((a) => (a.onclick = () => show(a.dataset.tab)));
+document.querySelectorAll("nav a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
 
 content.addEventListener("click", async (e) => {
   const id = e.target.dataset?.done;

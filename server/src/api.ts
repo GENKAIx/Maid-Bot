@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
 import http from "node:http";
+import path from "node:path";
 import { z } from "zod";
 import { login, tokenHash, userByToken } from "./auth.ts";
 import type { Store, User } from "./db.ts";
@@ -21,6 +23,8 @@ export interface ApiDeps {
   pipeline: Pipeline;
   send?: Send;
   webhook?: (req: http.IncomingMessage, res: http.ServerResponse) => unknown;
+  /** Папка собранного веб-приложения; пусто — не отдавать. */
+  webDir?: string;
 }
 
 class HttpError extends Error {
@@ -53,23 +57,58 @@ function parseBody<T extends z.ZodTypeAny>(schema: T, body: unknown): z.infer<T>
 
 const Day = z.string().refine(isDayKey, "день YYYY-MM-DD");
 
+/** Всё, что записано за один день (дневник по дням в приложении). */
+export async function dayJson(store: Store, u: User, day: string) {
+  return {
+    day,
+    events: await store.eventsBetween(u.id, day, day),
+    diary: await store.diaryOf(u.id, day),
+    habits: (await habitsOfDay(store, u, day)).map((d) => ({
+      id: d.habit.id, title: d.habit.title, times: d.times, status: d.status, streak: d.streak, done: d.doneDays, planned: d.plannedDays,
+    })),
+    metrics: await store.metricsRange(u.id, day, day),
+    money: await store.moneyRange(u.id, day, day),
+    activity: await store.activityOf(u.id, day),
+  };
+}
+
 export async function todayJson(store: Store, u: User, now = new Date()) {
   const today = dayKey(now, u.tz);
   return {
-    day: today,
+    ...(await dayJson(store, u, today)),
     persona: u.persona,
-    events: await store.eventsBetween(u.id, today, today),
     upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
     tasks: await store.openTasks(u.id),
     dates: upcomingDates(await store.activeDates(u.id), today, 30).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age })),
-    diary: await store.diaryOf(u.id, today),
-    habits: (await habitsOfDay(store, u, today)).map((d) => ({
-      id: d.habit.id, title: d.habit.title, times: d.times, status: d.status, streak: d.streak, done: d.doneDays, planned: d.plannedDays,
-    })),
-    metrics: await store.metricsRange(u.id, today, today),
-    money: await store.moneyRange(u.id, today, today),
-    activity: await store.activityOf(u.id, today),
   };
+}
+
+const MIME: Record<string, string> = {
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml",
+  ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8",
+};
+
+/** Собранное веб-приложение из папки: файл по пути, иначе index.html (адреса экранов — внутри приложения). */
+async function serveStatic(dir: string, pathname: string, res: http.ServerResponse): Promise<boolean> {
+  if (!dir) return false;
+  const safe = path.normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
+  let file = path.join(dir, safe);
+  if (!file.startsWith(dir)) return false;
+  const exists = async (f: string) => (await fs.promises.stat(f).catch(() => null))?.isFile() ?? false;
+  if (!(await exists(file))) {
+    if (path.extname(safe)) return false;
+    file = path.join(dir, "index.html");
+    if (!(await exists(file))) return false;
+  }
+  const ext = path.extname(file).toLowerCase();
+  const immutable = /\/assets\//.test(file.replace(/\\/g, "/"));
+  res.writeHead(200, {
+    "Content-Type": MIME[ext] ?? "application/octet-stream",
+    "Cache-Control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
+  });
+  await new Promise<void>((ok, fail) => fs.createReadStream(file).on("error", fail).on("end", ok).pipe(res));
+  return true;
 }
 
 /** Поиск по дневнику: раздел, подраздел, слова (без учёта регистра, кириллица тоже). */
@@ -97,7 +136,10 @@ export function createApi(deps: ApiDeps) {
       await deps.webhook(req, res);
       return undefined;
     }
-    if (!p.startsWith("/api/")) throw new HttpError(404, "нет такого адреса");
+    if (!p.startsWith("/api/")) {
+      if (m === "GET" && (await serveStatic(deps.webDir ?? "", p, res))) return undefined;
+      throw new HttpError(404, "нет такого адреса");
+    }
 
     if (m === "POST" && p === "/api/login") {
       const b = parseBody(
@@ -123,6 +165,19 @@ export function createApi(deps: ApiDeps) {
       return { ...me, sessions: await store.sessionsOf(u.id) };
     }
     if (m === "GET" && p === "/api/today") return todayJson(store, u);
+    if (m === "GET" && p === "/api/day") {
+      const day = q("day") ?? today;
+      if (!isDayKey(day)) throw new HttpError(400, "day: YYYY-MM-DD");
+      return dayJson(store, u, day);
+    }
+    if (m === "GET" && p === "/api/diary/days") return store.diaryDayCounts(u.id);
+    const diaryRow = p.match(/^\/api\/diary\/(\d+)$/);
+    if (m === "DELETE" && diaryRow) {
+      const r = await store.diaryRow(Number(diaryRow[1]));
+      if (!r || r.user_id !== u.id) throw new HttpError(404, "нет записи");
+      await store.setDiaryDeleted(r.id, true);
+      return { ok: true };
+    }
     if (m === "GET" && p === "/api/tasks") return store.openTasks(u.id);
     if (m === "GET" && p === "/api/dates") return (await todayJson(store, u)).dates;
     if (m === "GET" && p === "/api/events") return store.eventsBetween(u.id, q("from") ?? today, q("to") ?? addDays(today, 30));

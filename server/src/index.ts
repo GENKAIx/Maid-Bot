@@ -31,7 +31,7 @@ if (send) {
   scheduler.start();
 }
 
-const server = createApi({ store, pipeline, send, webhook });
+const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
   if (!tg) return;

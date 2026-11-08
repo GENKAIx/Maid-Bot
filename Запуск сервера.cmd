@@ -9,5 +9,6 @@ if not exist .env (
   pause
   exit /b
 )
+if not exist web\dist call npm run build
 npm run server
 pause

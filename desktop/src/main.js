@@ -53,17 +53,37 @@ const icon = () => nativeImage.createFromPath(path.join(__dirname, "..", "assets
 const page = (name) => path.join(__dirname, "..", "renderer", name);
 const prefs = { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true };
 
-function showMain() {
+// Главное окно — веб-приложение с сервера (то же, что на телефоне). Страница с сервера — без preload:
+// ключ десктопа ей не нужен, вход там свой (логин и пароль). Сервер не отвечает — локальная страница настроек.
+function showMain(settingsOnly = false) {
+  const local = settingsOnly || !settings.server;
+  if (mainWin && mainWin.isLocal !== local) {
+    mainWin.destroy();
+    mainWin = null;
+  }
   if (!mainWin) {
-    mainWin = new BrowserWindow({ width: 980, height: 720, minWidth: 640, minHeight: 480, title: "Горничная", icon: icon(), backgroundColor: "#1d1b22", webPreferences: prefs });
+    mainWin = new BrowserWindow({
+      width: 1060, height: 760, minWidth: 640, minHeight: 480, title: "Горничная", icon: icon(), backgroundColor: local ? "#1d1b22" : "#f6f3fb",
+      webPreferences: local ? prefs : { contextIsolation: true, nodeIntegration: false, sandbox: true },
+    });
+    mainWin.isLocal = local;
     mainWin.removeMenu();
-    mainWin.loadFile(page("index.html"));
+    if (local) mainWin.loadFile(page("index.html"), { query: { tab: "settings" } });
+    else {
+      mainWin.loadURL(settings.server.replace(/\/$/, "") + "/");
+      mainWin.webContents.on("did-fail-load", (_e, code, desc, url) => {
+        if (code === -3 || !url.startsWith(settings.server.replace(/\/$/, ""))) return; // -3: отменено (переход внутри)
+        console.warn("главное окно:", code, desc);
+        showMain(true);
+      });
+    }
     mainWin.on("close", (e) => {
       if (!quitting) {
         e.preventDefault();
         mainWin.hide();
       }
     });
+    mainWin.on("closed", () => (mainWin = null));
   }
   mainWin.show();
   mainWin.focus();
@@ -152,7 +172,8 @@ function showQuick() {
 function refreshTray() {
   if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Открыть", click: showMain },
+    { label: "Открыть", click: () => showMain() },
+    { label: "Настройки", click: () => showMain(true) },
     { label: `Быстрая запись (${settings.keys.quick.replace("Control", "Ctrl")})`, click: showQuick },
     { label: widget ? "Скрыть виджет" : "Показать виджет", click: () => toggleWidget() },
     { label: `Взять/отпустить виджет (${settings.keys.grab.replace("Control", "Ctrl")})`, enabled: Boolean(widget), click: () => setGrab(!grabbed) },
@@ -216,23 +237,24 @@ ipcMain.handle("settings:set", (_e, patch) => {
 });
 ipcMain.handle("tracker:now", trackOnce);
 ipcMain.on("changed", () => broadcast("changed", null));
-ipcMain.on("open-main", showMain);
+ipcMain.on("open-main", () => showMain());
 ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
 ipcMain.on("notify", (_e, title, body) => new Notification({ title, body }).show());
 
 if (!app.requestSingleInstanceLock()) app.quit();
-app.on("second-instance", showMain);
+app.on("second-instance", () => showMain());
 app.whenReady().then(() => {
   app.setAppUserModelId("Горничная");
   loadSettings();
   tray = new Tray(icon().isEmpty() ? nativeImage.createEmpty() : icon().resize({ width: 16, height: 16 }));
   tray.setToolTip("Горничная");
-  tray.on("click", showMain);
+  tray.on("click", () => showMain());
   refreshTray();
   registerKeys();
   if (settings.widget.show) createWidget();
-  if (!settings.token || process.argv.includes("--show")) showMain();
+  if (!settings.token) showMain(true);
+  else if (process.argv.includes("--show")) showMain();
   startTracker();
   screen.on("display-removed", () => widget?.setBounds(widgetBounds()));
 });
