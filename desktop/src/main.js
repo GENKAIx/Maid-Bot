@@ -199,7 +199,7 @@ function createWidget() {
   if (widget) return;
   widget = new BrowserWindow({
     ...widgetBounds(),
-    frame: false, transparent: true, resizable: false, skipTaskbar: true, focusable: false,
+    frame: false, transparent: true, resizable: false, skipTaskbar: true,
     alwaysOnTop: true, hasShadow: false, show: false, webPreferences: prefs,
   });
   // Выше полноэкранных окон и игр в оконном режиме.
@@ -228,9 +228,8 @@ function applyMouse() {
 }
 // Опрос курсора: над панелью/облачком/фигуркой — окно принимает мышь, иначе клики идут сквозь.
 let regions = [];
-// Курсор над строкой чата — окно заранее становится «фокусируемым»: тогда первый же щелчок по ней сам активирует окно.
-// Иначе щелчок приходил в окно без фокуса, а widget.focus() из фона Windows не даёт (защита от кражи фокуса) —
-// печатать получалось только со второго щелчка.
+// Окно всегда «фокусируемое»: щелчок по нему Windows активирует сама, и чат принимает ввод с первого раза.
+// Раньше окно было нефокусируемым и переключалось на лету (setFocusable) — фокус не доходил, а окно мигало при каждом щелчке.
 let overChat = false;
 const flog = (...a) => { if (process.env.MAID_FOCUS_LOG) fs.appendFileSync(process.env.MAID_FOCUS_LOG, `${Date.now() % 100000} ${a.join(" ")} focused=${widget?.isFocused()} focusable=${widget?.isFocusable?.()}
 `); };
@@ -248,7 +247,6 @@ setInterval(() => {
   const chat = inside && regions.some((r) => r.chat && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
   if (chat !== overChat) {
     overChat = chat;
-    widget.setFocusable(chat);
     flog("overChat", chat);
   }
 }, 30);
@@ -258,7 +256,6 @@ function setGrab(on) {
   if (!widget) return;
   mouseOn = null;
   applyMouse();
-  widget.setFocusable(on);
   if (on) widget.focus();
   widget.webContents.send("grab", on);
 }
@@ -378,7 +375,7 @@ ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
 ipcMain.on("hover", () => {});
 ipcMain.on("regions", (_e, list) => { regions = Array.isArray(list) ? list : []; });
-// Печатать в строке чата можно, только если окно принимает фокус; после — снова «сквозное».
+// Строка чата в фокусе — окно не становится «сквозным», даже если курсор ушёл.
 let typing = false;
 ipcMain.on("focus-input", (_e, on) => {
   if (!widget) return;
@@ -386,11 +383,9 @@ ipcMain.on("focus-input", (_e, on) => {
   flog("focus-input", on, "grabbed", grabbed);
   applyMouse();
   if (on) {
-    widget.setFocusable(true);
     widget.focus();
     widget.webContents.focus();
   } else if (!grabbed) {
-    widget.setFocusable(false);
     overChat = false;
     hovering = false;
     applyMouse();
