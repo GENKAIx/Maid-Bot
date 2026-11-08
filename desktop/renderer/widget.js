@@ -12,6 +12,24 @@ let bubbleTimer = 0;
 const face = $("#face");
 const think = $("#think");
 
+// --- звуки ---
+const SOUNDS = {};
+for (const n of ["pop", "ding", "send", "oops", "hey"]) {
+  SOUNDS[n] = new Audio(`../assets/sounds/${n}.wav`);
+  SOUNDS[n].volume = 0.45;
+}
+function play(name) {
+  const a = SOUNDS[name];
+  if (!a || localStorage.getItem("maid.mute")) return;
+  a.currentTime = 0;
+  a.play().catch(() => {});
+}
+
+const KIND = {
+  diary: ["📓", "Дневник"], event: ["📅", "План"], task: ["✅", "Задача"], date: ["🎂", "Дата"], memory: ["🧠", "Память"],
+  metric: ["📊", "Показатель"], money: ["💰", "Деньги"], habit: ["🔁", "Привычка"], mark: ["✔", "Отметка"], edit: ["✎", "Правка"],
+};
+
 // --- состояния ---
 function setState(s) {
   state = s;
@@ -43,14 +61,40 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000 } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null } = {}) {
   const b = $("#bubble");
-  $("#bubbleText").innerHTML = tgHtml(text);
+  // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
+  const plain = changes.length ? text.split("\n")[0] : text;
+  $("#bubbleText").innerHTML = tgHtml(plain);
+  const cards = $("#bubbleCards");
+  cards.innerHTML = "";
+  changes.forEach((c, i) => {
+    const [icon, name] = KIND[c.kind] ?? ["•", c.kind];
+    const el = document.createElement("div");
+    el.className = `card k-${c.kind}`;
+    el.style.animationDelay = `${160 + i * 140}ms`;
+    el.innerHTML = `<span class="card-icon">${icon}</span><span class="card-body"><b>${esc(name)}</b> ${esc(c.title)}${c.detail ? `<span class="card-detail">${esc(c.detail)}</span>` : ""}</span>`;
+    cards.appendChild(el);
+    setTimeout(() => play("pop"), 160 + i * 140);
+  });
   const acts = $("#bubbleActions");
-  acts.innerHTML = buttons.map((x, i) => `<button data-i="${i}">${esc(x.text)}</button>`).join("") + `<button class="ghost" data-i="close">✕</button>`;
+  acts.innerHTML = buttons.map((x, i) => `<button data-i="${i}">${esc(x.text)}</button>`).join("")
+    + (undo ? `<button data-i="undo">↩ Отменить</button>` : "") + `<button class="ghost" data-i="close">✕</button>`;
   acts.querySelectorAll("button").forEach((btn) => {
     btn.onclick = async () => {
       if (btn.dataset.i === "close") return hideBubble();
+      if (btn.dataset.i === "undo") {
+        try {
+          const r = await maid.api("POST", "/api/undo", { messageId: undo });
+          play("send");
+          say(r.text, { ms: 6000 });
+          maid.changed();
+        } catch (e) {
+          play("oops");
+          say(e.message, { ms: 6000 });
+        }
+        return;
+      }
       const x = buttons[Number(btn.dataset.i)];
       const m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/);
       try {
@@ -66,9 +110,40 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000 } = {}) {
   });
   b.className = `bubble ${emotion}`;
   $("#maid").classList.toggle("grumpy", emotion === "angry" || emotion === "sad");
+  if (sound) play(sound);
   clearTimeout(bubbleTimer);
-  if (ms) bubbleTimer = setTimeout(hideBubble, ms);
+  if (ms) bubbleTimer = setTimeout(hideBubble, ms + changes.length * 900);
 }
+
+// --- чат с горничной ---
+const chatInput = $("#chatInput");
+let sending = false;
+async function sendChat() {
+  const text = chatInput.value.trim();
+  if (!text || sending) return;
+  sending = true;
+  chatInput.value = "";
+  chatInput.placeholder = text.length > 40 ? text.slice(0, 40) + "…" : text;
+  play("send");
+  setState("think");
+  say("…", { ms: 0 });
+  try {
+    const r = await maid.api("POST", "/api/input", { text, id: crypto.randomUUID() });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null });
+    maid.changed();
+  } catch (e) {
+    say(e.message, { emotion: "worried", ms: 8000, sound: "oops" });
+  } finally {
+    sending = false;
+    chatInput.placeholder = "Скажи горничной…";
+    setState(isNight() ? "sleep" : "idle");
+    chatInput.focus();
+  }
+}
+$("#chat").onsubmit = (e) => { e.preventDefault(); sendChat(); };
+chatInput.addEventListener("focus", () => maid.focusInput(true));
+chatInput.addEventListener("blur", () => maid.focusInput(false));
+chatInput.addEventListener("keydown", (e) => { if (e.key === "Escape") chatInput.blur(); });
 function hideBubble() {
   $("#bubble").classList.add("hidden");
   $("#maid").classList.remove("grumpy");
@@ -128,7 +203,7 @@ async function pollNotices() {
     for (const n of rows.reverse()) {
       lastNotice = Math.max(lastNotice, n.id);
       const emotion = /🎮/.test(n.text) ? "angry" : n.emotion;
-      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000 });
+      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey" });
     }
   } catch {
     /* нет связи — молчим */
@@ -155,11 +230,11 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", load);
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
-maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 9000 }));
+maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null }));
 maid.on("opacity", (o) => ($("#w").style.opacity = String(o)));
 
-// Пока курсор над фигуркой или облачком, окно принимает мышь (иначе клики идут сквозь него).
-for (const el of [$("#maid"), $("#bubble")]) {
+// Пока курсор над фигуркой, облачком или строкой чата, окно принимает мышь (иначе клики идут сквозь него).
+for (const el of [$("#maid"), $("#bubble"), $("#chat")]) {
   el.addEventListener("mouseenter", () => !grabbed && maid.hover(true));
   el.addEventListener("mouseleave", () => !grabbed && maid.hover(false));
 }

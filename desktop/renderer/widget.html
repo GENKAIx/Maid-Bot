@@ -17,6 +17,7 @@
 
     <div class="bubble hidden" id="bubble">
       <div class="bubble-text" id="bubbleText"></div>
+      <div class="bubble-cards" id="bubbleCards"></div>
       <div class="bubble-actions" id="bubbleActions"></div>
     </div>
 
@@ -25,6 +26,11 @@
       <video class="think" id="think" src="../assets/maid/think.webm" muted loop playsinline></video>
       <div class="zzz" id="zzz">z<span>z</span><span>z</span></div>
     </div>
+
+    <form class="chat" id="chat" autocomplete="off">
+      <input id="chatInput" placeholder="Скажи горничной…" maxlength="4000" />
+      <button type="submit" id="chatSend" title="Отправить (Enter)">➤</button>
+    </form>
   </div>
   <script src="common.js"></script>
   <script src="widget.js"></script>

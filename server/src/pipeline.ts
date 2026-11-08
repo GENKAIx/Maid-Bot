@@ -1,15 +1,23 @@
 import type { MarkRow, Message, Store, Table, User } from "./db.ts";
 import type { LlmCall } from "./llm.ts";
 import { extractJson } from "./llm.ts";
-import { buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
+import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
+import { scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
-import { changesList, diaryDigest, esc } from "./report.ts";
-import { addDays, dayKey, timeOf } from "./time.ts";
+import { changesList, diaryDigest, esc, metricLine, moneyLine } from "./report.ts";
+import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
 import { planEventReminders } from "./scheduler.ts";
 
 // Сообщение → запись → разбор → действия → ответ.
 // Порядок важен: сначала сохраняем сырое сообщение (повтор доставки найдёт его), потом разбор,
 // затем все действия одной транзакцией. Ответ «записала» — только после неё.
+
+/** Что и куда записалось — для карточек в приложении. */
+export interface Change {
+  kind: "diary" | "event" | "task" | "date" | "memory" | "metric" | "money" | "habit" | "mark" | "edit";
+  title: string;
+  detail?: string;
+}
 
 export interface Reply {
   text: string;
@@ -18,6 +26,7 @@ export interface Reply {
   /** Есть что отменить — показать кнопки. */
   undoable: boolean;
   duplicate?: boolean;
+  changes?: Change[];
 }
 
 export interface Incoming {
@@ -99,14 +108,14 @@ export class Pipeline {
     }
 
     const target = original ?? message;
-    const lines = await s.transaction(() => this.apply(u, target, parsed, at));
+    const { lines, changes } = await s.transaction(() => this.apply(u, target, parsed, at));
     if (original) await s.setMessage(message.id, { state: "done", reply: "(уточнение)" });
 
     const head = parsed.reply ? esc(parsed.reply) : pick(p.saved, message.id);
     const body = lines.length ? "\n" + lines.join("\n") : "";
     const reply = `${head}${body}`;
     await s.setMessage(target.id, { state: "done", reply });
-    return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0 };
+    return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes };
   }
 
   private async history(userId: number, beforeId: number) {
@@ -120,16 +129,19 @@ export class Pipeline {
   }
 
   /** Записать разобранное. Вызывать внутри транзакции. */
-  private async apply(u: User, msg: Message, r: Parsed, at: Date): Promise<string[]> {
+  private async apply(u: User, msg: Message, r: Parsed, at: Date): Promise<{ lines: string[]; changes: Change[] }> {
     const s = this.store;
     const log = (kind: string, tbl: Table, id: number, before?: unknown) => s.logAction(u.id, msg.id, kind, tbl, id, before);
     const sections: Section[] = [];
     const editLines: string[] = [];
     const markLines: string[] = [];
+    const changes: Change[] = [];
+    const short = (t: string, n = 90) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
 
     for (const d of r.diary) {
       await log("add", "diary", await s.addDiary(u.id, d.dayKey, d.section, d.text, msg.id, d.topic));
       sections.push(d.section);
+      changes.push({ kind: "diary", title: `${SECTIONS[d.section]}${d.section === "health" && d.topic ? " · " + (HEALTH_TOPICS[d.topic] ?? d.topic) : ""}`, detail: short(d.text) });
     }
     if (r.summary) await log("add", "diary", await s.addDiary(u.id, r.dayKey, "summary", r.summary, msg.id));
     if (r.tags.length) await log("add", "diary", await s.addDiary(u.id, r.dayKey, "tags", r.tags.join(", "), msg.id));
@@ -141,17 +153,20 @@ export class Pipeline {
       });
       await log("add", "events", id);
       await planEventReminders(s, u, (await s.event(id))!, at);
+      changes.push({ kind: "event", title: e.title, detail: `${humanDay(e.date)}${e.time ? " " + e.time : ""}` });
     }
     for (const t of r.tasks) {
       await log("add", "tasks", await s.addTask({
         user_id: u.id, title: t.title, priority: t.priority, category: t.category, due_date: t.due, notes: "", message_id: msg.id,
       }));
+      changes.push({ kind: "task", title: t.title, detail: t.due ? `до ${humanDay(t.due)}` : undefined });
     }
     for (const d of r.dates) {
       await log("add", "dates", await s.addDate({
         user_id: u.id, title: d.title, date_iso: d.date, type: d.type, person: d.person, notes: "", yearly: d.yearly ? 1 : 0,
         message_id: msg.id,
       }));
+      changes.push({ kind: "date", title: d.title, detail: `${humanDay(d.date, true)}${d.yearly ? ", каждый год" : ""}` });
     }
     const memory = await s.activeMemory(u.id);
     for (const m of r.memory) {
@@ -163,24 +178,28 @@ export class Pipeline {
         }
       }
       await log("add", "memory", await s.addMemory(u.id, m.kind, m.subject, m.text, msg.id));
+      changes.push({ kind: "memory", title: m.subject || "Запомнила", detail: short(m.text) });
     }
     for (const m of r.metrics) {
       await log("add", "metrics", await s.addMetric({
         user_id: u.id, day_key: m.dayKey, key: m.key, label: m.label, value: m.value, unit: m.unit, note: m.note,
         source: "text", message_id: msg.id,
       }));
+      changes.push({ kind: "metric", title: m.label, detail: metricLine([m]).replace(/^[^:]*:\s*/, "") });
     }
     for (const m of r.money) {
       await log("add", "money", await s.addMoney({
         user_id: u.id, day_key: m.dayKey, kind: m.kind, amount: m.amount, currency: m.currency, category: m.category,
         note: m.note, message_id: msg.id,
       }));
+      changes.push({ kind: "money", title: m.note || m.category || (m.kind === "income" ? "Доход" : "Расход"), detail: moneyLine(m).replace(/<[^>]+>/g, "") });
     }
     for (const h of r.habits) {
       await log("add", "habits", await s.addHabit({
         user_id: u.id, title: h.title, days: h.days, times: JSON.stringify(h.times), start_date: h.start, end_date: h.end,
         message_id: msg.id,
       }));
+      changes.push({ kind: "habit", title: h.title, detail: `${scheduleText({ days: h.days, start_date: h.start, end_date: h.end })}${h.times.length ? " · " + h.times.join(", ") : ""}` });
     }
     for (const m of r.marks) {
       const h = await s.habit(m.habitId);
@@ -188,6 +207,7 @@ export class Pipeline {
       const { id, before } = await s.markHabit(h.id, m.dayKey, m.status, msg.id);
       await log("mark", "habit_marks", id, before ?? null);
       markLines.push(`${m.status === "done" ? "✅" : "➖"} ${esc(h.title)}`);
+      changes.push({ kind: "mark", title: h.title, detail: m.status === "done" ? "отмечено ✅" : "пропуск ➖" });
     }
 
     for (const e of r.edits) {
@@ -241,13 +261,17 @@ export class Pipeline {
       }
     }
 
-    return [
-      ...changesList({
-        sections, summary: Boolean(r.summary), events: r.events.length, tasks: r.tasks.length, dates: r.dates.length,
-        memory: r.memory.length, metrics: r.metrics, money: r.money, habits: r.habits.map((h) => h.title), edits: editLines,
-      }),
-      ...markLines,
-    ];
+    for (const l of editLines) changes.push({ kind: "edit", title: l.replace(/<[^>]+>/g, "") });
+    return {
+      lines: [
+        ...changesList({
+          sections, summary: Boolean(r.summary), events: r.events.length, tasks: r.tasks.length, dates: r.dates.length,
+          memory: r.memory.length, metrics: r.metrics, money: r.money, habits: r.habits.map((h) => h.title), edits: editLines,
+        }),
+        ...markLines,
+      ],
+      changes,
+    };
   }
 
   /** Отменить всё, что сделало сообщение (последнее, если не указано). */

@@ -93,7 +93,7 @@ function showMain(settingsOnly = false) {
 // Окно горничной: панель сверху и фигурка снизу справа.
 function widgetBounds() {
   const w = 340;
-  const h = 640;
+  const h = 690;
   const displays = screen.getAllDisplays();
   const d = displays.find((x) => x.id === settings.widget.display) ?? screen.getPrimaryDisplay();
   const a = d.workArea;
@@ -253,6 +253,14 @@ ipcMain.on("open-main", () => showMain());
 ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
 ipcMain.on("hover", (_e, on) => { hovering = Boolean(on); applyMouse(); });
+// Печатать в строке чата можно, только если окно принимает фокус; после — снова «сквозное».
+ipcMain.on("focus-input", (_e, on) => {
+  if (!widget) return;
+  if (on) {
+    widget.setFocusable(true);
+    widget.focus();
+  } else if (!grabbed) widget.setFocusable(false);
+});
 ipcMain.on("quick-show", showQuick);
 ipcMain.on("thinking", (_e, on) => widget?.webContents.send("thinking", on));
 ipcMain.on("reply", (_e, r) => widget?.webContents.send("reply", r));

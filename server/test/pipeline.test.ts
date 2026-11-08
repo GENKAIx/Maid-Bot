@@ -45,6 +45,9 @@ test("одно сообщение — дневник и план сразу, с 
   assert.ok(r.undoable);
   assert.match(r.text, /Еда/);
   assert.match(r.text, /планов: 1/);
+  // Карточки «что куда записалось» для приложения.
+  assert.deepEqual(r.changes?.map((c) => [c.kind, c.title]), [["diary", "Еда"], ["event", "Встреча с Петей"]]);
+  assert.match(r.changes![1].detail ?? "", /9 ноября.*15:00/);
 });
 
 test("повторная доставка не дублирует записи и не зовёт модель", async () => {
