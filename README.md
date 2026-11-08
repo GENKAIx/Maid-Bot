@@ -24,7 +24,7 @@ npm run server
 | `DATABASE_URL` | Postgres (на Render — Internal Database URL); пусто — SQLite `data/maid.sqlite` |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | push-уведомления в браузер и на iPhone: `npm --workspace server run vapid` |
 
-Выкладка в облако — `docs/RENDER.md` (`render.yaml` создаёт сервер и Postgres).
+Сервер живёт на VPS Hostinger по IP (Docker, `deploy/`), запасной вариант — Render: `docs/RENDER.md`.
 
 Ключи и база в git не идут.
 

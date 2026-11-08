@@ -1,4 +1,22 @@
-# Выкладка на Render — по шагам
+# Выкладка: VPS Hostinger (сейчас) и Render (запасной вариант)
+
+## Сейчас: VPS Hostinger, по IP, без домена (08.11.2026)
+- Сервер: KVM 1, Германия, Ubuntu 24.04 + Docker, IP `187.126.11.122`. Вход — SSH-ключ `~/.ssh/maid_vps` с ПК пользователя
+  (`ssh -i ~/.ssh/maid_vps root@187.126.11.122`); пароль root — у пользователя.
+- На сервере: `/srv/docker-compose.yml` (Caddy на 80/443 + контейнер `maid`), `/srv/Caddyfile`, `/srv/.env` (`MAID_DOMAIN=:80` —
+  без домена, обычный http), код — `/srv/maid` (клон GitHub), ключи приложения — `/srv/maid/.env`, база — том `srv_maid_data`
+  (`/data/maid.sqlite` в контейнере).
+- Обновить: `ssh … root@187.126.11.122 /srv/deploy.sh` (git pull, пересборка образа, перезапуск).
+- Логи: `docker compose -f /srv/docker-compose.yml logs maid --tail 50`. Команды внутри: `docker compose -f /srv/docker-compose.yml
+  exec maid node --import tsx server/src/user.ts list` (так же `import.ts`, `backup.ts`).
+- База перенесена с ПК как есть (пользователь #1 genkai со всеми записями из Excel).
+- Файрвол: SSH, 80, 443. Автообновления безопасности включены.
+- Приложение на ПК: адрес сервера `http://187.126.11.122`, ключ — `user.ts token genkai --label desktop`.
+- Домен и HTTPS (веб-приложение на телефоне, push) — отложены, см. `ROADMAP.md` «Отложено».
+
+---
+
+## Запасной вариант: Render — по шагам
 
 Сервер — Web Service (Starter), база — Postgres (Basic). Всё описано в `render.yaml` в корне,
 Render создаёт обе части сам. Цены сверить на render.com.
