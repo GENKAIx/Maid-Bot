@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { post } from "./api";
+import { Recorder } from "./recorder";
 import { plainReply } from "./format";
 import { navigate } from "./router";
 import type { Reply } from "./types";
@@ -12,61 +13,49 @@ export function Composer({ onChanged }: { onChanged: () => void }) {
   const [reply, setReply] = useState<{ text: string; reply?: Reply; error?: boolean } | null>(null);
   const timer = useRef<number>(0);
   const area = useRef<HTMLTextAreaElement>(null);
-  const rec = useRef<{ r: MediaRecorder; chunks: Blob[]; at: number; cancel?: boolean } | null>(null);
-  const [recSec, setRecSec] = useState<number | null>(null);
+  const rec = useRef(new Recorder());
+  const wave = useRef<HTMLCanvasElement>(null);
+  const [recording, setRecording] = useState(false);
+  const [clock, setClock] = useState("0:00");
 
   useEffect(() => {
-    if (recSec === null) return;
-    const t = window.setInterval(() => {
-      const r = rec.current;
-      if (!r) return;
-      const sec = Math.floor((Date.now() - r.at) / 1000);
-      setRecSec(sec);
-      if (sec >= 120) void stopMic();
-    }, 500);
-    return () => clearInterval(t);
-  }, [recSec === null]);
+    if (!recording) return;
+    if (wave.current) rec.current.wave(wave.current, "#e5484d");
+    const t = window.setInterval(() => setClock(rec.current.clock()), 250);
+    const keys = (e: KeyboardEvent) => {
+      if (e.key === "Escape") void dropMic();
+      else if (e.key === "Enter") { e.preventDefault(); void stopMic(); }
+    };
+    document.addEventListener("keydown", keys);
+    return () => { clearInterval(t); document.removeEventListener("keydown", keys); };
+  }, [recording]);
 
-  // Голосом: щелчок — запись, ещё щелчок — распознать и записать, ✕ — отменить.
+  // Голосом: щелчок — запись, ещё щелчок (Enter) — распознать и записать, корзина (Esc) — удалить.
   async function startMic() {
-    if (busy || rec.current) return;
+    if (busy || rec.current.on) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((t) => MediaRecorder.isTypeSupported(t));
-      const r = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32_000 } : undefined);
-      const state = { r, chunks: [] as Blob[], at: Date.now() };
-      r.ondataavailable = (e) => e.data.size && state.chunks.push(e.data);
-      r.start(250);
-      rec.current = state;
-      setRecSec(0);
+      await rec.current.start(() => void stopMic());
+      setClock("0:00");
+      setRecording(true);
     } catch (err) {
       show({ text: `Нет доступа к микрофону: ${(err as Error).message}`, error: true });
     }
   }
 
-  async function stopMic(cancel = false) {
-    const st = rec.current;
-    if (!st) return;
-    rec.current = null;
-    setRecSec(null);
-    const blob = await new Promise<Blob>((resolve) => {
-      st.r.onstop = () => {
-        st.r.stream.getTracks().forEach((t) => t.stop());
-        resolve(new Blob(st.chunks, { type: st.r.mimeType || "audio/webm" }));
-      };
-      st.r.stop();
-    });
-    if (cancel || Date.now() - st.at < 500 || !blob.size) return;
+  async function dropMic() {
+    await rec.current.cancel();
+    setRecording(false);
+  }
+
+  async function stopMic() {
+    if (!rec.current.on) return;
+    setRecording(false);
+    const v = await rec.current.stop();
+    if (!v) return;
     setBusy(true);
     show({ text: "🎙 Распознаю…" }, 60000);
     try {
-      const audio = await new Promise<string>((resolve, reject) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve(String(fr.result).split(",")[1] ?? "");
-        fr.onerror = () => reject(fr.error);
-        fr.readAsDataURL(blob);
-      });
-      const r = await post<Reply & { heard: string }>("/api/voice", { audio, mime: blob.type, id: crypto.randomUUID() });
+      const r = await post<Reply & { heard: string }>("/api/voice", { ...v, id: crypto.randomUUID() });
       show({ text: `🎙 ${r.heard}
 
 ${plainReply(r.text)}`, reply: r });
@@ -133,31 +122,42 @@ ${plainReply(r.text)}`, reply: r });
           </div>
         </div>
       )}
-      <form className="composer" onSubmit={send}>
-        <textarea
-          ref={area}
-          value={text}
-          rows={1}
-          placeholder={recSec !== null ? `🔴 Слушаю… ${recSec} с` : "Что было или что запланировать…"}
-          readOnly={recSec !== null}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) void send();
-          }}
-        />
-        {recSec !== null && (
-          <button type="button" className="ghost mic-cancel" onClick={() => void stopMic(true)} aria-label="Отменить запись">✕</button>
+      <form className={`composer ${recording ? "recording" : ""}`} onSubmit={send}>
+        {recording ? (
+          <div className="rec-bar" aria-live="polite">
+            <button type="button" className="rec-trash ghost" onClick={() => void dropMic()} title="Удалить запись (Esc)" aria-label="Удалить запись">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></svg>
+            </button>
+            <span className="rec-dot" />
+            <span className="rec-time">{clock}</span>
+            <canvas ref={wave} className="rec-wave" />
+          </div>
+        ) : (
+          <textarea
+            ref={area}
+            value={text}
+            rows={1}
+            placeholder="Что было или что запланировать…"
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) void send();
+            }}
+          />
         )}
-        {(recSec !== null || !text.trim()) && (
+        {(recording || !text.trim()) && (
           <button
             type="button"
-            className={`mic ${recSec !== null ? "rec" : ""}`}
+            className={`mic ${recording ? "rec" : ""}`}
             disabled={busy}
-            onClick={() => void (recSec !== null ? stopMic() : startMic())}
-            title={recSec !== null ? "Отправить запись" : "Сказать голосом"}
-            aria-label={recSec !== null ? "Отправить запись" : "Сказать голосом"}
+            onClick={() => void (recording ? stopMic() : startMic())}
+            title={recording ? "Отправить запись (Enter)" : "Сказать голосом"}
+            aria-label={recording ? "Отправить запись" : "Сказать голосом"}
           >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+            {recording ? (
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.2 15 12 3.4 13.8z" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+            )}
           </button>
         )}
         <button className="primary" type="submit" disabled={busy || !text.trim()}>{busy ? "…" : "Записать"}</button>

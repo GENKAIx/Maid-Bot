@@ -127,6 +127,7 @@ function toast(html, reply) {
 
 $("#composer").onsubmit = async (e) => {
   e.preventDefault();
+  if (Voice.on) return void toggleMic();
   const input = $("#input");
   const text = input.value.trim();
   if (!text) return;
@@ -147,16 +148,17 @@ $("#composer").onsubmit = async (e) => {
 let micTick = 0;
 function micUi(on) {
   const mic = $("#mic");
-  const input = $("#input");
+  const box = $("#composer");
   mic.classList.toggle("rec", on);
-  mic.title = on ? "Отправить запись · Esc — отменить" : "Сказать голосом";
+  mic.title = on ? "Отправить запись" : "Сказать голосом";
+  box.classList.toggle("recording", on);
   clearInterval(micTick);
-  input.readOnly = on;
-  if (!on) return void (input.placeholder = input.dataset.ph ?? input.placeholder);
-  input.dataset.ph ??= input.placeholder;
-  const show = () => (input.placeholder = `🔴 Слушаю… ${Voice.seconds} с · щелчок по микрофону — отправить, Esc — отмена`);
+  if (!on) return;
+  const time = box.querySelector(".rec-time");
+  const show = () => (time.textContent = Voice.clock());
   show();
-  micTick = setInterval(show, 500);
+  micTick = setInterval(show, 250);
+  Voice.wave(box.querySelector(".rec-wave"), "#cdbcff");
 }
 async function toggleMic() {
   const mic = $("#mic");
@@ -185,8 +187,11 @@ async function toggleMic() {
   }
 }
 $("#mic").onclick = toggleMic;
+$("#composer .rec-trash").onclick = () => Voice.cancel().then(() => micUi(false));
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && Voice.on) Voice.cancel().then(() => micUi(false));
+  if (!Voice.on) return;
+  if (e.key === "Escape") Voice.cancel().then(() => micUi(false));
+  else if (e.key === "Enter") { e.preventDefault(); toggleMic(); }
 });
 $("#input").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {

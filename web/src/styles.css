@@ -167,7 +167,13 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .composer .primary { border-radius: 11px; padding: 9px 16px; height: 40px; }
 .composer .mic { flex: none; width: 40px; height: 40px; padding: 0; border-radius: 11px; display: grid; place-items: center; }
 .composer .mic.rec { background: #e5484d; color: #fff; border-color: transparent; animation: micPulse 1.2s ease-in-out infinite; }
-.composer .mic-cancel { flex: none; width: 40px; height: 40px; padding: 0; border-radius: 11px; }
+.composer .rec-bar { flex: 1; min-width: 0; height: 40px; display: flex; align-items: center; gap: 8px; padding-right: 6px; }
+.composer .rec-trash { flex: none; width: 40px; height: 40px; padding: 0; border-radius: 11px; display: grid; place-items: center; }
+.composer .rec-trash:hover { color: #e5484d; }
+.composer .rec-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #e5484d; animation: recBlink 1s steps(2, start) infinite; }
+.composer .rec-time { flex: none; font-variant-numeric: tabular-nums; min-width: 34px; }
+.composer .rec-wave { flex: 1; min-width: 0; height: 30px; }
+@keyframes recBlink { to { visibility: hidden; } }
 @keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.55); } 50% { box-shadow: 0 0 0 6px rgba(229,72,77,0); } }
 @media (prefers-reduced-motion: reduce) { .composer .mic.rec { animation: none; } }
 .toast { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; padding: 12px 14px; background: var(--text); color: #f3f1f8; border-radius: 14px; white-space: pre-wrap; box-shadow: var(--lift); animation: reveal .25s ease; }

@@ -6,6 +6,11 @@ const Voice = (() => {
   let chunks = [];
   let startedAt = 0;
   let timer = 0;
+  let ctx = null; // AudioContext для уровня громкости
+  let analyser = null;
+  let levels = []; // громкость 0..1, один столбик в STEP мс — для рисования волны
+  let sampler = 0;
+  const STEP = 70;
 
   async function start(onLimit) {
     if (rec) return;
@@ -16,6 +21,27 @@ const Voice = (() => {
     rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     rec.start(250);
     startedAt = Date.now();
+    levels = [];
+    try {
+      ctx = new AudioContext();
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const buf = new Float32Array(analyser.fftSize);
+      sampler = setInterval(() => {
+        analyser.getFloatTimeDomainData(buf);
+        let sum = 0;
+        for (const v of buf) sum += v * v;
+        // Речь у микрофона даёт RMS ~0,02–0,2; корень растягивает тихое, чтобы волна была видна.
+        const lv = Math.min(1, Math.sqrt(Math.sqrt(sum / buf.length)) * 1.6);
+        // Таймер может приходить реже (окно в фоне) — столбиков столько, сколько прошло шагов, чтобы волна шла со временем.
+        const due = Math.floor((Date.now() - startedAt) / STEP);
+        while (levels.length < due) levels.push(lv);
+        if (levels.length > 2000) levels.splice(0, levels.length - 2000);
+      }, STEP);
+    } catch {
+      analyser = null;
+    }
     timer = setTimeout(() => onLimit?.(), MAX_MS);
   }
 
@@ -23,6 +49,9 @@ const Voice = (() => {
     const r = rec;
     rec = null;
     clearTimeout(timer);
+    clearInterval(sampler);
+    ctx?.close().catch(() => {});
+    ctx = analyser = null;
     return new Promise((resolve) => {
       r.onstop = () => {
         r.stream.getTracks().forEach((t) => t.stop());
@@ -50,5 +79,40 @@ const Voice = (() => {
     if (rec) await finish();
   }
 
-  return { start, stop, cancel, get on() { return Boolean(rec); }, get seconds() { return rec ? Math.floor((Date.now() - startedAt) / 1000) : 0; } };
+  /** Рисует волну записи в canvas, пока идёт запись: столбики громкости, новые справа, старые уходят влево. */
+  function wave(canvas, color = "#fff") {
+    const g = canvas.getContext("2d");
+    const draw = () => {
+      if (!rec) return g.clearRect(0, 0, canvas.width, canvas.height);
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(canvas.clientWidth * dpr);
+      const h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) Object.assign(canvas, { width: w, height: h });
+      g.clearRect(0, 0, w, h);
+      g.fillStyle = color;
+      const bar = 2 * dpr;
+      const gap = 2 * dpr;
+      const n = Math.floor(w / (bar + gap));
+      // Последний столбик плавно «въезжает» справа между отсчётами.
+      const shift = ((Date.now() - startedAt) % STEP) / STEP * (bar + gap);
+      for (let i = 0; i <= n; i++) {
+        const lv = levels[levels.length - 1 - i];
+        const x = w - (i + 1) * (bar + gap) + gap - shift + (bar + gap);
+        if (x < -bar) break;
+        const bh = lv === undefined ? bar : Math.max(bar, lv * h * 0.9);
+        g.globalAlpha = lv === undefined ? 0.35 : 1;
+        g.fillRect(x, (h - bh) / 2, bar, bh);
+      }
+      g.globalAlpha = 1;
+      requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
+  }
+
+  const clock = () => {
+    const s = rec ? Math.floor((Date.now() - startedAt) / 1000) : 0;
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  };
+
+  return { start, stop, cancel, wave, clock, get on() { return Boolean(rec); }, get seconds() { return rec ? Math.floor((Date.now() - startedAt) / 1000) : 0; } };
 })();

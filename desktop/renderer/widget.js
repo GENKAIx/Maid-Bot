@@ -191,13 +191,15 @@ const mic = $("#chatMic");
 let micTick = 0;
 function micUi(on) {
   mic.classList.toggle("rec", on);
-  mic.title = on ? "Отправить запись (Enter) · Esc — отменить" : "Сказать голосом";
+  mic.title = on ? "Отправить запись (Enter)" : "Сказать голосом";
+  chatBox.classList.toggle("recording", on);
   clearInterval(micTick);
-  chatInput.readOnly = on;
-  if (!on) return void (chatInput.placeholder = "Скажи горничной…");
-  const show = () => (chatInput.placeholder = `🔴 Слушаю… ${Voice.seconds} с`);
+  if (!on) return;
+  const time = chatBox.querySelector(".rec-time");
+  const show = () => (time.textContent = Voice.clock());
   show();
-  micTick = setInterval(show, 500);
+  micTick = setInterval(show, 250);
+  Voice.wave(chatBox.querySelector(".rec-wave"), "#cdbcff");
 }
 async function toggleMic() {
   if (sending) return;
@@ -216,6 +218,14 @@ async function toggleMic() {
   if (v) await ask("/api/voice", { ...v, id: crypto.randomUUID() }, "🎙 Распознаю…");
 }
 mic.addEventListener("click", (e) => { e.preventDefault(); toggleMic(); });
+const dropRecording = () => Voice.cancel().then(() => { micUi(false); play("oops"); });
+// Пока идёт запись, строки ввода нет: Enter — отправить, Esc — удалить ловятся на всём окне.
+document.addEventListener("keydown", (e) => {
+  if (!Voice.on) return;
+  if (e.key === "Escape") { e.preventDefault(); dropRecording(); }
+  else if (e.key === "Enter") { e.preventDefault(); toggleMic(); }
+});
+document.querySelector("#chat .rec-trash").addEventListener("click", (e) => { e.preventDefault(); dropRecording(); });
 $("#chat").onsubmit = (e) => { e.preventDefault(); if (Voice.on) toggleMic(); else sendChat(); };
 // Окно «сквозное» и без фокуса: навёл на строку чата — окно принимает мышь и клавиатуру, ушёл и не печатаешь — отдаёт.
 const chatBox = $("#chat");
@@ -225,7 +235,6 @@ chatBox.addEventListener("mouseleave", () => { if (document.activeElement !== ch
 chatInput.addEventListener("blur", () => { if (!grabbed) maid.focusInput(false); });
 chatInput.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
-  if (Voice.on) return void Voice.cancel().then(() => micUi(false));
   chatInput.blur();
 });
 function hideBubble() {
