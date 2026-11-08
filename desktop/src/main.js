@@ -226,6 +226,10 @@ function applyMouse() {
 }
 // Опрос курсора: над панелью/облачком/фигуркой — окно принимает мышь, иначе клики идут сквозь.
 let regions = [];
+// Курсор над строкой чата — окно заранее становится «фокусируемым»: тогда первый же щелчок по ней сам активирует окно.
+// Иначе щелчок приходил в окно без фокуса, а widget.focus() из фона Windows не даёт (защита от кражи фокуса) —
+// печатать получалось только со второго щелчка.
+let overChat = false;
 setInterval(() => {
   if (!widget || widget.isDestroyed() || grabbed || typing || drag) return;
   const b = widget.getBounds();
@@ -237,7 +241,12 @@ setInterval(() => {
     hovering = inside;
     applyMouse();
   }
-}, 60);
+  const chat = inside && regions.some((r) => r.chat && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+  if (chat !== overChat) {
+    overChat = chat;
+    widget.setFocusable(chat);
+  }
+}, 30);
 function setGrab(on) {
   grabbed = on;
   if (!widget) return;
@@ -372,8 +381,10 @@ ipcMain.on("focus-input", (_e, on) => {
   if (on) {
     widget.setFocusable(true);
     widget.focus();
+    widget.webContents.focus();
   } else if (!grabbed) {
     widget.setFocusable(false);
+    overChat = false;
     hovering = false;
     applyMouse();
   }

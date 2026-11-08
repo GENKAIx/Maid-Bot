@@ -185,8 +185,8 @@ async function sendChat() {
 $("#chat").onsubmit = (e) => { e.preventDefault(); sendChat(); };
 // Окно «сквозное» и без фокуса: навёл на строку чата — окно принимает мышь и клавиатуру, ушёл и не печатаешь — отдаёт.
 const chatBox = $("#chat");
-chatBox.addEventListener("mouseenter", () => maid.focusInput(true));
-chatBox.addEventListener("mousedown", () => { maid.focusInput(true); setTimeout(() => chatInput.focus(), 30); });
+// Наведение только готовит окно (main.js делает его фокусируемым), фокус забирается щелчком — не крадём его у игры от одного наведения.
+chatBox.addEventListener("mousedown", () => { maid.focusInput(true); chatInput.focus(); setTimeout(() => chatInput.focus(), 30); });
 chatBox.addEventListener("mouseleave", () => { if (document.activeElement !== chatInput && !grabbed) maid.focusInput(false); });
 chatInput.addEventListener("blur", () => { if (!grabbed) maid.focusInput(false); });
 chatInput.addEventListener("keydown", (e) => { if (e.key === "Escape") chatInput.blur(); });
@@ -408,6 +408,8 @@ function reportRegions() {
     const r = el.getBoundingClientRect();
     if (r.width && r.height) rects.push({ x: r.left, y: r.top, w: r.width, h: r.height });
   }
+  const c = $("#chat").getBoundingClientRect();
+  if (c.width && $("#w").offsetParent !== null && !$("#w").classList.contains("hidden")) rects.push({ x: c.left, y: c.top, w: c.width, h: c.height, chat: true });
   maid.regions(rects);
 }
 setInterval(reportRegions, 300);
