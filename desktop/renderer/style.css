@@ -68,13 +68,23 @@ main { display: flex; flex-direction: column; min-width: 0; }
 
 /* --- виджет --- */
 body.widget { background: transparent; overflow: hidden; user-select: none; }
-.stage { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; }
+.stage { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
+/* Горничная за панелью: --peek — сколько фигурки прячется за её верхним краем. */
+.perch { position: relative; z-index: 1; flex: none; display: flex; justify-content: flex-end; padding: 0 22px; margin-bottom: calc(-1 * var(--peek, 46px)); pointer-events: none; }
+.perch .maid { pointer-events: auto; }
+.stage.side-left .perch { justify-content: flex-start; }
+.stage.side-center .perch { justify-content: center; }
+/* Низ фигурки срезан по верхнему краю панели: панель полупрозрачная, сквозь неё корсет не должен просвечивать. */
+.perch { clip-path: inset(-200px -200px var(--peek, 46px) -200px); }
+.stage.folded .perch { margin-bottom: 0; clip-path: none; }
+.stage.no-maid .perch { display: none; }
 .w {
-  margin: 8px; width: calc(100% - 16px); flex: 0 1 380px; min-height: 120px; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  position: relative; z-index: 2; margin: 0 8px 8px; flex: 0 1 380px; min-height: 120px; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
   background: rgba(29, 24, 48, .86); border: 1px solid rgba(255, 255, 255, .09); backdrop-filter: blur(14px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .2); overflow: hidden; transition: opacity .25s, transform .25s;
 }
 .w.hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
+.stage.folded .w { display: none; }
 .stage.grab .w { border-color: var(--accent); -webkit-app-region: drag; }
 .stage.grab .w button, .stage.grab .w input, .stage.grab .check, .stage.grab .mark { -webkit-app-region: no-drag; }
 .stage.grab .maid { -webkit-app-region: drag; }
@@ -83,7 +93,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .mark.skipped { background: var(--muted); border-color: var(--muted); color: var(--ink); }
 
 /* --- горничная --- */
-.maid { position: relative; flex: none; width: 190px; height: 214px; margin: 0 4px 0 0; cursor: pointer; transform-origin: 50% 100%; animation: breathe 4.2s ease-in-out infinite; }
+.maid { position: relative; flex: none; width: var(--maid-w, 170px); aspect-ratio: 360 / 405; cursor: pointer; transform-origin: 50% 100%; animation: breathe 4.2s ease-in-out infinite; }
 .maid img, .maid video { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; pointer-events: none; }
 .maid .think { display: none; width: 110%; left: -5%; }
 .maid.thinking .face { display: none; }
@@ -99,10 +109,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 @keyframes zz { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(10px, -16px); } }
 
 .bubble {
-  position: relative; max-width: 300px; flex: none; margin: 0 8px 8px 8px; padding: 10px 12px; border-radius: 14px; font-size: 13px; line-height: 1.35;
+  position: relative; z-index: 3; max-width: 300px; flex: none; align-self: flex-end; margin: 0 8px 6px 8px; padding: 10px 12px; border-radius: 14px; font-size: 13px; line-height: 1.35;
   background: rgba(255, 255, 255, .97); color: var(--ink); box-shadow: 0 10px 28px rgba(0,0,0,.3);
   animation: pop .2s ease; transition: opacity .25s;
 }
+.stage.side-left .bubble { align-self: flex-start; } .stage.side-center .bubble { align-self: center; }
+.stage.side-left .bubble::after { right: auto; left: 70px; } .stage.side-center .bubble::after { right: calc(50% - 8px); }
 .bubble::after { content: ""; position: absolute; right: 70px; bottom: -8px; border: 8px solid transparent; border-top-color: rgba(255,255,255,.96); border-bottom: 0; }
 .bubble.hidden { opacity: 0; pointer-events: none; }
 .bubble.angry { background: #fde6ea; } .bubble.angry::after { border-top-color: #fde6ea; }
@@ -134,7 +146,28 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions button:hover { border-color: #c9c2da; }
 .bubble-actions button.ghost { margin-left: auto; background: transparent; border-color: transparent; }
 @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
-.w .head { display: flex; justify-content: space-between; align-items: baseline; }
+.w .head { display: flex; gap: 10px; align-items: baseline; cursor: grab; margin: -12px -14px 0; padding: 12px 14px 4px; border-radius: 16px 16px 0 0; }
+.w .head:hover { background: rgba(255, 255, 255, .03); }
+.w .head.dragging { cursor: grabbing; }
+.w .head #day { flex: 1; }
+.w .gear { align-self: center; flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 9px; background: transparent; border-color: transparent; color: var(--muted); cursor: pointer; }
+.w .gear:hover, .w .gear.on { background: var(--panel-2); color: var(--text); }
+.stage.grab .w .head { cursor: move; }
+/* Настройки виджета — вместо списка дел, пока открыты. */
+.w.prefs-open { flex-basis: 520px; }
+.w .prefs { flex: 1; overflow-x: hidden; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
+.w .prefs.hidden, .w .scroll.hidden, .w .next.hidden { display: none; }
+.prefs .pref { display: grid; gap: 6px; }
+.prefs .pref > span { color: var(--muted); font-size: 12.5px; }
+.prefs .seg { display: flex; padding: 2px; gap: 2px; background: var(--panel-2); border-radius: 10px; }
+.prefs .seg button { flex: 1; min-width: 0; white-space: nowrap; padding: 5px 2px; font-size: 12.5px; background: transparent; border-color: transparent; color: var(--muted); border-radius: 8px; }
+.prefs .seg button.on { background: var(--brand); color: #fff; }
+.prefs .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.prefs label.tick { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.prefs label.tick input { width: 15px; height: 15px; margin: 0; accent-color: var(--brand); }
+.prefs input[type=range] { width: 100%; accent-color: var(--brand); padding: 0; }
+.prefs .row2 { display: flex; gap: 8px; }
+.prefs .row2 button { flex: 1; font-size: 12.5px; padding: 6px 8px; }
 .w .clock { font-size: 30px; line-height: 1; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .w .next { background: rgba(183, 156, 255, .1); border-left: 3px solid var(--accent); border-radius: 4px 10px 10px 4px; padding: 8px 10px; }
 .w .next b { color: var(--accent); }

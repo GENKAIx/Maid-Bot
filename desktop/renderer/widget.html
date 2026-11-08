@@ -7,28 +7,38 @@
 </head>
 <body class="widget">
   <div class="stage" id="stage">
-    <div class="w" id="w">
-      <div class="head"><span class="clock" id="clock">--:--</span><span class="muted small" id="day"></span></div>
-      <div class="next" id="next"></div>
-      <div class="scroll" id="body"></div>
-      <div class="bar"><button id="open">Окно</button><button id="release">Отпустить</button></div>
-      <form class="chat" id="chat" autocomplete="off">
-        <input id="chatInput" placeholder="Скажи горничной…" maxlength="4000" />
-        <button type="submit" id="chatSend" title="Отправить (Enter)">➤</button>
-      </form>
-      <div class="hint" id="hint"></div>
-    </div>
-
     <div class="bubble hidden" id="bubble">
       <div class="bubble-text" id="bubbleText"></div>
       <div class="bubble-cards" id="bubbleCards"></div>
       <div class="bubble-actions" id="bubbleActions"></div>
     </div>
 
-    <div class="maid" id="maid" title="Щелчок — свернуть/развернуть панель · двойной — записать · ПКМ — взять/отпустить">
-      <img class="face" id="face" src="../assets/maid/idle.png" alt="" draggable="false" />
-      <video class="think" id="think" src="../assets/maid/think.webm" muted loop playsinline></video>
-      <div class="zzz" id="zzz">z<span>z</span><span>z</span></div>
+    <!-- Горничная стоит за панелью: нижний край фигурки закрыт её верхом. -->
+    <div class="perch" id="perch">
+      <div class="maid" id="maid" title="Щелчок — свернуть/развернуть панель · двойной — записать · ПКМ — взять/отпустить">
+        <img class="face" id="face" src="../assets/maid/idle.png" alt="" draggable="false" />
+        <video class="think" id="think" src="../assets/maid/think.webm" muted loop playsinline></video>
+        <div class="zzz" id="zzz">z<span>z</span><span>z</span></div>
+      </div>
+    </div>
+
+    <div class="w" id="w">
+      <div class="head" id="head" title="Тащите, чтобы передвинуть">
+        <span class="clock" id="clock">--:--</span>
+        <span class="muted small" id="day"></span>
+        <button class="gear" id="gear" title="Настройки виджета" aria-label="Настройки виджета">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6zM12 3.5l1.4 2.2 2.6-.5.6 2.6 2.3 1.3-1 2.4 1 2.4-2.3 1.3-.6 2.6-2.6-.5-1.4 2.2-1.4-2.2-2.6.5-.6-2.6-2.3-1.3 1-2.4-1-2.4 2.3-1.3.6-2.6 2.6.5z"/></svg>
+        </button>
+      </div>
+      <div class="next" id="next"></div>
+      <div class="scroll" id="body"></div>
+      <div class="prefs hidden" id="prefs"></div>
+      <div class="bar"><button id="open">Окно</button><button id="release">Отпустить</button></div>
+      <form class="chat" id="chat" autocomplete="off">
+        <input id="chatInput" placeholder="Скажи горничной…" maxlength="4000" />
+        <button type="submit" id="chatSend" title="Отправить (Enter)">➤</button>
+      </form>
+      <div class="hint" id="hint"></div>
     </div>
   </div>
   <script src="common.js"></script>

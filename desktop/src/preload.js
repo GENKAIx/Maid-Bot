@@ -23,6 +23,10 @@ contextBridge.exposeInMainWorld("maid", {
   focusInput: (on) => ipcRenderer.send("focus-input", on),
   /** Где на окне что-то есть (панель, облачко, фигурка) — там окно принимает мышь, остальное сквозное. */
   regions: (list) => ipcRenderer.send("regions", list),
+  /** Перетаскивание виджета за шапку: start / move / end — окно идёт за курсором. */
+  dragWidget: (phase) => ipcRenderer.send("widget-drag", phase),
+  /** Вернуть виджет в правый нижний угол основного экрана. */
+  resetWidget: () => ipcRenderer.send("widget-reset"),
   on: (channel, fn) => {
     if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },

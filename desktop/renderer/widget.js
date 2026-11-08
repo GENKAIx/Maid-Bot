@@ -8,6 +8,9 @@ let collapsed = false;
 let lastNotice = 0;
 let state = "idle"; // idle | think | sleep
 let bubbleTimer = 0;
+// Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true } };
+const MAID_W = { s: 140, m: 170, l: 210 };
 
 const face = $("#face");
 const think = $("#think");
@@ -173,6 +176,7 @@ function minutesUntil(e) {
 
 function render() {
   const now = new Date();
+  const sec = cfg.sections;
   $("#clock").textContent = now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
   if (!data) {
     $("#next").innerHTML = `<span class="muted">Нет связи с сервером</span>`;
@@ -186,12 +190,12 @@ function render() {
     const when = m === null ? (next.date_iso === data.day ? "сегодня" : humanDay(next.date_iso)) : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : `в ${next.time}`;
     $("#next").innerHTML = `<b>${esc(when)}</b> · ${esc(next.title)}`;
   } else $("#next").innerHTML = `<span class="muted">Планов нет</span>`;
-  const habits = (data.habits ?? []).map((h) => `<li><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : ""}</span></li>`);
+  const habits = (sec.habits ? data.habits ?? [] : []).map((h) => `<li><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : ""}</span></li>`);
   const tasks = data.tasks.slice(0, 5).map((t) => `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`);
-  const soon = data.dates.filter((d) => d.inDays <= 7).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
+  const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   $("#body").innerHTML =
     (habits.length ? `<h4>Привычки</h4><ul class="list">${habits.join("")}</ul>` : "") +
-    `<h4>Задачи${data.tasks.length > 5 ? ` · ${data.tasks.length}` : ""}</h4>${tasks.length ? `<ul class="list">${tasks.join("")}</ul>` : `<p class="empty small">Нет</p>`}` +
+    (sec.tasks ? `<h4>Задачи${data.tasks.length > 5 ? ` · ${data.tasks.length}` : ""}</h4>${tasks.length ? `<ul class="list">${tasks.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
 }
 
@@ -232,8 +236,111 @@ async function hint() {
 function setCollapsed(on) {
   collapsed = on;
   $("#w").classList.toggle("hidden", on);
+  $("#stage").classList.toggle("folded", on);
   localStorage.setItem("maid.collapsed", on ? "1" : "");
 }
+
+// --- настройки виджета ---
+function applyCfg() {
+  const st = $("#stage");
+  st.classList.remove("side-left", "side-center", "side-right");
+  st.classList.add(`side-${cfg.side}`);
+  st.classList.toggle("no-maid", cfg.side === "none");
+  const w = MAID_W[cfg.size] ?? MAID_W.m;
+  st.style.setProperty("--maid-w", `${w}px`);
+  // За панелью прячется низ фигурки — корсет; голова и плечи над краем.
+  st.style.setProperty("--peek", `${Math.round(w * 0.27)}px`);
+  $("#w").style.opacity = String(cfg.opacity);
+  $("#next").classList.toggle("hidden", !cfg.sections.next || prefsOpen);
+}
+async function loadCfg() {
+  const s = await maid.settings();
+  const w = s.widget ?? {};
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections } };
+  applyCfg();
+  if (prefsOpen) drawPrefs();
+}
+function saveCfg(patch) {
+  Object.assign(cfg, patch);
+  applyCfg();
+  render();
+  drawPrefs();
+  maid.saveSettings({ widget: patch });
+}
+
+let prefsOpen = false;
+function togglePrefs(on = !prefsOpen) {
+  prefsOpen = on;
+  $("#gear").classList.toggle("on", on);
+  $("#prefs").classList.toggle("hidden", !on);
+  $("#body").classList.toggle("hidden", on);
+  $("#w").classList.toggle("prefs-open", on);
+  applyCfg();
+  if (on) drawPrefs();
+}
+const SECTIONS = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"], ["soon", "Скоро"]];
+function seg(name, value, opts) {
+  return `<div class="seg" data-seg="${name}">${opts.map(([v, t]) => `<button type="button" data-v="${v}" class="${String(value) === v ? "on" : ""}">${t}</button>`).join("")}</div>`;
+}
+function drawPrefs() {
+  if (!prefsOpen) return;
+  const muted = Boolean(localStorage.getItem("maid.mute"));
+  $("#prefs").innerHTML = `
+    <div class="pref"><span>Показывать на панели</span><div class="checks">${SECTIONS.map(([k, t]) =>
+      `<label class="tick"><input type="checkbox" data-sec="${k}" ${cfg.sections[k] ? "checked" : ""}/>${t}</label>`).join("")}</div></div>
+    <div class="pref"><span>Горничная</span>${seg("side", cfg.side, [["left", "Слева"], ["center", "В центре"], ["right", "Справа"], ["none", "Скрыть"]])}</div>
+    <div class="pref"><span>Размер горничной</span>${seg("size", cfg.size, [["s", "Меньше"], ["m", "Обычная"], ["l", "Больше"]])}</div>
+    <div class="pref"><span>Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%</span><input type="range" id="prefOpacity" min="0.4" max="1" step="0.02" value="${cfg.opacity}" /></div>
+    <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>
+    <div class="row2"><button type="button" id="prefReset">Вернуть в угол</button><button type="button" id="prefDone" class="primary">Готово</button></div>`;
+}
+$("#prefs").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.id === "prefDone") return togglePrefs(false);
+  if (b.id === "prefReset") return maid.resetWidget();
+  const kind = b.parentElement?.dataset.seg;
+  if (kind === "sound") {
+    localStorage.setItem("maid.mute", b.dataset.v === "off" ? "1" : "");
+    drawPrefs();
+    if (b.dataset.v === "on") play("pop");
+  } else if (kind) saveCfg({ [kind]: b.dataset.v });
+});
+$("#prefs").addEventListener("change", (e) => {
+  const k = e.target.dataset?.sec;
+  if (k) saveCfg({ sections: { ...cfg.sections, [k]: e.target.checked } });
+  else if (e.target.id === "prefOpacity") saveCfg({ opacity: Number(e.target.value) });
+});
+$("#prefs").addEventListener("input", (e) => {
+  if (e.target.id !== "prefOpacity") return;
+  cfg.opacity = Number(e.target.value);
+  $("#w").style.opacity = String(cfg.opacity);
+  e.target.previousElementSibling.textContent = `Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%`;
+});
+$("#gear").addEventListener("click", (e) => {
+  e.stopPropagation();
+  togglePrefs();
+});
+
+// --- перетаскивание за шапку: окно двигает main.js по курсору (так верно и на экранах с разным масштабом) ---
+const head = $("#head");
+head.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || grabbed || e.target.closest("button")) return;
+  head.setPointerCapture(e.pointerId);
+  head.classList.add("dragging");
+  maid.dragWidget("start");
+});
+head.addEventListener("pointermove", (e) => {
+  if (head.hasPointerCapture(e.pointerId)) maid.dragWidget("move");
+});
+const endDrag = (e) => {
+  if (!head.hasPointerCapture(e.pointerId)) return;
+  head.releasePointerCapture(e.pointerId);
+  head.classList.remove("dragging");
+  maid.dragWidget("end");
+};
+head.addEventListener("pointerup", endDrag);
+head.addEventListener("pointercancel", endDrag);
 
 // --- связь с main и мышь ---
 maid.on("grab", (on) => {
@@ -241,16 +348,17 @@ maid.on("grab", (on) => {
   $("#stage").classList.toggle("grab", on);
   hint();
 });
-maid.on("changed", load);
+maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
 maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null }));
-maid.on("opacity", (o) => ($("#w").style.opacity = String(o)));
+maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
 function reportRegions() {
   const rects = [];
   for (const el of [$("#w"), $("#bubble"), $("#maid")]) {
+    if (el.offsetParent === null) continue;
     if (el.classList.contains("hidden")) continue;
     const r = el.getBoundingClientRect();
     if (r.width && r.height) rects.push({ x: r.left, y: r.top, w: r.width, h: r.height });
@@ -294,6 +402,6 @@ setInterval(render, 15_000);
 setInterval(load, 60_000);
 setInterval(pollNotices, 20_000);
 hint();
-load();
+loadCfg().then(load);
 pollNotices();
 maid.widgetReady();

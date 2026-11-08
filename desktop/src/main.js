@@ -9,7 +9,7 @@ const { collectDay, localDay } = require("./activity.js");
 const DEFAULTS = {
   server: "http://localhost:3000",
   token: "",
-  widget: { show: true, x: null, y: null, display: null, opacity: 0.92 },
+  widget: { show: true, x: null, y: null, display: null, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true } },
   tracker: { enabled: true, games: ["dota2.exe", "cs2.exe", "VALORANT-Win64-Shipping.exe", "League of Legends.exe", "GenshinImpact.exe", "Minecraft.Windows.exe"] },
   keys: { quick: "Alt+Shift+Space", grab: "Alt+Shift+M" },
   autostart: true,
@@ -100,15 +100,15 @@ function showMain(settingsOnly = false) {
 }
 
 // --- виджет ---
-// Окно горничной: панель сверху и фигурка снизу справа.
-function widgetBounds() {
+// Окно горничной: горничная выглядывает из-за верхнего края панели. cur — куда окно уже передвинули (иначе — сохранённое место).
+function widgetBounds(cur) {
   const w = 340;
-  const h = 690;
+  const h = 760;
   const displays = screen.getAllDisplays();
   const d = displays.find((x) => x.id === settings.widget.display) ?? screen.getPrimaryDisplay();
   const a = d.workArea;
-  let x = settings.widget.x ?? a.x + a.width - w - 12;
-  let y = settings.widget.y ?? a.y + a.height - h;
+  let x = cur?.x ?? settings.widget.x ?? a.x + a.width - w - 12;
+  let y = cur?.y ?? settings.widget.y ?? a.y + a.height - h;
   // Сохранённое место вне всех экранов (монитор отключили) — вернуть на основной.
   const visible = displays.some((s) => x >= s.bounds.x - w / 2 && x < s.bounds.x + s.bounds.width - w / 2 && y >= s.bounds.y && y < s.bounds.y + s.bounds.height - 40);
   if (!visible) {
@@ -122,6 +122,36 @@ function widgetBounds() {
   y = Math.min(Math.max(y, area.y), area.y + area.height - h);
   return { x, y, width: w, height: h };
 }
+
+function rememberWidget() {
+  if (!widget || widget.isDestroyed()) return;
+  const b = widget.getBounds();
+  const d = screen.getDisplayMatching(b);
+  settings.widget = { ...settings.widget, x: b.x, y: b.y, display: d.id };
+  saveSettings();
+}
+
+// Перетаскивание за шапку: окно идёт за курсором от точки, где его взяли.
+let drag = null;
+ipcMain.on("widget-drag", (_e, phase) => {
+  if (!widget || widget.isDestroyed()) return;
+  const c = screen.getCursorScreenPoint();
+  if (phase === "start") {
+    drag = { cx: c.x, cy: c.y, b: widget.getBounds() };
+  } else if (phase === "move" && drag) {
+    // setBounds с прежним размером: на экранах с разным масштабом setPosition у Windows меняет размер окна.
+    widget.setBounds({ x: drag.b.x + c.x - drag.cx, y: drag.b.y + c.y - drag.cy, width: drag.b.width, height: drag.b.height });
+  } else if (phase === "end" && drag) {
+    drag = null;
+    widget.setBounds(widgetBounds(widget.getBounds()));
+    rememberWidget();
+  }
+});
+ipcMain.on("widget-reset", () => {
+  settings.widget = { ...settings.widget, x: null, y: null, display: null };
+  saveSettings();
+  widget?.setBounds(widgetBounds());
+});
 
 function createWidget() {
   if (widget) return;
@@ -137,12 +167,7 @@ function createWidget() {
   widget.loadFile(page("widget.html"));
   setGrab(false);
   widget.once("ready-to-show", () => widget.showInactive());
-  widget.on("moved", () => {
-    const b = widget.getBounds();
-    const d = screen.getDisplayMatching(b);
-    settings.widget = { ...settings.widget, x: b.x, y: b.y, display: d.id };
-    saveSettings();
-  });
+  widget.on("moved", rememberWidget);
   widget.on("closed", () => (widget = null));
 }
 
@@ -160,7 +185,7 @@ function applyMouse() {
 // Опрос курсора: над панелью/облачком/фигуркой — окно принимает мышь, иначе клики идут сквозь.
 let regions = [];
 setInterval(() => {
-  if (!widget || widget.isDestroyed() || grabbed || typing) return;
+  if (!widget || widget.isDestroyed() || grabbed || typing || drag) return;
   const b = widget.getBounds();
   const c = screen.getCursorScreenPoint();
   const x = c.x - b.x;
