@@ -338,8 +338,8 @@ body.quick { background: transparent; }
 .pc-head { display: flex; align-items: baseline; gap: 8px; padding: 0 6px 2px; }
 .pc-head b { font-size: 14px; }
 .pc-head span { color: var(--muted); font-size: 12px; }
-.pc-head .half { margin-left: auto; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
-.pc-foot { color: var(--muted); font-size: 11.5px; text-align: center; padding: 0 8px; line-height: 1.35; }
+.pc-key { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 11px; }
+.pc-key i { width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; }
 .plan-clock .disc { fill: rgba(255, 255, 255, .055); stroke: rgba(255, 255, 255, .1); }
 .plan-clock .orbit { fill: none; stroke: rgba(255, 255, 255, .06); stroke-width: 20; }
 .plan-clock .orbit.dots { stroke: rgba(255, 255, 255, .16); stroke-width: 1.2; stroke-dasharray: 1 7; stroke-linecap: round; }
@@ -351,6 +351,8 @@ body.quick { background: transparent; }
 .plan-clock .hand { stroke: #ff8f8f; stroke-width: 2; stroke-linecap: round; }
 .plan-clock .hand-dot { fill: #ff8f8f; }
 .plan-clock .hub { fill: rgba(255, 255, 255, .7); }
+.plan-arc .edge { fill: none; stroke: #1d1830; stroke-linecap: round; }
+.plan-arc.gone .edge { display: none; }
 .plan-arc .band { fill: none; stroke: currentColor; stroke-linecap: round; opacity: .92; }
 .plan-arc.past .band { opacity: .32; }
 .plan-arc.now .band { filter: drop-shadow(0 0 5px currentColor); }

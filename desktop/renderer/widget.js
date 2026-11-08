@@ -9,7 +9,7 @@ let lastNotice = 0;
 let state = "idle"; // idle | think | sleep
 let bubbleTimer = 0;
 // Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "24" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "12" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
 
@@ -370,7 +370,7 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: w.clock ?? "24" };
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: w.clock ?? "12" };
   applyCfg();
   if (prefsOpen) drawPrefs();
 }
@@ -407,7 +407,7 @@ function drawPrefs() {
     <div class="pref"><span>Горничная</span>${seg("side", cfg.side, [["left", "Слева"], ["right", "Справа"], ["none", "Скрыть"]])}</div>
     <div class="pref"><span>Размер горничной</span>${seg("size", cfg.size, [["s", "Меньше"], ["m", "Обычная"], ["l", "Больше"]])}</div>
     <div class="pref"><span>Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%</span><input type="range" id="prefOpacity" min="0.4" max="1" step="0.02" value="${cfg.opacity}" /></div>
-    <div class="pref"><span>Часы планов</span>${seg("clock", cfg.clock, [["24", "24 часа"], ["12", "12 часов"], ["off", "Не показывать"]])}</div>
+    <div class="pref"><span>Часы планов</span>${seg("clock", cfg.clock, [["12", "12 часов"], ["24", "24 часа"], ["off", "Не показывать"]])}</div>
     <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>
     <div class="row2"><button type="button" id="prefReset">Вернуть в угол</button><button type="button" id="prefDone" class="primary">Готово</button></div>`;
 }
