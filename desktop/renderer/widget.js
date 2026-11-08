@@ -46,7 +46,9 @@ let online = true;
 function baseMood() {
   if (state === "think") return "think";
   if (!online) return "offline";
-  return state === "sleep" ? "sleep" : "idle";
+  if (state === "sleep") return "sleep";
+  // День не задался (просрочено, не отмечено) — грустно метёт (fun.js, dayMood).
+  return typeof dayMood !== "undefined" && dayMood === "bad" ? "clean" : "idle";
 }
 function showMood(n) {
   if (n === mood || !MOODS.includes(n)) return;
@@ -85,11 +87,17 @@ setInterval(() => {
     const pick = h < 11 && Math.random() < 0.5 ? "tea" : ["tea", "clean", "clean", "bow"][Math.floor(Math.random() * 4)];
     react(pick, 6000);
   }
+  // День идёт хорошо — радуется чаще, сама по себе.
+  else if (state === "idle" && online && dayMood === "good" && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.25)
+    react(["happy", "proud", "happy", "bow"][Math.floor(Math.random() * 4)], 5000);
+  // Не задался — изредка вздыхает.
+  else if (state === "idle" && online && dayMood === "bad" && Date.now() > moodUntil && Math.random() < 0.12) react("sad", 5000);
 }, 30_000);
 
 // --- облачко ---
 function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "" } = {}) {
   const b = $("#bubble");
+  delete b.dataset.quip;
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
   if (days.length) text = text.replace(/\n📅 .*$/, "");
   // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
@@ -279,12 +287,16 @@ function render() {
   };
   const RANK = { high: 0, normal: 1, low: 2 };
   const tasks = [...data.tasks].sort((a, b) => (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
-  const shownTasks = tasks.slice(0, 6);
+  const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6);
   const todo = daily.filter((h) => !h.status);
+  // Вчерашний пропуск, который ещё можно спасти задним числом (fun.js).
+  const rescueItem = (h) => `<li class="rescue"><span class="mark" data-rescue="${h.id}" title="Отметить вчерашний день"></span><span>${esc(h.title)} <span class="muted">· вчера — спасти серию</span></span></li>`;
   const items = [
     ...todo.map(dayItem),
+    ...daily.filter(missedYesterday).map(rescueItem),
     ...(sec.tasks ? shownTasks : []).map((t) => `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`),
     ...daily.filter((h) => h.status).map(dayItem),
+    ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done">✓</span><span>${esc(t.title)}</span></li>`),
   ];
   const left = todo.length + (sec.tasks ? data.tasks.length : 0);
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
@@ -309,7 +321,8 @@ async function load() {
     if (online) { online = false; settle(); }
     if (data) return;
   }
-  render();
+  renderSoon();
+  if (dayScore === null) tickDayMood();
 }
 
 // Лента уведомлений: что ушло в Telegram — показать и здесь, с кнопками.
@@ -505,12 +518,15 @@ function reportRegions() {
 }
 setInterval(reportRegions, 300);
 let clickTimer = 0;
-$("#maid").addEventListener("click", () => {
+$("#maid").addEventListener("click", (e) => {
   clearTimeout(clickTimer);
+  // По голове — тычок (fun.js), панель не трогаем.
+  if (onHead(e)) return poke();
   clickTimer = setTimeout(() => setCollapsed(!collapsed), 220);
 });
-$("#maid").addEventListener("dblclick", () => {
+$("#maid").addEventListener("dblclick", (e) => {
   clearTimeout(clickTimer);
+  if (onHead(e)) return;
   react("listen", 5000);
   maid.openQuick();
 });
@@ -524,13 +540,21 @@ $("#release").onclick = () => maid.grab(false);
 $("#body").addEventListener("click", async (e) => {
   const id = e.target.dataset?.done;
   const habit = e.target.dataset?.habit;
+  const save = e.target.dataset?.rescue;
   try {
-    if (id) {
-      // Галочка задачи: чпок и брызги сразу, потом сервер.
+    if (save) await rescue(e.target, save);
+    else if (id) {
+      // Галочка задачи: пупырка вдавливается с брызгами, строка съезжает вниз к сделанному, потом сервер.
       e.target.classList.add("done", "pressed");
+      e.target.textContent = "✓";
       popTone(4);
       burst(e.target);
       react("done", 4000);
+      const li = e.target.closest("li");
+      doneNow.set(Number(id), { title: li.lastElementChild.textContent, until: Date.now() + DONE_SHOWN });
+      countDone(data.day);
+      holdRender = Date.now() + 1100; // список не перерисовывать, пока строка едет вниз
+      setTimeout(() => slideDown(li), 420);
       await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
       maid.changed();
     } else if (habit) {

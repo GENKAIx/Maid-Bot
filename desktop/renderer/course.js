@@ -96,9 +96,11 @@ function renderCourses() {
     return `<button class="chip" data-show="${h.id}" title="${esc(h.title)}"><span>${esc(h.title)}</span><b>${o.done}/${o.total}</b><s style="--p:${o.total ? o.done / o.total : 0}"></s></button>`;
   });
   const big = main.course.length > 45;
+  // Только что закрыли последний день — сначала праздник на пупырках, медалью курс станет потом (celebrate).
+  const justFinished = st.finished && !fresh && prev?.has(main.id) && prev.get(main.id).split(",").some((s) => s !== "rest" && s !== "done");
   box.classList.remove("hidden");
   box.innerHTML = `
-    <div class="course${st.finished ? " finished" : ""}${big ? " dense" : ""}" data-id="${main.id}">
+    <div class="course${st.finished ? " finished" : ""}${st.finished && !justFinished ? " as-medal" : ""}${big ? " dense" : ""}" data-id="${main.id}">
       <div class="c-head">
         <svg class="c-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
         <span class="c-title">${esc(main.title)}</span>
@@ -106,6 +108,7 @@ function renderCourses() {
         <span class="c-score"><b>${st.done}</b> / ${st.total}</span>
       </div>
       <div class="pips">${main.course.map((x, i) => dotHtml(main, x, i)).join("")}</div>
+      ${st.finished ? `<div class="c-medal"><span class="medal" title="Курс пройден">${st.total}</span><span>Курс пройден<br><small>все ${st.total} ${DAY_WORD(st.total)} отмечены</small></span></div>` : ""}
       ${others.length ? `<div class="chips">${others.join("")}</div>` : ""}
     </div>`;
   // Анимация: при первом показе — волна появления, потом — только поменявшиеся пупырки.
@@ -119,7 +122,11 @@ function renderCourses() {
     main.course.forEach((x, i) => {
       if (was[i] === x.s) return;
       const p = pips[i];
-      if (x.s === "done") {
+      if (x.s === "done" && was[i] === "miss" && rescued.has(`${main.id}:${x.day}`)) {
+        // Вчерашний пропуск отметили задним числом — пупырка склеивается с трещинкой.
+        setTimeout(() => glue(p), n * 110);
+        n++;
+      } else if (x.s === "done") {
         if (!pendingPopped.has(`${main.id}:${x.day}`)) {
           setTimeout(() => popTone(n * 2), n * 110);
           burst(p, n * 110);
@@ -133,7 +140,7 @@ function renderCourses() {
         n++;
       }
     });
-    if (st.finished && was.filter((s) => s !== "rest" && s !== "done").length) setTimeout(() => celebrate(box.querySelector(".course")), 380);
+    if (justFinished) setTimeout(() => celebrate(box.querySelector(".course")), 380);
   }
   pendingPopped.clear();
   lastMarks = now;
@@ -178,8 +185,26 @@ function burst(pip, delay = 0) {
   }, delay);
 }
 
+// Курс пройден: волна по всем пупыркам слева направо, конфетти, горничная кланяется, курс сворачивается в медаль.
 function celebrate(el) {
   if (!el) return;
+  tuck(false);
+  tuck(true, 9000);
+  const pips = [...el.querySelectorAll(".pip:not(.rest)")];
+  const step = Math.min(45, 900 / Math.max(pips.length, 1));
+  pips.forEach((p, i) => setTimeout(() => {
+    p.classList.remove("pressed", "rise", "wave");
+    p.style.animationDelay = "";
+    void p.offsetWidth;
+    p.classList.add("wave");
+    if (i % 2 === 0) popTone((i / 2) % 14, { vol: 0.16 });
+  }, i * step));
+  const after = pips.length * step + 180;
+  setTimeout(() => party(el), after);
+  setTimeout(() => el.isConnected && el.classList.add("as-medal"), after + 1900);
+}
+function party(el) {
+  if (!el.isConnected) return;
   cheer();
   el.classList.add("party");
   const colors = ["#b79cff", "#4fd09a", "#ffb36b", "#ff8a9a", "#7cc4ff", "#ffe27a"];
@@ -195,7 +220,7 @@ function celebrate(el) {
     el.appendChild(c);
   }
   setTimeout(() => { el.querySelectorAll(".confetti").forEach((e) => e.remove()); el.classList.remove("party"); }, 1600);
-  say("Курс пройден до конца! Горжусь тобой, хозяин ✨", { emotion: "proud", ms: 7000 });
+  say("Курс пройден до конца! Горжусь тобой, хозяин ✨", { emotion: "proud", ms: 7000, mood: "bow" });
 }
 
 const pendingPopped = new Set();
