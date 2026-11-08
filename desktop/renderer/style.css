@@ -327,3 +327,54 @@ body.quick { background: transparent; }
 @media (prefers-reduced-motion: reduce) {
   .maid .face.boop, .maid .face.huff, .pip.wave, .pip.glued, .w .mark.glued, .course.as-medal .c-medal { animation: none; }
 }
+
+/* --- часы планов (clock.js): слева от панели, низом вровень с ней --- */
+.plan-clock { position: absolute; z-index: 2; right: 342px; bottom: 8px; width: 270px; padding: 10px 8px 10px; border-radius: 22px;
+  background: rgba(29, 24, 48, .86); border: 1px solid rgba(255, 255, 255, .09); backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35); cursor: pointer; transition: opacity .3s, transform .35s cubic-bezier(.3, 1.3, .5, 1); transform-origin: right bottom; }
+.plan-clock.hidden { opacity: 0; transform: translateX(18px) scale(.92); pointer-events: none; }
+.stage.folded .plan-clock { display: none; }
+.plan-clock svg { display: block; width: 254px; height: 254px; margin: 0 auto; overflow: visible; }
+.pc-head { display: flex; align-items: baseline; gap: 8px; padding: 0 6px 2px; }
+.pc-head b { font-size: 14px; }
+.pc-head span { color: var(--muted); font-size: 12px; }
+.pc-head .half { margin-left: auto; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+.pc-foot { color: var(--muted); font-size: 11.5px; text-align: center; padding: 0 8px; line-height: 1.35; }
+.plan-clock .disc { fill: rgba(255, 255, 255, .055); stroke: rgba(255, 255, 255, .1); }
+.plan-clock .orbit { fill: none; stroke: rgba(255, 255, 255, .06); stroke-width: 20; }
+.plan-clock .orbit.dots { stroke: rgba(255, 255, 255, .16); stroke-width: 1.2; stroke-dasharray: 1 7; stroke-linecap: round; }
+.plan-clock .night { fill: none; stroke: rgba(120, 140, 255, .18); stroke-linecap: round; }
+.plan-clock .tick { stroke: rgba(255, 255, 255, .18); stroke-width: 1; }
+.plan-clock .tick.hour { stroke: rgba(255, 255, 255, .32); }
+.plan-clock .tick.big { stroke: rgba(255, 255, 255, .6); stroke-width: 1.6; }
+.plan-clock .num { fill: var(--muted); font-size: 11px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.plan-clock .face-bg { fill: #2b2347; stroke: var(--accent); stroke-width: 1.5; }
+.plan-clock .hand { stroke: #ff8f8f; stroke-width: 2; stroke-linecap: round; }
+.plan-clock .hand-dot { fill: #ff8f8f; }
+.plan-arc .band { fill: none; stroke: currentColor; stroke-linecap: round; opacity: .92; }
+.plan-arc .arc-label { fill: #241c3a; font-size: 10.5px; font-weight: 700; pointer-events: none; }
+.plan-arc .arc-label.small { font-size: 9px; }
+.plan-arc.past .band { opacity: .32; }
+.plan-arc.past .arc-label { fill: #241c3acc; }
+.plan-arc.now .band { filter: drop-shadow(0 0 5px currentColor); }
+.plan-arc:hover .band { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
+.plan-arc.fresh .band { animation: arcIn .7s cubic-bezier(.3, 1.4, .5, 1) both, arcGlow 1.6s ease-in-out .7s 3; }
+.plan-arc.gone { pointer-events: none; animation: arcOut 1.4s ease-in .4s both; }
+.plan-arc.gone .band { stroke-dasharray: 4 5; }
+@keyframes arcIn { from { stroke-width: 0; opacity: 0; } }
+@keyframes arcGlow { 50% { filter: drop-shadow(0 0 9px currentColor); opacity: 1; } }
+@keyframes arcOut { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .plan-clock, .plan-clock.hidden { transition: opacity .2s; transform: none; }
+  .plan-arc.fresh .band, .plan-arc.gone { animation: none; }
+}
+.pc-list { list-style: none; margin: 4px 6px 0; padding: 0; display: grid; gap: 2px; font-size: 12px; }
+.pc-list li { display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 1px 4px; border-radius: 6px; }
+.pc-list .t { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 34px; }
+.pc-list .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.pc-list .dot.none { border: 1.5px solid var(--muted); width: 5px; height: 5px; }
+.pc-list .past { opacity: .5; }
+.pc-list .now { font-weight: 700; }
+.pc-list .fresh { background: rgba(183, 156, 255, .16); }
+.pc-list .gone { text-decoration: line-through; opacity: .55; }
+.pc-list .more { color: var(--muted); }

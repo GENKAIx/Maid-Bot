@@ -9,7 +9,7 @@ let lastNotice = 0;
 let state = "idle"; // idle | think | sleep
 let bubbleTimer = 0;
 // Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true } };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "24" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
 
@@ -322,6 +322,7 @@ async function load() {
     if (data) return;
   }
   renderSoon();
+  watchPlans();
   if (dayScore === null) tickDayMood();
 }
 
@@ -347,6 +348,7 @@ async function pollNotices() {
 
 function setCollapsed(on) {
   collapsed = on;
+  if (on) hideClock();
   $("#w").classList.toggle("hidden", on);
   $("#stage").classList.toggle("folded", on);
   localStorage.setItem("maid.collapsed", on ? "1" : "");
@@ -368,7 +370,7 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections } };
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: w.clock ?? "24" };
   applyCfg();
   if (prefsOpen) drawPrefs();
 }
@@ -383,6 +385,7 @@ function saveCfg(patch) {
 let prefsOpen = false;
 function togglePrefs(on = !prefsOpen) {
   prefsOpen = on;
+  if (on) hideClock();
   $("#gear").classList.toggle("on", on);
   $("#prefs").classList.toggle("hidden", !on);
   $("#body").classList.toggle("hidden", on);
@@ -404,6 +407,7 @@ function drawPrefs() {
     <div class="pref"><span>Горничная</span>${seg("side", cfg.side, [["left", "Слева"], ["right", "Справа"], ["none", "Скрыть"]])}</div>
     <div class="pref"><span>Размер горничной</span>${seg("size", cfg.size, [["s", "Меньше"], ["m", "Обычная"], ["l", "Больше"]])}</div>
     <div class="pref"><span>Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%</span><input type="range" id="prefOpacity" min="0.4" max="1" step="0.02" value="${cfg.opacity}" /></div>
+    <div class="pref"><span>Часы планов</span>${seg("clock", cfg.clock, [["24", "24 часа"], ["12", "12 часов"], ["off", "Не показывать"]])}</div>
     <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>
     <div class="row2"><button type="button" id="prefReset">Вернуть в угол</button><button type="button" id="prefDone" class="primary">Готово</button></div>`;
 }
@@ -417,6 +421,9 @@ $("#prefs").addEventListener("click", (e) => {
     localStorage.setItem("maid.mute", b.dataset.v === "off" ? "1" : "");
     drawPrefs();
     if (b.dataset.v === "on") play("pop");
+  } else if (kind === "clock") {
+    saveCfg({ clock: b.dataset.v });
+    hideClock();
   } else if (kind) saveCfg({ [kind]: b.dataset.v });
 });
 $("#prefs").addEventListener("change", (e) => {
@@ -506,7 +513,7 @@ maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
 function reportRegions() {
   const rects = [];
-  for (const el of [$("#w"), $("#bubble"), $("#maid")]) {
+  for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#planClock")]) {
     if (el.offsetParent === null) continue;
     if (el.classList.contains("hidden")) continue;
     const r = el.getBoundingClientRect();
