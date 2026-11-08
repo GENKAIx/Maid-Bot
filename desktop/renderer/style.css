@@ -348,14 +348,11 @@ body.quick { background: transparent; }
 .plan-clock .tick.hour { stroke: rgba(255, 255, 255, .32); }
 .plan-clock .tick.big { stroke: rgba(255, 255, 255, .6); stroke-width: 1.6; }
 .plan-clock .num { fill: var(--muted); font-size: 11px; text-anchor: middle; font-variant-numeric: tabular-nums; }
-.plan-clock .face-bg { fill: #2b2347; stroke: var(--accent); stroke-width: 1.5; }
 .plan-clock .hand { stroke: #ff8f8f; stroke-width: 2; stroke-linecap: round; }
 .plan-clock .hand-dot { fill: #ff8f8f; }
+.plan-clock .hub { fill: rgba(255, 255, 255, .7); }
 .plan-arc .band { fill: none; stroke: currentColor; stroke-linecap: round; opacity: .92; }
-.plan-arc .arc-label { fill: #241c3a; font-size: 10.5px; font-weight: 700; pointer-events: none; }
-.plan-arc .arc-label.small { font-size: 9px; }
 .plan-arc.past .band { opacity: .32; }
-.plan-arc.past .arc-label { fill: #241c3acc; }
 .plan-arc.now .band { filter: drop-shadow(0 0 5px currentColor); }
 .plan-arc:hover .band { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
 .plan-arc.fresh .band { animation: arcIn .7s cubic-bezier(.3, 1.4, .5, 1) both, arcGlow 1.6s ease-in-out .7s 3; }

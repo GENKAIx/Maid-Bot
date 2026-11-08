@@ -1,4 +1,4 @@
-// Часы планов — круглый циферблат слева от панели: в центре горничная, вокруг — планы дня дугами от начала до конца.
+// Часы планов — круглый циферблат слева от панели: планы дня цветными дугами от начала до конца, названия — в списке под часами.
 // Сами не висят: выезжают, когда планы меняются (добавили, перенесли, удалили — здесь, в Telegram или с телефона)
 // или когда их смотрят (щелчок по строке «ближайший план»), и прячутся через несколько секунд, если мышь не над ними.
 // Вид — настройка виджета «Часы планов»: 24 часа (по умолчанию), 12 часов (текущая половина суток) или выключены.
@@ -85,13 +85,6 @@ function arcSvg(x, mode, nowMin, { gone = false } = {}) {
   const pad = Math.min(cap, (a1 - a0) / 2 - 0.5);
   const b0 = a0 + pad;
   const b1 = Math.max(b0 + 0.5, a1 - pad);
-  const mid = (b0 + b1) / 2;
-  const lower = mid > 90 && mid < 270; // нижняя половина: подпись по обратной дуге
-  const id = `arc${x.e.id}${gone ? "g" : ""}`;
-  const len = (lane.r * (b1 - b0 + 2 * cap) * Math.PI) / 180;
-  const fit = Math.floor(len / (lane.w > 16 ? 6.3 : 5.4));
-  // На дуге — только название, которое влезает целиком; остальные видны в списке под часами.
-  const label = x.e.title.length <= fit ? x.e.title : "";
   const past = !gone && x.end <= nowMin && clockDay === data?.day;
   const now = !gone && x.s <= nowMin && nowMin < x.end && clockDay === data?.day;
   const cls = ["plan-arc", past && "past", now && "now", clockFresh.has(x.e.id) && "fresh", gone && "gone"].filter(Boolean).join(" ");
@@ -99,8 +92,6 @@ function arcSvg(x, mode, nowMin, { gone = false } = {}) {
   return `<g class="${cls}" color="${colorOf(x.e)}">
     <title>${esc(when)} · ${esc(x.e.title)}</title>
     <path class="band" d="${arcPath(lane.r, b0, b1)}" stroke-width="${lane.w}" />
-    <path id="${id}" d="${arcPath(lane.r, b0 - cap, b1 + cap, lower)}" fill="none" stroke="none" />
-    ${label ? `<text class="arc-label${lane.w > 16 ? "" : " small"}" dy="${lower ? 4 : 3.6}"><textPath href="#${id}" startOffset="50%" text-anchor="middle">${esc(label)}</textPath></text>` : ""}
   </g>`;
 }
 
@@ -138,7 +129,7 @@ function drawClock() {
   const handA = angleOf(nowMin, mode);
   const showHand = clockDay === data.day && (mode === "24" || Math.floor(nowMin / 720) === clockHalf);
   const [hx, hy] = polar(DISC_R - 4, handA);
-  const [hx0, hy0] = polar(60, handA);
+  const [hx0, hy0] = polar(7, handA);
 
   const dayName = clockDay === data.day ? "Сегодня" : humanDay(clockDay);
   const half = mode === "12" ? `<button type="button" class="half" title="Показать другую половину суток">${clockHalf ? "после полудня" : "до полудня"} ⇄</button>` : "";
@@ -176,10 +167,8 @@ function drawClock() {
       ${marks.join("")}
       ${gone.map((x) => arcSvg(x, mode, nowMin, { gone: true })).join("")}
       ${arcs.map((x) => arcSvg(x, mode, nowMin)).join("")}
-      <clipPath id="pcFace"><circle cx="${CX}" cy="${CX}" r="56" /></clipPath>
-      <circle class="face-bg" cx="${CX}" cy="${CX}" r="57" />
-      <image class="pc-maid" href="${$("#face").getAttribute("src")}" x="${CX - 66}" y="${CX - 52}" width="132" height="141" clip-path="url(#pcFace)" />
       ${showHand ? `<line class="hand" x1="${hx0.toFixed(1)}" y1="${hy0.toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" /><circle class="hand-dot" cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="3.4" />` : ""}
+      <circle class="hub" cx="${CX}" cy="${CX}" r="4" />
     </svg>
     ${extra.length ? `<div class="pc-foot">${extra.join(" · ")}</div>` : ""}
     ${legend}`;
