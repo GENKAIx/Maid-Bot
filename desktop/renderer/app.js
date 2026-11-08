@@ -143,6 +143,51 @@ $("#composer").onsubmit = async (e) => {
     input.focus();
   }
 };
+// Голосом: щелчок — запись, ещё щелчок — распознать и записать, Esc — отменить.
+let micTick = 0;
+function micUi(on) {
+  const mic = $("#mic");
+  const input = $("#input");
+  mic.classList.toggle("rec", on);
+  mic.title = on ? "Отправить запись · Esc — отменить" : "Сказать голосом";
+  clearInterval(micTick);
+  input.readOnly = on;
+  if (!on) return void (input.placeholder = input.dataset.ph ?? input.placeholder);
+  input.dataset.ph ??= input.placeholder;
+  const show = () => (input.placeholder = `🔴 Слушаю… ${Voice.seconds} с · щелчок по микрофону — отправить, Esc — отмена`);
+  show();
+  micTick = setInterval(show, 500);
+}
+async function toggleMic() {
+  const mic = $("#mic");
+  if (mic.disabled) return;
+  if (!Voice.on) {
+    try {
+      await Voice.start(toggleMic);
+    } catch (err) {
+      return toast(`<span class="high">Нет доступа к микрофону: ${esc(err.message)}</span>`);
+    }
+    return micUi(true);
+  }
+  micUi(false);
+  const v = await Voice.stop();
+  if (!v) return;
+  mic.disabled = true;
+  toast("🎙 Распознаю…");
+  try {
+    const r = await maid.api("POST", "/api/voice", { ...v, id: crypto.randomUUID() });
+    toast(`<div class="heard">🎙 ${esc(r.heard)}</div>${tgHtml(r.text)}`, r);
+    maid.changed();
+  } catch (err) {
+    toast(`<span class="high">${esc(err.message)}</span>`);
+  } finally {
+    mic.disabled = false;
+  }
+}
+$("#mic").onclick = toggleMic;
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && Voice.on) Voice.cancel().then(() => micUi(false));
+});
 $("#input").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();

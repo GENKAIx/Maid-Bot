@@ -14,6 +14,7 @@ import { Push } from "./push.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { habitButtons, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isTime } from "./time.ts";
+import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -36,12 +37,12 @@ class HttpError extends Error {
   }
 }
 
-async function readJson(req: http.IncomingMessage): Promise<unknown> {
+async function readJson(req: http.IncomingMessage, limit = 1_000_000): Promise<unknown> {
   let size = 0;
   const chunks: Buffer[] = [];
   for await (const c of req) {
     size += (c as Buffer).length;
-    if (size > 1_000_000) throw new HttpError(413, "слишком большой запрос");
+    if (size > limit) throw new HttpError(413, "слишком большой запрос");
     chunks.push(c as Buffer);
   }
   if (!chunks.length) return {};
@@ -335,6 +336,21 @@ export function createApi(deps: ApiDeps) {
         await readJson(req),
       );
       return pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: b.text, chatOnly: b.ask });
+    }
+    // Голосовое сообщение: аудио в base64 → текст → как обычная запись. heard — что услышали.
+    if (m === "POST" && p === "/api/voice") {
+      const b = parseBody(
+        z.object({ audio: z.string().min(1), mime: z.string().max(80).default("audio/webm"), id: z.string().max(80).optional() }),
+        await readJson(req, Math.ceil(VOICE_MAX_BYTES * 1.4)),
+      );
+      const audio = Buffer.from(b.audio, "base64");
+      if (audio.length > VOICE_MAX_BYTES) throw new HttpError(413, "слишком длинная запись");
+      const heard = await transcribe(audio, b.mime).catch((e) => {
+        throw new HttpError(502, `не получилось распознать: ${(e as Error).message}`);
+      });
+      if (!heard) throw new HttpError(422, "ничего не расслышала");
+      const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: heard.slice(0, 4000) });
+      return { ...r, heard };
     }
     if (m === "POST" && p === "/api/undo") {
       const b = parseBody(z.object({ messageId: z.number().int().optional() }), await readJson(req));

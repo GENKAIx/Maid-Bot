@@ -88,13 +88,13 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "" } = {}) {
   const b = $("#bubble");
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
   if (days.length) text = text.replace(/\n📅 .*$/, "");
   // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
   const plain = changes.length ? text.split("\n")[0] : text;
-  $("#bubbleText").innerHTML = tgHtml(plain);
+  $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + tgHtml(plain);
   const cards = $("#bubbleCards");
   cards.innerHTML = "";
   changes.forEach((c, i) => {
@@ -163,15 +163,18 @@ let sending = false;
 async function sendChat() {
   const text = chatInput.value.trim();
   if (!text || sending) return;
-  sending = true;
   chatInput.value = "";
-  chatInput.placeholder = text.length > 40 ? text.slice(0, 40) + "…" : text;
+  await ask("/api/input", { text, id: crypto.randomUUID() }, text.length > 40 ? text.slice(0, 40) + "…" : text);
+}
+async function ask(path, body, waiting) {
+  sending = true;
+  chatInput.placeholder = waiting;
   play("send");
   setState("think");
   say("…", { ms: 0 });
   try {
-    const r = await maid.api("POST", "/api/input", { text, id: crypto.randomUUID() });
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null });
+    const r = await maid.api("POST", path, body);
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard });
     maid.changed();
   } catch (e) {
     say(e.message, { emotion: "worried", ms: 8000, sound: "oops" });
@@ -182,14 +185,49 @@ async function sendChat() {
     chatInput.focus();
   }
 }
-$("#chat").onsubmit = (e) => { e.preventDefault(); sendChat(); };
+
+// --- голосом: щелчок по микрофону — запись, ещё щелчок (или Enter) — отправить, Esc — отменить ---
+const mic = $("#chatMic");
+let micTick = 0;
+function micUi(on) {
+  mic.classList.toggle("rec", on);
+  mic.title = on ? "Отправить запись (Enter) · Esc — отменить" : "Сказать голосом";
+  clearInterval(micTick);
+  chatInput.readOnly = on;
+  if (!on) return void (chatInput.placeholder = "Скажи горничной…");
+  const show = () => (chatInput.placeholder = `🔴 Слушаю… ${Voice.seconds} с`);
+  show();
+  micTick = setInterval(show, 500);
+}
+async function toggleMic() {
+  if (sending) return;
+  if (!Voice.on) {
+    try {
+      await Voice.start(toggleMic);
+    } catch (e) {
+      return say(`Нет доступа к микрофону: ${e.message}`, { emotion: "worried", ms: 8000, sound: "oops" });
+    }
+    micUi(true);
+    chatInput.focus();
+    return;
+  }
+  micUi(false);
+  const v = await Voice.stop();
+  if (v) await ask("/api/voice", { ...v, id: crypto.randomUUID() }, "🎙 Распознаю…");
+}
+mic.addEventListener("click", (e) => { e.preventDefault(); toggleMic(); });
+$("#chat").onsubmit = (e) => { e.preventDefault(); if (Voice.on) toggleMic(); else sendChat(); };
 // Окно «сквозное» и без фокуса: навёл на строку чата — окно принимает мышь и клавиатуру, ушёл и не печатаешь — отдаёт.
 const chatBox = $("#chat");
 // Наведение только готовит окно (main.js делает его фокусируемым), фокус забирается щелчком — не крадём его у игры от одного наведения.
 chatBox.addEventListener("mousedown", () => { maid.focusInput(true); chatInput.focus(); setTimeout(() => chatInput.focus(), 30); });
 chatBox.addEventListener("mouseleave", () => { if (document.activeElement !== chatInput && !grabbed) maid.focusInput(false); });
 chatInput.addEventListener("blur", () => { if (!grabbed) maid.focusInput(false); });
-chatInput.addEventListener("keydown", (e) => { if (e.key === "Escape") chatInput.blur(); });
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (Voice.on) return void Voice.cancel().then(() => micUi(false));
+  chatInput.blur();
+});
 function hideBubble() {
   $("#bubble").classList.add("hidden");
   maid.hover(false);

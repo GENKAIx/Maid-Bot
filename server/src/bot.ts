@@ -10,6 +10,7 @@ import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, memoryText, plansText, tasksText, todayText } from "./report.ts";
 import type { Scheduler, Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
+import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
 
@@ -154,6 +155,33 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await ctx.replyWithChatAction("typing").catch(() => {});
     const r = await pipeline.handle({
       user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: ctx.message.text,
+      at: new Date(ctx.message.date * 1000),
+    });
+    if (!r.duplicate) await answer(ctx, u, r);
+  });
+
+  // Голосовое: скачать, распознать, показать, что услышала, и дальше как текст.
+  bot.on(["message:voice", "message:audio"], async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return;
+    if (!sttReady()) return void (await ctx.reply("Голосовые пока не понимаю: распознавание речи не настроено."));
+    const media = ctx.message.voice ?? ctx.message.audio;
+    if (!media || (media.file_size ?? 0) > VOICE_MAX_BYTES) return void (await ctx.reply("Слишком длинное голосовое."));
+    await ctx.replyWithChatAction("typing").catch(() => {});
+    let heard: string;
+    try {
+      const file = await ctx.api.getFile(media.file_id);
+      const res = await fetch(`https://api.telegram.org/file/bot${config.telegramToken}/${file.file_path}`, { signal: AbortSignal.timeout(30_000) });
+      if (!res.ok) throw new Error(`файл ${res.status}`);
+      heard = await transcribe(Buffer.from(await res.arrayBuffer()), media.mime_type ?? "audio/ogg");
+    } catch (e) {
+      console.error("[bot] voice", e);
+      return void (await ctx.reply("Не получилось распознать голосовое, попробуй ещё раз."));
+    }
+    if (!heard) return void (await ctx.reply("Ничего не расслышала."));
+    await ctx.reply(`🎙 <i>${heard.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</i>`, { parse_mode: "HTML" });
+    const r = await pipeline.handle({
+      user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: heard.slice(0, 4000),
       at: new Date(ctx.message.date * 1000),
     });
     if (!r.duplicate) await answer(ctx, u, r);

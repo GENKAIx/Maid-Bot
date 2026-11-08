@@ -33,6 +33,12 @@ export const config = {
     apiKey: env("LLM_API_KEY"),
     model: env("LLM_MODEL", "gpt-4o-mini"),
   },
+  /** Распознавание голоса (/audio/transcriptions). Пусто — те же адрес и ключ, что у LLM. */
+  stt: {
+    baseUrl: env("STT_BASE_URL", env("LLM_BASE_URL", "https://api.openai.com/v1")).replace(/\/$/, ""),
+    apiKey: env("STT_API_KEY", env("LLM_API_KEY")),
+    model: env("STT_MODEL", "whisper-1"),
+  },
   port: Number(env("PORT", "3000")),
   /** Postgres (Render). Если задан — главнее файла SQLite. */
   databaseUrl: env("DATABASE_URL"),

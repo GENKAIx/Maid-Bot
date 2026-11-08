@@ -22,11 +22,13 @@
       <div id="toast"></div>
       <form class="composer" id="composer">
         <textarea id="input" placeholder="Что было, что запланировать, что не забыть… (Enter — отправить, Shift+Enter — новая строка)"></textarea>
+        <button type="button" id="mic" class="mic" title="Сказать голосом" aria-label="Сказать голосом"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
         <button class="primary" type="submit">Записать</button>
       </form>
     </main>
   </div>
   <script src="common.js"></script>
+  <script src="voice.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -254,3 +254,13 @@ body.quick { background: transparent; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* голосовой ввод */
+.mic { display: grid; place-items: center; }
+.chat button.mic { background: rgba(255,255,255,.1); color: var(--text, #fff); }
+.chat button.mic:hover { background: rgba(255,255,255,.18); }
+.composer .mic { width: 44px; flex: none; border-radius: 12px; padding: 0; }
+.mic.rec, .chat button.mic.rec { background: #e5484d; color: #fff; animation: micPulse 1.2s ease-in-out infinite; }
+@keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.55); } 50% { box-shadow: 0 0 0 6px rgba(229,72,77,0); } }
+@media (prefers-reduced-motion: reduce) { .mic.rec { animation: none; } }
+.heard { font-style: italic; opacity: .7; margin-bottom: 6px; font-size: .92em; }
