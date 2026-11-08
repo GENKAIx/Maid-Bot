@@ -140,7 +140,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 .w .head { display: flex; gap: 10px; align-items: baseline; cursor: grab; margin: -12px -14px 0; padding: 12px 14px 4px; border-radius: 16px 16px 0 0; }
 .w .head:hover { background: rgba(255, 255, 255, .03); }
-.w .head.dragging { cursor: grabbing; }
+.w .head.dragging, .maid.dragging { cursor: grabbing; }
 .w .head #day { flex: 1; }
 .w .gear { align-self: center; flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 9px; background: transparent; border-color: transparent; color: var(--muted); cursor: pointer; }
 .w .gear:hover, .w .gear.on { background: var(--panel-2); color: var(--text); }

@@ -140,33 +140,23 @@ function renderCourses() {
   settleCourses(prev && [...now].some(([id, m]) => prev.has(id) && prev.get(id) !== m));
 }
 
-// Плашка сама не висит: появляется, когда отметили день (видно, как вдавилась пупырка), и прячется через несколько секунд;
-// навести на горничную — снова видна, пока курсор на ней.
+// Плашка сама не висит: появляется, только когда отметили день (видно, как вдавилась пупырка), и прячется через несколько секунд.
 const TUCK_AFTER_MARK = 4000;
-const TUCK_AFTER_PEEK = 2500;
 let tuckTimer = 0;
-let peeking = false;
 function tuck(on, ms = 0) {
   clearTimeout(tuckTimer);
+  tuckTimer = 0;
   const box = $("#courses");
   if (!on) return box.classList.remove("tucked");
-  if (ms) tuckTimer = setTimeout(() => { if (!peeking) box.classList.add("tucked"); }, ms);
+  if (ms) tuckTimer = setTimeout(() => { tuckTimer = 0; box.classList.add("tucked"); }, ms);
   else box.classList.add("tucked");
 }
 function settleCourses(marked) {
   if (marked) {
     tuck(false);
     tuck(true, TUCK_AFTER_MARK);
-  } else if (!peeking && !tuckTimer) tuck(true);
+  } else if (!tuckTimer) tuck(true);
 }
-$("#maid").addEventListener("mouseenter", () => {
-  peeking = true;
-  tuck(false);
-});
-$("#maid").addEventListener("mouseleave", () => {
-  peeking = false;
-  tuck(true, TUCK_AFTER_PEEK);
-});
 
 // Брызги вокруг пупырки: кольцо и несколько точек.
 function burst(pip, delay = 0) {

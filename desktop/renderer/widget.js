@@ -429,32 +429,53 @@ $("#gear").addEventListener("contextmenu", (e) => {
   togglePrefs();
 });
 
-// --- перетаскивание за шапку: окно двигает main.js по курсору (так верно и на экранах с разным масштабом) ---
-const head = $("#head");
-head.addEventListener("pointerdown", (e) => {
-  if (e.button !== 0 || grabbed || e.target.closest("button")) return;
-  head.setPointerCapture(e.pointerId);
-  head.classList.add("dragging");
-  maid.dragWidget("start");
-});
-head.addEventListener("pointermove", (e) => {
-  if (head.hasPointerCapture(e.pointerId)) maid.dragWidget("move");
-});
-const endDrag = (e) => {
-  if (!head.hasPointerCapture(e.pointerId)) return;
-  head.releasePointerCapture(e.pointerId);
-  head.classList.remove("dragging");
-  maid.dragWidget("end");
-};
-head.addEventListener("pointerup", endDrag);
-head.addEventListener("pointercancel", endDrag);
+// --- перетаскивание за шапку и за горничную: окно двигает main.js по курсору (так верно и на экранах с разным масштабом) ---
+// У горничной щелчок — свернуть панель: сдвинул мышь дальше DRAG_SLOP — это перетаскивание, щелчок после него не считается.
+const DRAG_SLOP = 4;
+let dragEl = null;
+let dragFrom = null;
+let dragMoved = false;
+function draggable(el, skip) {
+  el.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || grabbed || skip(e)) return;
+    el.setPointerCapture(e.pointerId);
+    dragEl = el;
+    dragFrom = { x: e.screenX, y: e.screenY };
+    dragMoved = false;
+    el.classList.add("dragging");
+    maid.dragWidget("start");
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (dragEl !== el) return;
+    if (!dragMoved && Math.hypot(e.screenX - dragFrom.x, e.screenY - dragFrom.y) > DRAG_SLOP) dragMoved = true;
+    maid.dragWidget("move");
+  });
+  const end = (e) => {
+    if (dragEl !== el) return;
+    if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    dropDrag();
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+  el.addEventListener("lostpointercapture", () => dragEl === el && dropDrag());
+  // Протащили — щелчок, который браузер пришлёт следом, не сворачивает панель.
+  el.addEventListener("click", (e) => {
+    if (!dragMoved) return;
+    dragMoved = false;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+  }, true);
+}
 // Захват потерян или кнопку отпустили где-то ещё — окно не должно остаться приклеенным к курсору.
-const dropDrag = () => {
-  if (!head.classList.contains("dragging")) return;
-  head.classList.remove("dragging");
+function dropDrag() {
+  if (!dragEl) return;
+  dragEl.classList.remove("dragging");
+  dragEl = null;
   maid.dragWidget("end");
-};
-head.addEventListener("lostpointercapture", dropDrag);
+}
+const head = $("#head");
+draggable(head, (e) => e.target.closest("button"));
+draggable($("#maid"), () => false);
 document.addEventListener("pointerup", dropDrag);
 window.addEventListener("blur", dropDrag);
 
