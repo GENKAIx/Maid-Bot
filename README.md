@@ -19,7 +19,7 @@ npm run server
 | `TELEGRAM_BOT_TOKEN` | бот (новый, от @BotFather; старого бота не трогаем) |
 | `ALLOWED_CHAT_IDS` | кому можно писать боту; свой id — команда `/chatid` |
 | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | разбор сообщений (OpenAI или OpenRouter) |
-| `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL` | распознавание голосовых; пусто — как у LLM, модель `whisper-1` (OpenRouter не умеет — нужен OpenAI или Groq) |
+| `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL` | распознавание голосовых; пусто — как у LLM; модель по адресу: OpenRouter `openai/whisper-large-v3`, Groq `whisper-large-v3`, иначе `whisper-1` |
 | `PUBLIC_URL` | пусто — бот опрашивает Telegram сам (удобно на своём ПК); адрес — webhook |
 | `DESKTOP_TOKEN` | ключ для приложения на ПК (или команда `/token` в боте) |
 | `DATABASE_URL` | Postgres (на Render — Internal Database URL); пусто — SQLite `data/maid.sqlite` |

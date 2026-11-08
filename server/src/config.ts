@@ -37,7 +37,7 @@ export const config = {
   stt: {
     baseUrl: env("STT_BASE_URL", env("LLM_BASE_URL", "https://api.openai.com/v1")).replace(/\/$/, ""),
     apiKey: env("STT_API_KEY", env("LLM_API_KEY")),
-    model: env("STT_MODEL", "whisper-1"),
+    model: "",
   },
   port: Number(env("PORT", "3000")),
   /** Postgres (Render). Если задан — главнее файла SQLite. */
@@ -54,5 +54,11 @@ export const config = {
   /** Собранное веб-приложение (npm --workspace web run build); сервер отдаёт его с корня. */
   webDir: fromRoot(env("WEB_DIR", "web/dist")),
 };
+
+// Имя модели распознавания у каждого сервиса своё: OpenRouter — «openai/whisper-large-v3», Groq — «whisper-large-v3», OpenAI — «whisper-1».
+config.stt.model = env(
+  "STT_MODEL",
+  /openrouter\.ai/.test(config.stt.baseUrl) ? "openai/whisper-large-v3" : /groq\.com/.test(config.stt.baseUrl) ? "whisper-large-v3" : "whisper-1",
+);
 
 export type Config = typeof config;
