@@ -25,6 +25,9 @@ function applyAutostart() {
 }
 
 const WIDGET_W = 620;
+// Панель виджета внутри окна: у нижнего края, справа (горничная слева — слева). С запасом на тень.
+const PANEL_W = 340;
+const PANEL_H = 400;
 const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
 let settings = structuredClone(DEFAULTS);
 function loadSettings() {
@@ -125,24 +128,34 @@ function widgetBounds(cur) {
   const a = d.workArea;
   let x = cur?.x ?? settings.widget.x ?? a.x + a.width - w - 12;
   let y = cur?.y ?? settings.widget.y ?? a.y + a.height - h;
-  // Сохранённое место вне всех экранов (монитор отключили) — вернуть на основной.
-  const visible = displays.some((s) => x >= s.bounds.x - w / 2 && x < s.bounds.x + s.bounds.width - w / 2 && y >= s.bounds.y && y < s.bounds.y + s.bounds.height - 40);
-  if (!visible) {
+  // Окно высокое (760) и почти всё прозрачное: на экране должна остаться панель, а не всё окно. Иначе панель у верха экрана
+  // или у края второго монитора считалась «за экраном», и виджет прыгал обратно в угол основного.
+  const panel = (px, py) => {
+    const left = settings.widget.side === "left" ? px : px + w - PANEL_W;
+    return { x: left, y: py + h - PANEL_H, width: PANEL_W, height: PANEL_H };
+  };
+  const p0 = panel(x, y);
+  const cx = p0.x + p0.width / 2;
+  const cy = p0.y + p0.height / 2;
+  const home = displays.find((s) => cx >= s.bounds.x && cx < s.bounds.x + s.bounds.width && cy >= s.bounds.y && cy < s.bounds.y + s.bounds.height);
+  if (!home) {
     const p = screen.getPrimaryDisplay().workArea;
     x = p.x + p.width - w - 12;
     y = p.y + p.height - h;
   }
-  // Не вылезать за рабочую область (под панель задач): окно стало выше прежнего виджета.
-  const area = screen.getDisplayMatching({ x, y, width: w, height: h }).workArea;
-  x = Math.min(Math.max(x, area.x), area.x + area.width - w);
-  y = Math.min(Math.max(y, area.y), area.y + area.height - h);
+  // Не вылезать за рабочую область (под панель задач) — панелью; прозрачный верх окна может уйти за край экрана.
+  const area = (home ?? screen.getPrimaryDisplay()).workArea;
+  const p1 = panel(x, y);
+  x += Math.min(Math.max(p1.x, area.x), area.x + area.width - PANEL_W) - p1.x;
+  y += Math.min(Math.max(p1.y, area.y), area.y + area.height - PANEL_H) - p1.y;
   return { x, y, width: w, height: h };
 }
 
 function rememberWidget() {
   if (!widget || widget.isDestroyed()) return;
   const b = widget.getBounds();
-  const d = screen.getDisplayMatching(b);
+  const c = screen.getCursorScreenPoint();
+  const d = screen.getDisplayNearestPoint(drag ? c : { x: b.x + b.width / 2, y: b.y + b.height - PANEL_H / 2 });
   settings.widget = { ...settings.widget, x: b.x, y: b.y, display: d.id };
   saveSettings();
 }
