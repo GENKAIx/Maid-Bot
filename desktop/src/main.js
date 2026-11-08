@@ -90,20 +90,21 @@ function showMain(settingsOnly = false) {
 }
 
 // --- виджет ---
+// Окно горничной: панель сверху и фигурка снизу справа.
 function widgetBounds() {
-  const w = 300;
-  const h = 360;
+  const w = 340;
+  const h = 640;
   const displays = screen.getAllDisplays();
   const d = displays.find((x) => x.id === settings.widget.display) ?? screen.getPrimaryDisplay();
   const a = d.workArea;
-  let x = settings.widget.x ?? a.x + a.width - w - 24;
-  let y = settings.widget.y ?? a.y + 24;
+  let x = settings.widget.x ?? a.x + a.width - w - 12;
+  let y = settings.widget.y ?? a.y + a.height - h;
   // Сохранённое место вне всех экранов (монитор отключили) — вернуть на основной.
   const visible = displays.some((s) => x >= s.bounds.x - w / 2 && x < s.bounds.x + s.bounds.width - w / 2 && y >= s.bounds.y && y < s.bounds.y + s.bounds.height - 40);
   if (!visible) {
     const p = screen.getPrimaryDisplay().workArea;
-    x = p.x + p.width - w - 24;
-    y = p.y + 24;
+    x = p.x + p.width - w - 12;
+    y = p.y + p.height - h;
   }
   return { x, y, width: w, height: h };
 }
@@ -131,11 +132,17 @@ function createWidget() {
   widget.on("closed", () => (widget = null));
 }
 
-/** Взять виджет: можно таскать и кликать. Отпустить: клики идут сквозь него в окна под ним. */
+/** Взять виджет: можно таскать и кликать. Отпустить: клики идут сквозь него в окна под ним,
+ * кроме фигурки и облачка — пока курсор над ними, мышь включается (hover). */
+let hovering = false;
+function applyMouse() {
+  if (!widget) return;
+  widget.setIgnoreMouseEvents(!(grabbed || hovering), { forward: true });
+}
 function setGrab(on) {
   grabbed = on;
   if (!widget) return;
-  widget.setIgnoreMouseEvents(!on, { forward: true });
+  applyMouse();
   widget.setFocusable(on);
   if (on) widget.focus();
   widget.webContents.send("grab", on);
@@ -240,6 +247,10 @@ ipcMain.on("changed", () => broadcast("changed", null));
 ipcMain.on("open-main", () => showMain());
 ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
+ipcMain.on("hover", (_e, on) => { hovering = Boolean(on); applyMouse(); });
+ipcMain.on("quick-show", showQuick);
+ipcMain.on("thinking", (_e, on) => widget?.webContents.send("thinking", on));
+ipcMain.on("reply", (_e, r) => widget?.webContents.send("reply", r));
 ipcMain.on("notify", (_e, title, body) => new Notification({ title, body }).show());
 
 if (!app.requestSingleInstanceLock()) app.quit();

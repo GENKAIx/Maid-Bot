@@ -249,6 +249,12 @@ export function createApi(deps: ApiDeps) {
         (await store.habitsOn(u.id, today)).slice(0, 1).map((h) => habitButtons(h.id, today)[0]));
       return { sent };
     }
+    // Лента уведомлений для горничной на ПК: ?after=<id> — только новые; пусто — последние.
+    if (m === "GET" && p === "/api/notices") {
+      const after = Number(q("after") ?? 0);
+      const rows = await store.noticesAfter(u.id, Number.isFinite(after) ? after : 0, after ? 20 : 1);
+      return rows.map((r) => ({ ...r, buttons: r.buttons ? (JSON.parse(r.buttons) as Button[]) : [] }));
+    }
     if (m === "GET" && p === "/api/today") return todayJson(store, u);
     if (m === "GET" && p === "/api/day") {
       const day = q("day") ?? today;

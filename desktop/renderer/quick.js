@@ -18,15 +18,18 @@ $("#f").onsubmit = async (e) => {
   if (!text) return;
   t.disabled = true;
   out.textContent = "…";
+  maid.thinking(true);
   try {
     last = await maid.api("POST", "/api/input", { text, id: crypto.randomUUID() });
     out.innerHTML = tgHtml(last.text) + (last.undoable ? '<br><span class="small">Ctrl+Z — отменить</span>' : "");
+    maid.reply({ text: last.text, emotion: last.emotion });
     t.value = "";
     maid.changed();
     setTimeout(() => !t.value && maid.hideQuick(), 4000);
   } catch (err) {
     out.textContent = err.message;
   } finally {
+    maid.thinking(false);
     t.disabled = false;
     t.focus();
   }

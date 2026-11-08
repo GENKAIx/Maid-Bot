@@ -32,6 +32,8 @@ if (tg) {
 
 // Уведомление уходит всюду, где пользователь есть: в Telegram и на все push-подписки браузеров.
 const send: Send = async (u, text, emotion, buttons) => {
+  await store.addNotice(u.id, text, emotion, buttons?.length ? JSON.stringify(buttons) : "");
+  await store.pruneNotices(u.id);
   const jobs: Promise<unknown>[] = [push.send(u, text, emotion, buttons)];
   if (tg && u.chat_id) jobs.push(tg.send(u, text, emotion, buttons));
   await Promise.all(jobs);

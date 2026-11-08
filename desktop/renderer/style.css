@@ -60,13 +60,51 @@ main { display: flex; flex-direction: column; min-width: 0; }
 
 /* --- виджет --- */
 body.widget { background: transparent; overflow: hidden; user-select: none; }
+.stage { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; }
 .w {
-  margin: 8px; height: calc(100% - 16px); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  margin: 8px; width: calc(100% - 16px); height: 330px; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
   background: rgba(29, 27, 34, .78); border: 1px solid rgba(255, 255, 255, .08); backdrop-filter: blur(12px);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, .35); overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35); overflow: hidden; transition: opacity .25s, transform .25s;
 }
-.w.grab { border-color: var(--accent); -webkit-app-region: drag; }
-.w.grab button, .w.grab input, .w.grab .check { -webkit-app-region: no-drag; }
+.w.hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
+.stage.grab .w { border-color: var(--accent); -webkit-app-region: drag; }
+.stage.grab .w button, .stage.grab .w input, .stage.grab .check, .stage.grab .mark { -webkit-app-region: no-drag; }
+.stage.grab .maid { -webkit-app-region: drag; }
+.w .mark { width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid var(--muted); flex: none; font-size: 12px; display: grid; place-items: center; cursor: pointer; }
+.w .mark.done { background: var(--accent-2); border-color: var(--accent-2); color: #1d1b22; }
+.w .mark.skipped { background: var(--muted); border-color: var(--muted); color: #1d1b22; }
+
+/* --- горничная --- */
+.maid { position: relative; width: 190px; height: 214px; margin: 0 4px 0 0; cursor: pointer; transform-origin: 50% 100%; animation: breathe 4.2s ease-in-out infinite; }
+.maid img, .maid video { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; pointer-events: none; }
+.maid .think { display: none; width: 110%; left: -5%; }
+.maid.thinking .face { display: none; }
+.maid.thinking .think { display: block; }
+.maid.grumpy { animation: grumpy .5s ease-in-out infinite; filter: saturate(1.2); }
+.maid.sleeping { animation: breathe 6s ease-in-out infinite; filter: brightness(.85); }
+.maid .zzz { display: none; position: absolute; right: -4px; top: 6px; color: #cbd5ff; font-weight: 700; font-size: 16px; text-shadow: 0 0 6px rgba(0,0,0,.6); }
+.maid.sleeping .zzz { display: block; }
+.maid .zzz span { display: inline-block; animation: zz 2.4s ease-in-out infinite; }
+.maid .zzz span:nth-child(2) { animation-delay: .8s; font-size: 13px; }
+@keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.018); } }
+@keyframes grumpy { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+@keyframes zz { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(10px, -16px); } }
+
+.bubble {
+  position: relative; max-width: 300px; margin: 0 8px 8px 8px; padding: 10px 12px; border-radius: 14px; font-size: 13px; line-height: 1.35;
+  background: rgba(255, 255, 255, .96); color: #241a2e; box-shadow: 0 6px 20px rgba(0,0,0,.3); white-space: pre-wrap;
+  animation: pop .2s ease; transition: opacity .25s;
+}
+.bubble::after { content: ""; position: absolute; right: 70px; bottom: -8px; border: 8px solid transparent; border-top-color: rgba(255,255,255,.96); border-bottom: 0; }
+.bubble.hidden { opacity: 0; pointer-events: none; }
+.bubble.angry { background: #ffe3e3; } .bubble.angry::after { border-top-color: #ffe3e3; }
+.bubble.happy, .bubble.proud { background: #ecfdf3; } .bubble.happy::after, .bubble.proud::after { border-top-color: #ecfdf3; }
+.bubble-text { max-height: 170px; overflow: auto; }
+.bubble-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.bubble-actions:empty { display: none; }
+.bubble-actions button { background: #f1ecf8; color: #241a2e; border-color: #e0d6ee; padding: 4px 10px; font-size: 12px; }
+.bubble-actions button.ghost { margin-left: auto; background: transparent; border-color: transparent; }
+@keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 .w .head { display: flex; justify-content: space-between; align-items: baseline; }
 .w .clock { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .w .next { background: rgba(215, 166, 255, .12); border-radius: 10px; padding: 8px 10px; }

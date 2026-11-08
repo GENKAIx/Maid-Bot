@@ -205,6 +205,18 @@ CREATE TABLE IF NOT EXISTS push_subs (
 );
 ALTER TABLE reminders ADD COLUMN buttons TEXT NOT NULL DEFAULT '';
 `,
+  // Шаг 3: лента уведомлений — то же, что ушло в Telegram и push, для горничной на ПК.
+  `
+CREATE TABLE IF NOT EXISTS notices (
+  id {pk},
+  user_id INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  emotion TEXT NOT NULL DEFAULT 'neutral',
+  buttons TEXT NOT NULL DEFAULT '',
+  at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS notices_user ON notices (user_id, id);
+`,
 ];
 
 export interface User {
@@ -343,6 +355,14 @@ export interface ReminderRow {
   status: string;
   /** JSON-массив кнопок (scheduler.Button) или пусто. */
   buttons: string;
+}
+export interface NoticeRow {
+  id: number;
+  user_id: number;
+  text: string;
+  emotion: string;
+  buttons: string;
+  at: string;
 }
 export interface PushSub {
   endpoint: string;
@@ -772,6 +792,20 @@ export class Store {
     await this.run(
       "INSERT INTO reminders (user_id, ref_kind, ref_id, due_at, text, buttons) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (ref_kind, ref_id, due_at) DO NOTHING",
       userId, refKind, refId, dueAt.toISOString(), text, buttons,
+    );
+  }
+
+  // --- лента уведомлений ---
+  addNotice(userId: number, text: string, emotion: string, buttons = ""): Promise<number> {
+    return this.insert("INSERT INTO notices (user_id, text, emotion, buttons, at) VALUES (?, ?, ?, ?, ?)", userId, text, emotion, buttons, now());
+  }
+  noticesAfter(userId: number, afterId: number, limit = 20): Promise<NoticeRow[]> {
+    return this.all<NoticeRow>("SELECT * FROM notices WHERE user_id = ? AND id > ? ORDER BY id DESC LIMIT ?", userId, afterId, limit);
+  }
+  async pruneNotices(userId: number, keep = 200) {
+    await this.run(
+      "DELETE FROM notices WHERE user_id = ? AND id < (SELECT COALESCE(MIN(id), 0) FROM (SELECT id FROM notices WHERE user_id = ? ORDER BY id DESC LIMIT ?) t)",
+      userId, userId, keep,
     );
   }
 

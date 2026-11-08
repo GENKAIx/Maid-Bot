@@ -84,6 +84,15 @@ test("push: подписка, кнопка без входа отмечает п
     assert.equal((await call("/api/push/unsubscribe", { endpoint: sub.endpoint }, token)).json.ok, true);
     assert.equal((await call("/api/push/key", undefined, token)).json.subs.length, 0);
 
+    // Лента уведомлений для ПК.
+    await store.addNotice(u.id, "🔁 Пора: Витамины", "neutral", JSON.stringify(habitButtons(hid, day)));
+    const n1 = (await call("/api/notices", undefined, token)).json;
+    assert.equal(n1.length, 1);
+    assert.equal(n1[0].buttons[0].data, `habit:${hid}:${day}:done`);
+    assert.equal((await call(`/api/notices?after=${n1[0].id}`, undefined, token)).json.length, 0);
+    await store.addNotice(u.id, "второе", "happy");
+    assert.deepEqual((await call(`/api/notices?after=${n1[0].id}`, undefined, token)).json.map((x: any) => x.text), ["второе"]);
+
     // Настройки времени и предупреждений.
     const me = (await call("/api/settings", { morning_time: "08:30", game_first_min: 90, game_alerts: 0 }, token)).json;
     assert.equal(me.morning_time, "08:30");
