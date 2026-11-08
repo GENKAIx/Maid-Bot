@@ -140,6 +140,13 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       assert.ok(JSON.stringify(month.habits).includes(day));
       assert.equal((await habitsOfDay(store, u, day))[0].status, "done");
 
+      // Статистика и даты для приложения.
+      await store.upsertActivity({ user_id: u.id, day_key: "2026-11-02", source: "aw", active_sec: 3600, afk_sec: 0, apps: [{ name: "chrome.exe", sec: 3600 }], games: [] });
+      const act = (await call("/api/activity?from=2026-11-01&to=2026-11-03", undefined, token)).json;
+      assert.deepEqual(act.map((a: any) => [a.day_key, a.active_sec]), [["2026-11-02", 3600]]);
+      await store.addDate({ user_id: u.id, title: "ДР Васи", date_iso: "1990-03-15", type: "birthday", person: "Вася", notes: "", yearly: 1, message_id: null });
+      assert.equal((await call("/api/dates?all=1", undefined, token)).json.length, 1);
+
       // Веб-приложение: любой день, список дней, удаление записи.
       const d1 = (await call("/api/day?day=2026-11-01", undefined, token)).json;
       assert.deepEqual(d1.diary.map((r: any) => r.text), ["Болела голова после экрана"]);

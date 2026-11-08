@@ -538,7 +538,7 @@ export class Store {
   async diaryTopics(userId: number, section: string): Promise<{ topic: string; n: number; last: string }[]> {
     return this.all(
       `SELECT topic, CAST(COUNT(*) AS INTEGER) AS n, MAX(day_key) AS last FROM diary
-       WHERE user_id = ? AND section = ? AND deleted = 0 AND topic <> '' GROUP BY topic ORDER BY n DESC`, userId, section,
+       WHERE user_id = ? AND section = ? AND deleted = 0 GROUP BY topic ORDER BY n DESC`, userId, section,
     );
   }
   async diaryDays(userId: number): Promise<string[]> {

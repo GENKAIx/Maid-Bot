@@ -131,7 +131,7 @@ export function createApi(deps: ApiDeps) {
     const p = url.pathname;
     const q = (k: string) => url.searchParams.get(k) ?? undefined;
     const m = req.method ?? "GET";
-    if (p === "/health") return { ok: true };
+    if (p === "/healthz") return { ok: true }; // проверка живости (Render); /health — экран приложения
     if (p === "/webhook" && m === "POST" && deps.webhook) {
       await deps.webhook(req, res);
       return undefined;
@@ -179,7 +179,12 @@ export function createApi(deps: ApiDeps) {
       return { ok: true };
     }
     if (m === "GET" && p === "/api/tasks") return store.openTasks(u.id);
-    if (m === "GET" && p === "/api/dates") return (await todayJson(store, u)).dates;
+    // ?all=1 — все даты с ближайшим наступлением (в течение года), иначе ближайшие 30 дней.
+    if (m === "GET" && p === "/api/dates") {
+      const within = q("all") ? 366 : 30;
+      return upcomingDates(await store.activeDates(u.id), today, within).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age }));
+    }
+    if (m === "GET" && p === "/api/activity") return store.activityRange(u.id, q("from") ?? addDays(today, -30), q("to") ?? today);
     if (m === "GET" && p === "/api/events") return store.eventsBetween(u.id, q("from") ?? today, q("to") ?? addDays(today, 30));
     const task = p.match(/^\/api\/tasks\/(\d+)$/);
     if (m === "POST" && task) {
@@ -228,7 +233,8 @@ export function createApi(deps: ApiDeps) {
     }
     if (m === "GET" && p === "/api/health/topics") {
       const used = await store.diaryTopics(u.id, "health");
-      return used.map((t) => ({ ...t, name: HEALTH_TOPICS[t.topic] ?? t.topic }));
+      // Пустой подраздел — записи до подразделов (перенос из Excel) и те, где модель его не назвала.
+      return used.map((t) => ({ ...t, name: t.topic ? HEALTH_TOPICS[t.topic] ?? t.topic : "Без подраздела" }));
     }
 
     if (m === "POST" && p === "/api/input") {
