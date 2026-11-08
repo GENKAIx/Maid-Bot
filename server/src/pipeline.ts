@@ -4,9 +4,10 @@ import { extractJson } from "./llm.ts";
 import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
 import { scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
-import { changesList, diaryDigest, esc, metricLine, moneyLine } from "./report.ts";
+import { changesList, esc, metricLine, moneyLine } from "./report.ts";
 import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
 import { planEventReminders } from "./scheduler.ts";
+import { EVER, answerData, linkDays } from "./ask.ts";
 
 // Сообщение → запись → разбор → действия → ответ.
 // Порядок важен: сначала сохраняем сырое сообщение (повтор доставки найдёт его), потом разбор,
@@ -27,6 +28,8 @@ export interface Reply {
   undoable: boolean;
   duplicate?: boolean;
   changes?: Change[];
+  /** Дни, о которых ответ на вопрос (ГГГГ-ММ-ДД) — ссылки на дневник. */
+  days?: string[];
 }
 
 export interface Incoming {
@@ -40,7 +43,8 @@ export interface Incoming {
 }
 
 export class Pipeline {
-  constructor(private store: Store, private llm: LlmCall) {}
+  /** publicUrl — адрес веб-приложения для ссылок на дни в ответах (пусто — без ссылок). */
+  constructor(private store: Store, private llm: LlmCall, private publicUrl = "") {}
 
   async handle(inc: Incoming): Promise<Reply> {
     const s = this.store;
@@ -101,10 +105,10 @@ export class Pipeline {
     }
 
     if (parsed.question) {
-      const answer = await this.answer(u, parsed, inc.text, today);
+      const { text: answer, days } = await this.answer(u, parsed, inc.text, today);
       await s.setMessage(message.id, { state: "done", reply: answer });
       if (original) await s.setMessage(original.id, { state: "done" });
-      return { text: answer, emotion: parsed.emotion, messageId: message.id, undoable: false };
+      return { text: answer, emotion: parsed.emotion, messageId: message.id, undoable: false, days };
     }
 
     const target = original ?? message;
@@ -342,22 +346,23 @@ export class Pipeline {
     return "Записала целиком в заметки.";
   }
 
-  private async answer(u: User, r: Parsed, question: string, today: string): Promise<string> {
-    const range = r.lookup ?? { from: addDays(today, -7), to: today };
-    const data = await diaryDigest(this.store, u, range.from, range.to);
+  private async answer(u: User, r: Parsed, question: string, today: string): Promise<{ text: string; days: string[] }> {
+    const range = r.lookup ?? (r.search.length ? { from: EVER, to: today } : { from: addDays(today, -7), to: today });
+    const data = await answerData(this.store, u, range, r.search);
     try {
       const out = await this.llm([
         {
           role: "system",
           content: `${persona(u.persona).voice}\nОтвечай на вопрос пользователя только по его записям ниже. ` +
-            `Нет данных — так и скажи, не выдумывай. Коротко, 1–4 предложения. Сегодня ${today}.\n\nЗаписи ${range.from}…${range.to}:\n${data}`,
+            `Нет данных — так и скажи, не выдумывай. Коротко, 1–4 предложения. Сегодня ${today}. ` +
+            `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай.\n\n${data}`,
         },
         { role: "user", content: question },
       ], { temperature: 0.4 });
-      return esc(out.trim());
+      return linkDays(esc(out.trim()), this.publicUrl, today);
     } catch (e) {
       console.error("[answer]", e);
-      return persona(u.persona).failed;
+      return { text: persona(u.persona).failed, days: [] };
     }
   }
 

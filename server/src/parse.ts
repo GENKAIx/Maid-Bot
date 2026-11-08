@@ -146,6 +146,7 @@ export const ParseSchema = z.object({
   money: arr(Money),
   edits: arr(Edit),
   question: optStr,
+  search: z.preprocess((v) => (typeof v === "string" ? [v] : Array.isArray(v) ? v : []), z.array(z.string()).catch([])),
   lookup: z
     .object({ from: optStr, to: optStr })
     .nullable()
@@ -173,6 +174,8 @@ export interface Parsed {
   edits: { action: "cancel" | "done" | "move" | "reopen"; kind: "event" | "task" | "date" | "memory" | "habit"; id: number; newDate: string | null; newTime: string | null }[];
   question: string | null;
   lookup: { from: string; to: string } | null;
+  /** Корни слов для поиска по всем записям («сердц», «голов»). */
+  search: string[];
   clarify: string | null;
   emotion: (typeof EMOTIONS)[number];
   reply: string | null;
@@ -220,7 +223,8 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "memory": [{"kind": "fact|preference|person|goal", "subject": "о ком/о чём", "text": "...", "replaces": null}],
  "edits": [{"action": "cancel|done|move|reopen", "kind": "event|task|date|memory", "id": 12, "new_date": null, "new_time": null}],
  "question": "если пользователь спрашивает о своих данных — вопрос, иначе null",
- "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни дневника нужны для ответа,
+ "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни нужны для ответа (null — за всё время),
+ "search": ["корни слов для поиска по записям, напр. сердц, кардиолог"] — только если вопрос про конкретную вещь,
  "clarify": "один короткий вопрос, если без него нельзя записать правильно, иначе null",
  "emotion": "${EMOTIONS.join("|")}",
  "reply": "короткая живая реплика на сообщение (1 предложение) или null"
@@ -252,6 +256,8 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 - memory — устойчивые факты о жизни пользователя (люди, предпочтения, цели), не события дня.
   Если факт меняет старый — replaces = номер старого.
 - Вопрос о прошлом («что я ел в понедельник?») — question + lookup, остальное пустое.
+  «Когда болело сердце?» — question + search ["сердц", "кардиолог"], lookup null (искать за всё время).
+  «Сколько потратил на еду в октябре?» — question + lookup на октябрь, search пустой (суммы код посчитает сам).
 - Только поболтать (без фактов) — всё пустое, кроме reply и emotion.
 
 Голос для reply: ${voice}
@@ -431,7 +437,8 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
   }
 
   let lookup: Parsed["lookup"] = null;
-  if (r.question && r.lookup) {
+  const search = r.question ? [...new Set(r.search.map((w) => w.trim().toLowerCase()).filter((w) => w.length >= 3))].slice(0, 8) : [];
+  if (r.question && r.lookup && (r.lookup.from || r.lookup.to)) {
     const from = day(r.lookup.from, "lookup.from") ?? addDays(ctx.today, -7);
     const to = day(r.lookup.to, "lookup.to") ?? ctx.today;
     lookup = from <= to ? { from, to } : { from: to, to: from };
@@ -461,6 +468,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     edits,
     question: r.question ?? null,
     lookup,
+    search,
     clarify,
     emotion: r.emotion,
     reply: r.reply ?? null,

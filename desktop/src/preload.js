@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("maid", {
   trackNow: () => ipcRenderer.invoke("tracker:now"),
   changed: () => ipcRenderer.send("changed"),
   openMain: () => ipcRenderer.send("open-main"),
+  /** Открыть день дневника в веб-приложении (браузер). */
+  openDay: (day) => ipcRenderer.send("open-day", day),
   openQuick: () => ipcRenderer.send("quick-show"),
   hideQuick: () => ipcRenderer.send("quick-hide"),
   grab: (on) => ipcRenderer.send("grab", on),

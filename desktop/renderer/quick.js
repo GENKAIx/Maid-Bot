@@ -22,7 +22,7 @@ $("#f").onsubmit = async (e) => {
   try {
     last = await maid.api("POST", "/api/input", { text, id: crypto.randomUUID() });
     out.innerHTML = tgHtml(last.text) + (last.undoable ? '<br><span class="small">Ctrl+Z — отменить</span>' : "");
-    maid.reply({ text: last.text, emotion: last.emotion, changes: last.changes, undoable: last.undoable, messageId: last.messageId });
+    maid.reply({ text: last.text, emotion: last.emotion, changes: last.changes, undoable: last.undoable, messageId: last.messageId, days: last.days });
     t.value = "";
     maid.changed();
     setTimeout(() => !t.value && maid.hideQuick(), 4000);

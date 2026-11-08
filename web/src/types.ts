@@ -111,4 +111,6 @@ export interface Reply {
   messageId: number;
   undoable: boolean;
   duplicate?: boolean;
+  /** Дни, о которых ответ на вопрос (ГГГГ-ММ-ДД). */
+  days?: string[];
 }

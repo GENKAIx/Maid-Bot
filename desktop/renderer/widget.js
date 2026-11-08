@@ -61,8 +61,10 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [] } = {}) {
   const b = $("#bubble");
+  // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
+  if (days.length) text = text.replace(/\n📅 .*$/, "");
   // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
   const plain = changes.length ? text.split("\n")[0] : text;
   $("#bubbleText").innerHTML = tgHtml(plain);
@@ -77,6 +79,13 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     cards.appendChild(el);
     setTimeout(() => play("pop"), 160 + i * 140);
   });
+  for (const d of days) {
+    const el = document.createElement("button");
+    el.className = "card day";
+    el.textContent = "📅 " + humanDay(d).split(",")[0];
+    el.onclick = () => maid.openDay(d);
+    cards.appendChild(el);
+  }
   const acts = $("#bubbleActions");
   acts.innerHTML = buttons.map((x, i) => `<button data-i="${i}">${esc(x.text)}</button>`).join("")
     + (undo ? `<button data-i="undo">↩ Отменить</button>` : "") + `<button class="ghost" data-i="close">✕</button>`;
@@ -129,7 +138,7 @@ async function sendChat() {
   say("…", { ms: 0 });
   try {
     const r = await maid.api("POST", "/api/input", { text, id: crypto.randomUUID() });
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null });
     maid.changed();
   } catch (e) {
     say(e.message, { emotion: "worried", ms: 8000, sound: "oops" });
@@ -234,7 +243,7 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", load);
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
-maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null }));
+maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null }));
 maid.on("opacity", (o) => ($("#w").style.opacity = String(o)));
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам

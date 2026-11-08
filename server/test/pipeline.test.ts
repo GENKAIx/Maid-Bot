@@ -215,6 +215,37 @@ test("дело со временем в названии — план с нап�
   assert.deepEqual(p.tasks.map((t) => t.title), ["Купить лампочку", "Позвонить в 7"]);
 });
 
+test("вопрос по записям: поиск за всё время, точные суммы денег, ссылки на дни", async () => {
+  const { store, u, calls } = await setup([]);
+  await store.addDiary(u.id, "2026-03-14", "health", "кололо сердце после бега", null, "heart");
+  await store.addDiary(u.id, "2026-10-02", "health", "Сердце снова шалило вечером", null, "heart");
+  await store.addDiary(u.id, "2026-10-05", "health", "болела голова", null, "head");
+  for (const [d, a, c] of [["2026-10-03", 500, "еда"], ["2026-10-20", 1250.5, "еда"], ["2026-10-21", 3000, "такси"], ["2026-11-01", 999, "еда"]] as const) {
+    await store.addMoney({ user_id: u.id, day_key: d, kind: "expense", amount: a, currency: "RUB", category: c, note: "", message_id: null });
+  }
+  const answers: unknown[] = [
+    { question: "когда болело сердце?", search: ["сердц"], lookup: null },
+    "Сердце болело 2026-03-14 и 2026-10-02.",
+    { question: "сколько потратил на еду в октябре?", lookup: { from: "2026-10-01", to: "2026-10-31" } },
+    "На еду в октябре ушло 1 750,5 RUB.",
+  ];
+  const llm: LlmCall = async (m) => { calls.push(m); const a = answers.shift(); return typeof a === "string" ? a : JSON.stringify(a); };
+  const pipe = new Pipeline(store, llm, "http://maid.test");
+
+  const r = await pipe.handle({ user: u, ...msg("когда болело сердце?", "q1") });
+  const data = calls[1][0].content;
+  assert.match(data, /2026-03-14 .*кололо сердце/);
+  assert.match(data, /2026-10-02 .*Сердце снова/);
+  assert.doesNotMatch(data, /болела голова/);
+  assert.deepEqual(r.days, ["2026-03-14", "2026-10-02"]);
+  assert.match(r.text, /Сердце болело 14 марта и 2 октября\./);
+  assert.match(r.text, /<a href="http:\/\/maid\.test\/diary\/2026-10-02">2 октября<\/a>/);
+
+  await pipe.handle({ user: u, ...msg("сколько потратил на еду в октябре?", "q2") });
+  const totals = calls[3][0].content;
+  assert.match(totals, /Расход всего 4[\s ]750,5 RUB; по категориям: такси 3[\s ]000, еда 1[\s ]750,5/);
+});
+
 test("«Это просто заметка» заменяет разбор записью целиком", async () => {
   const { store, u, pipe } = await setup([{ tasks: [{ title: "Позвонить" }], summary: "s" }]);
   const r = await pipe.handle({ user: u, ...msg("надо бы позвонить, но это просто мысль", "50") });

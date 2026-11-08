@@ -15,7 +15,7 @@ import { Scheduler, type Send } from "./scheduler.ts";
 
 const store = await Store.open(config.databaseUrl || config.dbFile);
 console.log(`[start] база: ${config.databaseUrl ? "Postgres" : "SQLite " + config.dbFile}`);
-const pipeline = new Pipeline(store, callLlm);
+const pipeline = new Pipeline(store, callLlm, config.publicUrl);
 
 if (!llmReady()) console.warn("[start] LLM_API_KEY не задан — разбор сообщений не работает");
 

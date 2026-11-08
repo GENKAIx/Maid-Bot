@@ -3,7 +3,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell } = require("electron");
 const { collectDay, localDay } = require("./activity.js");
 
 const DEFAULTS = {
@@ -266,6 +266,10 @@ function broadcast(channel, data) {
 
 // --- связь с окнами ---
 ipcMain.handle("api", (_e, method, p, body) => api(method, p, body));
+ipcMain.on("open-day", (_e, day) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day)) || !/^https?:\/\//.test(settings.server)) return;
+  shell.openExternal(`${settings.server.replace(/\/$/, "")}/diary/${day}`);
+});
 ipcMain.handle("settings:get", () => ({ ...settings, tracker: { ...settings.tracker, state: trackerState } }));
 ipcMain.on("widget-ready", (e) => e.sender.send("opacity", settings.widget.opacity));
 ipcMain.handle("settings:set", (_e, patch) => {

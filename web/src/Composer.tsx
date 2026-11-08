@@ -1,6 +1,7 @@
 import { type FormEvent, useRef, useState } from "react";
 import { post } from "./api";
 import { plainReply } from "./format";
+import { navigate } from "./router";
 import type { Reply } from "./types";
 
 // Строка ввода на каждом экране: пишешь как в чат. Ответ горничной — снизу, с кнопкой «Отменить».
@@ -51,7 +52,16 @@ export function Composer({ onChanged }: { onChanged: () => void }) {
     <div className="composer-wrap">
       {reply && (
         <div className={`toast ${reply.error ? "bad" : ""}`}>
-          <div className="toast-text">{reply.text}</div>
+          <div className="toast-text">
+            {reply.reply?.days?.length ? reply.text.replace(/\n📅 .*$/, "") : reply.text}
+            {!!reply.reply?.days?.length && (
+              <div className="toast-days">
+                {reply.reply.days.map((d) => (
+                  <button key={d} onClick={() => { navigate(`/diary/${d}`); setReply(null); }}>📅 {dayChip(d)}</button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="toast-actions">
             {reply.reply?.undoable && <button onClick={undo}>↩ Отменить</button>}
             <button className="ghost" onClick={() => setReply(null)}>✕</button>
@@ -73,4 +83,10 @@ export function Composer({ onChanged }: { onChanged: () => void }) {
       </form>
     </div>
   );
+}
+
+const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+function dayChip(d: string) {
+  const [y, m, day] = d.split("-").map(Number);
+  return `${day} ${MONTHS[m - 1]}${y !== new Date().getFullYear() ? " " + y : ""}`;
 }
