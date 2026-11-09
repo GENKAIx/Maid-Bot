@@ -78,8 +78,9 @@ async function renderSettings() {
       <p class="small muted">Трекер: ${st.error ? `<span class="high">${esc(st.error)}</span>` : st.last ? `отправлено ${new Date(st.last).toLocaleTimeString("ru-RU")}` : "ещё не отправлял"}</p>
       <div class="row"><button class="primary" id="save">Сохранить</button><button id="tnow">Отправить ПК сейчас</button></div>
     </div>`;
+  // Сохранить, проверить ключ на сервере и, если всё верно, открыть свой аккаунт (сайт) в этом окне.
   $("#save").onclick = async () => {
-    await maid.saveSettings({
+    const saved = await maid.saveSettings({
       server: $("#server").value.trim(),
       token: $("#token").value.trim(),
       widget: { show: $("#wshow").checked, opacity: Number($("#wop").value) },
@@ -87,8 +88,15 @@ async function renderSettings() {
       keys: { quick: $("#kq").value.trim(), grab: $("#kg").value.trim() },
       autostart: $("#auto").checked,
     });
-    toast("Сохранено.");
     today = null;
+    if (!saved.server || !saved.token) return toast("Сохранено. Чтобы войти, нужны адрес сервера и ключ.");
+    toast("Сохранено. Проверяю ключ…");
+    try {
+      await maid.api("GET", "/api/today");
+      maid.openMain();
+    } catch (e) {
+      toast(`Сохранено, но войти не вышло: ${esc(e.message)}`);
+    }
   };
   $("#tnow").onclick = async () => {
     await maid.trackNow();
