@@ -739,3 +739,11 @@ body.quick { background: transparent; }
 @keyframes plShine { to { transform: translateX(110%); } }
 .pl-check { position: relative; }
 .pl-check b.ring, .pl-check b.spark { display: block; }
+
+/* Окно «Задать время» (ПКМ по плану): начало, конец, сохранить. */
+.pl-menu.rp-box.tm-box { width: 250px; }
+.tm-box .rp-row input { width: 100%; }
+.tm-err { min-height: 0; color: #ff9b9b; font-size: 11.5px; }
+.tm-err:empty { display: none; }
+.tm-act { display: flex; justify-content: flex-end; }
+.rp-box .tm-save { background: var(--accent, #6c5ce7); color: #fff; padding: 5px 14px; }

@@ -327,11 +327,11 @@ function drawPlanList(box) {
     if (start !== null && (end === null || end <= start)) end = start + NO_END_MIN;
     const past = today && !st && end !== null && end <= nowMin;
     const now = today && !st && start !== null && start <= nowMin && nowMin < end;
-    const when = e.time ? `в ${esc(e.time)}${e.end_time ? `–${esc(e.end_time)}` : ""}` : "без времени";
+    const when = e.time ? `<b class="pl-when">в ${esc(e.time)}${e.end_time ? `–${esc(e.end_time)}` : ""}</b> · ` : ""; // без времени — только название
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
       <button type="button" class="pl-check${st === "done" ? " on" : st === "cancelled" ? " on off" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : st === "cancelled" ? "<i>×</i><b>↺</b>" : ""}</button>`;
     return `<li class="pl-card${st ? ` ${st}` : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
-      <span class="pl-text"><b class="pl-when">${when}</b> · ${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}</span>${tools}</li>`;
+      <span class="pl-text">${when}${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}</span>${tools}</li>`;
   };
   box.innerHTML = `
     ${headHtml(dayName, count)}
@@ -1106,7 +1106,7 @@ async function retimePlan(e, start, end, r) {
   try {
     await maid.api("POST", `/api/events/${e.id}`, body);
     popTone(2);
-    sayUnlessClash({ ...e, ...body }, e.date_iso, `Сдвинула «${e.title}» на ${body.time}${body.end_time ? `–${body.end_time}` : ""} ✓`);
+    sayUnlessClash({ ...e, ...body }, e.date_iso, `${e.time ? "Сдвинула" : "Поставила"} «${e.title}» на ${body.time}${body.end_time ? `–${body.end_time}` : ""} ✓`);
     farPlans.clear();
     maid.changed();
   } catch (err) {
@@ -1256,6 +1256,7 @@ function openPlanMenu(e, li, x, y) {
   menu.className = "pl-menu";
   menu.innerHTML = item("repeat", spec ? `🔁 Повтор <span>${esc(howOften(spec, head.date_iso))}</span>` : "🔁 Повторять…")
     + `<hr>`
+    + (e.status === "active" || !e.status ? item("time", e.time ? "🕒 Изменить время" : "🕒 Задать время") : "")
     + item("move", "↪ Перенести на завтра")
     + item("copy", "⧉ Копия на завтра")
     + (e.status === "active" || !e.status ? item("done", "✓ Состоялось") + item("cancelled", "× Убрать из планов") : "");
@@ -1266,6 +1267,7 @@ function openPlanMenu(e, li, x, y) {
     const act = b.dataset.act;
     closePlanMenu();
     if (act === "repeat") return openRepeat(e);
+    if (act === "time") return openTime(e, x, y);
     if (act === "move") return movePlan(e, dayAfter(e.date_iso, 1), li);
     if (act === "copy") return copyPlan(e, dayAfter(e.date_iso, 1));
     setPlanStatus(e.id, act);
@@ -1282,6 +1284,43 @@ function showPlanMenu(menu, x, y) {
   // Пока меню или окно открыто — панель планов не прячется.
   clockHover = true;
   menu.addEventListener("mouseenter", () => { clockHover = true; });
+}
+
+// --- окно времени плана (ПКМ → «Задать время») ---
+function openTime(e, x, y) {
+  const box = document.createElement("div");
+  box.className = "pl-menu rp-box tm-box";
+  box.innerHTML = `<div class="rp-top"><b>${e.time ? "Время плана" : "Задать время"}</b><span class="rp-name">${esc(e.title)}</span><button type="button" class="rp-x" data-x title="Закрыть">✕</button></div>
+    <label class="rp-row"><span>Начало</span><input type="time" data-in="time" value="${esc(e.time ?? "")}"></label>
+    <label class="rp-row"><span>Конец</span><input type="time" data-in="end" value="${esc(e.end_time ?? "")}"></label>
+    <div class="tm-err"></div>
+    <div class="tm-act"><button type="button" class="tm-save" data-save>Сохранить</button></div>`;
+  showPlanMenu(box, x, y);
+  const start = box.querySelector('[data-in="time"]');
+  const end = box.querySelector('[data-in="end"]');
+  const err = box.querySelector(".tm-err");
+  setTimeout(() => start.focus(), 0);
+  const fail = (text) => {
+    err.textContent = text;
+    keepIn(box);
+  };
+  const save = () => {
+    if (!start.value) return fail("Укажите время начала");
+    if (end.value && end.value <= start.value) return fail("Конец должен быть позже начала");
+    closePlanMenu();
+    const [h, m] = start.value.split(":").map(Number);
+    const [eh, em] = end.value ? end.value.split(":").map(Number) : [];
+    retimePlan(e, h * 60 + m, end.value ? eh * 60 + em : null, null);
+  };
+  box.addEventListener("click", (ev) => {
+    if (ev.target.closest("[data-x]")) return closePlanMenu();
+    if (ev.target.closest("[data-save]")) save();
+  });
+  box.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") save();
+    if (ev.key === "Escape") closePlanMenu();
+  });
+  box.addEventListener("input", () => (err.textContent = ""));
 }
 
 /** Окно выросло (новые строки) — не уходить за низ экрана. */
