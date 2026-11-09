@@ -75,7 +75,9 @@ const ICONS: Record<string, string> = {
 };
 
 /** Адрес картинки эмодзи или undefined — тогда рисуется сам символ. */
-export const emojiIcon = (emoji: string) => (ICONS[emoji] ? `/emoji/${ICONS[emoji]}.png` : undefined);
+// ?v= — новая версия картинок (браузер держит старые /emoji/*.png в кэше); при замене картинок увеличить.
+const V = 2;
+export const emojiIcon = (emoji: string) => (ICONS[emoji] ? `/emoji/${ICONS[emoji]}.png?v=${V}` : undefined);
 
 export interface DayEmoji { emoji: string; what: string }
 
