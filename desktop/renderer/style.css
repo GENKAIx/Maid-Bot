@@ -423,7 +423,10 @@ body.quick { background: transparent; }
 .pl-card.leaving::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--c, #2f9e6e) 34%, transparent); transform: scaleX(0); transform-origin: left;
   animation: plFill 3s linear var(--fill-delay, 0ms) forwards; pointer-events: none; }
 .pl-card.leaving > * { position: relative; z-index: 1; }
-.pl-card.fly { animation: plFly .38s cubic-bezier(.5, 0, .9, .4) forwards; }
+.pl-card.hold::after { animation-play-state: paused; }
+.pl-card.fly { animation: plFly .38s cubic-bezier(.5, 0, .9, .4) forwards; transition: height .22s ease, min-height .22s ease, padding .22s ease, margin .22s ease; }
+.pl-card.fly.shut { height: 0 !important; min-height: 0; padding-top: 0; padding-bottom: 0; }
+.pl-card.pull { margin-top: -7px; transition: margin-top .22s ease; }
 @keyframes plFill { to { transform: scaleX(1); } }
 @keyframes plFly { to { transform: translateX(115%); opacity: 0; } }
 .pl-check i, .pl-check b { font-style: normal; font-weight: 400; }

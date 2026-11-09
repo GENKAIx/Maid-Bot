@@ -286,6 +286,7 @@ const planDone = new Map(); // id → { e, status, at } — отмеченные
 // залилась — улетает вправо (DONE_FLY мс) и пропадает.
 const DONE_FADE = 3000;
 const DONE_FLY = 380;
+const DONE_SHUT = 220;
 const doneTimers = new Map(); // id → таймер ухода
 function drawPlanList(box) {
   const today = clockDay === data.day;
@@ -335,9 +336,52 @@ function drawPlanList(box) {
   // Заливка продолжает идти с того же места, хотя список перерисован.
   for (const li of box.querySelectorAll(".pl-card.leaving")) {
     const at = planDone.get(Number(li.dataset.id))?.at ?? Date.now();
-    li.style.setProperty("--fill-delay", `-${Math.min(Date.now() - at, DONE_FADE)}ms`);
+    const x = planDone.get(Number(li.dataset.id));
+    li.style.setProperty("--fill-delay", `-${Math.min((x?.pausedAt ?? Date.now()) - at, DONE_FADE)}ms`);
+    if (x?.pausedAt) li.classList.add("hold");
   }
   box.style.height = `${Math.min(Math.max($("#w")?.offsetHeight ?? 0, 320), box.parentElement.clientHeight - 16)}px`;
+}
+// Отсчёт до улёта. Пока мышь на карточке, он стоит (и заливка тоже) — чтобы карточка не улетела из-под курсора.
+// Наведение, оставшееся от самого щелчка по галочке, не в счёт: пауза — только когда мышь ушла с карточки и вернулась.
+function planCountdown(id) {
+  const x = planDone.get(id);
+  if (x?.status !== "done" || x.pausedAt) return;
+  clearTimeout(doneTimers.get(id));
+  doneTimers.set(id, setTimeout(() => planFly(id), Math.max(0, DONE_FADE - (Date.now() - x.at))));
+}
+function planHold(id, on) {
+  const x = planDone.get(id);
+  if (x?.status !== "done" || !x.at || x.fly) return;
+  const li = document.querySelector(`#planClock .pl-card[data-id="${id}"]`);
+  if (on && !x.pausedAt) {
+    x.pausedAt = Date.now();
+    clearTimeout(doneTimers.get(id));
+    li?.classList.add("hold");
+  } else if (!on && x.pausedAt) {
+    x.at += Date.now() - x.pausedAt;
+    x.pausedAt = 0;
+    li?.classList.remove("hold");
+    planCountdown(id);
+  }
+}
+// Улёт вправо, потом место карточки плавно сжимается, и список подтягивается.
+function planFly(id) {
+  const x = planDone.get(id);
+  if (x?.status !== "done") return doneTimers.delete(id);
+  x.fly = true;
+  const li = document.querySelector(`#planClock .pl-card[data-id="${id}"]`);
+  li?.classList.add("fly");
+  doneTimers.set(id, setTimeout(() => {
+    const done = () => { doneTimers.delete(id); if (planDone.get(id)?.fly) { planDone.delete(id); drawClock(); } };
+    const el = document.querySelector(`#planClock .pl-card[data-id="${id}"]`);
+    if (!el) return done();
+    el.style.height = `${el.offsetHeight}px`;
+    void el.offsetHeight;
+    el.classList.add("shut");
+    el.nextElementSibling?.classList.add("pull"); // промежуток сетки под карточкой тоже уходит (отрицательный отступ у пустой строки сетка не берёт)
+    doneTimers.set(id, setTimeout(done, DONE_SHUT));
+  }, DONE_FLY));
 }
 function leaving(id) {
   const x = planDone.get(id);
@@ -351,16 +395,7 @@ async function setPlanStatus(id, status) {
   doneTimers.delete(id);
   if (status === "active") planDone.delete(id);
   else planDone.set(id, { e, status, at: status === "done" ? Date.now() : 0 });
-  if (status === "done") doneTimers.set(id, setTimeout(() => {
-    const x = planDone.get(id);
-    if (x?.status !== "done") return doneTimers.delete(id);
-    x.fly = true;
-    document.querySelector(`#planClock .pl-card[data-id="${id}"]`)?.classList.add("fly");
-    doneTimers.set(id, setTimeout(() => {
-      doneTimers.delete(id);
-      if (planDone.get(id)?.fly) { planDone.delete(id); drawClock(); }
-    }, DONE_FLY));
-  }, DONE_FADE));
+  if (status === "done") planCountdown(id);
   lastPlans?.delete(id); // своё действие — не показывать его как «удалено где-то ещё»
   drawClock();
   try {
@@ -424,6 +459,18 @@ function watchPlans() {
 
 $("#planClock").addEventListener("mouseenter", () => { clockHover = true; });
 $("#planClock").addEventListener("mouseleave", () => { clockHover = false; hideClockLater(); });
+// Пауза отсчёта у выполненного плана: мышь ушла с карточки — «взвести», вернулась — стоп, ушла снова — дальше.
+$("#planClock").addEventListener("mouseover", (e) => {
+  const li = e.target.closest(".pl-card.leaving");
+  if (li && !li.contains(e.relatedTarget) && planDone.get(Number(li.dataset.id))?.armed) planHold(Number(li.dataset.id), true);
+});
+$("#planClock").addEventListener("mouseout", (e) => {
+  const li = e.target.closest(".pl-card.leaving");
+  if (!li || li.contains(e.relatedTarget)) return;
+  const x = planDone.get(Number(li.dataset.id));
+  if (x) x.armed = true;
+  planHold(Number(li.dataset.id), false);
+});
 $("#planClock").addEventListener("click", (e) => {
   const dact = e.target.closest("[data-dact]");
   if (dact) {
