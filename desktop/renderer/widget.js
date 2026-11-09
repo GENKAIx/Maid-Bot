@@ -147,6 +147,11 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
         return;
       }
       const x = buttons[Number(btn.dataset.i)];
+      // Кнопка из самого виджета (не из уведомления сервера) — своё действие.
+      if (x.run) {
+        hideBubble();
+        return x.run();
+      }
       const m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/);
       try {
         if (m) {
@@ -567,12 +572,32 @@ function miniDay(day) {
   const [, m, d] = day.split("-").map(Number);
   return `${d} ${MONTHS[m - 1].slice(0, 3)}, ${humanDay(day).split(", ")[1]}`;
 }
+// Справа от точек — ближайший план сегодня («в 19:00 · Спортзал», «через 25 мин · …», «идёт · …»); планов больше нет — счёт задач.
+function miniPlan() {
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  for (const e of data.events ?? []) {
+    if (!e.time || (e.status && e.status !== "active")) continue;
+    const [h, m] = e.time.split(":").map(Number);
+    const start = h * 60 + m;
+    const [eh, em] = (e.end_time ?? "").split(":").map(Number);
+    const end = e.end_time ? eh * 60 + em : start + 30;
+    if (end <= cur) continue;
+    const when = start <= cur ? "идёт" : start - cur <= 60 ? `через ${start - cur} мин` : `в ${e.time}`;
+    return { when, title: e.title, soon: start - cur <= 15 };
+  }
+  return null;
+}
 function renderMini(open, todo, left) {
   const dots = [...open.map((t) => t.priority === "high" ? "hi" : t.priority === "low" ? "lo" : "mid"), ...todo.map(() => "lo")];
   const more = dots.length > 6 ? `<i class="more">+${dots.length - 6}</i>` : "";
-  $("#miniTasks").innerHTML = left > 0
-    ? `<span class="dots">${dots.slice(0, 6).map((k) => `<i class="${k}"></i>`).join("")}${more}</span>Задачи · ${left}`
-    : `<span class="dots"><i class="ok"></i></span>Всё на сегодня ✨`;
+  const plan = miniPlan();
+  const tasks = left > 0 ? `<span class="dots" title="Задачи: ${left}">${dots.slice(0, 6).map((k) => `<i class="${k}"></i>`).join("")}${more}</span>` : "";
+  $("#miniTasks").innerHTML = plan
+    ? `${tasks}<span class="mini-plan${plan.soon ? " soon" : ""}"><b>${esc(plan.when)}</b> · ${esc(plan.title)}</span>`
+    : left > 0
+      ? `${tasks}Задачи · ${left}`
+      : `<span class="dots"><i class="ok"></i></span>Всё на сегодня ✨`;
 }
 
 function setCollapsed(on) {
@@ -757,7 +782,7 @@ maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
 function reportRegions() {
   const rects = [];
-  for (const el of [$("#w"), $("#mini"), $("#bubble"), $("#maid"), $("#planClock"), ...$("#inbox").children]) {
+  for (const el of [$("#w"), $("#mini"), $("#bubble"), $("#maid"), $("#planClock"), ...document.querySelectorAll(".pl-menu"), ...$("#inbox").children]) {
     if (el.offsetParent === null) continue;
     if (el.classList.contains("hidden")) continue;
     const r = el.getBoundingClientRect();

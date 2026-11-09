@@ -105,6 +105,9 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .mini-tasks i.hi { background: var(--warn); }
 .mini-tasks i.mid { background: #9a6cf0; }
 .mini-tasks i.ok { background: var(--accent-2); }
+.mini-tasks .mini-plan { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-tasks .mini-plan b { font-weight: 700; color: #c9b8ff; }
+.mini-tasks .mini-plan.soon b { color: var(--warn); }
 .mini-tasks i.more { width: auto; height: auto; background: none; font-style: normal; font-size: 11px; color: var(--muted); }
 .stage.grab .mini { border-color: var(--accent); -webkit-app-region: drag; }
 .stage.grab .mini button { -webkit-app-region: no-drag; }
@@ -608,3 +611,16 @@ body.quick { background: transparent; }
   background: #3b6fb5; color: #fff; }
 .pl-shift.later { background: #b5713b; }
 .pl-shift:empty { display: none; }
+
+/* ПКМ по плану: повтор и быстрые действия. */
+.pl-menu { position: fixed; z-index: 1001; min-width: 196px; padding: 5px; border-radius: 12px; background: #262238; border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .38); font-size: 13px; color: #e9e6f5; animation: dropPick .12s ease-out; }
+.pl-menu-head { padding: 5px 9px 4px; font-size: 11.5px; font-weight: 700; color: #a99fc4; }
+.pl-menu button { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 6px 9px; border: 0; border-radius: 8px; background: none;
+  color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.pl-menu button span { color: #a99fc4; font-size: 12px; }
+.pl-menu button:hover { background: rgba(255, 255, 255, .08); }
+.pl-menu button.on { background: #6c5ce7; color: #fff; }
+.pl-menu button.on span { color: #e6e0ff; }
+.pl-menu hr { margin: 4px 6px; border: 0; border-top: 1px solid rgba(255, 255, 255, .1); }
+.pl-rep { font-style: normal; font-size: 11px; opacity: .75; }

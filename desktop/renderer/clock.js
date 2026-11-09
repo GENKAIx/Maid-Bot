@@ -320,7 +320,7 @@ function drawPlanList(box) {
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
       <button type="button" class="pl-check${st === "done" ? " on" : st === "cancelled" ? " on off" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : st === "cancelled" ? "<i>×</i><b>↺</b>" : ""}</button>`;
     return `<li class="pl-card${st ? ` ${st}` : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
-      <span class="pl-text"><b class="pl-when">${when}</b> · ${esc(e.title)}</span>${tools}</li>`;
+      <span class="pl-text"><b class="pl-when">${when}</b> · ${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}</span>${tools}</li>`;
   };
   box.innerHTML = `
     <div class="pc-head"><b>${esc(dayName)}</b><span>${open ? `${open} ${planWord(open)}` : "планов нет"}</span></div>
@@ -647,7 +647,7 @@ async function copyPlan(e, day) {
     if (r.duplicate) return say(`На ${where} «${e.title}» уже есть.`, { ms: 4000, mood: "think" });
     quietPlans.add(r.id); // остаёмся на дне, откуда тянули
     popTone(2);
-    say(`Скопировала «${e.title}» на ${where} ✓`, { ms: 5000, mood: "write", emotion: "happy" });
+    sayUnlessClash({ ...e, id: r.id }, day, `Скопировала «${e.title}» на ${where} ✓`);
     farPlans.clear();
     maid.changed();
   } catch (err) {
@@ -662,7 +662,7 @@ async function movePlan(e, day, li) {
     await maid.api("POST", `/api/events/${e.id}`, { date: day });
     quietPlans.add(e.id);
     popTone(2);
-    say(`Перенесла «${e.title}» на ${humanDay(day)} ✓`, { ms: 5000, mood: "write", emotion: "happy" });
+    sayUnlessClash(e, day, `Перенесла «${e.title}» на ${humanDay(day)} ✓`);
     farPlans.clear();
     maid.changed();
   } catch (err) {
@@ -758,12 +758,141 @@ async function retimePlan(e, start, end, r) {
   try {
     await maid.api("POST", `/api/events/${e.id}`, body);
     popTone(2);
-    say(`Сдвинула «${e.title}» на ${body.time}${body.end_time ? `–${body.end_time}` : ""} ✓`, { ms: 4000, mood: "write", emotion: "happy" });
+    sayUnlessClash({ ...e, ...body }, e.date_iso, `Сдвинула «${e.title}» на ${body.time}${body.end_time ? `–${body.end_time}` : ""} ✓`);
     farPlans.clear();
     maid.changed();
   } catch (err) {
-    r.when.textContent = r.label;
+    if (r) r.when.textContent = r.label;
     const msg = String(err?.message ?? err);
     say(/нет такого адреса|404|нужно status/.test(msg) ? "Сервер ещё не умеет сдвигать планы по времени — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
   }
 }
+
+// Конфликты: план перенесли, скопировали или сдвинули на время, которое уже занято другим планом того дня, — горничная говорит,
+// с чем пересекается, и предлагает ближайшее свободное окно той же длины (шаг 15 минут) одной кнопкой. План без конца занимает 30 минут.
+const CLASH_DEFAULT = 30;
+function spanOf(x) {
+  const start = minutesOf(x.time);
+  if (start === null || start === undefined) return null;
+  const end = minutesOf(x.end_time);
+  return { start, end: end !== null && end > start ? end : start + CLASH_DEFAULT };
+}
+function freeSlot(busy, start, len) {
+  const span = len || CLASH_DEFAULT;
+  const latest = Math.floor((1439 - span) / RETIME_STEP) * RETIME_STEP;
+  const free = (s) => busy.every((b) => s + span <= b.start || b.end <= s);
+  for (let d = RETIME_STEP; d <= 24 * 60; d += RETIME_STEP) {
+    for (const s of [start + d, start - d]) {
+      const at = Math.round(s / RETIME_STEP) * RETIME_STEP;
+      if (at >= 0 && at <= latest && free(at)) return at;
+    }
+  }
+  return null;
+}
+/** Сохранили план e (id, время) на день day: пересёкся — сказать и предложить окно; нет — сказать ok. */
+async function sayUnlessClash(e, day, ok) {
+  const me = spanOf(e);
+  let others = [];
+  if (me) {
+    try {
+      others = (await maid.api("GET", `/api/events?from=${day}&to=${day}`)).filter((x) => x.id !== e.id && x.status === "active" && spanOf(x));
+    } catch {
+      others = [];
+    }
+  }
+  const hit = me && others.filter((x) => { const s = spanOf(x); return s.start < me.end && me.start < s.end; });
+  if (!hit?.length) return say(ok, { ms: 5000, mood: "write", emotion: "happy" });
+  const len = minutesOf(e.end_time) > me.start ? minutesOf(e.end_time) - me.start : 0;
+  const slot = freeSlot(others.map(spanOf), me.start, len);
+  const with_ = hit.map((x) => `«${x.title}» ${x.end_time ? `${x.time}–${x.end_time}` : `в ${x.time}`}`).join(" и ");
+  const where = slot === null ? "" : `\nСвободно ${len ? `в ${hhmm(slot)}–${hhmm(slot + len)}` : `в ${hhmm(slot)}`} — сдвинуть туда?`;
+  popTone(-2, { vol: 0.15, soft: true });
+  say(`${ok.replace(/ ✓$/, "")}, но это время занято: ${with_}.${where}`, {
+    ms: 0,
+    emotion: "worried",
+    mood: "think",
+    buttons: slot === null ? [] : [
+      { text: `⏩ На ${hhmm(slot)}`, run: () => retimePlan({ ...e, date_iso: day }, slot, len ? slot + len : null, null) },
+      { text: "Оставить так", run: () => {} },
+    ],
+  });
+}
+
+// ПКМ по плану — меню: повтор (каждый день, по будням, каждую неделю, раз в две недели, каждый месяц, без повтора)
+// и быстрые действия (на завтра — перенести или копия, состоялось, убрать). Повтор — POST /api/events/:id/repeat:
+// копии на 8 недель вперёд раскладывает сервер и дальше досоздаёт сам.
+const WEEKDAY_ACC = ["воскресенье", "понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"];
+const REPEAT_SAID = { daily: "каждый день", weekdays: "по будням", weekly: "каждую неделю", biweekly: "раз в две недели", monthly: "каждый месяц" };
+let planMenu = null;
+function closePlanMenu() {
+  planMenu?.remove();
+  planMenu = null;
+}
+function repeatOf(e) {
+  if (e.repeat) return e.repeat;
+  if (!e.series) return "";
+  return [...(data?.events ?? []), ...(data?.upcoming ?? [])].find((x) => x.id === e.series)?.repeat || "series";
+}
+function openPlanMenu(e, li, x, y) {
+  closePlanMenu();
+  const d = new Date(`${e.date_iso}T12:00:00Z`);
+  const now = repeatOf(e);
+  const item = (act, text, on = false) => `<button type="button" data-act="${act}"${on ? ` class="on"` : ""}>${text}</button>`;
+  const menu = document.createElement("div");
+  menu.className = "pl-menu";
+  menu.innerHTML = `<div class="pl-menu-head">🔁 Повторять</div>`
+    + item("r:daily", "Каждый день", now === "daily")
+    + item("r:weekdays", "По будням", now === "weekdays")
+    + item("r:weekly", `Каждую неделю <span>в ${WEEKDAY_ACC[d.getUTCDay()]}</span>`, now === "weekly")
+    + item("r:biweekly", "Раз в две недели", now === "biweekly")
+    + item("r:monthly", `Каждый месяц <span>${d.getUTCDate()}-го</span>`, now === "monthly")
+    + (now ? item("r:", "Больше не повторять") : "")
+    + `<hr>`
+    + item("move", "↪ Перенести на завтра")
+    + item("copy", "⧉ Копия на завтра")
+    + (e.status === "active" || !e.status ? item("done", "✓ Состоялось") + item("cancelled", "× Убрать из планов") : "");
+  document.body.appendChild(menu);
+  const w = menu.offsetWidth;
+  const h = menu.offsetHeight;
+  menu.style.left = `${Math.max(4, Math.min(x, innerWidth - w - 4))}px`;
+  menu.style.top = `${Math.max(4, Math.min(y, innerHeight - h - 4))}px`;
+  planMenu = menu;
+  clockHover = true;
+  menu.addEventListener("mouseenter", () => { clockHover = true; });
+  menu.addEventListener("mouseleave", () => { clockHover = false; hideClockLater(); });
+  menu.addEventListener("click", async (ev) => {
+    const b = ev.target.closest("[data-act]");
+    if (!b) return;
+    closePlanMenu();
+    const act = b.dataset.act;
+    const tomorrow = dayAfter(e.date_iso, 1);
+    if (act.startsWith("r:")) return repeatPlan(e, act.slice(2));
+    if (act === "move") return movePlan(e, tomorrow, li);
+    if (act === "copy") return copyPlan(e, tomorrow);
+    setPlanStatus(e.id, act);
+  });
+}
+async function repeatPlan(e, kind) {
+  try {
+    const r = await maid.api("POST", `/api/events/${e.id}/repeat`, { repeat: kind });
+    popTone(kind ? 3 : -1, { soft: !kind });
+    say(kind
+      ? `Теперь «${e.title}» ${REPEAT_SAID[kind]}${e.time ? ` в ${e.time}` : ""} 🔁 Расписала на 8 недель вперёд.`
+      : `«${e.title}» больше не повторяется${r.removed ? ` — убрала ${r.removed} будущих` : ""}.`, { ms: 5000, mood: "write", emotion: "happy" });
+    farPlans.clear();
+    maid.changed();
+  } catch (err) {
+    const msg = String(err?.message ?? err);
+    say(/нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет повторять планы — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+  }
+}
+$("#planClock").addEventListener("contextmenu", (ev) => {
+  const li = ev.target.closest(".pl-card[data-id]");
+  if (!li || li.matches(".gone, .leaving")) return;
+  const e = plansOf(clockDay).find((x) => x.id === Number(li.dataset.id));
+  if (!e) return;
+  ev.preventDefault();
+  openPlanMenu(e, li, ev.clientX, ev.clientY);
+});
+document.addEventListener("pointerdown", (ev) => { if (planMenu && !ev.target.closest(".pl-menu")) closePlanMenu(); }, true);
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closePlanMenu(); });
