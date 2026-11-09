@@ -13,6 +13,35 @@ let bubbleTimer = 0;
 const CLOCK_DIAL = false;
 const dialOff = (v) => (!CLOCK_DIAL && (v === "12" || v === "24") ? "list" : v);
 const NEXT_MAX = 3; // сколько ближайших планов в строке над задачами
+// Задача со сроком дальше TASK_WAKE дней «спит»: в списке её нет — только строка «💤 Позже · N» (щелчок раскрывает) и панель планов на её дне.
+// За TASK_WAKE дней до срока она просыпается: всплывает в списке с золотым бликом и «⏰ через 7 дней», горничная напоминает.
+// Кто спал в прошлый раз — в localStorage («maid.sleeping»), так пробуждение видно и после перезапуска.
+const TASK_WAKE = 7;
+const WAKE_SHOW = 6000; // сколько держится анимация проснувшейся задачи
+let laterOpen = false;
+const wokeAt = new Map(); // id задачи → когда проснулась
+let wakeTimer = 0;
+const asleep = (t) => Boolean(t.due_date) && daysFrom(data.day, t.due_date) > TASK_WAKE;
+const wokeFresh = (t) => Date.now() - (wokeAt.get(t.id) ?? 0) < WAKE_SHOW;
+function dueWhen(day) {
+  const n = daysFrom(data.day, day);
+  return n <= 0 ? "сегодня" : n === 1 ? "завтра" : `через ${n} ${plural(n, "день", "дня", "дней")}`;
+}
+function noteWakes(awake, later) {
+  let was = null;
+  try { was = new Set(JSON.parse(localStorage.getItem("maid.sleeping") ?? "null")); } catch {}
+  localStorage.setItem("maid.sleeping", JSON.stringify(later.map((t) => t.id)));
+  const woke = was ? awake.filter((t) => was.has(t.id) && !wokeAt.has(t.id)) : [];
+  if (!woke.length) return;
+  for (const t of woke) wokeAt.set(t.id, Date.now());
+  clearTimeout(wakeTimer);
+  wakeTimer = setTimeout(render, WAKE_SHOW + 50); // блик кончился — строка становится обычной
+  popTone(6);
+  react("surprised", 4000);
+  say(woke.length > 1
+    ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
+    : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
+}
 let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
@@ -439,7 +468,11 @@ function render() {
     return `<li class="${h.status ? "did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${sub}</span></li>`;
   };
   const RANK = { high: 0, normal: 1, low: 2 };
-  const tasks = [...data.tasks].sort((a, b) => (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
+  const later = data.tasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const awake = data.tasks.filter((t) => !asleep(t));
+  noteWakes(awake, later);
+  // Только что проснувшиеся — первыми, чтобы их было видно.
+  const tasks = [...awake].sort((a, b) => wokeFresh(b) - wokeFresh(a) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
   const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6);
   const todo = daily.filter((h) => !h.status);
   const hiding = cfg.doneTasks === "hide";
@@ -453,8 +486,15 @@ function render() {
       if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="t${t.id}"><button type="button" class="undo-back" data-undo="t${t.id}">↶ Вернуть</button></li>`;
       return go
         ? `<li class="${rowLeaving(go)}" data-key="t${t.id}"><span class="check done" data-done="${t.id}" title="Отменить">${UNDO_MARK}</span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`
-        : `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`;
+        : wokeFresh(t)
+          ? `<li class="woke" data-woke="${t.id}"><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span><span class="wake-tag">⏰ ${esc(dueWhen(t.due_date))}</span></li>`
+          : `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`;
     }),
+    // Спящие задачи (срок дальше недели): одна тихая строка, щелчок раскрывает их со сроками; щелчок по задаче — её день в панели планов.
+    ...(sec.tasks && later.length ? [
+      `<li class="later-row"><button type="button" data-later>💤 Позже · ${later.length} <i>${laterOpen ? "▾" : "▸"}</i></button></li>`,
+      ...(laterOpen ? later.map((t) => `<li class="later" data-day="${esc(t.due_date)}" title="Открыть этот день"><span class="time">${esc(shortDay(t.due_date))}</span><span>${esc(t.title)}</span></li>`) : []),
+    ] : []),
     // Сделанное: в режиме «прятать» — только пока открыт счётчик.
     ...(hiding && !showingDone() ? [] : [
       ...daily.filter((h) => h.status).map(dayItem),
@@ -463,7 +503,7 @@ function render() {
   ];
   // Улетевшие, но ещё не отправленные (идёт «Вернуть») уже считаются сделанными.
   const gone = [...leavingRows.values()].filter((x) => x.gone).length;
-  const left = todo.length + (sec.tasks ? data.tasks.filter((t) => !doneNow.has(t.id)).length : 0) - gone;
+  const left = todo.length + (sec.tasks ? awake.filter((t) => !doneNow.has(t.id)).length : 0) - gone;
   const doneCount = daily.filter((h) => h.status).length + (sec.tasks ? recentDone().length : 0) + gone;
   const allDone = hiding && !left && doneCount > 0;
   if (allDone && lastLeft > 0) { react("excited", 5000); allDoneAt = Date.now(); }
@@ -479,6 +519,7 @@ function render() {
     (sec.tasks || daily.length ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
+  for (const li of $("#body").querySelectorAll("li.woke")) li.style.setProperty("--wake-delay", `-${Date.now() - wokeAt.get(Number(li.dataset.woke))}ms`);
   for (const li of $("#body").querySelectorAll("li.leaving")) {
     const x = leavingRows.get(li.dataset.key);
     if (x) li.style.setProperty("--fill-delay", `-${Math.min((x.pausedAt || Date.now()) - x.at, ROW_FADE)}ms`);
@@ -1076,6 +1117,13 @@ $("#open").onclick = () => maid.openMain();
 $("#release").onclick = () => maid.grab(false);
 $("#body").addEventListener("click", async (e) => {
   if (e.target.closest("#doneCount")) return toggleShowDone();
+  if (e.target.closest("[data-later]")) {
+    laterOpen = !laterOpen;
+    popTone(laterOpen ? 3 : 1, { vol: 0.08, soft: true });
+    return render();
+  }
+  const sleeper = e.target.closest("li.later");
+  if (sleeper) return togglePlansOn(sleeper.dataset.day);
   const back = e.target.closest("[data-undo]");
   if (back) return undoGone(back.dataset.undo);
   const tick = e.target.closest("[data-done], [data-habit]");
