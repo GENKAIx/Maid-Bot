@@ -48,6 +48,24 @@ function arcPath(r, a0, a1, reverse = false) {
   return `M${f(x0)} ${f(y0)} A${r} ${r} 0 ${span > 180 ? 1 : 0} ${reverse ? 0 : 1} ${f(x1)} ${f(y1)}`;
 }
 
+// Полоса дней под заголовком: сегодня и ещё DAYS_AHEAD вперёд, у каждого — сколько планов; щелчок — показать этот день.
+const DAYS_AHEAD = 6;
+function dayAfter(day, n) {
+  const d = new Date(`${day}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function dayStrip() {
+  return Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => {
+    const day = dayAfter(data.day, i);
+    const d = new Date(`${day}T12:00:00Z`);
+    const wd = d.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
+    const n = plansOf(day).length;
+    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${n ? "" : " empty"}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${n} ${planWord(n)}` : " · планов нет"}">
+      <b>${d.getUTCDate()}</b> ${esc(wd)}<span class="cnt">${n ? `(${n})` : "–"}</span></button>`;
+  }).join("");
+}
+
 function plansOf(day) {
   if (!data) return [];
   return [...(data.events ?? []), ...(data.upcoming ?? [])].filter((e) => e.date_iso === day);
@@ -163,6 +181,7 @@ function drawClock() {
 
   box.innerHTML = `
     <div class="pc-head"><b>${esc(dayName)}</b><span>${list.length ? `${list.length} ${planWord(list.length)}` : "планов нет"}</span></div>
+    <div class="pc-days">${dayStrip()}</div>
     <svg viewBox="0 0 ${CLOCK_SIZE} ${CLOCK_SIZE}" width="${CLOCK_SIZE}" height="${CLOCK_SIZE}" aria-label="Планы на ${esc(dayName)}">
       <circle class="orbit" cx="${CX}" cy="${CX}" r="${LANES[mode][0].r}" />
       ${mode === "12" ? `<circle class="orbit" cx="${CX}" cy="${CX}" r="${LANES[mode][1].r}" />` : ""}
@@ -223,6 +242,14 @@ function watchPlans() {
 $("#planClock").addEventListener("mouseenter", () => { clockHover = true; });
 $("#planClock").addEventListener("mouseleave", () => { clockHover = false; hideClockLater(); });
 $("#planClock").addEventListener("click", (e) => {
+  const chip = e.target.closest(".day-chip");
+  if (chip) {
+    clockDay = chip.dataset.day;
+    clockFresh = new Set();
+    clockGone = [];
+    drawClock();
+    return hideClockLater();
+  }
   if (!e.target.closest(".plan-arc")) hideClock();
 });
 // Посмотреть планы — щелчок по строке «ближайший план»: ещё раз — спрятать.
