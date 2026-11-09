@@ -953,7 +953,7 @@ function togglePlansOn(day) {
   showClock(day);
   loadFar();
 }
-$("#next").addEventListener("click", () => togglePlansOn($("#next").dataset.day || data?.day));
+$("#next").addEventListener("click", (ev) => togglePlansOn(ev.target.closest(".nx")?.dataset.day || $("#next").dataset.day || data?.day));
 $("#pins").addEventListener("click", (ev) => {
   const pin = ev.target.closest(".pin");
   if (pin) togglePlansOn(pin.dataset.day || data?.day);

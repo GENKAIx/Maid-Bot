@@ -12,6 +12,7 @@ let bubbleTimer = 0;
 // Циферблат планов (Часы 12/24) пока выключен: код в clock.js остаётся, в настройках его нет, сохранённый выбор показывается списком.
 const CLOCK_DIAL = false;
 const dialOff = (v) => (!CLOCK_DIAL && (v === "12" || v === "24") ? "list" : v);
+const NEXT_MAX = 3; // сколько ближайших планов в строке над задачами
 let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
@@ -405,13 +406,19 @@ function render() {
   }
   $("#day").textContent = humanDay(data.day);
   $("#miniDay").textContent = miniDay(data.day);
-  const next = data.events.find((e) => (minutesUntil(e) ?? 1) > -30) ?? data.upcoming[0];
-  $("#next").dataset.day = next?.date_iso ?? "";
-  if (next) {
-    const m = next.date_iso === data.day ? minutesUntil(next) : null;
-    const when = m === null ? (next.date_iso === data.day ? "сегодня" : humanDay(next.date_iso)) : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : next.time;
-    $("#next").innerHTML = `<b>${esc(when)}</b> · ${esc(next.title)}`;
-  } else $("#next").innerHTML = `<span class="muted">Планов нет</span>`;
+  // Ближайшие планы, до NEXT_MAX строк: сначала сегодняшние (не начавшиеся больше 30 мин назад), не хватает — из следующих дней.
+  const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
+  const nexts = [...today, ...data.upcoming].slice(0, NEXT_MAX);
+  $("#next").dataset.day = nexts[0]?.date_iso ?? "";
+  $("#next").innerHTML = nexts.length
+    ? nexts.map((e) => {
+      const m = e.date_iso === data.day ? minutesUntil(e) : null;
+      const n = daysFrom(data.day, e.date_iso);
+      const when = e.date_iso !== data.day ? `${n === 1 ? "завтра" : n === 2 ? "послезавтра" : humanDay(e.date_iso)}${e.time ? `, ${e.time}` : ""}`
+        : m === null ? "сегодня" : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : e.time;
+      return `<div class="nx" data-day="${esc(e.date_iso)}"><b>${esc(when)}</b> · ${esc(e.title)}</div>`;
+    }).join("")
+    : `<span class="muted">Планов нет</span>`;
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
   const pins = datesOf(data.day);
   $("#pins").innerHTML = pins.map((d) => `<div class="pin" data-day="${d.on}">${dateText(d, data.day)}</div>`).join("");
