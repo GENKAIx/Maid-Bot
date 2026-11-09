@@ -434,3 +434,78 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
 }
+
+/* Каталог для разработки: главы слева, текст по центру строкой не шире 72 знаков; блоки «шаги» и «анимации». */
+.catalog { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 36px; align-items: start; }
+.cat-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.cat-chapters { display: flex; flex-direction: column; gap: 1px; }
+.cat-chapters a { display: flex; align-items: baseline; gap: 10px; padding: 7px 10px; border-radius: 10px; color: var(--muted); text-decoration: none; font-size: 14.5px; }
+.cat-chapters a:hover { color: var(--text); background: var(--panel-2); }
+.cat-chapters a.on { color: var(--text); background: var(--panel); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line); }
+.cat-num { width: 16px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--grey); font-weight: 600; }
+.cat-chapters a.on .cat-num { color: var(--accent); }
+.cat-hits { display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 220px); overflow: auto; }
+.cat-hit { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 9px 11px; }
+.cat-hit b { font-weight: 600; font-size: 14px; }
+mark { background: var(--fire-bg); color: var(--fire-ink); border-radius: 3px; padding: 0 1px; }
+
+.cat-doc { min-width: 0; max-width: 780px; padding-bottom: 40px; }
+.cat-head { display: flex; align-items: flex-start; gap: 18px; padding: 2px 0 6px; }
+.cat-big { font-size: 64px; line-height: .8; font-weight: 800; letter-spacing: -.05em; color: var(--accent); font-variant-numeric: tabular-nums; }
+.cat-lead { margin: 6px 0 0; color: var(--muted); max-width: 60ch; font-size: 16px; }
+.cat-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 4px; }
+.cat-toc a { padding: 3px 11px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); font-size: 13px; text-decoration: none; }
+.cat-toc a:hover { color: var(--accent-ink); border-color: var(--accent); }
+
+.cat-body { font-size: 15.5px; line-height: 1.62; }
+.cat-body > p, .cat-body > ul, .cat-body > ol { max-width: 72ch; }
+.cat-body p { margin: 10px 0; }
+.cat-body ul, .cat-body ol { margin: 10px 0; padding-left: 22px; }
+.cat-body li { margin: 4px 0; }
+.cat-body li::marker { color: var(--accent); }
+.cat-h { scroll-margin-top: 16px; }
+h2.cat-h { margin: 38px 0 10px; font-size: 21px; font-weight: 700; letter-spacing: -.015em; }
+h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
+.cat-body code { font-family: "Cascadia Code", Consolas, monospace; font-size: .86em; background: var(--panel-2); color: var(--accent-ink); padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+.cat-body p code, .cat-body li code, .cat-note code { white-space: normal; overflow-wrap: anywhere; }
+.cat-body b { font-weight: 650; }
+.cat-maid { vertical-align: middle; object-fit: contain; }
+.cat-pre { background: var(--panel-2); border-radius: 10px; padding: 12px 14px; overflow: auto; font-size: 13px; }
+
+.cat-note { margin: 16px 0; padding: 12px 16px; border-radius: var(--r); background: var(--accent-soft); color: var(--text); max-width: 72ch; }
+.cat-note b:first-child { color: var(--accent-ink); }
+
+.cat-table { margin: 14px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
+.cat-table table { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 1.45; }
+.cat-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; padding: 9px 14px; border-bottom: 1px solid var(--line); background: var(--panel-2); white-space: nowrap; }
+.cat-table td { padding: 9px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+.cat-table tr:first-child td { border-top: none; }
+.cat-table td code { white-space: normal; }
+.cat-table .cat-maid { margin: -6px 4px -6px -4px; }
+
+/* шаги: вертикальная нить с номерами — это и правда порядок */
+.cat-flow { list-style: none; counter-reset: step; margin: 16px 0; padding: 0; position: relative; }
+.cat-flow li { counter-increment: step; position: relative; display: grid; grid-template-columns: 150px 1fr; gap: 14px; padding: 9px 0 9px 42px; }
+.cat-flow li::before { content: counter(step); position: absolute; left: 0; top: 8px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--panel); border: 1.5px solid var(--accent); color: var(--accent-ink); font-size: 12.5px; font-weight: 700; z-index: 1; }
+.cat-flow li:not(:last-child)::after { content: ""; position: absolute; left: 12.5px; top: 34px; bottom: -8px; width: 1.5px; background: var(--line); }
+.cat-flow li b { font-weight: 650; }
+.cat-flow li span { color: var(--muted); }
+
+/* анимации горничной: плитки с живой картинкой */
+.cat-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
+.cat-gallery figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 10px 12px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.cat-gallery .cat-maid { width: 96px; height: 102px; }
+.cat-gallery figcaption { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 6px; font-size: 13px; line-height: 1.35; }
+.cat-gallery figcaption code { font-size: 11.5px; }
+.cat-gallery figcaption span { color: var(--muted); font-size: 12.5px; }
+.cat-foot { display: flex; gap: 10px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+@media (max-width: 900px) {
+  .catalog { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .cat-side { position: static; }
+  .cat-chapters { flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 2px; }
+  .cat-chapters a { white-space: nowrap; }
+  .cat-big { font-size: 48px; }
+  .cat-flow li { grid-template-columns: 1fr; gap: 2px; }
+}

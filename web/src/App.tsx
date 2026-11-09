@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { getToken, post, setToken, whenUnauthorized } from "./api";
 import { Composer } from "./Composer";
 import { navigate, parsePath, usePath } from "./router";
@@ -13,6 +13,9 @@ import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
 import { Icon } from "./icons";
 
+// Каталог для разработки — отдельным куском: обычным экранам его тексты не нужны.
+const Catalog = lazy(() => import("./screens/Catalog").then((m) => ({ default: m.Catalog })));
+
 // Каркас: вход, навигация (слева на ПК; снизу на телефоне — четыре экрана и «Ещё»), экран, строка ввода.
 // version растёт после каждой записи — экраны перечитывают данные.
 
@@ -25,6 +28,7 @@ const TABS = [
   { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
   { id: "stats", path: "/stats", title: "Статистика", icon: "stats", more: true },
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
+  { id: "catalog", path: "/catalog", title: "Каталог", icon: "catalog", more: true },
 ];
 
 export function App() {
@@ -62,6 +66,7 @@ export function App() {
     : tab === "money" ? <Money version={version} />
     : tab === "stats" ? <Stats version={version} />
     : tab === "settings" ? <Settings onLogout={logout} />
+    : tab === "catalog" ? <Suspense fallback={null}><Catalog chapter={arg} /></Suspense>
     : <Today version={version} onChanged={onChanged} />;
 
   const item = (t: (typeof TABS)[number]) => (

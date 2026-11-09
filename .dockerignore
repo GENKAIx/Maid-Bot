@@ -9,3 +9,4 @@ desktop/node_modules
 docs
 *.md
 Validation
+!web/src/catalog/*.md
