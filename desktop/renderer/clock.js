@@ -503,7 +503,7 @@ $("#planClock").addEventListener("click", (e) => {
     goDay(data.day, { center: true });
     return hideClockLater();
   }
-  if (e.target.closest("[data-cal]")) return openCalendar(clockDay);
+  if (e.target.closest("[data-cal]")) return calShut ? (calShut = false) : openCalendar(clockDay);
   const chip = e.target.closest(".day-chip");
   if (chip && swipedAt > Date.now() - 250) return;
   if (chip) {
@@ -1302,5 +1302,11 @@ $("#planClock").addEventListener("contextmenu", (ev) => {
   ev.preventDefault();
   openPlanMenu(e, li, ev.clientX, ev.clientY);
 });
-document.addEventListener("pointerdown", (ev) => { if (planMenu && !ev.target.closest(".pl-menu")) closePlanMenu(); }, true);
+// Нажали на кнопку календаря, пока он открыт, — он закрывается здесь, а щелчок следом не должен открыть его снова.
+let calShut = false;
+document.addEventListener("pointerdown", (ev) => {
+  calShut = !!planMenu?.classList.contains("pc-cal") && !!ev.target.closest("[data-cal]");
+  if (!planMenu || ev.target.closest(".pl-menu")) return;
+  closePlanMenu();
+}, true);
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closePlanMenu(); });
