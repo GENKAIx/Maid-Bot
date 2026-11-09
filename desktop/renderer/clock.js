@@ -1292,13 +1292,20 @@ function openTime(e, x, y) {
   box.className = "pl-menu rp-box tm-box";
   box.innerHTML = `<div class="rp-top"><b>${e.time ? "Время плана" : "Задать время"}</b><span class="rp-name">${esc(e.title)}</span><button type="button" class="rp-x" data-x title="Закрыть">✕</button></div>
     <label class="rp-row"><span>Начало</span><input type="time" data-in="time" value="${esc(e.time ?? "")}"></label>
-    <label class="rp-row"><span>Конец</span><input type="time" data-in="end" value="${esc(e.end_time ?? "")}"></label>
+    <label class="rp-row tm-end"><span>Конец</span><span class="tm-endin"><input type="time" data-in="end" value="${esc(e.end_time ?? "")}"><button type="button" class="rp-x" data-noend title="Без конца">✕</button></span></label>
     <div class="tm-err"></div>
-    <div class="tm-act"><button type="button" class="tm-save" data-save>Сохранить</button></div>`;
+    <div class="tm-act"><button type="button" class="tm-more" data-addend>+ Время конца</button><button type="button" class="tm-save" data-save>Сохранить</button></div>`;
   showPlanMenu(box, x, y);
   const start = box.querySelector('[data-in="time"]');
   const end = box.querySelector('[data-in="end"]');
   const err = box.querySelector(".tm-err");
+  // Конец — по желанию: строка появляется по «+ Время конца», ✕ убирает её снова.
+  const endShown = (on) => {
+    box.classList.toggle("has-end", on);
+    if (!on) end.value = "";
+    keepIn(box);
+  };
+  endShown(Boolean(e.end_time));
   setTimeout(() => start.focus(), 0);
   const fail = (text) => {
     err.textContent = text;
@@ -1314,6 +1321,11 @@ function openTime(e, x, y) {
   };
   box.addEventListener("click", (ev) => {
     if (ev.target.closest("[data-x]")) return closePlanMenu();
+    if (ev.target.closest("[data-addend]")) {
+      endShown(true);
+      return end.focus();
+    }
+    if (ev.target.closest("[data-noend]")) return endShown(false);
     if (ev.target.closest("[data-save]")) save();
   });
   box.addEventListener("keydown", (ev) => {

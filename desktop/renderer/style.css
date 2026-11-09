@@ -747,3 +747,15 @@ body.quick { background: transparent; }
 .tm-err:empty { display: none; }
 .tm-act { display: flex; justify-content: flex-end; }
 .rp-box .tm-save { background: var(--accent, #6c5ce7); color: #fff; padding: 5px 14px; }
+
+/* Карточка записи в облачке — ссылка на раздел приложения. */
+.card.go { cursor: pointer; transition: transform .12s, background .12s; }
+.card.go:hover { transform: translateX(2px); background: #ebe7f6; }
+
+/* Конец плана — по желанию: без него строки нет, есть кнопка «+ Время конца». */
+.tm-box:not(.has-end) .tm-end, .tm-box.has-end .tm-more { display: none; }
+.tm-endin { display: flex; gap: 4px; align-items: center; min-width: 0; }
+.tm-endin input { flex: 1; }
+.tm-act { justify-content: space-between; align-items: center; }
+.rp-box .tm-more { background: none; color: #a99fc4; padding: 4px 4px; }
+.rp-box .tm-more:hover { color: #e6e0ff; }
