@@ -32,7 +32,7 @@ function askTail() {
       // Ответ показать до обновления данных, иначе следующий хвост перебьёт его.
       data.tasks = (data.tasks ?? []).filter((x) => x.id !== t.id);
       tailShown = null;
-      say(reply, { ms: 3500, mood, emotion });
+      say(reply, { ms: 5000, mood, emotion });
       maid.changed();
     } catch (e) {
       play("oops");
