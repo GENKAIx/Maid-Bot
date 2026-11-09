@@ -392,12 +392,12 @@ body.quick { background: transparent; }
 .day-chip:hover { border-color: rgba(255, 255, 255, .18); }
 .day-chip.on { background: rgba(183, 156, 255, .22); border-color: var(--accent); color: var(--text, #fff); }
 /* --- «Планы дня» списком (clock.js, cfg.clock = "list"): высотой с панель, карточки прокручиваются --- */
-.plan-clock.as-list { width: 300px; padding: 14px 12px 12px; cursor: default; }
+.plan-clock.as-list { width: 270px; padding: 14px 10px 12px; cursor: default; }
 .plan-clock.as-list .pc-head { padding: 0 4px 4px; }
 .plan-clock.as-list .pc-head b { font-size: 16px; }
 .pc-strip { flex: none; display: flex; align-items: center; gap: 2px; margin: 4px 0 2px; }
 .pc-strip .pc-days { flex: 1; margin: 0; }
-.pc-arrow { flex: none; width: 18px; height: 40px; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
+.pc-arrow { flex: none; width: 14px; height: 40px; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
 .pc-arrow:hover:not(:disabled) { color: var(--text, #fff); background: rgba(255, 255, 255, .06); }
 .pc-arrow:disabled { opacity: .25; cursor: default; }
 .pl-top { flex: none; display: flex; align-items: center; justify-content: space-between; margin: 12px 4px 8px; font-size: 13px; font-weight: 600; }
