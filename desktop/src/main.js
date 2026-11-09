@@ -98,6 +98,11 @@ function showMain(settingsOnly = false) {
     });
     mainWin.isLocal = local;
     mainWin.removeMenu();
+    // Ссылки «в новом окне» (бот в Telegram и т. п.) — в браузере системы, а не новым окном программы.
+    mainWin.webContents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+      return { action: "deny" };
+    });
     if (local) mainWin.loadFile(page("index.html"), { query: { tab: "settings" } });
     else {
       mainWin.loadURL(settings.server.replace(/\/$/, "") + "/");
