@@ -796,8 +796,11 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     flyNote = inDays(n) + (more ? ` · ещё ${more}` : "");
     box.classList.remove("flying");
     drawClock();
-    $(`#planClock .day-chip[data-day="${day}"]`)?.classList.add("landed");
+    const chip = $(`#planClock .day-chip[data-day="${day}"]`);
+    chip?.classList.add("landed");
     popTone(7, { vol: 0.09 });
+    // Новые карточки не «уже были»: выпадают из чипа дня в список.
+    [...box.querySelectorAll(".pl-card.fresh")].forEach((card, i) => dropIn(card, chip, 160 + i * 140));
     loadFar();
     hideClockLater(FLY_SHOWN);
   };
@@ -808,6 +811,44 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     rail = mount();
     requestAnimationFrame((a) => frame(a, a));
   }, 420);
+}
+// Карточка вылетает из чипа дня: место в списке раскрывается, копия карточки летит по дуге из чипа, растёт с перелётом и встаёт
+// на место, затем блик по карточке и искры у галочки.
+function dropIn(card, chip, delay) {
+  if (!card || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const h = card.offsetHeight;
+  card.classList.add("arriving");
+  card.animate([{ height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "-3px" }, { height: `${h}px` }],
+    { duration: 320, delay, easing: "cubic-bezier(.3, .8, .4, 1)", fill: "backwards" });
+  setTimeout(() => {
+    if (!card.isConnected) return;
+    const to = card.getBoundingClientRect();
+    const from = chip?.isConnected ? chip.getBoundingClientRect() : { left: to.left, top: to.top - 60, width: 30, height: 30 };
+    const ghost = card.cloneNode(true);
+    ghost.classList.remove("arriving", "fresh");
+    ghost.classList.add("pl-ghost");
+    ghost.style.setProperty("--c", getComputedStyle(card).getPropertyValue("--c"));
+    Object.assign(ghost.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` });
+    document.body.append(ghost);
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+    const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    popTone(3, { vol: 0.05, soft: true });
+    const fly = ghost.animate([
+      { transform: `translate(${dx}px, ${dy}px) scale(.18) rotate(-8deg)`, opacity: 0, offset: 0 },
+      { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 26}px) scale(.62) rotate(-4deg)`, opacity: 1, offset: 0.4 },
+      { transform: "translate(0, 3px) scale(1.05) rotate(1deg)", offset: 0.78 },
+      { transform: "none", opacity: 1, offset: 1 },
+    ], { duration: 620, easing: "cubic-bezier(.25, .7, .35, 1)" });
+    fly.onfinish = () => {
+      ghost.remove();
+      if (!card.isConnected) return;
+      card.classList.remove("arriving");
+      card.classList.add("shine");
+      popTone(9, { vol: 0.08 });
+      const pip = card.querySelector(".pl-check");
+      if (pip) burst(pip);
+    };
+  }, delay + 120);
 }
 $("#planClock").addEventListener("pointerdown", () => { if ($("#planClock").classList.contains("flying")) stopFly(); }, true);
 $("#planClock").addEventListener("wheel", () => { if ($("#planClock").classList.contains("flying")) stopFly(); }, { capture: true, passive: true });

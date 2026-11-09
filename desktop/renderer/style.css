@@ -262,9 +262,9 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 @keyframes pipCross { 0% { transform: scale(1); } 30% { transform: scale(.8) rotate(-12deg); } 60% { transform: scale(1.1) rotate(8deg); } 100% { transform: none; } }
 .pip.nope { animation: nope .3s ease; }
 @keyframes nope { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
-.pip .ring, .check .ring, .mark .ring { position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--accent-2); animation: ring .5s ease-out forwards; pointer-events: none; }
+.pip .ring, .check .ring, .mark .ring, .pl-check .ring { position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--accent-2); animation: ring .5s ease-out forwards; pointer-events: none; }
 @keyframes ring { from { transform: scale(.6); opacity: 1; } to { transform: scale(2.3); opacity: 0; } }
-.pip .spark, .check .spark, .mark .spark { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: var(--accent-2);
+.pip .spark, .check .spark, .mark .spark, .pl-check .spark { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: var(--accent-2);
   animation: spark .55s ease-out forwards; pointer-events: none; }
 .pip .spark:nth-child(2n), .check .spark:nth-child(2n), .mark .spark:nth-child(2n) { background: var(--accent); }
 .pip .spark:nth-child(3n), .check .spark:nth-child(3n), .mark .spark:nth-child(3n) { background: var(--warn); }
@@ -728,3 +728,14 @@ body.quick { background: transparent; }
 /* Лента дней на время полёта: окно — сама полоса, лента внутри едет. */
 .pc-days.rail-box { display: block; overflow: hidden; }
 .fly-rail { display: grid; gap: 3px; width: max-content; will-change: transform; }
+
+/* Карточка нового плана вылетает из чипа дня: место раскрывается, копия летит, потом блик и искры. */
+.pl-card.arriving { visibility: hidden; }
+.pl-ghost { position: fixed; z-index: 50; margin: 0; list-style: none; pointer-events: none; box-shadow: 0 8px 22px rgba(0, 0, 0, .45);
+  background: color-mix(in srgb, var(--c, var(--accent)) 22%, #2a2638); }
+.pl-card.shine::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .32) 48%, transparent 66%); transform: translateX(-110%);
+  animation: plShine .75s ease-out forwards; }
+@keyframes plShine { to { transform: translateX(110%); } }
+.pl-check { position: relative; }
+.pl-check b.ring, .pl-check b.spark { display: block; }
