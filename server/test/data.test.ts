@@ -184,6 +184,13 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       // Статистика и даты для приложения.
       await store.upsertActivity({ user_id: u.id, day_key: "2026-11-02", source: "aw", active_sec: 3600, afk_sec: 0, apps: [{ name: "chrome.exe", sec: 3600 }], games: [] });
       const act = (await call("/api/activity?from=2026-11-01&to=2026-11-03", undefined, token)).json;
+      // Иконки: ключ без .exe и знаков, повтор заменяет.
+      assert.equal((await call("/api/icons", { icons: [{ name: "Counter-Strike 2", png: "AAAA" }, { name: "chrome.exe", png: "BBBB" }] }, token)).json.saved, 2);
+      await call("/api/icons", { icons: [{ name: "Chrome", png: "CCCC" }] }, token);
+      const icons = (await call("/api/icons", undefined, token)).json;
+      assert.equal(icons.counterstrike2, "data:image/png;base64,AAAA");
+      assert.equal(icons.chrome, "data:image/png;base64,CCCC");
+      assert.equal((await call("/api/icons", { icons: [{ name: "x", png: "<script>" }] }, token)).status, 400);
       assert.deepEqual(act.map((a: any) => [a.day_key, a.active_sec]), [["2026-11-02", 3600]]);
       await store.addDate({ user_id: u.id, title: "ДР Васи", date_iso: "1990-03-15", type: "birthday", person: "Вася", notes: "", yearly: 1, message_id: null });
       assert.equal((await call("/api/dates?all=1", undefined, token)).json.length, 1);

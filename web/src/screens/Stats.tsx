@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { get } from "../api";
-import { Bars, Segment } from "../charts";
+import { Bars, NestedBars, Segment } from "../charts";
 import { Card, Empty, Spinner } from "../components";
 import { addDays, dur, humanDay, metricText, monthTitle, shortDay, todayKey } from "../format";
+import { SleepTimeline, sleepAverages, sleepDays } from "../sleep";
 import type { ActivityRow, DiaryRow, MetricRow } from "../types";
 
 // Статистика: компьютер, игры, шаги, сон, спорт — по дням (неделя, месяц), по неделям (3 месяца), по месяцам (год).
@@ -43,6 +44,7 @@ export function Stats({ version }: { version: number }) {
   const [activity, setActivity] = useState<ActivityRow[] | null>(null);
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
   const [sleepNotes, setSleepNotes] = useState<DiaryRow[]>([]);
+  const [icons, setIcons] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
   const r = RANGES.find((x) => x.id === range)!;
@@ -61,6 +63,9 @@ export function Stats({ version }: { version: number }) {
     }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
   }, [from, end, version]);
+  useEffect(() => {
+    get<Record<string, string>>("/api/icons").then(setIcons).catch(() => setIcons({}));
+  }, [version]);
 
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!activity) return <Spinner />;
@@ -73,11 +78,19 @@ export function Stats({ version }: { version: number }) {
       return { label: b.label, title: b.title, value: how === "sum" ? vals.reduce((s, v) => s + v, 0) : avg(vals) };
     });
   const act = (d: string) => activity.filter((a) => a.day_key === d);
-  const pc = byDay((d) => act(d).reduce((s, a) => s + a.active_sec, 0) || null, r.group === "day" ? "sum" : "avg");
-  const games = byDay((d) => act(d).reduce((s, a) => s + a.games.reduce((x, g) => x + g.sec, 0), 0) || null, r.group === "day" ? "sum" : "avg");
+  const gamesSec = (d: string) => act(d).reduce((s, a) => s + a.games.reduce((x, g) => x + g.sec, 0), 0);
+  const pcSec = (d: string) => act(d).reduce((s, a) => s + a.active_sec, 0);
+  const pcBars = bs.map((b) => {
+    const days = b.days.filter((d) => pcSec(d) > 0 || gamesSec(d) > 0);
+    const k = r.group === "day" ? 1 : days.length || 1;
+    return { label: b.label, title: b.title, back: days.reduce((s, d) => s + pcSec(d), 0) / k, front: days.reduce((s, d) => s + gamesSec(d), 0) / k };
+  });
+  const pcDays = bs.flatMap((b) => b.days).filter((d) => pcSec(d) > 0 || gamesSec(d) > 0);
+  const pcAvg = pcDays.length ? pcDays.reduce((s, d) => s + pcSec(d), 0) / pcDays.length : 0;
+  const gameAvg = pcDays.length ? pcDays.reduce((s, d) => s + gamesSec(d), 0) / pcDays.length : 0;
+  const pct = (v: number, of: number) => `${Math.round((v / of) * 100)}%`;
   const metric = (key: string, how: "sum" | "avg") => byDay((d) => metrics.find((m) => m.key === key && m.day_key === d)?.value ?? null, how);
   const steps = metric("steps", r.group === "day" ? "sum" : "avg");
-  const sleep = metric("sleep_hours", "avg");
   const sport = metric("sport_min", r.group === "day" ? "sum" : "avg");
   const weight = metric("weight", "avg");
   const has = (b: { value: number }[]) => b.some((x) => x.value > 0);
@@ -94,6 +107,13 @@ export function Stats({ version }: { version: number }) {
   const topApps = new Map<string, number>();
   for (const a of activity) for (const g of a.apps) topApps.set(g.name, (topApps.get(g.name) ?? 0) + g.sec);
 
+  const sd = sleepDays(sleepNotes, metrics);
+  const allDays = bs.flatMap((b) => b.days);
+  const sleepRows = (r.group === "day" ? allDays : allDays.filter((d) => sd.get(d)?.hours).slice(-31)).map((d) => sd.get(d) ?? { day: d });
+  const slept = sleepRows.filter((d) => d.hours);
+  const times = sleepAverages(slept);
+  const sleepHead = slept.length ? [`в среднем ${h(avg(slept.map((d) => d.hours!)))}`, times && `отбой ~${times.bed}, подъём ~${times.wake}`].filter(Boolean).join(" · ") : "";
+
   return (
     <div className="screen">
       <div className="day-nav">
@@ -106,16 +126,38 @@ export function Stats({ version }: { version: number }) {
       </div>
 
       <div className="cards">
-        <Card title={`За компьютером${perDay}`} className="reveal wide" action={<span className="muted small">{sumText(pc, dur)}</span>}>
-          {has(pc) ? <Bars bars={pc} color="var(--grey)" format={dur} /> : <Empty>Нет данных трекера</Empty>}
-          {topApps.size > 0 && <p className="muted small">{[...topApps.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} ${dur(v)}`).join(" · ")}</p>}
+        <Card title="Компьютер и игры" className="reveal wide" action={pcDays.length > 0 && <span className="muted small">{pcDays.length} дн. с данными</span>}>
+          {pcDays.length > 0 ? (
+            <>
+              <div className="pc-summary">
+                <div className="pc-stat">
+                  <span className="pc-dot" style={{ background: "var(--grey)" }} />
+                  <span><b>{dur(pcAvg)}</b> в день за компьютером</span>
+                  <span className="pc-pct">{pct(pcAvg, 86400)} суток</span>
+                </div>
+                <div className="pc-stat">
+                  <span className="pc-dot" style={{ background: "var(--red)" }} />
+                  <span><b>{dur(gameAvg)}</b> в играх</span>
+                  <span className="pc-pct">{pct(gameAvg, 86400)} суток · {pcAvg ? pct(gameAvg, Math.max(pcAvg, gameAvg)) : "0%"} времени за ПК</span>
+                </div>
+                <div className="day-share" title="Доля суток: игры, остальное время за компьютером, вне компьютера">
+                  <i style={{ width: `${(gameAvg / 86400) * 100}%`, background: "var(--red)" }} />
+                  <i style={{ width: `${(Math.max(0, pcAvg - gameAvg) / 86400) * 100}%`, background: "var(--grey)" }} />
+                </div>
+              </div>
+              <NestedBars
+                bars={pcBars} back="var(--grey)" front="var(--red)" format={dur} tip={(x) => `за ПК ${dur(Math.max(x.back, x.front))} · ${pct(Math.max(x.back, x.front), 86400)} суток
+игры ${dur(x.front)} · ${x.back || x.front ? pct(x.front, Math.max(x.back, x.front)) : "0%"} от ПК`}
+              />
+              <div className="app-cols">
+                <AppList title="Программы" items={topApps} icons={icons} color="var(--grey)" days={pcDays.length} />
+                <AppList title="Игры" items={topGames} icons={icons} color="var(--red)" days={pcDays.length} empty="Игр не было" />
+              </div>
+            </>
+          ) : <Empty>Нет данных трекера</Empty>}
         </Card>
-        <Card title={`Игры${perDay}`} className="reveal wide" action={<span className="muted small">{sumText(games, dur)}</span>}>
-          {has(games) ? <Bars bars={games} color="var(--red)" format={dur} goal={r.group === "day" ? 2 * 3600 : undefined} /> : <Empty>Игр не было</Empty>}
-          {topGames.size > 0 && <p className="muted small">{[...topGames.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} ${dur(v)}`).join(" · ")}</p>}
-        </Card>
-        <Card title={`Сон${perDay}`} className="reveal" action={<span className="muted small">{sumText(sleep, h)}</span>}>
-          {has(sleep) ? <Bars bars={sleep} color="var(--blue)" format={h} goal={8} /> : <Empty>Часы сна не записаны</Empty>}
+        <Card title={`Сон`} className="reveal wide" action={<span className="muted small">{sleepHead}</span>}>
+          {sleepRows.some((d) => d.hours) ? <SleepTimeline days={sleepRows} /> : <Empty>Сон не записан — скажите боту «лёг в 1:30, встал в 9:00»</Empty>}
         </Card>
         <Card title={`Шаги${perDay}`} className="reveal" action={<span className="muted small">{sumText(steps, n)}</span>}>
           {has(steps) ? <Bars bars={steps} color="var(--green)" format={n} goal={10000} /> : <Empty>Шагов нет — подключите Быструю команду на айфоне</Empty>}
@@ -163,6 +205,44 @@ function OtherMetrics({ metrics, bs }: { metrics: MetricRow[]; bs: Bucket[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+const PALETTE = ["#6b3fd4", "#3d8fe0", "#e0566a", "#2fa86e", "#e98a2e", "#8a6f3b", "#c04fb0", "#4b9a9a"];
+/** Тот же ключ, что на сервере (server/src/activity.ts iconKey). */
+const iconKey = (name: string) => name.toLowerCase().replace(/\.exe$/, "").replace(/[^\p{L}\p{N}]+/gu, "");
+const prettyName = (name: string) => name.replace(/\.exe$/i, "");
+
+function AppIcon({ name, icons }: { name: string; icons: Record<string, string> }) {
+  const key = iconKey(name);
+  const src = icons[key];
+  if (src) return <img className="app-icon" src={src} alt="" />;
+  const hue = PALETTE[[...key].reduce((s, c) => s + c.charCodeAt(0), 0) % PALETTE.length];
+  return <span className="app-icon letter" style={{ background: hue }}>{(prettyName(name)[0] ?? "?").toUpperCase()}</span>;
+}
+
+function AppList({ title, items, icons, color, days, empty }: {
+  title: string; items: Map<string, number>; icons: Record<string, string>; color: string; days: number; empty?: string;
+}) {
+  const list = [...items.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const max = list[0]?.[1] || 1;
+  const total = [...items.values()].reduce((s, v) => s + v, 0) || 1;
+  return (
+    <div>
+      <h4 className="sub">{title}</h4>
+      {list.length ? (
+        <ul className="apps">
+          {list.map(([name, sec]) => (
+            <li key={name} title={`${prettyName(name)}: ${dur(sec)} за период${days > 1 ? `, ${dur(sec / days)} в день` : ""} · ${Math.round((sec / total) * 100)}%`}>
+              <AppIcon name={name} icons={icons} />
+              <span className="app-name">{prettyName(name)}</span>
+              <span className="app-bar"><i style={{ width: `${(sec / max) * 100}%`, background: color }} /></span>
+              <span className="app-time">{dur(sec)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="muted small">{empty ?? "Нет данных"}</p>}
     </div>
   );
 }

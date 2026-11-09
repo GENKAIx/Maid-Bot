@@ -17,6 +17,14 @@ export const ActivityInput = z.object({
 });
 export type ActivityInput = z.infer<typeof ActivityInput>;
 
+/** Ключ программы для иконки: без .exe, регистра и знаков — «Counter-Strike 2» и «counterstrike2.exe» совпадут. */
+export function iconKey(name: string) {
+  return name.toLowerCase().replace(/\.exe$/, "").replace(/[^\p{L}\p{N}]+/gu, "");
+}
+export const IconsInput = z.object({
+  icons: z.array(z.object({ name: z.string().min(1).max(120), png: z.string().regex(/^[A-Za-z0-9+/=]+$/).max(24_000) })).max(60),
+});
+
 const GAME_LINES = {
   strict: (t: string) => `🎮 Уже ${t} в играх. Сделайте перерыв: вода, глаза, спина.`,
   kind: (t: string) => `🎮 Ты играешь уже ${t}. Может, чай и пять минут отдыха?`,

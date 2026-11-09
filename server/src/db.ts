@@ -217,6 +217,16 @@ CREATE TABLE IF NOT EXISTS notices (
 );
 CREATE INDEX IF NOT EXISTS notices_user ON notices (user_id, id);
 `,
+  // Шаг 4: иконки программ и игр (трекер ПК присылает значок exe) — для статистики.
+  `
+CREATE TABLE IF NOT EXISTS app_icons (
+  user_id INTEGER NOT NULL,
+  name_key TEXT NOT NULL,
+  png TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, name_key)
+);
+`,
 ];
 
 export interface User {
@@ -866,6 +876,18 @@ export class Store {
     return (await this.all<Row>(
       "SELECT * FROM activity WHERE user_id = ? AND day_key BETWEEN ? AND ? ORDER BY day_key", userId, from, to,
     )).map(toActivity);
+  }
+
+  // --- иконки программ ---
+  async setIcon(userId: number, nameKey: string, png: string) {
+    await this.run(
+      `INSERT INTO app_icons (user_id, name_key, png, updated_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT (user_id, name_key) DO UPDATE SET png = excluded.png, updated_at = excluded.updated_at`,
+      userId, nameKey, png, now(),
+    );
+  }
+  async icons(userId: number): Promise<{ name_key: string; png: string }[]> {
+    return this.all("SELECT name_key, png FROM app_icons WHERE user_id = ?", userId);
   }
 
   // --- служебное ---

@@ -276,6 +276,47 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .share-bar i { display: block; height: 100%; border-radius: 99px; animation: growX .6s ease both; transform-origin: left; }
 @keyframes growX { from { transform: scaleX(0); } to { transform: none; } }
 .share-value { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Компьютер и игры */
+.chart-tip { white-space: pre-line; }
+.chart-bar.nested { position: relative; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.chart-bar.nested i { display: block; width: 100%; border-radius: 4px 4px 0 0; }
+.pc-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin-bottom: 14px; }
+.pc-stat { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.pc-stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.pc-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; align-self: center; }
+.pc-pct { color: var(--muted); font-size: 13px; }
+.day-share { grid-column: 1 / -1; display: flex; height: 8px; border-radius: 99px; background: var(--ring-bg); overflow: hidden; }
+.day-share i { display: block; height: 100%; animation: growX .6s ease both; transform-origin: left; }
+.app-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin-top: 14px; }
+.apps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.apps li { display: grid; grid-template-columns: 22px minmax(0, 130px) 1fr auto; gap: 9px; align-items: center; font-size: 13.5px; }
+.app-icon { width: 22px; height: 22px; border-radius: 6px; object-fit: contain; }
+.app-icon.letter { display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; }
+.app-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-bar { height: 6px; background: var(--ring-bg); border-radius: 99px; overflow: hidden; }
+.app-bar i { display: block; height: 100%; border-radius: 99px; animation: growX .6s ease both; transform-origin: left; }
+.app-time { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+
+/* Сон по часам суток */
+.sleep { display: flex; flex-direction: column; gap: 3px; }
+.sleep-row { display: grid; grid-template-columns: 64px 1fr 52px; gap: 10px; align-items: center; font-size: 13px; border-radius: 6px; }
+.sleep-row.on { background: var(--panel-2); }
+.sleep-head { margin-bottom: 2px; }
+.sleep-scale { position: relative; height: 16px; }
+.sleep-scale span { position: absolute; transform: translateX(-50%); color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.sleep-scale span:first-child { transform: none; }
+.sleep-scale span:last-child { transform: translateX(-100%); }
+.sleep-day { color: var(--muted); white-space: nowrap; }
+.sleep-track { position: relative; height: 18px; background: var(--ring-bg); border-radius: 5px; overflow: hidden; }
+.sleep-night { position: absolute; top: 0; bottom: 0; background: rgba(61, 143, 224, .12); }
+.sleep-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.sleep-bar { position: absolute; top: 2px; bottom: 2px; background: var(--blue); border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: growX .6s ease both; transform-origin: left; }
+.sleep-bar span { color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sleep-unknown { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 8px; color: var(--muted); font-size: 11.5px; }
+.sleep-hours { text-align: right; font-variant-numeric: tabular-nums; }
+.sleep-legend { margin: 6px 0 0 74px; display: flex; align-items: center; gap: 6px; }
+.sleep-night-dot { width: 12px; height: 10px; border-radius: 3px; background: rgba(61, 143, 224, .25); }
 .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 22px; }
 .metric-grid .sub { margin-top: 0; }
 
@@ -292,6 +333,11 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
   .week-day .week-head { margin: 0; min-width: 52px; }
   .week-event { white-space: normal; }
   .shares li { grid-template-columns: 80px 1fr auto; }
+  .pc-summary, .app-cols { grid-template-columns: 1fr; }
+  .sleep-row { grid-template-columns: 48px 1fr 40px; gap: 6px; }
+  .sleep-legend { margin-left: 54px; }
+  .sleep-scale span.minor { display: none; }
+  .sleep-bar span { display: none; }
   .day-nav { flex-wrap: wrap; }
 }
 

@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell } = require("electron");
 const { collectDay, localDay } = require("./activity.js");
+const { iconKey, newIcons } = require("./icons.js");
 
 const DEFAULTS = {
   server: "http://localhost:3000",
@@ -326,12 +327,28 @@ async function trackOnce() {
   const now = new Date();
   if (now.getHours() === 0 && now.getMinutes() < 30) days.unshift(localDay(new Date(now.getTime() - 3600_000)));
   try {
-    for (const d of days) await api("POST", "/api/activity", await collectDay(d, settings.tracker.games));
+    const names = [];
+    for (const d of days) {
+      const day = await collectDay(d, settings.tracker.games);
+      await api("POST", "/api/activity", day);
+      for (const x of [...day.apps, ...day.games]) names.push(x.name);
+    }
     trackerState = { last: new Date().toISOString(), error: null };
+    sendIcons(names).catch((e) => console.warn("[icons]", e.message));
   } catch (e) {
     trackerState = { last: trackerState.last, error: e.message };
   }
   broadcast("tracker", trackerState);
+}
+// Значки программ из статистики — один раз на программу (settings.tracker.iconsSent).
+async function sendIcons(names) {
+  const sent = new Set(settings.tracker.iconsSent ?? []);
+  const icons = await newIcons(names, sent);
+  if (!icons.length) return;
+  await api("POST", "/api/icons", { icons });
+  for (const i of icons) sent.add(iconKey(i.name));
+  settings.tracker.iconsSent = [...sent];
+  saveSettings();
 }
 function startTracker() {
   clearInterval(trackerTimer);

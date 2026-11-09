@@ -5,7 +5,7 @@ import path from "node:path";
 import { z } from "zod";
 import { login, tokenHash, userByToken } from "./auth.ts";
 import type { Store, User } from "./db.ts";
-import { ActivityInput, recordActivity } from "./activity.ts";
+import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { habitMonth, habitsOfDay } from "./habits.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import type { Pipeline } from "./pipeline.ts";
@@ -277,6 +277,8 @@ export function createApi(deps: ApiDeps) {
       const within = q("all") ? 366 : 30;
       return upcomingDates(await store.activeDates(u.id), today, within).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age }));
     }
+    // Иконки программ и игр: { ключ: data-URL }; ключ — iconKey(имя).
+    if (m === "GET" && p === "/api/icons") return Object.fromEntries((await store.icons(u.id)).map((i) => [i.name_key, `data:image/png;base64,${i.png}`]));
     if (m === "GET" && p === "/api/activity") return store.activityRange(u.id, q("from") ?? addDays(today, -30), q("to") ?? today);
     if (m === "GET" && p === "/api/events") return store.eventsBetween(u.id, q("from") ?? today, q("to") ?? addDays(today, 30));
     const task = p.match(/^\/api\/tasks\/(\d+)$/);
@@ -368,6 +370,11 @@ export function createApi(deps: ApiDeps) {
     if (m === "POST" && p === "/api/undo") {
       const b = parseBody(z.object({ messageId: z.number().int().optional() }), await readJson(req));
       return { text: await pipeline.undo(u, b.messageId) };
+    }
+    if (m === "POST" && p === "/api/icons") {
+      const b = parseBody(IconsInput, await readJson(req));
+      for (const i of b.icons) if (iconKey(i.name)) await store.setIcon(u.id, iconKey(i.name), i.png);
+      return { saved: b.icons.length };
     }
     if (m === "POST" && p === "/api/activity") {
       const b = parseBody(ActivityInput, await readJson(req));
