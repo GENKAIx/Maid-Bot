@@ -436,8 +436,8 @@ body.quick { background: transparent; }
 .day-chip.has-date { position: relative; }
 .day-chip.has-date::after { content: ""; position: absolute; top: 3px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: #ffc45c; }
 
-/* Непрочитанные напоминания (inbox.js): стайка значков слева от горничной, поодаль от фигурки */
-.inbox { position: absolute; z-index: 4; right: calc(var(--maid-w, 196px) + 18px); bottom: calc(var(--peek, 26px) + 96px); width: 0; height: 0; pointer-events: none; }
+/* Непрочитанные напоминания (inbox.js): стайка значков слева от горничной, прямо над панелью */
+.inbox { position: absolute; z-index: 4; right: calc(var(--maid-w, 196px) - 17px); bottom: calc(var(--peek, 26px) + 26px); width: 0; height: 0; pointer-events: none; }
 .stage.side-left .inbox { right: auto; left: calc(100% - 332px + var(--maid-w, 196px) + 58px); }
 .stage.side-left .inbox .ib { translate: calc(-1 * var(--x)) var(--y); }
 .inbox.hidden { display: none; }
