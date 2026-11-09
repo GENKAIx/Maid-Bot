@@ -670,3 +670,100 @@ async function movePlan(e, day, li) {
     planDragFailed(err, "переносить");
   }
 }
+
+// Сдвиг плана по времени: потянуть время на карточке («в 19:00–20:30») вверх — раньше, вниз — позже, шагом RETIME_STEP минут
+// на каждые RETIME_PX пикселей; длительность сохраняется, за полночь не уходит. Пока тянешь — новое время на карточке и «+15 мин» рядом;
+// отпустил — сохраняется (POST /api/events/:id {time, end_time}), Esc — отмена. Карточка за пределы времени не тянется — за день тянут её саму.
+const RETIME_STEP = 15;
+const RETIME_PX = 9;
+let retime = null;
+const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+function retimeShift(r, dy) {
+  const steps = Math.round(dy / RETIME_PX);
+  if (!steps) return r.start;
+  // По сетке 15 минут: первый шаг — до ближайшей черты (19:10 → 19:15 или 19:00), дальше по 15.
+  const off = r.start % RETIME_STEP;
+  const first = steps > 0 ? r.start + (off ? RETIME_STEP - off : RETIME_STEP) : r.start - (off || RETIME_STEP);
+  const start = first + (steps - Math.sign(steps)) * RETIME_STEP;
+  const latest = Math.floor((1439 - r.len) / RETIME_STEP) * RETIME_STEP; // конец не позже 23:59
+  return Math.max(0, Math.min(start, latest));
+}
+function retimeLabel(r, start) {
+  const end = r.len ? start + r.len : null;
+  return `в ${hhmm(start)}${end !== null ? `–${hhmm(Math.min(end, 1439))}` : ""}`;
+}
+$("#planClock").addEventListener("pointerdown", (ev) => {
+  const when = ev.target.closest(".pl-when");
+  const li = when?.closest(".pl-card[data-id]");
+  if (ev.button !== 0 || !li || li.matches(".gone, .cancelled, .leaving, .done")) return;
+  const e = plansOf(clockDay).find((x) => x.id === Number(li.dataset.id));
+  const start = minutesOf(e?.time);
+  if (start === null || start === undefined) return;
+  const end = minutesOf(e.end_time);
+  ev.stopImmediatePropagation(); // перенос на день (карточка целиком) не начинается
+  ev.preventDefault();
+  retime = { e, li, when, y: ev.clientY, start, len: end !== null && end > start ? end - start : 0, now: start, label: when.textContent };
+  when.setPointerCapture(ev.pointerId);
+}, { capture: true });
+document.addEventListener("pointermove", (ev) => {
+  if (!retime) return;
+  const r = retime;
+  const start = retimeShift(r, ev.clientY - r.y);
+  if (!r.moved && Math.abs(ev.clientY - r.y) < 3) return;
+  if (!r.moved) {
+    r.moved = true;
+    r.li.classList.add("retime");
+    $("#planClock").classList.add("retiming");
+    r.badge = document.createElement("span");
+    r.badge.className = "pl-shift";
+    r.li.appendChild(r.badge);
+  }
+  if (start === r.now) return;
+  r.now = start;
+  r.when.textContent = retimeLabel(r, start);
+  const d = start - r.start;
+  const abs = Math.abs(d);
+  r.badge.textContent = d ? `${d > 0 ? "+" : "−"}${abs >= 60 ? `${Math.floor(abs / 60)} ч${abs % 60 ? ` ${abs % 60} мин` : ""}` : `${abs} мин`}` : "";
+  r.badge.classList.toggle("later", d > 0);
+  popTone(d > 0 ? 1 : -1, { vol: 0.08, soft: true });
+});
+function endRetime(save) {
+  const r = retime;
+  retime = null;
+  if (!r) return;
+  r.li.classList.remove("retime");
+  $("#planClock").classList.remove("retiming");
+  r.badge?.remove();
+  if (r.moved) {
+    // Щелчок после отпускания не должен отметить план.
+    const eat = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    window.addEventListener("click", eat, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener("click", eat, { capture: true }), 0);
+  }
+  if (!save || r.now === r.start) {
+    r.when.textContent = r.label;
+    return;
+  }
+  retimePlan(r.e, r.now, r.len ? r.now + r.len : null, r);
+}
+document.addEventListener("pointerup", () => endRetime(true));
+document.addEventListener("pointercancel", () => endRetime(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") endRetime(false); });
+
+async function retimePlan(e, start, end, r) {
+  const body = { time: hhmm(start), end_time: end !== null ? hhmm(Math.min(end, 1439)) : null };
+  try {
+    await maid.api("POST", `/api/events/${e.id}`, body);
+    popTone(2);
+    say(`Сдвинула «${e.title}» на ${body.time}${body.end_time ? `–${body.end_time}` : ""} ✓`, { ms: 4000, mood: "write", emotion: "happy" });
+    farPlans.clear();
+    maid.changed();
+  } catch (err) {
+    r.when.textContent = r.label;
+    const msg = String(err?.message ?? err);
+    say(/нет такого адреса|404|нужно status/.test(msg) ? "Сервер ещё не умеет сдвигать планы по времени — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+  }
+}
