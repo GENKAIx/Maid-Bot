@@ -628,12 +628,13 @@ function setCollapsed(on) {
   if (on) hideClock();
   $("#w").classList.toggle("hidden", on);
   $("#stage").classList.toggle("folded", on);
+  $("#stage").classList.toggle("maid-away", on); // в свёрнутом виде горничной нет — только карточка
   localStorage.setItem("maid.collapsed", on ? "1" : "");
 }
 
 // Свернуть/развернуть с анимацией. Свернуть: содержимое панели ссыпается вниз, панель сжимается в карточку с пружинкой,
-// горничная подпрыгивает и плюхается на маленькую карточку (сплющивается при посадке), из-под неё — облачко пыли.
-// Развернуть: горничная приседает и выпрыгивает вверх, панель вырастает из карточки с перелётом, строки въезжают по очереди.
+// горничная подпрыгивает и ныряет за карточку (пропадает), из-за края — облачко пыли.
+// Развернуть: панель вырастает из карточки с перелётом, горничная выскакивает из-за неё и садится на край, строки въезжают по очереди.
 let folding = null;
 function foldAnimated(on) {
   if (on === collapsed) return;
@@ -656,6 +657,8 @@ function foldAnimated(on) {
   const m1 = $("#maid").getBoundingClientRect();
   const dy = m0.top - m1.top; // где горничная была относительно нового места
   const maidEl = $("#maid");
+  const hideAt = m1.height + 24; // настолько ниже своего места горничная целиком за панелью
+  if (on) maidEl.style.visibility = "visible"; // до конца нырка — видна
   const anims = [];
   const run = (el, kf, opt) => {
     const a = el.animate(kf, opt);
@@ -678,20 +681,19 @@ function foldAnimated(on) {
     run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 560, fill: "forwards" });
     run(to, [{ opacity: 0, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1.02)", offset: 0.6 }, { opacity: 1, transform: "none" }],
       { duration: 280, delay: 520, easing: "ease-out", fill: "backwards" });
-    // Горничная: подпрыгивает, падает вместе с панелью и плюхается.
+    // Горничная: подпрыгивает и ныряет за карточку головой последней.
     run(maidEl, [
       { transform: `translateY(${dy}px)`, offset: 0 },
-      { transform: `translateY(${dy - 22}px) scale(.94, 1.07)`, offset: 0.22, easing: "cubic-bezier(.5, 0, .9, .6)" },
-      { transform: "translateY(0) scale(.96, 1.06)", offset: 0.66 },
-      { transform: "translateY(0) scale(1.14, .84)", offset: 0.74 },
-      { transform: "translateY(-6px) scale(.97, 1.04)", offset: 0.86 },
-      { transform: "none", offset: 1 },
-    ], { duration: 760, delay: 40, easing: "ease-out", fill: "backwards" });
+      { transform: `translateY(${dy - 24}px) scale(.94, 1.07)`, offset: 0.25, easing: "cubic-bezier(.5, 0, .9, .5)" },
+      { transform: "translateY(0) scale(.92, 1.1)", offset: 0.62, easing: "cubic-bezier(.6, 0, 1, .6)" },
+      { transform: `translateY(${hideAt}px) scale(.88, 1.14)`, offset: 1 },
+    ], { duration: 680, delay: 40, fill: "forwards" }).onfinish = () => (maidEl.style.visibility = "");
     setTimeout(() => {
       if (folding !== stop) return;
       popTone(1, { vol: 0.07, soft: true });
       dust(m1.left + m1.width / 2, r1.top);
-    }, 40 + 760 * 0.74);
+      run(to, [{ transform: "none" }, { transform: "translateY(3px) scale(1.01, .98)" }, { transform: "none" }], { duration: 260, easing: "ease-out", composite: "add" });
+    }, 40 + 680 * 0.66);
     popTone(5, { vol: 0.05, soft: true });
   } else {
     // Карточка исчезает, панель вырастает из неё вверх с перелётом.
@@ -705,20 +707,25 @@ function foldAnimated(on) {
     ], { duration: 520, delay: 120, easing: "cubic-bezier(.3, .7, .3, 1)", fill: "backwards" });
     [...to.children].filter((c) => c.offsetParent).forEach((c, i) => run(c, [{ transform: "translateY(18px)", opacity: 0 }, { transform: "none", opacity: 1 }],
       { duration: 320, delay: 260 + i * 45, easing: "cubic-bezier(.2, .9, .3, 1.2)", fill: "backwards" }));
-    // Горничная приседает, выпрыгивает вверх и мягко садится на панель.
+    // Горничная выскакивает из-за выросшей панели, взлетает и мягко садится на её край.
     run(maidEl, [
-      { transform: `translateY(${dy}px)`, offset: 0 },
-      { transform: `translateY(${dy}px) scale(1.12, .86)`, offset: 0.16 },
-      { transform: `translateY(${dy * 0.35}px) scale(.9, 1.12)`, offset: 0.38, easing: "cubic-bezier(.2, .7, .4, 1)" },
-      { transform: "translateY(-26px) scale(.96, 1.05)", offset: 0.6, easing: "cubic-bezier(.5, 0, .9, .5)" },
-      { transform: "translateY(0) scale(1.1, .9)", offset: 0.8 },
+      { transform: `translateY(${hideAt}px) scale(.9, 1.12)`, offset: 0 },
+      { transform: `translateY(${hideAt}px) scale(.9, 1.12)`, offset: 0.2, easing: "cubic-bezier(.15, .8, .35, 1)" },
+      { transform: "translateY(-34px) scale(.94, 1.08)", offset: 0.55, easing: "cubic-bezier(.5, 0, .9, .5)" },
+      { transform: "translateY(0) scale(1.12, .88)", offset: 0.76 },
+      { transform: "translateY(-5px) scale(.98, 1.03)", offset: 0.88 },
       { transform: "none", offset: 1 },
-    ], { duration: 820, easing: "ease-out", fill: "backwards" });
-    setTimeout(() => folding === stop && popTone(6, { vol: 0.07, soft: true }), 140);
+    ], { duration: 860, easing: "ease-out", fill: "backwards" });
+    setTimeout(() => {
+      if (folding !== stop) return;
+      popTone(6, { vol: 0.07, soft: true });
+      dust(m1.left + m1.width / 2, r1.top);
+    }, 860 * 0.3);
     setTimeout(() => folding === stop && popTone(9, { vol: 0.06, soft: true }), 660);
   }
   const stop = () => {
     anims.forEach((a) => a.cancel());
+    maidEl.style.visibility = "";
     ghost.remove();
     if (folding === stop) folding = null;
   };
@@ -944,6 +951,7 @@ $("#maid").addEventListener("dblclick", () => {
   foldAnimated(!collapsed);
 });
 $("#miniOpen").onclick = () => foldAnimated(false);
+$("#mini").addEventListener("dblclick", (e) => !e.target.closest("button") && foldAnimated(false));
 $("#maid").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   maid.grab(!grabbed);
