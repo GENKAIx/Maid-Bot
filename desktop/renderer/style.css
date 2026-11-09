@@ -103,7 +103,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .stage.no-maid .maid { display: none; }
 .stage.no-maid .perch { margin-bottom: 8px; clip-path: none; }
 .w {
-  position: relative; z-index: 2; align-self: flex-end; width: 324px; margin: 0 8px 8px; flex: 0 0 380px; min-height: 120px; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  position: relative; z-index: 2; align-self: flex-end; width: 324px; margin: 0 8px 8px; flex: 0 0 max(380px, calc(100vh - 380px)); min-height: 120px; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
   background: rgba(29, 24, 48, .86); border: 1px solid rgba(255, 255, 255, .09); backdrop-filter: blur(14px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .2); overflow: hidden; transition: opacity .25s, transform .25s;
 }
@@ -236,7 +236,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .gear:hover, .w .gear.on { background: var(--panel-2); color: var(--text); }
 .stage.grab .w .head { cursor: move; }
 /* Настройки виджета — вместо списка дел, пока открыты. */
-.w.prefs-open { flex-basis: 520px; }
+.w.prefs-open { flex-basis: max(520px, calc(100vh - 380px)); }
 .w .prefs { flex: 1; overflow-x: hidden; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
 .w .prefs.hidden, .w .scroll.hidden, .w .next.hidden { display: none; }
 .prefs .pref { display: grid; gap: 6px; }
@@ -257,6 +257,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w h4 { margin: 8px 0 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .w .list { gap: 3px; font-size: 13px; }
 .w .scroll { flex: 1; overflow: auto; min-height: 0; }
+/* Уголок для вытягивания панели вниз (окно растёт в main.js, высота панели следует за окном). */
+.w .grip { position: absolute; right: 2px; bottom: 2px; width: 11px; height: 11px; cursor: ns-resize; z-index: 3; opacity: .35; transition: opacity .15s ease;
+  background: linear-gradient(135deg, transparent 0 46%, var(--muted) 46% 54%, transparent 54% 66%, var(--muted) 66% 74%, transparent 74% 86%, var(--muted) 86% 94%, transparent 94%); -webkit-app-region: no-drag; }
+.w:hover .grip { opacity: .7; }
+.w .grip:hover, .w .grip.on { opacity: 1; }
+.stage.folded .grip, .w.prefs-open .grip { display: none; }
 .w .bar { display: none; gap: 6px; }
 .w.grab .bar { display: flex; }
 

@@ -29,6 +29,10 @@ const WIDGET_W = 620;
 // Панель виджета внутри окна: у нижнего края, справа (горничная слева — слева). С запасом на тень.
 const PANEL_W = 340;
 const PANEL_H = 400;
+// Панель можно вытянуть вниз за правый нижний угол (widget-resize): окно выше на столько же, сколько панель (CSS: высота панели — 100vh − 380).
+// Прибавка к высоте запоминается в settings.widget.extra; 0 — исходный размер.
+const WIDGET_H = 760;
+const extraH = () => Math.max(0, Math.round(settings.widget.extra ?? 0));
 const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
 let settings = structuredClone(DEFAULTS);
 function loadSettings() {
@@ -144,7 +148,8 @@ async function refreshIfStale(win) {
 // Окно горничной: горничная выглядывает из-за верхнего края панели. cur — куда окно уже передвинули (иначе — сохранённое место).
 function widgetBounds(cur) {
   const w = WIDGET_W;
-  const h = 760;
+  const ph = PANEL_H + extraH();
+  const h = WIDGET_H + extraH();
   const displays = screen.getAllDisplays();
   const d = displays.find((x) => x.id === settings.widget.display) ?? screen.getPrimaryDisplay();
   const a = d.workArea;
@@ -154,7 +159,7 @@ function widgetBounds(cur) {
   // или у края второго монитора считалась «за экраном», и виджет прыгал обратно в угол основного.
   const panel = (px, py) => {
     const left = settings.widget.side === "left" ? px : px + w - PANEL_W;
-    return { x: left, y: py + h - PANEL_H, width: PANEL_W, height: PANEL_H };
+    return { x: left, y: py + h - ph, width: PANEL_W, height: ph };
   };
   const p0 = panel(x, y);
   const cx = p0.x + p0.width / 2;
@@ -169,7 +174,7 @@ function widgetBounds(cur) {
   const area = (home ?? screen.getPrimaryDisplay()).workArea;
   const p1 = panel(x, y);
   x += Math.min(Math.max(p1.x, area.x), area.x + area.width - PANEL_W) - p1.x;
-  y += Math.min(Math.max(p1.y, area.y), area.y + area.height - PANEL_H) - p1.y;
+  y += Math.min(Math.max(p1.y, area.y), area.y + area.height - ph) - p1.y;
   return { x, y, width: w, height: h };
 }
 
@@ -177,7 +182,7 @@ function rememberWidget() {
   if (!widget || widget.isDestroyed()) return;
   const b = widget.getBounds();
   const c = screen.getCursorScreenPoint();
-  const d = screen.getDisplayNearestPoint(drag ? c : { x: b.x + b.width / 2, y: b.y + b.height - PANEL_H / 2 });
+  const d = screen.getDisplayNearestPoint(drag ? c : { x: b.x + b.width / 2, y: b.y + b.height - (PANEL_H + extraH()) / 2 });
   settings.widget = { ...settings.widget, x: b.x, y: b.y, display: d.id };
   saveSettings();
 }
@@ -210,6 +215,47 @@ function followCursor() {
   if (now.x === x && now.y === y) return;
   // setBounds с прежним размером: на экранах с разным масштабом setPosition у Windows меняет размер окна.
   widget.setBounds({ x, y, width: drag.b.width, height: drag.b.height });
+}
+// Вытянуть панель за правый нижний угол: тянешь вниз — длиннее, вверх — короче (не меньше исходной).
+// Верх панели стоит на месте, растёт низ; у нижнего края экрана расти некуда — тогда панель растёт вверх.
+// «reset» (двойной щелчок по уголку) — исходная высота.
+let sizing = null;
+ipcMain.on("widget-resize", (_e, phase) => {
+  if (!widget || widget.isDestroyed()) return;
+  const c = screen.getCursorScreenPoint();
+  if (phase === "start") {
+    clearInterval(sizing?.timer);
+    const b = widget.getBounds();
+    sizing = { cy: c.y, extra: extraH(), b, area: screen.getDisplayNearestPoint({ x: b.x + b.width / 2, y: b.y + b.height - 40 }).workArea };
+    hovering = true;
+    applyMouse();
+    sizing.timer = setInterval(followResize, 16);
+  } else if (phase === "move" && sizing) {
+    followResize();
+  } else if (phase === "end" && sizing) {
+    followResize();
+    clearInterval(sizing.timer);
+    sizing = null;
+    rememberWidget();
+  } else if (phase === "reset") {
+    const b = widget.getBounds();
+    const bottom = b.y + b.height - extraH(); // верх панели на месте
+    settings.widget.extra = 0;
+    widget.setBounds({ x: b.x, y: bottom - WIDGET_H, width: b.width, height: WIDGET_H });
+    rememberWidget();
+  }
+});
+function followResize() {
+  if (!sizing || !widget || widget.isDestroyed()) return;
+  const { b, area } = sizing;
+  // Не выше рабочей области минус место для головы горничной над панелью.
+  const most = Math.max(0, area.height - PANEL_H - 150);
+  const extra = Math.min(most, Math.max(0, sizing.extra + screen.getCursorScreenPoint().y - sizing.cy));
+  const h = WIDGET_H + extra;
+  const bottom = Math.min(b.y + b.height + extra - sizing.extra, area.y + area.height);
+  if (extra === extraH() && widget.getBounds().height === h) return;
+  settings.widget.extra = extra;
+  widget.setBounds({ x: b.x, y: bottom - h, width: b.width, height: h });
 }
 ipcMain.on("widget-reset", () => {
   settings.widget = { ...settings.widget, x: null, y: null, display: null };
@@ -256,7 +302,7 @@ let overChat = false;
 const flog = (...a) => { if (process.env.MAID_FOCUS_LOG) fs.appendFileSync(process.env.MAID_FOCUS_LOG, `${Date.now() % 100000} ${a.join(" ")} focused=${widget?.isFocused()} focusable=${widget?.isFocusable?.()}
 `); };
 setInterval(() => {
-  if (!widget || widget.isDestroyed() || grabbed || typing || drag) return;
+  if (!widget || widget.isDestroyed() || grabbed || typing || drag || sizing) return;
   const b = widget.getBounds();
   const c = screen.getCursorScreenPoint();
   const x = c.x - b.x;

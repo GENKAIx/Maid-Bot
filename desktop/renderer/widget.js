@@ -481,7 +481,8 @@ function render() {
   noteWakes(awake, later);
   // Только что проснувшиеся — первыми, чтобы их было видно.
   const tasks = [...awake].sort((a, b) => wokeFresh(b) - wokeFresh(a) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
-  const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6);
+  // Вытянутая панель (уголок справа внизу) показывает больше задач: +1 на каждые 26 px прибавки к высоте.
+  const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6 + Math.floor(Math.max(0, innerHeight - 760) / 26));
   const todo = daily.filter((h) => !h.status);
   const hiding = cfg.doneTasks === "hide";
   // Вчерашний пропуск, который ещё можно спасти задним числом (fun.js).
@@ -1187,3 +1188,29 @@ setInterval(pollNotices, 5_000);
 loadCfg().then(load);
 pollNotices();
 maid.widgetReady();
+
+// --- уголок: вытянуть панель вниз (окно растит main.js, панель — 100vh − 380 px), высота запоминается ---
+{
+  const grip = $("#grip");
+  let raf = 0;
+  const step = () => { raf = 0; maid.resizeWidget("move"); };
+  grip.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    grip.setPointerCapture(e.pointerId);
+    grip.classList.add("on");
+    maid.resizeWidget("start");
+  });
+  grip.addEventListener("pointermove", () => { if (grip.classList.contains("on") && !raf) raf = requestAnimationFrame(step); });
+  const end = () => {
+    if (!grip.classList.contains("on")) return;
+    grip.classList.remove("on");
+    maid.resizeWidget("end");
+    setTimeout(render, 60); // больше места — больше задач
+  };
+  grip.addEventListener("pointerup", end);
+  grip.addEventListener("lostpointercapture", end);
+  grip.addEventListener("dblclick", (e) => { e.stopPropagation(); maid.resizeWidget("reset"); setTimeout(render, 60); });
+  addEventListener("resize", () => { if (!grip.classList.contains("on")) render(); });
+}

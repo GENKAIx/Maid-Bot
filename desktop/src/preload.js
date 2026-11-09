@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld("maid", {
   dragWidget: (phase) => ipcRenderer.send("widget-drag", phase),
   /** Вернуть виджет в правый нижний угол основного экрана. */
   resetWidget: () => ipcRenderer.send("widget-reset"),
+  /** Вытянуть панель за правый нижний угол: start / move / end, reset — исходная высота. */
+  resizeWidget: (phase) => ipcRenderer.send("widget-resize", phase),
   on: (channel, fn) => {
     if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },
