@@ -318,7 +318,7 @@ function drawPlanList(box) {
     const now = today && !st && start !== null && start <= nowMin && nowMin < end;
     const when = e.time ? `в ${esc(e.time)}${e.end_time ? `–${esc(e.end_time)}` : ""}` : "без времени";
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
-      <button type="button" class="pl-check${st === "done" ? " on" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : ""}</button>`;
+      <button type="button" class="pl-check${st === "done" ? " on" : st === "cancelled" ? " on off" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : st === "cancelled" ? "<i>×</i><b>↺</b>" : ""}</button>`;
     return `<li class="pl-card${st ? ` ${st}` : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
       <span class="pl-text"><b class="pl-when">${when}</b> · ${esc(e.title)}</span>${tools}</li>`;
   };
@@ -344,15 +344,17 @@ function drawPlanList(box) {
 }
 // Отсчёт до улёта. Пока мышь на карточке, он стоит (и заливка тоже) — чтобы карточка не улетела из-под курсора.
 // Наведение, оставшееся от самого щелчка по галочке, не в счёт: пауза — только когда мышь ушла с карточки и вернулась.
+// Отмеченный (галочка) и убранный (×) уходят одинаково: заливка, потом улёт; пока идёт заливка — можно вернуть.
+const going = (x) => x?.status === "done" || x?.status === "cancelled";
 function planCountdown(id) {
   const x = planDone.get(id);
-  if (x?.status !== "done" || x.pausedAt) return;
+  if (!going(x) || x.pausedAt) return;
   clearTimeout(doneTimers.get(id));
   doneTimers.set(id, setTimeout(() => planFly(id), Math.max(0, DONE_FADE - (Date.now() - x.at))));
 }
 function planHold(id, on) {
   const x = planDone.get(id);
-  if (x?.status !== "done" || !x.at || x.fly) return;
+  if (!going(x) || !x.at || x.fly) return;
   const li = document.querySelector(`#planClock .pl-card[data-id="${id}"]`);
   if (on && !x.pausedAt) {
     x.pausedAt = Date.now();
@@ -368,7 +370,7 @@ function planHold(id, on) {
 // Улёт вправо, потом место карточки плавно сжимается, и список подтягивается.
 function planFly(id) {
   const x = planDone.get(id);
-  if (x?.status !== "done" && x?.status !== "cancelled") return doneTimers.delete(id);
+  if (!going(x)) return doneTimers.delete(id);
   x.fly = true;
   const li = document.querySelector(`#planClock .pl-card[data-id="${id}"]`);
   li?.classList.add("fly");
@@ -385,21 +387,19 @@ function planFly(id) {
 }
 function leaving(id) {
   const x = planDone.get(id);
-  if (x?.status === "cancelled") return x.fly ? " fly" : "";
-  return x?.status === "done" && x.at ? ` leaving${x.fly ? " fly" : ""}` : "";
+  return going(x) && x.at ? ` leaving${x.fly ? " fly" : ""}` : "";
 }
-// Галочка — состоялся (заливка, потом улетает), × — убрать (отменён, улетает сразу), галочка у отмеченного — вернуть в планы.
+// Галочка — состоялся, × — убрать (отменён); оба заливаются и улетают, щелчок по отметке до улёта — вернуть в планы.
 async function setPlanStatus(id, status) {
   const e = plansOf(clockDay).find((x) => x.id === id) ?? planDone.get(id)?.e;
   if (!e) return;
   clearTimeout(doneTimers.get(id));
   doneTimers.delete(id);
   if (status === "active") planDone.delete(id);
-  else planDone.set(id, { e, status, at: status === "done" ? Date.now() : 0 });
-  if (status === "done") planCountdown(id);
+  else planDone.set(id, { e, status, at: Date.now() });
+  planCountdown(id);
   lastPlans?.delete(id); // своё действие — не показывать его как «удалено где-то ещё»
   drawClock();
-  if (status === "cancelled") planFly(id); // убранный крестиком — сразу улетает из списка, без заливки
   try {
     await maid.api("POST", `/api/events/${id}`, { status });
   } catch (err) {
@@ -442,6 +442,7 @@ function hideClockLater() {
 }
 
 // После каждой загрузки данных: что из планов появилось, поменялось или пропало (неважно, где — здесь, в Telegram, с телефона).
+const quietPlans = new Set(); // id планов, которые появились от своего действия здесь (копия перетаскиванием) — не переключать на их день
 function watchPlans() {
   if (!data) return;
   const all = [...(data.events ?? []), ...(data.upcoming ?? [])];
@@ -449,7 +450,7 @@ function watchPlans() {
   const prev = lastPlans;
   lastPlans = now;
   if (!prev) return;
-  const fresh = all.filter((e) => prev.get(e.id) !== now.get(e.id));
+  const fresh = all.filter((e) => prev.get(e.id) !== now.get(e.id) && !quietPlans.delete(e.id));
   const gone = [...prev].filter(([id]) => !now.has(id)).map(([, j]) => JSON.parse(j)).filter((e) => e.date_iso >= data.day);
   if (!fresh.length && !gone.length) {
     if (!$("#planClock").classList.contains("hidden")) drawClock(); // стрелка и прошедшие планы
@@ -582,6 +583,7 @@ async function copyPlan(e, day) {
   try {
     const r = await maid.api("POST", `/api/events/${e.id}/copy`, { date: day });
     if (r.duplicate) return say(`На ${where} «${e.title}» уже есть.`, { ms: 4000, mood: "think" });
+    quietPlans.add(r.id); // остаёмся на дне, откуда тянули
     popTone(2);
     say(`Скопировала «${e.title}» на ${where} ✓`, { ms: 5000, mood: "write", emotion: "happy" });
     farPlans.clear();

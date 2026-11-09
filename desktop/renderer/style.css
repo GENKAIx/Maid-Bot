@@ -577,3 +577,7 @@ body.quick { background: transparent; }
   transform: rotate(-2deg) scale(1.03); box-shadow: 0 10px 24px rgba(0, 0, 0, .28); }
 #planClock.dragging-plan .day-chip { transition: transform .12s, box-shadow .12s; }
 #planClock .day-chip.drop { transform: translateY(-3px) scale(1.08); box-shadow: 0 0 0 2px var(--accent, #9a6cf0), 0 6px 14px rgba(0, 0, 0, .25); }
+/* Убранный крестиком: отметка красная, заливка красноватая; наведение — ↺ вернуть. */
+.pl-check.on.off { background: #c94f4f; border-color: #c94f4f; }
+.pl-check.on.off:hover { background: rgba(255, 255, 255, .18); border-color: #fff; }
+.pl-card.cancelled.leaving::after { background: color-mix(in srgb, #c94f4f 30%, transparent); }
