@@ -363,8 +363,15 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .chart-tip { white-space: pre-line; }
 .chart-bar.nested { position: relative; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
 .chart-bar.nested i { display: block; width: 100%; border-radius: 4px 4px 0 0; }
-.pc-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin-bottom: 14px; }
+.pc-summary { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px 18px; margin-bottom: 14px; }
+/* Графа «Сегодня»: отделена чертой от средних за период, число с часами и играми за сегодняшний день. */
+.pc-today { padding-left: 18px; white-space: nowrap; border-left: 1px solid var(--line, rgba(0, 0, 0, .08)); flex-direction: column; gap: 2px; align-items: flex-start; }
+.pc-today-label { color: var(--muted); font-size: 12.5px; }
+.pc-today > span { flex: none !important; }
+.pc-today-games { color: var(--red); font-weight: 600; }
 .pc-stat { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.pc-stat > span:nth-child(2) { flex: 1 1 0; min-width: 0; } /* узко — переносится текст, а квадратик цвета остаётся рядом с числом */
+.pc-stat .pc-pct { flex-basis: 100%; }
 .pc-stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .pc-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; align-self: center; }
 .pc-pct { color: var(--muted); font-size: 13px; }
@@ -416,6 +423,7 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
   .week-event { white-space: normal; }
   .shares li { grid-template-columns: 80px 1fr auto; }
   .pc-summary, .app-cols { grid-template-columns: 1fr; }
+  .pc-today { padding-left: 0; border-left: 0; }
   .sleep-row { grid-template-columns: 48px 1fr 40px; gap: 6px; }
   .sleep-legend { margin-left: 54px; }
   .sleep-scale span.minor { display: none; }
