@@ -724,3 +724,7 @@ body.quick { background: transparent; }
 .pl-card.pl-task { --c: #5fd08a; background: rgba(95, 208, 138, .08); }
 .pl-card.pl-task.late { --c: #ff7f7f; background: rgba(255, 127, 127, .08); }
 .pl-card.pl-task.done .pl-text { text-decoration: line-through; opacity: .5; }
+
+/* Лента дней на время полёта: окно — сама полоса, лента внутри едет. */
+.pc-days.rail-box { display: block; overflow: hidden; }
+.fly-rail { display: grid; gap: 3px; width: max-content; will-change: transform; }

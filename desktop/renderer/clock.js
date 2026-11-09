@@ -58,9 +58,9 @@ function dayAfter(day, n) {
 let stripFrom = 0; // с какого дня от сегодня начинается полоса (стрелки листают по неделе)
 const farPlans = new Map(); // день → планы дней дальше, чем приходят в /api/today (там — сегодня и 14 дней вперёд)
 const NEAR_DAYS = 14;
-function dayStrip() {
-  return Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => {
-    const day = dayAfter(data.day, stripFrom + i);
+function dayStrip(from = stripFrom, count = DAYS_AHEAD + 1) {
+  return Array.from({ length: count }, (_, i) => {
+    const day = dayAfter(data.day, from + i);
     const d = new Date(`${day}T12:00:00Z`);
     const wd = d.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
     const n = plansOf(day).length + tasksOn(day).length;
@@ -725,12 +725,12 @@ const dayWord = (n) => {
   return a === 1 && b !== 11 ? "день" : a >= 2 && a <= 4 && (b < 12 || b > 14) ? "дня" : "дней";
 };
 const inDays = (n) => (n === 1 ? "завтра" : `через ${n} ${dayWord(n)}`);
-// Близкие дни — каждый, далёкие — первые пять, прыжок и последние десять.
-const flyPath = (n) => (n <= 21 ? Array.from({ length: n }, (_, i) => i + 1) : [1, 2, 3, 4, 5, ...Array.from({ length: 10 }, (_, i) => n - 9 + i)]);
 function stopFly() {
+  const was = $("#planClock").classList.contains("flying");
   flyRun++;
   flyNote = null;
   $("#planClock").classList.remove("flying");
+  if (was && !$("#planClock").classList.contains("hidden")) drawClock();
 }
 function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
   const n = daysFrom(data.day, day);
@@ -738,34 +738,76 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
   const run = ++flyRun;
   stripFrom = 0;
   showClock(data.day);
-  if ($("#planClock").classList.contains("hidden")) return; // панель выключена или свёрнута
+  const box = $("#planClock");
+  if (box.classList.contains("hidden")) return; // панель выключена или свёрнута
   clearTimeout(clockHideTimer);
-  $("#planClock").classList.add("flying");
-  const path = flyPath(n);
-  const total = Math.min(1500, 260 + path.length * 75);
-  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
-  path.forEach((k, i) => setTimeout(() => {
+  box.classList.add("flying");
+  // Полоса едет одним движением: на время полёта в ней лента из всех дней до нужного (очень далёкие — последние 120),
+  // лента сдвигается непрерывно, выделение идёт по дням. Медленный старт, разгон, плавная остановка — одна кривая.
+  const from = Math.max(0, n - 120);
+  const last = Math.max(0, n - DAYS_AHEAD); // с какого дня полоса начнётся в конце
+  const dur = Math.min(2200, Math.max(800, 650 + n * 45));
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+  let lastK = -1;
+  let tickAt = 0;
+  let rail = null;
+  let step = 0;
+  const mount = () => {
+    const days = $("#planClock .pc-days");
+    if (!days || !days.getBoundingClientRect().width) return null;
+    // Ширина дня — как в обычной полосе: 7 равных колонок с зазором 3 px.
+    const w = (days.getBoundingClientRect().width - 3 * DAYS_AHEAD) / (DAYS_AHEAD + 1);
+    step = w + 3;
+    days.classList.add("rail-box");
+    days.innerHTML = `<div class="fly-rail">${dayStrip(from, n - from + 1)}</div>`;
+    const r = days.firstElementChild;
+    r.style.gridTemplateColumns = `repeat(${n - from + 1}, ${w}px)`;
+    return r;
+  };
+  const frame = (at, t0) => {
     if (run !== flyRun) return;
-    const last = i === path.length - 1;
-    const was = stripFrom;
-    clockDay = dayAfter(data.day, k);
-    if (k > stripFrom + DAYS_AHEAD) stripFrom = k - DAYS_AHEAD;
-    flyNote = inDays(k);
-    if (last) {
-      clockFresh = new Set(fresh);
-      clockGone = gone;
-      if (more) flyNote += ` · ещё ${more}`;
-      $("#planClock").classList.remove("flying");
+    if (!rail?.isConnected) rail = mount();
+    const t = Math.min(1, (at - t0) / dur);
+    const e = ease(t);
+    const k = from + (n - from) * e; // выбранный день
+    const shift = (Math.max(from, last) - from) * e; // лента едет по той же кривой с первого кадра
+    if (rail) rail.style.transform = `translateX(${(-shift * step).toFixed(1)}px)`;
+    const kd = Math.round(k);
+    if (kd !== lastK && t < 1) {
+      lastK = kd;
+      const d = dayAfter(data.day, kd);
+      rail?.querySelector(".day-chip.on")?.classList.remove("on");
+      rail?.querySelector(`.day-chip[data-day="${d}"]`)?.classList.add("on");
+      const b = $("#planClock .pc-title b");
+      if (b) b.textContent = kd === 0 ? "Сегодня" : humanDay(d);
+      const far = $("#planClock .pc-far");
+      if (far) far.textContent = kd ? inDays(kd) : "";
+      if (at - tickAt > 45) {
+        tickAt = at;
+        popTone(Math.round(((kd - from) / Math.max(1, n - from)) * 7), { vol: 0.03, soft: true });
+      }
     }
+    if (t < 1) return requestAnimationFrame((a) => frame(a, t0));
+    // Приехали: обычная полоса на том же месте, план появляется, чип подпрыгивает.
+    stripFrom = last;
+    clockDay = day;
+    clockFresh = new Set(fresh);
+    clockGone = gone;
+    flyNote = inDays(n) + (more ? ` · ещё ${more}` : "");
+    box.classList.remove("flying");
     drawClock();
-    if (stripFrom !== was) slideStrip(1);
-    if (last) {
-      $(`#planClock .day-chip[data-day="${day}"]`)?.classList.add("landed");
-      popTone(7, { vol: 0.09 });
-      loadFar();
-      hideClockLater(FLY_SHOWN);
-    } else popTone(Math.round((i / path.length) * 7), { vol: 0.03, soft: true });
-  }, 420 + total * ease((i + 1) / path.length)));
+    $(`#planClock .day-chip[data-day="${day}"]`)?.classList.add("landed");
+    popTone(7, { vol: 0.09 });
+    loadFar();
+    hideClockLater(FLY_SHOWN);
+  };
+  flyNote = " "; // заголовок с местом под «через N дней»
+  drawClock();
+  setTimeout(() => {
+    if (run !== flyRun) return;
+    rail = mount();
+    requestAnimationFrame((a) => frame(a, a));
+  }, 420);
 }
 $("#planClock").addEventListener("pointerdown", () => { if ($("#planClock").classList.contains("flying")) stopFly(); }, true);
 $("#planClock").addEventListener("wheel", () => { if ($("#planClock").classList.contains("flying")) stopFly(); }, { capture: true, passive: true });
