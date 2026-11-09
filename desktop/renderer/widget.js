@@ -335,7 +335,7 @@ function render() {
   ];
   // Улетевшие, но ещё не отправленные (идёт «Вернуть») уже считаются сделанными.
   const gone = [...leavingRows.values()].filter((x) => x.gone).length;
-  const left = todo.length + (sec.tasks ? data.tasks.length : 0) - gone;
+  const left = todo.length + (sec.tasks ? data.tasks.filter((t) => !doneNow.has(t.id)).length : 0) - gone;
   const doneCount = daily.filter((h) => h.status).length + (sec.tasks ? recentDone().length : 0) + gone;
   const allDone = hiding && !left && doneCount > 0;
   if (allDone && lastLeft > 0) react("proud", 5000);
