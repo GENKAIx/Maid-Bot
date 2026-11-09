@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { get, getToken, post } from "../api";
 import { Card, Empty, Spinner } from "../components";
 import { currentSubscription, isIos, pushSupported, standalone, subscribe, unsubscribe } from "../push";
+import { getTheme, setTheme, type Theme } from "../theme";
 
-// Настройки: уведомления на этом устройстве, время утреннего списка и итога, предупреждения об играх, копия, выход.
+// Настройки: тема и уведомления на этом устройстве, время утреннего списка и итога, предупреждения об играх, копия, выход.
 
 interface Me {
   id: number; login: string | null; name: string; tz: string; persona: string;
@@ -20,6 +21,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [theme, pickTheme] = useState<Theme>(getTheme());
 
   async function load() {
     try {
@@ -83,6 +85,15 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
       <h2 className="screen-title">Настройки</h2>
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="cards">
+        <Card title="Вид" className="reveal">
+          <div className="segment" role="radiogroup" aria-label="Тема">
+            {([["light", "Светлая"], ["dark", "Тёмная"], ["system", "Как в системе"]] as [Theme, string][]).map(([t, name]) => (
+              <button key={t} role="radio" aria-checked={theme === t} className={theme === t ? "on" : ""} onClick={() => { setTheme(t); pickTheme(t); }}>{name}</button>
+            ))}
+          </div>
+          <p className="muted small" style={{ marginTop: 8 }}>Тема запоминается на этом устройстве.</p>
+        </Card>
+
         <Card title="Уведомления" className="reveal">
           {!pushSupported() ? (
             <Empty>Этот браузер не поддерживает push-уведомления.</Empty>

@@ -11,6 +11,13 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon-180.png" />
     <title>Горничная</title>
+    <script>
+      // Тема до загрузки приложения, чтобы тёмная не мигала светлой (то же правило — в src/theme.ts).
+      try {
+        var t = localStorage.getItem("maid.theme");
+        if (t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches)) document.documentElement.dataset.theme = "dark";
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
