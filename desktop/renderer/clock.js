@@ -1,8 +1,8 @@
 // Часы планов — круглый циферблат слева от панели: планы дня цветными дугами от начала до конца, названия — в списке под часами.
 // Сами не висят: выезжают, когда планы меняются (добавили, перенесли, удалили — здесь, в Telegram или с телефона)
 // или когда их смотрят (щелчок по строке «ближайший план»), и прячутся через несколько секунд, если мышь не над ними.
-// Вид — настройка виджета «Часы планов»: 12 часов (по умолчанию: до полудня — внутреннее кольцо, после — внешнее,
-// поверх), 24 часа или выключены. У каждого плана свой цвет — на дуге и у кружка в списке.
+// Вид — настройка виджета «Планы дня»: список (по умолчанию: карточки по времени, галочка — состоялся, × — убрать),
+// часы на 12 (до полудня — внутреннее кольцо, после — внешнее, поверх) или 24 часа, или выключено. У каждого плана свой цвет.
 
 const CLOCK_SIZE = 280;
 const CX = CLOCK_SIZE / 2;
@@ -55,9 +55,12 @@ function dayAfter(day, n) {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
+let stripFrom = 0; // с какого дня от сегодня начинается полоса (стрелки листают по неделе)
+const farPlans = new Map(); // день → планы дней дальше, чем приходят в /api/today (там — сегодня и 14 дней вперёд)
+const NEAR_DAYS = 14;
 function dayStrip() {
   return Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => {
-    const day = dayAfter(data.day, i);
+    const day = dayAfter(data.day, stripFrom + i);
     const d = new Date(`${day}T12:00:00Z`);
     const wd = d.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
     const n = plansOf(day).length;
@@ -68,7 +71,22 @@ function dayStrip() {
 
 function plansOf(day) {
   if (!data) return [];
+  if (farPlans.has(day)) return farPlans.get(day);
   return [...(data.events ?? []), ...(data.upcoming ?? [])].filter((e) => e.date_iso === day);
+}
+// Дальние дни полосы — отдельным запросом, один раз на неделю полосы.
+async function loadFar() {
+  const last = stripFrom + DAYS_AHEAD;
+  const to = dayAfter(data.day, last);
+  if (last <= NEAR_DAYS || farPlans.has(to)) return;
+  const from = dayAfter(data.day, Math.max(stripFrom, NEAR_DAYS + 1));
+  try {
+    const rows = await maid.api("GET", `/api/events?from=${from}&to=${to}`);
+    for (let d = from; d <= to; d = dayAfter(d, 1)) farPlans.set(d, rows.filter((e) => e.date_iso === d));
+  } catch {
+    return;
+  }
+  drawClock();
 }
 
 // Планы с временем → дуги: начало, конец, ряд. У 12 часов план через полдень делится на два куска — по кольцу на половину.
@@ -122,6 +140,8 @@ function arcSvg(x, mode, nowMin, { gone = false } = {}) {
 function drawClock() {
   const box = $("#planClock");
   if (!box || !data || !clockDay) return;
+  box.classList.toggle("as-list", cfg.clock === "list");
+  if (cfg.clock === "list") return drawPlanList(box);
   const mode = cfg.clock === "12" ? "12" : "24";
   const d = new Date();
   const nowMin = d.getHours() * 60 + d.getMinutes();
@@ -221,6 +241,79 @@ function fitClockHeight(box) {
 }
 const planWord = (n) => (n % 10 === 1 && n % 100 !== 11 ? "план" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "плана" : "планов");
 
+// --- список планов дня ---
+const planDone = new Map(); // id → { e, status } — отмеченные здесь: остаются в списке зачёркнутыми, пока панель открыта
+function drawPlanList(box) {
+  const today = clockDay === data.day;
+  const d = new Date();
+  const nowMin = d.getHours() * 60 + d.getMinutes();
+  const ids = new Set();
+  const list = [
+    ...[...planDone.values()].filter((x) => x.e.date_iso === clockDay).map((x) => ({ ...x.e, _st: x.status })),
+    ...plansOf(clockDay),
+    ...clockGone.map((e) => ({ ...e, _st: "gone" })),
+  ].filter((e) => !ids.has(e.id) && ids.add(e.id))
+    .sort((a, b) => (minutesOf(a.time) ?? 1441) - (minutesOf(b.time) ?? 1441));
+  clockColors = new Map(layout(list, "24").map((x, i) => [x.e.id, ARC_COLORS[i % ARC_COLORS.length]]));
+  const open = list.filter((e) => !e._st).length;
+  const dayName = today ? "Сегодня" : humanDay(clockDay);
+  const card = (e) => {
+    const st = e._st ?? "";
+    const start = minutesOf(e.time);
+    let end = minutesOf(e.end_time);
+    if (start !== null && (end === null || end <= start)) end = start + NO_END_MIN;
+    const past = today && !st && end !== null && end <= nowMin;
+    const now = today && !st && start !== null && start <= nowMin && nowMin < end;
+    const when = e.time ? `в ${esc(e.time)}${e.end_time ? `–${esc(e.end_time)}` : ""}` : "без времени";
+    const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
+      <button type="button" class="pl-check${st === "done" ? " on" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Вернуть в планы" : "Состоялось"}">${st === "done" ? "✓" : ""}</button>`;
+    return `<li class="pl-card${st ? ` ${st}` : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}" data-id="${e.id}" data-c="${colorOf(e)}">
+      <span class="pl-text"><b class="pl-when">${when}</b> · ${esc(e.title)}</span>${tools}</li>`;
+  };
+  box.innerHTML = `
+    <div class="pc-head"><b>${esc(dayName)}</b><span>${open ? `${open} ${planWord(open)}` : "планов нет"}</span></div>
+    <div class="pc-strip">
+      <button type="button" class="pc-arrow" data-shift="-1" title="Неделя назад"${stripFrom <= 0 ? " disabled" : ""}>‹</button>
+      <div class="pc-days">${dayStrip()}</div>
+      <button type="button" class="pc-arrow" data-shift="1" title="Неделя вперёд">›</button>
+    </div>
+    <div class="pl-top"><span>Планы на день</span><button type="button" class="pl-add" title="Добавить план на этот день — через чат">+ План</button></div>
+    ${list.length ? `<ul class="pl-list">${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день. «+ План» — добавить.</p>`}`;
+  // Цвет полоски карточки — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
+  for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
+  box.style.height = `${Math.min(Math.max($("#w")?.offsetHeight ?? 0, 320), box.parentElement.clientHeight - 16)}px`;
+}
+// Галочка — состоялся, × — убрать (отменён), галочка у отмеченного — вернуть в планы.
+async function setPlanStatus(id, status) {
+  const e = plansOf(clockDay).find((x) => x.id === id) ?? planDone.get(id)?.e;
+  if (!e) return;
+  if (status === "active") planDone.delete(id);
+  else planDone.set(id, { e, status });
+  lastPlans?.delete(id); // своё действие — не показывать его как «удалено где-то ещё»
+  drawClock();
+  try {
+    await maid.api("POST", `/api/events/${id}`, { status });
+  } catch (err) {
+    planDone.delete(id);
+    drawClock();
+    const msg = String(err?.message ?? err);
+    say(/нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет отмечать планы — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+    return;
+  }
+  if (status === "done") react?.("happy", 1800);
+  farPlans.clear();
+  await load();
+  lastPlans?.delete(id);
+}
+// «+ План» — в чат: дата уже вписана, дальше — что и во сколько.
+function addPlanVia(day) {
+  const input = $("#chatInput");
+  input.value = `План на ${day === data.day ? "сегодня" : humanDay(day).replace(/, .*/, "")}: `;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  input.dispatchEvent(new Event("input"));
+}
+
 function showClock(day, { fresh = [], gone = [] } = {}) {
   if (cfg.clock === "off" || collapsed || prefsOpen || !data) return;
   const box = $("#planClock");
@@ -234,6 +327,8 @@ function showClock(day, { fresh = [], gone = [] } = {}) {
 function hideClock() {
   clearTimeout(clockHideTimer);
   $("#planClock").classList.add("hidden");
+  planDone.clear();
+  stripFrom = 0;
   clockFresh = new Set();
   clockGone = [];
 }
@@ -263,6 +358,25 @@ function watchPlans() {
 $("#planClock").addEventListener("mouseenter", () => { clockHover = true; });
 $("#planClock").addEventListener("mouseleave", () => { clockHover = false; hideClockLater(); });
 $("#planClock").addEventListener("click", (e) => {
+  const act = e.target.closest("[data-act]");
+  if (act) {
+    setPlanStatus(Number(act.closest(".pl-card").dataset.id), act.dataset.act);
+    return hideClockLater();
+  }
+  const arrow = e.target.closest(".pc-arrow");
+  if (arrow) {
+    stripFrom = Math.max(0, stripFrom + Number(arrow.dataset.shift) * (DAYS_AHEAD + 1));
+    clockDay = dayAfter(data.day, stripFrom);
+    clockFresh = new Set();
+    clockGone = [];
+    drawClock();
+    loadFar();
+    return hideClockLater();
+  }
+  if (e.target.closest(".pl-add")) {
+    addPlanVia(clockDay);
+    return hideClockLater();
+  }
   const chip = e.target.closest(".day-chip");
   if (chip) {
     clockDay = chip.dataset.day;
@@ -271,7 +385,7 @@ $("#planClock").addEventListener("click", (e) => {
     drawClock();
     return hideClockLater();
   }
-  if (!e.target.closest(".plan-arc")) hideClock();
+  if (!e.target.closest(".plan-arc, .pl-list, .pl-top, .pl-empty, .pc-strip")) hideClock();
 });
 // Посмотреть планы — щелчок по строке «ближайший план»: ещё раз — спрятать.
 $("#next").addEventListener("click", () => {
