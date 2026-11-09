@@ -9,7 +9,7 @@ let lastNotice = 0;
 let state = "idle"; // idle | think | sleep
 let bubbleTimer = 0;
 // Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
 
@@ -305,30 +305,157 @@ function render() {
   const dayItem = (h) => {
     const i = h.course?.length ? h.course.findIndex((x) => x.day === data.day) : -1;
     const sub = i >= 0 ? ` <span class="muted">· день ${i + 1} из ${h.course.length}</span>` : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
+    const go = leavingRows.get(`h${h.id}`);
+    if (go) return `<li class="${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span><span>${esc(h.title)}${sub}</span></li>`;
     return `<li class="${h.status ? "did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${sub}</span></li>`;
   };
   const RANK = { high: 0, normal: 1, low: 2 };
   const tasks = [...data.tasks].sort((a, b) => (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
   const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6);
   const todo = daily.filter((h) => !h.status);
+  const hiding = cfg.doneTasks === "hide";
   // Вчерашний пропуск, который ещё можно спасти задним числом (fun.js).
   const rescueItem = (h) => `<li class="rescue"><span class="mark" data-rescue="${h.id}" title="Отметить вчерашний день"></span><span>${esc(h.title)} <span class="muted">· вчера — спасти серию</span></span></li>`;
   const items = [
     ...todo.map(dayItem),
     ...daily.filter(missedYesterday).map(rescueItem),
-    ...(sec.tasks ? shownTasks : []).map((t) => `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`),
-    ...daily.filter((h) => h.status).map(dayItem),
-    ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done">✓</span><span>${esc(t.title)}</span></li>`),
+    ...(sec.tasks ? shownTasks : []).map((t) => {
+      const go = leavingRows.get(`t${t.id}`);
+      return go
+        ? `<li class="${rowLeaving(go)}" data-key="t${t.id}"><span class="check done" data-done="${t.id}" title="Отменить">${UNDO_MARK}</span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`
+        : `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`;
+    }),
+    // Сделанное: в режиме «прятать» — только пока открыт счётчик.
+    ...(hiding && !showingDone() ? [] : [
+      ...daily.filter((h) => h.status).map(dayItem),
+      ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done">✓</span><span>${esc(t.title)}</span></li>`),
+    ]),
   ];
   const left = todo.length + (sec.tasks ? data.tasks.length : 0);
+  const doneCount = daily.filter((h) => h.status).length + (sec.tasks ? recentDone().length : 0);
+  const counter = hiding && doneCount
+    ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${doneCount}/${doneCount + left}</button>`
+    : left > 3 ? ` · ${left}` : "";
   const pinned = new Set(datesOf(data.day, true).map(dateKey));
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   $("#body").innerHTML =
-    (sec.tasks || daily.length ? `<h4>Задачи${left > 3 ? ` · ${left}` : ""}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
+    (sec.tasks || daily.length ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
+  if (hiding) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
+  for (const li of $("#body").querySelectorAll("li.leaving")) {
+    const x = leavingRows.get(li.dataset.key);
+    if (x) li.style.setProperty("--fill-delay", `-${Math.min((x.pausedAt || Date.now()) - x.at, ROW_FADE)}ms`);
+  }
   renderCourses();
   inboxTidy();
 }
+
+// --- Сделанные задачи в режиме «прятать» (cfg.doneTasks === "hide") ---
+// Отметил — строка ROW_FADE мс заливается цветом слева направо, улетает вправо, и список смыкается; только тогда отметка уходит
+// на сервер. До этого галочка при наведении — ×: отменить. Мышь вернулась на строку после щелчка — заливка стоит.
+// Счётчик «сделано/всего» у заголовка — щелчок показывает сделанное зачёркнутым на DONE_PEEK мс.
+const ROW_FADE = 3000;
+const ROW_FLY = 380;
+const ROW_SHUT = 220;
+const DONE_PEEK = 5000;
+const UNDO_MARK = "<i>✓</i><b>×</b>";
+const leavingRows = new Map(); // "t12" / "h3" → { at, pausedAt, armed, fly, title, timer }
+let showDoneUntil = 0;
+let showDoneTimer = 0;
+const showingDone = () => Date.now() < showDoneUntil;
+const rowLeaving = (x) => `leaving${x.fly ? " fly" : ""}${x.pausedAt ? " hold" : ""}`;
+const rowEl = (key) => $("#body").querySelector(`li[data-key="${key}"]`);
+function endOfDay() {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
+}
+function toggleShowDone() {
+  clearTimeout(showDoneTimer);
+  showDoneUntil = showingDone() ? 0 : Date.now() + DONE_PEEK;
+  if (showDoneUntil) showDoneTimer = setTimeout(render, DONE_PEEK + 30);
+  render();
+}
+function startLeave(key, mark) {
+  popTone(4);
+  burst(mark);
+  react("done", 4000);
+  leavingRows.set(key, { at: Date.now(), pausedAt: 0, armed: false, fly: false, title: mark.nextElementSibling?.textContent ?? "" });
+  render();
+  rowCountdown(key);
+}
+function cancelLeave(key) {
+  const x = leavingRows.get(key);
+  if (!x || x.fly) return;
+  clearTimeout(x.timer);
+  leavingRows.delete(key);
+  popTone(-5, { vol: 0.2, soft: true });
+  render();
+}
+function rowCountdown(key) {
+  const x = leavingRows.get(key);
+  if (!x || x.pausedAt || x.fly) return;
+  clearTimeout(x.timer);
+  x.timer = setTimeout(() => rowFly(key), Math.max(0, ROW_FADE - (Date.now() - x.at)));
+}
+function rowHold(key, on) {
+  const x = leavingRows.get(key);
+  if (!x || x.fly) return;
+  if (on && !x.pausedAt) {
+    x.pausedAt = Date.now();
+    clearTimeout(x.timer);
+    rowEl(key)?.classList.add("hold");
+  } else if (!on && x.pausedAt) {
+    x.at += Date.now() - x.pausedAt;
+    x.pausedAt = 0;
+    rowEl(key)?.classList.remove("hold");
+    rowCountdown(key);
+  }
+}
+async function rowFly(key) {
+  const x = leavingRows.get(key);
+  if (!x) return;
+  x.fly = true;
+  rowEl(key)?.classList.add("fly");
+  const id = Number(key.slice(1));
+  const task = key[0] === "t";
+  const sent = maid.api("POST", task ? `/api/tasks/${id}` : `/api/habits/${id}/mark`, { status: "done" });
+  setTimeout(() => {
+    const el = rowEl(key);
+    if (el) {
+      el.style.setProperty("height", `${el.offsetHeight}px`);
+      void el.offsetHeight;
+      el.classList.add("shut");
+    }
+    setTimeout(() => {
+      leavingRows.delete(key);
+      if (task) { doneNow.set(id, { title: x.title, until: endOfDay() }); countDone(data.day); }
+      else { const h = data?.habits?.find((v) => v.id === id); if (h) h.status = "done"; }
+      render();
+    }, el ? ROW_SHUT : 0);
+  }, ROW_FLY);
+  try {
+    await sent;
+    maid.changed();
+    if (!task) load();
+  } catch (err) {
+    play("oops");
+    say(err.message, { ms: 6000 });
+    load();
+  }
+}
+// Пауза заливки: мышь ушла со строки — «взвести», вернулась — стоп, ушла — дальше (наведение сразу после щелчка не в счёт).
+$("#body").addEventListener("mouseover", (e) => {
+  const li = e.target.closest("li.leaving");
+  if (li && !li.contains(e.relatedTarget) && leavingRows.get(li.dataset.key)?.armed) rowHold(li.dataset.key, true);
+});
+$("#body").addEventListener("mouseout", (e) => {
+  const li = e.target.closest("li.leaving");
+  if (!li || li.contains(e.relatedTarget)) return;
+  const x = leavingRows.get(li.dataset.key);
+  if (x) x.armed = true;
+  rowHold(li.dataset.key, false);
+});
 
 let lastJson = "";
 async function load() {
@@ -396,7 +523,7 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: w.plans ?? "list", dateLead: w.dateLead ?? "1" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: w.plans ?? "list", dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   applyCfg();
   if (prefsOpen) drawPrefs();
 }
@@ -435,6 +562,14 @@ function drawPrefs() {
     <div class="pref"><span>Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%</span><input type="range" id="prefOpacity" min="0.4" max="1" step="0.02" value="${cfg.opacity}" /></div>
     <div class="pref"><span>Планы дня</span>${seg("clock", cfg.clock, [["list", "Список"], ["12", "Часы 12"], ["24", "Часы 24"], ["off", "Нет"]])}</div>
     <div class="pref"><span>Важные даты</span>${seg("dateLead", String(cfg.dateLead), [["0", "В день"], ["1", "За день"], ["3", "За 3 дня"], ["7", "За неделю"]])}</div>
+    <div class="pref"><span>Сделанные задачи</span><div class="done-modes">
+      <button type="button" data-dmode="keep" class="dm${cfg.doneTasks === "keep" ? " on" : ""}">
+        <div class="dm-mini"><b>Задачи</b><p><i></i>Купить хлеб</p><p class="did"><i>✓</i><s>Пить Аевит</s></p></div>
+        <span>Остаются зачёркнутыми</span></button>
+      <button type="button" data-dmode="hide" class="dm${cfg.doneTasks === "hide" ? " on" : ""}">
+        <div class="dm-mini"><b>Задачи <em>1/2</em></b><p><i></i>Купить хлеб</p><p class="go"><i>✓</i><span>Пить Аевит</span></p></div>
+        <span>Улетают, счётчик сделанного</span></button>
+    </div></div>
     <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>
     <div class="row2"><button type="button" id="prefReset">Вернуть в угол</button><button type="button" id="prefDone" class="primary">Готово</button></div>`;
 }
@@ -443,6 +578,7 @@ $("#prefs").addEventListener("click", (e) => {
   if (!b) return;
   if (b.id === "prefDone") return togglePrefs(false);
   if (b.id === "prefReset") return maid.resetWidget();
+  if (b.dataset.dmode) return saveCfg({ doneTasks: b.dataset.dmode });
   const kind = b.parentElement?.dataset.seg;
   if (kind === "sound") {
     localStorage.setItem("maid.mute", b.dataset.v === "off" ? "1" : "");
@@ -581,6 +717,13 @@ $("#maid").addEventListener("contextmenu", (e) => {
 $("#open").onclick = () => maid.openMain();
 $("#release").onclick = () => maid.grab(false);
 $("#body").addEventListener("click", async (e) => {
+  if (e.target.closest("#doneCount")) return toggleShowDone();
+  const tick = e.target.closest("[data-done], [data-habit]");
+  if (tick) {
+    const key = tick.dataset.done ? `t${tick.dataset.done}` : `h${tick.dataset.habit}`;
+    if (leavingRows.has(key)) return cancelLeave(key);
+    if (cfg.doneTasks === "hide" && !tick.closest("li.did")) return startLeave(key, tick);
+  }
   const id = e.target.dataset?.done;
   const habit = e.target.dataset?.habit;
   const save = e.target.dataset?.rescue;

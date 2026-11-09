@@ -471,3 +471,44 @@ body.quick { background: transparent; }
 @keyframes ibFloat { 0%, 100% { transform: translate(0, 0); } 40% { transform: translate(var(--ax, 2px), var(--ay, -5px)); } 70% { transform: translate(calc(var(--ax, 2px) * -.6), -2px); } }
 @keyframes ibWiggle { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-16deg); } 40% { transform: rotate(13deg); } 60% { transform: rotate(-8deg); } 80% { transform: rotate(4deg); } }
 @media (prefers-reduced-motion: reduce) { .ib, .ib.new { animation: none; } }
+
+/* Сделанные задачи, режим «прятать»: строка заливается слева направо, улетает вправо, список смыкается. */
+.w .list li.leaving { position: relative; }
+.w .list li.leaving::after { content: ""; position: absolute; inset: -2px -6px; border-radius: 6px; background: color-mix(in srgb, var(--accent-2) 30%, transparent);
+  transform: scaleX(0); transform-origin: left; animation: plFill 3s linear var(--fill-delay, 0ms) forwards; pointer-events: none; }
+.w .list li.leaving > * { position: relative; z-index: 1; }
+.w .list li.leaving.hold::after { animation-play-state: paused; }
+.w .list li.fly { animation: plFly .38s cubic-bezier(.5, 0, .9, .4) forwards; transition: height .22s ease, margin .22s ease; overflow: hidden; }
+.w .list li.fly.shut { height: 0 !important; margin-bottom: -3px; }
+.w .list li.leaving .check, .w .list li.leaving .mark { display: grid; place-items: center; }
+.w .list li.leaving i, .w .list li.leaving b { font-style: normal; font-weight: 600; }
+.w .list li.leaving .check b, .w .list li.leaving .mark b { display: none; }
+.w .list li.leaving .check:hover, .w .list li.leaving .mark:hover { background: #c94f4f; border-color: #c94f4f; color: #fff; cursor: pointer; }
+.w .list li.leaving .check:hover i, .w .list li.leaving .mark:hover i { display: none; }
+.w .list li.leaving .check:hover b, .w .list li.leaving .mark:hover b { display: inline; }
+.w .list li.shown-done { animation: doneIn .25s ease; }
+@keyframes doneIn { from { opacity: 0; transform: translateY(-3px); } }
+.w h4 .done-count { margin-left: 4px; padding: 0 7px; height: 18px; border-radius: 9px; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; cursor: pointer; vertical-align: 1px; text-transform: none; letter-spacing: 0; }
+.w h4 .done-count:hover, .w h4 .done-count.on { color: var(--text); background: color-mix(in srgb, var(--accent-2) 25%, transparent); border-color: transparent; }
+@media (prefers-reduced-motion: reduce) { .w .list li.leaving::after { animation-duration: 0s; } .w .list li.fly { animation: none; opacity: 0; } }
+
+/* Настройки: выбор режима — маленькие картинки списка. */
+.prefs .done-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.prefs .dm { display: grid; gap: 6px; padding: 6px; border-radius: 10px; background: var(--panel-2); border: 1.5px solid transparent; color: var(--muted); font-size: 11.5px; text-align: center; cursor: pointer; }
+.prefs .dm.on { border-color: var(--brand); color: var(--text); }
+.prefs .dm:hover:not(.on) { border-color: var(--line); }
+.dm-mini { display: grid; gap: 4px; padding: 7px 8px; border-radius: 7px; background: rgba(0, 0, 0, .22); text-align: left; font-size: 10.5px; color: var(--text); overflow: hidden; height: 62px; align-content: start; }
+.dm-mini b { font-size: 10px; font-weight: 600; color: var(--muted); }
+.dm-mini em { font-style: normal; padding: 0 5px; border-radius: 6px; border: 1px solid var(--line); }
+.dm-mini p { position: relative; margin: 0; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.dm-mini i { flex: none; width: 10px; height: 10px; border: 1px solid var(--muted); border-radius: 3px; font-style: normal; font-size: 8px; display: grid; place-items: center; line-height: 1; }
+.dm-mini .did { opacity: .5; }
+.dm-mini .did i, .dm-mini .go i { background: var(--accent-2); border-color: var(--accent-2); color: var(--ink); }
+.dm-mini .go::after { content: ""; position: absolute; inset: -1px -3px; border-radius: 4px; background: color-mix(in srgb, var(--accent-2) 30%, transparent);
+  transform-origin: left; animation: dmFill 3.6s linear infinite; }
+.dm-mini .go { animation: dmFly 3.6s cubic-bezier(.5, 0, .9, .4) infinite; }
+.dm-mini .go > * { position: relative; z-index: 1; }
+@keyframes dmFill { 0% { transform: scaleX(0); } 62%, 100% { transform: scaleX(1); } }
+@keyframes dmFly { 0%, 66% { transform: none; opacity: 1; } 80%, 94% { transform: translateX(120%); opacity: 0; } 100% { transform: none; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .dm-mini .go, .dm-mini .go::after { animation: none; } }
