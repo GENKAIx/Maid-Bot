@@ -12,7 +12,7 @@ import type { Pipeline } from "./pipeline.ts";
 import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
-import { habitButtons, snooze, type Button, type Send } from "./scheduler.ts";
+import { habitButtons, planEventReminders, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isTime } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 
@@ -286,6 +286,19 @@ export function createApi(deps: ApiDeps) {
       if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
       await store.updateTask(t.id, { status });
       return store.task(t.id);
+    }
+
+    // План (событие): состоялся / отменён / снова в планах — из списка планов виджета.
+    const ev = p.match(/^\/api\/events\/(\d+)$/);
+    if (m === "POST" && ev) {
+      const { status } = parseBody(z.object({ status: z.enum(["active", "done", "cancelled"]) }), await readJson(req));
+      const e = await store.event(Number(ev[1]));
+      if (!e || e.user_id !== u.id) throw new HttpError(404, "нет плана");
+      await store.updateEvent(e.id, { status });
+      await store.cancelReminders("event", e.id);
+      const now = (await store.event(e.id))!;
+      if (now.status === "active") await planEventReminders(store, u, now, new Date());
+      return now;
     }
 
     // Привычки: сетка месяца и отметка.
