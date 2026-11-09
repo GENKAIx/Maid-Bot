@@ -216,6 +216,16 @@ async function sendChat() {
   fitChat();
   await ask("/api/input", { text, id: crypto.randomUUID() }, text.length > 40 ? text.slice(0, 40) + "…" : text);
 }
+// Реакция на сказанное, что бы ни ответил сервер: пошлое (запись про секс и т. п.) — довольная ухмылка,
+// даже если записалось; благодарность без записи — смущённо рада.
+const LEWD = /(?<![а-яё])(секс|интим|пошл|переспа|трах|минет|кунилин|оральн|голая|голый|голышом|раздел[аи]сь|эрот|порн|оргазм|возбужд|похот|дроч|мастурб|сиськ|задниц|презерватив|в постел[иь] с)/i;
+function heardMood(text, r) {
+  if (!text) return null;
+  if (LEWD.test(text)) return "smug";
+  if (/спасиб|благодар/i.test(text) && !r.changes?.length) return "smitten";
+  return null;
+}
+
 async function ask(path, body, waiting) {
   sending = true;
   chatInput.placeholder = waiting;
@@ -224,9 +234,7 @@ async function ask(path, body, waiting) {
   say("…", { ms: 0 });
   try {
     const r = await maid.api("POST", path, body);
-    // Поблагодарили — смущённо радуется, что бы ни ответил сервер.
-    const thanks = /спасиб|благодар/i.test(body?.text ?? r.heard ?? "") && !r.changes?.length;
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: thanks ? "smitten" : null });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(body?.text ?? r.heard, r) });
     maid.changed();
   } catch (e) {
     say(e.message, { emotion: "worried", ms: 8000, sound: "oops" });
@@ -970,7 +978,7 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
-maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null }));
+maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r) }));
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
