@@ -387,6 +387,12 @@ ipcMain.on("open-day", (_e, day) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day)) || !/^https?:\/\//.test(settings.server)) return;
   shell.openExternal(`${settings.server.replace(/\/$/, "")}/diary/${day}`);
 });
+// Раздел приложения (щелчок по карточке в облачке горничной): главное окно открывается сразу на нём.
+ipcMain.on("open-section", (_e, p) => {
+  if (!/^\/[\w\/-]*$/.test(String(p)) || !/^https?:\/\//.test(settings.server)) return showMain();
+  showMain();
+  mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
+});
 ipcMain.handle("settings:get", () => ({ ...settings, tracker: { ...settings.tracker, state: trackerState } }));
 ipcMain.on("widget-ready", (e) => e.sender.send("opacity", settings.widget.opacity));
 ipcMain.handle("settings:set", (_e, patch) => {

@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("maid", {
   openMain: () => ipcRenderer.send("open-main"),
   /** Открыть день дневника в веб-приложении (браузер). */
   openDay: (day) => ipcRenderer.send("open-day", day),
+  /** Открыть раздел приложения в главном окне: "/money", "/diary/2026-11-09"… */
+  openSection: (path) => ipcRenderer.send("open-section", path),
   openQuick: () => ipcRenderer.send("quick-show"),
   hideQuick: () => ipcRenderer.send("quick-hide"),
   grab: (on) => ipcRenderer.send("grab", on),

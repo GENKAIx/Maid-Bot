@@ -34,6 +34,12 @@ const KIND = {
   metric: ["📊", "Показатель"], money: ["💰", "Деньги"], habit: ["🔁", "Привычка"], mark: ["✔", "Отметка"], edit: ["✎", "Правка"],
 };
 
+// Куда ведёт карточка записи из облачка: раздел приложения (веб-приложение в главном окне).
+function sectionOf(c) {
+  if (c.kind === "diary") return /^Здоровье/.test(c.title) ? "/health" : `/diary/${data?.day ?? ""}`.replace(/\/$/, "");
+  return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits" }[c.kind] ?? "/";
+}
+
 // --- горничная: 20 анимаций (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации») ---
 // Основа — ждёт / думает / спит / нет связи; на события она на несколько секунд реагирует (react), потом возвращается к основе.
 const MOODS = ["idle", "think", "sleep", "happy", "proud", "angry", "sad", "worried", "surprised", "neutral",
@@ -111,7 +117,12 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   changes.forEach((c, i) => {
     const [icon, name] = KIND[c.kind] ?? ["•", c.kind];
     const el = document.createElement("div");
-    el.className = `card k-${c.kind}`;
+    el.className = `card k-${c.kind} go`;
+    el.title = "Открыть в приложении";
+    el.onclick = () => {
+      hideBubble();
+      maid.openSection(sectionOf(c));
+    };
     el.style.animationDelay = `${160 + i * 140}ms`;
     el.innerHTML = `<span class="card-icon">${icon}</span><span class="card-body"><b>${esc(name)}</b> ${esc(c.title)}${c.detail ? `<span class="card-detail">${esc(c.detail)}</span>` : ""}</span>`;
     cards.appendChild(el);
