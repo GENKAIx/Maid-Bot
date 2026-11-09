@@ -1,5 +1,5 @@
 import type { MarkRow, Message, Store, Table, User } from "./db.ts";
-import type { LlmCall } from "./llm.ts";
+import type { LlmCall, Picture } from "./llm.ts";
 import { extractJson } from "./llm.ts";
 import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
 import { scheduleText } from "./habits.ts";
@@ -40,7 +40,16 @@ export interface Incoming {
   at?: Date;
   /** Только поговорить (/ask): ничего не записывать. */
   chatOnly?: boolean;
+  /** Картинка (чек, билет, скриншот); text тогда — подпись к ней, может быть пустой. */
+  image?: Picture;
 }
+
+/** Что модели сказать о картинке — рядом с подписью. */
+const PICTURE_NOTE =
+  "(К сообщению приложено изображение — разбери его по правилам для изображений. Подпись выше, если есть, важнее картинки.)";
+
+/** Как сообщение с картинкой выглядит в истории и в базе. */
+export const pictureText = (caption: string) => (caption.trim() ? `📷 ${caption.trim()}` : "📷 Фото");
 
 export class Pipeline {
   /** publicUrl — адрес веб-приложения для ссылок на дни в ответах (пусто — без ссылок). */
@@ -66,17 +75,20 @@ export class Pipeline {
     const p = persona(u.persona);
     const pending = inc.chatOnly ? undefined : await s.pendingClarify(u.id);
     const { message, created } = await s.saveMessage({
-      userId: u.id, source: inc.source, sourceId: inc.sourceId, text: inc.text, dayKey: today, replyTo: pending?.id, at,
+      userId: u.id, source: inc.source, sourceId: inc.sourceId, text: inc.image ? pictureText(inc.text) : inc.text, dayKey: today,
+      replyTo: inc.image ? undefined : pending?.id, at,
     });
     if (!created && message.state === "done") {
       return { text: message.reply ?? p.saved[0], emotion: "neutral", messageId: message.id, undoable: false, duplicate: true };
     }
 
-    if (inc.chatOnly) return this.chat(u, message, at);
+    if (inc.chatOnly) return this.chat(u, message, at, inc.image);
 
-    // Ответ на уточнение: разбираем исходное сообщение вместе с ответом.
-    const original = pending ? await s.message(pending.id) : undefined;
-    const text = original ? `${original.text}\n(уточнение: ${inc.text})` : inc.text;
+    // Ответ на уточнение: разбираем исходное сообщение вместе с ответом. Картинка уточнением не считается.
+    const original = pending && !inc.image ? await s.message(pending.id) : undefined;
+    const text = original
+      ? `${original.text}\n(уточнение: ${inc.text})`
+      : inc.image ? `${inc.text.trim()}\n${PICTURE_NOTE}`.trim() : inc.text;
     const ctx = {
       today,
       now: timeOf(at, u.tz),
@@ -96,7 +108,7 @@ export class Pipeline {
         [
           { role: "system", content: buildPrompt(ctx, p.voice) },
           ...(await this.history(u.id, message.id)),
-          { role: "user", content: text },
+          { role: "user", content: text, image: inc.image },
         ],
         { json: true },
       );
@@ -110,11 +122,15 @@ export class Pipeline {
     await s.setMessage(message.id, { parse_json: JSON.stringify(parsed) });
 
     // Уточнение — один вопрос, черновик ждёт. Повторно не спрашиваем: второй раз пишем как есть.
-    if (parsed.clarify && !original) {
+    // У картинки не спрашиваем: на ответ её уже не будет — пишем, что разобрали.
+    if (parsed.clarify && !original && !inc.image) {
       const q = `${p.clarify} ${parsed.clarify}`;
       await s.setMessage(message.id, { state: "clarify", reply: q });
       return { text: q, emotion: "neutral", messageId: message.id, undoable: false };
     }
+
+    // Вопрос про саму картинку («что это?») — отвечаем по ней, а не по записям.
+    if (parsed.question && inc.image) return this.chat(u, message, at, inc.image);
 
     if (parsed.question) {
       const { text: answer, days } = await this.answer(u, parsed, inc.text, today);
@@ -393,7 +409,7 @@ export class Pipeline {
     }
   }
 
-  private async chat(u: User, msg: Message, at: Date): Promise<Reply> {
+  private async chat(u: User, msg: Message, at: Date, image?: Picture): Promise<Reply> {
     const p = persona(u.persona);
     const today = dayKey(at, u.tz);
     const mem = (await this.store.activeMemory(u.id)).map((m) => `${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n");
@@ -401,7 +417,7 @@ export class Pipeline {
       const out = await this.llm([
         { role: "system", content: `${p.voice}\nЭто просто разговор, ничего не записывай. Сегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}` },
         ...(await this.history(u.id, msg.id)),
-        { role: "user", content: msg.text },
+        { role: "user", content: image ? `${msg.text}\n(Приложено изображение.)` : msg.text, image },
       ], { temperature: 0.7 });
       const text = esc(out.trim());
       await this.store.setMessage(msg.id, { state: "done", reply: text });

@@ -11,6 +11,7 @@ import { datesText, memoryText, plansText, tasksText, todayText } from "./report
 import type { Scheduler, Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
+import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
@@ -226,6 +227,34 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await ctx.replyWithChatAction("typing").catch(() => {});
     const r = await pipeline.handle({
       user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: ctx.message.text,
+      at: new Date(ctx.message.date * 1000),
+    });
+    if (!r.duplicate) await answer(ctx, u, r);
+  });
+
+  // Фото или картинка файлом (чек, билет, скриншот): скачать и разобрать вместе с подписью.
+  bot.on(["message:photo", "message:document"], async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return;
+    const doc = ctx.message.document;
+    if (doc && !IMAGE_TYPES.includes(doc.mime_type ?? "")) return void (await ctx.reply("Из файлов понимаю только картинки: фото, скриншоты, чеки."));
+    const photo = ctx.message.photo?.at(-1); // самый крупный размер
+    const media = photo ?? doc;
+    if (!media || (media.file_size ?? 0) > IMAGE_MAX_BYTES) return void (await ctx.reply("Слишком большая картинка."));
+    await ctx.replyWithChatAction("typing").catch(() => {});
+    let data: string;
+    try {
+      const file = await ctx.api.getFile(media.file_id);
+      const res = await fetch(`https://api.telegram.org/file/bot${config.telegramToken}/${file.file_path}`, { signal: AbortSignal.timeout(30_000) });
+      if (!res.ok) throw new Error(`файл ${res.status}`);
+      data = Buffer.from(await res.arrayBuffer()).toString("base64");
+    } catch (e) {
+      console.error("[bot] photo", e);
+      return void (await ctx.reply("Не получилось скачать картинку, пришли ещё раз."));
+    }
+    const r = await pipeline.handle({
+      user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: (ctx.message.caption ?? "").slice(0, 4000),
+      image: { data, mime: photo ? "image/jpeg" : doc!.mime_type! },
       at: new Date(ctx.message.date * 1000),
     });
     if (!r.duplicate) await answer(ctx, u, r);

@@ -16,6 +16,7 @@ import { moneyTotals, upcomingDates } from "./report.ts";
 import { habitButtons, planEventReminders, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isTime } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
+import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "./llm.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -400,11 +401,19 @@ export function createApi(deps: ApiDeps) {
     }
 
     if (m === "POST" && p === "/api/input") {
+      // image — картинка (чек, билет…) в base64; text тогда — подпись, может быть пустой.
       const b = parseBody(
-        z.object({ text: z.string().trim().min(1).max(4000), id: z.string().max(80).optional(), ask: z.boolean().optional() }),
-        await readJson(req),
+        z.object({
+          text: z.string().trim().max(4000).default(""),
+          id: z.string().max(80).optional(),
+          ask: z.boolean().optional(),
+          image: z.object({ data: z.string().min(1), mime: z.enum(IMAGE_TYPES as [string, ...string[]]) }).optional(),
+        }),
+        await readJson(req, Math.ceil(IMAGE_MAX_BYTES * 1.4) + 20_000),
       );
-      return pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: b.text, chatOnly: b.ask });
+      if (!b.text && !b.image) throw new HttpError(400, "пустое сообщение");
+      if (b.image && Buffer.byteLength(b.image.data, "base64") > IMAGE_MAX_BYTES) throw new HttpError(413, "слишком большая картинка");
+      return pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: b.text, chatOnly: b.ask, image: b.image });
     }
     // Голосовое сообщение: аудио в base64 → текст → как обычная запись. heard — что услышали.
     if (m === "POST" && p === "/api/voice") {

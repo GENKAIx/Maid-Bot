@@ -211,11 +211,36 @@ const chatInput = $("#chatInput");
 let sending = false;
 async function sendChat() {
   const text = chatInput.value.trim();
-  if (!text || sending) return;
+  if ((!text && !picture) || sending) return;
+  const image = picture ? { data: picture.data, mime: picture.mime } : undefined;
   chatInput.value = "";
   fitChat();
-  await ask("/api/input", { text, id: crypto.randomUUID() }, text.length > 40 ? text.slice(0, 40) + "…" : text);
+  attach(null);
+  await ask("/api/input", { text, image, id: crypto.randomUUID() }, image ? "📷 Смотрю…" : text.length > 40 ? text.slice(0, 40) + "…" : text);
 }
+
+// Картинка к сообщению: скрепка, Ctrl+V в строке или перетащить на виджет. Уходит с ближайшим Enter, подпись — по желанию.
+let picture = null;
+function attach(p) {
+  picture = p;
+  $("#chatAttach").classList.toggle("hidden", !p);
+  $("#chatAttach img").src = p?.url ?? "";
+  if (p) { chatInput.placeholder = "Подпись к картинке (можно пусто) — Enter"; chatInput.focus(); }
+  else chatInput.placeholder = "Скажи горничной…";
+}
+async function attachFile(file) {
+  if (!file) return;
+  try { attach(await shrinkImage(file)); react("surprised", 2500); }
+  catch { say("Не получилось открыть картинку.", { emotion: "worried", ms: 5000, sound: "oops" }); }
+}
+$("#chatAttach button").addEventListener("click", (e) => { e.preventDefault(); attach(null); });
+$("#chatClip").addEventListener("click", () => { maid.focusInput(true); $("#chatFile").click(); });
+$("#chatFile").addEventListener("change", (e) => { attachFile(e.target.files[0]); e.target.value = ""; });
+chatInput.addEventListener("paste", (e) => {
+  const f = imageFrom(e.clipboardData);
+  if (f) { e.preventDefault(); attachFile(f); }
+});
+document.addEventListener("drop", (e) => attachFile(imageFrom(e.dataTransfer)));
 // Реакция на сказанное, что бы ни ответил сервер: пошлое (запись про секс и т. п.) — довольная ухмылка,
 // даже если записалось; благодарность без записи — смущённо рада.
 const LEWD = /(?<![а-яё])(секс|интим|пошл|переспа|трах|минет|кунилин|оральн|голая|голый|голышом|раздел[аи]сь|эрот|порн|оргазм|возбужд|похот|дроч|мастурб|сиськ|задниц|презерватив|в постел[иь] с)/i;
@@ -300,7 +325,7 @@ function fitChat() {
 }
 chatInput.addEventListener("input", fitChat);
 chatInput.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") return chatInput.blur();
+  if (e.key === "Escape") return picture ? attach(null) : chatInput.blur();
   if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     $("#chat").requestSubmit();

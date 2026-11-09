@@ -5,7 +5,26 @@ import { config } from "./config.ts";
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
+  /** Картинка к сообщению пользователя (чек, скриншот) — уходит модели вместе с текстом. */
+  image?: Picture;
 }
+
+export interface Picture {
+  mime: string;
+  /** base64 без префикса data: */
+  data: string;
+}
+
+/** Картинки больше не принимаем (клиенты сами уменьшают до ~1600 px, это сотни килобайт). */
+export const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+/** Какие картинки понимают модели со зрением. */
+export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+/** Картинки — частями content в формате OpenAI (так их понимают и OpenRouter, и другие совместимые). */
+const wire = (m: ChatMessage) =>
+  m.image
+    ? { role: m.role, content: [{ type: "text", text: m.content }, { type: "image_url", image_url: { url: `data:${m.image.mime};base64,${m.image.data}` } }] }
+    : { role: m.role, content: m.content };
 
 export type LlmCall = (messages: ChatMessage[], opts?: { json?: boolean; temperature?: number }) => Promise<string>;
 
@@ -15,7 +34,7 @@ export const callLlm: LlmCall = async (messages, opts = {}) => {
   if (!config.llm.apiKey) throw new Error("LLM_API_KEY не задан");
   const body: Record<string, unknown> = {
     model: config.llm.model,
-    messages,
+    messages: messages.map(wire),
     temperature: opts.temperature ?? 0.2,
   };
   if (opts.json) body.response_format = { type: "json_object" };

@@ -3,6 +3,7 @@ import { post } from "./api";
 import { Recorder } from "./recorder";
 import { plainReply } from "./format";
 import { navigate } from "./router";
+import { imageFrom, shrinkImage, type Picture } from "./picture";
 import type { Reply } from "./types";
 
 // Строка ввода на каждом экране: пишешь как в чат. Ответ горничной — снизу, с кнопкой «Отменить».
@@ -17,6 +18,19 @@ export function Composer({ onChanged }: { onChanged: () => void }) {
   const wave = useRef<HTMLCanvasElement>(null);
   const [recording, setRecording] = useState(false);
   const [clock, setClock] = useState("0:00");
+  // Картинка к сообщению: скрепка, Ctrl+V в строке или перетащить на строку; текст тогда — подпись.
+  const [picture, setPicture] = useState<Picture | null>(null);
+  const file = useRef<HTMLInputElement>(null);
+
+  async function attach(f: File | null | undefined) {
+    if (!f) return;
+    try {
+      setPicture(await shrinkImage(f));
+      area.current?.focus();
+    } catch {
+      show({ text: "Не получилось открыть картинку.", error: true }, 6000);
+    }
+  }
 
   useEffect(() => {
     if (!recording) return;
@@ -76,11 +90,14 @@ ${plainReply(r.text)}`, reply: r });
   async function send(e?: FormEvent) {
     e?.preventDefault();
     const t = text.trim();
-    if (!t || busy) return;
+    if ((!t && !picture) || busy) return;
+    const image = picture ? { data: picture.data, mime: picture.mime } : undefined;
     setBusy(true);
+    if (image) show({ text: "📷 Смотрю…" }, 60000);
     try {
-      const r = await post<Reply>("/api/input", { text: t, id: crypto.randomUUID() });
+      const r = await post<Reply>("/api/input", { text: t, image, id: crypto.randomUUID() });
       setText("");
+      setPicture(null);
       show({ text: plainReply(r.text), reply: r });
       onChanged();
     } catch (err) {
@@ -122,7 +139,18 @@ ${plainReply(r.text)}`, reply: r });
           </div>
         </div>
       )}
-      <form className={`composer ${recording ? "recording" : ""}`} onSubmit={send}>
+      <form
+        className={`composer ${recording ? "recording" : ""}`}
+        onSubmit={send}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => { e.preventDefault(); void attach(imageFrom(e.dataTransfer)); }}
+      >
+        {picture && !recording && (
+          <div className="attach" title="Картинка уйдёт вместе с сообщением">
+            <img src={picture.url} alt="" />
+            <button type="button" className="ghost" onClick={() => setPicture(null)} title="Убрать картинку" aria-label="Убрать картинку">✕</button>
+          </div>
+        )}
         {recording ? (
           <div className="rec-bar" aria-live="polite">
             <button type="button" className="rec-trash ghost" onClick={() => void dropMic()} title="Удалить запись (Esc)" aria-label="Удалить запись">
@@ -137,14 +165,27 @@ ${plainReply(r.text)}`, reply: r });
             ref={area}
             value={text}
             rows={1}
-            placeholder="Что было или что запланировать…"
+            placeholder={picture ? "Подпись к картинке (можно пусто)" : "Что было или что запланировать…"}
             onChange={(e) => setText(e.target.value)}
+            onPaste={(e) => {
+              const f = imageFrom(e.clipboardData);
+              if (f) { e.preventDefault(); void attach(f); }
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) void send();
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
+              if (e.key === "Escape" && picture) setPicture(null);
             }}
           />
         )}
-        {(recording || !text.trim()) && (
+        {!recording && (
+          <>
+            <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { void attach(e.target.files?.[0]); e.target.value = ""; }} />
+            <button type="button" className="mic" disabled={busy} onClick={() => file.current?.click()} title="Картинка: чек, билет, скриншот (или Ctrl+V)" aria-label="Приложить картинку">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" /></svg>
+            </button>
+          </>
+        )}
+        {(recording || (!text.trim() && !picture)) && (
           <button
             type="button"
             className={`mic ${recording ? "rec" : ""}`}
@@ -160,7 +201,7 @@ ${plainReply(r.text)}`, reply: r });
             )}
           </button>
         )}
-        <button className="primary" type="submit" disabled={busy || !text.trim()}>{busy ? "…" : "Записать"}</button>
+        <button className="primary" type="submit" disabled={busy || (!text.trim() && !picture)}>{busy ? "…" : "Записать"}</button>
       </form>
     </div>
   );

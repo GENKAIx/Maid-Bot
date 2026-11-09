@@ -291,6 +291,12 @@ body.quick { background: transparent; }
 .q { margin: 10px; padding: 10px; border-radius: 16px; background: rgba(29, 24, 48, .97); border: 1px solid var(--line); box-shadow: 0 14px 40px rgba(0,0,0,.45), 0 0 0 3px rgba(183,156,255,.18); }
 .q input { font-size: 17px; padding: 10px 12px; background: transparent; border-color: transparent; }
 .q input:focus { border-color: transparent; }
+.qrow { display: flex; align-items: center; gap: 8px; }
+.qrow input { flex: 1; min-width: 0; }
+.qrow img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); flex: none; }
+.attach { position: relative; flex: none; width: 36px; height: 36px; }
+.attach img { width: 36px; height: 36px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); display: block; }
+.chat .attach button { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; line-height: 18px; background: #3a3150; border: 1px solid rgba(255,255,255,.25); }
 .q .out { margin-top: 8px; min-height: 18px; color: var(--muted); white-space: pre-wrap; font-size: 13px; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -786,3 +792,4 @@ body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .
 .w .scroll.more-below { -webkit-mask-image: linear-gradient(#000 calc(100% - 26px), transparent); mask-image: linear-gradient(#000 calc(100% - 26px), transparent); }
 .w .scroll.more-above.more-below { -webkit-mask-image: linear-gradient(transparent, #000 18px, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(transparent, #000 18px, #000 calc(100% - 26px), transparent); }
 .w .scroll.more-above:not(.more-below) { -webkit-mask-image: linear-gradient(transparent, #000 18px); mask-image: linear-gradient(transparent, #000 18px); }
+.attach.hidden, .qrow img.hidden { display: none; }

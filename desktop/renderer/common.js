@@ -5,6 +5,31 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 /** Ответ бота приходит в HTML Telegram — показываем только b/i/code. */
 const tgHtml = (s) => esc(String(s ?? "").replace(/<(?!\/?(b|i|code)>)[^>]+>/g, "")).replace(/&lt;(\/?(b|i|code))&gt;/g, "<$1>");
 
+// --- картинки (чек, билет, скриншот) ---
+/** Первая картинка из буфера обмена или перетаскивания. */
+function imageFrom(dt) {
+  return [...(dt?.files ?? [])].find((f) => f.type.startsWith("image/")) ??
+    [...(dt?.items ?? [])].find((i) => i.kind === "file" && i.type.startsWith("image/"))?.getAsFile() ?? null;
+}
+/** Уменьшить до 1600 px по большей стороне и сжать в JPEG: на сервер уходят сотни килобайт, а не мегабайты. */
+async function shrinkImage(file, max = 1600) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * k);
+  c.height = Math.round(bmp.height * k);
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff"; // прозрачный PNG — на белом, как бумага чека
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close();
+  const url = c.toDataURL("image/jpeg", 0.85);
+  return { mime: "image/jpeg", data: url.slice(url.indexOf(",") + 1), url };
+}
+// Брошенный в окно файл не должен открываться вместо окна.
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => e.preventDefault());
+
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const WD = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 function humanDay(key) {
