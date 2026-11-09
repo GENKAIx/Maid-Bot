@@ -13,9 +13,9 @@ const C = { ink: "#fff6ec", soft: "rgba(255,246,236,.72)", violet: "#b79cff", gr
 const FADE = 10;
 
 // Записанный виджет: кадр 990×1170 (страница 660×780 ×1,5) → на экране ×0,85.
-const K = 0.85;
+const K = 0.8;
 const REC_W = 990 * K, REC_H = 1170 * K;
-const REC_X = 1060, REC_Y = 52;
+const REC_X = 1090, REC_Y = 84;
 const REC_LEN: Record<string, number> = { intro: 165, chat: 270, remind: 210, finish: 225, clock: 180, inbox: 195, task: 135, poke: 255, night: 120, games: 150 };
 
 type Mark = { at: number; sfx: string; vol?: number };
@@ -48,25 +48,25 @@ const Hook: React.FC = () => {
 const SCENES: Scene[] = [
   { id: "hook", len: 88, custom: Hook },
   { id: "intro", len: 160, rec: "intro", title: "Знакомься: горничная", sub: "Живёт в углу экрана и помнит всё за тебя", color: C.violet,
-    focus: [945, 640], zoom: 1.05, marks: [{ at: 12, sfx: "hey" }, { at: 84, sfx: "pop" }] },
-  { id: "chat", len: 260, rec: "chat", title: "Пиши как другу", sub: "Одна фраза — а она сама разложит: сон, здоровье, планы", color: C.green,
-    focus: [945, 520], zoom: 1.18, marks: [{ at: 99, sfx: "send" }, { at: 138, sfx: "ding" }, ...pops(143, 4, 4)] },
+    focus: [960, 1125], zoom: 1.05, marks: [{ at: 12, sfx: "hey" }, { at: 84, sfx: "pop" }] },
+  { id: "chat", len: 260, rec: "chat", title: "Пиши как другу", sub: "Одна фраза — а она сама разложит: сон, спорт, планы", color: C.green,
+    focus: [960, 1125], zoom: 1.05, marks: [{ at: 99, sfx: "send" }, { at: 138, sfx: "ding" }, ...pops(143, 4, 4)] },
   { id: "remind", len: 190, rec: "remind", title: "Напомнит вовремя", sub: "А отметить — одна кнопка", color: C.orange,
-    focus: [945, 420], zoom: 1.2, marks: [{ at: 9, sfx: "hey" }, { at: 84, sfx: "pop", vol: 0.8 }, { at: 100, sfx: "pop", vol: 0.6 }] },
+    focus: [960, 1125], zoom: 1.05, marks: [{ at: 9, sfx: "hey" }, { at: 84, sfx: "pop", vol: 0.8 }, { at: 100, sfx: "pop", vol: 0.6 }] },
   { id: "finish", len: 215, rec: "finish", title: "Курс таблеток — как поп-ит", sub: "Лопай пупырку каждый день. В конце — салют и медаль", color: C.pink,
-    focus: [945, 260], zoom: 1.28, marks: [{ at: 30, sfx: "pop", vol: 0.8 }, ...pops(52, 6, 2, 0.35), { at: 66, sfx: "ding" }] },
+    focus: [960, 1125], zoom: 1.05, marks: [{ at: 30, sfx: "pop", vol: 0.8 }, ...pops(52, 6, 2, 0.35), { at: 66, sfx: "ding" }] },
   { id: "clock", len: 170, rec: "clock", title: "Весь день — одним взглядом", sub: "Планы дугами на часах или списком, важные даты сверху", color: C.blue,
-    focus: [945, 700], zoom: 1.12, marks: [{ at: 96, sfx: "pop", vol: 0.4 }] },
+    focus: [960, 1125], zoom: 1.05, marks: [{ at: 96, sfx: "pop", vol: 0.4 }] },
   { id: "inbox", len: 190, rec: "inbox", title: "Отошёл от компьютера?", sub: "Пропущенное ждёт тебя — каждое своим значком", color: C.yellow,
-    focus: [945, 430], zoom: 1.22, marks: [{ at: 9, sfx: "pop" }, { at: 27, sfx: "pop" }, { at: 45, sfx: "pop" }, { at: 63, sfx: "pop" }, { at: 114, sfx: "hey" }] },
+    focus: [960, 1125], zoom: 1.05, marks: [{ at: 9, sfx: "pop" }, { at: 27, sfx: "pop" }, { at: 45, sfx: "pop" }, { at: 63, sfx: "pop" }, { at: 114, sfx: "hey" }] },
   { id: "task", len: 120, rec: "task", title: "Сделал — чпок!", sub: "Задача уезжает вниз, горничная радуется", color: C.green,
-    focus: [945, 860], zoom: 1.22, marks: [{ at: 18, sfx: "pop", vol: 0.9 }] },
+    focus: [960, 1125], zoom: 1.05, marks: [{ at: 18, sfx: "pop", vol: 0.9 }] },
   { id: "poke", len: 250, rec: "poke", title: "А ещё её можно тыкать", sub: "Только не больше десяти раз…", color: C.pink,
-    focus: [945, 360], zoom: 1.25, marks: [...Array.from({ length: 9 }, (_, i) => ({ at: 12 + i * 18, sfx: "pop", vol: 0.45 })), { at: 174, sfx: "oops", vol: 0.9 }] },
+    focus: [960, 1125], zoom: 1.05, marks: [...Array.from({ length: 9 }, (_, i) => ({ at: 12 + i * 18, sfx: "pop", vol: 0.45 })), { at: 174, sfx: "oops", vol: 0.9 }] },
   { id: "moods", len: 160, custom: () => <Moods /> },
-  { id: "night", len: 95, rec: "night", title: "Ночью она спит", sub: "Тссс…", color: C.blue, focus: [945, 640], zoom: 1.15 },
+  { id: "night", len: 95, rec: "night", title: "Ночью она спит", sub: "Тссс…", color: C.blue, focus: [960, 1125], zoom: 1.05 },
   { id: "games", len: 140, rec: "games", title: "Засиделся в игре?", sub: "Заметит, напомнит про перерыв и заварит чай", color: C.orange,
-    focus: [945, 380], zoom: 1.2, marks: [{ at: 9, sfx: "hey" }] },
+    focus: [960, 1125], zoom: 1.05, marks: [{ at: 9, sfx: "hey" }] },
   { id: "everywhere", len: 165, custom: () => <Everywhere /> },
   { id: "cta", len: 170, custom: () => <Cta /> },
 ];
@@ -105,7 +105,7 @@ const Desktop: React.FC = () => {
 const Rec: React.FC<{ name: string; from?: number; len: number; focus?: [number, number]; zoom?: number }> = ({ name, from = 0, len, focus = [700, 600], zoom = 1 }) => {
   const f = useCurrentFrame();
   const n = Math.min(REC_LEN[name] - 1, Math.max(0, from + f));
-  const z = interpolate(f, [0, 40, len], [1, zoom, zoom * 1.015], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.inOut(Easing.cubic) });
+  const z = interpolate(f, [0, 40, len], [1, zoom, zoom * 1.01], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.inOut(Easing.cubic) });
   const ox = REC_X + focus[0] * K, oy = REC_Y + focus[1] * K;
   return (
     <AbsoluteFill style={{ transform: `scale(${z})`, transformOrigin: `${ox}px ${oy}px` }}>

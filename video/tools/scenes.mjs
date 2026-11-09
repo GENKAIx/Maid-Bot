@@ -1,7 +1,7 @@
 // Сценарии записи: steps — [секунда, js на странице виджета, метка для звука в ролике]. Время страницы — clock (по умолчанию 8 ноября, 18:40).
 const typing = (text, from, to) => [...text].map((_, i) => [from + ((to - from) * (i + 1)) / text.length,
   `chatInput.value = ${JSON.stringify(text.slice(0, i + 1))}; fitChat()`]);
-const LONG = "поспал с 2 до 9, болела голова, завтра в 15 к стоматологу";
+const LONG = "лёг в час, встал в 9 бодрым, пробежал 5 км, в пятницу в 19 концерт";
 const habitBtn = (k) => `document.querySelector('#bubbleActions button[data-i="${k}"]').click()`;
 // Курс на 8 дней — сегодня последний, чтобы показать праздник.
 const SHORT = `window.__marks["2026-11-03"] = "done"; { const api = maid.api; maid.api = async (...a) => { const r = await api(...a);
@@ -18,7 +18,7 @@ export const SCENES = {
     [3.3, `sendChat()`, "send"],
   ] },
   remind: { seconds: 7, setup: `hideBubble()`, steps: [
-    [0.3, `say("💊 Пора выпить Аевит, хозяин! День 8 из 30", { buttons: [{ text: "✅ Сделал", data: "habit:7:2026-11-08:done" }, { text: "➖ Пропуск", data: "habit:7:2026-11-08:skipped" }], ms: 0, sound: "hey", mood: "remind" })`, "hey"],
+    [0.3, `say("💊 Пора выпить Омега-3, хозяин! День 8 из 30", { buttons: [{ text: "✅ Сделал", data: "habit:7:2026-11-08:done" }, { text: "➖ Пропуск", data: "habit:7:2026-11-08:skipped" }], ms: 0, sound: "hey", mood: "remind" })`, "hey"],
     [2.8, habitBtn(0), "pop"],
     [3.1, `load()`],
   ] },
@@ -32,9 +32,9 @@ export const SCENES = {
     [3.2, `cfg.clock = "list"; drawClock()`],
   ] },
   inbox: { seconds: 6.5, setup: `hideBubble()`, steps: [
-    [0.3, `inboxAdd({ id: 101, text: "🎂 Завтра день рождения мамы! Не забудь поздравить", buttons: [] })`, "pop"],
+    [0.3, `inboxAdd({ id: 101, text: "🎂 Завтра день рождения Кати! Не забудь поздравить", buttons: [] })`, "pop"],
     [0.9, `inboxAdd({ id: 102, text: "💊 Магний — выпил?", buttons: [{ text: "✅ Сделал", data: "habit:2:2026-11-08:done" }] })`, "pop"],
-    [1.5, `inboxAdd({ id: 103, text: "⏰ Через 30 мин созвон с командой", buttons: [] })`, "pop"],
+    [1.5, `inboxAdd({ id: 103, text: "⏰ Через 30 мин репетиция группы", buttons: [] })`, "pop"],
     [2.1, `inboxAdd({ id: 104, text: "Ты обещал записать, как спал 💌", buttons: [] })`, "pop"],
     [3.8, `openInbox(101)`, "hey"],
   ] },
