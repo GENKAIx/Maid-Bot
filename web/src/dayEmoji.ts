@@ -62,8 +62,8 @@ const TESTS = RULES.map((r) => new RegExp(r.re.source.split("\\b").join(B), "u")
 const HEALTH: Record<string, string> = { head: "🤕", cold: "🤧", meds: "💊", doctor: "🩺", teeth: "🦷", heart: "❤️‍🩹", stomach: "🤢", injury: "🩹", back: "🦴", eyes: "👁️", allergy: "🤧", pressure: "🩺" };
 
 // Картинки эмодзи (web/public/emoji/<имя>.png): обычные (не смешанные) эмодзи набора Emoji Kitchen (emoji.supply/kitchen).
-// 17 эмодзи в наборе нет (party, road, pills, gym, run, bike, swim, yoga, walk, family, video, work, study, pizza, beer,
-// money, bandage) — пока такие же Noto, их перерисует GPT по заданию docs/Эмодзи_задание.pdf.
+// 17 эмодзи в наборе нет: family, gym, run, bike, bandage, road нарисовал GPT по заданию docs/Эмодзи_задание.pdf,
+// остальные (party, pills, swim, yoga, walk, video, work, study, pizza, beer, money) — пока обычные Noto.
 const ICONS: Record<string, string> = {
   "🎂": "birthday", "🎉": "party", "✈️": "trip", "🚆": "road", "🤒": "sick", "🤕": "headache", "🤧": "cold", "🦷": "teeth",
   "🩺": "doctor", "💊": "pills", "🏋️": "gym", "🏃": "run", "🚴": "bike", "🏊": "swim", "🧘": "yoga", "⚽": "football",
