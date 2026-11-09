@@ -401,8 +401,6 @@ body.quick { background: transparent; }
 .pc-arrow:hover:not(:disabled) { color: var(--text, #fff); background: rgba(255, 255, 255, .06); }
 .pc-arrow:disabled { opacity: .25; cursor: default; }
 .pl-top { flex: none; display: flex; align-items: center; justify-content: space-between; margin: 12px 4px 8px; font-size: 13px; font-weight: 600; }
-.pl-add { border: 0; border-radius: 10px; padding: 6px 11px; background: rgba(255, 255, 255, .08); color: var(--text, #fff); font: inherit; font-size: 12.5px; cursor: pointer; }
-.pl-add:hover { background: rgba(255, 255, 255, .14); }
 .pl-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0 2px 2px; display: grid; gap: 7px; align-content: start; scrollbar-width: thin; }
 .pl-card { position: relative; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 8px 6px 14px; border-radius: 11px;
   background: rgba(255, 255, 255, .055); font-size: 13px; overflow: hidden; transition: opacity .25s, background .2s; }

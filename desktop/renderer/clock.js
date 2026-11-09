@@ -277,8 +277,8 @@ function drawPlanList(box) {
       <div class="pc-days">${dayStrip()}</div>
       <button type="button" class="pc-arrow" data-shift="1" title="Неделя вперёд">›</button>
     </div>
-    <div class="pl-top"><span>Планы на день</span><button type="button" class="pl-add" title="Добавить план на этот день — через чат">+ План</button></div>
-    ${list.length ? `<ul class="pl-list">${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день. «+ План» — добавить.</p>`}`;
+    <div class="pl-top"><span>Планы на день</span></div>
+    ${list.length ? `<ul class="pl-list">${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
   // Цвет полоски карточки — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
   for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
   box.style.height = `${Math.min(Math.max($("#w")?.offsetHeight ?? 0, 320), box.parentElement.clientHeight - 16)}px`;
@@ -304,14 +304,6 @@ async function setPlanStatus(id, status) {
   farPlans.clear();
   await load();
   lastPlans?.delete(id);
-}
-// «+ План» — в чат: дата уже вписана, дальше — что и во сколько.
-function addPlanVia(day) {
-  const input = $("#chatInput");
-  input.value = `План на ${day === data.day ? "сегодня" : humanDay(day).replace(/, .*/, "")}: `;
-  input.focus();
-  input.setSelectionRange(input.value.length, input.value.length);
-  input.dispatchEvent(new Event("input"));
 }
 
 function showClock(day, { fresh = [], gone = [] } = {}) {
@@ -371,10 +363,6 @@ $("#planClock").addEventListener("click", (e) => {
     clockGone = [];
     drawClock();
     loadFar();
-    return hideClockLater();
-  }
-  if (e.target.closest(".pl-add")) {
-    addPlanVia(clockDay);
     return hideClockLater();
   }
   const chip = e.target.closest(".day-chip");
