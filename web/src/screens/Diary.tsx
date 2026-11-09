@@ -3,10 +3,11 @@ import { del, get } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
 import { HEALTH_TOPICS, SECTIONS, SECTION_ORDER, WEEKDAYS, addDays, addMonths, dur, humanDay, metricText, money, monthGrid, monthTitle, todayKey } from "../format";
 import { navigate } from "../router";
-import type { DayData } from "../types";
+import { dayEmojis, type DayEmoji } from "../dayEmoji";
+import type { ActivityRow, DayData, DiaryRow, MetricRow } from "../types";
 import { EventList } from "./Today";
 
-// Дневник по дням: календарь с точками (где есть записи), день — по разделам, показатели, деньги, компьютер.
+// Дневник по дням: календарь с эмодзи дня (чем занимался — dayEmoji.ts), день — по разделам, показатели, деньги, компьютер.
 
 export function Diary({ day, version, onChanged }: { day?: string; version: number; onChanged: () => void }) {
   const today = todayKey();
@@ -17,9 +18,21 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
   const [error, setError] = useState("");
 
   useEffect(() => setMonth(current.slice(0, 7)), [current]);
+  const [emojis, setEmojis] = useState<Map<string, DayEmoji[]>>(new Map());
   useEffect(() => {
     get<{ day: string; n: number }[]>("/api/diary/days").then((rows) => setDays(new Map(rows.map((r) => [r.day, r.n])))).catch(() => {});
   }, [version]);
+  // Эмодзи дней месяца — по записям, играм и шагам (dayEmoji.ts).
+  useEffect(() => {
+    let alive = true;
+    const from = `${month}-01`, to = `${month}-31`;
+    Promise.all([
+      get<DiaryRow[]>(`/api/diary?from=${from}&to=${to}`),
+      get<ActivityRow[]>(`/api/activity?from=${from}&to=${to}`).catch(() => []),
+      get<{ rows: MetricRow[] }>(`/api/metrics?from=${from}&to=${to}`).then((m) => m.rows).catch(() => []),
+    ]).then(([d, a, m]) => alive && setEmojis(dayEmojis(d, a, m))).catch(() => alive && setEmojis(new Map()));
+    return () => { alive = false; };
+  }, [month, version]);
   useEffect(() => {
     let alive = true;
     setData(null);
@@ -28,6 +41,11 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
   }, [current, version]);
 
   const grid = useMemo(() => monthGrid(month), [month]);
+  const top = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const [d, list] of emojis) if (d.startsWith(month)) for (const e of list) c.set(e.emoji, (c.get(e.emoji) ?? 0) + 1);
+    return [...c.entries()].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [emojis, month]);
   const go = (d: string) => navigate(`/diary/${d}`);
 
   async function remove(id: number) {
@@ -51,18 +69,33 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
           </div>
           <div className="cal-grid">
             {WEEKDAYS.map((w) => <span key={w} className="cal-wd">{w}</span>)}
-            {grid.map((k, i) => k ? (
-              <button
-                key={k}
-                className={`cal-day ${k === current ? "on" : ""} ${k === today ? "today" : ""} ${k > today ? "future" : ""}`}
-                onClick={() => go(k)}
-              >
-                {Number(k.slice(-2))}
-                {days.has(k) && <i className="dot" style={{ opacity: Math.min(1, 0.35 + (days.get(k) ?? 0) / 6) }} />}
-              </button>
-            ) : <span key={`e${i}`} />)}
+            {grid.map((k, i) => {
+              if (!k) return <span key={`e${i}`} />;
+              const em = emojis.get(k) ?? [];
+              const n = days.get(k) ?? 0;
+              const tip = em.length ? em.map((e) => `${e.emoji} ${e.what}`).join("\n") : n ? `записей: ${n}` : "";
+              return (
+                <button
+                  key={k}
+                  className={`cal-day ${k === current ? "on" : ""} ${k === today ? "today" : ""} ${k > today ? "future" : ""} ${em.length ? "has" : ""}`}
+                  onClick={() => go(k)}
+                  title={tip || undefined}
+                >
+                  <span className="cal-num">{Number(k.slice(-2))}</span>
+                  {em.length > 0 ? (
+                    <span className="cal-emoji">
+                      <b>{em[0].emoji}</b>
+                      {em.length > 1 && <small>{em.slice(1).map((e) => e.emoji).join("")}</small>}
+                    </span>
+                  ) : n > 0 && <i className="dot" style={{ opacity: Math.min(1, 0.35 + n / 6) }} />}
+                </button>
+              );
+            })}
           </div>
-          <div className="cal-foot muted small">Дней с записями: {days.size}</div>
+          <div className="cal-foot muted small">
+            {top.length > 0 && <span className="cal-top" title="Чаще всего в этом месяце">{top.map(([e, c]) => <span key={e}>{e}<small>{c}</small></span>)}</span>}
+            <span>Дней с записями: {days.size}</span>
+          </div>
         </aside>
 
         <div className="diary-day">
