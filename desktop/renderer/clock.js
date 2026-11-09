@@ -179,12 +179,17 @@ function drawClock() {
   const more = rows.length - shownRows.length;
   const legend = rows.length ? `<ul class="pc-list">${shownRows.map((r) => r.html).join("")}${more ? `<li class="more">и ещё ${more}</li>` : ""}</ul>` : "";
 
+  // У 12 часов кольца — две половины дня: внутри тёплое «до полудня» с солнцем, снаружи вечернее с луной. Значки под дугами.
+  const halves = () => LANES["12"].map((l, k) => {
+    const [gx, gy] = polar(l.r, -11);
+    return `<circle class="orbit ${k ? "pm" : "am"}" cx="${CX}" cy="${CX}" r="${l.r}" stroke-width="${l.w}"><title>${k ? "После полудня" : "До полудня"}</title></circle>
+      <text class="half-mark ${k ? "pm" : "am"}" x="${gx.toFixed(1)}" y="${(gy + 4).toFixed(1)}">${k ? "☾" : "☀"}</text>`;
+  }).join("") + `<circle class="orbit seam" cx="${CX}" cy="${CX}" r="${(LANES["12"][0].r + LANES["12"][1].r) / 2}" />`;
   box.innerHTML = `
     <div class="pc-head"><b>${esc(dayName)}</b><span>${list.length ? `${list.length} ${planWord(list.length)}` : "планов нет"}</span></div>
     <div class="pc-days">${dayStrip()}</div>
     <svg viewBox="0 0 ${CLOCK_SIZE} ${CLOCK_SIZE}" width="${CLOCK_SIZE}" height="${CLOCK_SIZE}" aria-label="Планы на ${esc(dayName)}">
-      <circle class="orbit" cx="${CX}" cy="${CX}" r="${LANES[mode][0].r}" />
-      ${mode === "12" ? `<circle class="orbit" cx="${CX}" cy="${CX}" r="${LANES[mode][1].r}" />` : ""}
+      ${mode === "12" ? halves() : `<circle class="orbit" cx="${CX}" cy="${CX}" r="${LANES[mode][0].r}" />`}
       <circle class="orbit dots" cx="${CX}" cy="${CX}" r="${LANES[mode][1].r + 10}" />
       <circle class="disc" cx="${CX}" cy="${CX}" r="${DISC_R}" />
       ${night}
@@ -197,6 +202,18 @@ function drawClock() {
     ${legend}`;
   // Цвет меток — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
   for (const d of box.querySelectorAll(".dot[data-c]:not(.none)")) d.style.background = d.dataset.c;
+  fitClockHeight(box);
+}
+// Высота постоянная, какой бы день ни выбрали: не ниже панели (верх вровень с ней) и с местом под самый длинный список.
+// Не влезает — список прокручивается внутри.
+const CLOCK_LIST_ROWS = 6;
+function fitClockHeight(box) {
+  const w = $("#w");
+  const svg = box.querySelector("svg");
+  const pad = parseFloat(getComputedStyle(box).paddingBottom) || 0;
+  const fixed = svg.getBoundingClientRect().bottom - box.getBoundingClientRect().top + pad + 6;
+  const want = Math.max(w?.offsetHeight ?? 0, fixed + CLOCK_LIST_ROWS * 19 + 4);
+  box.style.height = `${Math.min(want, box.parentElement.clientHeight - 16)}px`;
 }
 const planWord = (n) => (n % 10 === 1 && n % 100 !== 11 ? "план" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "плана" : "планов");
 

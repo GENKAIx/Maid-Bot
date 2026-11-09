@@ -332,6 +332,9 @@ body.quick { background: transparent; }
 .plan-clock { position: absolute; z-index: 2; right: 342px; bottom: 8px; width: 270px; padding: 10px 8px 10px; border-radius: 22px;
   background: rgba(29, 24, 48, .86); border: 1px solid rgba(255, 255, 255, .09); backdrop-filter: blur(14px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35); cursor: pointer; transition: opacity .3s, transform .35s cubic-bezier(.3, 1.3, .5, 1); transform-origin: right bottom; }
+.plan-clock { display: flex; flex-direction: column; box-sizing: border-box; }
+.plan-clock svg, .pc-head, .pc-days { flex: none; }
+.plan-clock .pc-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; align-content: start; scrollbar-width: thin; }
 .plan-clock.hidden { opacity: 0; transform: translateX(18px) scale(.92); pointer-events: none; }
 .stage.folded .plan-clock { display: none; }
 .plan-clock svg { display: block; width: 254px; height: 254px; margin: 0 auto; overflow: visible; }
@@ -341,6 +344,13 @@ body.quick { background: transparent; }
 .plan-clock .disc { fill: rgba(255, 255, 255, .055); stroke: rgba(255, 255, 255, .1); }
 .plan-clock .orbit { fill: none; stroke: rgba(255, 255, 255, .06); stroke-width: 20; }
 .plan-clock .orbit.dots { stroke: rgba(255, 255, 255, .16); stroke-width: 1.2; stroke-dasharray: 1 7; stroke-linecap: round; }
+.plan-clock .orbit.am, .plan-clock .orbit.pm { stroke-width: 17; }
+.plan-clock .orbit.am { stroke: rgba(255, 190, 100, .2); }
+.plan-clock .orbit.pm { stroke: rgba(105, 115, 255, .26); }
+.plan-clock .orbit.seam { stroke: rgba(0, 0, 0, .35); stroke-width: 2.5; }
+.plan-clock .half-mark { font-size: 11px; text-anchor: middle; pointer-events: none; }
+.plan-clock .half-mark.am { fill: rgba(255, 205, 120, .75); }
+.plan-clock .half-mark.pm { fill: rgba(170, 180, 255, .8); }
 .plan-clock .night { fill: none; stroke: rgba(120, 140, 255, .18); stroke-linecap: round; }
 .plan-clock .tick { stroke: rgba(255, 255, 255, .18); stroke-width: 1; }
 .plan-clock .tick.hour { stroke: rgba(255, 255, 255, .32); }
