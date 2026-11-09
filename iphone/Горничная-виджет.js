@@ -2,7 +2,7 @@
 // Установка — iphone/README.md. Ключ спрашивается при первом запуске в Scriptable и хранится в Связке ключей
 // телефона (Keychain), в этом файле его нет. Сбросить ключ — запустить скрипт и выбрать «Сменить ключ».
 
-const SERVER = "http://187.126.11.122";
+const SERVER = "https://187-126-11-122.sslip.io";
 const KEY = "maid.token";
 const CACHE = "maid-today.json";
 

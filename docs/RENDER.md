@@ -15,7 +15,10 @@
   сервис на Render остановлен — Suspend, можно вернуть). Шаблон ключей — `secrets/vps.env` на ПК (в git не идёт), на сервер —
   `scp` и перезапуск `docker compose up -d --force-recreate maid`.
 - Приложение на ПК: настроено на `http://187.126.11.122` (`%APPDATA%\maid-desktop\settings.json`), ключ выпущен `user.ts token genkai --label desktop`.
-- Домен и HTTPS (веб-приложение на телефоне, push) — отложены, см. `ROADMAP.md` «Отложено».
+- **HTTPS (09.11.2026)**: `https://187-126-11-122.sslip.io` — бесплатное имя sslip.io само указывает на IP, сертификат Let's Encrypt
+  Caddy выпускает и продлевает сам. Включено `deploy/https.sh` (в `/srv/.env`: `MAID_DOMAIN="187-126-11-122.sslip.io, http://187.126.11.122"`).
+  Старый `http://187.126.11.122` пока работает для старых клиентов; ПК и виджет iPhone переведены на https. Свой домен позже —
+  поменять `MAID_DOMAIN` и `docker compose up -d --force-recreate caddy`.
 
 ---
 
