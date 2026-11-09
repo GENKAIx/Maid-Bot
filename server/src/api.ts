@@ -29,6 +29,8 @@ export interface ApiDeps {
   /** Папка собранного веб-приложения; пусто — не отдавать. */
   webDir?: string;
   push?: Push;
+  /** Имя Telegram-бота без @ (ссылка на экране входа); нет бота — undefined. */
+  botName?: () => string | undefined;
 }
 
 class HttpError extends Error {
@@ -179,6 +181,9 @@ export function createApi(deps: ApiDeps) {
       if (!token) throw new HttpError(401, "неверный логин или пароль");
       return { token };
     }
+
+    // Открытые сведения для экрана входа: какой бот у этого сервера.
+    if (m === "GET" && p === "/api/public") return { bot: deps.botName?.() ?? null };
 
     // Кнопка в push-уведомлении: без входа, по подписи сервера (см. push.ts).
     if (m === "POST" && p === "/api/push/act") {

@@ -49,10 +49,12 @@ const backup = tg
 scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
 scheduler.start();
 
-const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, push });
+let botName: string | undefined;
+const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, push, botName: () => botName });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
   if (!tg) return;
+  tg.bot.api.getMe().then((me) => (botName = me.username)).catch((e) => console.warn("[start] имя бота:", e.message));
   if (config.publicUrl) {
     await tg.bot.api.setWebhook(`${config.publicUrl}/webhook`);
     console.log("[start] бот: webhook", `${config.publicUrl}/webhook`);
