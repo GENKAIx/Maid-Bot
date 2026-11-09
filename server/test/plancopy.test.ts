@@ -68,6 +68,14 @@ test("копия и перенос плана: на новый день с те�
     assert.equal((await call(`/api/events/${ev}`, { time: "16:00", end_time: "15:00" }, token)).status, 400);
     assert.equal((await call(`/api/events/${ev}`, { end_time: "17:00" }, token)).status, 400);
     assert.equal((await store.event(ev))!.time, "16:00");
+    // Убрать время: план остаётся на своём дне без времени и без конца.
+    await call(`/api/events/${ev}`, { time: "15:30", end_time: "15:45" }, token);
+    const cleared = await call(`/api/events/${ev}`, { time: null }, token);
+    assert.equal(cleared.status, 200);
+    assert.equal(cleared.json.time, null);
+    assert.equal(cleared.json.end_time, null);
+    assert.equal(cleared.json.date_iso, "2026-11-14");
+    assert.equal((await call(`/api/events/${ev}`, { time: null, end_time: "16:00" }, token)).status, 400);
   } finally {
     server.close();
   }

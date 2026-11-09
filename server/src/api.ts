@@ -301,17 +301,17 @@ export function createApi(deps: ApiDeps) {
     }
 
     // План (событие): состоялся / отменён / снова в планах — из списка планов виджета; date — перенос на день (перетащили на день в полосе);
-    // time и end_time — сдвиг по времени (потянули время на карточке), end_time: null — без конца.
+    // time и end_time — сдвиг по времени (потянули время на карточке), end_time: null — без конца; time: null — убрать время (и конец).
     const ev = p.match(/^\/api\/events\/(\d+)$/);
     if (m === "POST" && ev) {
       const Time = z.string().refine(isTime, "время ЧЧ:ММ");
       const b = parseBody(z.object({
         status: z.enum(["active", "done", "cancelled"]).optional(),
         date: Day.optional(),
-        time: Time.optional(),
+        time: Time.nullable().optional(),
         end_time: Time.nullable().optional(),
       }), await readJson(req));
-      if (!b.status && !b.date && !b.time) throw new HttpError(400, "нужно status, date или time");
+      if (!b.status && !b.date && b.time === undefined) throw new HttpError(400, "нужно status, date или time");
       if (b.end_time !== undefined && !b.time) throw new HttpError(400, "end_time — только вместе с time");
       if (b.time && b.end_time && b.end_time <= b.time) throw new HttpError(400, "конец раньше начала");
       const e = await store.event(Number(ev[1]));
@@ -320,8 +320,9 @@ export function createApi(deps: ApiDeps) {
         ...(b.status ? { status: b.status } : {}),
         ...(b.date ? { date_iso: b.date } : {}),
         ...(b.time ? { time: b.time, end_time: b.end_time ?? null } : {}),
+        ...(b.time === null ? { time: null, end_time: null } : {}),
       });
-      if (b.date || b.time) pipeline.changed(u);
+      if (b.date || b.time !== undefined) pipeline.changed(u);
       await store.cancelReminders("event", e.id);
       const now = (await store.event(e.id))!;
       if (now.status === "active") await planEventReminders(store, u, now, new Date());
