@@ -63,10 +63,10 @@ function dayStrip() {
     const day = dayAfter(data.day, stripFrom + i);
     const d = new Date(`${day}T12:00:00Z`);
     const wd = d.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
-    const n = plansOf(day).length;
+    const n = plansOf(day).length + tasksOn(day).length;
     // Точка — в этот день важная дата (сама дата, не напоминание о ней заранее).
     const big = (data.dates ?? []).filter((x) => x.on === day);
-    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${day < data.day ? " past" : ""}${day === data.day ? " today" : ""}${n ? "" : " empty"}${big.length ? " has-date" : ""}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${n} ${planWord(n)}` : " · планов нет"}${big.map((x) => ` · ${esc(x.title)}`).join("")}">
+    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${day < data.day ? " past" : ""}${day === data.day ? " today" : ""}${n ? "" : " empty"}${big.length ? " has-date" : ""}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${n} ${planWord(n)} и задач` : " · планов нет"}${big.map((x) => ` · ${esc(x.title)}`).join("")}">
       <b>${d.getUTCDate()}</b> ${esc(wd)}<span class="cnt">${n ? `(${n})` : "–"}</span></button>`;
   }).join("");
 }
@@ -76,6 +76,9 @@ function plansOf(day) {
   if (farPlans.has(day)) return farPlans.get(day);
   return [...(data.events ?? []), ...(data.upcoming ?? [])].filter((e) => e.date_iso === day);
 }
+// Задачи со сроком — в панели на день срока (открытые задачи приходят все, на любую дату).
+const tasksOn = (day) => (data?.tasks ?? []).filter((t) => t.due_date === day);
+const taskWord = (n) => (n % 10 === 1 && n % 100 !== 11 ? "задача" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "задачи" : "задач");
 // Дни полосы, которых нет в /api/today (прошлые и дальше 14 дней), — отдельным запросом, один раз.
 const nearDay = (day) => { const n = daysFrom(data.day, day); return n >= 0 && n <= NEAR_DAYS; };
 async function loadRange(from, to) {
@@ -311,7 +314,12 @@ function drawPlanList(box) {
       <button type="button" class="pl-x${off ? " back" : ""}" data-dact="1" title="${off ? "Вернуть" : "Убрать — больше не показывать до этой даты"}">${off ? "↺" : "×"}</button></li>`;
   };
   const open = list.filter((e) => !e._st).length;
+  const tasks = tasksOn(clockDay);
   const dayName = today ? "Сегодня" : humanDay(clockDay);
+  const count = [open && `${open} ${planWord(open)}`, tasks.length && `${tasks.length} ${taskWord(tasks.length)}`].filter(Boolean).join(" · ") || "планов нет";
+  const taskCard = (t) => `<li class="pl-card pl-task${clockFresh.has(`t${t.id}`) ? " fresh" : ""}${clockDay < data.day ? " late" : ""}" data-task="${t.id}">
+      <span class="pl-text"><b class="pl-when">${clockDay < data.day ? "срок прошёл" : "срок"}</b> · ${esc(t.title)}</span>
+      <button type="button" class="pl-check" data-tdone="1" title="Сделано"></button></li>`;
   const card = (e) => {
     const st = e._st ?? "";
     const start = minutesOf(e.time);
@@ -326,14 +334,14 @@ function drawPlanList(box) {
       <span class="pl-text"><b class="pl-when">${when}</b> · ${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}</span>${tools}</li>`;
   };
   box.innerHTML = `
-    ${headHtml(dayName, open ? `${open} ${planWord(open)}` : "планов нет")}
+    ${headHtml(dayName, count)}
     <div class="pc-strip">
       <button type="button" class="pc-arrow" data-shift="-1" title="Неделя назад">‹</button>
       <div class="pc-days">${dayStrip()}</div>
       <button type="button" class="pc-arrow" data-shift="1" title="Неделя вперёд">›</button>
     </div>
     <div class="pl-top"><span>Планы на день</span></div>
-    ${list.length || pins.length ? `<ul class="pl-list">${pins.map(pinCard).join("")}${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
+    ${list.length || pins.length || tasks.length ? `<ul class="pl-list">${pins.map(pinCard).join("")}${tasks.map(taskCard).join("")}${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
   // Цвет полоски карточки — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
   for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
   // Заливка продолжает идти с того же места, хотя список перерисован.
@@ -418,6 +426,22 @@ async function setPlanStatus(id, status) {
   lastPlans?.delete(id);
 }
 
+async function doneTaskHere(id, btn) {
+  const li = btn.closest(".pl-card");
+  btn.classList.add("on");
+  btn.innerHTML = "<i>✓</i>";
+  li.classList.add("done");
+  popTone(4);
+  react?.("done", 4000);
+  try {
+    await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
+    maid.changed();
+  } catch (err) {
+    say(err.message, { ms: 6000 });
+  }
+  setTimeout(() => load(), 900);
+}
+
 function showClock(day, { fresh = [], gone = [] } = {}) {
   if (cfg.clock === "off" || collapsed || prefsOpen || !data) return;
   const box = $("#planClock");
@@ -450,23 +474,27 @@ const quietPlans = new Set(); // id планов, которые появили�
 function watchPlans() {
   if (!data) return;
   const all = [...(data.events ?? []), ...(data.upcoming ?? [])];
-  const now = new Map(all.map((e) => [e.id, JSON.stringify(e)]));
+  const due = (data.tasks ?? []).filter((t) => t.due_date);
+  const now = new Map([...all.map((e) => [e.id, JSON.stringify(e)]), ...due.map((t) => [`t${t.id}`, JSON.stringify(t)])]);
   const prev = lastPlans;
   lastPlans = now;
   if (!prev) return;
   const fresh = all.filter((e) => prev.get(e.id) !== now.get(e.id) && !quietPlans.delete(e.id));
+  // Задача — новая или поменялся срок (изменение названия не в счёт).
+  const freshTasks = due.filter((t) => { const was = prev.get(`t${t.id}`); return !was || JSON.parse(was).due_date !== t.due_date; });
   const gone = [...prev].filter(([id]) => !now.has(id)).map(([, j]) => JSON.parse(j)).filter((e) => e.date_iso >= data.day);
-  if (!fresh.length && !gone.length) {
+  if (!fresh.length && !freshTasks.length && !gone.length) {
     if (!$("#planClock").classList.contains("hidden")) drawClock(); // стрелка и прошедшие планы
     return;
   }
-  const day = (fresh[0] ?? gone[0]).date_iso;
+  const day = fresh[0]?.date_iso ?? freshTasks[0]?.due_date ?? gone[0].date_iso;
+  const freshKeys = [...fresh.map((e) => e.id), ...freshTasks.map((t) => `t${t.id}`)];
   // Панель была спрятана, а план — на другой день: едем к нему по полосе (свои действия в открытой панели — без этого).
-  if (fresh.length && day > data.day && $("#planClock").classList.contains("hidden")) {
-    const days = new Set(fresh.map((e) => e.date_iso));
-    return flyToDay(day, { fresh: fresh.map((e) => e.id), gone: gone.filter((e) => e.date_iso === day), more: days.size - 1 });
+  if (freshKeys.length && day > data.day && $("#planClock").classList.contains("hidden")) {
+    const days = new Set([...fresh.map((e) => e.date_iso), ...freshTasks.map((t) => t.due_date)]);
+    return flyToDay(day, { fresh: freshKeys, gone: gone.filter((e) => e.date_iso === day), more: days.size - 1 });
   }
-  showClock(day, { fresh: fresh.map((e) => e.id), gone: gone.filter((e) => e.date_iso === day) });
+  showClock(day, { fresh: freshKeys, gone: gone.filter((e) => e.date_iso === day) });
 }
 
 $("#planClock").addEventListener("mouseenter", () => { clockHover = true; });
@@ -484,6 +512,11 @@ $("#planClock").addEventListener("mouseout", (e) => {
   planHold(Number(li.dataset.id), false);
 });
 $("#planClock").addEventListener("click", (e) => {
+  const tdone = e.target.closest("[data-tdone]");
+  if (tdone) {
+    doneTaskHere(Number(tdone.closest(".pl-card").dataset.task), tdone);
+    return hideClockLater();
+  }
   const dact = e.target.closest("[data-dact]");
   if (dact) {
     toggleDate(dact.closest(".pl-card").dataset.date);
@@ -627,7 +660,7 @@ function openCalendar(day) {
     const cells = Array.from({ length: lead }, () => `<i></i>`);
     for (let d = 1; d <= lastOf(month); d++) {
       const iso = `${month}-${String(d).padStart(2, "0")}`;
-      const n = nearDay(iso) || farPlans.has(iso) ? plansOf(iso).length : 0;
+      const n = (nearDay(iso) || farPlans.has(iso) ? plansOf(iso).length : 0) + tasksOn(iso).length;
       const big = (data.dates ?? []).some((x) => x.on === iso);
       const dots = n ? `<span class="cal-dots">${"<em></em>".repeat(Math.min(n, 3))}</span>` : "";
       const cls = [iso === clockDay && "on", iso === data.day && "today", iso < data.day && "past", big && "big"].filter(Boolean).join(" ");

@@ -719,3 +719,8 @@ body.quick { background: transparent; }
 @keyframes chipLand { 0% { transform: translateY(0); } 35% { transform: translateY(-5px) scale(1.06); } 100% { transform: none; } }
 @keyframes cntPop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.5); opacity: 1; } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .day-chip.landed, .day-chip.landed .cnt { animation: none; } }
+
+/* Задача со сроком в панели планов: зелёная полоска, «срок», галочка — сделано. */
+.pl-card.pl-task { --c: #5fd08a; background: rgba(95, 208, 138, .08); }
+.pl-card.pl-task.late { --c: #ff7f7f; background: rgba(255, 127, 127, .08); }
+.pl-card.pl-task.done .pl-text { text-decoration: line-through; opacity: .5; }
