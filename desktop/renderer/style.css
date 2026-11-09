@@ -659,3 +659,47 @@ body.quick { background: transparent; }
 .course.rp-made::after { display: none; }
 .rp-more { font-style: normal; font-size: 11px; color: var(--muted); align-self: center; margin-left: 2px; }
 .rp-span { margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+
+/* Листание дат: заголовок — кнопка календаря, «Сегодня», прошлые дни, сдвиг полосы. */
+.pc-title { display: inline-flex; align-items: baseline; gap: 5px; padding: 1px 6px; margin-left: -6px; border: 0; border-radius: 7px; background: none;
+  color: inherit; font: inherit; cursor: pointer; }
+.pc-title i { font-style: normal; font-size: 10px; color: var(--muted); transition: transform .15s; }
+.pc-title:hover { background: rgba(255, 255, 255, .07); }
+.pc-title:hover i { color: var(--text, #fff); transform: translateY(1px); }
+.pc-today { margin-left: auto; padding: 2px 8px; border: 1px solid rgba(183, 156, 255, .4); border-radius: 999px; background: rgba(183, 156, 255, .1);
+  color: var(--accent); font: inherit; font-size: 11.5px; cursor: pointer; white-space: nowrap; animation: dropPick .15s ease-out; }
+.pc-today:hover { background: rgba(183, 156, 255, .22); color: var(--text, #fff); }
+.pc-strip { overflow: hidden; }
+.pc-days { touch-action: none; cursor: grab; }
+#planClock.swiping, #planClock.swiping .day-chip { cursor: grabbing; }
+#planClock.swiping .day-chip { pointer-events: none; }
+.pc-days.settle { transition: transform .2s cubic-bezier(.2, .9, .3, 1.2); }
+.pc-days.slide-l { animation: stripL .22s ease-out; }
+.pc-days.slide-r { animation: stripR .22s ease-out; }
+@keyframes stripL { from { transform: translateX(18px); opacity: .55; } }
+@keyframes stripR { from { transform: translateX(-18px); opacity: .55; } }
+.day-chip.past { opacity: .55; }
+.day-chip.past.on { opacity: 1; }
+.day-chip.today:not(.on) b { color: var(--accent); }
+
+/* Календарь месяца по щелчку на дату. */
+.pl-menu.pc-cal { width: 236px; padding: 9px 9px 8px; }
+.cal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cal-top b { font-size: 13px; }
+.pc-cal .cal-top button { width: 26px; height: 24px; padding: 0; justify-content: center; font-size: 16px; color: #a99fc4; }
+.pc-cal .cal-top button:hover { color: #fff; }
+.cal-wd, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-wd span { text-align: center; font-size: 10.5px; color: #a99fc4; padding-bottom: 2px; }
+.pc-cal .cal-grid button { position: relative; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: auto; height: 30px;
+  padding: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.pc-cal .cal-grid button.past { color: #8a82a3; }
+.pc-cal .cal-grid button.today { box-shadow: inset 0 0 0 1px var(--accent, #b79cff); color: var(--accent, #b79cff); font-weight: 700; }
+.pc-cal .cal-grid button.on { background: #6c5ce7; color: #fff; }
+.pc-cal .cal-grid button.big::after { content: ""; position: absolute; top: 3px; right: 4px; width: 4px; height: 4px; border-radius: 50%; background: #ffc45c; }
+.cal-dots { display: flex; gap: 2px; height: 4px; }
+.cal-dots em { width: 4px; height: 4px; border-radius: 50%; background: var(--accent, #b79cff); }
+.pc-cal .cal-grid button.on .cal-dots em { background: #fff; }
+.pc-cal .cal-today { width: 100%; justify-content: center; margin-top: 6px; color: var(--accent, #b79cff); font-size: 12px; }
+.pc-head { flex-wrap: nowrap; min-width: 0; }
+.pc-title { flex: none; white-space: nowrap; }
+.pc-head > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

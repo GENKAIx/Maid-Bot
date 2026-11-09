@@ -66,7 +66,7 @@ function dayStrip() {
     const n = plansOf(day).length;
     // Точка — в этот день важная дата (сама дата, не напоминание о ней заранее).
     const big = (data.dates ?? []).filter((x) => x.on === day);
-    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${n ? "" : " empty"}${big.length ? " has-date" : ""}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${n} ${planWord(n)}` : " · планов нет"}${big.map((x) => ` · ${esc(x.title)}`).join("")}">
+    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${day < data.day ? " past" : ""}${day === data.day ? " today" : ""}${n ? "" : " empty"}${big.length ? " has-date" : ""}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${n} ${planWord(n)}` : " · планов нет"}${big.map((x) => ` · ${esc(x.title)}`).join("")}">
       <b>${d.getUTCDate()}</b> ${esc(wd)}<span class="cnt">${n ? `(${n})` : "–"}</span></button>`;
   }).join("");
 }
@@ -76,15 +76,18 @@ function plansOf(day) {
   if (farPlans.has(day)) return farPlans.get(day);
   return [...(data.events ?? []), ...(data.upcoming ?? [])].filter((e) => e.date_iso === day);
 }
-// Дальние дни полосы — отдельным запросом, один раз на неделю полосы.
+// Дни полосы, которых нет в /api/today (прошлые и дальше 14 дней), — отдельным запросом, один раз.
+const nearDay = (day) => { const n = daysFrom(data.day, day); return n >= 0 && n <= NEAR_DAYS; };
+async function loadRange(from, to) {
+  const rows = await maid.api("GET", `/api/events?from=${from}&to=${to}`);
+  for (let d = from; d <= to; d = dayAfter(d, 1)) if (!nearDay(d)) farPlans.set(d, rows.filter((e) => e.date_iso === d && e.status !== "deleted"));
+  return rows;
+}
 async function loadFar() {
-  const last = stripFrom + DAYS_AHEAD;
-  const to = dayAfter(data.day, last);
-  if (last <= NEAR_DAYS || farPlans.has(to)) return;
-  const from = dayAfter(data.day, Math.max(stripFrom, NEAR_DAYS + 1));
+  const need = Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => dayAfter(data.day, stripFrom + i)).filter((d) => !nearDay(d) && !farPlans.has(d));
+  if (!need.length) return;
   try {
-    const rows = await maid.api("GET", `/api/events?from=${from}&to=${to}`);
-    for (let d = from; d <= to; d = dayAfter(d, 1)) farPlans.set(d, rows.filter((e) => e.date_iso === d));
+    await loadRange(need[0], need.at(-1));
   } catch {
     return;
   }
@@ -212,8 +215,8 @@ function drawClock() {
     return `<circle class="orbit ${k ? "pm" : "am"}" cx="${CX}" cy="${CX}" r="${l.r}" stroke-width="${l.w}"><title>${k ? "После полудня" : "До полудня"}</title></circle>`;
   }).join("") + `<circle class="orbit seam" cx="${CX}" cy="${CX}" r="${(LANES["12"][0].r + LANES["12"][1].r) / 2}" />`;
   box.innerHTML = `
-    <div class="pc-head"><b>${esc(dayName)}</b><span>${list.length ? `${list.length} ${planWord(list.length)}` : "планов нет"}</span></div>
-    <div class="pc-days">${dayStrip()}</div>
+    ${headHtml(dayName, list.length ? `${list.length} ${planWord(list.length)}` : "планов нет")}
+    <div class="pc-strip"><div class="pc-days">${dayStrip()}</div></div>
     <svg viewBox="0 0 ${CLOCK_SIZE} ${CLOCK_SIZE}" width="${CLOCK_SIZE}" height="${CLOCK_SIZE}" aria-label="Планы на ${esc(dayName)}">
       ${mode === "12" ? halves() : `<circle class="orbit" cx="${CX}" cy="${CX}" r="${LANES[mode][0].r}" />`}
       <circle class="orbit dots" cx="${CX}" cy="${CX}" r="${LANES[mode][1].r + 10}" />
@@ -323,9 +326,9 @@ function drawPlanList(box) {
       <span class="pl-text"><b class="pl-when">${when}</b> · ${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}</span>${tools}</li>`;
   };
   box.innerHTML = `
-    <div class="pc-head"><b>${esc(dayName)}</b><span>${open ? `${open} ${planWord(open)}` : "планов нет"}</span></div>
+    ${headHtml(dayName, open ? `${open} ${planWord(open)}` : "планов нет")}
     <div class="pc-strip">
-      <button type="button" class="pc-arrow" data-shift="-1" title="Неделя назад"${stripFrom <= 0 ? " disabled" : ""}>‹</button>
+      <button type="button" class="pc-arrow" data-shift="-1" title="Неделя назад">‹</button>
       <div class="pc-days">${dayStrip()}</div>
       <button type="button" class="pc-arrow" data-shift="1" title="Неделя вперёд">›</button>
     </div>
@@ -487,15 +490,16 @@ $("#planClock").addEventListener("click", (e) => {
   }
   const arrow = e.target.closest(".pc-arrow");
   if (arrow) {
-    stripFrom = Math.max(0, stripFrom + Number(arrow.dataset.shift) * (DAYS_AHEAD + 1));
-    clockDay = dayAfter(data.day, stripFrom);
-    clockFresh = new Set();
-    clockGone = [];
-    drawClock();
-    loadFar();
+    goDay(dayAfter(clockDay, Number(arrow.dataset.shift) * (DAYS_AHEAD + 1)), { week: true });
     return hideClockLater();
   }
+  if (e.target.closest("[data-today]")) {
+    goDay(data.day, { center: true });
+    return hideClockLater();
+  }
+  if (e.target.closest("[data-cal]")) return openCalendar(clockDay);
   const chip = e.target.closest(".day-chip");
+  if (chip && swipedAt > Date.now() - 250) return;
   if (chip) {
     clockDay = chip.dataset.day;
     clockFresh = new Set();
@@ -503,15 +507,178 @@ $("#planClock").addEventListener("click", (e) => {
     drawClock();
     return hideClockLater();
   }
-  if (!e.target.closest(".plan-arc, .pl-list, .pl-top, .pl-empty, .pc-strip")) hideClock();
+  if (!e.target.closest(".plan-arc, .pl-list, .pl-top, .pl-empty, .pc-strip, .pc-head")) hideClock();
 });
+// Листание дат: колесо над полосой — день вперёд/назад (Shift — неделя), полосу можно тянуть мышью, стрелки — неделя,
+// «Сегодня» — назад к сегодня, щелчок по дате в заголовке — календарь месяца. Можно и в прошлое: посмотреть, что было.
+function headHtml(dayName, count) {
+  const back = clockDay !== data.day ? `<button type="button" class="pc-today" data-today title="Вернуться к сегодня">${clockDay < data.day ? "Сегодня →" : "← Сегодня"}</button>` : "";
+  return `<div class="pc-head"><button type="button" class="pc-title" data-cal title="Календарь месяца"><b>${esc(dayName)}</b><i>▾</i></button>${back || `<span>${count}</span>`}</div>`;
+}
+/** Показать день: полоса сдвигается ровно настолько, чтобы он был виден (center — по середине, week — вместе с ним на неделю). */
+function goDay(day, { center = false, week = false } = {}) {
+  const n = daysFrom(data.day, day);
+  const was = stripFrom;
+  if (day === data.day && center) stripFrom = 0;
+  else if (week) stripFrom += n - daysFrom(data.day, clockDay);
+  else if (center || n < stripFrom - 7 || n > stripFrom + DAYS_AHEAD + 7) stripFrom = n - Math.floor(DAYS_AHEAD / 2);
+  else if (n < stripFrom) stripFrom = n;
+  else if (n > stripFrom + DAYS_AHEAD) stripFrom = n - DAYS_AHEAD;
+  const moved = day !== clockDay;
+  clockDay = day;
+  clockFresh = new Set();
+  clockGone = [];
+  drawClock();
+  if (stripFrom !== was) slideStrip(Math.sign(stripFrom - was));
+  if (moved) popTone(0, { vol: 0.05, soft: true });
+  loadFar();
+}
+function slideStrip(dir) {
+  const el = $("#planClock .pc-days");
+  if (!el || !dir) return;
+  el.classList.add(dir > 0 ? "slide-l" : "slide-r");
+}
+// Колесо: тачпад шлёт много мелких шагов — копим до 60.
+let wheelAcc = 0;
+$("#planClock").addEventListener("wheel", (ev) => {
+  if (!ev.target.closest(".pc-strip, .pc-head")) return;
+  ev.preventDefault();
+  wheelAcc += Math.abs(ev.deltaX) > Math.abs(ev.deltaY) ? ev.deltaX : ev.deltaY;
+  if (Math.abs(wheelAcc) < 60) return;
+  const step = Math.sign(wheelAcc) * (ev.shiftKey ? DAYS_AHEAD + 1 : 1);
+  wheelAcc = 0;
+  goDay(dayAfter(clockDay, step), { week: ev.shiftKey });
+  hideClockLater();
+}, { passive: false });
+// Тянуть полосу: на ширину дня — полоса сдвигается на день, отпустил — встаёт на место.
+let stripSwipe = null;
+let swipedAt = 0;
+$("#planClock").addEventListener("pointerdown", (ev) => {
+  const days = ev.target.closest(".pc-days");
+  if (ev.button !== 0 || !days || planDrag) return;
+  stripSwipe = { x: ev.clientX, from: stripFrom, w: (days.firstElementChild?.offsetWidth ?? 40) + 3, moved: false, id: ev.pointerId, steps: 0 };
+});
+$("#planClock").addEventListener("pointermove", (ev) => {
+  const sw = stripSwipe;
+  if (!sw || ev.pointerId !== sw.id) return;
+  const dx = ev.clientX - sw.x;
+  if (!sw.moved && Math.abs(dx) < 6) return;
+  if (!sw.moved) {
+    sw.moved = true;
+    $("#planClock").setPointerCapture(ev.pointerId);
+    $("#planClock").classList.add("swiping");
+  }
+  const steps = Math.round(-dx / sw.w);
+  if (steps !== sw.steps) {
+    sw.steps = steps;
+    stripFrom = sw.from + steps;
+    drawClock();
+    popTone(0, { vol: 0.04, soft: true });
+  }
+  const el = $("#planClock .pc-days");
+  if (el) el.style.transform = `translateX(${dx + steps * sw.w}px)`;
+});
+function endSwipe(ev) {
+  const sw = stripSwipe;
+  if (!sw || ev.pointerId !== sw.id) return;
+  stripSwipe = null;
+  if (!sw.moved) return;
+  swipedAt = Date.now();
+  $("#planClock").classList.remove("swiping");
+  // Выбранный день ушёл за край — выбираем ближний видимый.
+  const n = daysFrom(data.day, clockDay);
+  if (n < stripFrom || n > stripFrom + DAYS_AHEAD) {
+    clockDay = dayAfter(data.day, n < stripFrom ? stripFrom : stripFrom + DAYS_AHEAD);
+    drawClock();
+  }
+  const el = $("#planClock .pc-days");
+  if (el) {
+    el.classList.add("settle");
+    requestAnimationFrame(() => { el.style.transform = ""; });
+  }
+  loadFar();
+  hideClockLater();
+}
+$("#planClock").addEventListener("pointerup", endSwipe);
+$("#planClock").addEventListener("pointercancel", endSwipe);
+
+// Календарь месяца: точки — сколько планов в день, золотая — важная дата; ‹ › и колесо — месяц; щелчок по дню — показать его.
+const MONTH_NAMES = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+function openCalendar(day) {
+  closePlanMenu();
+  const box = document.createElement("div");
+  box.className = "pl-menu pc-cal";
+  let month = day.slice(0, 7);
+  const rows = new Map();
+  const lastOf = (mon) => { const [y, m] = mon.split("-").map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
+  const draw = () => {
+    const [y, m] = month.split("-").map(Number);
+    const lead = (wdOf(`${month}-01`) + 6) % 7;
+    const cells = Array.from({ length: lead }, () => `<i></i>`);
+    for (let d = 1; d <= lastOf(month); d++) {
+      const iso = `${month}-${String(d).padStart(2, "0")}`;
+      const n = nearDay(iso) || farPlans.has(iso) ? plansOf(iso).length : 0;
+      const big = (data.dates ?? []).some((x) => x.on === iso);
+      const dots = n ? `<span class="cal-dots">${"<em></em>".repeat(Math.min(n, 3))}</span>` : "";
+      const cls = [iso === clockDay && "on", iso === data.day && "today", iso < data.day && "past", big && "big"].filter(Boolean).join(" ");
+      cells.push(`<button type="button" data-go="${iso}" class="${cls}" title="${esc(humanDay(iso))}${n ? ` · ${n} ${planWord(n)}` : ""}">${d}${dots}</button>`);
+    }
+    box.innerHTML = `<div class="cal-top"><button type="button" data-m="-1" title="Месяц назад">‹</button>
+      <b>${MONTH_NAMES[m - 1]} ${y}</b><button type="button" data-m="1" title="Месяц вперёд">›</button></div>
+      <div class="cal-wd">${WD_ORDER.map((d) => `<span>${WD_SHORT[d]}</span>`).join("")}</div>
+      <div class="cal-grid">${cells.join("")}</div>
+      ${month !== data.day.slice(0, 7) ? `<button type="button" class="cal-today" data-go="${data.day}">К сегодня</button>` : ""}`;
+  };
+  const fetchMonth = async () => {
+    if (rows.has(month)) return;
+    const mon = month;
+    rows.set(mon, true);
+    try {
+      await loadRange(`${mon}-01`, `${mon}-${String(lastOf(mon)).padStart(2, "0")}`);
+    } catch {
+      return;
+    }
+    if (planMenu === box && month === mon) draw();
+  };
+  const shiftMonth = (k) => {
+    const [y, m] = month.split("-").map(Number);
+    month = new Date(Date.UTC(y, m - 1 + k, 1)).toISOString().slice(0, 7);
+    popTone(k > 0 ? 1 : -1, { vol: 0.05, soft: true });
+    draw();
+    keepIn(box);
+    fetchMonth();
+  };
+  draw();
+  const r = $("#planClock .pc-title").getBoundingClientRect();
+  showPlanMenu(box, r.left, r.bottom + 4);
+  fetchMonth();
+  let acc = 0;
+  box.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    acc += ev.deltaY;
+    if (Math.abs(acc) < 60) return;
+    shiftMonth(Math.sign(acc));
+    acc = 0;
+  }, { passive: false });
+  box.addEventListener("click", (ev) => {
+    const b = ev.target.closest("button");
+    if (!b) return;
+    if (b.dataset.m) return shiftMonth(Number(b.dataset.m));
+    if (b.dataset.go) {
+      closePlanMenu();
+      clockHover = $("#planClock").matches(":hover");
+      goDay(b.dataset.go, { center: true });
+    }
+  });
+}
+
 // Посмотреть планы — щелчок по строке «ближайший план»: ещё раз — спрятать.
 // Щелчок по ближайшему плану или важной дате — панель планов на их день (ещё раз на тот же день — спрятать).
 function togglePlansOn(day) {
   if (!$("#planClock").classList.contains("hidden") && clockDay === day) return hideClock();
   // Полоса дней — та неделя, где этот день.
   const n = data ? daysFrom(data.day, day) : 0;
-  if (n < stripFrom || n > stripFrom + DAYS_AHEAD) stripFrom = Math.max(0, Math.floor(n / (DAYS_AHEAD + 1)) * (DAYS_AHEAD + 1));
+  if (n < stripFrom || n > stripFrom + DAYS_AHEAD) stripFrom = Math.floor(n / (DAYS_AHEAD + 1)) * (DAYS_AHEAD + 1);
   showClock(day);
   loadFar();
 }
