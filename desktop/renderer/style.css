@@ -345,19 +345,16 @@ body.quick { background: transparent; }
 .plan-clock .orbit { fill: none; stroke: rgba(255, 255, 255, .06); stroke-width: 20; }
 .plan-clock .orbit.dots { stroke: rgba(255, 255, 255, .16); stroke-width: 1.2; stroke-dasharray: 1 7; stroke-linecap: round; }
 .plan-clock .orbit.am, .plan-clock .orbit.pm { stroke-width: 17; }
-.plan-clock .orbit.am { stroke: rgba(255, 190, 100, .2); }
-.plan-clock .orbit.pm { stroke: rgba(105, 115, 255, .26); }
+.plan-clock .orbit.am { stroke: rgba(255, 214, 150, .3); filter: drop-shadow(0 0 7px rgba(255, 200, 120, .5)); }
+.plan-clock .orbit.pm { stroke: rgba(8, 8, 26, .55); }
 .plan-clock .orbit.seam { stroke: rgba(0, 0, 0, .35); stroke-width: 2.5; }
-.plan-clock .half-mark { font-size: 11px; text-anchor: middle; pointer-events: none; }
-.plan-clock .half-mark.am { fill: rgba(255, 205, 120, .75); }
-.plan-clock .half-mark.pm { fill: rgba(170, 180, 255, .8); }
 .plan-clock .night { fill: none; stroke: rgba(120, 140, 255, .18); stroke-linecap: round; }
 .plan-clock .tick { stroke: rgba(255, 255, 255, .18); stroke-width: 1; }
 .plan-clock .tick.hour { stroke: rgba(255, 255, 255, .32); }
 .plan-clock .tick.big { stroke: rgba(255, 255, 255, .6); stroke-width: 1.6; }
 .plan-clock .num { fill: var(--muted); font-size: 11px; text-anchor: middle; font-variant-numeric: tabular-nums; }
-.plan-clock .hand { stroke: #ff8f8f; stroke-width: 2; stroke-linecap: round; }
-.plan-clock .hand-dot { fill: #ff8f8f; }
+.plan-clock .hand { fill: #ff9a8f; stroke: #ff9a8f; stroke-width: .8; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(255, 140, 130, .55)); }
+.plan-clock .hub-ring { fill: #2a2340; stroke: #ff9a8f; stroke-width: 2; }
 .plan-clock .hub { fill: rgba(255, 255, 255, .7); }
 .plan-arc .edge { fill: none; stroke: #1d1830; stroke-linecap: round; }
 .plan-arc.gone .edge { display: none; }

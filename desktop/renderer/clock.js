@@ -152,8 +152,14 @@ function drawClock() {
   const night = mode === "24" ? `<path class="night" d="${arcPath(DISC_R - 4, angleOf(23 * 60, "24"), angleOf(31 * 60, "24"))}" stroke-width="6" />` : "";
   const handA = angleOf(nowMin, mode);
   const showHand = clockDay === data.day;
-  const [hx, hy] = polar(DISC_R - 4, handA);
-  const [hx0, hy0] = polar(7, handA);
+  // Стрелка — тонкая игла до делений, не до цифр, с коротким хвостом за центром.
+  const HAND_R = DISC_R - 30;
+  const [hx, hy] = polar(HAND_R, handA);
+  const [tx0, ty0] = polar(12, handA + 180);
+  const [lx, ly] = polar(3.2, handA - 90);
+  const [rx, ry] = polar(3.2, handA + 90);
+  const f = (v) => v.toFixed(1);
+  const hand = `<path class="hand" d="M${f(tx0)} ${f(ty0)} L${f(lx)} ${f(ly)} L${f(hx)} ${f(hy)} L${f(rx)} ${f(ry)} Z" />`;
 
   const dayName = clockDay === data.day ? "Сегодня" : humanDay(clockDay);
   // Список под часами: время и название, цвет — как у дуги; прошедшие бледнее, идущий сейчас — ярче.
@@ -179,11 +185,9 @@ function drawClock() {
   const more = rows.length - shownRows.length;
   const legend = rows.length ? `<ul class="pc-list">${shownRows.map((r) => r.html).join("")}${more ? `<li class="more">и ещё ${more}</li>` : ""}</ul>` : "";
 
-  // У 12 часов кольца — две половины дня: внутри тёплое «до полудня» с солнцем, снаружи вечернее с луной. Значки под дугами.
+  // У 12 часов кольца — две половины дня: внутри светлое тёплое «до полудня» с мягким свечением, снаружи тёмное вечернее.
   const halves = () => LANES["12"].map((l, k) => {
-    const [gx, gy] = polar(l.r, -11);
-    return `<circle class="orbit ${k ? "pm" : "am"}" cx="${CX}" cy="${CX}" r="${l.r}" stroke-width="${l.w}"><title>${k ? "После полудня" : "До полудня"}</title></circle>
-      <text class="half-mark ${k ? "pm" : "am"}" x="${gx.toFixed(1)}" y="${(gy + 4).toFixed(1)}">${k ? "☾" : "☀"}</text>`;
+    return `<circle class="orbit ${k ? "pm" : "am"}" cx="${CX}" cy="${CX}" r="${l.r}" stroke-width="${l.w}"><title>${k ? "После полудня" : "До полудня"}</title></circle>`;
   }).join("") + `<circle class="orbit seam" cx="${CX}" cy="${CX}" r="${(LANES["12"][0].r + LANES["12"][1].r) / 2}" />`;
   box.innerHTML = `
     <div class="pc-head"><b>${esc(dayName)}</b><span>${list.length ? `${list.length} ${planWord(list.length)}` : "планов нет"}</span></div>
@@ -196,8 +200,8 @@ function drawClock() {
       ${marks.join("")}
       ${gone.map((x) => arcSvg(x, mode, nowMin, { gone: true })).join("")}
       ${arcs.map((x) => arcSvg(x, mode, nowMin)).join("")}
-      ${showHand ? `<line class="hand" x1="${hx0.toFixed(1)}" y1="${hy0.toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" /><circle class="hand-dot" cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="3.4" />` : ""}
-      <circle class="hub" cx="${CX}" cy="${CX}" r="4" />
+      ${showHand ? `${hand}<circle class="hub-ring" cx="${CX}" cy="${CX}" r="5.5" />` : ""}
+      <circle class="hub" cx="${CX}" cy="${CX}" r="${showHand ? 2.4 : 4}" />
     </svg>
     ${legend}`;
   // Цвет меток — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
