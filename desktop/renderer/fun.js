@@ -15,10 +15,6 @@ let lastPoke = 0;
 let lastPick = -1;
 let sulkUntil = 0;
 
-function onHead(e) {
-  const r = $("#maid").getBoundingClientRect();
-  return e.clientY - r.top < r.height * 0.4;
-}
 function boop(kind) {
   const f = $("#face");
   f.classList.remove("boop", "huff");

@@ -285,7 +285,7 @@ function render() {
   }
   const now = new Date();
   const sec = cfg.sections;
-  $("#clock").textContent = now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  $("#clock").textContent = $("#miniClock").textContent = now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
   if (!data) {
     $("#next").innerHTML = `<span class="muted">Нет связи с сервером</span>`;
     $("#body").innerHTML = "";
@@ -293,6 +293,7 @@ function render() {
     return;
   }
   $("#day").textContent = humanDay(data.day);
+  $("#miniDay").textContent = miniDay(data.day);
   const next = data.events.find((e) => (minutesUntil(e) ?? 1) > -30) ?? data.upcoming[0];
   $("#next").dataset.day = next?.date_iso ?? "";
   if (next) {
@@ -346,6 +347,7 @@ function render() {
   const allDone = hiding && !left && doneCount > 0;
   if (allDone && lastLeft > 0) { react("proud", 5000); allDoneAt = Date.now(); }
   lastLeft = left;
+  renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left);
   const bump = Date.now() - bumpAt < 600 ? " bump" : "";
   const counter = hiding && doneCount
     ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}${allDone ? " all" : ""}${bump}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${doneCount}/${doneCount + left}</button>`
@@ -560,6 +562,19 @@ async function pollNotices() {
   }
 }
 
+// Свёрнутая панель: точка на каждое несделанное (важные — оранжевые, обычные — сиреневые, «когда-нибудь» и привычки — серые).
+function miniDay(day) {
+  const [, m, d] = day.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1].slice(0, 3)}, ${humanDay(day).split(", ")[1]}`;
+}
+function renderMini(open, todo, left) {
+  const dots = [...open.map((t) => t.priority === "high" ? "hi" : t.priority === "low" ? "lo" : "mid"), ...todo.map(() => "lo")];
+  const more = dots.length > 6 ? `<i class="more">+${dots.length - 6}</i>` : "";
+  $("#miniTasks").innerHTML = left > 0
+    ? `<span class="dots">${dots.slice(0, 6).map((k) => `<i class="${k}"></i>`).join("")}${more}</span>Задачи · ${left}`
+    : `<span class="dots"><i class="ok"></i></span>Всё на сегодня ✨`;
+}
+
 function setCollapsed(on) {
   collapsed = on;
   if (on) hideClock();
@@ -578,7 +593,7 @@ function applyCfg() {
   st.style.setProperty("--maid-w", `${w}px`);
   // За панелью прячется только низ корсета — фигурка почти целиком над краем.
   st.style.setProperty("--peek", `${Math.round(w * 0.13)}px`);
-  $("#w").style.opacity = String(cfg.opacity);
+  $("#w").style.opacity = $("#mini").style.opacity = String(cfg.opacity);
   $("#next").classList.toggle("hidden", !cfg.sections.next || prefsOpen);
   $("#pins").classList.toggle("hidden", prefsOpen);
 }
@@ -662,7 +677,7 @@ $("#prefs").addEventListener("change", (e) => {
 $("#prefs").addEventListener("input", (e) => {
   if (e.target.id !== "prefOpacity") return;
   cfg.opacity = Number(e.target.value);
-  $("#w").style.opacity = String(cfg.opacity);
+  $("#w").style.opacity = $("#mini").style.opacity = String(cfg.opacity);
   e.target.previousElementSibling.textContent = `Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%`;
 });
 // Кнопка в шапке — полная версия приложения; настройки виджета — правым щелчком по ней (или если они уже открыты — закрыть).
@@ -678,7 +693,7 @@ $("#gear").addEventListener("contextmenu", (e) => {
 });
 
 // --- перетаскивание за шапку и за горничную: окно двигает main.js по курсору (так верно и на экранах с разным масштабом) ---
-// У горничной щелчок — свернуть панель: сдвинул мышь дальше DRAG_SLOP — это перетаскивание, щелчок после него не считается.
+// У горничной щелчок — тычок: сдвинул мышь дальше DRAG_SLOP — это перетаскивание, щелчок после него не считается.
 const DRAG_SLOP = 4;
 let dragEl = null;
 let dragFrom = null;
@@ -706,7 +721,7 @@ function draggable(el, skip) {
   el.addEventListener("pointerup", end);
   el.addEventListener("pointercancel", end);
   el.addEventListener("lostpointercapture", () => dragEl === el && dropDrag());
-  // Протащили — щелчок, который браузер пришлёт следом, не сворачивает панель.
+  // Протащили — щелчок, который браузер пришлёт следом, не считается тычком.
   el.addEventListener("click", (e) => {
     if (!dragMoved) return;
     dragMoved = false;
@@ -724,6 +739,7 @@ function dropDrag() {
 const head = $("#head");
 draggable(head, (e) => e.target.closest("button"));
 draggable($("#maid"), () => false);
+draggable($("#mini"), (e) => e.target.closest("button"));
 document.addEventListener("pointerup", dropDrag);
 window.addEventListener("blur", dropDrag);
 
@@ -741,7 +757,7 @@ maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
 function reportRegions() {
   const rects = [];
-  for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#planClock"), ...$("#inbox").children]) {
+  for (const el of [$("#w"), $("#mini"), $("#bubble"), $("#maid"), $("#planClock"), ...$("#inbox").children]) {
     if (el.offsetParent === null) continue;
     if (el.classList.contains("hidden")) continue;
     const r = el.getBoundingClientRect();
@@ -759,18 +775,16 @@ $("#inbox").addEventListener("click", (e) => {
   if (ib) openInbox(ib.dataset.id);
 });
 drawInbox();
-$("#maid").addEventListener("click", (e) => {
+// Щелчок по горничной — тычок (fun.js), двойной — свернуть/развернуть панель. Тычок ждёт, не будет ли второго щелчка.
+$("#maid").addEventListener("click", () => {
   clearTimeout(clickTimer);
-  // По голове — тычок (fun.js), панель не трогаем.
-  if (onHead(e)) return poke();
-  clickTimer = setTimeout(() => setCollapsed(!collapsed), 220);
+  clickTimer = setTimeout(poke, 230);
 });
-$("#maid").addEventListener("dblclick", (e) => {
+$("#maid").addEventListener("dblclick", () => {
   clearTimeout(clickTimer);
-  if (onHead(e)) return;
-  react("listen", 5000);
-  maid.openQuick();
+  setCollapsed(!collapsed);
 });
+$("#miniOpen").onclick = () => setCollapsed(false);
 $("#maid").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   maid.grab(!grabbed);

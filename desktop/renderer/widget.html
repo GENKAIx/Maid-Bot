@@ -17,13 +17,22 @@
       </div>
       <!-- Непрочитанные напоминания (inbox.js) — значки летают слева от горничной. -->
       <div class="inbox hidden" id="inbox" aria-label="Непрочитанные напоминания"></div>
-      <div class="maid" id="maid" title="По голове — потыкать · щелчок по фигурке — свернуть/развернуть панель · тянуть — передвинуть · двойной — записать · ПКМ — взять/отпустить">
+      <div class="maid" id="maid" title="Щелчок — потыкать · двойной — свернуть/развернуть панель · тянуть — передвинуть · ПКМ — взять/отпустить">
         <img class="face" id="face" src="../assets/maid/idle.webp" alt="" draggable="false" />
       </div>
     </div>
 
     <!-- Часы планов (clock.js): выезжают слева от панели, когда планы меняются или их смотрят. -->
     <div class="plan-clock hidden" id="planClock" title="Планы дня · щелчок — спрятать"></div>
+
+    <!-- Свёрнутая панель: часы, дата и сколько задач; горничная выглядывает из-за её верха. -->
+    <div class="mini" id="mini" title="Двойной щелчок по горничной — развернуть">
+      <div class="mini-top"><span class="mini-clock" id="miniClock">--:--</span><span class="mini-day" id="miniDay"></span>
+        <button type="button" class="mini-open" id="miniOpen" title="Развернуть панель" aria-label="Развернуть панель">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button></div>
+      <div class="mini-tasks" id="miniTasks"></div>
+    </div>
 
     <div class="w" id="w">
       <div class="head" id="head" title="Тащите, чтобы передвинуть">
