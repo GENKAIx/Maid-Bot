@@ -40,14 +40,15 @@ function sectionOf(c) {
   return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits" }[c.kind] ?? "/";
 }
 
-// --- горничная: 20 анимаций (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации») ---
+// --- горничная: 26 анимаций (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации» и «…/Маскот/mascot2») ---
 // Основа — ждёт / думает / спит / нет связи; на события она на несколько секунд реагирует (react), потом возвращается к основе.
 const MOODS = ["idle", "think", "sleep", "happy", "proud", "angry", "sad", "worried", "surprised", "neutral",
-  "hello", "listen", "write", "done", "remind", "clean", "tea", "streak", "offline", "bow"];
+  "hello", "listen", "write", "done", "remind", "clean", "tea", "streak", "offline", "bow",
+  "smitten", "giggle", "refuse", "smug", "gasp", "excited"];
 for (const n of MOODS) new Image().src = `../assets/maid/${n}.webp`;
 // Эмоция ответа сервера → анимация.
 const EMOTION_MOOD = { neutral: "neutral", happy: "happy", proud: "proud", angry: "angry", sad: "sad", worried: "worried",
-  surprised: "surprised", thinking: "think", sleepy: "sleep" };
+  surprised: "surprised", thinking: "think", sleepy: "sleep", stern: "refuse", teasing: "smug" };
 let mood = "";
 let moodUntil = 0;
 let moodTimer = 0;
@@ -102,7 +103,7 @@ setInterval(() => {
   }
   // День идёт хорошо — радуется чаще, сама по себе.
   else if (state === "idle" && online && dayMood === "good" && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.25)
-    react(["happy", "proud", "happy", "bow"][Math.floor(Math.random() * 4)], 5000);
+    react(["happy", "proud", "giggle", "bow", "excited"][Math.floor(Math.random() * 5)], 5000);
   // Не задался — изредка вздыхает.
   else if (state === "idle" && online && dayMood === "bad" && Date.now() > moodUntil && Math.random() < 0.12) react("sad", 5000);
 }, 30_000);
@@ -157,7 +158,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
         try {
           const r = await maid.api("POST", "/api/undo", { messageId: undo });
           play("send");
-          say(r.text, { ms: 6000 });
+          say(r.text, { ms: 6000, mood: "gasp" });
           maid.changed();
         } catch (e) {
           play("oops");
@@ -223,7 +224,9 @@ async function ask(path, body, waiting) {
   say("…", { ms: 0 });
   try {
     const r = await maid.api("POST", path, body);
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard });
+    // Поблагодарили — смущённо радуется, что бы ни ответил сервер.
+    const thanks = /спасиб|благодар/i.test(body?.text ?? r.heard ?? "") && !r.changes?.length;
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: thanks ? "smitten" : null });
     maid.changed();
   } catch (e) {
     say(e.message, { emotion: "worried", ms: 8000, sound: "oops" });
@@ -403,7 +406,7 @@ function render() {
   const left = todo.length + (sec.tasks ? data.tasks.filter((t) => !doneNow.has(t.id)).length : 0) - gone;
   const doneCount = daily.filter((h) => h.status).length + (sec.tasks ? recentDone().length : 0) + gone;
   const allDone = hiding && !left && doneCount > 0;
-  if (allDone && lastLeft > 0) { react("proud", 5000); allDoneAt = Date.now(); }
+  if (allDone && lastLeft > 0) { react("excited", 5000); allDoneAt = Date.now(); }
   lastLeft = left;
   renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left);
   const bump = Date.now() - bumpAt < 600 ? " bump" : "";
@@ -623,7 +626,7 @@ async function pollNotices() {
       const emotion = /🎮/.test(n.text) ? "angry" : n.emotion;
       // В ящик непрочитанного (значок у головы) и сразу сказать; напоминание с кнопками — звонит в колокольчик.
       inboxAdd({ ...n, emotion });
-      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey", mood: n.buttons.length ? "remind" : null, notice: n.id });
+      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey", mood: n.buttons.length ? "remind" : /🎮/.test(n.text) ? "refuse" : null, notice: n.id });
     }
   } catch {
     /* нет связи — молчим */
