@@ -16,6 +16,7 @@ test("хвосты: «не сделано» закрывает задачу, п�
     store.addTask({ user_id, title, priority: "normal", category: "", due_date: "2026-11-08", notes: "", message_id: null });
   const failed = await add("Позвонить в банк");
   const moved = await add("Купить лампочку");
+  const dodged = await add("Разобрать почту");
   const other = await add("Чужая", (await store.ensureUser("200", "Чужой", "Europe/Moscow")).id);
 
   const pipe = new Pipeline(store, async () => "{}");
@@ -39,6 +40,10 @@ test("хвосты: «не сделано» закрывает задачу, п�
     assert.equal(f.json.status, "failed");
     assert.ok(!(await store.openTasks(u.id)).some((t) => t.id === failed), "невыполненная ушла из открытых");
 
+    const d = await call(`/api/tasks/${dodged}`, { status: "dodged" }, token);
+    assert.equal(d.json.status, "dodged");
+    assert.ok(!(await store.openTasks(u.id)).some((t) => t.id === dodged), "«сбежал» тоже закрывает задачу");
+
     const m = await call(`/api/tasks/${moved}`, { due_date: "2026-11-12" }, token);
     assert.equal(m.json.due_date, "2026-11-12");
     assert.equal(m.json.status, "open");
@@ -47,7 +52,7 @@ test("хвосты: «не сделано» закрывает задачу, п�
     assert.equal((await call(`/api/tasks/${moved}`, {}, token)).status, 400);
     assert.equal((await call(`/api/tasks/${other}`, { status: "failed" }, token)).status, 404);
     assert.equal((await store.task(other))!.status, "open");
-    assert.equal(changed, 2, "список-виджет в Telegram обновится после обоих изменений");
+    assert.equal(changed, 3, "список-виджет в Telegram обновится после каждого изменения");
   } finally {
     server.close();
   }

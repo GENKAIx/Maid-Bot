@@ -137,16 +137,25 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions button { background: #f0eef5; color: var(--ink); border-color: #e4e1ec; padding: 4px 10px; font-size: 12px; }
 .bubble-actions button:hover { border-color: #c9c2da; }
 .bubble-actions button.ghost { margin-left: auto; background: transparent; border-color: transparent; }
-/* Разбор хвостов (tails.js): дни недели снизу облачка — перенести задачу туда */
-.tail-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-.tail-day { display: flex; flex-direction: column; align-items: center; padding: 4px 0 3px; border-radius: 9px; border: 1px solid #e4e1ec;
+/* Разбор хвостов (tails.js): ответы столбиком, после «Перенести» — дни недели */
+.tail-choices { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.tail-choices button { text-align: left; padding: 7px 12px; border-radius: 10px; border: 1px solid #e4e1ec; background: #f0eef5; color: var(--ink);
+  font: inherit; font-size: 13px; cursor: pointer; transition: transform .12s, border-color .12s; }
+.tail-choices button:hover { transform: translateX(2px); border-color: #b9b1cf; }
+.tail-choices .tail-yes { background: #e2f6ea; border-color: #bfe7cf; }
+.tail-choices .tail-move { background: #ece6fb; border-color: #d6cbf6; }
+.tail-choices .tail-no { background: #fbe6ea; border-color: #f2c6cf; }
+.tail-count { float: right; margin: 0 0 4px 8px; padding: 1px 7px; border-radius: 9px; background: #ece6fb; color: #6b54c4; font-size: 11px; }
+.tail-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 8px; }
+.tail-day { display: flex; flex-direction: column; align-items: center; min-height: 46px; padding: 4px 0 3px; border-radius: 9px; border: 1px solid #e4e1ec;
   background: #f0eef5; font: inherit; font-size: 10px; line-height: 1.2; color: #7a7490; cursor: pointer; }
 .tail-day b { font-size: 13px; color: var(--ink); }
 .tail-day span { font-size: 9.5px; color: #8b6fe0; }
+.tail-day.off { background: #f7eef3; }
 .tail-day.today { border-color: #b79cff; background: #ece6fb; }
 .tail-day:hover { border-color: #8b6fe0; background: #e4dcfa; }
-.bubble-actions .tail-yes { background: #e2f6ea; border-color: #bfe7cf; }
-.bubble-actions .tail-no { background: #fbe6ea; border-color: #f2c6cf; }
+.bubble-actions .tail-x { font-size: 13px; color: #9a94ad; }
+.bubble-actions .tail-x:hover { color: #d0566b; }
 @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 .w .head { display: flex; gap: 10px; align-items: baseline; cursor: grab; margin: -12px -14px 0; padding: 12px 14px 4px; border-radius: 16px 16px 0 0; }
 .w .head:hover { background: rgba(255, 255, 255, .03); }

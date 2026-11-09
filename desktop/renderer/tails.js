@@ -1,22 +1,14 @@
-// Разбор хвостов: задача со сроком в прошлом осталась открытой — горничная спрашивает в облачке, по одной:
-// «✓ Сделано», «✕ Не сделано» (задача закрывается невыполненной) или день недели снизу — перенести туда.
-// «Потом» — больше не спрашивать об этой задаче сегодня. Данные — data из widget.js, полоса дней — как в планах (clock.js).
+// Разбор хвостов: задача со сроком в прошлом осталась открытой — горничная спрашивает в облачке, по одной.
+// Шаг 1 — «Вы её сделали?»: столбиком «✓ Сделано», «📅 Перенести», «✕ Не буду делать» (failed); крестик внизу — закрыть, не ответив:
+// задача тоже закрывается, но отдельно отмечается как брошенная (dodged — «сбежал от задачи»).
+// Шаг 2 («Перенести») — «Давай выберем дату»: сегодня и 6 дней вперёд, как полоса в планах (clock.js); «← Назад» — к шагу 1.
 
-const TAIL_LATER = (day) => `maid.tailLater.${day}`;
 let tailShown = null; // id задачи, о которой сейчас спрашивает
 
-function tailsLater() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(TAIL_LATER(data.day)) || "[]"));
-  } catch {
-    return new Set();
-  }
-}
 function tailsOf() {
   if (!data) return [];
-  const later = tailsLater();
   return (data.tasks ?? [])
-    .filter((t) => t.due_date && t.due_date < data.day && !later.has(t.id))
+    .filter((t) => t.due_date && t.due_date < data.day)
     .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id - b.id);
 }
 function tailWhen(due) {
@@ -25,35 +17,22 @@ function tailWhen(due) {
 }
 
 function askTail() {
-  const b = $("#bubble");
   // Облачко с вопросом закрыли или сменили другим сообщением — спросить снова, когда оно освободится.
   if (tailShown && !$("#bubbleActions [data-tail]")) tailShown = null;
-  if (tailShown || !online || !data || !b.classList.contains("hidden") || document.activeElement === $("#chatInput")) return;
+  if (tailShown || !online || !data || !$("#bubble").classList.contains("hidden") || document.activeElement === $("#chatInput")) return;
   const list = tailsOf();
   const t = list[0];
   if (!t) return;
   tailShown = t.id;
-  const more = list.length > 1 ? `\n(ещё ${list.length - 1} ${list.length - 1 === 1 ? "задача" : "задачи"} после этой)` : "";
-  say(`Вы не отметили ${tailWhen(t.due_date)} задачу «${t.title}». Вы её сделали? Или перенести?${more}`, { ms: 0, mood: "remind", sound: "hey" });
+  const more = list.length > 1 ? `<span class="tail-count">${list.length - 1} ещё</span>` : "";
 
-  const days = Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => dayAfter(data.day, i));
-  $("#bubbleCards").innerHTML = `<div class="tail-days">${days.map((day, i) => {
-    const d = new Date(`${day}T12:00:00Z`);
-    const wd = d.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
-    const n = plansOf(day).length;
-    return `<button type="button" class="tail-day${i ? "" : " today"}" data-day="${day}" title="Перенести на ${esc(humanDay(day))}${n ? ` · планов: ${n}` : ""}">`
-      + `<b>${d.getUTCDate()}</b>${esc(wd)}<span>${n ? `(${n})` : "–"}</span></button>`;
-  }).join("")}</div>`;
-  $("#bubbleActions").innerHTML = `<button class="tail-yes" data-tail="done">✓ Сделано</button><button class="tail-no" data-tail="failed">✕ Не сделано</button>`
-    + `<button class="ghost" data-tail="later" title="Не спрашивать об этой задаче сегодня">Потом</button>`;
-
-  const settleTail = async (body, reply, mood) => {
+  const settle = async (body, reply, mood, emotion = "neutral") => {
     try {
       await maid.api("POST", `/api/tasks/${t.id}`, body);
       // Ответ показать до обновления данных, иначе следующий хвост перебьёт его.
       data.tasks = (data.tasks ?? []).filter((x) => x.id !== t.id);
       tailShown = null;
-      say(reply, { ms: 3500, mood, emotion: mood === "sad" ? "neutral" : "happy" });
+      say(reply, { ms: 3500, mood, emotion });
       maid.changed();
     } catch (e) {
       play("oops");
@@ -61,28 +40,62 @@ function askTail() {
       say(e.message, { ms: 6000, emotion: "worried" });
     }
   };
-  $("#bubbleActions").querySelectorAll("[data-tail]").forEach((btn) => {
-    btn.onclick = () => {
-      const a = btn.dataset.tail;
-      if (a === "later") {
-        const later = tailsLater();
-        later.add(t.id);
-        localStorage.setItem(TAIL_LATER(data.day), JSON.stringify([...later]));
-        tailShown = null;
-        return hideBubble();
-      }
-      if (a === "done") popTone(3);
-      else popTone(-5, { vol: 0.2, soft: true });
-      settleTail({ status: a }, a === "done" ? `Отлично, отметила «${t.title}» ✓` : `Закрыла «${t.title}» как невыполненную.`, a === "done" ? "done" : "sad");
-    };
-  });
-  $("#bubbleCards").querySelectorAll("[data-day]").forEach((btn) => {
-    btn.onclick = () => {
-      const day = btn.dataset.day;
-      popTone(1);
-      settleTail({ due_date: day }, `Перенесла «${t.title}» на ${day === data.day ? "сегодня" : humanDay(day)}.`, "write");
-    };
-  });
+  // Крестик внизу на обоих шагах: убежать от задачи, не ответив.
+  const dodge = `<button class="ghost tail-x" data-tail="dodged" title="Закрыть, не отвечая: задача закроется как брошенная">✕</button>`;
+  const onDodge = () => {
+    popTone(-7, { vol: 0.2, soft: true });
+    settle({ status: "dodged" }, `Сбежали от «${t.title}»?.. Ладно, закрыла. Но я запомнила 👀`, "surprised", "worried");
+  };
+
+  const ask = () => {
+    say(`Вы не отметили ${tailWhen(t.due_date)} задачу «${t.title}». Вы её сделали?`, { ms: 0, mood: "remind", sound: "hey" });
+    $("#bubbleText").insertAdjacentHTML("afterbegin", more);
+    $("#bubbleCards").innerHTML = `<div class="tail-choices">`
+      + `<button type="button" class="tail-yes" data-choice="done">✓ Сделано</button>`
+      + `<button type="button" class="tail-move" data-choice="move">📅 Перенести</button>`
+      + `<button type="button" class="tail-no" data-choice="failed">✕ Не буду делать</button></div>`;
+    $("#bubbleActions").innerHTML = dodge;
+    $("#bubbleActions [data-tail]").onclick = onDodge;
+    $("#bubbleCards").querySelectorAll("[data-choice]").forEach((btn) => {
+      btn.onclick = () => {
+        const c = btn.dataset.choice;
+        if (c === "move") return pick();
+        if (c === "done") {
+          popTone(3);
+          settle({ status: "done" }, `Отлично, отметила «${t.title}» ✓`, "done", "happy");
+        } else {
+          popTone(-5, { vol: 0.2, soft: true });
+          settle({ status: "failed" }, `Хорошо, не будем. Закрыла «${t.title}».`, "neutral");
+        }
+      };
+    });
+  };
+
+  const pick = () => {
+    popTone(1);
+    say(`Давай выберем дату для «${t.title}» 📅`, { ms: 0, mood: "think" });
+    const days = Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => dayAfter(data.day, i));
+    $("#bubbleCards").innerHTML = `<div class="tail-days">${days.map((day, i) => {
+      const d = new Date(`${day}T12:00:00Z`);
+      const wd = d.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
+      const n = plansOf(day).length;
+      const off = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+      return `<button type="button" class="tail-day${i ? "" : " today"}${off ? " off" : ""}" data-day="${day}" title="Перенести на ${esc(humanDay(day))}${n ? ` · планов: ${n}` : ""}">`
+        + `<b>${d.getUTCDate()}</b>${esc(wd)}<span>${n ? `(${n})` : ""}</span></button>`;
+    }).join("")}</div>`;
+    $("#bubbleActions").innerHTML = `<button data-tail="back">← Назад</button>` + dodge;
+    $("#bubbleActions [data-tail=back]").onclick = ask;
+    $("#bubbleActions [data-tail=dodged]").onclick = onDodge;
+    $("#bubbleCards").querySelectorAll("[data-day]").forEach((btn) => {
+      btn.onclick = () => {
+        const day = btn.dataset.day;
+        popTone(2);
+        settle({ due_date: day }, `Перенесла «${t.title}» на ${day === data.day ? "сегодня" : humanDay(day)}.`, "write", "happy");
+      };
+    });
+  };
+
+  ask();
 }
 
 // Спросить чуть позже запуска (пока всё загрузится), дальше — проверять каждые 4 с: освободилось ли облачко, не появились ли хвосты.
