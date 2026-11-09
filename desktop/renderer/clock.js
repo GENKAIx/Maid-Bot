@@ -522,8 +522,9 @@ $("#pins").addEventListener("click", (ev) => {
 });
 setInterval(() => { if (!$("#planClock").classList.contains("hidden")) drawClock(); }, 30_000);
 
-// Перетащить карточку плана на день в полосе — на тот день появляется копия (сервер: POST /api/events/:id/copy), исходный остаётся.
-// Нажал и сдвинул мышь дальше PLAN_DRAG_SLOP — за курсором едет копия карточки, день под ней подсвечен; отпустил над днём — копия.
+// Перетащить карточку плана на день в полосе — перенести его туда (POST /api/events/:id {date}) или скопировать (…/copy, исходный остаётся).
+// Нажал и сдвинул мышь дальше PLAN_DRAG_SLOP — карточка едет у курсора (правее и ниже, чтобы не закрывать полосу). Над днём под ним
+// раскрывается плашка из двух половин: сверху «Перенести», снизу «Копия». Отпустил над самим днём — перенос; с зажатым Ctrl — копия.
 const PLAN_DRAG_SLOP = 6;
 let planDrag = null;
 $("#planClock").addEventListener("pointerdown", (ev) => {
@@ -531,53 +532,114 @@ $("#planClock").addEventListener("pointerdown", (ev) => {
   if (ev.button !== 0 || !li || ev.target.closest("button") || li.matches(".gone, .cancelled, .leaving")) return;
   const e = [...plansOf(clockDay)].find((x) => x.id === Number(li.dataset.id));
   if (!e) return;
-  planDrag = { e, li, x: ev.clientX, y: ev.clientY, ghost: null, over: null };
+  planDrag = { e, li, x: ev.clientX, y: ev.clientY, ghost: null, pick: null, pickDay: null, day: null, mode: null };
   li.setPointerCapture(ev.pointerId); // мышь ушла за край карточки — события всё равно приходят сюда
 });
+
+// Плашка выбора под днём: две половины, ширина — по тексту, не выходит за края панели.
+function dropPick(d, chip) {
+  d.pick?.remove();
+  const pick = document.createElement("div");
+  pick.className = "drop-pick";
+  pick.innerHTML = `<div data-mode="move">↪ Перенести</div><div data-mode="copy">⧉ Копия</div>`;
+  document.body.appendChild(pick);
+  const r = chip.getBoundingClientRect();
+  const box = $("#planClock").getBoundingClientRect();
+  const w = pick.offsetWidth;
+  pick.style.left = `${Math.min(Math.max(r.left + r.width / 2 - w / 2, box.left + 6), box.right - w - 6)}px`;
+  pick.style.top = `${r.bottom + 4}px`;
+  d.pick = pick;
+  d.pickDay = chip.dataset.day;
+}
+function planDragAt(d, x, y, ctrl) {
+  const el = document.elementFromPoint(x, y);
+  const chip = el?.closest("#planClock .day-chip");
+  let day = null;
+  let mode = null;
+  if (chip && chip.dataset.day !== d.e.date_iso) {
+    if (d.pickDay !== chip.dataset.day) dropPick(d, chip);
+    day = chip.dataset.day;
+    mode = "move";
+  } else if (d.pick) {
+    const half = el?.closest(".drop-pick [data-mode]");
+    const r = d.pick.getBoundingClientRect();
+    const c = document.querySelector(`#planClock .day-chip[data-day="${d.pickDay}"]`)?.getBoundingClientRect();
+    // Промежуток между днём и плашкой — ещё над ней, иначе по пути вниз плашка бы закрывалась.
+    const between = c && x >= Math.min(r.left, c.left) && x <= Math.max(r.right, c.right) && y >= c.bottom - 1 && y <= r.top + 1;
+    if (half) {
+      day = d.pickDay;
+      mode = half.dataset.mode;
+    } else if (between) {
+      day = d.pickDay;
+      mode = "move";
+    }
+  }
+  if (!day && d.pick) {
+    d.pick.remove();
+    d.pick = null;
+    d.pickDay = null;
+  }
+  if (day && ctrl) mode = "copy";
+  d.day = day;
+  d.mode = mode;
+  for (const c of document.querySelectorAll("#planClock .day-chip")) c.classList.toggle("drop", c.dataset.day === day);
+  for (const h of d.pick?.querySelectorAll("[data-mode]") ?? []) h.classList.toggle("on", h.dataset.mode === mode);
+  d.ghost.classList.toggle("copy", mode === "copy");
+  d.ghost.classList.toggle("move", mode === "move");
+}
 document.addEventListener("pointermove", (ev) => {
   if (!planDrag) return;
   const d = planDrag;
   if (!d.ghost) {
     if (Math.hypot(ev.clientX - d.x, ev.clientY - d.y) < PLAN_DRAG_SLOP) return;
-    const r = d.li.getBoundingClientRect();
     d.ghost = d.li.cloneNode(true);
     d.ghost.classList.add("pl-ghost");
-    d.ghost.style.width = `${r.width}px`;
+    d.ghost.style.width = `${Math.min(d.li.offsetWidth, 200)}px`;
     d.ghost.style.setProperty("--c", d.li.dataset.c);
-    d.dx = ev.clientX - r.left;
-    d.dy = ev.clientY - r.top;
     document.body.appendChild(d.ghost);
     d.li.classList.add("pl-dragging");
     $("#planClock").classList.add("dragging-plan");
   }
-  d.ghost.style.left = `${ev.clientX - d.dx}px`;
-  d.ghost.style.top = `${ev.clientY - d.dy}px`;
-  const chip = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#planClock .day-chip");
-  const day = chip && chip.dataset.day !== d.e.date_iso ? chip.dataset.day : null;
-  if (day !== d.over) {
-    for (const c of document.querySelectorAll("#planClock .day-chip.drop")) c.classList.remove("drop");
-    chip?.classList.toggle("drop", Boolean(day));
-    d.over = day;
-  }
+  d.ghost.style.left = `${ev.clientX + 16}px`;
+  d.ghost.style.top = `${ev.clientY + 18}px`;
+  d.px = ev.clientX;
+  d.py = ev.clientY;
+  planDragAt(d, ev.clientX, ev.clientY, ev.ctrlKey);
 });
+// Ctrl нажали или отпустили, не двигая мышь, — режим меняется сразу.
+for (const type of ["keydown", "keyup"]) {
+  document.addEventListener(type, (e) => {
+    if (planDrag?.ghost && e.key === "Control") planDragAt(planDrag, planDrag.px, planDrag.py, type === "keydown");
+  });
+}
 function endPlanDrag(drop) {
   const d = planDrag;
   planDrag = null;
   if (!d?.ghost) return;
   d.ghost.remove();
+  d.pick?.remove();
   d.li.classList.remove("pl-dragging");
   $("#planClock").classList.remove("dragging-plan");
   for (const c of document.querySelectorAll("#planClock .day-chip.drop")) c.classList.remove("drop");
   // Щелчок, который браузер пришлёт после отпускания, не должен открыть день или отметить план.
-  const eat = (e) => { e.stopPropagation(); e.preventDefault(); };
+  const eat = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
   window.addEventListener("click", eat, { capture: true, once: true });
   setTimeout(() => window.removeEventListener("click", eat, { capture: true }), 0);
-  if (drop && d.over) copyPlan(d.e, d.over);
+  if (!drop || !d.day) return;
+  if (d.mode === "copy") copyPlan(d.e, d.day);
+  else movePlan(d.e, d.day, d.li);
 }
 document.addEventListener("pointerup", () => endPlanDrag(true));
 document.addEventListener("pointercancel", () => endPlanDrag(false));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") endPlanDrag(false); });
 
+function planDragFailed(err, what) {
+  const msg = String(err?.message ?? err);
+  say(/нет такого адреса|404|нужно status/.test(msg) ? `Сервер ещё не умеет ${what} планы — его нужно обновить.` : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+}
 async function copyPlan(e, day) {
   const where = humanDay(day);
   try {
@@ -589,7 +651,22 @@ async function copyPlan(e, day) {
     farPlans.clear();
     maid.changed();
   } catch (err) {
-    const msg = String(err?.message ?? err);
-    say(/нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет копировать планы — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+    planDragFailed(err, "копировать");
+  }
+}
+// Перенос: карточка сразу улетает из этого дня, панель остаётся на нём.
+async function movePlan(e, day, li) {
+  li.style.height = `${li.offsetHeight}px`;
+  li.classList.add("fly");
+  try {
+    await maid.api("POST", `/api/events/${e.id}`, { date: day });
+    quietPlans.add(e.id);
+    popTone(2);
+    say(`Перенесла «${e.title}» на ${humanDay(day)} ✓`, { ms: 5000, mood: "write", emotion: "happy" });
+    farPlans.clear();
+    maid.changed();
+  } catch (err) {
+    li.classList.remove("fly");
+    planDragFailed(err, "переносить");
   }
 }

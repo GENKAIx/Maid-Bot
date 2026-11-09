@@ -299,13 +299,15 @@ export function createApi(deps: ApiDeps) {
       return store.task(t.id);
     }
 
-    // План (событие): состоялся / отменён / снова в планах — из списка планов виджета.
+    // План (событие): состоялся / отменён / снова в планах — из списка планов виджета; date — перенос на день (перетащили на день в полосе).
     const ev = p.match(/^\/api\/events\/(\d+)$/);
     if (m === "POST" && ev) {
-      const { status } = parseBody(z.object({ status: z.enum(["active", "done", "cancelled"]) }), await readJson(req));
+      const { status, date } = parseBody(z.object({ status: z.enum(["active", "done", "cancelled"]).optional(), date: Day.optional() }), await readJson(req));
+      if (!status && !date) throw new HttpError(400, "нужно status или date");
       const e = await store.event(Number(ev[1]));
       if (!e || e.user_id !== u.id) throw new HttpError(404, "нет плана");
-      await store.updateEvent(e.id, { status });
+      await store.updateEvent(e.id, { ...(status ? { status } : {}), ...(date ? { date_iso: date } : {}) });
+      if (date) pipeline.changed(u);
       await store.cancelReminders("event", e.id);
       const now = (await store.event(e.id))!;
       if (now.status === "active") await planEventReminders(store, u, now, new Date());

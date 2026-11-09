@@ -8,7 +8,7 @@ import { Pipeline } from "../src/pipeline.ts";
 
 // Перетащили план на другой день в полосе виджета ПК — на том дне появляется копия, исходный остаётся.
 
-test("копия плана: на новый день с тем же временем, без дублей, чужой не копируется", async () => {
+test("копия и перенос плана: на новый день с тем же временем, без дублей, чужой не трогается", async () => {
   const store = await Store.open(":memory:");
   const u = await store.ensureUser("100", "Тест", "Europe/Moscow");
   await store.updateUser(u.id, { login: "owner", password_hash: await hashPassword("secret-pass-1") });
@@ -44,6 +44,18 @@ test("копия плана: на новый день с тем же време�
 
     assert.equal((await call(`/api/events/${ev}/copy`, { date: "12.11" }, token)).status, 400);
     assert.equal((await call(`/api/events/${other}/copy`, { date: "2026-11-12" }, token)).status, 404);
+
+    // Перенос: тот же план переезжает на другой день, время остаётся.
+    const mv = await call(`/api/events/${ev}`, { date: "2026-11-14" }, token);
+    assert.equal(mv.status, 200);
+    assert.equal(mv.json.id, ev);
+    assert.equal(mv.json.date_iso, "2026-11-14");
+    assert.equal(mv.json.time, "14:00");
+    assert.equal(mv.json.status, "active");
+    assert.equal((await store.eventsBetween(u.id, "2026-11-10", "2026-11-10")).length, 0, "со старого дня ушёл");
+    assert.equal((await call(`/api/events/${ev}`, {}, token)).status, 400);
+    assert.equal((await call(`/api/events/${other}`, { date: "2026-11-14" }, token)).status, 404);
+    assert.equal((await store.event(other))!.date_iso, "2026-11-10");
   } finally {
     server.close();
   }

@@ -574,7 +574,22 @@ body.quick { background: transparent; }
 #planClock.dragging-plan, #planClock.dragging-plan * { cursor: grabbing; }
 #planClock .pl-card.pl-dragging { opacity: .45; }
 .pl-ghost { position: fixed; z-index: 1000; background: #2c2840; color: #fff; pointer-events: none; margin: 0; list-style: none; opacity: .92;
-  transform: rotate(-2deg) scale(1.03); box-shadow: 0 10px 24px rgba(0, 0, 0, .28); }
+  transform: rotate(-2deg) scale(.9); transform-origin: top left; box-shadow: 0 10px 24px rgba(0, 0, 0, .28); overflow: visible; }
+.pl-ghost .pl-x, .pl-ghost .pl-check { visibility: hidden; }
+/* Значок режима на углу карточки: ↪ — перенос, + — копия. */
+.pl-ghost.move::after, .pl-ghost.copy::after { content: ""; position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center; font: 700 13px/1 system-ui, sans-serif; color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .3); }
+.pl-ghost.move::after { content: "↪"; background: #6c5ce7; }
+.pl-ghost.copy::after { content: "+"; background: #2f9e6e; font-size: 16px; }
+/* Плашка под днём: сверху перенос, снизу копия. */
+.drop-pick { position: fixed; z-index: 999; display: flex; flex-direction: column; min-width: 112px; border-radius: 10px; overflow: hidden;
+  background: #262238; border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 8px 22px rgba(0, 0, 0, .35); font-size: 12.5px; color: #e9e6f5;
+  animation: dropPick .12s ease-out; }
+.drop-pick > div { padding: 8px 12px; white-space: nowrap; transition: background .1s, color .1s; }
+.drop-pick > div + div { border-top: 1px solid rgba(255, 255, 255, .08); }
+.drop-pick > [data-mode="move"].on { background: #6c5ce7; color: #fff; }
+.drop-pick > [data-mode="copy"].on { background: #2f9e6e; color: #fff; }
+@keyframes dropPick { from { opacity: 0; transform: translateY(-4px); } }
 #planClock.dragging-plan .day-chip { transition: transform .12s, box-shadow .12s; }
 #planClock .day-chip.drop { transform: translateY(-3px) scale(1.08); box-shadow: 0 0 0 2px var(--accent, #9a6cf0), 0 6px 14px rgba(0, 0, 0, .25); }
 /* Убранный крестиком: отметка красная, заливка красноватая; наведение — ↺ вернуть. */
