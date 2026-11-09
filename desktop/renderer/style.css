@@ -442,7 +442,7 @@ body.quick { background: transparent; }
 .stage.side-left .inbox .ib { translate: calc(-1 * var(--x)) var(--y); }
 .inbox.hidden { display: none; }
 .inbox.away .ib { opacity: 0; pointer-events: none; }
-/* Значок — сама картинка Emoji Kitchen, без кружка; у каждого свой размер, наклон и покачивание (inbox.js). */
+/* Значок — сама картинка эмодзи (assets/inbox), без кружка; у каждого свой размер, наклон и покачивание (inbox.js). */
 .ib { position: absolute; right: 0; bottom: 0; translate: var(--x) var(--y); width: var(--s, 44px); height: var(--s, 44px); padding: 0; border: 0;
   background: none; cursor: pointer; pointer-events: auto; transition: opacity .2s, scale .15s; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .45));
   rotate: var(--r, 0deg); animation: ibFloat var(--t, 3.2s) ease-in-out var(--d, 0s) infinite; }
