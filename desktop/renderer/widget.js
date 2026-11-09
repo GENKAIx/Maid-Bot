@@ -447,6 +447,15 @@ let showDoneTimer = 0;
 const showingDone = () => Date.now() < showDoneUntil;
 const rowLeaving = (x) => `leaving${x.fly ? " fly" : ""}${x.pausedAt ? " hold" : ""}`;
 const rowEl = (key) => $("#body").querySelector(`li[data-key="${key}"]`);
+// Растворение у края списка: есть что листать выше или ниже — край тает (style.css, .more-above / .more-below).
+function scrollEdges() {
+  const b = $("#body");
+  b.classList.toggle("more-above", b.scrollTop > 2);
+  b.classList.toggle("more-below", b.scrollTop + b.clientHeight < b.scrollHeight - 2);
+}
+$("#body").addEventListener("scroll", scrollEdges, { passive: true });
+new ResizeObserver(scrollEdges).observe($("#body"));
+new MutationObserver(() => requestAnimationFrame(scrollEdges)).observe($("#body"), { childList: true, subtree: true });
 $("#body").addEventListener("mouseleave", () => {
   if (!showingDone()) return;
   clearTimeout(showDoneTimer);

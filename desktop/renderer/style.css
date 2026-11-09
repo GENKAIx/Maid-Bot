@@ -376,7 +376,7 @@ body.quick { background: transparent; }
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35); cursor: pointer; transition: opacity .3s, transform .35s cubic-bezier(.3, 1.3, .5, 1); transform-origin: right bottom; }
 .plan-clock { display: flex; flex-direction: column; box-sizing: border-box; }
 .plan-clock svg, .pc-head, .pc-days { flex: none; }
-.plan-clock .pc-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; align-content: start; scrollbar-width: thin; }
+.plan-clock .pc-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; align-content: start; }
 .plan-clock.hidden { opacity: 0; transform: translateX(18px) scale(.92); pointer-events: none; }
 .stage.folded .plan-clock { display: none; }
 .plan-clock svg { display: block; width: 254px; height: 254px; margin: 0 auto; overflow: visible; }
@@ -443,7 +443,7 @@ body.quick { background: transparent; }
 .pc-arrow:hover:not(:disabled) { color: var(--text, #fff); background: rgba(255, 255, 255, .06); }
 .pc-arrow:disabled { opacity: .25; cursor: default; }
 .pl-top { flex: none; display: flex; align-items: center; justify-content: space-between; margin: 12px 4px 8px; font-size: 13px; font-weight: 600; }
-.pl-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; list-style: none; margin: 0; padding: 0 2px 2px; display: grid; gap: 7px; align-content: start; scrollbar-width: thin; }
+.pl-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; list-style: none; margin: 0; padding: 0 2px 2px; display: grid; gap: 7px; align-content: start; }
 .pl-card { position: relative; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 8px 6px 14px; border-radius: 11px;
   background: rgba(255, 255, 255, .055); font-size: 13px; overflow: hidden; transition: opacity .25s, background .2s; }
 .pl-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, var(--accent)); }
@@ -771,3 +771,18 @@ body.quick { background: transparent; }
 .stage.fold-anim .w, .stage.fold-anim .mini { transition: none; will-change: transform, opacity; }
 .stage.fold-anim .maid { will-change: transform, opacity; }
 .stage.folded.fold-anim .perch { --peek: inherit; }
+
+/* Полосы прокрутки в виджете: тонкая скруглённая сиреневая полоска без стрелок, едва заметна, ярче при наведении.
+   (scrollbar-width / scrollbar-color не ставить — в новом Chromium они отключают эти правила.) */
+body.widget ::-webkit-scrollbar { width: 6px; height: 6px; }
+body.widget ::-webkit-scrollbar-track, body.widget ::-webkit-scrollbar-corner { background: transparent; }
+body.widget ::-webkit-scrollbar-track { margin: 6px 0; }
+body.widget ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+body.widget ::-webkit-scrollbar-thumb { background: rgba(180, 156, 255, .22); border-radius: 99px; transition: background .2s; }
+body.widget :hover::-webkit-scrollbar-thumb { background: rgba(180, 156, 255, .42); }
+body.widget ::-webkit-scrollbar-thumb:hover { background: rgba(180, 156, 255, .62); }
+body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .8); }
+/* Список длиннее окна — край, за которым есть ещё, мягко растворяется. */
+.w .scroll.more-below { -webkit-mask-image: linear-gradient(#000 calc(100% - 26px), transparent); mask-image: linear-gradient(#000 calc(100% - 26px), transparent); }
+.w .scroll.more-above.more-below { -webkit-mask-image: linear-gradient(transparent, #000 18px, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(transparent, #000 18px, #000 calc(100% - 26px), transparent); }
+.w .scroll.more-above:not(.more-below) { -webkit-mask-image: linear-gradient(transparent, #000 18px); mask-image: linear-gradient(transparent, #000 18px); }
