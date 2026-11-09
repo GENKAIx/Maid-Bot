@@ -108,6 +108,42 @@ function tickDayMood() {
 }
 setInterval(tickDayMood, 20_000);
 
+// --- реакция на дела ---
+// За 10 минут до плана со временем — машет и потом держит часики, пока план не начнётся; есть просроченные задачи —
+// недовольная мордочка вместо обычной (основа, см. baseMood). Сервер свои напоминания и так присылает — тут без слов.
+let dueMood = "";
+let soonWaved = "";
+function soonPlan() {
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  for (const e of data?.events ?? []) {
+    if (!e.time || (e.status && e.status !== "active")) continue;
+    const [h, m] = e.time.split(":").map(Number);
+    const left = h * 60 + m - cur;
+    if (left > 0 && left <= 10) return e;
+  }
+  return null;
+}
+function tickDue() {
+  if (!data) return;
+  const soon = soonPlan();
+  const overdue = (data.tasks ?? []).some((t) => t.due_date && t.due_date < data.day);
+  const next = soon ? "remind" : overdue ? "angry" : "";
+  const key = soon ? `${data.day}|${soon.id ?? soon.title}|${soon.time}` : "";
+  if (soon && key !== soonWaved) {
+    // Только что стало «через 10 минут» — помахать и тихонько звякнуть, потом часики.
+    soonWaved = key;
+    dueMood = next;
+    popTone(5, { vol: 0.08, soft: true });
+    return react("hello", 3500);
+  }
+  if (next !== dueMood) {
+    dueMood = next;
+    settle();
+  }
+}
+setInterval(tickDue, 15_000);
+
 // --- спасённый пропуск ---
 // Вчерашний день по расписанию без отметки — в списке строкой «вчера — спасти серию». Отметка задним числом:
 // пупырка «склеивается» с трещинкой, серия не рвётся.

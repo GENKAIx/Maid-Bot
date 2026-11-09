@@ -55,7 +55,11 @@ let online = true;
 function baseMood() {
   if (state === "think") return "think";
   if (!online) return "offline";
+  // Скоро план (≤ 10 мин) — показывает часики, даже ночью; есть просроченные задачи — недовольна, но сон важнее (fun.js, dueMood).
+  const due = typeof dueMood !== "undefined" ? dueMood : "";
+  if (due === "remind") return due;
   if (state === "sleep") return "sleep";
+  if (due) return due;
   // День не задался (просрочено, не отмечено) — грустно метёт (fun.js, dayMood).
   return typeof dayMood !== "undefined" && dayMood === "bad" ? "clean" : "idle";
 }
@@ -107,6 +111,7 @@ setInterval(() => {
 function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null } = {}) {
   const b = $("#bubble");
   delete b.dataset.quip;
+  if (text !== "…") openForMessage();
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
   if (days.length) text = text.replace(/\n📅 .*$/, "");
   // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
@@ -294,7 +299,32 @@ function hideBubble() {
   $("#bubble").classList.add("hidden");
   maid.hover(false);
   $("#inbox").classList.remove("away");
+  refoldLater();
 }
+
+// Свёрнутый виджет и сообщение горничной: разворачивается, показывает его и, когда облачко ушло, сворачивается обратно.
+// Если вы за это время сами взялись за панель (щелчок, чат, курсор на ней) — остаётся развёрнутым.
+let autoOpened = false;
+let refoldTimer = 0;
+function openForMessage() {
+  clearTimeout(refoldTimer);
+  if (!collapsed) return;
+  autoOpened = true;
+  foldAnimated(false);
+}
+function refoldLater() {
+  if (!autoOpened) return;
+  clearTimeout(refoldTimer);
+  refoldTimer = setTimeout(function again() {
+    if (!autoOpened || collapsed) return (autoOpened = false);
+    if (!$("#bubble").classList.contains("hidden")) return; // новое сообщение — ждём, когда уйдёт и оно
+    // Курсор на панели или в чате что-то пишут — не трогаем, пока не отпустят.
+    if ($("#w").matches(":hover") || document.activeElement === chatInput || chatInput.value.trim()) return (refoldTimer = setTimeout(again, 1500));
+    autoOpened = false;
+    foldAnimated(true);
+  }, 900);
+}
+$("#w").addEventListener("pointerdown", () => { autoOpened = false; }); // взялись за панель — она ваша
 
 // --- панель ---
 function minutesUntil(e) {
@@ -567,6 +597,7 @@ async function load() {
   renderSoon();
   watchPlans();
   if (dayScore === null) tickDayMood();
+  tickDue(); // часики перед планом и недовольство просрочкой — сразу по свежим данным
 }
 
 // Лента уведомлений: что ушло в Telegram — показать и здесь, с кнопками.
@@ -959,10 +990,11 @@ $("#maid").addEventListener("click", () => {
 });
 $("#maid").addEventListener("dblclick", () => {
   clearTimeout(clickTimer);
+  autoOpened = false;
   foldAnimated(!collapsed);
 });
-$("#miniOpen").onclick = () => foldAnimated(false);
-$("#mini").addEventListener("dblclick", (e) => !e.target.closest("button") && foldAnimated(false));
+$("#miniOpen").onclick = () => { autoOpened = false; foldAnimated(false); };
+$("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button")) return; autoOpened = false; foldAnimated(false); });
 $("#maid").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   maid.grab(!grabbed);
