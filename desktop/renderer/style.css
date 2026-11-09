@@ -180,8 +180,26 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .chat .pic img { width: 52px; height: 52px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); display: block; }
 .chat .pic button { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; line-height: 16px; background: #3a3150; border: 1px solid rgba(255,255,255,.25); }
 .chat .pic button:hover { background: #e5484d; }
-.chat textarea { flex: 1; resize: none; min-height: 36px; max-height: 118px; line-height: 1.35; overflow-y: auto; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 8px 12px; font-size: 13.5px; }
-.chat textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(183,156,255,.2); }
+/* Поле ввода: «+» слева внутри поля, текст растёт вверх; рамка и фон — у поля, не у textarea. */
+.chat .field { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 2px; min-height: 36px; box-sizing: border-box; padding: 0 4px 0 3px;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: 18px; transition: border-color .15s ease, box-shadow .15s ease; }
+.chat .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(183,156,255,.2); }
+.chat textarea { flex: 1; min-width: 0; resize: none; min-height: 34px; max-height: 116px; line-height: 1.35; overflow-y: auto; background: transparent; border: 0; border-radius: 0; padding: 7px 6px 7px 2px; font-size: 13.5px; }
+.chat textarea:focus { border: 0; box-shadow: none; outline: none; }
+.chat button.plus { flex: none; width: 28px; height: 28px; margin: 3px 0; border-radius: 50%; display: grid; place-items: center; background: transparent; color: var(--muted); transition: background .15s ease, color .15s ease, transform .2s ease; }
+.chat button.plus:hover { background: rgba(255,255,255,.12); color: var(--text, #fff); transform: rotate(90deg); }
+.recording > .field { display: none; }
+/* Одна круглая кнопка справа: микрофон ⇄ «отправить». Обе лежат друг на друге, видна одна; смена — поворот и масштаб. */
+.chat .act { position: relative; flex: none; width: 36px; height: 36px; }
+.chat .act button, .chat .act button.mic { position: absolute; inset: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; padding: 0;
+  background: var(--brand); color: #fff; transition: transform .24s cubic-bezier(.3, 1.4, .5, 1), opacity .16s ease, background .15s ease; }
+.chat .act button:hover, .chat .act button.mic:hover { background: #7d52e6; }
+.chat .act button:active { transform: scale(.9); }
+.chat #chatSend, .chat.ready #chatMic { opacity: 0; transform: scale(.35) rotate(-90deg); pointer-events: none; }
+.chat.ready #chatSend { opacity: 1; transform: none; pointer-events: auto; }
+.chat.recording #chatSend { box-shadow: 0 0 0 0 rgba(125, 82, 230, .6); animation: sendPulse 1.6s ease-out infinite; }
+@keyframes sendPulse { to { box-shadow: 0 0 0 9px rgba(125, 82, 230, 0); } }
+@media (prefers-reduced-motion: reduce) { .chat .act button { transition: opacity .1s; } .chat.recording #chatSend { animation: none; } }
 .chat button { background: var(--brand); color: #fff; border: none; border-radius: 12px; width: 38px; height: 36px; flex: none; font-weight: 700; padding: 0; }
 .chat button:hover { background: #7d52e6; }
 .stage.grab .chat { -webkit-app-region: no-drag; }
@@ -345,6 +363,7 @@ body.quick { background: transparent; }
 .rec-bar { display: none; flex: 1; min-width: 0; align-items: center; gap: 8px; padding: 0 10px 0 4px; border-radius: 12px; background: rgba(229,72,77,.12); border: 1px solid rgba(229,72,77,.35); }
 .recording .rec-bar { display: flex; }
 .recording > input, .recording > textarea { display: none; }
+.chat .rec-bar { border-radius: 18px; }
 .rec-bar .rec-trash { flex: none; width: 30px; height: 30px; padding: 0; border: none; border-radius: 9px; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .chat .rec-bar .rec-trash { background: transparent; color: var(--muted); width: 30px; }
 .rec-bar .rec-trash:hover, .chat .rec-bar .rec-trash:hover { background: rgba(229,72,77,.2); color: #ff8f93; }

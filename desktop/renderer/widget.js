@@ -247,6 +247,7 @@ async function sendChat() {
   chatInput.value = "";
   fitChat();
   setPictures([]);
+  syncSend();
   const label = images ? (images.length > 1 ? `📷×${images.length} Смотрю…` : "📷 Смотрю…") : text.length > 40 ? text.slice(0, 40) + "…" : text;
   await ask("/api/input", { text, images, id: crypto.randomUUID() }, label);
 }
@@ -268,6 +269,7 @@ function setPictures(list) {
     return el;
   }));
   chatInput.placeholder = list.length ? "Подпись к картинкам (можно пусто) — Enter" : "Скажи горничной…";
+  syncSend();
   if (list.length) chatInput.focus();
 }
 async function attachFiles(files) {
@@ -322,10 +324,15 @@ async function ask(path, body, waiting) {
 // --- голосом: щелчок по микрофону — запись, ещё щелчок (или Enter) — отправить, Esc — отменить ---
 const mic = $("#chatMic");
 let micTick = 0;
+// Кнопка справа: пусто — микрофон; есть текст или картинки, или идёт запись — превращается в «отправить».
+function syncSend() {
+  const ready = Voice.on || Boolean(chatInput.value.trim()) || pictures.length > 0;
+  $("#chat").classList.toggle("ready", ready);
+  $("#chatSend").title = Voice.on ? "Отправить запись (Enter)" : "Отправить (Enter)";
+}
 function micUi(on) {
-  mic.classList.toggle("rec", on);
-  mic.title = on ? "Отправить запись (Enter)" : "Сказать голосом";
   chatBox.classList.toggle("recording", on);
+  syncSend();
   clearInterval(micTick);
   if (!on) return;
   const time = chatBox.querySelector(".rec-time");
@@ -371,7 +378,7 @@ function fitChat() {
   chatInput.style.height = "auto";
   chatInput.style.height = `${chatInput.scrollHeight + 2}px`;
 }
-chatInput.addEventListener("input", fitChat);
+chatInput.addEventListener("input", () => { fitChat(); syncSend(); });
 chatInput.addEventListener("keydown", (e) => {
   if (e.key === "Escape") return pictures.length ? setPictures(pictures.slice(0, -1)) : chatInput.blur();
   if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
