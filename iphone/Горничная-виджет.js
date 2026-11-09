@@ -214,6 +214,7 @@ async function main() {
     else {
       const a = new Alert();
       a.title = "Горничная";
+      a.message = "Скрипт не ставит виджет сам. На главном экране: долгое нажатие → «+» (слева сверху) → Scriptable → размер → «Добавить виджет», затем нажать на виджет и выбрать этот скрипт в поле Script.";
       a.addAction("Показать виджет");
       a.addAction("Сменить ключ");
       a.addCancelAction("Закрыть");
