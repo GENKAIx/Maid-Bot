@@ -406,16 +406,19 @@ function render() {
   }
   $("#day").textContent = humanDay(data.day);
   $("#miniDay").textContent = miniDay(data.day);
-  // Ближайшие планы, до NEXT_MAX строк: сначала сегодняшние (не начавшиеся больше 30 мин назад), не хватает — из следующих дней.
+  // Ближайшие планы, до NEXT_MAX строк: сначала сегодняшние (не начавшиеся больше 30 мин назад), не хватает — из следующих дней,
+  // не дальше недели вперёд (поэтому дня недели хватает: «Завтра», «Послезавтра», «Сб»).
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
-  const nexts = [...today, ...data.upcoming].slice(0, NEXT_MAX);
+  const week = data.upcoming.filter((e) => daysFrom(data.day, e.date_iso) <= 6);
+  const nexts = [...today, ...week].slice(0, NEXT_MAX);
   $("#next").dataset.day = nexts[0]?.date_iso ?? "";
   $("#next").innerHTML = nexts.length
     ? nexts.map((e) => {
       const m = e.date_iso === data.day ? minutesUntil(e) : null;
       const n = daysFrom(data.day, e.date_iso);
-      const when = e.date_iso !== data.day ? `${n === 1 ? "завтра" : n === 2 ? "послезавтра" : humanDay(e.date_iso)}${e.time ? `, ${e.time}` : ""}`
-        : m === null ? "сегодня" : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : e.time;
+      const wd = WD_SHORT[wdOf(e.date_iso)];
+      const when = e.date_iso !== data.day ? `${n === 1 ? "Завтра" : n === 2 ? "Послезавтра" : wd[0].toUpperCase() + wd.slice(1)}${e.time ? `, ${e.time}` : ""}`
+        : m === null ? "Сегодня" : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : e.time;
       return `<div class="nx" data-day="${esc(e.date_iso)}"><b>${esc(when)}</b> · ${esc(e.title)}</div>`;
     }).join("")
     : `<span class="muted">Планов нет</span>`;
