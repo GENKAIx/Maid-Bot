@@ -428,6 +428,7 @@ body.quick { background: transparent; }
 /* Важные даты: над ближайшим планом и наверху списка планов */
 .w .pins { display: grid; gap: 6px; }
 .w .pins:empty, .w .pins.hidden { display: none; }
+.w .pin, .w .next { cursor: pointer; }
 .w .pin { background: rgba(255, 196, 92, .1); border-left: 3px solid #ffc45c; border-radius: 4px 10px 10px 4px; padding: 7px 10px; }
 .w .pin .pl-when { color: #ffc45c; }
 .pl-card.pl-date { --c: #ffc45c; background: rgba(255, 196, 92, .09); }

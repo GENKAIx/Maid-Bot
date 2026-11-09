@@ -288,6 +288,7 @@ function render() {
   }
   $("#day").textContent = humanDay(data.day);
   const next = data.events.find((e) => (minutesUntil(e) ?? 1) > -30) ?? data.upcoming[0];
+  $("#next").dataset.day = next?.date_iso ?? "";
   if (next) {
     const m = next.date_iso === data.day ? minutesUntil(next) : null;
     const when = m === null ? (next.date_iso === data.day ? "сегодня" : humanDay(next.date_iso)) : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : `в ${next.time}`;
@@ -295,7 +296,7 @@ function render() {
   } else $("#next").innerHTML = `<span class="muted">Планов нет</span>`;
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
   const pins = datesOf(data.day);
-  $("#pins").innerHTML = pins.map((d) => `<div class="pin">${dateText(d, data.day)}</div>`).join("");
+  $("#pins").innerHTML = pins.map((d) => `<div class="pin" data-day="${d.on}">${dateText(d, data.day)}</div>`).join("");
   // Один список «Задачи» вместо отдельных разделов. Порядок:
   //   1) ежедневное на сегодня, ещё не отмеченное (привычки и курсы — «Пить Аевит · день 9 из 30»);
   //   2) задачи: сначала важные, потом обычные, потом «когда-нибудь»;

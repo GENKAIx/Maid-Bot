@@ -428,8 +428,18 @@ $("#planClock").addEventListener("click", (e) => {
   if (!e.target.closest(".plan-arc, .pl-list, .pl-top, .pl-empty, .pc-strip")) hideClock();
 });
 // Посмотреть планы — щелчок по строке «ближайший план»: ещё раз — спрятать.
-$("#next").addEventListener("click", () => {
-  if (!$("#planClock").classList.contains("hidden")) return hideClock();
-  showClock(data?.day);
+// Щелчок по ближайшему плану или важной дате — панель планов на их день (ещё раз на тот же день — спрятать).
+function togglePlansOn(day) {
+  if (!$("#planClock").classList.contains("hidden") && clockDay === day) return hideClock();
+  // Полоса дней — та неделя, где этот день.
+  const n = data ? daysFrom(data.day, day) : 0;
+  if (n < stripFrom || n > stripFrom + DAYS_AHEAD) stripFrom = Math.max(0, Math.floor(n / (DAYS_AHEAD + 1)) * (DAYS_AHEAD + 1));
+  showClock(day);
+  loadFar();
+}
+$("#next").addEventListener("click", () => togglePlansOn($("#next").dataset.day || data?.day));
+$("#pins").addEventListener("click", (ev) => {
+  const pin = ev.target.closest(".pin");
+  if (pin) togglePlansOn(pin.dataset.day || data?.day);
 });
 setInterval(() => { if (!$("#planClock").classList.contains("hidden")) drawClock(); }, 30_000);
