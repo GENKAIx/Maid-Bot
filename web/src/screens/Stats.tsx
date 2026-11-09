@@ -170,15 +170,6 @@ export function Stats({ version }: { version: number }) {
             <Bars bars={weight} color="var(--accent)" format={(v) => `${v.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг`} />
           </Card>
         )}
-        {sleepNotes.length > 0 && (
-          <Card title="Записи о сне" className="reveal">
-            <ul className="list">
-              {[...sleepNotes].slice(0, 30).map((s) => (
-                <li key={s.id}><span className="time">{shortDay(s.day_key)}</span><span className="grow">{s.text}</span></li>
-              ))}
-            </ul>
-          </Card>
-        )}
         {metrics.some((m) => !["steps", "sleep_hours", "sport_min", "weight"].includes(m.key)) && (
           <Card title="Другие показатели" className="reveal wide">
             <OtherMetrics metrics={metrics.filter((m) => !["steps", "sleep_hours", "sport_min", "weight"].includes(m.key))} bs={bs} />
