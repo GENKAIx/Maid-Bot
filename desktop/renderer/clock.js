@@ -318,7 +318,8 @@ function drawPlanList(box) {
   const dayName = today ? "Сегодня" : humanDay(clockDay);
   const count = [open && `${open} ${planWord(open)}`, tasks.length && `${tasks.length} ${taskWord(tasks.length)}`].filter(Boolean).join(" · ") || "планов нет";
   const taskCard = (t) => `<li class="pl-card pl-task${clockFresh.has(`t${t.id}`) ? " fresh" : ""}${clockDay < data.day ? " late" : ""}" data-task="${t.id}">
-      <span class="pl-text"><b class="pl-when">${clockDay < data.day ? "срок прошёл" : "срок"}</b> · ${esc(t.title)}</span>
+      <span class="pl-text">${esc(t.title)}</span>
+      <button type="button" class="pl-x" data-tdel="1" title="Удалить задачу">×</button>
       <button type="button" class="pl-check" data-tdone="1" title="Сделано"></button></li>`;
   const card = (e) => {
     const st = e._st ?? "";
@@ -442,6 +443,61 @@ async function doneTaskHere(id, btn) {
   setTimeout(() => load(), 900);
 }
 
+// Задачи в панели планов — как планы: перенос на день (перетащить или ПКМ), удаление (× или ПКМ).
+// Для общего кода переноса задача выглядит как план: { task: true, id, title, date_iso }.
+const taskOf = (li) => {
+  const t = (data?.tasks ?? []).find((x) => x.id === Number(li?.dataset.task));
+  return t && { task: true, id: t.id, title: t.title, date_iso: t.due_date };
+};
+async function deleteTask(t, li) {
+  li.style.height = `${li.offsetHeight}px`;
+  li.classList.add("fly");
+  try {
+    await maid.api("POST", `/api/tasks/${t.id}`, { status: "deleted" });
+    popTone(-1, { soft: true });
+    say(`Удалила задачу «${t.title}».`, { ms: 4000 });
+    maid.changed();
+  } catch (err) {
+    li.classList.remove("fly");
+    const msg = String(err?.message ?? err);
+    say(/Invalid|enum|status/.test(msg) ? "Сервер ещё не умеет удалять задачи — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+  }
+  setTimeout(() => load(), 400);
+}
+async function moveTask(t, day, li) {
+  li.style.height = `${li.offsetHeight}px`;
+  li.classList.add("fly");
+  try {
+    await maid.api("POST", `/api/tasks/${t.id}`, { due_date: day });
+    popTone(2);
+    say(`Перенесла задачу «${t.title}» на ${humanDay(day)} ✓`, { ms: 4000 });
+    maid.changed();
+  } catch (err) {
+    li.classList.remove("fly");
+    say(`Не вышло: ${String(err?.message ?? err)}`, { emotion: "worried", ms: 6000 });
+  }
+  setTimeout(() => load(), 400);
+}
+function openTaskMenu(t, li, x, y) {
+  closePlanMenu();
+  const item = (act, text) => `<button type="button" data-act="${act}">${text}</button>`;
+  const menu = document.createElement("div");
+  menu.className = "pl-menu";
+  menu.innerHTML = item("tomorrow", "↪ Перенести на завтра")
+    + (t.date_iso !== data.day ? item("today", "↩ Перенести на сегодня") : "")
+    + `<hr>` + item("done", "✓ Сделано") + item("delete", "× Удалить задачу");
+  showPlanMenu(menu, x, y);
+  menu.addEventListener("click", (ev) => {
+    const act = ev.target.closest("[data-act]")?.dataset.act;
+    if (!act) return;
+    closePlanMenu();
+    if (act === "tomorrow") return moveTask(t, dayAfter(t.date_iso < data.day ? data.day : t.date_iso, 1), li);
+    if (act === "today") return moveTask(t, data.day, li);
+    if (act === "done") return doneTaskHere(t.id, li.querySelector("[data-tdone]"));
+    deleteTask(t, li);
+  });
+}
+
 function showClock(day, { fresh = [], gone = [] } = {}) {
   if (cfg.clock === "off" || collapsed || prefsOpen || !data) return;
   const box = $("#planClock");
@@ -515,6 +571,13 @@ $("#planClock").addEventListener("click", (e) => {
   const tdone = e.target.closest("[data-tdone]");
   if (tdone) {
     doneTaskHere(Number(tdone.closest(".pl-card").dataset.task), tdone);
+    return hideClockLater();
+  }
+  const tdel = e.target.closest("[data-tdel]");
+  if (tdel) {
+    const li = tdel.closest(".pl-card");
+    const t = taskOf(li);
+    if (t) deleteTask(t, li);
     return hideClockLater();
   }
   const dact = e.target.closest("[data-dact]");
@@ -876,9 +939,9 @@ setInterval(() => { if (!$("#planClock").classList.contains("hidden")) drawClock
 const PLAN_DRAG_SLOP = 6;
 let planDrag = null;
 $("#planClock").addEventListener("pointerdown", (ev) => {
-  const li = ev.target.closest(".pl-card[data-id]");
-  if (ev.button !== 0 || !li || ev.target.closest("button") || li.matches(".gone, .cancelled, .leaving")) return;
-  const e = [...plansOf(clockDay)].find((x) => x.id === Number(li.dataset.id));
+  const li = ev.target.closest(".pl-card[data-id], .pl-card[data-task]");
+  if (ev.button !== 0 || !li || ev.target.closest("button") || li.matches(".gone, .cancelled, .leaving, .done")) return;
+  const e = li.dataset.task ? taskOf(li) : [...plansOf(clockDay)].find((x) => x.id === Number(li.dataset.id));
   if (!e) return;
   planDrag = { e, li, x: ev.clientX, y: ev.clientY, ghost: null, pick: null, pickDay: null, day: null, mode: null };
   li.setPointerCapture(ev.pointerId); // мышь ушла за край карточки — события всё равно приходят сюда
@@ -905,7 +968,7 @@ function planDragAt(d, x, y, ctrl) {
   let day = null;
   let mode = null;
   if (chip && chip.dataset.day !== d.e.date_iso) {
-    if (d.pickDay !== chip.dataset.day) dropPick(d, chip);
+    if (d.pickDay !== chip.dataset.day && !d.e.task) dropPick(d, chip); // задачу только переносят — копии у неё нет
     day = chip.dataset.day;
     mode = "move";
   } else if (d.pick) {
@@ -927,7 +990,7 @@ function planDragAt(d, x, y, ctrl) {
     d.pick = null;
     d.pickDay = null;
   }
-  if (day && ctrl) mode = "copy";
+  if (day && ctrl && !d.e.task) mode = "copy";
   d.day = day;
   d.mode = mode;
   for (const c of document.querySelectorAll("#planClock .day-chip")) c.classList.toggle("drop", c.dataset.day === day);
@@ -943,7 +1006,7 @@ document.addEventListener("pointermove", (ev) => {
     d.ghost = d.li.cloneNode(true);
     d.ghost.classList.add("pl-ghost");
     d.ghost.style.width = `${Math.min(d.li.offsetWidth, 200)}px`;
-    d.ghost.style.setProperty("--c", d.li.dataset.c);
+    if (d.li.dataset.c) d.ghost.style.setProperty("--c", d.li.dataset.c);
     document.body.appendChild(d.ghost);
     d.li.classList.add("pl-dragging");
     $("#planClock").classList.add("dragging-plan");
@@ -977,7 +1040,8 @@ function endPlanDrag(drop) {
   window.addEventListener("click", eat, { capture: true, once: true });
   setTimeout(() => window.removeEventListener("click", eat, { capture: true }), 0);
   if (!drop || !d.day) return;
-  if (d.mode === "copy") copyPlan(d.e, d.day);
+  if (d.e.task) moveTask(d.e, d.day, d.li);
+  else if (d.mode === "copy") copyPlan(d.e, d.day);
   else movePlan(d.e, d.day, d.li);
 }
 document.addEventListener("pointerup", () => endPlanDrag(true));
@@ -1482,6 +1546,13 @@ function showSeriesMade(e, sp, at, r) {
 }
 
 $("#planClock").addEventListener("contextmenu", (ev) => {
+  const tli = ev.target.closest(".pl-card[data-task]");
+  if (tli && !tli.matches(".done, .fly")) {
+    const t = taskOf(tli);
+    if (!t) return;
+    ev.preventDefault();
+    return openTaskMenu(t, tli, ev.clientX, ev.clientY);
+  }
   const li = ev.target.closest(".pl-card[data-id]");
   if (!li || li.matches(".gone, .leaving")) return;
   const e = plansOf(clockDay).find((x) => x.id === Number(li.dataset.id));

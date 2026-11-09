@@ -291,8 +291,8 @@ export function createApi(deps: ApiDeps) {
     const task = p.match(/^\/api\/tasks\/(\d+)$/);
     if (m === "POST" && task) {
       // Разбор хвостов в виджете: failed — «не буду делать», dodged — закрыл крестиком, не ответив (сбежал от задачи);
-      // обе закрывают задачу невыполненной. due_date — перенос на день.
-      const b = parseBody(z.object({ status: z.enum(["open", "done", "cancelled", "failed", "dodged"]).optional(), due_date: Day.optional() }), await readJson(req));
+      // обе закрывают задачу невыполненной; deleted — удалить задачу (ПКМ или × на карточке). due_date — перенос на день.
+      const b = parseBody(z.object({ status: z.enum(["open", "done", "cancelled", "failed", "dodged", "deleted"]).optional(), due_date: Day.optional() }), await readJson(req));
       const t = await store.task(Number(task[1]));
       if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
       if (!b.status && !b.due_date) throw new HttpError(400, "нужно status или due_date");

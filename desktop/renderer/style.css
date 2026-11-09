@@ -585,7 +585,7 @@ body.quick { background: transparent; }
 @media (prefers-reduced-motion: reduce) { .w h4 .done-count.bump, .w h4 .done-count.bump::after { animation: none; } }
 
 /* Перетаскивание плана на день полосы — копия на тот день (clock.js). */
-#planClock .pl-card[data-id]:not(.gone, .cancelled) { cursor: grab; }
+#planClock .pl-card[data-id]:not(.gone, .cancelled), #planClock .pl-card[data-task]:not(.done) { cursor: grab; }
 #planClock.dragging-plan, #planClock.dragging-plan * { cursor: grabbing; }
 #planClock .pl-card.pl-dragging { opacity: .45; }
 .pl-ghost { position: fixed; z-index: 1000; background: #2c2840; color: #fff; pointer-events: none; margin: 0; list-style: none; opacity: .92;

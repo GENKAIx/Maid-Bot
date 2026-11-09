@@ -48,11 +48,16 @@ test("хвосты: «не сделано» закрывает задачу, п�
     assert.equal(m.json.due_date, "2026-11-12");
     assert.equal(m.json.status, "open");
 
+    // Удалить задачу (× или ПКМ в виджете) — уходит из открытых.
+    const del = await call(`/api/tasks/${moved}`, { status: "deleted" }, token);
+    assert.equal(del.json.status, "deleted");
+    assert.ok(!(await store.openTasks(u.id)).some((t) => t.id === moved), "удалённая ушла из открытых");
+
     assert.equal((await call(`/api/tasks/${moved}`, { due_date: "12.11" }, token)).status, 400);
     assert.equal((await call(`/api/tasks/${moved}`, {}, token)).status, 400);
     assert.equal((await call(`/api/tasks/${other}`, { status: "failed" }, token)).status, 404);
     assert.equal((await store.task(other))!.status, "open");
-    assert.equal(changed, 3, "список-виджет в Telegram обновится после каждого изменения");
+    assert.equal(changed, 4, "список-виджет в Telegram обновится после каждого изменения");
   } finally {
     server.close();
   }
