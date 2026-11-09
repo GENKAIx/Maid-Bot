@@ -1116,6 +1116,20 @@ async function retimePlan(e, start, end, r) {
   }
 }
 
+// Убрать время: план остаётся на своём дне, без начала и конца.
+async function clearPlanTime(e) {
+  try {
+    await maid.api("POST", `/api/events/${e.id}`, { time: null });
+    popTone(2);
+    say(`Убрала время у «${e.title}» — просто на этот день ✓`, { ms: 5000 });
+    farPlans.clear();
+    maid.changed();
+  } catch (err) {
+    const msg = String(err?.message ?? err);
+    say(/время ЧЧ:ММ|нужно status/.test(msg) ? "Сервер ещё не умеет убирать время — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+  }
+}
+
 // Конфликты: план перенесли, скопировали или сдвинули на время, которое уже занято другим планом того дня, — горничная говорит,
 // с чем пересекается, и предлагает ближайшее свободное окно той же длины (шаг 15 минут) одной кнопкой. План без конца занимает 30 минут.
 const CLASH_DEFAULT = 30;
@@ -1257,6 +1271,7 @@ function openPlanMenu(e, li, x, y) {
   menu.innerHTML = item("repeat", spec ? `🔁 Повтор <span>${esc(howOften(spec, head.date_iso))}</span>` : "🔁 Повторять…")
     + `<hr>`
     + (e.status === "active" || !e.status ? item("time", e.time ? "🕒 Изменить время" : "🕒 Задать время") : "")
+    + ((e.status === "active" || !e.status) && e.time ? item("notime", "⌀ Убрать время") : "")
     + item("move", "↪ Перенести на завтра")
     + item("copy", "⧉ Копия на завтра")
     + (e.status === "active" || !e.status ? item("done", "✓ Состоялось") + item("cancelled", "× Убрать из планов") : "");
@@ -1268,6 +1283,7 @@ function openPlanMenu(e, li, x, y) {
     closePlanMenu();
     if (act === "repeat") return openRepeat(e);
     if (act === "time") return openTime(e, x, y);
+    if (act === "notime") return clearPlanTime(e);
     if (act === "move") return movePlan(e, dayAfter(e.date_iso, 1), li);
     if (act === "copy") return copyPlan(e, dayAfter(e.date_iso, 1));
     setPlanStatus(e.id, act);
