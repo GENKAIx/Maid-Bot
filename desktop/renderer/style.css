@@ -401,7 +401,7 @@ body.quick { background: transparent; }
 .pc-arrow:hover:not(:disabled) { color: var(--text, #fff); background: rgba(255, 255, 255, .06); }
 .pc-arrow:disabled { opacity: .25; cursor: default; }
 .pl-top { flex: none; display: flex; align-items: center; justify-content: space-between; margin: 12px 4px 8px; font-size: 13px; font-weight: 600; }
-.pl-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0 2px 2px; display: grid; gap: 7px; align-content: start; scrollbar-width: thin; }
+.pl-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; list-style: none; margin: 0; padding: 0 2px 2px; display: grid; gap: 7px; align-content: start; scrollbar-width: thin; }
 .pl-card { position: relative; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 8px 6px 14px; border-radius: 11px;
   background: rgba(255, 255, 255, .055); font-size: 13px; overflow: hidden; transition: opacity .25s, background .2s; }
 .pl-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, var(--accent)); }
@@ -419,14 +419,19 @@ body.quick { background: transparent; }
   color: #fff; font-size: 12px; line-height: 1; cursor: pointer; }
 .pl-check:hover { border-color: #fff; background: rgba(255, 255, 255, .08); }
 .pl-check.on { background: #2f9e6e; border-color: #2f9e6e; }
-.pl-undo { position: relative; flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; color: #ff8f8f; cursor: pointer; display: grid; place-items: center; }
-.pl-undo svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-.pl-ring { fill: none; stroke: #2f9e6e; stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 50.27; stroke-dashoffset: 0; animation: plRing 3s linear forwards; }
-.pl-undo span { font-size: 15px; line-height: 1; opacity: 0; transition: opacity .12s; }
-.pl-undo:hover { background: rgba(255, 120, 120, .12); }
-.pl-undo:hover span { opacity: 1; }
-.pl-undo:hover .pl-ring { stroke: #ff8f8f; }
-@keyframes plRing { to { stroke-dashoffset: 50.27; } }
+.pl-card.leaving { overflow: hidden; }
+.pl-card.leaving::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--c, #2f9e6e) 34%, transparent); transform: scaleX(0); transform-origin: left;
+  animation: plFill 3s linear var(--fill-delay, 0ms) forwards; pointer-events: none; }
+.pl-card.leaving > * { position: relative; z-index: 1; }
+.pl-card.fly { animation: plFly .38s cubic-bezier(.5, 0, .9, .4) forwards; }
+@keyframes plFill { to { transform: scaleX(1); } }
+@keyframes plFly { to { transform: translateX(115%); opacity: 0; } }
+.pl-check i, .pl-check b { font-style: normal; font-weight: 400; }
+.pl-check b { display: none; font-size: 15px; }
+.pl-check.on:hover { background: #c94f4f; border-color: #c94f4f; }
+.pl-check.on:hover i { display: none; }
+.pl-check.on:hover b { display: inline; }
+@media (prefers-reduced-motion: reduce) { .pl-card.leaving::after { animation-duration: 0s; } .pl-card.fly { animation: none; opacity: 0; } }
 .pl-x { flex: none; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 16px; line-height: 1;
   cursor: pointer; opacity: 0; transition: opacity .15s; }
 .pl-card:hover .pl-x { opacity: 1; }
