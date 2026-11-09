@@ -61,6 +61,22 @@ const TESTS = RULES.map((r) => new RegExp(r.re.source.split("\\b").join(B), "u")
 
 const HEALTH: Record<string, string> = { head: "🤕", cold: "🤧", meds: "💊", doctor: "🩺", teeth: "🦷", heart: "❤️‍🩹", stomach: "🤢", injury: "🩹", back: "🦴", eyes: "👁️", allergy: "🤧", pressure: "🩺" };
 
+// Картинки эмодзи (web/public/emoji/<имя>.png): обычные (не смешанные) эмодзи набора Emoji Kitchen (emoji.supply/kitchen).
+// 17 эмодзи в наборе нет (party, road, pills, gym, run, bike, swim, yoga, walk, family, video, work, study, pizza, beer,
+// money, bandage) — пока такие же Noto, их перерисует GPT по заданию docs/Эмодзи_задание.pdf.
+const ICONS: Record<string, string> = {
+  "🎂": "birthday", "🎉": "party", "✈️": "trip", "🚆": "road", "🤒": "sick", "🤕": "headache", "🤧": "cold", "🦷": "teeth",
+  "🩺": "doctor", "💊": "pills", "🏋️": "gym", "🏃": "run", "🚴": "bike", "🏊": "swim", "🧘": "yoga", "⚽": "football",
+  "🚶": "walk", "❤️": "love", "👨‍👩‍👧": "family", "👥": "friends", "🐱": "cat", "🐶": "dog", "🎬": "movie", "📚": "book",
+  "🎸": "music", "🎨": "art", "🎥": "video", "📱": "social", "💻": "code", "💼": "work", "📖": "study", "🍕": "pizza",
+  "🍣": "sushi", "🍔": "burger", "🍽️": "restaurant", "🍳": "cooking", "☕": "coffee", "🍺": "beer", "🛒": "shopping",
+  "🧹": "cleaning", "💰": "money", "😴": "sleep", "😄": "happy", "😔": "sad", "😠": "angry", "😩": "tired", "🎮": "games",
+  "👟": "steps", "❤️‍🩹": "heart", "🤢": "nausea", "🩹": "bandage", "🦴": "bone", "👁️": "eyes",
+};
+
+/** Адрес картинки эмодзи или undefined — тогда рисуется сам символ. */
+export const emojiIcon = (emoji: string) => (ICONS[emoji] ? `/emoji/${ICONS[emoji]}.png` : undefined);
+
 export interface DayEmoji { emoji: string; what: string }
 
 /** Эмодзи по дням: day_key → до max штук, самые заметные первыми. */

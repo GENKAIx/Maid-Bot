@@ -1,13 +1,38 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { del, get } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
 import { HEALTH_TOPICS, SECTIONS, SECTION_ORDER, WEEKDAYS, addDays, addMonths, dur, humanDay, metricText, money, monthGrid, monthTitle, todayKey } from "../format";
 import { navigate } from "../router";
-import { dayEmojis, type DayEmoji } from "../dayEmoji";
+import { dayEmojis, emojiIcon, type DayEmoji } from "../dayEmoji";
 import type { ActivityRow, DayData, DiaryRow, MetricRow } from "../types";
 import { EventList } from "./Today";
 
 // Дневник по дням: календарь с эмодзи дня (чем занимался — dayEmoji.ts), день — по разделам, показатели, деньги, компьютер.
+
+/** Эмодзи картинкой (Emoji Kitchen), без картинки — символом. */
+function Sticker({ emoji, style }: { emoji: string; style?: CSSProperties }) {
+  const src = emojiIcon(emoji);
+  return src ? <img className="sticker" src={src} alt={emoji} draggable={false} style={style} /> : <span className="sticker" style={style}>{emoji}</span>;
+}
+
+// Наклейки вразброс: у каждого дня свой разброс (от даты — не прыгает при обновлении). Первая — крупнее.
+const SPOTS: [number, number, number][][] = [
+  [[50, 56, 66]],
+  [[40, 60, 58], [72, 34, 40]],
+  [[42, 62, 52], [74, 32, 36], [76, 74, 32]],
+];
+function scatter(day: string, n: number) {
+  let h = 2166136261;
+  for (const c of day) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296;
+  const flip = rnd() < 0.5; // мелкие то справа, то слева
+  return SPOTS[Math.min(n, 3) - 1].map(([x, y, s]) => ({
+    x: (flip ? 100 - x : x) + (rnd() - 0.5) * 12,
+    y: y + (rnd() - 0.5) * 10,
+    s: s * (0.9 + rnd() * 0.2),
+    r: (rnd() - 0.5) * 40,
+  }));
+}
 
 export function Diary({ day, version, onChanged }: { day?: string; version: number; onChanged: () => void }) {
   const today = todayKey();
@@ -83,9 +108,10 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
                 >
                   <span className="cal-num">{Number(k.slice(-2))}</span>
                   {em.length > 0 ? (
-                    <span className="cal-emoji">
-                      <b>{em[0].emoji}</b>
-                      {em.length > 1 && <small>{em.slice(1).map((e) => e.emoji).join("")}</small>}
+                    <span className="cal-stickers">
+                      {scatter(k, em.length).map((p, j) => (
+                        <Sticker key={em[j].emoji} emoji={em[j].emoji} style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.s}%`, rotate: `${p.r}deg`, zIndex: 3 - j }} />
+                      ))}
                     </span>
                   ) : n > 0 && <i className="dot" style={{ opacity: Math.min(1, 0.35 + n / 6) }} />}
                 </button>
@@ -93,7 +119,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
             })}
           </div>
           <div className="cal-foot muted small">
-            {top.length > 0 && <span className="cal-top" title="Чаще всего в этом месяце">{top.map(([e, c]) => <span key={e}>{e}<small>{c}</small></span>)}</span>}
+            {top.length > 0 && <span className="cal-top" title="Чаще всего в этом месяце">{top.map(([e, c]) => <span key={e}><Sticker emoji={e} /><small>{c}</small></span>)}</span>}
             <span>Дней с записями: {days.size}</span>
           </div>
         </aside>
