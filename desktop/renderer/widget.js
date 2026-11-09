@@ -95,7 +95,7 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "" } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null } = {}) {
   const b = $("#bubble");
   delete b.dataset.quip;
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
@@ -124,8 +124,15 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   const acts = $("#bubbleActions");
   acts.innerHTML = buttons.map((x, i) => `<button data-i="${i}">${esc(x.text)}</button>`).join("")
     + (undo ? `<button data-i="undo">↩ Отменить</button>` : "") + `<button class="ghost" data-i="close">✕</button>`;
+  // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
+  b.dataset.notice = notice ?? "";
+  $("#inbox").classList.add("away"); // пока говорит — значок не мешает облачку
+  b.onmouseenter = notice && !buttons.length
+    ? () => setTimeout(() => { if (b.dataset.notice === String(notice) && !b.classList.contains("hidden")) inboxRead(notice); }, 1200)
+    : null;
   acts.querySelectorAll("button").forEach((btn) => {
     btn.onclick = async () => {
+      if (notice) inboxRead(notice);
       if (btn.dataset.i === "close") return hideBubble();
       if (btn.dataset.i === "undo") {
         try {
@@ -258,6 +265,7 @@ chatInput.addEventListener("keydown", (e) => {
 function hideBubble() {
   $("#bubble").classList.add("hidden");
   maid.hover(false);
+  $("#inbox").classList.remove("away");
 }
 
 // --- панель ---
@@ -318,6 +326,7 @@ function render() {
     (sec.tasks || daily.length ? `<h4>Задачи${left > 3 ? ` · ${left}` : ""}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   renderCourses();
+  inboxTidy();
 }
 
 let lastJson = "";
@@ -352,8 +361,9 @@ async function pollNotices() {
     for (const n of rows.reverse()) {
       lastNotice = Math.max(lastNotice, n.id);
       const emotion = /🎮/.test(n.text) ? "angry" : n.emotion;
-      // Напоминание с кнопками — звонит в колокольчик.
-      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey", mood: n.buttons.length ? "remind" : null });
+      // В ящик непрочитанного (значок у головы) и сразу сказать; напоминание с кнопками — звонит в колокольчик.
+      inboxAdd({ ...n, emotion });
+      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey", mood: n.buttons.length ? "remind" : null, notice: n.id });
     }
   } catch {
     /* нет связи — молчим */
@@ -532,7 +542,7 @@ maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
 function reportRegions() {
   const rects = [];
-  for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#planClock")]) {
+  for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#planClock"), $("#inbox")]) {
     if (el.offsetParent === null) continue;
     if (el.classList.contains("hidden")) continue;
     const r = el.getBoundingClientRect();
@@ -544,6 +554,13 @@ function reportRegions() {
 }
 setInterval(reportRegions, 300);
 let clickTimer = 0;
+// Значок непрочитанного у головы — свой щелчок, фигурку (свернуть/тычок/запись) не трогает.
+$("#inbox").addEventListener("click", (e) => {
+  e.stopPropagation();
+  openInbox();
+});
+for (const ev of ["dblclick", "mousedown", "contextmenu"]) $("#inbox").addEventListener(ev, (e) => e.stopPropagation());
+drawInbox();
 $("#maid").addEventListener("click", (e) => {
   clearTimeout(clickTimer);
   // По голове — тычок (fun.js), панель не трогаем.
