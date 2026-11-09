@@ -518,3 +518,74 @@ $("#pins").addEventListener("click", (ev) => {
   if (pin) togglePlansOn(pin.dataset.day || data?.day);
 });
 setInterval(() => { if (!$("#planClock").classList.contains("hidden")) drawClock(); }, 30_000);
+
+// Перетащить карточку плана на день в полосе — на тот день появляется копия (сервер: POST /api/events/:id/copy), исходный остаётся.
+// Нажал и сдвинул мышь дальше PLAN_DRAG_SLOP — за курсором едет копия карточки, день под ней подсвечен; отпустил над днём — копия.
+const PLAN_DRAG_SLOP = 6;
+let planDrag = null;
+$("#planClock").addEventListener("pointerdown", (ev) => {
+  const li = ev.target.closest(".pl-card[data-id]");
+  if (ev.button !== 0 || !li || ev.target.closest("button") || li.matches(".gone, .cancelled, .leaving")) return;
+  const e = [...plansOf(clockDay)].find((x) => x.id === Number(li.dataset.id));
+  if (!e) return;
+  planDrag = { e, li, x: ev.clientX, y: ev.clientY, ghost: null, over: null };
+  li.setPointerCapture(ev.pointerId); // мышь ушла за край карточки — события всё равно приходят сюда
+});
+document.addEventListener("pointermove", (ev) => {
+  if (!planDrag) return;
+  const d = planDrag;
+  if (!d.ghost) {
+    if (Math.hypot(ev.clientX - d.x, ev.clientY - d.y) < PLAN_DRAG_SLOP) return;
+    const r = d.li.getBoundingClientRect();
+    d.ghost = d.li.cloneNode(true);
+    d.ghost.classList.add("pl-ghost");
+    d.ghost.style.width = `${r.width}px`;
+    d.ghost.style.setProperty("--c", d.li.dataset.c);
+    d.dx = ev.clientX - r.left;
+    d.dy = ev.clientY - r.top;
+    document.body.appendChild(d.ghost);
+    d.li.classList.add("pl-dragging");
+    $("#planClock").classList.add("dragging-plan");
+  }
+  d.ghost.style.left = `${ev.clientX - d.dx}px`;
+  d.ghost.style.top = `${ev.clientY - d.dy}px`;
+  const chip = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#planClock .day-chip");
+  const day = chip && chip.dataset.day !== d.e.date_iso ? chip.dataset.day : null;
+  if (day !== d.over) {
+    for (const c of document.querySelectorAll("#planClock .day-chip.drop")) c.classList.remove("drop");
+    chip?.classList.toggle("drop", Boolean(day));
+    d.over = day;
+  }
+});
+function endPlanDrag(drop) {
+  const d = planDrag;
+  planDrag = null;
+  if (!d?.ghost) return;
+  d.ghost.remove();
+  d.li.classList.remove("pl-dragging");
+  $("#planClock").classList.remove("dragging-plan");
+  for (const c of document.querySelectorAll("#planClock .day-chip.drop")) c.classList.remove("drop");
+  // Щелчок, который браузер пришлёт после отпускания, не должен открыть день или отметить план.
+  const eat = (e) => { e.stopPropagation(); e.preventDefault(); };
+  window.addEventListener("click", eat, { capture: true, once: true });
+  setTimeout(() => window.removeEventListener("click", eat, { capture: true }), 0);
+  if (drop && d.over) copyPlan(d.e, d.over);
+}
+document.addEventListener("pointerup", () => endPlanDrag(true));
+document.addEventListener("pointercancel", () => endPlanDrag(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") endPlanDrag(false); });
+
+async function copyPlan(e, day) {
+  const where = humanDay(day);
+  try {
+    const r = await maid.api("POST", `/api/events/${e.id}/copy`, { date: day });
+    if (r.duplicate) return say(`На ${where} «${e.title}» уже есть.`, { ms: 4000, mood: "think" });
+    popTone(2);
+    say(`Скопировала «${e.title}» на ${where} ✓`, { ms: 5000, mood: "write", emotion: "happy" });
+    farPlans.clear();
+    maid.changed();
+  } catch (err) {
+    const msg = String(err?.message ?? err);
+    say(/нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет копировать планы — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+  }
+}

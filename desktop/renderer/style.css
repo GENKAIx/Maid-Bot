@@ -568,3 +568,12 @@ body.quick { background: transparent; }
 .w .all-done { margin: 2px 0 0; color: #f2c14e; font-size: 13px; }
 .w .all-done.fresh { animation: doneIn .3s ease; }
 @media (prefers-reduced-motion: reduce) { .w h4 .done-count.bump, .w h4 .done-count.bump::after { animation: none; } }
+
+/* Перетаскивание плана на день полосы — копия на тот день (clock.js). */
+#planClock .pl-card[data-id]:not(.gone, .cancelled) { cursor: grab; }
+#planClock.dragging-plan, #planClock.dragging-plan * { cursor: grabbing; }
+#planClock .pl-card.pl-dragging { opacity: .45; }
+.pl-ghost { position: fixed; z-index: 1000; background: #2c2840; color: #fff; pointer-events: none; margin: 0; list-style: none; opacity: .92;
+  transform: rotate(-2deg) scale(1.03); box-shadow: 0 10px 24px rgba(0, 0, 0, .28); }
+#planClock.dragging-plan .day-chip { transition: transform .12s, box-shadow .12s; }
+#planClock .day-chip.drop { transform: translateY(-3px) scale(1.08); box-shadow: 0 0 0 2px var(--accent, #9a6cf0), 0 6px 14px rgba(0, 0, 0, .25); }

@@ -312,6 +312,22 @@ export function createApi(deps: ApiDeps) {
       return now;
     }
 
+    // Копия плана на другой день (перетащили карточку плана на день в полосе виджета): то же время, длительность, описание.
+    // На том дне уже есть такой же (название и время) — новый не создаётся, приходит тот с duplicate.
+    const evCopy = p.match(/^\/api\/events\/(\d+)\/copy$/);
+    if (m === "POST" && evCopy) {
+      const { date } = parseBody(z.object({ date: Day }), await readJson(req));
+      const e = await store.event(Number(evCopy[1]));
+      if (!e || e.user_id !== u.id) throw new HttpError(404, "нет плана");
+      const same = (await store.eventsBetween(u.id, date, date)).find((x) => x.title === e.title && x.time === e.time);
+      if (same) return { ...same, duplicate: true };
+      const id = await store.addEvent({ user_id: u.id, title: e.title, date_iso: date, time: e.time, end_time: e.end_time, details: e.details, domain: e.domain, message_id: null });
+      const made = (await store.event(id))!;
+      await planEventReminders(store, u, made, new Date());
+      pipeline.changed(u);
+      return made;
+    }
+
     // Привычки: сетка месяца и отметка.
     if (m === "GET" && p === "/api/habits") {
       const month = q("month") ?? today.slice(0, 7);
