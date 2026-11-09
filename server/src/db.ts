@@ -227,6 +227,13 @@ CREATE TABLE IF NOT EXISTS app_icons (
   PRIMARY KEY (user_id, name_key)
 );
 `,
+  // Шаг 5: когда задачу закрыли (любым исходом — для недельной сводки «сбежали от задач»); повтор планов:
+  // repeat у первого плана серии (daily, weekdays, weekly, biweekly, monthly), series — id первого у его копий.
+  `
+ALTER TABLE tasks ADD COLUMN closed_at TEXT;
+ALTER TABLE events ADD COLUMN repeat TEXT NOT NULL DEFAULT '';
+ALTER TABLE events ADD COLUMN series INTEGER;
+`,
 ];
 
 export interface User {
@@ -278,6 +285,10 @@ export interface EventRow {
   domain: string;
   status: string;
   message_id: number | null;
+  /** Повтор серии (только у первого плана серии), '' — не повторяется. */
+  repeat?: string;
+  /** id первого плана серии — у копий, созданных повтором. */
+  series?: number | null;
 }
 export interface TaskRow {
   id: number;
@@ -291,6 +302,8 @@ export interface TaskRow {
   message_id: number | null;
   created_at: string;
   done_at: string | null;
+  /** Когда закрыли (сделано, отменено, не буду, сбежал); null — открыта. */
+  closed_at?: string | null;
 }
 export interface DateRow {
   id: number;
@@ -615,15 +628,15 @@ export class Store {
   addEvent(e: Omit<EventRow, "id" | "status"> & { status?: string }): Promise<number> {
     const t = now();
     return this.insert(
-      `INSERT INTO events (user_id, title, date_iso, time, end_time, details, domain, status, message_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      e.user_id, e.title, e.date_iso, e.time, e.end_time, e.details, e.domain, e.status ?? "active", e.message_id, t, t,
+      `INSERT INTO events (user_id, title, date_iso, time, end_time, details, domain, status, message_id, created_at, updated_at, repeat, series)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      e.user_id, e.title, e.date_iso, e.time, e.end_time, e.details, e.domain, e.status ?? "active", e.message_id, t, t, e.repeat ?? "", e.series ?? null,
     );
   }
   event(id: number): Promise<EventRow | undefined> {
     return this.get<EventRow>("SELECT * FROM events WHERE id = ?", id);
   }
-  async updateEvent(id: number, patch: Partial<Pick<EventRow, "title" | "date_iso" | "time" | "end_time" | "details" | "status">>) {
+  async updateEvent(id: number, patch: Partial<Pick<EventRow, "title" | "date_iso" | "time" | "end_time" | "details" | "status" | "repeat" | "series">>) {
     for (const [k, v] of Object.entries(patch)) {
       await this.run(`UPDATE events SET ${k} = ?, updated_at = ? WHERE id = ?`, v as never, now(), id);
     }
@@ -651,7 +664,10 @@ export class Store {
   }
   async updateTask(id: number, patch: Partial<Pick<TaskRow, "title" | "due_date" | "status" | "priority" | "notes">>) {
     for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE tasks SET ${k} = ? WHERE id = ?`, v as never, id);
-    if (patch.status) await this.run("UPDATE tasks SET done_at = ? WHERE id = ?", patch.status === "done" ? now() : null, id);
+    if (patch.status) {
+      await this.run("UPDATE tasks SET done_at = ? WHERE id = ?", patch.status === "done" ? now() : null, id);
+      await this.run("UPDATE tasks SET closed_at = ? WHERE id = ?", patch.status === "open" ? null : now(), id);
+    }
   }
   openTasks(userId: number): Promise<TaskRow[]> {
     return this.all<TaskRow>(

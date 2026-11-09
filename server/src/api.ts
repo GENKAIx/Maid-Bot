@@ -11,6 +11,7 @@ import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import type { Pipeline } from "./pipeline.ts";
 import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
+import { REPEATS, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { habitButtons, planEventReminders, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isTime } from "./time.ts";
@@ -325,6 +326,17 @@ export function createApi(deps: ApiDeps) {
       const now = (await store.event(e.id))!;
       if (now.status === "active") await planEventReminders(store, u, now, new Date());
       return now;
+    }
+
+    // Повтор плана (ПКМ по плану в виджете): repeat — daily, weekdays, weekly, biweekly, monthly или "" — перестать повторять.
+    const evRepeat = p.match(/^\/api\/events\/(\d+)\/repeat$/);
+    if (m === "POST" && evRepeat) {
+      const { repeat } = parseBody(z.object({ repeat: z.enum(["", ...REPEATS]) }), await readJson(req));
+      const e = await store.event(Number(evRepeat[1]));
+      if (!e || e.user_id !== u.id) throw new HttpError(404, "нет плана");
+      const r = await setRepeat(store, u, e, repeat, today);
+      pipeline.changed(u);
+      return r;
     }
 
     // Копия плана на другой день (перетащили карточку плана на день в полосе виджета): то же время, длительность, описание.

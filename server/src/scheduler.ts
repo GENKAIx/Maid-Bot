@@ -5,6 +5,8 @@ import { persona, type Emotion } from "./personas.ts";
 import {
   activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, plansText, sectionName, todayText, upcomingDates,
 } from "./report.ts";
+import { escapesText } from "./escapes.ts";
+import { extendSeries } from "./repeat.ts";
 import { addDays, dayKey, humanDay, timeOf, zonedToUtc } from "./time.ts";
 
 // Напоминания и итоги. Всё состояние — в базе (reminders, kv), поэтому перезапуск ничего не теряет,
@@ -142,6 +144,17 @@ export class Scheduler {
     }
     if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
       await this.safeSend(u, await this.eveningText(u, today), "proud");
+      // В воскресенье вечером — мягко о задачах, от которых сбежали за неделю.
+      if (new Date(`${today}T12:00:00Z`).getUTCDay() === 0 && (await s.once(`escapes:${u.id}:${today}`))) {
+        const text = escapesText(await s.allTasks(u.id), today, u.tz);
+        if (text) await this.safeSend(u, text, "worried");
+      }
+    }
+    // Повторяющиеся планы: раз в день разложить серии дальше.
+    if (await s.once(`series:${u.id}:${today}`)) {
+      for (const e of await s.allEvents(u.id)) {
+        if (e.repeat) await extendSeries(s, u, e, today, now).catch((err) => console.error("[series]", e.id, err));
+      }
     }
   }
 
