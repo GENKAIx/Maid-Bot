@@ -513,7 +513,7 @@ $("#planClock").addEventListener("click", (e) => {
 // «Сегодня» — назад к сегодня, щелчок по дате в заголовке — календарь месяца. Можно и в прошлое: посмотреть, что было.
 function headHtml(dayName, count) {
   const back = clockDay !== data.day ? `<button type="button" class="pc-today" data-today title="Вернуться к сегодня">${clockDay < data.day ? "Сегодня →" : "← Сегодня"}</button>` : "";
-  return `<div class="pc-head"><button type="button" class="pc-title" data-cal title="Календарь месяца"><b>${esc(dayName)}</b><i>▾</i></button>${back || `<span>${count}</span>`}</div>`;
+  return `<div class="pc-head"><button type="button" class="pc-title" data-cal title="Календарь месяца"><b>${esc(dayName)}</b><svg class="pc-cal-ico" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2.2"/><path d="M2 6.5h12M5.5 1.6v3M10.5 1.6v3"/><circle cx="5.4" cy="9.4" r=".9"/><circle cx="8" cy="9.4" r=".9"/><circle cx="10.6" cy="9.4" r=".9"/></svg></button>${back || `<span>${count}</span>`}</div>`;
 }
 /** Показать день: полоса сдвигается ровно настолько, чтобы он был виден (center — по середине, week — вместе с ним на неделю). */
 function goDay(day, { center = false, week = false } = {}) {

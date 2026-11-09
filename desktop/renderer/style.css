@@ -703,3 +703,9 @@ body.quick { background: transparent; }
 .pc-head { flex-wrap: nowrap; min-width: 0; }
 .pc-title { flex: none; white-space: nowrap; }
 .pc-head > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-title { align-items: center; }
+.pc-cal-ico { flex: none; fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-linecap: round; transition: stroke .15s, transform .15s; }
+.pc-cal-ico circle { fill: var(--muted); stroke: none; transition: fill .15s; }
+.pc-title:hover .pc-cal-ico { stroke: var(--accent); transform: translateY(-1px); }
+.pc-title:hover .pc-cal-ico circle { fill: var(--accent); }
+#planClock .pc-title svg.pc-cal-ico { width: 14px; height: 14px; margin: 0; align-self: center; }
