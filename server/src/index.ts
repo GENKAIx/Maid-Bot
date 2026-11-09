@@ -7,6 +7,7 @@ import { callLlm, llmReady } from "./llm.ts";
 import { backupName, exportJson } from "./backup.ts";
 import type { User } from "./db.ts";
 import { Pipeline } from "./pipeline.ts";
+import { WIDGET_UPDATES } from "./widget.ts";
 import { Push } from "./push.ts";
 import { Scheduler, type Send } from "./scheduler.ts";
 
@@ -56,11 +57,11 @@ server.listen(config.port, async () => {
   if (!tg) return;
   tg.bot.api.getMe().then((me) => (botName = me.username)).catch((e) => console.warn("[start] имя бота:", e.message));
   if (config.publicUrl) {
-    await tg.bot.api.setWebhook(`${config.publicUrl}/webhook`);
+    await tg.bot.api.setWebhook(`${config.publicUrl}/webhook`, { allowed_updates: WIDGET_UPDATES });
     console.log("[start] бот: webhook", `${config.publicUrl}/webhook`);
   } else {
     await tg.bot.api.deleteWebhook();
-    void tg.bot.start({ onStart: (me) => console.log(`[start] бот @${me.username}: long polling`) });
+    void tg.bot.start({ allowed_updates: WIDGET_UPDATES, onStart: (me) => console.log(`[start] бот @${me.username}: long polling`) });
   }
 });
 

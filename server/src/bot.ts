@@ -11,6 +11,7 @@ import { datesText, memoryText, plansText, tasksText, todayText } from "./report
 import type { Scheduler, Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
+import { WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
 
@@ -52,13 +53,38 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await next();
   });
 
+  // Виджет «Список на сегодня» (Bot API 10.4). grammy этих методов и обновлений ещё не знает — вызываем напрямую.
+  type WidgetQueryUpdate = { id: string; from: { id: number }; chat?: { id: number }; message_id?: number; data: string; type?: { type: string } };
+  const raw = bot.api.raw as unknown as Record<string, (p: Record<string, unknown>) => Promise<unknown>>;
+  bot.use(async (ctx, next) => {
+    const q = (ctx.update as { widget_query?: WidgetQueryUpdate }).widget_query;
+    if (!q) return next();
+    const chat = String(q.chat?.id ?? q.from.id);
+    if (!allowed(chat) || q.type?.type !== "data") return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
+    const u = await store.ensureUser(chat, "", config.defaultTimezone);
+    const state = await widgetQuery(store, pipeline, u, q.data);
+    await raw.answerWidgetQuery({ widget_query_id: q.id, data: state });
+    if (q.chat && q.message_id) await raw.editMessageWidgetData({ chat_id: q.chat.id, message_id: q.message_id, chat_data: state }).catch(() => {});
+  });
+
+  bot.command("list", async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return;
+    try {
+      await raw.sendWidget({ chat_id: ctx.chat.id, html: WIDGET_HTML, caption: WIDGET_CAPTION, allow_queries: true, chat_data: await widgetState(store, u) });
+    } catch (e) {
+      console.error("[bot] widget", e);
+      await ctx.reply("Не получилось показать список-виджет. Обновите Telegram или посмотрите /today.");
+    }
+  });
+
   bot.command("start", async (ctx) => {
     const u = await userOf(ctx);
     if (!u) return;
     await ctx.reply(
       "Я ваша горничная. Пишите как есть — что было за день, что запланировано, что не забыть. " +
         "Я сама разложу: дневник, планы, задачи, важные даты.\n\n" +
-        "/today — сегодня\n/plans — планы\n/tasks — задачи\n/dates — важные даты\n/memory — что я помню\n" +
+        "/list — список на сегодня с галочками\n/today — сегодня\n/plans — планы\n/tasks — задачи\n/dates — важные даты\n/memory — что я помню\n" +
         "/ask текст — просто поговорить\n/undo — отменить последнее\n/summary — итог дня\n/persona — характер\n" +
         "/habits — привычки на сегодня\n/token — ключ для приложения на ПК",
     );
