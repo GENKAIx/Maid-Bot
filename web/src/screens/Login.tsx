@@ -53,9 +53,11 @@ export function Login({ onDone }: { onDone: () => void }) {
   return (
     <div className="login">
       <form className="login-card" onSubmit={submit}>
-        <img className="login-maid" src={`/maid/${shown}.webp`} alt="" width={168} height={179} />
-        <h1>Горничная</h1>
-        <p className={`muted login-line ${shown}`} aria-live="polite">{LINES[shown]}</p>
+        <div className="login-head">
+          <img className="login-maid" src={`/maid/${shown}.webp`} alt="" width={150} height={160} />
+          <p key={shown} className={`bubble ${shown}`} aria-live="polite">{LINES[shown]}</p>
+        </div>
+        <h1>Твоя горничная</h1>
         <label>Логин<input value={login} onChange={(e) => { setLogin(e.target.value); if (mood !== "think" && mood !== "happy") setMood("idle"); }} onFocus={() => setField("login")} onBlur={() => setField("")} autoComplete="username" autoFocus /></label>
         <label>Пароль<span className="pass-wrap"><input type={peek ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); if (mood !== "think" && mood !== "happy") setMood("idle"); }} onFocus={() => setField("password")} onBlur={() => setField("")} autoComplete="current-password" /><button type="button" className="peek" onMouseDown={(e) => e.preventDefault()} onClick={() => setPeek(!peek)} title={peek ? "Скрыть пароль" : "Показать пароль"} aria-label={peek ? "Скрыть пароль" : "Показать пароль"}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{peek && <path d="M4 4l16 16" />}</svg>
