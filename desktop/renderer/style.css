@@ -709,3 +709,13 @@ body.quick { background: transparent; }
 .pc-title:hover .pc-cal-ico { stroke: var(--accent); transform: translateY(-1px); }
 .pc-title:hover .pc-cal-ico circle { fill: var(--accent); }
 #planClock .pc-title svg.pc-cal-ico { width: 14px; height: 14px; margin: 0; align-self: center; }
+
+/* Полёт к дню нового плана: пока полоса едет, список приглушён; «через N дней» в заголовке, чип дня подпрыгивает. */
+.pc-head .pc-far { margin-left: auto; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+#planClock.flying .pl-list, #planClock.flying .pl-empty, #planClock.flying .pl-top { opacity: .3; }
+#planClock.flying .day-chip.on { transition: none; }
+.day-chip.landed { animation: chipLand .55s cubic-bezier(.3, 1.6, .5, 1); }
+.day-chip.landed .cnt { display: inline-block; animation: cntPop .6s cubic-bezier(.3, 1.8, .5, 1) .1s both; }
+@keyframes chipLand { 0% { transform: translateY(0); } 35% { transform: translateY(-5px) scale(1.06); } 100% { transform: none; } }
+@keyframes cntPop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.5); opacity: 1; } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .day-chip.landed, .day-chip.landed .cnt { animation: none; } }

@@ -438,10 +438,11 @@ function hideClock() {
   stripFrom = 0;
   clockFresh = new Set();
   clockGone = [];
+  stopFly();
 }
-function hideClockLater() {
+function hideClockLater(ms = CLOCK_SHOWN) {
   clearTimeout(clockHideTimer);
-  clockHideTimer = setTimeout(() => (clockHover ? hideClockLater() : hideClock()), CLOCK_SHOWN);
+  clockHideTimer = setTimeout(() => (clockHover ? hideClockLater() : hideClock()), ms);
 }
 
 // После каждой загрузки данных: что из планов появилось, поменялось или пропало (неважно, где — здесь, в Telegram, с телефона).
@@ -460,6 +461,11 @@ function watchPlans() {
     return;
   }
   const day = (fresh[0] ?? gone[0]).date_iso;
+  // Панель была спрятана, а план — на другой день: едем к нему по полосе (свои действия в открытой панели — без этого).
+  if (fresh.length && day > data.day && $("#planClock").classList.contains("hidden")) {
+    const days = new Set(fresh.map((e) => e.date_iso));
+    return flyToDay(day, { fresh: fresh.map((e) => e.id), gone: gone.filter((e) => e.date_iso === day), more: days.size - 1 });
+  }
   showClock(day, { fresh: fresh.map((e) => e.id), gone: gone.filter((e) => e.date_iso === day) });
 }
 
@@ -501,6 +507,7 @@ $("#planClock").addEventListener("click", (e) => {
   const chip = e.target.closest(".day-chip");
   if (chip && swipedAt > Date.now() - 250) return;
   if (chip) {
+    flyNote = null;
     clockDay = chip.dataset.day;
     clockFresh = new Set();
     clockGone = [];
@@ -511,9 +518,11 @@ $("#planClock").addEventListener("click", (e) => {
 });
 // Листание дат: колесо над полосой — день вперёд/назад (Shift — неделя), полосу можно тянуть мышью, стрелки — неделя,
 // «Сегодня» — назад к сегодня, щелчок по дате в заголовке — календарь месяца. Можно и в прошлое: посмотреть, что было.
+const CAL_ICO = `<svg class="pc-cal-ico" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2.2"/><path d="M2 6.5h12M5.5 1.6v3M10.5 1.6v3"/><circle cx="5.4" cy="9.4" r=".9"/><circle cx="8" cy="9.4" r=".9"/><circle cx="10.6" cy="9.4" r=".9"/></svg>`;
 function headHtml(dayName, count) {
+  if (flyNote) return `<div class="pc-head"><button type="button" class="pc-title" data-cal title="Календарь месяца"><b>${esc(dayName)}</b>${CAL_ICO}</button><span class="pc-far">${esc(flyNote)}</span></div>`;
   const back = clockDay !== data.day ? `<button type="button" class="pc-today" data-today title="Вернуться к сегодня">${clockDay < data.day ? "Сегодня →" : "← Сегодня"}</button>` : "";
-  return `<div class="pc-head"><button type="button" class="pc-title" data-cal title="Календарь месяца"><b>${esc(dayName)}</b><svg class="pc-cal-ico" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2.2"/><path d="M2 6.5h12M5.5 1.6v3M10.5 1.6v3"/><circle cx="5.4" cy="9.4" r=".9"/><circle cx="8" cy="9.4" r=".9"/><circle cx="10.6" cy="9.4" r=".9"/></svg></button>${back || `<span>${count}</span>`}</div>`;
+  return `<div class="pc-head"><button type="button" class="pc-title" data-cal title="Календарь месяца"><b>${esc(dayName)}</b>${CAL_ICO}</button>${back || `<span>${count}</span>`}</div>`;
 }
 /** Показать день: полоса сдвигается ровно настолько, чтобы он был виден (center — по середине, week — вместе с ним на неделю). */
 function goDay(day, { center = false, week = false } = {}) {
@@ -525,6 +534,7 @@ function goDay(day, { center = false, week = false } = {}) {
   else if (n < stripFrom) stripFrom = n;
   else if (n > stripFrom + DAYS_AHEAD) stripFrom = n - DAYS_AHEAD;
   const moved = day !== clockDay;
+  flyNote = null;
   clockDay = day;
   clockFresh = new Set();
   clockGone = [];
@@ -671,6 +681,61 @@ function openCalendar(day) {
     }
   });
 }
+
+// Новый план на другой день (из чата, Telegram, с телефона): панель открывается на сегодня, полоса едет день за днём к его дню —
+// видно, через сколько дней, — там план появляется, и через несколько секунд панель уходит сама (если мышь не над ней).
+const FLY_SHOWN = 5_000;
+let flyNote = null; // «через 5 дней» — в заголовке вместо числа планов, пока не начали листать сами
+let flyRun = 0;
+const dayWord = (n) => {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? "день" : a >= 2 && a <= 4 && (b < 12 || b > 14) ? "дня" : "дней";
+};
+const inDays = (n) => (n === 1 ? "завтра" : `через ${n} ${dayWord(n)}`);
+// Близкие дни — каждый, далёкие — первые пять, прыжок и последние десять.
+const flyPath = (n) => (n <= 21 ? Array.from({ length: n }, (_, i) => i + 1) : [1, 2, 3, 4, 5, ...Array.from({ length: 10 }, (_, i) => n - 9 + i)]);
+function stopFly() {
+  flyRun++;
+  flyNote = null;
+  $("#planClock").classList.remove("flying");
+}
+function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
+  const n = daysFrom(data.day, day);
+  if (n <= 0) return showClock(day, { fresh, gone });
+  const run = ++flyRun;
+  stripFrom = 0;
+  showClock(data.day);
+  if ($("#planClock").classList.contains("hidden")) return; // панель выключена или свёрнута
+  clearTimeout(clockHideTimer);
+  $("#planClock").classList.add("flying");
+  const path = flyPath(n);
+  const total = Math.min(1500, 260 + path.length * 75);
+  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+  path.forEach((k, i) => setTimeout(() => {
+    if (run !== flyRun) return;
+    const last = i === path.length - 1;
+    const was = stripFrom;
+    clockDay = dayAfter(data.day, k);
+    if (k > stripFrom + DAYS_AHEAD) stripFrom = k - DAYS_AHEAD;
+    flyNote = inDays(k);
+    if (last) {
+      clockFresh = new Set(fresh);
+      clockGone = gone;
+      if (more) flyNote += ` · ещё ${more}`;
+      $("#planClock").classList.remove("flying");
+    }
+    drawClock();
+    if (stripFrom !== was) slideStrip(1);
+    if (last) {
+      $(`#planClock .day-chip[data-day="${day}"]`)?.classList.add("landed");
+      popTone(7, { vol: 0.09 });
+      loadFar();
+      hideClockLater(FLY_SHOWN);
+    } else popTone(Math.round((i / path.length) * 7), { vol: 0.03, soft: true });
+  }, 420 + total * ease((i + 1) / path.length)));
+}
+$("#planClock").addEventListener("pointerdown", () => { if ($("#planClock").classList.contains("flying")) stopFly(); }, true);
+$("#planClock").addEventListener("wheel", () => { if ($("#planClock").classList.contains("flying")) stopFly(); }, { capture: true, passive: true });
 
 // Посмотреть планы — щелчок по строке «ближайший план»: ещё раз — спрятать.
 // Щелчок по ближайшему плану или важной дате — панель планов на их день (ещё раз на тот же день — спрятать).
