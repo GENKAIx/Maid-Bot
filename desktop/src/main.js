@@ -114,9 +114,25 @@ function showMain(settingsOnly = false) {
       }
     });
     mainWin.on("closed", () => (mainWin = null));
-  }
+  } else if (!local) refreshIfStale(mainWin);
   mainWin.show();
   mainWin.focus();
+}
+
+// Скрытое главное окно живёт, пока работает программа, и держит старую версию сайта. При показе сверяем сборку
+// (/assets/index-*.js в index.html сервера) с той, что загружена, и перезагружаем окно, если на сервере новая.
+async function refreshIfStale(win) {
+  try {
+    const base = settings.server.replace(/\/$/, "");
+    const html = await (await fetch(base + "/", { cache: "no-store" })).text();
+    const fresh = html.match(/\/assets\/index-[\w-]+\.js/)?.[0];
+    if (!fresh || win.isDestroyed()) return;
+    const loaded = await win.webContents.executeJavaScript(
+      `[...document.scripts].map((s) => s.src).find((x) => x.includes("/assets/index-")) ?? ""`, true);
+    if (loaded && !loaded.endsWith(fresh)) win.webContents.reloadIgnoringCache();
+  } catch (e) {
+    console.warn("проверка версии сайта:", e.message);
+  }
 }
 
 // --- виджет ---
