@@ -137,6 +137,16 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions button { background: #f0eef5; color: var(--ink); border-color: #e4e1ec; padding: 4px 10px; font-size: 12px; }
 .bubble-actions button:hover { border-color: #c9c2da; }
 .bubble-actions button.ghost { margin-left: auto; background: transparent; border-color: transparent; }
+/* Разбор хвостов (tails.js): дни недели снизу облачка — перенести задачу туда */
+.tail-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.tail-day { display: flex; flex-direction: column; align-items: center; padding: 4px 0 3px; border-radius: 9px; border: 1px solid #e4e1ec;
+  background: #f0eef5; font: inherit; font-size: 10px; line-height: 1.2; color: #7a7490; cursor: pointer; }
+.tail-day b { font-size: 13px; color: var(--ink); }
+.tail-day span { font-size: 9.5px; color: #8b6fe0; }
+.tail-day.today { border-color: #b79cff; background: #ece6fb; }
+.tail-day:hover { border-color: #8b6fe0; background: #e4dcfa; }
+.bubble-actions .tail-yes { background: #e2f6ea; border-color: #bfe7cf; }
+.bubble-actions .tail-no { background: #fbe6ea; border-color: #f2c6cf; }
 @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 .w .head { display: flex; gap: 10px; align-items: baseline; cursor: grab; margin: -12px -14px 0; padding: 12px 14px 4px; border-radius: 16px 16px 0 0; }
 .w .head:hover { background: rgba(255, 255, 255, .03); }

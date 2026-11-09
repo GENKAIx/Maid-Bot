@@ -288,10 +288,12 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/events") return store.eventsBetween(u.id, q("from") ?? today, q("to") ?? addDays(today, 30));
     const task = p.match(/^\/api\/tasks\/(\d+)$/);
     if (m === "POST" && task) {
-      const { status } = parseBody(z.object({ status: z.enum(["open", "done", "cancelled"]) }), await readJson(req));
+      // failed — «не сделано»: задача закрыта невыполненной (разбор хвостов в виджете). due_date — перенос на день.
+      const b = parseBody(z.object({ status: z.enum(["open", "done", "cancelled", "failed"]).optional(), due_date: Day.optional() }), await readJson(req));
       const t = await store.task(Number(task[1]));
       if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
-      await store.updateTask(t.id, { status });
+      if (!b.status && !b.due_date) throw new HttpError(400, "нужно status или due_date");
+      await store.updateTask(t.id, b);
       pipeline.changed(u);
       return store.task(t.id);
     }
