@@ -479,7 +479,10 @@ body.quick { background: transparent; }
 .w .list li.leaving > * { position: relative; z-index: 1; }
 .w .list li.leaving.hold::after { animation-play-state: paused; }
 .w .list li.fly { animation: plFly .38s cubic-bezier(.5, 0, .9, .4) forwards; transition: height .22s ease, margin .22s ease; overflow: hidden; }
-.w .list li.fly.shut { height: 0 !important; margin-bottom: -3px; }
+.w .list li.undo-row { overflow: hidden; transition: height .22s ease, margin .22s ease, opacity .22s ease; animation: doneIn .2s ease; }
+.w .list li.shut { height: 0 !important; margin-bottom: -3px; opacity: 0; }
+.w .undo-back { padding: 0 2px; border: 0; background: none; color: var(--muted); font-size: 12px; cursor: pointer; }
+.w .undo-back:hover { color: var(--text); text-decoration: underline; }
 .w .list li.leaving .check, .w .list li.leaving .mark { display: grid; place-items: center; }
 .w .list li.leaving i, .w .list li.leaving b { font-style: normal; font-weight: 600; }
 .w .list li.leaving .check b, .w .list li.leaving .mark b { display: none; }
@@ -512,3 +515,14 @@ body.quick { background: transparent; }
 @keyframes dmFill { 0% { transform: scaleX(0); } 62%, 100% { transform: scaleX(1); } }
 @keyframes dmFly { 0%, 66% { transform: none; opacity: 1; } 80%, 94% { transform: translateX(120%); opacity: 0; } 100% { transform: none; opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .dm-mini .go, .dm-mini .go::after { animation: none; } }
+
+/* Счётчик: «+1» вылетает из него, когда строка улетела; всё сделано — золотой. */
+.w h4 .done-count { position: relative; }
+.w h4 .done-count.bump { animation: countPop .35s ease; }
+.w h4 .done-count.bump::after { content: "+1"; position: absolute; left: 100%; top: -2px; margin-left: 3px; color: var(--accent-2); font-weight: 700;
+  pointer-events: none; animation: plusUp .6s ease-out forwards; }
+@keyframes countPop { 40% { transform: scale(1.18); } }
+@keyframes plusUp { from { opacity: 1; transform: translateY(4px); } to { opacity: 0; transform: translateY(-10px); } }
+.w h4 .done-count.all { color: #2a2000; background: #f2c14e; border-color: transparent; }
+.w .all-done { margin: 2px 0 0; color: #f2c14e; font-size: 13px; animation: doneIn .3s ease; }
+@media (prefers-reduced-motion: reduce) { .w h4 .done-count.bump, .w h4 .done-count.bump::after { animation: none; } }

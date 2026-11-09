@@ -306,6 +306,7 @@ function render() {
     const i = h.course?.length ? h.course.findIndex((x) => x.day === data.day) : -1;
     const sub = i >= 0 ? ` <span class="muted">· день ${i + 1} из ${h.course.length}</span>` : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
     const go = leavingRows.get(`h${h.id}`);
+    if (go?.gone) return `<li class="undo-row" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
     if (go) return `<li class="${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span><span>${esc(h.title)}${sub}</span></li>`;
     return `<li class="${h.status ? "did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${sub}</span></li>`;
   };
@@ -321,6 +322,7 @@ function render() {
     ...daily.filter(missedYesterday).map(rescueItem),
     ...(sec.tasks ? shownTasks : []).map((t) => {
       const go = leavingRows.get(`t${t.id}`);
+      if (go?.gone) return `<li class="undo-row" data-key="t${t.id}"><button type="button" class="undo-back" data-undo="t${t.id}">↶ Вернуть</button></li>`;
       return go
         ? `<li class="${rowLeaving(go)}" data-key="t${t.id}"><span class="check done" data-done="${t.id}" title="Отменить">${UNDO_MARK}</span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`
         : `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`;
@@ -331,15 +333,21 @@ function render() {
       ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done">✓</span><span>${esc(t.title)}</span></li>`),
     ]),
   ];
-  const left = todo.length + (sec.tasks ? data.tasks.length : 0);
-  const doneCount = daily.filter((h) => h.status).length + (sec.tasks ? recentDone().length : 0);
+  // Улетевшие, но ещё не отправленные (идёт «Вернуть») уже считаются сделанными.
+  const gone = [...leavingRows.values()].filter((x) => x.gone).length;
+  const left = todo.length + (sec.tasks ? data.tasks.length : 0) - gone;
+  const doneCount = daily.filter((h) => h.status).length + (sec.tasks ? recentDone().length : 0) + gone;
+  const allDone = hiding && !left && doneCount > 0;
+  if (allDone && lastLeft > 0) react("proud", 5000);
+  lastLeft = left;
+  const bump = Date.now() - bumpAt < 600 ? " bump" : "";
   const counter = hiding && doneCount
-    ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${doneCount}/${doneCount + left}</button>`
+    ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}${allDone ? " all" : ""}${bump}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${doneCount}/${doneCount + left}</button>`
     : left > 3 ? ` · ${left}` : "";
   const pinned = new Set(datesOf(data.day, true).map(dateKey));
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   $("#body").innerHTML =
-    (sec.tasks || daily.length ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
+    (sec.tasks || daily.length ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   if (hiding) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
   for (const li of $("#body").querySelectorAll("li.leaving")) {
@@ -359,6 +367,9 @@ const ROW_FLY = 380;
 const ROW_SHUT = 220;
 const DONE_PEEK = 5000;
 const UNDO_MARK = "<i>✓</i><b>×</b>";
+const UNDO_WINDOW = 3000; // сколько после улёта висит «↶ Вернуть»; отметка уходит на сервер только после него
+let bumpAt = 0; // когда счётчик последний раз получил «+1»
+let lastLeft = -1;
 const leavingRows = new Map(); // "t12" / "h3" → { at, pausedAt, armed, fly, title, timer }
 let showDoneUntil = 0;
 let showDoneTimer = 0;
@@ -412,30 +423,47 @@ function rowHold(key, on) {
     rowCountdown(key);
   }
 }
-async function rowFly(key) {
+// Строка улетела — на её месте «↶ Вернуть» на UNDO_WINDOW мс (мышь на ней — ждёт), потом список смыкается и отметка уходит на сервер.
+function rowFly(key) {
   const x = leavingRows.get(key);
   if (!x) return;
   x.fly = true;
   rowEl(key)?.classList.add("fly");
+  setTimeout(() => {
+    if (leavingRows.get(key) !== x) return;
+    x.gone = true;
+    bumpAt = Date.now();
+    render();
+    x.timer = setTimeout(() => rowCommit(key), UNDO_WINDOW);
+  }, ROW_FLY);
+}
+function undoGone(key) {
+  const x = leavingRows.get(key);
+  if (!x || x.sent) return;
+  clearTimeout(x.timer);
+  leavingRows.delete(key);
+  popTone(-5, { vol: 0.2, soft: true });
+  render();
+}
+async function rowCommit(key) {
+  const x = leavingRows.get(key);
+  if (!x || x.sent) return;
+  x.sent = true;
+  const el = rowEl(key);
+  if (el) {
+    el.style.setProperty("height", `${el.offsetHeight}px`);
+    void el.offsetHeight;
+    el.classList.add("shut");
+    await new Promise((r) => setTimeout(r, ROW_SHUT));
+  }
   const id = Number(key.slice(1));
   const task = key[0] === "t";
-  const sent = maid.api("POST", task ? `/api/tasks/${id}` : `/api/habits/${id}/mark`, { status: "done" });
-  setTimeout(() => {
-    const el = rowEl(key);
-    if (el) {
-      el.style.setProperty("height", `${el.offsetHeight}px`);
-      void el.offsetHeight;
-      el.classList.add("shut");
-    }
-    setTimeout(() => {
-      leavingRows.delete(key);
-      if (task) { doneNow.set(id, { title: x.title, until: endOfDay() }); countDone(data.day); }
-      else { const h = data?.habits?.find((v) => v.id === id); if (h) h.status = "done"; }
-      render();
-    }, el ? ROW_SHUT : 0);
-  }, ROW_FLY);
+  if (task) { doneNow.set(id, { title: x.title, until: endOfDay() }); countDone(data.day); }
+  else { const h = data?.habits?.find((v) => v.id === id); if (h) h.status = "done"; }
+  leavingRows.delete(key);
+  render();
   try {
-    await sent;
+    await maid.api("POST", task ? `/api/tasks/${id}` : `/api/habits/${id}/mark`, { status: "done" });
     maid.changed();
     if (!task) load();
   } catch (err) {
@@ -444,6 +472,23 @@ async function rowFly(key) {
     load();
   }
 }
+// Виджет закрывают, пока висит «Вернуть», — отметить сразу, чтобы не потерять.
+window.addEventListener("beforeunload", () => {
+  for (const [key, x] of leavingRows) if (x.gone && !x.sent) maid.api("POST", key[0] === "t" ? `/api/tasks/${key.slice(1)}` : `/api/habits/${key.slice(1)}/mark`, { status: "done" });
+});
+// «Вернуть» под мышью не исчезает; ушла — ещё 1,2 с.
+$("#body").addEventListener("mouseover", (e) => {
+  const li = e.target.closest("li.undo-row");
+  const x = li && leavingRows.get(li.dataset.key);
+  if (x && !x.sent && !li.contains(e.relatedTarget)) clearTimeout(x.timer);
+});
+$("#body").addEventListener("mouseout", (e) => {
+  const li = e.target.closest("li.undo-row");
+  const x = li && leavingRows.get(li.dataset.key);
+  if (!x || x.sent || li.contains(e.relatedTarget)) return;
+  clearTimeout(x.timer);
+  x.timer = setTimeout(() => rowCommit(li.dataset.key), 1200);
+});
 // Пауза заливки: мышь ушла со строки — «взвести», вернулась — стоп, ушла — дальше (наведение сразу после щелчка не в счёт).
 $("#body").addEventListener("mouseover", (e) => {
   const li = e.target.closest("li.leaving");
@@ -718,6 +763,8 @@ $("#open").onclick = () => maid.openMain();
 $("#release").onclick = () => maid.grab(false);
 $("#body").addEventListener("click", async (e) => {
   if (e.target.closest("#doneCount")) return toggleShowDone();
+  const back = e.target.closest("[data-undo]");
+  if (back) return undoGone(back.dataset.undo);
   const tick = e.target.closest("[data-done], [data-habit]");
   if (tick) {
     const key = tick.dataset.done ? `t${tick.dataset.done}` : `h${tick.dataset.habit}`;
