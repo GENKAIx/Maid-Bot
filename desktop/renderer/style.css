@@ -436,18 +436,19 @@ body.quick { background: transparent; }
 .day-chip.has-date { position: relative; }
 .day-chip.has-date::after { content: ""; position: absolute; top: 3px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: #ffc45c; }
 
-/* Непрочитанные напоминания (inbox.js): значок у головы горничной */
-.inbox { position: absolute; z-index: 4; top: 26%; left: 2%; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%;
-  background: rgba(255, 255, 255, .96); box-shadow: 0 4px 14px rgba(0, 0, 0, .35), 0 0 0 3px rgba(255, 196, 92, .55);
-  font-size: 20px; line-height: 38px; text-align: center; cursor: pointer; -webkit-app-region: no-drag; animation: ibFloat 2.6s ease-in-out infinite; }
-.inbox:hover { transform: scale(1.08); }
+/* Непрочитанные напоминания (inbox.js): стайка значков слева от горничной, поодаль от фигурки */
+.inbox { position: absolute; z-index: 4; right: calc(var(--maid-w, 196px) + 18px); bottom: calc(var(--peek, 26px) + 96px); width: 0; height: 0; pointer-events: none; }
+.stage.side-left .inbox { right: auto; left: calc(100% - 332px + var(--maid-w, 196px) + 58px); }
+.stage.side-left .inbox .ib { translate: calc(-1 * var(--x)) var(--y); }
 .inbox.hidden { display: none; }
-.inbox.away { opacity: 0; pointer-events: none; }
-.stage.side-left .inbox { left: auto; right: 2%; }
-.inbox .ib-icon { display: block; pointer-events: none; }
-.inbox .ib-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px;
-  background: #e0566a; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; pointer-events: none; }
-.inbox.new { animation: ibWiggle .7s ease 3, ibFloat 2.6s ease-in-out 2.1s infinite; }
-@keyframes ibFloat { 50% { translate: 0 -4px; } }
-@keyframes ibWiggle { 0%, 100% { rotate: 0deg; } 20% { rotate: -16deg; } 40% { rotate: 13deg; } 60% { rotate: -8deg; } 80% { rotate: 4deg; } }
-@media (prefers-reduced-motion: reduce) { .inbox, .inbox.new { animation: none; } }
+.inbox.away .ib { opacity: 0; pointer-events: none; }
+.ib { position: absolute; right: 0; bottom: 0; translate: var(--x) var(--y); width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, .96); box-shadow: 0 4px 14px rgba(0, 0, 0, .35), 0 0 0 3px rgba(255, 196, 92, .55);
+  font-size: 20px; line-height: 38px; text-align: center; cursor: pointer; pointer-events: auto; transition: opacity .2s, scale .15s;
+  animation: ibFloat 3.2s ease-in-out var(--d, 0s) infinite; }
+.ib:hover { scale: 1.12; }
+.ib.more { font-size: 13px; font-weight: 700; color: var(--ink); }
+.ib.new { animation: ibWiggle .7s ease 3, ibFloat 3.2s ease-in-out 2.1s infinite; }
+@keyframes ibFloat { 0%, 100% { transform: translate(0, 0); } 33% { transform: translate(2px, -5px); } 66% { transform: translate(-2px, -2px); } }
+@keyframes ibWiggle { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-16deg); } 40% { transform: rotate(13deg); } 60% { transform: rotate(-8deg); } 80% { transform: rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) { .ib, .ib.new { animation: none; } }

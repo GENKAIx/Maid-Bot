@@ -542,7 +542,7 @@ maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
 function reportRegions() {
   const rects = [];
-  for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#planClock"), $("#inbox")]) {
+  for (const el of [$("#w"), $("#bubble"), $("#maid"), $("#planClock"), ...$("#inbox").children]) {
     if (el.offsetParent === null) continue;
     if (el.classList.contains("hidden")) continue;
     const r = el.getBoundingClientRect();
@@ -554,12 +554,11 @@ function reportRegions() {
 }
 setInterval(reportRegions, 300);
 let clickTimer = 0;
-// Значок непрочитанного у головы — свой щелчок, фигурку (свернуть/тычок/запись) не трогает.
+// Значки непрочитанного (inbox.js) — щелчок по значку открывает его напоминание.
 $("#inbox").addEventListener("click", (e) => {
-  e.stopPropagation();
-  openInbox();
+  const ib = e.target.closest(".ib");
+  if (ib) openInbox(ib.dataset.id);
 });
-for (const ev of ["dblclick", "mousedown", "contextmenu"]) $("#inbox").addEventListener(ev, (e) => e.stopPropagation());
 drawInbox();
 $("#maid").addEventListener("click", (e) => {
   clearTimeout(clickTimer);
