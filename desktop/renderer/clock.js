@@ -368,7 +368,7 @@ function planHold(id, on) {
 // Улёт вправо, потом место карточки плавно сжимается, и список подтягивается.
 function planFly(id) {
   const x = planDone.get(id);
-  if (x?.status !== "done") return doneTimers.delete(id);
+  if (x?.status !== "done" && x?.status !== "cancelled") return doneTimers.delete(id);
   x.fly = true;
   const li = document.querySelector(`#planClock .pl-card[data-id="${id}"]`);
   li?.classList.add("fly");
@@ -385,9 +385,10 @@ function planFly(id) {
 }
 function leaving(id) {
   const x = planDone.get(id);
+  if (x?.status === "cancelled") return x.fly ? " fly" : "";
   return x?.status === "done" && x.at ? ` leaving${x.fly ? " fly" : ""}` : "";
 }
-// Галочка — состоялся, × — убрать (отменён), галочка у отмеченного — вернуть в планы.
+// Галочка — состоялся (заливка, потом улетает), × — убрать (отменён, улетает сразу), галочка у отмеченного — вернуть в планы.
 async function setPlanStatus(id, status) {
   const e = plansOf(clockDay).find((x) => x.id === id) ?? planDone.get(id)?.e;
   if (!e) return;
@@ -398,6 +399,7 @@ async function setPlanStatus(id, status) {
   if (status === "done") planCountdown(id);
   lastPlans?.delete(id); // своё действие — не показывать его как «удалено где-то ещё»
   drawClock();
+  if (status === "cancelled") planFly(id); // убранный крестиком — сразу улетает из списка, без заливки
   try {
     await maid.api("POST", `/api/events/${id}`, { status });
   } catch (err) {
