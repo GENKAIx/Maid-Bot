@@ -631,6 +631,117 @@ function setCollapsed(on) {
   localStorage.setItem("maid.collapsed", on ? "1" : "");
 }
 
+// Свернуть/развернуть с анимацией. Свернуть: содержимое панели ссыпается вниз, панель сжимается в карточку с пружинкой,
+// горничная подпрыгивает и плюхается на маленькую карточку (сплющивается при посадке), из-под неё — облачко пыли.
+// Развернуть: горничная приседает и выпрыгивает вверх, панель вырастает из карточки с перелётом, строки въезжают по очереди.
+let folding = null;
+function foldAnimated(on) {
+  if (on === collapsed) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return setCollapsed(on);
+  folding?.();
+  const from = on ? $("#w") : $("#mini");
+  const r0 = from.getBoundingClientRect();
+  const m0 = $("#maid").getBoundingClientRect();
+  // Уходящая панель остаётся копией на своём месте, пока её не сменит новая.
+  const ghost = from.cloneNode(true);
+  ghost.removeAttribute("id");
+  ghost.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+  ghost.classList.remove("hidden");
+  ghost.classList.add("fold-ghost");
+  Object.assign(ghost.style, { left: `${r0.left}px`, top: `${r0.top}px`, width: `${r0.width}px`, height: `${r0.height}px`, margin: "0" });
+  document.body.append(ghost);
+  setCollapsed(on);
+  const to = on ? $("#mini") : $("#w");
+  const r1 = to.getBoundingClientRect();
+  const m1 = $("#maid").getBoundingClientRect();
+  const dy = m0.top - m1.top; // где горничная была относительно нового места
+  const maidEl = $("#maid");
+  const anims = [];
+  const run = (el, kf, opt) => {
+    const a = el.animate(kf, opt);
+    anims.push(a);
+    return a;
+  };
+  maidEl.style.transformOrigin = "50% 100%";
+  if (on) {
+    // Содержимое ссыпается вниз, сверху вниз по очереди.
+    [...ghost.children].forEach((c, i) => run(c, [{ transform: "none", opacity: 1 }, { transform: "translateY(26px) scale(.96)", opacity: 0 }],
+      { duration: 220, delay: i * 28, easing: "cubic-bezier(.5, 0, .9, .4)", fill: "forwards" }));
+    // Панель сжимается вниз в карточку: низ на месте, верх опускается с пружинкой.
+    const h0 = r0.height, h1 = r1.height, bottom = r0.bottom;
+    run(ghost, [
+      { height: `${h0}px`, top: `${bottom - h0}px`, borderRadius: "16px", offset: 0 },
+      { height: `${h1 * 0.82}px`, top: `${bottom - h1 * 0.82}px`, borderRadius: "22px", offset: 0.62 },
+      { height: `${h1 * 1.07}px`, top: `${bottom - h1 * 1.07}px`, offset: 0.8 },
+      { height: `${h1}px`, top: `${bottom - h1}px`, borderRadius: "22px", offset: 1 },
+    ], { duration: 560, delay: 90, easing: "cubic-bezier(.45, 0, .2, 1)", fill: "forwards" });
+    run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 560, fill: "forwards" });
+    run(to, [{ opacity: 0, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1.02)", offset: 0.6 }, { opacity: 1, transform: "none" }],
+      { duration: 280, delay: 520, easing: "ease-out", fill: "backwards" });
+    // Горничная: подпрыгивает, падает вместе с панелью и плюхается.
+    run(maidEl, [
+      { transform: `translateY(${dy}px)`, offset: 0 },
+      { transform: `translateY(${dy - 22}px) scale(.94, 1.07)`, offset: 0.22, easing: "cubic-bezier(.5, 0, .9, .6)" },
+      { transform: "translateY(0) scale(.96, 1.06)", offset: 0.66 },
+      { transform: "translateY(0) scale(1.14, .84)", offset: 0.74 },
+      { transform: "translateY(-6px) scale(.97, 1.04)", offset: 0.86 },
+      { transform: "none", offset: 1 },
+    ], { duration: 760, delay: 40, easing: "ease-out", fill: "backwards" });
+    setTimeout(() => {
+      if (folding !== stop) return;
+      popTone(1, { vol: 0.07, soft: true });
+      dust(m1.left + m1.width / 2, r1.top);
+    }, 40 + 760 * 0.74);
+    popTone(5, { vol: 0.05, soft: true });
+  } else {
+    // Карточка исчезает, панель вырастает из неё вверх с перелётом.
+    run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: "forwards" });
+    const cut = Math.max(0, r1.height - r0.height);
+    run(to, [
+      { clipPath: `inset(${cut}px 0 0 0 round 22px)`, offset: 0 },
+      { clipPath: "inset(-14px 0 0 0 round 16px)", offset: 0.7 },
+      { clipPath: "inset(6px 0 0 0 round 16px)", offset: 0.86 },
+      { clipPath: "inset(0 0 0 0 round 16px)", offset: 1 },
+    ], { duration: 520, delay: 120, easing: "cubic-bezier(.3, .7, .3, 1)", fill: "backwards" });
+    [...to.children].filter((c) => c.offsetParent).forEach((c, i) => run(c, [{ transform: "translateY(18px)", opacity: 0 }, { transform: "none", opacity: 1 }],
+      { duration: 320, delay: 260 + i * 45, easing: "cubic-bezier(.2, .9, .3, 1.2)", fill: "backwards" }));
+    // Горничная приседает, выпрыгивает вверх и мягко садится на панель.
+    run(maidEl, [
+      { transform: `translateY(${dy}px)`, offset: 0 },
+      { transform: `translateY(${dy}px) scale(1.12, .86)`, offset: 0.16 },
+      { transform: `translateY(${dy * 0.35}px) scale(.9, 1.12)`, offset: 0.38, easing: "cubic-bezier(.2, .7, .4, 1)" },
+      { transform: "translateY(-26px) scale(.96, 1.05)", offset: 0.6, easing: "cubic-bezier(.5, 0, .9, .5)" },
+      { transform: "translateY(0) scale(1.1, .9)", offset: 0.8 },
+      { transform: "none", offset: 1 },
+    ], { duration: 820, easing: "ease-out", fill: "backwards" });
+    setTimeout(() => folding === stop && popTone(6, { vol: 0.07, soft: true }), 140);
+    setTimeout(() => folding === stop && popTone(9, { vol: 0.06, soft: true }), 660);
+  }
+  const stop = () => {
+    anims.forEach((a) => a.cancel());
+    ghost.remove();
+    if (folding === stop) folding = null;
+  };
+  folding = stop;
+  setTimeout(() => folding === stop && stop(), 1100);
+}
+// Облачко пыли там, где горничная приземлилась.
+function dust(x, y) {
+  for (let i = 0; i < 9; i++) {
+    const p = document.createElement("i");
+    p.className = "fold-dust";
+    Object.assign(p.style, { left: `${x}px`, top: `${y}px` });
+    document.body.append(p);
+    const side = i % 2 ? 1 : -1;
+    const dx = side * (24 + Math.random() * 70);
+    const s = 0.6 + Math.random() * 0.9;
+    p.animate([
+      { transform: `translate(-50%, -50%) scale(${s * 0.4})`, opacity: 0.85 },
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% - ${8 + Math.random() * 18}px)) scale(${s})`, opacity: 0 },
+    ], { duration: 520 + Math.random() * 260, easing: "cubic-bezier(.2, .8, .4, 1)" }).onfinish = () => p.remove();
+  }
+}
+
 // --- настройки виджета ---
 function applyCfg() {
   const st = $("#stage");
@@ -830,9 +941,9 @@ $("#maid").addEventListener("click", () => {
 });
 $("#maid").addEventListener("dblclick", () => {
   clearTimeout(clickTimer);
-  setCollapsed(!collapsed);
+  foldAnimated(!collapsed);
 });
-$("#miniOpen").onclick = () => setCollapsed(false);
+$("#miniOpen").onclick = () => foldAnimated(false);
 $("#maid").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   maid.grab(!grabbed);

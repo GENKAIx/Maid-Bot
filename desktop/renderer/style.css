@@ -759,3 +759,9 @@ body.quick { background: transparent; }
 .tm-act { justify-content: space-between; align-items: center; }
 .rp-box .tm-more { background: none; color: #a99fc4; padding: 4px 4px; }
 .rp-box .tm-more:hover { color: #e6e0ff; }
+
+/* Свернуть/развернуть: копия уходящей панели на время анимации и пыль от посадки горничной. */
+.fold-ghost { position: fixed; z-index: 3; pointer-events: none; display: flex; min-height: 0; }
+.mini.fold-ghost { display: block; }
+.fold-dust { position: fixed; z-index: 4; width: 16px; height: 16px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(230, 222, 255, .75), rgba(230, 222, 255, 0) 70%); }
