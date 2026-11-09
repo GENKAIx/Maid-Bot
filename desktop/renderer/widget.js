@@ -277,6 +277,12 @@ function minutesUntil(e) {
 }
 
 function render() {
+  // Строка улетает или список смыкается — не пересобирать его посреди анимации (иначе строка прыгает назад), дорисовать после.
+  if (Date.now() < animUntil) {
+    clearTimeout(animWait);
+    animWait = setTimeout(render, animUntil - Date.now() + 5);
+    return;
+  }
   const now = new Date();
   const sec = cfg.sections;
   $("#clock").textContent = now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -306,7 +312,7 @@ function render() {
     const i = h.course?.length ? h.course.findIndex((x) => x.day === data.day) : -1;
     const sub = i >= 0 ? ` <span class="muted">· день ${i + 1} из ${h.course.length}</span>` : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
     const go = leavingRows.get(`h${h.id}`);
-    if (go?.gone) return `<li class="undo-row" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
+    if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
     if (go) return `<li class="${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span><span>${esc(h.title)}${sub}</span></li>`;
     return `<li class="${h.status ? "did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${sub}</span></li>`;
   };
@@ -322,7 +328,7 @@ function render() {
     ...daily.filter(missedYesterday).map(rescueItem),
     ...(sec.tasks ? shownTasks : []).map((t) => {
       const go = leavingRows.get(`t${t.id}`);
-      if (go?.gone) return `<li class="undo-row" data-key="t${t.id}"><button type="button" class="undo-back" data-undo="t${t.id}">↶ Вернуть</button></li>`;
+      if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="t${t.id}"><button type="button" class="undo-back" data-undo="t${t.id}">↶ Вернуть</button></li>`;
       return go
         ? `<li class="${rowLeaving(go)}" data-key="t${t.id}"><span class="check done" data-done="${t.id}" title="Отменить">${UNDO_MARK}</span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`
         : `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`;
@@ -338,7 +344,7 @@ function render() {
   const left = todo.length + (sec.tasks ? data.tasks.filter((t) => !doneNow.has(t.id)).length : 0) - gone;
   const doneCount = daily.filter((h) => h.status).length + (sec.tasks ? recentDone().length : 0) + gone;
   const allDone = hiding && !left && doneCount > 0;
-  if (allDone && lastLeft > 0) react("proud", 5000);
+  if (allDone && lastLeft > 0) { react("proud", 5000); allDoneAt = Date.now(); }
   lastLeft = left;
   const bump = Date.now() - bumpAt < 600 ? " bump" : "";
   const counter = hiding && doneCount
@@ -347,9 +353,9 @@ function render() {
   const pinned = new Set(datesOf(data.day, true).map(dateKey));
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   $("#body").innerHTML =
-    (sec.tasks || daily.length ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
+    (sec.tasks || daily.length ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
-  if (hiding) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
+  if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
   for (const li of $("#body").querySelectorAll("li.leaving")) {
     const x = leavingRows.get(li.dataset.key);
     if (x) li.style.setProperty("--fill-delay", `-${Math.min((x.pausedAt || Date.now()) - x.at, ROW_FADE)}ms`);
@@ -370,6 +376,11 @@ const UNDO_MARK = "<i>✓</i><b>×</b>";
 const UNDO_WINDOW = 3000; // сколько после улёта висит «↶ Вернуть»; отметка уходит на сервер только после него
 let bumpAt = 0; // когда счётчик последний раз получил «+1»
 let lastLeft = -1;
+let allDoneAt = 0;
+let peekAt = 0; // когда открыли сделанное — появление проигрывается только тогда, не при каждой перерисовке
+let animUntil = 0; // до этого времени список не перерисовывать (render)
+let animWait = 0;
+const undoFresh = (x) => (Date.now() - x.goneAt < 250 ? " fresh" : "");
 const leavingRows = new Map(); // "t12" / "h3" → { at, pausedAt, armed, fly, title, timer }
 let showDoneUntil = 0;
 let showDoneTimer = 0;
@@ -385,6 +396,7 @@ $("#body").addEventListener("mouseleave", () => {
 function toggleShowDone() {
   clearTimeout(showDoneTimer);
   showDoneUntil = showingDone() ? 0 : Date.now() + DONE_PEEK;
+  peekAt = showDoneUntil ? Date.now() : 0;
   if (showDoneUntil) showDoneTimer = setTimeout(render, DONE_PEEK + 30);
   render();
 }
@@ -430,10 +442,11 @@ function rowFly(key) {
   if (!x) return;
   x.fly = true;
   rowEl(key)?.classList.add("fly");
+  animUntil = Date.now() + ROW_FLY;
   setTimeout(() => {
     if (leavingRows.get(key) !== x) return;
     x.gone = true;
-    bumpAt = Date.now();
+    x.goneAt = bumpAt = Date.now();
     render();
     x.timer = setTimeout(() => rowCommit(key), UNDO_WINDOW);
   }, ROW_FLY);
@@ -455,7 +468,9 @@ async function rowCommit(key) {
     el.style.setProperty("height", `${el.offsetHeight}px`);
     void el.offsetHeight;
     el.classList.add("shut");
-    await new Promise((r) => setTimeout(r, ROW_SHUT));
+    animUntil = Date.now() + ROW_SHUT + 40;
+    await new Promise((r) => setTimeout(r, ROW_SHUT + 40));
+    animUntil = 0;
   }
   const id = Number(key.slice(1));
   const task = key[0] === "t";
