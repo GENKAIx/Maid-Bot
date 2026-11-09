@@ -46,7 +46,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | Задачи и даты | `/api/tasks`, `POST /api/tasks/:id`, `/api/dates` |
 | Привычки | `/api/habits`, `/api/habits/:id/mark` |
 | Числа | `/api/money`, `/api/metrics`, `/api/steps`, `/api/health/topics` |
-| Ввод | `/api/input` (текст и/или `image: {data, mime}`), `/api/voice`, `/api/undo` |
+| Ввод | `/api/input` (текст и/или `images: [{data, mime}]`, до 6), `/api/voice`, `/api/undo` |
 | Трекер | `/api/activity`, `/api/icons` (чтение и запись) |
 
 ## Кто что зовёт

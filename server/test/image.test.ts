@@ -46,8 +46,9 @@ test("картинка: чек записывается тратой, подпи
     const r = await post("/api/input", { text: "ужин с Машей", image: { data: PNG, mime: "image/png" }, id: "i1" }, token);
     assert.equal(r.status, 200, JSON.stringify(r.json));
     const last = seen[0].at(-1)!;
-    assert.equal(last.image?.mime, "image/png");
-    assert.equal(last.image?.data, PNG);
+    assert.equal(last.images?.length, 1);
+    assert.equal(last.images?.[0].mime, "image/png");
+    assert.equal(last.images?.[0].data, PNG);
     assert.match(last.content, /ужин с Машей[\s\S]*изображение/);
     // На картинку не переспрашивает — пишет, что разобрала.
     assert.ok(r.json.undoable);
@@ -64,7 +65,18 @@ test("картинка: чек записывается тратой, подпи
     assert.equal((await post("/api/input", { image: { data: PNG, mime: "application/pdf" } }, token)).status, 400);
     // В истории следующего сообщения картинки уже нет — только подпись.
     await post("/api/input", { text: "купить хлеб", id: "t1" }, token);
-    assert.ok(seen.at(-1)!.slice(0, -1).every((m) => !m.image));
+    assert.ok(seen.at(-1)!.slice(0, -1).every((m) => !m.images));
+
+    // Несколько картинок одним сообщением — все уходят модели, в истории «📷×N».
+    const three = Array.from({ length: 3 }, () => ({ data: PNG, mime: "image/png" }));
+    assert.equal((await post("/api/input", { text: "чеки за неделю", images: three, id: "m1" }, token)).status, 200);
+    const multi = seen.at(-1)!.at(-1)!;
+    assert.equal(multi.images?.length, 3);
+    assert.match(multi.content, /изображений: 3/);
+    assert.equal((await store.recentMessages(u.id, 10)).at(-1)!.text, "📷×3 чеки за неделю");
+    // Больше шести — нельзя.
+    const seven = Array.from({ length: 7 }, () => ({ data: PNG, mime: "image/png" }));
+    assert.equal((await post("/api/input", { images: seven, id: "m2" }, token)).status, 400);
   } finally {
     server.close();
   }
@@ -82,12 +94,11 @@ test("картинка: уходит модели частями content в фо
   const saved = { ...config.llm };
   Object.assign(config.llm, { baseUrl: `http://127.0.0.1:${(fake.address() as AddressInfo).port}/v1`, apiKey: "test", model: "m" });
   try {
-    assert.equal(await callLlm([{ role: "system", content: "s" }, { role: "user", content: "чек", image: { mime: "image/png", data: PNG } }]), "ok");
+    const pic = { mime: "image/png", data: PNG };
+    assert.equal(await callLlm([{ role: "system", content: "s" }, { role: "user", content: "чеки", images: [pic, pic] }]), "ok");
     assert.equal(body.messages[0].content, "s");
-    assert.deepEqual(body.messages[1].content, [
-      { type: "text", text: "чек" },
-      { type: "image_url", image_url: { url: `data:image/png;base64,${PNG}` } },
-    ]);
+    const part = { type: "image_url", image_url: { url: `data:image/png;base64,${PNG}` } };
+    assert.deepEqual(body.messages[1].content, [{ type: "text", text: "чеки" }, part, part]);
   } finally {
     Object.assign(config.llm, saved);
     fake.close();

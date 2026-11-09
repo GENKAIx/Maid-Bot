@@ -254,7 +254,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     }
     const r = await pipeline.handle({
       user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: (ctx.message.caption ?? "").slice(0, 4000),
-      image: { data, mime: photo ? "image/jpeg" : doc!.mime_type! },
+      images: [{ data, mime: photo ? "image/jpeg" : doc!.mime_type! }],
       at: new Date(ctx.message.date * 1000),
     });
     if (!r.duplicate) await answer(ctx, u, r);

@@ -48,14 +48,14 @@
       <div class="prefs hidden" id="prefs"></div>
       <div class="bar"><button id="open">Окно</button><button id="release">Отпустить</button></div>
       <form class="chat" id="chat" autocomplete="off">
+        <div class="pics hidden" id="chatPics" title="Картинки уйдут вместе с сообщением"></div>
         <div class="rec-bar" aria-live="polite">
           <button type="button" class="rec-trash" title="Удалить запись (Esc)" aria-label="Удалить запись"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
           <span class="rec-dot"></span><span class="rec-time">0:00</span>
           <canvas class="rec-wave"></canvas>
         </div>
-        <div class="attach hidden" id="chatAttach" title="Картинка уйдёт вместе с сообщением"><img alt="" /><button type="button" title="Убрать картинку" aria-label="Убрать картинку">✕</button></div>
         <textarea id="chatInput" rows="1" placeholder="Скажи горничной…" maxlength="4000" title="Enter — отправить, Shift+Enter — новая строка"></textarea>
-        <input type="file" id="chatFile" accept="image/*" hidden />
+        <input type="file" id="chatFile" accept="image/*" multiple hidden />
         <button type="button" id="chatClip" class="mic" title="Картинка: чек, билет, скриншот (или Ctrl+V, или перетащить)" aria-label="Приложить картинку"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg></button>
         <button type="button" id="chatMic" class="mic" title="Сказать голосом" aria-label="Сказать голосом"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
         <button type="submit" id="chatSend" title="Отправить (Enter)">➤</button>

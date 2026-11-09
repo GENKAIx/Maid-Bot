@@ -5,8 +5,8 @@ import { config } from "./config.ts";
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
-  /** Картинка к сообщению пользователя (чек, скриншот) — уходит модели вместе с текстом. */
-  image?: Picture;
+  /** Картинки к сообщению пользователя (чеки, скриншоты) — уходят модели вместе с текстом. */
+  images?: Picture[];
 }
 
 export interface Picture {
@@ -17,13 +17,22 @@ export interface Picture {
 
 /** Картинки больше не принимаем (клиенты сами уменьшают до ~1600 px, это сотни килобайт). */
 export const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+/** Сколько картинок в одном сообщении и сколько всего байт на все. */
+export const IMAGE_MAX_COUNT = 6;
+export const IMAGES_MAX_BYTES = 20 * 1024 * 1024;
 /** Какие картинки понимают модели со зрением. */
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 /** Картинки — частями content в формате OpenAI (так их понимают и OpenRouter, и другие совместимые). */
 const wire = (m: ChatMessage) =>
-  m.image
-    ? { role: m.role, content: [{ type: "text", text: m.content }, { type: "image_url", image_url: { url: `data:${m.image.mime};base64,${m.image.data}` } }] }
+  m.images?.length
+    ? {
+        role: m.role,
+        content: [
+          { type: "text", text: m.content },
+          ...m.images.map((i) => ({ type: "image_url", image_url: { url: `data:${i.mime};base64,${i.data}` } })),
+        ],
+      }
     : { role: m.role, content: m.content };
 
 export type LlmCall = (messages: ChatMessage[], opts?: { json?: boolean; temperature?: number }) => Promise<string>;

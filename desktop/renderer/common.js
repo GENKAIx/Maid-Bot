@@ -11,6 +11,12 @@ function imageFrom(dt) {
   return [...(dt?.files ?? [])].find((f) => f.type.startsWith("image/")) ??
     [...(dt?.items ?? [])].find((i) => i.kind === "file" && i.type.startsWith("image/"))?.getAsFile() ?? null;
 }
+/** Все картинки из буфера обмена или перетаскивания. */
+function imagesFrom(dt) {
+  const files = [...(dt?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+  if (files.length) return files;
+  return [...(dt?.items ?? [])].filter((i) => i.kind === "file" && i.type.startsWith("image/")).map((i) => i.getAsFile()).filter(Boolean);
+}
 /** Уменьшить до 1600 px по большей стороне и сжать в JPEG: на сервер уходят сотни килобайт, а не мегабайты. */
 async function shrinkImage(file, max = 1600) {
   const bmp = await createImageBitmap(file);

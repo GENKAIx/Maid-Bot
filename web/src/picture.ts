@@ -8,11 +8,18 @@ export interface Picture {
   url: string;
 }
 
-/** Первая картинка из буфера обмена или перетаскивания. */
-export function imageFrom(dt: DataTransfer | null): File | null {
-  return [...(dt?.files ?? [])].find((f) => f.type.startsWith("image/")) ??
-    [...(dt?.items ?? [])].find((i) => i.kind === "file" && i.type.startsWith("image/"))?.getAsFile() ?? null;
+/** Все картинки из буфера обмена или перетаскивания. */
+export function imagesFrom(dt: DataTransfer | null): File[] {
+  const files = [...(dt?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+  if (files.length) return files;
+  return [...(dt?.items ?? [])]
+    .filter((i) => i.kind === "file" && i.type.startsWith("image/"))
+    .map((i) => i.getAsFile())
+    .filter((f): f is File => Boolean(f));
 }
+
+/** Сколько картинок можно приложить к одному сообщению (как на сервере). */
+export const PICS_MAX = 6;
 
 /** До 1600 px по большей стороне и в JPEG: на сервер уходят сотни килобайт, а не мегабайты с телефона. */
 export async function shrinkImage(file: File, max = 1600): Promise<Picture> {

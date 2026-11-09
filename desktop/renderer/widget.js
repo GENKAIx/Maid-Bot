@@ -211,36 +211,53 @@ const chatInput = $("#chatInput");
 let sending = false;
 async function sendChat() {
   const text = chatInput.value.trim();
-  if ((!text && !picture) || sending) return;
-  const image = picture ? { data: picture.data, mime: picture.mime } : undefined;
+  if ((!text && !pictures.length) || sending) return;
+  const images = pictures.length ? pictures.map((p) => ({ data: p.data, mime: p.mime })) : undefined;
   chatInput.value = "";
   fitChat();
-  attach(null);
-  await ask("/api/input", { text, image, id: crypto.randomUUID() }, image ? "📷 Смотрю…" : text.length > 40 ? text.slice(0, 40) + "…" : text);
+  setPictures([]);
+  const label = images ? (images.length > 1 ? `📷×${images.length} Смотрю…` : "📷 Смотрю…") : text.length > 40 ? text.slice(0, 40) + "…" : text;
+  await ask("/api/input", { text, images, id: crypto.randomUUID() }, label);
 }
 
-// Картинка к сообщению: скрепка, Ctrl+V в строке или перетащить на виджет. Уходит с ближайшим Enter, подпись — по желанию.
-let picture = null;
-function attach(p) {
-  picture = p;
-  $("#chatAttach").classList.toggle("hidden", !p);
-  $("#chatAttach img").src = p?.url ?? "";
-  if (p) { chatInput.placeholder = "Подпись к картинке (можно пусто) — Enter"; chatInput.focus(); }
-  else chatInput.placeholder = "Скажи горничной…";
+// Картинки к сообщению (до PICS_MAX): скрепка, Ctrl+V в строке или перетащить на виджет.
+// Ряд миниатюр над строкой ввода; уходят с ближайшим Enter, подпись — по желанию.
+const PICS_MAX = 6;
+let pictures = [];
+function setPictures(list) {
+  pictures = list;
+  const box = $("#chatPics");
+  box.classList.toggle("hidden", !list.length);
+  box.replaceChildren(...list.map((p, i) => {
+    const el = document.createElement("div");
+    el.className = "pic";
+    el.innerHTML = `<img alt="" /><button type="button" title="Убрать картинку" aria-label="Убрать картинку">✕</button>`;
+    el.querySelector("img").src = p.url;
+    el.querySelector("button").addEventListener("click", (e) => { e.preventDefault(); setPictures(pictures.filter((_, j) => j !== i)); chatInput.focus(); });
+    return el;
+  }));
+  chatInput.placeholder = list.length ? "Подпись к картинкам (можно пусто) — Enter" : "Скажи горничной…";
+  if (list.length) chatInput.focus();
 }
-async function attachFile(file) {
-  if (!file) return;
-  try { attach(await shrinkImage(file)); react("surprised", 2500); }
-  catch { say("Не получилось открыть картинку.", { emotion: "worried", ms: 5000, sound: "oops" }); }
+async function attachFiles(files) {
+  files = [...files];
+  if (!files.length) return;
+  const room = PICS_MAX - pictures.length;
+  if (room <= 0) return say(`Больше ${PICS_MAX} картинок за раз не возьму.`, { emotion: "worried", ms: 4000 });
+  try {
+    const shrunk = await Promise.all(files.slice(0, room).map((f) => shrinkImage(f)));
+    setPictures([...pictures, ...shrunk]);
+    react("surprised", 2500);
+    if (files.length > room) say(`Взяла ${room}, больше ${PICS_MAX} за раз нельзя.`, { emotion: "worried", ms: 4000 });
+  } catch { say("Не получилось открыть картинку.", { emotion: "worried", ms: 5000, sound: "oops" }); }
 }
-$("#chatAttach button").addEventListener("click", (e) => { e.preventDefault(); attach(null); });
 $("#chatClip").addEventListener("click", () => { maid.focusInput(true); $("#chatFile").click(); });
-$("#chatFile").addEventListener("change", (e) => { attachFile(e.target.files[0]); e.target.value = ""; });
+$("#chatFile").addEventListener("change", (e) => { attachFiles(e.target.files); e.target.value = ""; });
 chatInput.addEventListener("paste", (e) => {
-  const f = imageFrom(e.clipboardData);
-  if (f) { e.preventDefault(); attachFile(f); }
+  const f = imagesFrom(e.clipboardData);
+  if (f.length) { e.preventDefault(); attachFiles(f); }
 });
-document.addEventListener("drop", (e) => attachFile(imageFrom(e.dataTransfer)));
+document.addEventListener("drop", (e) => attachFiles(imagesFrom(e.dataTransfer)));
 // Реакция на сказанное, что бы ни ответил сервер: пошлое (запись про секс и т. п.) — довольная ухмылка,
 // даже если записалось; благодарность без записи — смущённо рада.
 const LEWD = /(?<![а-яё])(секс|интим|пошл|переспа|трах|минет|кунилин|оральн|голая|голый|голышом|раздел[аи]сь|эрот|порн|оргазм|возбужд|похот|дроч|мастурб|сиськ|задниц|презерватив|в постел[иь] с)/i;
@@ -325,7 +342,7 @@ function fitChat() {
 }
 chatInput.addEventListener("input", fitChat);
 chatInput.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") return picture ? attach(null) : chatInput.blur();
+  if (e.key === "Escape") return pictures.length ? setPictures(pictures.slice(0, -1)) : chatInput.blur();
   if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     $("#chat").requestSubmit();

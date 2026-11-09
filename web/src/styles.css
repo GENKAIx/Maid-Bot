@@ -214,16 +214,19 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 /* ввод и ответ: плавающая панель над лентой */
 .composer-wrap { padding: 8px 32px calc(14px + env(safe-area-inset-bottom)); }
 .composer-wrap > * { max-width: 1120px; margin-inline: auto; }
-.composer { display: flex; gap: 8px; align-items: flex-end; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 6px 6px 6px 4px; box-shadow: var(--lift); transition: border-color .15s, box-shadow .15s; }
+.composer { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 6px 6px 6px 4px; box-shadow: var(--lift); transition: border-color .15s, box-shadow .15s; }
 .composer:focus-within { border-color: var(--accent); box-shadow: var(--lift), 0 0 0 3px var(--accent-soft); }
-.composer textarea { resize: none; min-height: 40px; max-height: 120px; line-height: 1.35; border: none; background: transparent; padding: 10px 12px; scrollbar-width: none; }
+.composer textarea { flex: 1 1 0; min-width: 0; resize: none; min-height: 40px; max-height: 120px; line-height: 1.35; border: none; background: transparent; padding: 10px 12px; scrollbar-width: none; }
 .composer textarea:focus { box-shadow: none; }
 .composer .primary { border-radius: 11px; padding: 9px 16px; height: 40px; }
 .composer .mic { flex: none; width: 40px; height: 40px; padding: 0; border-radius: 11px; display: grid; place-items: center; }
 .composer .mic.rec { background: #e5484d; color: #fff; border-color: transparent; animation: micPulse 1.2s ease-in-out infinite; }
-.composer .attach { position: relative; flex: none; width: 40px; height: 40px; margin-left: 4px; }
-.composer .attach img { width: 40px; height: 40px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); display: block; }
-.composer .attach button { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 10px; line-height: 1; background: var(--panel); border: 1px solid var(--line); }
+/* Ряд картинок над строкой ввода. */
+.composer .pics { flex: 0 0 100%; display: flex; gap: 10px; padding: 8px 6px 2px; overflow-x: auto; }
+.composer .pic { position: relative; flex: none; width: 64px; height: 64px; }
+.composer .pic img { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); display: block; }
+.composer .pic button { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 10px; line-height: 1; background: var(--panel); border: 1px solid var(--line); }
+.composer .pic button:hover { color: #e5484d; }
 .composer .rec-bar { flex: 1; min-width: 0; height: 40px; display: flex; align-items: center; gap: 8px; padding-right: 6px; }
 .composer .rec-trash { flex: none; width: 40px; height: 40px; padding: 0; border-radius: 11px; display: grid; place-items: center; }
 .composer .rec-trash:hover { color: #e5484d; }
