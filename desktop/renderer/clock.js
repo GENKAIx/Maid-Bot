@@ -64,7 +64,9 @@ function dayStrip() {
     const d = new Date(`${day}T12:00:00Z`);
     const wd = d.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
     const n = plansOf(day).length;
-    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${n ? "" : " empty"}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${n} ${planWord(n)}` : " · планов нет"}">
+    // Точка — в этот день важная дата (сама дата, не напоминание о ней заранее).
+    const big = (data.dates ?? []).filter((x) => x.on === day);
+    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${n ? "" : " empty"}${big.length ? " has-date" : ""}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${n} ${planWord(n)}` : " · планов нет"}${big.map((x) => ` · ${esc(x.title)}`).join("")}">
       <b>${d.getUTCDate()}</b> ${esc(wd)}<span class="cnt">${n ? `(${n})` : "–"}</span></button>`;
   }).join("");
 }
@@ -241,6 +243,43 @@ function fitClockHeight(box) {
 }
 const planWord = (n) => (n % 10 === 1 && n % 100 !== 11 ? "план" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "плана" : "планов");
 
+// --- важные даты (дни рождения, годовщины…) наверху планов ---
+// Дата висит в планах своего дня и cfg.dateLead дней до него. × убирает её до следующего раза (в этом году — только этот),
+// убранное хранится здесь, на компьютере: на сервере дата остаётся (она каждый год).
+const DATE_ICON = { birthday: "🎂", anniversary: "💍", holiday: "🎉", deadline: "⏳", other: "📌" };
+const hiddenDates = new Set(JSON.parse(localStorage.getItem("maid.datesHidden") || "[]"));
+const datesHiddenNow = new Set(); // убранные, пока панель открыта: остаются зачёркнутыми, щелчок — вернуть
+const dateKey = (d) => `${d.id}:${d.on}`;
+function daysFrom(a, b) {
+  return Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
+}
+function datesOf(day, withHidden = false) {
+  const lead = Number(cfg.dateLead ?? 1);
+  return (data?.dates ?? []).filter((d) => {
+    const n = daysFrom(day, d.on);
+    return n >= 0 && n <= lead && (withHidden || !hiddenDates.has(dateKey(d)));
+  });
+}
+function yearsWord(n) {
+  const a = n % 100, b = n % 10;
+  return a > 10 && a < 20 ? "лет" : b === 1 ? "год" : b > 1 && b < 5 ? "года" : "лет";
+}
+function dateText(d, day) {
+  const n = daysFrom(day, d.on);
+  const today = day === data.day;
+  const when = n === 0 ? (today ? "сегодня" : "в этот день") : n === 1 ? (today ? "завтра" : "на следующий день") : `через ${n} дн.`;
+  return `<b class="pl-when">${DATE_ICON[d.type] ?? DATE_ICON.other} ${when}</b> · ${esc(d.title)}${d.age ? ` · ${d.age} ${yearsWord(d.age)}` : ""}`;
+}
+function toggleDate(key) {
+  if (hiddenDates.has(key)) { hiddenDates.delete(key); datesHiddenNow.delete(key); }
+  else { hiddenDates.add(key); datesHiddenNow.add(key); }
+  // Старые годы не копить: оставить только даты, которые ещё впереди.
+  const keep = [...hiddenDates].filter((k) => k.split(":")[1] >= data.day);
+  localStorage.setItem("maid.datesHidden", JSON.stringify(keep));
+  drawClock();
+  render();
+}
+
 // --- список планов дня ---
 const planDone = new Map(); // id → { e, status } — отмеченные здесь: остаются в списке зачёркнутыми, пока панель открыта
 function drawPlanList(box) {
@@ -255,6 +294,13 @@ function drawPlanList(box) {
   ].filter((e) => !ids.has(e.id) && ids.add(e.id))
     .sort((a, b) => (minutesOf(a.time) ?? 1441) - (minutesOf(b.time) ?? 1441));
   clockColors = new Map(layout(list, "24").map((x, i) => [x.e.id, ARC_COLORS[i % ARC_COLORS.length]]));
+  const pins = datesOf(clockDay, true).filter((d) => !hiddenDates.has(dateKey(d)) || datesHiddenNow.has(dateKey(d)));
+  const pinCard = (d) => {
+    const off = hiddenDates.has(dateKey(d));
+    return `<li class="pl-card pl-date${off ? " cancelled" : ""}" data-date="${esc(dateKey(d))}">
+      <span class="pl-text">${dateText(d, clockDay)}</span>
+      <button type="button" class="pl-x${off ? " back" : ""}" data-dact="1" title="${off ? "Вернуть" : "Убрать — больше не показывать до этой даты"}">${off ? "↺" : "×"}</button></li>`;
+  };
   const open = list.filter((e) => !e._st).length;
   const dayName = today ? "Сегодня" : humanDay(clockDay);
   const card = (e) => {
@@ -278,7 +324,7 @@ function drawPlanList(box) {
       <button type="button" class="pc-arrow" data-shift="1" title="Неделя вперёд">›</button>
     </div>
     <div class="pl-top"><span>Планы на день</span></div>
-    ${list.length ? `<ul class="pl-list">${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
+    ${list.length || pins.length ? `<ul class="pl-list">${pins.map(pinCard).join("")}${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
   // Цвет полоски карточки — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
   for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
   box.style.height = `${Math.min(Math.max($("#w")?.offsetHeight ?? 0, 320), box.parentElement.clientHeight - 16)}px`;
@@ -320,6 +366,7 @@ function hideClock() {
   clearTimeout(clockHideTimer);
   $("#planClock").classList.add("hidden");
   planDone.clear();
+  datesHiddenNow.clear();
   stripFrom = 0;
   clockFresh = new Set();
   clockGone = [];
@@ -350,6 +397,11 @@ function watchPlans() {
 $("#planClock").addEventListener("mouseenter", () => { clockHover = true; });
 $("#planClock").addEventListener("mouseleave", () => { clockHover = false; hideClockLater(); });
 $("#planClock").addEventListener("click", (e) => {
+  const dact = e.target.closest("[data-dact]");
+  if (dact) {
+    toggleDate(dact.closest(".pl-card").dataset.date);
+    return hideClockLater();
+  }
   const act = e.target.closest("[data-act]");
   if (act) {
     setPlanStatus(Number(act.closest(".pl-card").dataset.id), act.dataset.act);

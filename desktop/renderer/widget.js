@@ -9,7 +9,7 @@ let lastNotice = 0;
 let state = "idle"; // idle | think | sleep
 let bubbleTimer = 0;
 // Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
 
@@ -285,6 +285,9 @@ function render() {
     const when = m === null ? (next.date_iso === data.day ? "сегодня" : humanDay(next.date_iso)) : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : `в ${next.time}`;
     $("#next").innerHTML = `<b>${esc(when)}</b> · ${esc(next.title)}`;
   } else $("#next").innerHTML = `<span class="muted">Планов нет</span>`;
+  // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
+  const pins = datesOf(data.day);
+  $("#pins").innerHTML = pins.map((d) => `<div class="pin">${dateText(d, data.day)}</div>`).join("");
   // Один список «Задачи» вместо отдельных разделов. Порядок:
   //   1) ежедневное на сегодня, ещё не отмеченное (привычки и курсы — «Пить Аевит · день 9 из 30»);
   //   2) задачи: сначала важные, потом обычные, потом «когда-нибудь»;
@@ -309,7 +312,8 @@ function render() {
     ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done">✓</span><span>${esc(t.title)}</span></li>`),
   ];
   const left = todo.length + (sec.tasks ? data.tasks.length : 0);
-  const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
+  const pinned = new Set(datesOf(data.day, true).map(dateKey));
+  const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   $("#body").innerHTML =
     (sec.tasks || daily.length ? `<h4>Задачи${left > 3 ? ` · ${left}` : ""}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
@@ -376,11 +380,12 @@ function applyCfg() {
   st.style.setProperty("--peek", `${Math.round(w * 0.13)}px`);
   $("#w").style.opacity = String(cfg.opacity);
   $("#next").classList.toggle("hidden", !cfg.sections.next || prefsOpen);
+  $("#pins").classList.toggle("hidden", prefsOpen);
 }
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: w.plans ?? "list" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: w.plans ?? "list", dateLead: w.dateLead ?? "1" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   applyCfg();
   if (prefsOpen) drawPrefs();
 }
@@ -418,6 +423,7 @@ function drawPrefs() {
     <div class="pref"><span>Размер горничной</span>${seg("size", cfg.size, [["s", "Меньше"], ["m", "Обычная"], ["l", "Больше"]])}</div>
     <div class="pref"><span>Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%</span><input type="range" id="prefOpacity" min="0.4" max="1" step="0.02" value="${cfg.opacity}" /></div>
     <div class="pref"><span>Планы дня</span>${seg("clock", cfg.clock, [["list", "Список"], ["12", "Часы 12"], ["24", "Часы 24"], ["off", "Нет"]])}</div>
+    <div class="pref"><span>Важные даты</span>${seg("dateLead", String(cfg.dateLead), [["0", "В день"], ["1", "За день"], ["3", "За 3 дня"], ["7", "За неделю"]])}</div>
     <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>
     <div class="row2"><button type="button" id="prefReset">Вернуть в угол</button><button type="button" id="prefDone" class="primary">Готово</button></div>`;
 }
@@ -434,6 +440,9 @@ $("#prefs").addEventListener("click", (e) => {
   } else if (kind === "clock") {
     saveCfg({ clock: b.dataset.v, plans: b.dataset.v });
     hideClock();
+  } else if (kind === "dateLead") {
+    saveCfg({ dateLead: b.dataset.v });
+    drawClock();
   } else if (kind) saveCfg({ [kind]: b.dataset.v });
 });
 $("#prefs").addEventListener("change", (e) => {
