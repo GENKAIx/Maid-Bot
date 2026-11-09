@@ -11,7 +11,7 @@ import { datesText, memoryText, plansText, tasksText, todayText } from "./report
 import type { Scheduler, Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
-import { WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
+import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
 
@@ -67,15 +67,43 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (q.chat && q.message_id) await raw.editMessageWidgetData({ chat_id: q.chat.id, message_id: q.message_id, chat_data: state }).catch(() => {});
   });
 
-  bot.command("list", async (ctx) => {
-    const u = await userOf(ctx);
-    if (!u) return;
+  // Последний присланный список живой: бот обновляет его после каждого изменения (kv widget:<id> = {chat, msg}).
+  const widgetKey = (u: User) => `widget:${u.id}`;
+  async function showList(ctx: Context, u: User) {
     try {
-      await raw.sendWidget({ chat_id: ctx.chat.id, html: WIDGET_HTML, caption: WIDGET_CAPTION, allow_queries: true, chat_data: await widgetState(store, u) });
+      const m = (await raw.sendWidget({
+        chat_id: ctx.chat!.id, html: WIDGET_HTML, caption: WIDGET_CAPTION, allow_queries: true, chat_data: await widgetState(store, u),
+      })) as { message_id?: number };
+      if (m?.message_id) await store.kvSet(widgetKey(u), JSON.stringify({ chat: ctx.chat!.id, msg: m.message_id }));
     } catch (e) {
       console.error("[bot] widget", e);
       await ctx.reply("Не получилось показать список-виджет. Обновите Telegram или посмотрите /today.");
     }
+  }
+  // Изменения часто идут пачкой (несколько записей одним сообщением) — обновить один раз, через секунду.
+  const refreshTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  pipeline.onChange = (u) => {
+    clearTimeout(refreshTimers.get(u.id));
+    refreshTimers.set(u.id, setTimeout(() => {
+      refreshTimers.delete(u.id);
+      void refreshList(u).catch((e) => console.error("[bot] widget refresh", e));
+    }, 1000));
+  };
+  async function refreshList(u: User) {
+    const saved = await store.kvGet(widgetKey(u));
+    if (!saved) return;
+    const { chat, msg } = JSON.parse(saved) as { chat: number; msg: number };
+    try {
+      await raw.editMessageWidgetData({ chat_id: chat, message_id: msg, chat_data: await widgetState(store, u) });
+    } catch (e) {
+      // Сообщение удалили или оно слишком старое — больше не трогаем. «Не изменилось» — не ошибка.
+      if (!/not modified/i.test(String((e as Error).message))) await store.kvSet(widgetKey(u), "");
+    }
+  }
+
+  bot.command("list", async (ctx) => {
+    const u = await userOf(ctx);
+    if (u) await showList(ctx, u);
   });
 
   bot.command("start", async (ctx) => {
@@ -178,6 +206,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   bot.on("message:text", async (ctx) => {
     const u = await userOf(ctx);
     if (!u) return;
+    if (asksForList(ctx.message.text)) return void (await showList(ctx, u));
     await ctx.replyWithChatAction("typing").catch(() => {});
     const r = await pipeline.handle({
       user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: ctx.message.text,

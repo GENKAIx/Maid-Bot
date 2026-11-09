@@ -60,7 +60,10 @@ export async function widgetQuery(store: Store, pipeline: Pipeline, u: User, dat
     const today = dayKey(now, u.tz);
     if (kind === "t") {
       const t = await store.task(id);
-      if (t && t.user_id === u.id && t.status !== "deleted") await store.updateTask(id, { status: act === "d" ? "done" : "open" });
+      if (t && t.user_id === u.id && t.status !== "deleted") {
+        await store.updateTask(id, { status: act === "d" ? "done" : "open" });
+        pipeline.changed(u);
+      }
     } else if (act === "d") {
       await pipeline.markHabit(u, id, today, "done", "telegram-widget");
     } else {
@@ -70,6 +73,15 @@ export async function widgetQuery(store: Store, pipeline: Pipeline, u: User, dat
     }
   }
   return widgetState(store, u, now);
+}
+
+/** Сообщение — просьба показать список на сегодня («что на сегодня?», «что осталось», «мои дела»). */
+export function asksForList(text: string): boolean {
+  const t = text.toLowerCase().replace(/ё/g, "е").replace(/[^а-яa-z ]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!t || t.length > 40) return false;
+  return /^(покажи |дай |а )?(что|че|чо|чего)( у меня| мне)?( на| еще на)? сегодня( делать| по планам)?$/.test(t)
+    || /^(что|че|чо|чего)( у меня| мне)? (осталось|еще осталось)( на сегодня| сделать| сегодня)?$/.test(t)
+    || /^(покажи |дай )?(мой |мои )?(список|список дел|список на сегодня|дела|дела на сегодня|мои дела|план на сегодня|планы на сегодня)$/.test(t);
 }
 
 export const WIDGET_CAPTION = "📋 Список на сегодня — нажмите строку, чтобы отметить";

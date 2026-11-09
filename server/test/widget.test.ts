@@ -4,7 +4,7 @@ import zlib from "node:zlib";
 import { Store } from "../src/db.ts";
 import { Pipeline } from "../src/pipeline.ts";
 import { zonedToUtc } from "../src/time.ts";
-import { fitState, WIDGET_HTML, WIDGET_STATE_MAX, widgetQuery, widgetState, type WidgetState } from "../src/widget.ts";
+import { asksForList, fitState, WIDGET_HTML, WIDGET_STATE_MAX, widgetQuery, widgetState, type WidgetState } from "../src/widget.ts";
 
 // Виджет Telegram «Список на сегодня»: состояние, запросы и сам HTML под лимиты Telegram.
 
@@ -75,4 +75,20 @@ test("виджет: HTML в пределах лимитов Telegram и без �
   assert.ok(!WIDGET_HTML.includes("\0"));
   for (const bad of ["color-mix", "fetch(", "opacity", "position:sticky", "overflow:auto", "vh", "<input", "text-shadow", "@font-face", ":has(", "alert("])
     assert.ok(!WIDGET_HTML.includes(bad), bad);
+});
+
+test("виджет: какие сообщения просят список", () => {
+  for (const yes of ["Что на сегодня?", "что сегодня", "Чё у меня на сегодня", "что осталось", "Что ещё осталось сделать?", "список", "мои дела", "покажи список дел", "план на сегодня"])
+    assert.ok(asksForList(yes), yes);
+  for (const no of ["купить хлеб", "что сегодня было на работе интересного, расскажу потом", "сделал зарядку", "список покупок: молоко", "что на завтра"])
+    assert.ok(!asksForList(no), no);
+});
+
+test("виджет: отметки зовут onChange — по нему бот обновляет живой список", async () => {
+  const { store, u, pipe, t1, h } = await setup();
+  const seen: number[] = [];
+  pipe.onChange = (x) => seen.push(x.id);
+  await pipe.markHabit(u, h, "2026-11-09", "done", "test");
+  await widgetQuery(store, pipe, u, `d:t${t1}`, AT);
+  assert.deepEqual(seen, [u.id, u.id], "отметка привычки и задача из виджета")
 });

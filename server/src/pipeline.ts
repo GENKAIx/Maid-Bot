@@ -46,7 +46,19 @@ export class Pipeline {
   /** publicUrl — адрес веб-приложения для ссылок на дни в ответах (пусто — без ссылок). */
   constructor(private store: Store, private llm: LlmCall, private publicUrl = "") {}
 
+  /** Зовётся, когда у пользователя что-то поменялось (записали, отметили, отменили) — например, чтобы обновить список-виджет. */
+  onChange: ((u: User) => void) | null = null;
+  changed(u: User) {
+    try { this.onChange?.(u); } catch (e) { console.error("[pipeline] onChange", e); }
+  }
+
   async handle(inc: Incoming): Promise<Reply> {
+    const r = await this.handleOne(inc);
+    if (!r.duplicate && (r.undoable || r.changes?.length)) this.changed(inc.user);
+    return r;
+  }
+
+  private async handleOne(inc: Incoming): Promise<Reply> {
     const s = this.store;
     const at = inc.at ?? new Date();
     const u = inc.user;
@@ -280,6 +292,11 @@ export class Pipeline {
 
   /** Отменить всё, что сделало сообщение (последнее, если не указано). */
   async undo(u: User, messageId?: number): Promise<string> {
+    const r = await this.undoOne(u, messageId);
+    this.changed(u);
+    return r;
+  }
+  private async undoOne(u: User, messageId?: number): Promise<string> {
     const s = this.store;
     const p = persona(u.persona);
     const msg = messageId ? await s.message(messageId) : await s.lastDoneMessage(u.id);
@@ -315,6 +332,11 @@ export class Pipeline {
 
   /** Отметить привычку кнопкой (уведомление, приложение). Отменяется, как сообщение. */
   async markHabit(u: User, habitId: number, day: string, status: MarkRow["status"], source = "button"): Promise<string> {
+    const r = await this.markHabitOne(u, habitId, day, status, source);
+    this.changed(u);
+    return r;
+  }
+  private async markHabitOne(u: User, habitId: number, day: string, status: MarkRow["status"], source: string): Promise<string> {
     const s = this.store;
     const h = await s.habit(habitId);
     if (!h || h.user_id !== u.id) return "Нет такой привычки.";
@@ -333,6 +355,11 @@ export class Pipeline {
 
   /** «Это просто заметка»: отменить разбор и записать текст целиком в заметки. */
   async asNote(u: User, messageId: number, at = new Date()): Promise<string> {
+    const r = await this.asNoteOne(u, messageId, at);
+    this.changed(u);
+    return r;
+  }
+  private async asNoteOne(u: User, messageId: number, at: Date): Promise<string> {
     const s = this.store;
     const msg = await s.message(messageId);
     if (!msg || msg.user_id !== u.id) return "Не нашла сообщение.";

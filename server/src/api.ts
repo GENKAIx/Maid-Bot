@@ -292,6 +292,7 @@ export function createApi(deps: ApiDeps) {
       const t = await store.task(Number(task[1]));
       if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
       await store.updateTask(t.id, { status });
+      pipeline.changed(u);
       return store.task(t.id);
     }
 
