@@ -73,8 +73,12 @@ test("виджет: HTML в пределах лимитов Telegram и без �
   const z = zlib.deflateSync(Buffer.from(WIDGET_HTML), { level: 9 }).length;
   assert.ok(z <= 4096, `сжатый ${z} байт`);
   assert.ok(!WIDGET_HTML.includes("\0"));
+  // Картинки — только встроенные data: (webp/png), не больше 1024×1024; проверка запрещённого — по коду без них.
+  const images = WIDGET_HTML.match(/src="[^"]*"/g) ?? [];
+  for (const i of images) assert.match(i, /^src="data:image\/(webp|png);base64,[A-Za-z0-9+/=]+"$/);
+  const code = WIDGET_HTML.replace(/data:image\/[a-z]+;base64,[A-Za-z0-9+/=]+/g, "");
   for (const bad of ["color-mix", "fetch(", "opacity", "position:sticky", "overflow:auto", "vh", "<input", "text-shadow", "@font-face", ":has(", "alert("])
-    assert.ok(!WIDGET_HTML.includes(bad), bad);
+    assert.ok(!code.includes(bad), bad);
 });
 
 test("виджет: какие сообщения просят список", () => {

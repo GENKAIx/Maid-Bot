@@ -86,7 +86,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     clearTimeout(refreshTimers.get(u.id));
     refreshTimers.set(u.id, setTimeout(() => {
       refreshTimers.delete(u.id);
-      void refreshList(u).catch((e) => console.error("[bot] widget refresh", e));
+      void refreshList(u).then(() => cheer(u)).catch((e) => console.error("[bot] widget refresh", e));
     }, 1000));
   };
   async function refreshList(u: User) {
@@ -99,6 +99,22 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
       // Сообщение удалили или оно слишком старое — больше не трогаем. «Не изменилось» — не ошибка.
       if (!/not modified/i.test(String((e as Error).message))) await store.kvSet(widgetKey(u), "");
     }
+  }
+
+  // Всё на сегодня сделано — горничная радуется стикером (один раз за день; отменили и снова сделали — без повтора).
+  const CHEER_STICKER = path.join(ROOT, "server", "assets", "maid", "done.webm");
+  const CHEERS = ["Всё на сегодня сделано — умница! ✨", "Ни одного хвоста на сегодня. Горжусь! ✨", "Список пуст, день закрыт. Отдыхайте ✨"];
+  async function cheer(u: User) {
+    if (!u.chat_id || !fs.existsSync(CHEER_STICKER)) return;
+    const st = JSON.parse(await widgetState(store, u)) as { a: [string, string, number][]; m?: number };
+    if (!st.a.length || st.m || st.a.some((x) => !(x[2] & 1))) return;
+    const today = dayKey(new Date(), u.tz);
+    if ((await store.kvGet(`cheer:${u.id}`)) === today) return;
+    await store.kvSet(`cheer:${u.id}`, today);
+    const id = await store.kvGet("sticker:done");
+    const m = await bot.api.sendSticker(u.chat_id, id || new InputFile(CHEER_STICKER, "done.webm"));
+    if (!id && m.sticker?.file_id) await store.kvSet("sticker:done", m.sticker.file_id);
+    await bot.api.sendMessage(u.chat_id, CHEERS[Math.floor(Math.random() * CHEERS.length)]);
   }
 
   bot.command("list", async (ctx) => {
