@@ -818,74 +818,250 @@ async function sayUnlessClash(e, day, ok) {
   });
 }
 
-// ПКМ по плану — меню: повтор (каждый день, по будням, каждую неделю, раз в две недели, каждый месяц, без повтора)
-// и быстрые действия (на завтра — перенести или копия, состоялось, убрать). Повтор — POST /api/events/:id/repeat:
-// копии на 8 недель вперёд раскладывает сервер и дальше досоздаёт сам.
-const WEEKDAY_ACC = ["воскресенье", "понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"];
-const REPEAT_SAID = { daily: "каждый день", weekdays: "по будням", weekly: "каждую неделю", biweekly: "раз в две недели", monthly: "каждый месяц" };
+// ПКМ по плану — меню: «🔁 Повторять…» (окно настройки) и быстрые действия (на завтра — перенести или копия, состоялось, убрать).
+// Окно повтора: время, как часто (дни, дни недели, месяц), каждые N, дни недели, сколько раз (без конца, N раз, до даты),
+// внизу — ближайшие даты. Сохранить — POST /api/events/:id/repeat: копии раскладывает сервер (без конца — на 8 недель вперёд
+// и дальше сам). После — горничная показывает, на сколько и по каким дням создала, пупырками, как у курса.
 let planMenu = null;
 function closePlanMenu() {
-  planMenu?.remove();
+  if (!planMenu) return;
+  planMenu.remove();
   planMenu = null;
+  clockHover = false;
+  hideClockLater();
 }
-function repeatOf(e) {
-  if (e.repeat) return e.repeat;
-  if (!e.series) return "";
-  return [...(data?.events ?? []), ...(data?.upcoming ?? [])].find((x) => x.id === e.series)?.repeat || "series";
+const WD_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const WD_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+const plural = (n, one, few, many) => (n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many);
+const wdOf = (day) => new Date(`${day}T12:00:00Z`).getUTCDay();
+const shortDay = (day) => {
+  const [, m, d] = day.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1].slice(0, 3)}`;
+};
+
+// Настройка повтора — как на сервере (repeat.ts): старые строки и JSON.
+function specOf(e) {
+  const r = e?.repeat;
+  if (!r) return null;
+  const dow = wdOf(e.date_iso);
+  const old = { daily: { kind: "day", every: 1 }, weekdays: { kind: "week", every: 1, days: [1, 2, 3, 4, 5] }, weekly: { kind: "week", every: 1, days: [dow] },
+    biweekly: { kind: "week", every: 2, days: [dow] }, monthly: { kind: "month", every: 1 } };
+  if (old[r]) return old[r];
+  try {
+    return JSON.parse(r);
+  } catch {
+    return null;
+  }
 }
+function headOf(e) {
+  if (e.repeat || !e.series) return e;
+  return [...(data?.events ?? []), ...(data?.upcoming ?? []), ...[...farPlans.values()].flat()].find((x) => x.id === e.series) ?? null;
+}
+/** Даты после start по настройке, не дальше last (как seriesDates на сервере). */
+function seriesDates(start, spec, last) {
+  const out = [];
+  const end = spec.until && spec.until < last ? spec.until : last;
+  const room = spec.count ? spec.count - 1 : Infinity;
+  if (spec.kind === "month") {
+    const [y0, m0, d0] = start.split("-").map(Number);
+    for (let i = spec.every; out.length < room; i += spec.every) {
+      const y = y0 + Math.floor((m0 - 1 + i) / 12);
+      const m = ((m0 - 1 + i) % 12) + 1;
+      const dd = Math.min(d0, new Date(Date.UTC(y, m, 0)).getUTCDate());
+      const day = `${y}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+      if (day > end) break;
+      out.push(day);
+    }
+    return out;
+  }
+  if (spec.kind === "day") {
+    for (let day = dayAfter(start, spec.every); day <= end && out.length < room; day = dayAfter(day, spec.every)) out.push(day);
+    return out;
+  }
+  const days = new Set(spec.days?.length ? spec.days : [wdOf(start)]);
+  const monday = dayAfter(start, -((wdOf(start) + 6) % 7));
+  for (let day = dayAfter(start, 1); day <= end && out.length < room; day = dayAfter(day, 1)) {
+    const week = Math.floor((Date.parse(day) - Date.parse(monday)) / (7 * 864e5));
+    if (week % spec.every === 0 && days.has(wdOf(day))) out.push(day);
+  }
+  return out;
+}
+/** «по пн, ср, пт», «каждый день», «раз в 2 недели по вт» … */
+function howOften(spec, day) {
+  if (spec.kind === "day") return spec.every === 1 ? "каждый день" : `каждые ${spec.every} ${plural(spec.every, "день", "дня", "дней")}`;
+  if (spec.kind === "month") return `${spec.every === 1 ? "каждый месяц" : `раз в ${spec.every} ${plural(spec.every, "месяц", "месяца", "месяцев")}`}, ${Number(day.slice(8))}-го`;
+  const d = [...new Set(spec.days?.length ? spec.days : [wdOf(day)])];
+  const set = d.sort((a, b) => WD_ORDER.indexOf(a) - WD_ORDER.indexOf(b)).join();
+  const which = set === "1,2,3,4,5" ? "по будням" : set === "6,0" ? "по выходным" : d.length === 7 ? "каждый день" : `по ${d.map((x) => WD_SHORT[x]).join(", ")}`;
+  return spec.every === 1 ? which : `${which}, раз в ${spec.every} ${plural(spec.every, "неделю", "недели", "недель")}`;
+}
+function howLong(spec) {
+  return spec.count ? `${spec.count} ${plural(spec.count, "раз", "раза", "раз")}` : spec.until ? `до ${shortDay(spec.until)}` : "без конца";
+}
+
 function openPlanMenu(e, li, x, y) {
   closePlanMenu();
-  const d = new Date(`${e.date_iso}T12:00:00Z`);
-  const now = repeatOf(e);
-  const item = (act, text, on = false) => `<button type="button" data-act="${act}"${on ? ` class="on"` : ""}>${text}</button>`;
+  const head = headOf(e);
+  const spec = head && specOf(head);
+  const item = (act, text) => `<button type="button" data-act="${act}">${text}</button>`;
   const menu = document.createElement("div");
   menu.className = "pl-menu";
-  menu.innerHTML = `<div class="pl-menu-head">🔁 Повторять</div>`
-    + item("r:daily", "Каждый день", now === "daily")
-    + item("r:weekdays", "По будням", now === "weekdays")
-    + item("r:weekly", `Каждую неделю <span>в ${WEEKDAY_ACC[d.getUTCDay()]}</span>`, now === "weekly")
-    + item("r:biweekly", "Раз в две недели", now === "biweekly")
-    + item("r:monthly", `Каждый месяц <span>${d.getUTCDate()}-го</span>`, now === "monthly")
-    + (now ? item("r:", "Больше не повторять") : "")
+  menu.innerHTML = item("repeat", spec ? `🔁 Повтор <span>${esc(howOften(spec, head.date_iso))}</span>` : "🔁 Повторять…")
     + `<hr>`
     + item("move", "↪ Перенести на завтра")
     + item("copy", "⧉ Копия на завтра")
     + (e.status === "active" || !e.status ? item("done", "✓ Состоялось") + item("cancelled", "× Убрать из планов") : "");
+  showPlanMenu(menu, x, y);
+  menu.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-act]");
+    if (!b) return;
+    const act = b.dataset.act;
+    closePlanMenu();
+    if (act === "repeat") return openRepeat(e);
+    if (act === "move") return movePlan(e, dayAfter(e.date_iso, 1), li);
+    if (act === "copy") return copyPlan(e, dayAfter(e.date_iso, 1));
+    setPlanStatus(e.id, act);
+  });
+}
+function showPlanMenu(menu, x, y) {
   document.body.appendChild(menu);
   const w = menu.offsetWidth;
   const h = menu.offsetHeight;
   menu.style.left = `${Math.max(4, Math.min(x, innerWidth - w - 4))}px`;
   menu.style.top = `${Math.max(4, Math.min(y, innerHeight - h - 4))}px`;
   planMenu = menu;
+  keepIn(menu);
+  // Пока меню или окно открыто — панель планов не прячется.
   clockHover = true;
   menu.addEventListener("mouseenter", () => { clockHover = true; });
-  menu.addEventListener("mouseleave", () => { clockHover = false; hideClockLater(); });
-  menu.addEventListener("click", async (ev) => {
-    const b = ev.target.closest("[data-act]");
+}
+
+/** Окно выросло (новые строки) — не уходить за низ экрана. */
+function keepIn(menu) {
+  const r = menu.getBoundingClientRect();
+  if (r.bottom > innerHeight - 4) menu.style.top = `${Math.max(4, innerHeight - r.height - 4)}px`;
+}
+
+// --- окно повтора ---
+function openRepeat(e) {
+  const head = headOf(e) ?? e;
+  const was = specOf(head);
+  const dow = wdOf(e.date_iso);
+  const st = {
+    kind: was?.kind ?? "week",
+    every: was?.every ?? 1,
+    days: new Set(was?.days?.length ? was.days : [dow]),
+    end: was?.count ? "count" : was?.until ? "until" : "never",
+    count: was?.count ?? 10,
+    until: was?.until ?? dayAfter(e.date_iso, 30),
+    time: e.time ?? "",
+    endTime: e.end_time ?? "",
+  };
+  const box = document.createElement("div");
+  box.className = "pl-menu rp-box";
+  const spec = () => ({
+    kind: st.kind,
+    every: st.every,
+    ...(st.kind === "week" ? { days: [...st.days] } : {}),
+    count: st.end === "count" ? st.count : null,
+    until: st.end === "until" ? st.until : null,
+  });
+  const seg = (name, val, text) => `<button type="button" data-${name}="${val}"${st[name] === val ? ` class="on"` : ""}>${text}</button>`;
+  const unit = () => st.kind === "day" ? plural(st.every, "день", "дня", "дней") : st.kind === "week" ? plural(st.every, "неделю", "недели", "недель") : plural(st.every, "месяц", "месяца", "месяцев");
+  const draw = () => {
+    const sp = spec();
+    const next = seriesDates(e.date_iso, sp, dayAfter(e.date_iso, 400));
+    const shown = next.slice(0, 6).map((d) => `${WD_SHORT[wdOf(d)]} ${shortDay(d)}`).join(" · ");
+    const total = sp.count || sp.until ? next.length + 1 : null;
+    box.innerHTML = `
+      <div class="rp-top"><b>🔁 Повтор</b><span class="rp-name">«${esc(e.title)}»</span><button type="button" class="rp-x" data-close title="Закрыть">✕</button></div>
+      <label class="rp-row"><span>Время</span><span class="rp-time"><input type="time" data-in="time" value="${esc(st.time)}"> – <input type="time" data-in="endTime" value="${esc(st.endTime)}"></span></label>
+      <div class="rp-row"><span>Как часто</span><span class="rp-seg">${seg("kind", "day", "Дни")}${seg("kind", "week", "Неделя")}${seg("kind", "month", "Месяц")}</span></div>
+      <div class="rp-row"><span>Каждые</span><span class="rp-step"><button type="button" data-every="-1">−</button><b>${st.every}</b><button type="button" data-every="1">+</button> ${unit()}</span></div>
+      ${st.kind === "week" ? `<div class="rp-row"><span>Дни</span><span class="rp-days">${WD_ORDER.map((d) => `<button type="button" data-day="${d}"${st.days.has(d) ? ` class="on"` : ""}>${WD_SHORT[d]}</button>`).join("")}</span></div>
+        <div class="rp-row rp-quick"><span></span><span><button type="button" data-preset="work">будни</button><button type="button" data-preset="weekend">выходные</button><button type="button" data-preset="all">все</button></span></div>` : ""}
+      <div class="rp-row"><span>Сколько</span><span class="rp-seg">${seg("end", "never", "Без конца")}${seg("end", "count", "Раз")}${seg("end", "until", "До даты")}</span></div>
+      ${st.end === "count" ? `<div class="rp-row"><span></span><span class="rp-step"><button type="button" data-count="-1">−</button><b>${st.count}</b><button type="button" data-count="1">+</button> ${plural(st.count, "раз", "раза", "раз")} вместе с этим</span></div>` : ""}
+      ${st.end === "until" ? `<div class="rp-row"><span></span><span><input type="date" data-in="until" min="${dayAfter(e.date_iso, 1)}" value="${esc(st.until)}"></span></div>` : ""}
+      <div class="rp-sum"><b>${esc(howOften(sp, e.date_iso))}${st.time ? ` в ${esc(st.time)}` : ""}</b> · ${esc(total ? `${total} ${plural(total, "раз", "раза", "раз")}` : "без конца")}
+        <div>${next.length ? `Дальше: ${esc(shown)}${next.length > 6 ? " …" : ""}` : "Повторов не будет — поменяйте дни или срок."}</div></div>
+      <div class="rp-btns">${was ? `<button type="button" class="ghost" data-stop>Не повторять</button>` : ""}<span></span>
+        <button type="button" class="ghost" data-close>Отмена</button><button type="button" class="rp-ok" data-save${next.length ? "" : " disabled"}>Повторять</button></div>`;
+  };
+  draw();
+  const r = $("#planClock").getBoundingClientRect();
+  showPlanMenu(box, r.left + Math.max(0, (r.width - 300) / 2), r.top + 40);
+  box.addEventListener("input", (ev) => {
+    const k = ev.target.dataset.in;
+    if (!k) return;
+    st[k] = ev.target.value;
+    if (k === "until" && st.until) draw();
+  });
+  box.addEventListener("change", (ev) => { if (ev.target.dataset.in) { draw(); keepIn(box); } });
+  box.addEventListener("click", async (ev) => {
+    const b = ev.target.closest("button");
     if (!b) return;
-    closePlanMenu();
-    const act = b.dataset.act;
-    const tomorrow = dayAfter(e.date_iso, 1);
-    if (act.startsWith("r:")) return repeatPlan(e, act.slice(2));
-    if (act === "move") return movePlan(e, tomorrow, li);
-    if (act === "copy") return copyPlan(e, tomorrow);
-    setPlanStatus(e.id, act);
+    const d = b.dataset;
+    if ("close" in d) return closePlanMenu();
+    if (d.kind) st.kind = d.kind;
+    if (d.end) st.end = d.end;
+    if (d.every) st.every = Math.max(1, Math.min(12, st.every + Number(d.every)));
+    if (d.count) st.count = Math.max(2, Math.min(100, st.count + Number(d.count)));
+    if (d.day) {
+      const n = Number(d.day);
+      if (st.days.has(n) && st.days.size > 1) st.days.delete(n);
+      else st.days.add(n);
+    }
+    if (d.preset) st.days = new Set(d.preset === "work" ? [1, 2, 3, 4, 5] : d.preset === "weekend" ? [6, 0] : WD_ORDER);
+    if ("stop" in d) {
+      closePlanMenu();
+      return repeatPlan(e, null);
+    }
+    if ("save" in d) {
+      if (st.time && st.endTime && st.endTime <= st.time) return say("Конец раньше начала — поправьте время.", { ms: 4000, emotion: "worried" });
+      closePlanMenu();
+      return repeatPlan(e, spec(), st.time && st.time !== e.time || (st.time && (st.endTime || null) !== (e.end_time || null)) ? st : null);
+    }
+    popTone(1, { vol: 0.06, soft: true });
+    draw();
+    keepIn(box);
   });
 }
-async function repeatPlan(e, kind) {
+async function repeatPlan(e, sp, time) {
   try {
-    const r = await maid.api("POST", `/api/events/${e.id}/repeat`, { repeat: kind });
-    popTone(kind ? 3 : -1, { soft: !kind });
-    say(kind
-      ? `Теперь «${e.title}» ${REPEAT_SAID[kind]}${e.time ? ` в ${e.time}` : ""} 🔁 Расписала на 8 недель вперёд.`
-      : `«${e.title}» больше не повторяется${r.removed ? ` — убрала ${r.removed} будущих` : ""}.`, { ms: 5000, mood: "write", emotion: "happy" });
+    if (time) await maid.api("POST", `/api/events/${e.id}`, { time: time.time, end_time: time.endTime || null });
+    const at = time?.time ?? e.time;
+    const r = await maid.api("POST", `/api/events/${e.id}/repeat`, { repeat: sp });
     farPlans.clear();
     maid.changed();
+    if (!sp) {
+      popTone(-1, { soft: true });
+      return say(`«${e.title}» больше не повторяется${r.removed ? ` — убрала ${r.removed} ${plural(r.removed, "будущий", "будущих", "будущих")}` : ""}.`, { ms: 5000, mood: "write" });
+    }
+    showSeriesMade(e, sp, at, r);
   } catch (err) {
     const msg = String(err?.message ?? err);
-    say(/нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет повторять планы — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+    say(/нет такого адреса|404|repeat/.test(msg) ? "Сервер ещё не умеет так повторять планы — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
   }
 }
+// Плашка «на сколько и по каким дням»: пупырка на каждое занятие (первое — этот план), по одной с «чпоком».
+function showSeriesMade(e, sp, at, r) {
+  const all = [e.date_iso, ...r.dates];
+  const total = all.length;
+  const limit = 24;
+  const tail = r.endless ? "дальше — сама, без конца" : `${shortDay(all[0])} — ${shortDay(all.at(-1))}`;
+  say(`Готово! «${e.title}» — ${howOften(sp, e.date_iso)}${at ? ` в ${at}` : ""} 🔁`, { ms: 10000, mood: "write", emotion: "happy" });
+  $("#bubbleCards").innerHTML = `<div class="course rp-made${total > 14 ? " dense" : ""}">
+    <div class="c-head"><span class="c-ico">📅</span><span class="c-title">${r.endless ? `${total} ${plural(total, "занятие", "занятия", "занятий")} на 8 недель` : `${total} ${plural(total, "раз", "раза", "раз")}`}</span>
+      <span class="c-score">${r.endless ? "∞" : `<b>0</b> / ${total}`}</span></div>
+    <div class="pips">${all.slice(0, limit).map((d, i) => `<i class="pip ${i ? "wait" : "today"} rise" title="${esc(`${WD_SHORT[wdOf(d)]}, ${shortDay(d)}`)}"></i>`).join("")}${total > limit ? `<i class="rp-more">+${total - limit}</i>` : ""}</div>
+    <div class="rp-span">${esc(tail)}</div></div>`;
+  $("#bubbleCards").querySelectorAll(".pip").forEach((p, i) => {
+    p.style.animationDelay = `${120 + i * 55}ms`;
+    if (i < 14) setTimeout(() => popTone(i, { vol: 0.14, soft: true }), 120 + i * 55);
+  });
+}
+
 $("#planClock").addEventListener("contextmenu", (ev) => {
   const li = ev.target.closest(".pl-card[data-id]");
   if (!li || li.matches(".gone, .leaving")) return;

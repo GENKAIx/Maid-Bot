@@ -624,3 +624,38 @@ body.quick { background: transparent; }
 .pl-menu button.on span { color: #e6e0ff; }
 .pl-menu hr { margin: 4px 6px; border: 0; border-top: 1px solid rgba(255, 255, 255, .1); }
 .pl-rep { font-style: normal; font-size: 11px; opacity: .75; }
+
+/* Окно повтора плана (ПКМ → «Повторять…»). */
+.pl-menu.rp-box { width: 326px; padding: 10px 12px 11px; display: grid; gap: 8px; }
+.rp-box button { width: auto; display: inline-flex; justify-content: center; padding: 4px 9px; background: rgba(255, 255, 255, .06); }
+.rp-top { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.rp-name { color: #a99fc4; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.rp-box .rp-x { padding: 2px 6px; background: none; color: #a99fc4; }
+.rp-row { display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 12.5px; }
+.rp-row > span:first-child { color: #a99fc4; font-size: 12px; }
+.rp-seg { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(0, 0, 0, .22); }
+.rp-seg button { flex: 1; min-width: 0; padding: 4px 2px; background: none; font-size: 12px; }
+.rp-step { display: flex; align-items: center; gap: 6px; }
+.rp-step button { width: 24px; height: 24px; padding: 0; border-radius: 50%; }
+.rp-step b { min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.rp-days { display: flex; gap: 3px; }
+.rp-days button { width: 30px; flex: none; height: 26px; padding: 0; font-size: 11.5px; }
+.rp-quick button { padding: 2px 7px; margin-right: 3px; font-size: 11px; background: none; color: #a99fc4; }
+.rp-quick button:hover { color: #e9e6f5; }
+.rp-time { display: flex; min-width: 0; align-items: center; gap: 5px; color: #a99fc4; }
+.rp-box input { min-width: 0; padding: 3px 6px; border-radius: 7px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(0, 0, 0, .25); color: #e9e6f5; font: inherit;
+  color-scheme: dark; }
+.rp-sum { padding: 7px 9px; border-radius: 9px; background: rgba(108, 92, 231, .14); font-size: 12px; line-height: 1.4; }
+.rp-sum b { color: #e6e0ff; }
+.rp-sum div { color: #a99fc4; margin-top: 2px; }
+.rp-btns { display: flex; gap: 6px; align-items: center; }
+.rp-btns > span { flex: 1; }
+.rp-btns .ghost { background: none; color: #a99fc4; }
+.rp-btns .rp-ok { background: #6c5ce7; color: #fff; font-weight: 650; padding: 5px 14px; }
+.rp-btns .rp-ok:hover { background: #7b6cf0; }
+.rp-btns .rp-ok:disabled { opacity: .4; cursor: default; }
+/* Плашка «на сколько и по каким дням» — в пузыре горничной. */
+.course.rp-made { margin-top: 6px; }
+.course.rp-made::after { display: none; }
+.rp-more { font-style: normal; font-size: 11px; color: var(--muted); align-self: center; margin-left: 2px; }
+.rp-span { margin-top: 6px; font-size: 11.5px; color: var(--muted); }
