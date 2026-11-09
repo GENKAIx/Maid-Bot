@@ -177,7 +177,16 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   }
   if (sound) play(sound);
   clearTimeout(bubbleTimer);
-  if (ms) bubbleTimer = setTimeout(hideBubble, ms + changes.length * 900);
+  // Длинный текст висит дольше (время на чтение), а под курсором не пропадает вовсе — см. hideBubbleWhenFree.
+  if (ms) bubbleTimer = setTimeout(hideBubbleWhenFree, ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55));
+}
+
+// Облачко ждёт, пока курсор на нём, и ещё немного после того, как его увели.
+let bubbleLeftAt = 0;
+$("#bubble").addEventListener("mouseleave", () => (bubbleLeftAt = Date.now()));
+function hideBubbleWhenFree() {
+  if ($("#bubble").matches(":hover") || Date.now() - bubbleLeftAt < 2500) return (bubbleTimer = setTimeout(hideBubbleWhenFree, 400));
+  hideBubble();
 }
 
 // --- чат с горничной ---
