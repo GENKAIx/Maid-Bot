@@ -51,12 +51,11 @@ function inboxTidy() {
     drawInbox();
   }
 }
-// Значки разбросаны вразнобой в прямоугольнике над панелью (от его правого нижнего угла, у горничной): место, размер, наклон
-// и покачивание — от номера напоминания (у одного и того же — всегда одни), значки не налезают друг на друга.
+// Значки разбросаны вразнобой в прямоугольнике #inbox (CSS: над панелью, от её левого края до горничной). Прямоугольник
+// делится на клетки (сколько значков — столько клеток или чуть больше), каждому значку — своя клетка в случайном порядке,
+// внутри неё случайный сдвиг, размер, наклон и покачивание. Так значки не выходят за прямоугольник и не налезают друг на друга.
 const IB_SHOWN = 6;
-const IB_W = 190;
-const IB_H = 112;
-const ibPlace = new Map(); // id → { x, y, s, r, t, d, ax, ay }
+const IB_PAD = 6; // запас от края клетки: покачивание до 5 px и наклон
 function ibRand(seed) {
   let h = 2166136261;
   for (const c of String(seed)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
@@ -66,20 +65,35 @@ function ibRand(seed) {
     return ((h ^= h >>> 16) >>> 0) / 4294967296;
   };
 }
-function ibSpot(id, taken) {
-  const rnd = ibRand(id);
-  const s = Math.round(46 + rnd() * 12);
-  let best = null;
-  for (let k = 0; k < 40; k++) {
-    const x = -Math.round(rnd() * (IB_W - s));
-    const y = -Math.round(rnd() * (IB_H - s));
-    // Насколько далеко от уже стоящих (по центрам): берём первое свободное место, иначе самое просторное.
-    const room = Math.min(99, ...taken.map((o) => Math.hypot(x - s / 2 - (o.x - o.s / 2), y - s / 2 - (o.y - o.s / 2)) - (s + o.s) / 2));
-    if (!best || room > best.room) best = { x, y, room };
-    if (room >= 2) break;
+function ibLayout(ids, W, H) {
+  const n = ids.length;
+  // Сетка с самыми крупными клетками.
+  let best = { cols: 1, rows: n, cell: 0 };
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    const cell = Math.min(W / cols, H / rows);
+    if (cell > best.cell) best = { cols, rows, cell };
   }
-  return { x: best.x, y: best.y, s, r: Math.round(rnd() * 28 - 14), t: (2.6 + rnd() * 1.8).toFixed(2), d: (rnd() * 2.5).toFixed(2),
-    ax: Math.round(rnd() * 8 - 4), ay: -Math.round(3 + rnd() * 5) };
+  const cw = W / best.cols;
+  const ch = H / best.rows;
+  const order = [...Array(best.cols * best.rows).keys()];
+  const mix = ibRand(ids.join(","));
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(mix() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const out = new Map();
+  ids.forEach((id, i) => {
+    const rnd = ibRand(id);
+    const cell = order[i];
+    const top = Math.min(56, Math.min(cw, ch) - 2 * IB_PAD);
+    const s = Math.max(24, Math.round(top - rnd() * Math.min(12, top * 0.25)));
+    const x = (cell % best.cols) * cw + IB_PAD + rnd() * Math.max(0, cw - s - 2 * IB_PAD);
+    const y = Math.floor(cell / best.cols) * ch + IB_PAD + rnd() * Math.max(0, ch - s - 2 * IB_PAD);
+    out.set(id, { x: Math.round(x), y: Math.round(y), s, r: Math.round(rnd() * 28 - 14), t: (2.6 + rnd() * 1.8).toFixed(2),
+      d: (rnd() * 2.5).toFixed(2), ax: Math.round(rnd() * 8 - 4), ay: -Math.round(3 + rnd() * 2) });
+  });
+  return out;
 }
 function drawInbox(fresh = false) {
   const box = $("#inbox");
@@ -91,8 +105,7 @@ function drawInbox(fresh = false) {
   const shown = extra ? list.slice(0, IB_SHOWN - 1) : list;
   const keep = new Set(shown.map((n) => String(n.id)));
   for (const b of [...box.children]) if (!keep.has(b.dataset.id)) b.remove();
-  for (const id of [...ibPlace.keys()]) if (!keep.has(id) && id !== "more") ibPlace.delete(id);
-  if (!extra) ibPlace.delete("more");
+  const place = ibLayout([...shown.map((n) => String(n.id)), ...(extra ? ["more"] : [])], box.clientWidth || 160, box.clientHeight || 170);
   const make = (id, icon, title, count = "") => {
     let b = box.querySelector(`[data-id="${id}"]`);
     if (!b) {
@@ -104,8 +117,7 @@ function drawInbox(fresh = false) {
     }
     b.innerHTML = `<img src="../assets/inbox/${icon}.png" alt="" draggable="false" />${count ? `<span class="ib-n">${count}</span>` : ""}`;
     b.title = title;
-    if (!ibPlace.has(id)) ibPlace.set(id, ibSpot(id, [...ibPlace.values()]));
-    const p = ibPlace.get(id);
+    const p = place.get(id);
     for (const [k, v] of [["x", `${p.x}px`], ["y", `${p.y}px`], ["s", `${p.s}px`], ["r", `${p.r}deg`], ["t", `${p.t}s`], ["d", `${p.d}s`], ["ax", `${p.ax}px`], ["ay", `${p.ay}px`]])
       b.style.setProperty(`--${k}`, v);
     return b;

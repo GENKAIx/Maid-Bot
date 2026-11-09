@@ -437,13 +437,13 @@ body.quick { background: transparent; }
 .day-chip.has-date::after { content: ""; position: absolute; top: 3px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: #ffc45c; }
 
 /* Непрочитанные напоминания (inbox.js): стайка значков слева от горничной, прямо над панелью */
-.inbox { position: absolute; z-index: 4; right: calc(var(--maid-w, 196px) - 17px); bottom: calc(var(--peek, 26px) + 26px); width: 0; height: 0; pointer-events: none; }
-.stage.side-left .inbox { right: auto; left: calc(100% - 332px + var(--maid-w, 196px) + 58px); }
-.stage.side-left .inbox .ib { translate: calc(-1 * var(--x)) var(--y); }
+/* Прямоугольник над панелью: от её левого края до горничной, внутри него inbox.js раскладывает значки. */
+.inbox { position: absolute; z-index: 4; left: calc(100% - 330px); right: calc(var(--maid-w, 196px) + 10px); bottom: calc(var(--peek, 26px) + 6px); height: 176px; pointer-events: none; }
+.stage.side-left .inbox { left: calc(100% - 330px + var(--maid-w, 196px) + 10px); right: 10px; }
 .inbox.hidden { display: none; }
 .inbox.away .ib { opacity: 0; pointer-events: none; }
 /* Значок — сама картинка эмодзи (assets/inbox), без кружка; у каждого свой размер, наклон и покачивание (inbox.js). */
-.ib { position: absolute; right: 0; bottom: 0; translate: var(--x) var(--y); width: var(--s, 44px); height: var(--s, 44px); padding: 0; border: 0;
+.ib { position: absolute; left: var(--x); top: var(--y); width: var(--s, 44px); height: var(--s, 44px); padding: 0; border: 0;
   background: none; cursor: pointer; pointer-events: auto; transition: opacity .2s, scale .15s; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .45));
   rotate: var(--r, 0deg); animation: ibFloat var(--t, 3.2s) ease-in-out var(--d, 0s) infinite; }
 .ib img { display: block; width: 100%; height: 100%; pointer-events: none; }
