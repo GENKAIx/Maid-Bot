@@ -767,3 +767,7 @@ body.quick { background: transparent; }
   background: radial-gradient(circle, rgba(230, 222, 255, .75), rgba(230, 222, 255, 0) 70%); }
 /* В свёрнутом виде горничная прячется за карточку и не ловит мышь. */
 .stage.maid-away .maid { visibility: hidden; }
+/* Во время свёртки/развёртки: панели без CSS-переходов (не спорят с анимацией), линия обрезки горничной — как у развёрнутой. */
+.stage.fold-anim .w, .stage.fold-anim .mini { transition: none; will-change: transform, opacity; }
+.stage.fold-anim .maid { will-change: transform, opacity; }
+.stage.folded.fold-anim .perch { --peek: inherit; }

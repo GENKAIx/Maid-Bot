@@ -644,6 +644,8 @@ function foldAnimated(on) {
   const r0 = from.getBoundingClientRect();
   const m0 = $("#maid").getBoundingClientRect();
   // Уходящая панель остаётся копией на своём месте, пока её не сменит новая.
+  const stage = $("#stage");
+  stage.classList.add("fold-anim"); // на время анимации: без CSS-переходов панелей и с обычной линией обрезки горничной
   const ghost = from.cloneNode(true);
   ghost.removeAttribute("id");
   ghost.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
@@ -658,7 +660,8 @@ function foldAnimated(on) {
   const dy = m0.top - m1.top; // где горничная была относительно нового места
   const maidEl = $("#maid");
   const hideAt = m1.height + 24; // настолько ниже своего места горничная целиком за панелью
-  if (on) maidEl.style.visibility = "visible"; // до конца нырка — видна
+  const alpha = String(cfg.opacity); // панели прозрачны по настройке — анимация кончается на ней, а не на 1
+  if (on) maidEl.style.visibility = "visible"; // до конца ухода — видна
   const anims = [];
   const run = (el, kf, opt) => {
     const a = el.animate(kf, opt);
@@ -679,53 +682,61 @@ function foldAnimated(on) {
       { height: `${h1}px`, top: `${bottom - h1}px`, borderRadius: "22px", offset: 1 },
     ], { duration: 560, delay: 90, easing: "cubic-bezier(.45, 0, .2, 1)", fill: "forwards" });
     run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 560, fill: "forwards" });
-    run(to, [{ opacity: 0, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1.02)", offset: 0.6 }, { opacity: 1, transform: "none" }],
+    run(to, [{ opacity: 0, transform: "scale(.97)" }, { opacity: alpha, transform: "scale(1.02)", offset: 0.6 }, { opacity: alpha, transform: "none" }],
       { duration: 280, delay: 520, easing: "ease-out", fill: "backwards" });
-    // Горничная: подпрыгивает и ныряет за карточку головой последней.
+    // Горничная едет вниз на верхнем краю сжимающейся панели (низ картинки всё время закрыт панелью), потом тает в карточке.
+    const ride = (hk) => `translateY(${(dy * (hk - h1)) / Math.max(1, h0 - h1)}px)`;
     run(maidEl, [
-      { transform: `translateY(${dy}px)`, offset: 0 },
-      { transform: `translateY(${dy - 24}px) scale(.94, 1.07)`, offset: 0.25, easing: "cubic-bezier(.5, 0, .9, .5)" },
-      { transform: "translateY(0) scale(.92, 1.1)", offset: 0.62, easing: "cubic-bezier(.6, 0, 1, .6)" },
-      { transform: `translateY(${hideAt}px) scale(.88, 1.14)`, offset: 1 },
-    ], { duration: 680, delay: 40, fill: "forwards" }).onfinish = () => (maidEl.style.visibility = "");
+      { transform: ride(h0), offset: 0 },
+      { transform: ride(h1 * 0.82), offset: 0.62 },
+      { transform: ride(h1 * 1.07), offset: 0.8 },
+      { transform: "none", offset: 1 },
+    ], { duration: 560, delay: 90, easing: "cubic-bezier(.45, 0, .2, 1)", fill: "both" });
+    const vanish = { duration: 240, delay: 640, easing: "cubic-bezier(.5, 0, .75, .4)", fill: "forwards" };
+    run(maidEl, [{ transform: "none" }, { transform: "scale(.3)" }], { ...vanish, composite: "add" });
+    run(maidEl, [{ opacity: 1 }, { opacity: 0 }], vanish).onfinish = () => {
+      maidEl.style.visibility = "";
+      if (folding === stop) stage.classList.remove("fold-anim");
+    };
     setTimeout(() => {
       if (folding !== stop) return;
       popTone(1, { vol: 0.07, soft: true });
       dust(m1.left + m1.width / 2, r1.top);
       run(to, [{ transform: "none" }, { transform: "translateY(3px) scale(1.01, .98)" }, { transform: "none" }], { duration: 260, easing: "ease-out", composite: "add" });
-    }, 40 + 680 * 0.66);
+    }, 700);
     popTone(5, { vol: 0.05, soft: true });
   } else {
     // Карточка исчезает, панель вырастает из неё вверх с перелётом.
     run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: "forwards" });
-    const cut = Math.max(0, r1.height - r0.height);
+    // Панель вырастает из карточки: только transform и прозрачность (дёшево, без перерисовки размытого фона), один мягкий перелёт.
+    const k = Math.min(1, r0.height / r1.height);
+    to.style.transformOrigin = "50% 100%";
     run(to, [
-      { clipPath: `inset(${cut}px 0 0 0 round 22px)`, offset: 0 },
-      { clipPath: "inset(-14px 0 0 0 round 16px)", offset: 0.7 },
-      { clipPath: "inset(6px 0 0 0 round 16px)", offset: 0.86 },
-      { clipPath: "inset(0 0 0 0 round 16px)", offset: 1 },
-    ], { duration: 520, delay: 120, easing: "cubic-bezier(.3, .7, .3, 1)", fill: "backwards" });
-    [...to.children].filter((c) => c.offsetParent).forEach((c, i) => run(c, [{ transform: "translateY(18px)", opacity: 0 }, { transform: "none", opacity: 1 }],
-      { duration: 320, delay: 260 + i * 45, easing: "cubic-bezier(.2, .9, .3, 1.2)", fill: "backwards" }));
-    // Горничная выскакивает из-за выросшей панели, взлетает и мягко садится на её край.
+      { transform: `scaleY(${k}) scaleX(.96)`, opacity: 0, offset: 0, easing: "cubic-bezier(.25, .8, .35, 1)" },
+      { transform: "scaleY(1.015)", opacity: alpha, offset: 0.7, easing: "cubic-bezier(.4, 0, .4, 1)" },
+      { transform: "none", opacity: alpha, offset: 1 },
+    ], { duration: 520, delay: 60, fill: "backwards" });
+    [...to.children].filter((c) => c.offsetParent).forEach((c, i) => run(c, [{ transform: "translateY(14px)", opacity: 0 }, { transform: "none", opacity: 1 }],
+      { duration: 340, delay: 220 + i * 40, easing: "cubic-bezier(.2, .8, .3, 1)", fill: "backwards" }));
+    // Горничная выскакивает из-за выросшей панели, чуть взлетает и плавно садится на край — без пружинок в конце.
     run(maidEl, [
-      { transform: `translateY(${hideAt}px) scale(.9, 1.12)`, offset: 0 },
-      { transform: `translateY(${hideAt}px) scale(.9, 1.12)`, offset: 0.2, easing: "cubic-bezier(.15, .8, .35, 1)" },
-      { transform: "translateY(-34px) scale(.94, 1.08)", offset: 0.55, easing: "cubic-bezier(.5, 0, .9, .5)" },
-      { transform: "translateY(0) scale(1.12, .88)", offset: 0.76 },
-      { transform: "translateY(-5px) scale(.98, 1.03)", offset: 0.88 },
+      { transform: `translateY(${hideAt}px)`, offset: 0 },
+      { transform: `translateY(${hideAt}px)`, offset: 0.18, easing: "cubic-bezier(.2, .75, .35, 1)" },
+      { transform: "translateY(-14px) scale(.98, 1.03)", offset: 0.62, easing: "cubic-bezier(.45, 0, .35, 1)" },
       { transform: "none", offset: 1 },
-    ], { duration: 860, easing: "ease-out", fill: "backwards" });
+    ], { duration: 820, fill: "backwards" });
     setTimeout(() => {
       if (folding !== stop) return;
       popTone(6, { vol: 0.07, soft: true });
       dust(m1.left + m1.width / 2, r1.top);
-    }, 860 * 0.3);
-    setTimeout(() => folding === stop && popTone(9, { vol: 0.06, soft: true }), 660);
+    }, 820 * 0.3);
+    setTimeout(() => folding === stop && popTone(9, { vol: 0.06, soft: true }), 820);
   }
   const stop = () => {
     anims.forEach((a) => a.cancel());
     maidEl.style.visibility = "";
+    stage.classList.remove("fold-anim");
+    to.style.transformOrigin = "";
     ghost.remove();
     if (folding === stop) folding = null;
   };
