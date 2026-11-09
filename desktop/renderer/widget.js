@@ -392,7 +392,7 @@ function render() {
   $("#next").dataset.day = next?.date_iso ?? "";
   if (next) {
     const m = next.date_iso === data.day ? minutesUntil(next) : null;
-    const when = m === null ? (next.date_iso === data.day ? "сегодня" : humanDay(next.date_iso)) : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : `в ${next.time}`;
+    const when = m === null ? (next.date_iso === data.day ? "сегодня" : humanDay(next.date_iso)) : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : next.time;
     $("#next").innerHTML = `<b>${esc(when)}</b> · ${esc(next.title)}`;
   } else $("#next").innerHTML = `<span class="muted">Планов нет</span>`;
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
@@ -682,7 +682,7 @@ function miniPlan() {
     const [eh, em] = (e.end_time ?? "").split(":").map(Number);
     const end = e.end_time ? eh * 60 + em : start + 30;
     if (end <= cur) continue;
-    const when = start <= cur ? "идёт" : start - cur <= 60 ? `через ${start - cur} мин` : `в ${e.time}`;
+    const when = start <= cur ? "идёт" : start - cur <= 60 ? `через ${start - cur} мин` : e.time;
     return { when, title: e.title, soon: start - cur <= 15 };
   }
   return null;

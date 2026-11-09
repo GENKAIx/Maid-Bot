@@ -456,6 +456,7 @@ body.quick { background: transparent; }
 .pl-card:hover { background: rgba(255, 255, 255, .085); }
 .pl-text { flex: 1; min-width: 0; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .pl-when { color: var(--c, var(--accent)); font-weight: 700; font-variant-numeric: tabular-nums; }
+.pl-dash { display: inline-block; margin: 0 .12em; transform: translateY(-.08em); }
 .pl-card.past { opacity: .55; }
 .pl-card.now { background: color-mix(in srgb, var(--c) 16%, rgba(255, 255, 255, .04)); }
 .pl-card.fresh { animation: plFresh 1.4s ease-out; }

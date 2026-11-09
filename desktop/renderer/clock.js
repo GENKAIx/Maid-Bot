@@ -327,7 +327,7 @@ function drawPlanList(box) {
     if (start !== null && (end === null || end <= start)) end = start + NO_END_MIN;
     const past = today && !st && end !== null && end <= nowMin;
     const now = today && !st && start !== null && start <= nowMin && nowMin < end;
-    const when = e.time ? `<b class="pl-when">в ${esc(e.time)}${e.end_time ? `–${esc(e.end_time)}` : ""}</b> · ` : ""; // без времени — только название
+    const when = e.time ? `<b class="pl-when">${timeSpan(e.time, e.end_time)}</b> · ` : ""; // без времени — только название
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
       <button type="button" class="pl-check${st === "done" ? " on" : st === "cancelled" ? " on off" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : st === "cancelled" ? "<i>×</i><b>↺</b>" : ""}</button>`;
     return `<li class="pl-card${st ? ` ${st}` : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
@@ -1019,7 +1019,7 @@ async function movePlan(e, day, li) {
   }
 }
 
-// Сдвиг плана по времени: потянуть время на карточке («в 19:00–20:30») вверх — раньше, вниз — позже, шагом RETIME_STEP минут
+// Сдвиг плана по времени: потянуть время на карточке («19:00–20:30») вверх — раньше, вниз — позже, шагом RETIME_STEP минут
 // на каждые RETIME_PX пикселей; длительность сохраняется, за полночь не уходит. Пока тянешь — новое время на карточке и «+15 мин» рядом;
 // отпустил — сохраняется (POST /api/events/:id {time, end_time}), Esc — отмена. Карточка за пределы времени не тянется — за день тянут её саму.
 const RETIME_STEP = 15;
@@ -1038,7 +1038,11 @@ function retimeShift(r, dy) {
 }
 function retimeLabel(r, start) {
   const end = r.len ? start + r.len : null;
-  return `в ${hhmm(start)}${end !== null ? `–${hhmm(Math.min(end, 1439))}` : ""}`;
+  return timeSpan(hhmm(start), end !== null ? hhmm(Math.min(end, 1439)) : null);
+}
+// Время плана — просто цифры: «16:30», «11:00–12:00». Тире поднято к середине цифр (у шрифта оно на высоте строчных и смотрится провисшим).
+function timeSpan(start, end) {
+  return `${esc(start)}${end ? `<span class="pl-dash">–</span>${esc(end)}` : ""}`;
 }
 $("#planClock").addEventListener("pointerdown", (ev) => {
   const when = ev.target.closest(".pl-when");
@@ -1068,7 +1072,7 @@ document.addEventListener("pointermove", (ev) => {
   }
   if (start === r.now) return;
   r.now = start;
-  r.when.textContent = retimeLabel(r, start);
+  r.when.innerHTML = retimeLabel(r, start);
   const d = start - r.start;
   const abs = Math.abs(d);
   r.badge.textContent = d ? `${d > 0 ? "+" : "−"}${abs >= 60 ? `${Math.floor(abs / 60)} ч${abs % 60 ? ` ${abs % 60} мин` : ""}` : `${abs} мин`}` : "";
