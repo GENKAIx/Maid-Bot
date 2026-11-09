@@ -361,11 +361,11 @@ function render() {
 // --- Сделанные задачи в режиме «прятать» (cfg.doneTasks === "hide") ---
 // Отметил — строка ROW_FADE мс заливается цветом слева направо, улетает вправо, и список смыкается; только тогда отметка уходит
 // на сервер. До этого галочка при наведении — ×: отменить. Мышь вернулась на строку после щелчка — заливка стоит.
-// Счётчик «сделано/всего» у заголовка — щелчок показывает сделанное зачёркнутым на DONE_PEEK мс.
+// Счётчик «сделано/всего» у заголовка — щелчок показывает сделанное зачёркнутым, пока мышь не уйдёт со списка.
 const ROW_FADE = 3000;
 const ROW_FLY = 380;
 const ROW_SHUT = 220;
-const DONE_PEEK = 5000;
+const DONE_PEEK = 30000; // запасной срок: обычно сделанное прячется, когда мышь уходит со списка
 const UNDO_MARK = "<i>✓</i><b>×</b>";
 const UNDO_WINDOW = 3000; // сколько после улёта висит «↶ Вернуть»; отметка уходит на сервер только после него
 let bumpAt = 0; // когда счётчик последний раз получил «+1»
@@ -376,11 +376,12 @@ let showDoneTimer = 0;
 const showingDone = () => Date.now() < showDoneUntil;
 const rowLeaving = (x) => `leaving${x.fly ? " fly" : ""}${x.pausedAt ? " hold" : ""}`;
 const rowEl = (key) => $("#body").querySelector(`li[data-key="${key}"]`);
-function endOfDay() {
-  const d = new Date();
-  d.setHours(23, 59, 59, 999);
-  return d.getTime();
-}
+$("#body").addEventListener("mouseleave", () => {
+  if (!showingDone()) return;
+  clearTimeout(showDoneTimer);
+  showDoneUntil = 0;
+  render();
+});
 function toggleShowDone() {
   clearTimeout(showDoneTimer);
   showDoneUntil = showingDone() ? 0 : Date.now() + DONE_PEEK;
@@ -458,7 +459,7 @@ async function rowCommit(key) {
   }
   const id = Number(key.slice(1));
   const task = key[0] === "t";
-  if (task) { doneNow.set(id, { title: x.title, until: endOfDay() }); countDone(data.day); }
+  if (task) { keepDone(id, x.title); countDone(data.day); }
   else { const h = data?.habits?.find((v) => v.id === id); if (h) h.status = "done"; }
   leavingRows.delete(key);
   render();
@@ -508,6 +509,7 @@ async function load() {
     const fresh = await maid.api("GET", "/api/today");
     const json = JSON.stringify(fresh);
     data = fresh;
+    forgetReopened(data.tasks);
     if (!online) { online = true; settle(); }
     // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.
     if (json === lastJson) return;
@@ -784,7 +786,7 @@ $("#body").addEventListener("click", async (e) => {
       burst(e.target);
       react("done", 4000);
       const li = e.target.closest("li");
-      doneNow.set(Number(id), { title: li.lastElementChild.textContent, until: Date.now() + DONE_SHOWN });
+      keepDone(Number(id), li.lastElementChild.textContent);
       countDone(data.day);
       holdRender = Date.now() + 1100; // список не перерисовывать, пока строка едет вниз
       setTimeout(() => slideDown(li), 420);

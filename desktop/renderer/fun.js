@@ -165,11 +165,37 @@ async function rescue(el, id) {
 }
 
 // --- выполненная задача съезжает вниз ---
-const doneNow = new Map(); // id → { title, until }: только что сделанные, пока сервер их не забыл — внизу списка зачёркнутыми
-const DONE_SHOWN = 90_000;
+// Сделанные сегодня задачи (сервер их уже не отдаёт): id → { title, until } — внизу списка зачёркнутыми / под счётчиком.
+// Живут до конца дня и переживают перезапуск виджета (localStorage).
+const DONE_KEY_NOW = "maid.doneNow";
+const doneNow = new Map(loadDoneNow());
+function loadDoneNow() {
+  try { return JSON.parse(localStorage.getItem(DONE_KEY_NOW)) ?? []; } catch { return []; }
+}
+function endOfDay() {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
+}
+function keepDone(id, title) {
+  doneNow.set(id, { title, until: endOfDay(), at: Date.now() });
+  localStorage.setItem(DONE_KEY_NOW, JSON.stringify([...doneNow]));
+}
+// Задачу вернули в работу (в приложении, в Telegram) — сервер снова отдаёт её открытой: забыть отметку.
+// Первые 15 с не считаются: отметка ещё могла не дойти до сервера.
+function forgetReopened(tasks) {
+  let dropped = false;
+  for (const t of tasks ?? []) {
+    const d = doneNow.get(t.id);
+    if (d && Date.now() - (d.at ?? 0) > 15_000) { doneNow.delete(t.id); dropped = true; }
+  }
+  if (dropped) localStorage.setItem(DONE_KEY_NOW, JSON.stringify([...doneNow]));
+}
 function recentDone() {
   const now = Date.now();
-  for (const [id, t] of doneNow) if (t.until < now) doneNow.delete(id);
+  let dropped = false;
+  for (const [id, t] of doneNow) if (t.until < now) { doneNow.delete(id); dropped = true; }
+  if (dropped) localStorage.setItem(DONE_KEY_NOW, JSON.stringify([...doneNow]));
   return [...doneNow].map(([id, t]) => ({ id, ...t }));
 }
 // Пока строка едет, свежие данные не перерисовывают список — иначе анимация обрывается.
