@@ -9,6 +9,9 @@ let lastNotice = 0;
 let state = "idle"; // idle | think | sleep
 let bubbleTimer = 0;
 // Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
+// Циферблат планов (Часы 12/24) пока выключен: код в clock.js остаётся, в настройках его нет, сохранённый выбор показывается списком.
+const CLOCK_DIAL = false;
+const dialOff = (v) => (!CLOCK_DIAL && (v === "12" || v === "24") ? "list" : v);
 let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
@@ -625,7 +628,7 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: w.plans ?? "list", dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   applyCfg();
   if (prefsOpen) drawPrefs();
 }
@@ -662,7 +665,7 @@ function drawPrefs() {
     <div class="pref"><span>Горничная</span>${seg("side", cfg.side, [["left", "Слева"], ["right", "Справа"], ["none", "Скрыть"]])}</div>
     <div class="pref"><span>Размер горничной</span>${seg("size", cfg.size, [["s", "Меньше"], ["m", "Обычная"], ["l", "Больше"]])}</div>
     <div class="pref"><span>Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%</span><input type="range" id="prefOpacity" min="0.4" max="1" step="0.02" value="${cfg.opacity}" /></div>
-    <div class="pref"><span>Планы дня</span>${seg("clock", cfg.clock, [["list", "Список"], ["12", "Часы 12"], ["24", "Часы 24"], ["off", "Нет"]])}</div>
+    <div class="pref"><span>Планы дня</span>${seg("clock", cfg.clock, [["list", "Список"], ...(CLOCK_DIAL ? [["12", "Часы 12"], ["24", "Часы 24"]] : []), ["off", "Нет"]])}</div>
     <div class="pref"><span>Важные даты</span>${seg("dateLead", String(cfg.dateLead), [["0", "В день"], ["1", "За день"], ["3", "За 3 дня"], ["7", "За неделю"]])}</div>
     <div class="pref"><span>Сделанные задачи</span><div class="done-modes">
       <button type="button" data-dmode="keep" class="dm${cfg.doneTasks === "keep" ? " on" : ""}">
