@@ -24,6 +24,7 @@ export function Login({ onDone }: { onDone: () => void }) {
   const [bot, setBot] = useState<string | null>(null);
   const [mood, setMood] = useState<Mood>("hello");
   const [field, setField] = useState<"" | "login" | "password">("");
+  const [peek, setPeek] = useState(false);
   // Приветствие, потом ждёт; пока поле в фокусе — слушает или «не смотрит» на пароль.
   useEffect(() => { const t = setTimeout(() => setMood((m) => (m === "hello" ? "idle" : m)), 2600); return () => clearTimeout(t); }, []);
   useEffect(() => { MOODS.forEach((m) => (new Image().src = `/maid/${m}.webp`)); }, []);
@@ -56,7 +57,9 @@ export function Login({ onDone }: { onDone: () => void }) {
         <h1>Горничная</h1>
         <p className={`muted login-line ${shown}`} aria-live="polite">{LINES[shown]}</p>
         <label>Логин<input value={login} onChange={(e) => { setLogin(e.target.value); if (mood !== "think" && mood !== "happy") setMood("idle"); }} onFocus={() => setField("login")} onBlur={() => setField("")} autoComplete="username" autoFocus /></label>
-        <label>Пароль<input type="password" value={password} onChange={(e) => { setPassword(e.target.value); if (mood !== "think" && mood !== "happy") setMood("idle"); }} onFocus={() => setField("password")} onBlur={() => setField("")} autoComplete="current-password" /></label>
+        <label>Пароль<span className="pass-wrap"><input type={peek ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); if (mood !== "think" && mood !== "happy") setMood("idle"); }} onFocus={() => setField("password")} onBlur={() => setField("")} autoComplete="current-password" /><button type="button" className="peek" onMouseDown={(e) => e.preventDefault()} onClick={() => setPeek(!peek)} title={peek ? "Скрыть пароль" : "Показать пароль"} aria-label={peek ? "Скрыть пароль" : "Показать пароль"}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{peek && <path d="M4 4l16 16" />}</svg>
+          </button></span></label>
         {error && <div className="form-error">{error}</div>}
         <button className="primary" disabled={busy || !login || !password}>{busy ? "…" : "Войти"}</button>
       </form>
