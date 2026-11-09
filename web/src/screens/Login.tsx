@@ -1,5 +1,20 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { get, post, setToken } from "../api";
+import { ApiError, get, post, setToken } from "../api";
+
+// Экран входа с горничной: она реагирует на то, что происходит (анимации — public/maid, уменьшенные копии из desktop/assets/maid).
+type Mood = "hello" | "idle" | "listen" | "write" | "think" | "sad" | "worried" | "offline" | "happy";
+const MOODS: Mood[] = ["hello", "idle", "listen", "write", "think", "sad", "worried", "offline", "happy"];
+const LINES: Record<Mood, string> = {
+  hello: "Здравствуйте! Входите, я всё сохранила.",
+  idle: "Войдите, чтобы увидеть свои записи.",
+  listen: "Слушаю. Как вас зовут?",
+  write: "Не подсматриваю, честно.",
+  think: "Секунду, проверяю…",
+  sad: "Не тот логин или пароль. Попробуем ещё раз?",
+  worried: "Что-то пошло не так.",
+  offline: "Сервер не отвечает. Проверьте интернет и попробуйте снова.",
+  happy: "С возвращением!",
+};
 
 export function Login({ onDone }: { onDone: () => void }) {
   const [login, setLogin] = useState("");
@@ -7,20 +22,29 @@ export function Login({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [bot, setBot] = useState<string | null>(null);
+  const [mood, setMood] = useState<Mood>("hello");
+  const [field, setField] = useState<"" | "login" | "password">("");
+  // Приветствие, потом ждёт; пока поле в фокусе — слушает или «не смотрит» на пароль.
+  useEffect(() => { const t = setTimeout(() => setMood((m) => (m === "hello" ? "idle" : m)), 2600); return () => clearTimeout(t); }, []);
+  useEffect(() => { MOODS.forEach((m) => (new Image().src = `/maid/${m}.webp`)); }, []);
+  const shown: Mood = busy || mood !== "idle" ? mood : field === "login" ? "listen" : field === "password" ? "write" : "idle";
   useEffect(() => { get<{ bot: string | null }>("/api/public").then((r) => setBot(r.bot)).catch(() => {}); }, []);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setMood("think");
     try {
       const label = /iPhone|iPad/.test(navigator.userAgent) ? "iphone" : /Electron/.test(navigator.userAgent) ? "desktop" : "web";
       const { token } = await post<{ token: string }>("/api/login", { login: login.trim(), password, label });
       setToken(token);
-      onDone();
+      setMood("happy");
+      setTimeout(onDone, 1300);
     } catch (err) {
-      setError((err as Error).message);
-    } finally {
+      const status = err instanceof ApiError ? err.status : 0;
+      setMood(status === 401 ? "sad" : status === 0 || status >= 500 ? "offline" : "worried");
+      setError(status === 401 ? "" : (err as Error).message);
       setBusy(false);
     }
   }
@@ -28,11 +52,11 @@ export function Login({ onDone }: { onDone: () => void }) {
   return (
     <div className="login">
       <form className="login-card" onSubmit={submit}>
-        <img src="/icon.svg" alt="" width={64} height={64} />
+        <img className="login-maid" src={`/maid/${shown}.webp`} alt="" width={168} height={179} />
         <h1>Горничная</h1>
-        <p className="muted">Войдите, чтобы увидеть свои записи.</p>
-        <label>Логин<input value={login} onChange={(e) => setLogin(e.target.value)} autoComplete="username" autoFocus /></label>
-        <label>Пароль<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
+        <p className={`muted login-line ${shown}`} aria-live="polite">{LINES[shown]}</p>
+        <label>Логин<input value={login} onChange={(e) => { setLogin(e.target.value); if (mood !== "think" && mood !== "happy") setMood("idle"); }} onFocus={() => setField("login")} onBlur={() => setField("")} autoComplete="username" autoFocus /></label>
+        <label>Пароль<input type="password" value={password} onChange={(e) => { setPassword(e.target.value); if (mood !== "think" && mood !== "happy") setMood("idle"); }} onFocus={() => setField("password")} onBlur={() => setField("")} autoComplete="current-password" /></label>
         {error && <div className="form-error">{error}</div>}
         <button className="primary" disabled={busy || !login || !password}>{busy ? "…" : "Войти"}</button>
       </form>
