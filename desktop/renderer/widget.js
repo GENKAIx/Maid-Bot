@@ -13,16 +13,15 @@ let bubbleTimer = 0;
 const CLOCK_DIAL = false;
 const dialOff = (v) => (!CLOCK_DIAL && (v === "12" || v === "24") ? "list" : v);
 const NEXT_MAX = 3; // сколько ближайших планов в строке над задачами
-// Включается в настройках («Дальние задачи» → «Прятать в «Позже»», cfg.laterTasks; по умолчанию выключено — все задачи в списке).
-// Задача со сроком дальше TASK_WAKE дней «спит»: в списке её нет — только строка «💤 Позже · N» (щелчок раскрывает) и панель планов на её дне.
+// Настройка «Дальние задачи» (cfg.laterTasks): «hide» — скрывать до срока (по умолчанию), «show» — все задачи в списке.
+// Задача со сроком дальше TASK_WAKE дней «спит»: в списке её нет совсем, она стоит только на своём дне в панели планов.
 // За TASK_WAKE дней до срока она просыпается: всплывает в списке с золотым бликом и «⏰ через 7 дней», горничная напоминает.
 // Кто спал в прошлый раз — в localStorage («maid.sleeping»), так пробуждение видно и после перезапуска.
 const TASK_WAKE = 7;
 const WAKE_SHOW = 6000; // сколько держится анимация проснувшейся задачи
-let laterOpen = false;
 const wokeAt = new Map(); // id задачи → когда проснулась
 let wakeTimer = 0;
-const asleep = (t) => cfg.laterTasks === "later" && Boolean(t.due_date) && daysFrom(data.day, t.due_date) > TASK_WAKE;
+const asleep = (t) => cfg.laterTasks === "hide" && Boolean(t.due_date) && daysFrom(data.day, t.due_date) > TASK_WAKE;
 const wokeFresh = (t) => Date.now() - (wokeAt.get(t.id) ?? 0) < WAKE_SHOW;
 function dueWhen(day) {
   const n = daysFrom(data.day, day);
@@ -43,7 +42,7 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "show" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
 
@@ -504,12 +503,6 @@ function render() {
       ...daily.filter((h) => h.status).map(dayItem),
       ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done">✓</span><span>${esc(t.title)}</span></li>`),
     ]),
-    // Спящие задачи (срок дальше недели) — в самом низу, под сделанными: одна тихая строка, щелчок раскрывает их со сроками;
-    // щелчок по задаче — её день в панели планов.
-    ...(sec.tasks && later.length ? [
-      `<li class="later-row"><button type="button" data-later>💤 Позже · ${later.length} <i>${laterOpen ? "▾" : "▸"}</i></button></li>`,
-      ...(laterOpen ? later.map((t) => `<li class="later" data-day="${esc(t.due_date)}" title="Открыть этот день"><span class="time">${esc(shortDay(t.due_date))}</span><span>${esc(t.title)}</span></li>`) : []),
-    ] : []),
   ];
   // Улетевшие, но ещё не отправленные (идёт «Вернуть») уже считаются сделанными.
   const gone = [...leavingRows.values()].filter((x) => x.gone).length;
@@ -931,7 +924,7 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "later" ? "later" : "show" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   applyCfg();
   if (prefsOpen) drawPrefs();
 }
@@ -978,7 +971,7 @@ function drawPrefs() {
         <div class="dm-mini"><b>Задачи <em>1/2</em></b><p><i></i>Купить хлеб</p><p class="go"><i>✓</i><span>Пить Аевит</span></p></div>
         <span>Улетают, счётчик сделанного</span></button>
     </div></div>
-    <div class="pref"><span>Дальние задачи (срок дальше недели)</span>${seg("laterTasks", cfg.laterTasks, [["show", "В списке"], ["later", "Прятать в «Позже»"]])}</div>
+    <div class="pref"><span>Дальние задачи (срок дальше недели)</span>${seg("laterTasks", cfg.laterTasks, [["hide", "Скрывать до срока"], ["show", "Показывать все"]])}</div>
     <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>
     <div class="row2"><button type="button" id="prefReset">Вернуть в угол</button><button type="button" id="prefDone" class="primary">Готово</button></div>`;
 }
@@ -1128,13 +1121,6 @@ $("#open").onclick = () => maid.openMain();
 $("#release").onclick = () => maid.grab(false);
 $("#body").addEventListener("click", async (e) => {
   if (e.target.closest("#doneCount")) return toggleShowDone();
-  if (e.target.closest("[data-later]")) {
-    laterOpen = !laterOpen;
-    popTone(laterOpen ? 3 : 1, { vol: 0.08, soft: true });
-    return render();
-  }
-  const sleeper = e.target.closest("li.later");
-  if (sleeper) return togglePlansOn(sleeper.dataset.day);
   const back = e.target.closest("[data-undo]");
   if (back) return undoGone(back.dataset.undo);
   const tick = e.target.closest("[data-done], [data-habit]");
