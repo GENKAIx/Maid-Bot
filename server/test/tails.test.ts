@@ -53,11 +53,36 @@ test("хвосты: «не сделано» закрывает задачу, п�
     assert.equal(del.json.status, "deleted");
     assert.ok(!(await store.openTasks(u.id)).some((t) => t.id === moved), "удалённая ушла из открытых");
 
+    // Задача → план (ПКМ → «Задать время» / «Повторять…»): план на её день, задача закрыта как planned.
+    const planned = await add("Записаться к врачу");
+    const pl = await call(`/api/tasks/${planned}/plan`, {}, token);
+    const plan = pl.json as { id: number; title: string; date_iso: string; time: string | null };
+    assert.equal(pl.status, 200);
+    assert.equal(plan.title, "Записаться к врачу");
+    assert.equal(plan.date_iso, "2026-11-08");
+    assert.equal(plan.time, null);
+    assert.equal((await store.task(planned))!.status, "planned");
+    assert.ok(!(await store.openTasks(u.id)).some((t) => t.id === planned), "ставшая планом ушла из задач");
+    assert.equal((await call(`/api/tasks/${planned}/plan`, {}, token)).status, 409, "второй раз не превращается");
+
+    // Копия задачи на другой день; повтор на тот же день не плодит дубль.
+    const keep = await add("Полить цветы");
+    const cp = await call(`/api/tasks/${keep}/copy`, { date: "2026-11-09" }, token);
+    const copy = cp.json as { id: number; due_date: string; status: string };
+    assert.equal(copy.due_date, "2026-11-09");
+    assert.equal(copy.status, "open");
+    assert.notEqual(copy.id, keep);
+    assert.equal((await store.task(keep))!.status, "open", "исходная остаётся");
+    const again = await call(`/api/tasks/${keep}/copy`, { date: "2026-11-09" }, token);
+    assert.equal((again.json as { id: number; duplicate?: boolean }).duplicate, true);
+    assert.equal((again.json as { id: number }).id, copy.id);
+    assert.equal((await call(`/api/tasks/${other}/copy`, { date: "2026-11-09" }, token)).status, 404);
+
     assert.equal((await call(`/api/tasks/${moved}`, { due_date: "12.11" }, token)).status, 400);
     assert.equal((await call(`/api/tasks/${moved}`, {}, token)).status, 400);
     assert.equal((await call(`/api/tasks/${other}`, { status: "failed" }, token)).status, 404);
     assert.equal((await store.task(other))!.status, "open");
-    assert.equal(changed, 4, "список-виджет в Telegram обновится после каждого изменения");
+    assert.equal(changed, 6, "список-виджет в Telegram обновится после каждого изменения");
   } finally {
     server.close();
   }

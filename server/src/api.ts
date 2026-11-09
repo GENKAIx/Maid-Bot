@@ -301,6 +301,42 @@ export function createApi(deps: ApiDeps) {
       return store.task(t.id);
     }
 
+    // Задача становится планом (ПКМ по задаче в виджете → «Задать время» или «Повторять…»): план с тем же названием на её день
+    // (или date), задача закрывается статусом planned. Ответ — новый план; время и повтор виджет ставит ему следом, как обычному плану.
+    const taskPlan = p.match(/^\/api\/tasks\/(\d+)\/plan$/);
+    if (m === "POST" && taskPlan) {
+      const { date } = parseBody(z.object({ date: Day.optional() }), await readJson(req));
+      const t = await store.task(Number(taskPlan[1]));
+      if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
+      if (t.status !== "open") throw new HttpError(409, "задача уже закрыта");
+      const id = await store.addEvent({
+        user_id: u.id, title: t.title, date_iso: date ?? t.due_date ?? today, time: null, end_time: null, details: t.notes,
+        domain: "life", message_id: t.message_id,
+      });
+      await store.updateTask(t.id, { status: "planned" });
+      await store.cancelReminders("task", t.id);
+      const made = (await store.event(id))!;
+      await planEventReminders(store, u, made, new Date());
+      pipeline.changed(u);
+      return made;
+    }
+
+    // Копия задачи на другой день (ПКМ → «Копия на завтра» или перетащили с Ctrl): такая же открытая задача со сроком date.
+    // На том дне уже есть открытая с тем же названием — новая не создаётся, приходит та с duplicate.
+    const taskCopy = p.match(/^\/api\/tasks\/(\d+)\/copy$/);
+    if (m === "POST" && taskCopy) {
+      const { date } = parseBody(z.object({ date: Day }), await readJson(req));
+      const t = await store.task(Number(taskCopy[1]));
+      if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
+      const same = (await store.openTasks(u.id)).find((x) => x.title === t.title && x.due_date === date);
+      if (same) return { ...same, duplicate: true };
+      const id = await store.addTask({
+        user_id: u.id, title: t.title, priority: t.priority, category: t.category, due_date: date, notes: t.notes, message_id: t.message_id,
+      });
+      pipeline.changed(u);
+      return store.task(id);
+    }
+
     // План (событие): состоялся / отменён / снова в планах — из списка планов виджета; date — перенос на день (перетащили на день в полосе);
     // time и end_time — сдвиг по времени (потянули время на карточке), end_time: null — без конца; time: null — убрать время (и конец).
     const ev = p.match(/^\/api\/events\/(\d+)$/);

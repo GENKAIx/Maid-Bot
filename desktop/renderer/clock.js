@@ -443,12 +443,32 @@ async function doneTaskHere(id, btn) {
   setTimeout(() => load(), 900);
 }
 
-// Задачи в панели планов — как планы: перенос на день (перетащить или ПКМ), удаление (× или ПКМ).
+// Задачи в панели планов — как планы: то же меню ПКМ, перенос и копия на день (перетащить, с Ctrl — копия), удаление (× или ПКМ).
+// Время и повтор есть только у планов: задача, которой их задают, становится планом (asPlan), дальше — обычный план.
 // Для общего кода переноса задача выглядит как план: { task: true, id, title, date_iso }.
 const taskOf = (li) => {
   const t = (data?.tasks ?? []).find((x) => x.id === Number(li?.dataset.task));
   return t && { task: true, id: t.id, title: t.title, date_iso: t.due_date };
 };
+async function asPlan(e) {
+  if (!e.task) return e;
+  const made = await maid.api("POST", `/api/tasks/${e.id}/plan`, { date: e.date_iso });
+  quietPlans.add(made.id); // панель остаётся на этом дне
+  return made;
+}
+async function copyTask(t, day) {
+  const where = humanDay(day);
+  try {
+    const r = await maid.api("POST", `/api/tasks/${t.id}/copy`, { date: day });
+    if (r.duplicate) return say(`На ${where} «${t.title}» уже есть.`, { ms: 4000, mood: "think" });
+    popTone(2);
+    say(`Скопировала задачу «${t.title}» на ${where} ✓`, { ms: 4000 });
+    maid.changed();
+  } catch (err) {
+    const msg = String(err?.message ?? err);
+    say(/нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет копировать задачи — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+  }
+}
 async function deleteTask(t, li) {
   li.style.height = `${li.offsetHeight}px`;
   li.classList.add("fly");
@@ -483,16 +503,23 @@ function openTaskMenu(t, li, x, y) {
   const item = (act, text) => `<button type="button" data-act="${act}">${text}</button>`;
   const menu = document.createElement("div");
   menu.className = "pl-menu";
-  menu.innerHTML = item("tomorrow", "↪ Перенести на завтра")
-    + (t.date_iso !== data.day ? item("today", "↩ Перенести на сегодня") : "")
-    + `<hr>` + item("done", "✓ Сделано") + item("delete", "× Удалить задачу");
+  // Как у плана (openPlanMenu); просроченную — на завтра от сегодня, а не от её прошлого дня.
+  const next = dayAfter(t.date_iso < data.day ? data.day : t.date_iso, 1);
+  menu.innerHTML = item("repeat", "🔁 Повторять…")
+    + `<hr>`
+    + item("time", "🕒 Задать время")
+    + item("move", "↪ Перенести на завтра")
+    + item("copy", "⧉ Копия на завтра")
+    + item("done", "✓ Сделано") + item("delete", "× Удалить задачу");
   showPlanMenu(menu, x, y);
   menu.addEventListener("click", (ev) => {
     const act = ev.target.closest("[data-act]")?.dataset.act;
     if (!act) return;
     closePlanMenu();
-    if (act === "tomorrow") return moveTask(t, dayAfter(t.date_iso < data.day ? data.day : t.date_iso, 1), li);
-    if (act === "today") return moveTask(t, data.day, li);
+    if (act === "repeat") return openRepeat(t);
+    if (act === "time") return openTime(t, x, y);
+    if (act === "move") return moveTask(t, next, li);
+    if (act === "copy") return copyTask(t, next);
     if (act === "done") return doneTaskHere(t.id, li.querySelector("[data-tdone]"));
     deleteTask(t, li);
   });
@@ -968,7 +995,7 @@ function planDragAt(d, x, y, ctrl) {
   let day = null;
   let mode = null;
   if (chip && chip.dataset.day !== d.e.date_iso) {
-    if (d.pickDay !== chip.dataset.day && !d.e.task) dropPick(d, chip); // задачу только переносят — копии у неё нет
+    if (d.pickDay !== chip.dataset.day) dropPick(d, chip);
     day = chip.dataset.day;
     mode = "move";
   } else if (d.pick) {
@@ -990,7 +1017,7 @@ function planDragAt(d, x, y, ctrl) {
     d.pick = null;
     d.pickDay = null;
   }
-  if (day && ctrl && !d.e.task) mode = "copy";
+  if (day && ctrl) mode = "copy";
   d.day = day;
   d.mode = mode;
   for (const c of document.querySelectorAll("#planClock .day-chip")) c.classList.toggle("drop", c.dataset.day === day);
@@ -1040,7 +1067,7 @@ function endPlanDrag(drop) {
   window.addEventListener("click", eat, { capture: true, once: true });
   setTimeout(() => window.removeEventListener("click", eat, { capture: true }), 0);
   if (!drop || !d.day) return;
-  if (d.e.task) moveTask(d.e, d.day, d.li);
+  if (d.e.task) d.mode === "copy" ? copyTask(d.e, d.day) : moveTask(d.e, d.day, d.li);
   else if (d.mode === "copy") copyPlan(d.e, d.day);
   else movePlan(d.e, d.day, d.li);
 }
@@ -1172,6 +1199,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") endRetime(
 async function retimePlan(e, start, end, r) {
   const body = { time: hhmm(start), end_time: end !== null ? hhmm(Math.min(end, 1439)) : null };
   try {
+    e = await asPlan(e); // задаче задали время — она становится планом
     await maid.api("POST", `/api/events/${e.id}`, body);
     popTone(2);
     sayUnlessClash({ ...e, ...body }, e.date_iso, `${e.time ? "Сдвинула" : "Поставила"} «${e.title}» на ${body.time}${body.end_time ? `–${body.end_time}` : ""} ✓`);
@@ -1512,6 +1540,7 @@ function openRepeat(e) {
 }
 async function repeatPlan(e, sp, time) {
   try {
+    e = await asPlan(e); // задаче задали повтор — она становится планом
     if (time) await maid.api("POST", `/api/events/${e.id}`, { time: time.time, end_time: time.endTime || null });
     const at = time?.time ?? e.time;
     const r = await maid.api("POST", `/api/events/${e.id}/repeat`, { repeat: sp });
