@@ -347,6 +347,9 @@ body.quick { background: transparent; }
 .plan-clock .orbit.am, .plan-clock .orbit.pm { stroke-width: 17; }
 .plan-clock .orbit.am { stroke: rgba(255, 214, 150, .3); filter: drop-shadow(0 0 7px rgba(255, 200, 120, .5)); }
 .plan-clock .orbit.pm { stroke: rgba(8, 8, 26, .55); }
+.plan-clock .sky { fill: none; opacity: .8; }
+.plan-clock .sky.am { filter: drop-shadow(0 0 6px rgba(255, 200, 150, .35)); }
+.plan-clock .sky.pm { opacity: .72; filter: drop-shadow(0 0 6px rgba(200, 120, 200, .3)); }
 .plan-clock .orbit.seam { stroke: rgba(0, 0, 0, .35); stroke-width: 2.5; }
 .plan-clock .night { fill: none; stroke: rgba(120, 140, 255, .18); stroke-linecap: round; }
 .plan-clock .tick { stroke: rgba(255, 255, 255, .18); stroke-width: 1; }

@@ -48,6 +48,21 @@ function arcPath(r, a0, a1, reverse = false) {
   return `M${f(x0)} ${f(y0)} A${r} ${r} 0 ${span > 180 ? 1 : 0} ${reverse ? 0 : 1} ${f(x1)} ${f(y1)}`;
 }
 
+// Цвет неба в час h (0–24): точки и плавный переход между ними.
+const SKY = [[0, [34, 40, 96]], [4, [62, 54, 128]], [6, [236, 132, 150]], [8, [255, 182, 132]], [12, [255, 224, 158]],
+  [15, [255, 206, 128]], [18, [255, 134, 88]], [19.5, [214, 86, 138]], [21, [116, 78, 188]], [24, [34, 40, 96]]];
+const SKY_STEPS = 72;
+const SKY_GAP = 2.5;
+function skyAt(h) {
+  let i = 0;
+  while (i < SKY.length - 2 && SKY[i + 1][0] <= h) i++;
+  const [h0, c0] = SKY[i];
+  const [h1, c1] = SKY[i + 1];
+  const t = (h - h0) / (h1 - h0);
+  const e = t * t * (3 - 2 * t);
+  return `rgb(${c0.map((v, j) => Math.round(v + (c1[j] - v) * e)).join(",")})`;
+}
+
 // Полоса дней под заголовком: сегодня и ещё DAYS_AHEAD вперёд, у каждого — сколько планов; щелчок — показать этот день.
 const DAYS_AHEAD = 6;
 function dayAfter(day, n) {
@@ -185,9 +200,17 @@ function drawClock() {
   const more = rows.length - shownRows.length;
   const legend = rows.length ? `<ul class="pc-list">${shownRows.map((r) => r.html).join("")}${more ? `<li class="more">и ещё ${more}</li>` : ""}</ul>` : "";
 
-  // У 12 часов кольца — две половины дня: внутри светлое тёплое «до полудня» с мягким свечением, снаружи тёмное вечернее.
+  // У 12 часов кольца — небо по часам: внутри ночь → рассвет → полдень, снаружи полдень → закат → ночь.
+  // Градиента по кругу в SVG нет — кольцо собрано из коротких дуг с плавно меняющимся цветом.
   const halves = () => LANES["12"].map((l, k) => {
-    return `<circle class="orbit ${k ? "pm" : "am"}" cx="${CX}" cy="${CX}" r="${l.r}" stroke-width="${l.w}"><title>${k ? "После полудня" : "До полудня"}</title></circle>`;
+    const parts = [];
+    for (let i = 0; i < SKY_STEPS; i++) {
+      // У 12 — узкий зазор: там полночь встречается с полднем. Дуги внахлёст, чтобы между ними не было щелей.
+      const a0 = SKY_GAP + (i / SKY_STEPS) * (360 - 2 * SKY_GAP);
+      const a1 = Math.min(360 - SKY_GAP, SKY_GAP + ((i + 1) / SKY_STEPS) * (360 - 2 * SKY_GAP) + 0.6);
+      parts.push(`<path d="${arcPath(l.r, a0, a1)}" stroke="${skyAt(k * 12 + ((i + 0.5) / SKY_STEPS) * 12)}" />`);
+    }
+    return `<g class="sky ${k ? "pm" : "am"}" stroke-width="${l.w}"><title>${k ? "После полудня" : "До полудня"}</title>${parts.join("")}</g>`;
   }).join("") + `<circle class="orbit seam" cx="${CX}" cy="${CX}" r="${(LANES["12"][0].r + LANES["12"][1].r) / 2}" />`;
   box.innerHTML = `
     <div class="pc-head"><b>${esc(dayName)}</b><span>${list.length ? `${list.length} ${planWord(list.length)}` : "планов нет"}</span></div>
