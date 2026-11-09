@@ -281,7 +281,10 @@ function toggleDate(key) {
 }
 
 // --- список планов дня ---
-const planDone = new Map(); // id → { e, status } — отмеченные здесь: остаются в списке зачёркнутыми, пока панель открыта
+const planDone = new Map(); // id → { e, status, at } — отмеченные здесь: остаются в списке зачёркнутыми, пока панель открыта
+// Выполненный план виден ещё DONE_FADE мс: слева от галочки круговой таймер, наведение на него — × «отменить»; потом карточка уходит.
+const DONE_FADE = 3000;
+const doneTimers = new Map(); // id → таймер ухода
 function drawPlanList(box) {
   const today = clockDay === data.day;
   const d = new Date();
@@ -312,6 +315,7 @@ function drawPlanList(box) {
     const now = today && !st && start !== null && start <= nowMin && nowMin < end;
     const when = e.time ? `в ${esc(e.time)}${e.end_time ? `–${esc(e.end_time)}` : ""}` : "без времени";
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
+      ${st === "done" && planDone.get(e.id)?.at ? `<button type="button" class="pl-undo" data-act="active" title="Отменить — вернуть в планы" aria-label="Отменить"><svg viewBox="0 0 20 20"><circle class="pl-ring" cx="10" cy="10" r="8" /></svg><span>×</span></button>` : ""}
       <button type="button" class="pl-check${st === "done" ? " on" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Вернуть в планы" : "Состоялось"}">${st === "done" ? "✓" : ""}</button>`;
     return `<li class="pl-card${st ? ` ${st}` : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}" data-id="${e.id}" data-c="${colorOf(e)}">
       <span class="pl-text"><b class="pl-when">${when}</b> · ${esc(e.title)}</span>${tools}</li>`;
@@ -327,14 +331,27 @@ function drawPlanList(box) {
     ${list.length || pins.length ? `<ul class="pl-list">${pins.map(pinCard).join("")}${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
   // Цвет полоски карточки — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
   for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
+  // Таймер продолжает идти с того же места, хотя список перерисован.
+  for (const ring of box.querySelectorAll(".pl-ring")) {
+    const at = planDone.get(Number(ring.closest(".pl-card").dataset.id))?.at ?? Date.now();
+    ring.style.animationDelay = `-${Math.min(Date.now() - at, DONE_FADE)}ms`;
+  }
   box.style.height = `${Math.min(Math.max($("#w")?.offsetHeight ?? 0, 320), box.parentElement.clientHeight - 16)}px`;
 }
 // Галочка — состоялся, × — убрать (отменён), галочка у отмеченного — вернуть в планы.
 async function setPlanStatus(id, status) {
   const e = plansOf(clockDay).find((x) => x.id === id) ?? planDone.get(id)?.e;
   if (!e) return;
+  clearTimeout(doneTimers.get(id));
+  doneTimers.delete(id);
   if (status === "active") planDone.delete(id);
-  else planDone.set(id, { e, status });
+  else planDone.set(id, { e, status, at: status === "done" ? Date.now() : 0 });
+  if (status === "done") doneTimers.set(id, setTimeout(() => {
+    doneTimers.delete(id);
+    if (planDone.get(id)?.status !== "done") return;
+    planDone.delete(id);
+    drawClock();
+  }, DONE_FADE));
   lastPlans?.delete(id); // своё действие — не показывать его как «удалено где-то ещё»
   drawClock();
   try {
@@ -366,6 +383,8 @@ function hideClock() {
   clearTimeout(clockHideTimer);
   $("#planClock").classList.add("hidden");
   planDone.clear();
+  for (const t of doneTimers.values()) clearTimeout(t);
+  doneTimers.clear();
   datesHiddenNow.clear();
   stripFrom = 0;
   clockFresh = new Set();
