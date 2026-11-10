@@ -94,7 +94,12 @@ async function loadFar() {
   } catch {
     return;
   }
-  drawClock();
+  planDrag ? redrawStrip() : drawClock(); // пока тянут карточку, список не перерисовываем — она из него
+}
+/** Перерисовать только полосу дат (во время перетаскивания плана). */
+function redrawStrip() {
+  const el = $("#planClock .pc-days");
+  if (el) el.innerHTML = dayStrip();
 }
 
 // Планы с временем → дуги: начало, конец, ряд. У 12 часов план через полдень делится на два куска — по кольцу на половину.
@@ -704,7 +709,31 @@ function goDay(day, { center = false, week = false } = {}) {
 function slideStrip(dir) {
   const el = $("#planClock .pc-days");
   if (!el || !dir) return;
+  el.classList.remove("slide-l", "slide-r");
+  void el.offsetWidth; // чтобы анимация шла заново при каждом шаге
   el.classList.add(dir > 0 ? "slide-l" : "slide-r");
+}
+// Тянут план и держат его над стрелкой полосы — дни листаются по одному, сколько угодно далеко; дольше держишь — быстрее.
+function flipWhileDragging(d, arrow) {
+  const dir = arrow ? Number(arrow.dataset.shift) : 0;
+  if (d.flip?.dir === dir) return;
+  clearTimeout(d.flip?.timer);
+  document.querySelector("#planClock .pc-arrow.hot")?.classList.remove("hot");
+  d.flip = dir ? { dir, steps: 0, timer: 0 } : null;
+  if (!dir) return;
+  arrow.classList.add("hot");
+  const step = () => {
+    if (planDrag !== d || d.flip?.dir !== dir) return;
+    stripFrom += dir;
+    d.flip.steps++;
+    redrawStrip();
+    slideStrip(dir);
+    document.querySelector(`#planClock .pc-arrow[data-shift="${dir}"]`)?.classList.add("hot");
+    popTone(0, { vol: 0.04, soft: true });
+    loadFar();
+    d.flip.timer = setTimeout(step, d.flip.steps < 4 ? 420 : d.flip.steps < 10 ? 240 : 140);
+  };
+  d.flip.timer = setTimeout(step, 380);
 }
 // Колесо: тачпад шлёт много мелких шагов — копим до 60.
 let wheelAcc = 0;
@@ -1026,6 +1055,7 @@ function dropPick(d, chip) {
 }
 function planDragAt(d, x, y, ctrl) {
   const el = document.elementFromPoint(x, y);
+  flipWhileDragging(d, el?.closest("#planClock .pc-arrow"));
   const chip = el?.closest("#planClock .day-chip");
   let day = null;
   let mode = null;
@@ -1091,6 +1121,7 @@ function endPlanDrag(drop) {
   if (!d?.ghost) return;
   d.ghost.remove();
   d.pick?.remove();
+  flipWhileDragging(d, null);
   d.li.classList.remove("pl-dragging");
   $("#planClock").classList.remove("dragging-plan");
   for (const c of document.querySelectorAll("#planClock .day-chip.drop")) c.classList.remove("drop");
