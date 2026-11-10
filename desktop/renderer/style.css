@@ -888,10 +888,18 @@ body.quick { background: transparent; }
 .day-chip.swallow { animation: chipSwallow .5s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes chipSwallow { 0% { transform: none; } 30% { transform: scale(.86); box-shadow: 0 0 0 3px rgba(255, 138, 138, .5); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .day-chip.swallow { animation: none; } }
+/* Задача, отменённая или удалённая в чате (widget.js flyTasksToBin): перечёркивается красной чертой и улетает в корзину под списком. */
+.w .list li.bin-out { overflow: hidden; }
+.w .list li.bin-out .t { background: linear-gradient(#ff8a8a, #ff8a8a) no-repeat 0 55% / 0% 2px; }
+.w .list li.bin-out.striking .t { animation: plStrike .35s ease-out forwards; }
+.task-ghost { position: fixed; z-index: 1000; margin: 0; list-style: none; pointer-events: none; display: flex; gap: 10px; align-items: center;
+  border-radius: 8px; background: #2c2840; color: #fff; box-shadow: 0 8px 22px rgba(0, 0, 0, .45); }
+.task-ghost .t { background: linear-gradient(#ff8a8a, #ff8a8a) no-repeat 0 55% / 100% 2px; opacity: .55; }
+#body .task-bin { margin: 6px 0 2px; }
 /* Корзина внизу панели (clock.js showBin): выезжает, принимает отменённые и удалённые (крышка открывается, корзина подпрыгивает), уезжает. */
 .pl-bin { flex: none; display: flex; align-items: center; justify-content: center; height: 34px; margin-top: 6px; border-radius: 11px;
   background: rgba(255, 138, 138, .07); color: rgba(255, 170, 170, .9); overflow: hidden; }
-.plan-clock .pl-bin svg { flex: none; width: 22px; height: 22px; margin: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; overflow: visible; transform-origin: 50% 100%; }
+.plan-clock .pl-bin svg, #body .pl-bin svg { flex: none; width: 22px; height: 22px; margin: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; overflow: visible; transform-origin: 50% 100%; }
 .pl-bin .lid { transform-box: fill-box; transform-origin: 0% 100%; transition: transform .16s ease-out; }
 .pl-bin.open .lid { transform: translate(-1px, -2px) rotate(-30deg); }
 .pl-bin.in { animation: binIn .34s cubic-bezier(.3, 1.3, .5, 1) both; }

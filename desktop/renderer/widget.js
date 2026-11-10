@@ -908,8 +908,9 @@ function render() {
     return `<li class="habit${h.status ? " did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}</li>`;
   };
   const RANK = { high: 0, normal: 1, low: 2 };
-  const later = data.tasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
-  const awake = data.tasks.filter((t) => !asleep(t));
+  const allTasks = taskRows();
+  const later = allTasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const awake = allTasks.filter((t) => !asleep(t));
   noteWakes(awake, later);
   // Просроченные — первыми (самые старые сверху), потом только что проснувшиеся, чтобы их было видно, потом со сроком (ближний
   // выше), потом без срока; внутри — по важности.
@@ -918,6 +919,7 @@ function render() {
     || (a.due_date && b.due_date ? a.due_date.localeCompare(b.due_date) : 0) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
   // Вытянутая панель (уголок справа внизу) показывает больше задач: +1 на каждые 26 px прибавки к высоте.
   const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6 + Math.floor(Math.max(0, innerHeight - 760) / 26));
+  shownTaskIds = new Set(sec.tasks ? shownTasks.map((t) => t.id) : []);
   const todo = daily.filter((h) => !h.status);
   const hiding = cfg.doneTasks === "hide";
   // Вчерашний пропуск, который ещё можно спасти задним числом (fun.js).
@@ -926,6 +928,7 @@ function render() {
     ...todo.map(dayItem),
     ...daily.filter(missedYesterday).map(rescueItem),
     ...(sec.tasks ? shownTasks : []).map((t) => {
+      if (binTasks.has(t.id)) return `<li class="bin-out" data-bin="${t.id}"><span class="check"></span><span class="t${t.priority === "high" ? " high" : ""}">${esc(t.title)}</span></li>`;
       const go = leavingRows.get(`t${t.id}`);
       if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="t${t.id}"><button type="button" class="undo-back" data-undo="t${t.id}">↶ Вернуть</button></li>`;
       return go
@@ -967,6 +970,88 @@ function render() {
   }
   renderCourses();
   inboxTidy();
+  if (binTasks.size) flyTasksToBin();
+}
+
+// --- Задачи, отменённые или удалённые не здесь (в чате, в Telegram, с телефона) ---
+// Как у планов (clock.js, ejectGone): строку перечёркивает красная черта, копия улетает в корзину, что выезжает под списком задач;
+// место строк держится, пока последняя не долетит, потом все смыкаются разом и корзина уезжает. Свёрнутая панель — без полёта.
+const binTasks = new Map(); // id → задача, которой уже нет в data.tasks, но её строка ещё улетает
+let shownTaskIds = new Set(); // задачи, что были в списке при прошлой перерисовке
+let lastTaskRows = null;
+let taskBinBusy = false;
+const taskRows = () => (binTasks.size ? [...data.tasks, ...[...binTasks.values()].filter((t) => !data.tasks.some((x) => x.id === t.id))] : data.tasks);
+function noteGoneTasks() {
+  const prev = lastTaskRows;
+  lastTaskRows = new Map((data?.tasks ?? []).map((t) => [t.id, t]));
+  if (!prev || collapsed || $("#w").classList.contains("hidden") || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const done = new Set((data.done_today ?? []).map((t) => t.id));
+  for (const [id, t] of prev) {
+    if (!lastTaskRows.has(id) && shownTaskIds.has(id) && !done.has(id) && !doneNow.has(id) && !leavingRows.has(`t${id}`)) binTasks.set(id, t);
+  }
+}
+function flyTasksToBin() {
+  if (taskBinBusy) return;
+  const rows = [...$("#body").querySelectorAll("li.bin-out")];
+  if (!rows.length) return binTasks.clear();
+  taskBinBusy = true;
+  const ids = rows.map((li) => Number(li.dataset.bin));
+  const ghosts = []; // копии в полёте: если окно было скрыто и анимация не доиграла, убрать их в конце
+  const can = document.createElement("div");
+  can.className = "pl-bin task-bin in";
+  can.innerHTML = BIN_SVG;
+  rows[0].closest("ul").after(can);
+  can.scrollIntoView({ block: "nearest" });
+  const start = 300;
+  const landed = start + (rows.length - 1) * 180 + 420 + 640;
+  const shut = landed + 120;
+  animUntil = Date.now() + shut + 340 + 320 + 40;
+  rows.forEach((li, i) => setTimeout(() => {
+    if (!li.isConnected) return;
+    li.classList.add("striking");
+    popTone(2, { vol: 0.05, soft: true });
+    setTimeout(() => {
+      if (!li.isConnected) return;
+      const at = li.getBoundingClientRect();
+      const to = can.isConnected ? can.querySelector("svg").getBoundingClientRect() : { left: at.left, top: at.top - 60, width: 30, height: 30 };
+      const ghost = li.cloneNode(true);
+      ghost.classList.add("task-ghost");
+      Object.assign(ghost.style, { left: `${at.left}px`, top: `${at.top}px`, width: `${at.width}px`, height: `${at.height}px` });
+      document.body.append(ghost);
+      ghosts.push(ghost);
+      li.style.visibility = "hidden";
+      const dx = to.left + to.width / 2 - (at.left + at.width / 2);
+      const dy = to.top + to.height / 2 - (at.top + at.height / 2);
+      const fly = ghost.animate([
+        { transform: "none", opacity: 1, offset: 0 },
+        { transform: "translate(-4px, -7px) scale(1.04) rotate(-2deg)", opacity: 1, offset: 0.2 },
+        { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 30}px) scale(.55) rotate(6deg)`, opacity: 1, offset: 0.62 },
+        { transform: `translate(${dx}px, ${dy}px) scale(.12) rotate(12deg)`, opacity: 0, offset: 1 },
+      ], { duration: 640, easing: "cubic-bezier(.45, 0, .7, .5)" });
+      setTimeout(() => can.classList.add("open"), 330);
+      fly.onfinish = () => {
+        ghost.remove();
+        popTone(-4, { vol: 0.07 });
+        can.classList.remove("open", "gulp"); void can.offsetWidth; can.classList.add("gulp");
+        popTone(-6, { vol: 0.05, soft: true });
+      };
+    }, 420);
+  }, start + i * 180));
+  setTimeout(() => rows.forEach((li) => {
+    if (!li.isConnected) return;
+    const h = li.getBoundingClientRect().height;
+    li.animate([{ height: `${h}px` }, { height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "0px", marginBottom: "0px" }],
+      { duration: 320, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" });
+  }), shut);
+  setTimeout(() => can.classList.replace("in", "out") || can.classList.add("out"), shut + 340);
+  setTimeout(() => {
+    can.remove();
+    for (const g of ghosts) g.remove();
+    for (const id of ids) binTasks.delete(id);
+    taskBinBusy = false;
+    animUntil = 0;
+    render();
+  }, shut + 340 + 320);
 }
 
 // --- Сделанные задачи в режиме «прятать» (cfg.doneTasks === "hide") ---
@@ -1149,6 +1234,7 @@ async function load() {
     if (online) { online = false; settle(); }
     if (data) return;
   }
+  noteGoneTasks();
   renderSoon();
   watchPlans();
   if (dayScore === null) tickDayMood();
