@@ -7,6 +7,8 @@ services:
     ports: ["80:80", "443:443", "443:443/udp"]
     environment:
       - MAID_DOMAIN=${MAID_DOMAIN}
+      - MAID_HOST=${MAID_HOST:-}
+      - MAID_OLD=${MAID_OLD:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

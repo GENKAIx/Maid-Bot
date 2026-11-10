@@ -473,7 +473,11 @@ ipcMain.on("open-section", (_e, p) => {
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
 });
 // Окнам — настройки без ключа.
-const shown = () => { const { token, ...rest } = settings; return { ...rest, hasToken: Boolean(token), tracker: { ...settings.tracker, state: trackerState } }; };
+const shown = () => { const { token, ...rest } = settings; return { ...rest, hasToken: Boolean(token), insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
+// http:// не на этом компьютере — ключ и дневник идут открытым текстом.
+function insecure(s) {
+  try { const u = new URL(String(s)); return u.protocol === "http:" && !/^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(u.hostname); } catch { return false; }
+}
 ipcMain.handle("settings:get", shown);
 ipcMain.on("widget-ready", (e) => e.sender.send("opacity", settings.widget.opacity));
 ipcMain.handle("settings:set", (e, patch) => {

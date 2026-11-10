@@ -67,6 +67,7 @@ async function renderSettings() {
     <h2>Настройки</h2>
     <div class="form">
       <label>Адрес сервера<input id="server" value="${esc(s.server)}" /></label>
+      ${s.insecure ? `<p class="small high">Адрес без https: ключ и записи идут по сети открытым текстом. Укажите адрес https://…</p>` : ""}
       <label>Ключ (команда /token в боте)<input id="token" type="password" autocomplete="off" placeholder="${s.hasToken ? "ключ задан — оставьте пустым, чтобы не менять" : "вставьте ключ"}" /></label>
       <label class="row"><input type="checkbox" id="wshow" style="width:auto" ${s.widget.show ? "checked" : ""}/> Виджет поверх всех окон</label>
       <label>Прозрачность виджета <input id="wop" type="range" min="0.4" max="1" step="0.02" value="${s.widget.opacity}" /></label>
@@ -91,6 +92,7 @@ async function renderSettings() {
     }); } catch (e) { return toast(esc(String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""))); }
     today = null;
     if (!saved.server || !saved.hasToken) return toast("Сохранено. Чтобы войти, нужны адрес сервера и ключ.");
+    if (saved.insecure) toast("Внимание: адрес без https — ключ идёт открытым текстом.");
     toast("Сохранено. Проверяю ключ…");
     try {
       await maid.api("GET", "/api/today");

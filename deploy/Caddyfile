@@ -4,3 +4,8 @@
     encode gzip
     reverse_proxy maid:3000
 }
+
+# Старый адрес http://<ip> (до HTTPS): только перенаправление на https — без шифрования ничего не обслуживается.
+{$MAID_OLD:http://old.localhost} {
+    redir https://{$MAID_HOST:maid.localhost}{uri} 308
+}
