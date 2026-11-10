@@ -326,7 +326,24 @@ function drawPlanList(box) {
       <button type="button" class="pl-x${off ? " back" : ""}" data-dact="1" title="${off ? "Вернуть" : "Убрать — больше не показывать до этой даты"}">${off ? "↺" : "×"}</button></li>`;
   };
   const open = list.filter((e) => !e._st).length;
-  const tasks = tasksOn(clockDay);
+  let tasks = tasksOn(clockDay);
+  // Перелёт под свёрнутой карточкой: панель выдвигается один раз — полоса дат и место под новый план. Пока едет полоса — пустое место
+  // размером с карточку, после приезда — только новый план (остальные планы дня панель не растягивают).
+  let shown = list, shownPins = pins;
+  if (collapsed && foldFly) {
+    const only = list.filter((e) => clockFresh.has(e.id));
+    const onlyTasks = tasks.filter((t) => clockFresh.has(`t${t.id}`));
+    if (foldFly === "fly") {
+      shown = [];
+      shownPins = [];
+      tasks = [];
+    } else if (only.length || onlyTasks.length) {
+      shown = only;
+      shownPins = [];
+      tasks = onlyTasks;
+    }
+  }
+  const hold = collapsed && foldFly === "fly" ? Math.max(1, clockFresh.size) : 0;
   const dayName = today ? "Сегодня" : humanDay(clockDay);
   const count = [open && `${open} ${planWord(open)}`, tasks.length && `${tasks.length} ${taskWord(tasks.length)}`].filter(Boolean).join(" · ") || "планов нет";
   const taskCard = (t) => `<li class="pl-card pl-task${clockFresh.has(`t${t.id}`) ? " fresh" : ""}${clockDay < data.day ? " late" : ""}" data-task="${t.id}">
@@ -354,7 +371,8 @@ function drawPlanList(box) {
       <button type="button" class="pc-arrow" data-shift="1" title="Неделя вперёд">›</button>
     </div>
     <div class="pl-top"><span>Планы на день</span></div>
-    ${list.length || pins.length || tasks.length ? `<ul class="pl-list">${pins.map(pinCard).join("")}${tasks.map(taskCard).join("")}${list.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
+    ${hold ? `<ul class="pl-list">${'<li class="pl-card pl-hold"></li>'.repeat(hold)}</ul>`
+    : shown.length || shownPins.length || tasks.length ? `<ul class="pl-list">${shownPins.map(pinCard).join("")}${tasks.map(taskCard).join("")}${shown.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
   // Цвет полоски карточки — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
   for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
   // Заливка продолжает идти с того же места, хотя список перерисован.
@@ -920,8 +938,10 @@ const dayWord = (n) => {
   return a === 1 && b !== 11 ? "день" : a >= 2 && a <= 4 && (b < 12 || b > 14) ? "дня" : "дней";
 };
 const inDays = (n) => (n === 1 ? "завтра" : `через ${n} ${dayWord(n)}`);
+let foldFly = null; // "fly" — полоса едет под свёрнутой карточкой, "land" — приехали (drawPlanList)
 function stopFly() {
-  const was = $("#planClock").classList.contains("flying");
+  const was = $("#planClock").classList.contains("flying") || foldFly;
+  foldFly = null;
   flyRun++;
   flyNote = null;
   $("#planClock").classList.remove("flying");
@@ -932,6 +952,7 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
   if (n <= 0) return showClock(day, { fresh, gone });
   const run = ++flyRun;
   stripFrom = 0;
+  foldFly = collapsed ? "fly" : null;
   showClock(data.day, { fresh }); // fresh — чтобы панель выдвинулась и под свёрнутой карточкой
   const box = $("#planClock");
   if (box.classList.contains("hidden")) return; // панель выключена или свёрнута
@@ -996,6 +1017,7 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     clockFresh = new Set(fresh);
     clockGone = gone;
     flyNote = inDays(n) + (more ? ` · ещё ${more}` : "");
+    if (foldFly) foldFly = "land";
     box.classList.remove("flying");
     drawClock();
     const chip = $(`#planClock .day-chip[data-day="${day}"]`);
@@ -1022,7 +1044,8 @@ function dropIn(card, chip, delay) {
   if (!card || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const h = card.offsetHeight;
   card.classList.add("arriving");
-  card.animate([{ height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "-3px" }, { height: `${h}px` }],
+  // Под свёрнутой карточкой место уже оставлено — панель не растёт ещё раз.
+  if (!foldFly) card.animate([{ height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "-3px" }, { height: `${h}px` }],
     { duration: 320, delay, easing: "cubic-bezier(.3, .8, .4, 1)", fill: "backwards" });
   setTimeout(() => {
     if (!card.isConnected) return;
