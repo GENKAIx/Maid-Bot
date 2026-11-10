@@ -614,7 +614,9 @@ function watchPlans() {
   const freshTasks = due.filter((t) => { const was = prev.get(`t${t.id}`); return !was || JSON.parse(was).due_date !== t.due_date; });
   const gone = [...prev].filter(([id]) => !now.has(id)).map(([, j]) => JSON.parse(j)).filter((e) => e.date_iso >= data.day);
   if (!fresh.length && !freshTasks.length && !gone.length) {
-    if (!$("#planClock").classList.contains("hidden")) drawClock(); // стрелка и прошедшие планы
+    // Стрелка и прошедшие планы. Пока план выпадает из чипа дня в список, не перерисовывать: опрос раз в 5 с (данные меняются
+    // и от учёта времени за ПК) сносил карточку посреди полёта — план просто появлялся.
+    if (!$("#planClock").classList.contains("hidden")) { if (performance.now() > dropUntil) drawClock(); }
     else if (farFresh.length) {
       farPlanRun++; // уже нашли — поиск после своей записи (farPlanSoon) не нужен
       const days = new Set(farFresh.map((e) => e.date_iso));
@@ -884,6 +886,7 @@ function openCalendar(day) {
 // План дальше 14 дней в данные виджета не попадает (сервер отдаёт только ближние), и watchPlans его не видит. Поэтому после ответа,
 // где записан план: если панель так и не открылась, найти этот план среди дальних (по названию, самый новый) и съездить к его дню.
 let farPlanRun = 0;
+let dropUntil = 0; // до этого времени новые планы выпадают из чипа в список — watchPlans их не перерисовывает
 function farPlanSoon(changes) {
   const titles = new Set(changes.filter((c) => c.kind === "event").map((c) => c.title));
   const run = ++farPlanRun;
@@ -988,7 +991,9 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     chip?.classList.add("landed");
     popTone(7, { vol: 0.09 });
     // Новые карточки не «уже были»: выпадают из чипа дня в список.
-    [...box.querySelectorAll(".pl-card.fresh")].forEach((card, i) => dropIn(card, chip, 160 + i * 140));
+    const cards = [...box.querySelectorAll(".pl-card.fresh")];
+    cards.forEach((card, i) => dropIn(card, chip, 160 + i * 140));
+    dropUntil = performance.now() + 160 + cards.length * 140 + 1400;
     loadFar();
     hideClockLater(FLY_SHOWN);
   };
