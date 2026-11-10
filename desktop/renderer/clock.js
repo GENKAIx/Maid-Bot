@@ -95,7 +95,11 @@ async function loadFar() {
   } catch {
     return;
   }
-  planDrag ? redrawStrip() : drawClock(); // пока тянут карточку, список не перерисовываем — она из него
+  // Пока тянут карточку или новый план выпадает из чипа в список — список не перерисовываем (только полосу дней).
+  if (planDrag) return redrawStrip();
+  const wait = dropUntil - performance.now();
+  if (wait > 0) return void setTimeout(() => !planDrag && drawClock(), wait);
+  drawClock();
 }
 /** Перерисовать только полосу дат (во время перетаскивания плана). */
 function redrawStrip() {
@@ -937,6 +941,13 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
   // лента сдвигается непрерывно, выделение идёт по дням. Медленный старт, разгон, плавная остановка — одна кривая.
   const from = Math.max(0, n - 120);
   const last = Math.max(0, n - DAYS_AHEAD); // с какого дня полоса начнётся в конце
+  // Дальние дни (их нет в /api/today) — загрузить заново, пока полоса едет: к приезду новый план уже в списке и выпадает из чипа.
+  let ready = nearDay(day);
+  if (!ready) {
+    const a = dayAfter(data.day, last), b = dayAfter(data.day, last + DAYS_AHEAD);
+    for (let d = a; d <= b; d = dayAfter(d, 1)) farPlans.delete(d);
+    loadRange(a, b).catch(() => {}).finally(() => { ready = true; });
+  }
   const dur = Math.min(2200, Math.max(800, 650 + n * 45));
   const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
   let lastK = -1;
@@ -978,7 +989,7 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
         popTone(Math.round(((kd - from) / Math.max(1, n - from)) * 7), { vol: 0.03, soft: true });
       }
     }
-    if (t < 1) return requestAnimationFrame((a) => frame(a, t0));
+    if (t < 1 || !ready) return requestAnimationFrame((a) => frame(a, t0));
     // Приехали: обычная полоса на том же месте, план появляется, чип подпрыгивает.
     stripFrom = last;
     clockDay = day;
