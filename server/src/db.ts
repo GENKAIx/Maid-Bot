@@ -595,6 +595,10 @@ export class Store {
     if (patch.parse_json !== undefined) await this.run("UPDATE messages SET parse_json = ? WHERE id = ?", patch.parse_json, id);
     if (patch.reply !== undefined) await this.run("UPDATE messages SET reply = ? WHERE id = ?", patch.reply, id);
   }
+  /** Сообщения, разбор которых упал, не раньше since — для фонового повтора. */
+  failedMessages(since: Date): Promise<Message[]> {
+    return this.all<Message>("SELECT * FROM messages WHERE state = 'failed' AND received_at >= ? ORDER BY id", since.toISOString());
+  }
   /** Сообщение, которое ждёт уточнения (последнее). */
   pendingClarify(userId: number): Promise<Message | undefined> {
     return this.get<Message>("SELECT * FROM messages WHERE user_id = ? AND state = 'clarify' ORDER BY id DESC LIMIT 1", userId);

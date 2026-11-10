@@ -32,7 +32,14 @@ export interface Reply {
   days?: string[];
   /** Спорное — спросить кнопками: завести ли привычки / задачи из рассказа. */
   proposal?: Proposal;
+  /** Разобрать не вышло (модель не ответила): кнопки «Повторить» и «Оставить заметкой»; сервер и сам повторит (retryFailed). */
+  failed?: boolean;
 }
+
+/** Через сколько минут после сообщения повторять неудавшийся разбор; после последней попытки — заметкой. */
+export const RETRY_AFTER_MIN = [2, 10, 30];
+/** Признак неудачи разговора (/ask) в reply — такие не повторяются разбором. */
+const CHAT_FAILED = "chat:";
 
 /** Вопрос «добавить?» с пунктами-галочками. Кнопки: remind (если есть) — завести с напоминанием, add — просто в список, «Не надо». */
 export interface Proposal {
@@ -174,7 +181,7 @@ export class Pipeline {
     } catch (e) {
       await s.setMessage(message.id, { state: "failed", reply: String(e) });
       console.error("[parse]", e);
-      return { text: p.failed, emotion: "worried", messageId: message.id, undoable: false };
+      return { text: p.failed, emotion: "worried", messageId: message.id, undoable: false, failed: true };
     }
     if (parsed.dropped.length) console.warn("[parse] отброшено:", parsed.dropped.join("; "));
     await s.setMessage(message.id, { parse_json: JSON.stringify(parsed) });
@@ -554,6 +561,7 @@ export class Pipeline {
     const msg = await s.message(messageId);
     if (!msg || msg.user_id !== u.id) return "Не нашла сообщение.";
     await this.undo(u, messageId);
+    if (msg.state === "failed") await s.setMessage(msg.id, { state: "done", reply: "записано заметкой" });
     await s.transaction(async () => {
       const id = await s.addDiary(u.id, msg.day_key, "notes", msg.text, msg.id);
       await s.logAction(u.id, msg.id, "add", "diary", id);
@@ -598,8 +606,48 @@ export class Pipeline {
       return { text, emotion: "neutral", messageId: msg.id, undoable: false };
     } catch (e) {
       console.error("[chat]", e);
-      await this.store.setMessage(msg.id, { state: "failed" });
+      await this.store.setMessage(msg.id, { state: "failed", reply: `${CHAT_FAILED}${String(e)}` });
       return { text: p.failed, emotion: "worried", messageId: msg.id, undoable: false };
+    }
+  }
+
+  /** «Повторить»: разобрать неудавшееся сообщение ещё раз. Картинки не хранятся — их не повторить. */
+  async retry(u: User, messageId: number, at = new Date()): Promise<Reply> {
+    const msg = await this.store.message(messageId);
+    if (!msg || msg.user_id !== u.id) return { text: "Не нашла сообщение.", emotion: "neutral", messageId, undoable: false };
+    if (msg.state !== "failed") return { text: "Это сообщение уже разобрано.", emotion: "neutral", messageId, undoable: false };
+    if (msg.text.startsWith("📷")) return { text: "Картинку я не сохраняю — пришлите её ещё раз, пожалуйста.", emotion: "worried", messageId, undoable: false };
+    return this.handle({ user: u, source: msg.source, sourceId: msg.source_id, text: msg.text, at: new Date(msg.received_at) });
+  }
+
+  /** Фоновый повтор (раз в такт планировщика): сообщения, разбор которых упал, — через 2, 10 и 30 минут;
+   *  не вышло и в третий раз — текст целиком в заметки. Итог присылается уведомлением (send). */
+  async retryFailed(send: (u: User, text: string, emotion: Emotion) => Promise<void>, now = new Date()) {
+    const s = this.store;
+    for (const msg of await s.failedMessages(new Date(now.getTime() - 24 * 3600_000))) {
+      if (msg.reply?.startsWith(CHAT_FAILED)) continue;
+      const u = await s.user(msg.user_id);
+      if (!u) continue;
+      const key = `retry:${msg.id}`;
+      const tries = Number((await s.kvGet(key)) ?? 0);
+      const wait = RETRY_AFTER_MIN[Math.min(tries, RETRY_AFTER_MIN.length - 1)];
+      if (now.getTime() - new Date(msg.received_at).getTime() < wait * 60_000) continue;
+      await s.kvSet(key, String(tries + 1));
+      const short = msg.text.length > 60 ? `${msg.text.slice(0, 57)}…` : msg.text;
+      if (msg.text.startsWith("📷")) {
+        if (tries + 1 < RETRY_AFTER_MIN.length) continue;
+        await s.setMessage(msg.id, { state: "done", reply: "картинка не разобрана" });
+        await send(u, "Картинку так и не разобрала — пришлите её ещё раз, пожалуйста.", "worried");
+        continue;
+      }
+      const r = await this.retry(u, msg.id, now).catch(() => null);
+      if (r && !r.failed) {
+        await send(u, `Разобрала «${esc(short)}»:
+${r.text}`, r.emotion);
+      } else if (tries + 1 >= RETRY_AFTER_MIN.length) {
+        await this.asNote(u, msg.id, now);
+        await send(u, `Так и не смогла разобрать «${esc(short)}» — записала целиком в заметки.`, "worried");
+      }
     }
   }
 }

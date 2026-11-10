@@ -65,6 +65,8 @@ function minutesOf(t: string) {
 export class Scheduler {
   private timer: NodeJS.Timeout | null = null;
   private busy = false;
+  /** Ещё работа на каждый такт (фоновый повтор разбора — Pipeline.retryFailed). */
+  extra: ((now: Date) => Promise<void>) | null = null;
 
   /** backup — раз в сутки (03:30 по часам пользователя) отправить резервную копию, если есть куда. */
   constructor(private store: Store, private llm: LlmCall | null, private send: Send, private backup?: (u: User) => Promise<void>) {}
@@ -102,6 +104,7 @@ export class Scheduler {
           await this.backup(u).catch((e) => console.error("[backup]", u.id, e));
         }
       }
+      await this.extra?.(now).catch((e) => console.error("[tick]", e));
     } finally {
       this.busy = false;
     }

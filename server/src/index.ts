@@ -48,6 +48,7 @@ const backup = tg
     }
   : undefined;
 scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
+scheduler.extra = (now) => pipeline.retryFailed((u, text, emotion) => send(u, text, emotion), now);
 scheduler.start();
 // Вопросы «добавить?» без ответа дольше суток — закрыть (ничего не создают).
 const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => console.error("[proposals]", e)), 10 * 60_000);

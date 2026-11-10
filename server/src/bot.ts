@@ -34,6 +34,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   const undoRow = (kb: InlineKeyboard, messageId: number) => kb.text("↩ Отменить", `undo:${messageId}`).text("📝 Это просто заметка", `note:${messageId}`);
   const replyKeyboard = (r: Reply) => {
     if (r.proposal) return proposalKeyboard(r.proposal, r.undoable ? r.messageId : null);
+    if (r.failed) return new InlineKeyboard().text("🔁 Повторить", `retry:${r.messageId}`).text("📝 Оставить заметкой", `note:${r.messageId}`);
     return r.undoable ? undoRow(new InlineKeyboard(), r.messageId) : undefined;
   };
   // Вопрос «добавить?»: у нескольких пунктов — галочка на каждом (щелчок снимает/ставит), ниже ситуативная кнопка
@@ -244,6 +245,15 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     }
     const r = await pipeline.decideProposal(u, Number(id), act === "r" ? "remind" : act === "a" ? "add" : "decline");
     await ctx.answerCallbackQuery({ text: r.text.replace(/<[^>]+>/g, "").slice(0, 190) });
+  });
+
+  bot.callbackQuery(/^retry:(\d+)$/, async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return ctx.answerCallbackQuery();
+    await ctx.answerCallbackQuery({ text: "Пробую ещё раз…" });
+    await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+    const r = await pipeline.retry(u, Number(ctx.match[1]));
+    await answer(ctx, u, r);
   });
 
   bot.callbackQuery(/^(undo|note|persona):(.+)$/, async (ctx) => {

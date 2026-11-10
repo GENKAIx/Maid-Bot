@@ -315,3 +315,34 @@ test("«Добавить в привычки» — в список без нап
   assert.equal((await store.proposal(r2.proposal!.id))?.status, "expired");
   assert.equal((await store.openTasks(u.id)).length, 0);
 });
+
+test("сбой разбора: кнопки, фоновый повтор через 2 мин, после трёх неудач — заметкой", async () => {
+  const { store, u, pipe } = await setup([
+    new Error("модель упала"),
+    { reply: "Записала.", diary: [{ section: "notes", text: "Купила молоко" }] },
+    new Error("1"), new Error("2"), new Error("3"), new Error("4"),
+  ]);
+  const sent: string[] = [];
+  const send = async (_u: unknown, text: string) => void sent.push(text);
+  const r = await pipe.handle({ user: u, ...msg("Купила молоко", "f1") });
+  assert.equal(r.failed, true);
+  // Рано — не трогает.
+  await pipe.retryFailed(send, new Date(AT.getTime() + 60_000));
+  assert.equal(sent.length, 0);
+  await pipe.retryFailed(send, new Date(AT.getTime() + 3 * 60_000));
+  assert.equal((await store.message(r.messageId))!.state, "done");
+  assert.match(sent[0], /Разобрала «Купила молоко»/);
+
+  // Второе сообщение не разбирается никак: 2, 10, 30 мин — и в заметки.
+  const r2 = await pipe.handle({ user: u, ...msg("Странный текст", "f2") });
+  assert.equal(r2.failed, true);
+  for (const min of [3, 11, 31]) await pipe.retryFailed(send, new Date(AT.getTime() + min * 60_000));
+  assert.equal((await store.message(r2.messageId))!.state, "done");
+  assert.match(sent.at(-1)!, /записала целиком в заметки/);
+  const notes = await store.diaryOf(u.id, "2026-11-08");
+  assert.ok(notes.some((d) => d.section === "notes" && d.text === "Странный текст"));
+  // Больше не повторяет.
+  const before = sent.length;
+  await pipe.retryFailed(send, new Date(AT.getTime() + 60 * 60_000));
+  assert.equal(sent.length, before);
+});

@@ -509,6 +509,11 @@ export function createApi(deps: ApiDeps) {
       const b = parseBody(z.object({ action: z.enum(["remind", "add", "decline"]), picked: z.array(z.number().int().min(0)).max(20).optional() }), await readJson(req));
       return pipeline.decideProposal(u, Number(prop[1]), b.action, b.picked);
     }
+    const again = p.match(/^\/api\/messages\/(\d+)\/(retry|note)$/);
+    if (again && m === "POST") {
+      if (again[2] === "retry") return pipeline.retry(u, Number(again[1]));
+      return { text: await pipeline.asNote(u, Number(again[1])) };
+    }
     if (m === "POST" && p === "/api/undo") {
       const b = parseBody(z.object({ messageId: z.number().int().optional() }), await readJson(req));
       return { text: await pipeline.undo(u, b.messageId) };

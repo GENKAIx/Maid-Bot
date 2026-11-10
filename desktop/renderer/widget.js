@@ -394,7 +394,7 @@ async function pump() {
     const r = await maid.api("POST", m.path, m.body);
     outbox = outbox.filter((x) => x !== m);
     remember(m.body.text || r.heard || m.label, r);
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: failedButtons(r) });
     maid.changed();
   } catch (e) {
     if (offline(e)) {
@@ -562,6 +562,21 @@ document.addEventListener("drop", (e) => attachFiles(imagesFrom(e.dataTransfer))
 // Реакция на сказанное, что бы ни ответил сервер: пошлое (запись про секс и т. п.) — довольная ухмылка,
 // даже если записалось; благодарность без записи — смущённо рада.
 const LEWD = /(?<![а-яё])(секс|интим|пошл|переспа|трах|минет|кунилин|оральн|голая|голый|голышом|раздел[аи]сь|эрот|порн|оргазм|возбужд|похот|дроч|мастурб|сиськ|задниц|презерватив|в постел[иь] с)/i;
+// Разбор не удался (модель не ответила): «Повторить» сейчас или «Оставить заметкой». Сервер и сам повторит через 2, 10 и 30 мин.
+function failedButtons(r) {
+  if (!r.failed) return [];
+  const act = async (what) => {
+    try {
+      const x = await maid.api("POST", `/api/messages/${r.messageId}/${what}`);
+      if (what === "note") say(x.text, { ms: 5000, sound: "ding" });
+      else say(x.text, { emotion: x.emotion, changes: x.changes ?? [], days: x.days ?? [], undo: x.undoable ? x.messageId : null, ms: 16000, sound: x.changes?.length ? "ding" : null, proposal: x.proposal, buttons: failedButtons(x) });
+      maid.changed();
+    } catch (e) {
+      say(e.message, { ms: 6000, emotion: "worried" });
+    }
+  };
+  return [{ text: "🔁 Повторить", run: () => act("retry") }, { text: "📝 Оставить заметкой", run: () => act("note") }];
+}
 function heardMood(text, r) {
   if (!text) return null;
   if (LEWD.test(text)) return "smug";
@@ -1332,7 +1347,7 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
-maid.on("reply", (r) => remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal }));
+maid.on("reply", (r) => remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: failedButtons(r) }));
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
