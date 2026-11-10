@@ -366,3 +366,16 @@ test("учёт токенов: складывается по месяцам", as
   assert.deepEqual(await store.llmUsage("2026-11"), { calls: 2, input: 2000, output: 400 });
   assert.deepEqual(await store.llmUsage("2026-10"), { calls: 0, input: 0, output: 0 });
 });
+
+test("отметки «уже отправлено» старше 60 дней удаляются, прочее в kv — нет", async () => {
+  const store = await Store.open(":memory:");
+  await store.kvSet("habit:1:2026-08-01:09:00", "2026-08-01T06:00:00.000Z");
+  await store.kvSet("morning:1:2026-11-01", "2026-11-01T06:00:00.000Z");
+  await store.kvSet("schema_version", "5");
+  await store.kvSet("llm:2026-01", "{}");
+  await store.pruneOnce(new Date("2026-09-10T00:00:00Z"));
+  assert.equal(await store.kvGet("habit:1:2026-08-01:09:00"), undefined);
+  assert.ok(await store.kvGet("morning:1:2026-11-01"));
+  assert.equal(await store.kvGet("schema_version"), "5");
+  assert.ok(await store.kvGet("llm:2026-01"));
+});

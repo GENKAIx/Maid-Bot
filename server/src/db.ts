@@ -1003,6 +1003,14 @@ export class Store {
     await this.run("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", key, value);
   }
   /** Поставить отметку один раз; true — если её ещё не было. */
+  /** Отметки «уже отправлено» (once), поставленные раньше before, — удалить: таблица иначе только растёт. Возвращает, сколько удалено. */
+  pruneOnce(before: Date): Promise<number> {
+    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune"];
+    return this.run(
+      `DELETE FROM kv WHERE value < ? AND (${kinds.map(() => "key LIKE ?").join(" OR ")})`,
+      before.toISOString(), ...kinds.map((k) => `${k}:%`),
+    );
+  }
   async once(key: string): Promise<boolean> {
     return (await this.run("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING", key, now())) > 0;
   }

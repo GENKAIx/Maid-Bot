@@ -105,6 +105,10 @@ export class Scheduler {
         }
       }
       await this.extra?.(now).catch((e) => console.error("[tick]", e));
+      // Раз в сутки — убрать отметки «уже отправлено» старше 60 дней.
+      if (await this.store.once(`prune:${now.toISOString().slice(0, 10)}`)) {
+        await this.store.pruneOnce(new Date(now.getTime() - 60 * 86_400_000)).catch((e) => console.error("[prune]", e));
+      }
     } finally {
       this.busy = false;
     }
