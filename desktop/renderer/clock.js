@@ -612,7 +612,11 @@ function hideClock() {
   clockFresh = new Set();
   clockGone = [];
   clockEdits = new Map();
-  dropBin();
+  // Корзина уходит вместе с панелью: убрать её, когда панель уже скрылась (иначе панель укоротится посреди ухода).
+  const b = bin;
+  bin = null;
+  clearTimeout(binHideTimer);
+  if (b) setTimeout(() => b.remove(), 480);
   stopFly();
 }
 // Выдвижная панель свёрнутого вида: карточка с головой горничной поднимается на её высоту (--drawer), панель раскрывается под ней.
@@ -632,7 +636,16 @@ function hideClockLater(ms = CLOCK_SHOWN) {
   clearTimeout(clockHideTimer);
   // Пока полоса едет или карточки летят (и между днями цепочки) — не прятать, подождать.
   const busy = () => $("#planClock").classList.contains("flying") || performance.now() < dropUntil;
-  clockHideTimer = setTimeout(() => (clockHover ? hideClockLater() : busy() ? hideClockLater(Math.min(ms, 1200)) : hideClock()), ms);
+  // Под свёрнутой карточкой с корзиной — спрятать ровно тогда, когда последняя карточка в ней (а не до 1,2 с позже).
+  const binWait = () => (collapsed && bin && !$("#planClock").classList.contains("flying") ? Math.max(40, dropUntil - performance.now()) : Math.min(ms, 1200));
+  clockHideTimer = setTimeout(() => {
+    if (clockHover) {
+      // Курсор держит панель — корзина уезжает сама, чтобы не висеть.
+      if (collapsed && bin && !bin.classList.contains("out") && performance.now() > dropUntil) hideBinLater(0);
+      return hideClockLater();
+    }
+    busy() ? hideClockLater(binWait()) : hideClock();
+  }, ms);
 }
 
 // После каждой загрузки данных: что из планов появилось, поменялось или пропало (неважно, где — здесь, в Telegram, с телефона).
@@ -1408,8 +1421,11 @@ function ejectGone(box, day, start = 300, keep = false) {
   cards.forEach((card, i) => ejectOut(card, binAim, start + i * 180, true));
   const landed = start + (cards.length - 1) * 180 + 420 + 640;
   setTimeout(() => !foldFly && cards.forEach((card) => card.isConnected && closeGap(card, 0)), landed + 120);
-  if (!keep) hideBinLater(landed + 650);
-  return landed + (keep ? 200 : 650 + 320);
+  // Под свёрнутой карточкой корзина не уезжает отдельно: панель прячется вместе с ней (hideClockLater), карточка опускается один раз.
+  if (keep) return landed + 200;
+  if (collapsed) return landed + 400;
+  hideBinLater(landed + 650);
+  return landed + 650 + 320;
 }
 // Карточка, чей двойник улетел, сжимается в 0 — ряд ниже подтягивается.
 function closeGap(card, delay) {
