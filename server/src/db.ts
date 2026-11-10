@@ -560,8 +560,16 @@ export class Store {
   async dropSession(tokenHash: string) {
     await this.run("DELETE FROM sessions WHERE token_hash = ?", tokenHash);
   }
-  sessionsOf(userId: number): Promise<{ label: string; created_at: string; last_seen: string }[]> {
-    return this.all("SELECT label, created_at, last_seen FROM sessions WHERE user_id = ? ORDER BY last_seen DESC", userId);
+  /** id — начало хеша ключа (сам ключ по нему не узнать): по нему устройство можно выключить из настроек. */
+  sessionsOf(userId: number): Promise<{ id: string; label: string; created_at: string; last_seen: string }[]> {
+    return this.all("SELECT substr(token_hash, 1, 16) AS id, label, created_at, last_seen FROM sessions WHERE user_id = ? ORDER BY last_seen DESC", userId);
+  }
+  /** Выйти на устройстве по id из sessionsOf. Сколько входов закрыто. */
+  async dropSessionOf(userId: number, id: string): Promise<number> {
+    const rows = await this.all<{ token_hash: string }>("SELECT token_hash FROM sessions WHERE user_id = ?", userId);
+    const hit = rows.filter((r) => r.token_hash.slice(0, 16) === id);
+    for (const r of hit) await this.dropSession(r.token_hash);
+    return hit.length;
   }
 
   // --- сообщения ---

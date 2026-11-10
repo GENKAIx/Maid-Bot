@@ -10,7 +10,7 @@ interface Me {
   id: number; login: string | null; name: string; tz: string; persona: string;
   morning_time: string; tomorrow_time: string; evening_time: string; event_lead_min: number;
   game_alerts: number; game_first_min: number; game_every_min: number;
-  sessions: { label: string; created_at: string; last_seen: string }[];
+  sessions: { id: string; label: string; created_at: string; last_seen: string; current?: boolean }[];
 }
 interface PushInfo { key: string; subs: { endpoint: string; label: string; created_at: string; last_ok: string | null }[] }
 
@@ -140,7 +140,26 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
 
         <Card title="Учётная запись" className="reveal">
           <p>{me.login} <span className="muted small">· {me.tz}</span></p>
-          <p className="muted small">Устройства: {me.sessions.map((s) => s.label).join(", ") || "—"}</p>
+          <p className="muted small">Где выполнен вход (вход, которым не пользовались 90 дней, закрывается сам):</p>
+          <ul className="devices">
+            {me.sessions.map((s) => (
+              <li key={s.id} className="row">
+                <span>{s.label || "устройство"}{s.current ? <span className="muted small"> · это устройство</span> : null}</span>
+                <span className="muted small">был {new Date(s.last_seen).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</span>
+                {s.current ? null : (
+                  <button className="small" onClick={async () => {
+                    if (!confirm(`Выйти на «${s.label || "устройство"}»? Там придётся войти заново.`)) return;
+                    try {
+                      const r = await post<{ sessions: Me["sessions"] }>("/api/sessions/drop", { id: s.id });
+                      setMe({ ...me, sessions: r.sessions.map((x) => ({ ...x, current: me.sessions.find((y) => y.id === x.id)?.current })) });
+                    } catch (e) {
+                      setError((e as Error).message);
+                    }
+                  }}>Выйти там</button>
+                )}
+              </li>
+            ))}
+          </ul>
           <div className="row">
             <a className="btn" href="/api/backup" onClick={async (e) => {
               e.preventDefault();

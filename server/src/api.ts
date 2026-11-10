@@ -3,7 +3,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { z } from "zod";
-import { login, tokenHash, userByToken } from "./auth.ts";
+import { login, LoginGate, tokenHash, userByToken } from "./auth.ts";
 import type { Store, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { habitMonth, habitsOfDay } from "./habits.ts";
@@ -33,6 +33,8 @@ export interface ApiDeps {
   push?: Push;
   /** Имя Telegram-бота без @ (ссылка на экране входа); нет бота — undefined. */
   botName?: () => string | undefined;
+  /** Счётчик неудачных входов (тесты подставляют свой). */
+  loginGate?: LoginGate;
 }
 
 class HttpError extends Error {
@@ -138,8 +140,18 @@ export async function searchDiary(store: Store, u: User, q: { section?: string; 
   return rows.reverse().slice(0, 500);
 }
 
+/** Адрес клиента для ограничения входа. X-Forwarded-For верим, только если пришли с локального или внутреннего адреса
+ *  (Caddy в Docker); с открытого адреса заголовок подделывается — берём сам сокет. */
+export function clientIp(req: http.IncomingMessage): string {
+  const sock = (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
+  const inner = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|f[cd])/.test(sock);
+  const fwd = String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim();
+  return inner && fwd ? fwd : sock || "?";
+}
+
 export function createApi(deps: ApiDeps) {
   const { store, pipeline } = deps;
+  const gate = deps.loginGate ?? new LoginGate();
 
   /** Кнопка из уведомления (push): отметка привычки или «отложить» — то же, что callback в боте. */
   async function runButton(u: User, data: string, all: string[]): Promise<string> {
@@ -179,8 +191,15 @@ export function createApi(deps: ApiDeps) {
         z.object({ login: z.string().min(1).max(80), password: z.string().min(1).max(200), label: z.string().max(80).optional() }),
         await readJson(req),
       );
+      const ip = clientIp(req);
+      const wait = gate.wait(ip, b.login);
+      if (wait) throw new HttpError(429, `слишком много неудачных попыток, попробуйте через ${Math.ceil(wait / 60_000)} мин`);
       const token = await login(store, b.login, b.password, b.label ?? "web");
-      if (!token) throw new HttpError(401, "неверный логин или пароль");
+      if (!token) {
+        gate.failed(ip, b.login);
+        throw new HttpError(401, "неверный логин или пароль");
+      }
+      gate.passed(ip, b.login);
       return { token };
     }
 
@@ -209,7 +228,14 @@ export function createApi(deps: ApiDeps) {
     const today = dayKey(new Date(), u.tz);
     if (m === "GET" && p === "/api/me") {
       const { password_hash: _, ...me } = u;
-      return { ...me, sessions: await store.sessionsOf(u.id) };
+      const mine = tokenHash(token).slice(0, 16);
+      return { ...me, sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })) };
+    }
+    // Выйти на другом устройстве (потерянный телефон, старый ПК).
+    if (m === "POST" && p === "/api/sessions/drop") {
+      const b = parseBody(z.object({ id: z.string().regex(/^[0-9a-f]{16}$/) }), await readJson(req));
+      if (!(await store.dropSessionOf(u.id, b.id))) throw new HttpError(404, "нет такого входа");
+      return { ok: true, sessions: await store.sessionsOf(u.id) };
     }
     if (m === "POST" && p === "/api/settings") {
       const Time = z.string().refine(isTime, "время ЧЧ:ММ");
