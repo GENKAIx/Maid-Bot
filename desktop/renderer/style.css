@@ -111,20 +111,30 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .stage.folded .perch { --peek: calc(var(--maid-w, 196px) * .4); } /* из-за маленькой карточки видна только голова */
 .mini.dragging { cursor: grabbing; }
 .mini-top { display: flex; align-items: center; gap: 12px; }
+.mini-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.mini-sub { min-height: 15px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-sub.late { color: #f0a46b; }
+/* Кольцо «сделано из всего»: дуга растёт по часовой от верха. Это же кнопка «развернуть». */
+.mini .mini-open { position: relative; width: 42px; height: 42px; border-radius: 50%; background: none; flex: none; }
+.mini .mini-open:hover { background: rgba(255, 255, 255, .06); }
+.mini-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.mini-ring circle { fill: none; stroke: #3f3852; stroke-width: 3.5; }
+.mini-ring .arc { stroke: var(--accent-2); stroke-linecap: round; transition: stroke-dasharray .5s cubic-bezier(.3, 0, .2, 1); }
+.mini-count { position: relative; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Строка ввода — только когда курсор на карточке (или в ней пишут). */
+.mini-ask { display: none; gap: 8px; align-items: center; margin-top: 10px; }
+.mini:hover .mini-ask, .mini:focus-within .mini-ask, .mini-ask:has(input:not(:placeholder-shown)) { display: flex; }
+.mini-ask input { flex: 1; min-width: 0; height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .05); color: var(--text); font: inherit; font-size: 13.5px; }
+.mini-ask input:focus { outline: none; border-color: var(--accent); }
+.mini-mic { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--accent); color: #fff; cursor: pointer; flex: none; }
+.mini-mic:hover { filter: brightness(1.12); }
 .mini-clock { font-size: 30px; line-height: 1; font-weight: 750; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.mini-day { flex: 1; color: var(--muted); font-size: 14px; }
 .mini-open { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 11px; border: 0; background: var(--panel-2); color: var(--text); cursor: pointer; }
 .mini-open:hover { background: #3b3352; }
-.mini-tasks { display: flex; align-items: center; gap: 10px; margin-top: 9px; font-size: 14px; color: #ddd8ea; }
-.mini-tasks .dots { display: flex; gap: 5px; }
-.mini-tasks i { width: 10px; height: 10px; border-radius: 50%; background: #3f3852; }
-.mini-tasks i.hi { background: var(--warn); }
-.mini-tasks i.mid { background: #9a6cf0; }
-.mini-tasks i.ok { background: var(--accent-2); }
+.mini-tasks { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14px; color: #ddd8ea; }
 .mini-tasks .mini-plan { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mini-tasks .mini-plan b { font-weight: 700; color: #c9b8ff; }
+.mini-tasks .mini-plan b { font-weight: 700; color: #c9b8ff; margin-right: 3px; }
 .mini-tasks .mini-plan.soon b { color: var(--warn); }
-.mini-tasks i.more { width: auto; height: auto; background: none; font-style: normal; font-size: 11px; color: var(--muted); }
 .stage.grab .mini { border-color: var(--accent); -webkit-app-region: drag; }
 .stage.grab .mini button { -webkit-app-region: no-drag; }
 .stage.grab .w { border-color: var(--accent); -webkit-app-region: drag; }
@@ -897,8 +907,6 @@ body.quick { background: transparent; }
 .mini.fold-ghost { display: block; }
 .fold-dust { position: fixed; z-index: 4; width: 16px; height: 16px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle, rgba(230, 222, 255, .75), rgba(230, 222, 255, 0) 70%); }
-/* В свёрнутом виде горничная прячется за карточку и не ловит мышь. */
-.stage.maid-away .maid { visibility: hidden; }
 /* Во время свёртки/развёртки: панели без CSS-переходов (не спорят с анимацией), линия обрезки горничной — как у развёрнутой. */
 .stage.fold-anim .w, .stage.fold-anim .mini { transition: none; will-change: transform, opacity; }
 .stage.fold-anim .maid { will-change: transform, opacity; }

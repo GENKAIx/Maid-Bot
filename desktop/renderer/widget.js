@@ -780,7 +780,7 @@ function render() {
     return;
   }
   $("#day").textContent = humanDay(data.day);
-  $("#miniDay").textContent = miniDay(data.day);
+  $("#miniClock").title = miniDay(data.day);
   // Ближайшие планы, до NEXT_MAX строк: сначала сегодняшние (не начавшиеся больше 30 мин назад), не хватает — из следующих дней,
   // не дальше недели вперёд (поэтому дня недели хватает: «Завтра», «Послезавтра», «Сб»).
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
@@ -856,7 +856,7 @@ function render() {
   const allDone = hiding && !left && doneCount > 0;
   if (allDone && lastLeft > 0) { react("excited", 5000); allDoneAt = Date.now(); }
   lastLeft = left;
-  renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left);
+  renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left, doneCount);
   const bump = Date.now() - bumpAt < 600 ? " bump" : "";
   const counter = hiding && doneCount
     ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}${allDone ? " all" : ""}${bump}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${doneCount}/${doneCount + left}</button>`
@@ -1088,7 +1088,7 @@ async function pollNotices() {
   }
 }
 
-// Свёрнутая панель: точка на каждое несделанное (важные — оранжевые, обычные — сиреневые, «когда-нибудь» и привычки — серые).
+// Свёрнутая панель: часы, ближайший план и сводка словами, справа кольцо «сделано из всего» (щелчок — развернуть).
 function miniDay(day) {
   const [, m, d] = day.split("-").map(Number);
   return `${d} ${MONTHS[m - 1].slice(0, 3)}, ${humanDay(day).split(", ")[1]}`;
@@ -1104,21 +1104,31 @@ function miniPlan() {
     const [eh, em] = (e.end_time ?? "").split(":").map(Number);
     const end = e.end_time ? eh * 60 + em : start + 30;
     if (end <= cur) continue;
-    const when = start <= cur ? "идёт" : start - cur <= 60 ? `через ${start - cur} мин` : e.time;
-    return { when, title: e.title, soon: start - cur <= 15 };
+    const d = start - cur;
+    const rel = d <= 0 ? "идёт" : d < 60 ? `через ${d} мин` : `через ${Math.round(d / 60)} ч`;
+    return { time: e.time, rel, title: e.title, soon: d <= 15 };
   }
   return null;
 }
-function renderMini(open, todo, left) {
-  const dots = [...open.map((t) => t.priority === "high" ? "hi" : t.priority === "low" ? "lo" : "mid"), ...todo.map(() => "lo")];
-  const more = dots.length > 6 ? `<i class="more">+${dots.length - 6}</i>` : "";
+const RING = 2 * Math.PI * 16.5;
+function renderMini(open, todo, left, done) {
   const plan = miniPlan();
-  const tasks = left > 0 ? `<span class="dots" title="Задачи: ${left}">${dots.slice(0, 6).map((k) => `<i class="${k}"></i>`).join("")}${more}</span>` : "";
+  const late = open.filter(overdue).length;
   $("#miniTasks").innerHTML = plan
-    ? `${tasks}<span class="mini-plan${plan.soon ? " soon" : ""}"><b>${esc(plan.when)}</b> · ${esc(plan.title)}</span>`
-    : left > 0
-      ? `${tasks}Задачи · ${left}`
-      : `<span class="dots"><i class="ok"></i></span>Всё на сегодня ✨`;
+    ? `<span class="mini-plan${plan.soon ? " soon" : ""}"><b>${esc(plan.time)}</b> ${esc(plan.title)}</span>`
+    : left > 0 ? `Задачи · ${left}` : "Всё на сегодня ✨";
+  // Вторая строка — главное словами: когда план, что просрочено, сколько осталось.
+  const sub = [
+    plan?.rel,
+    late ? `${late} ${plural(late, "просрочено", "просрочены", "просрочено")}` : "",
+    left - late > 0 && plan ? `${left - late} ${plural(left - late, "дело", "дела", "дел")}` : "",
+  ].filter(Boolean);
+  $("#miniSub").textContent = sub.join(" · ");
+  $("#miniSub").classList.toggle("late", late > 0);
+  const total = done + left;
+  $("#miniArc").style.strokeDasharray = `${total ? (done / total) * RING : 0} ${RING}`;
+  $("#miniCount").textContent = total ? `${done}/${total}` : "✓";
+  $("#miniOpen").title = total ? `Сделано ${done} из ${total} · развернуть панель` : "Развернуть панель";
 }
 
 function setCollapsed(on) {
@@ -1126,13 +1136,13 @@ function setCollapsed(on) {
   if (on) hideClock();
   $("#w").classList.toggle("hidden", on);
   $("#stage").classList.toggle("folded", on);
-  $("#stage").classList.toggle("maid-away", on); // в свёрнутом виде горничной нет — только карточка
+  // В свёрнутом виде над карточкой видна голова горничной: по ней видно настроение и «думаю».
   localStorage.setItem("maid.collapsed", on ? "1" : "");
 }
 
 // Свернуть/развернуть с анимацией. Свернуть: содержимое панели ссыпается вниз, панель сжимается в карточку с пружинкой,
-// горничная подпрыгивает и ныряет за карточку (пропадает), из-за края — облачко пыли.
-// Развернуть: панель вырастает из карточки с перелётом, горничная выскакивает из-за неё и садится на край, строки въезжают по очереди.
+// горничная едет вниз на её верхнем краю и выглядывает из-за карточки головой, из-за края — облачко пыли.
+// Развернуть: панель вырастает из карточки с перелётом, горничная подскакивает с карточки и садится на край, строки въезжают по очереди.
 let folding = null;
 function foldAnimated(on) {
   if (on === collapsed) return;
@@ -1157,9 +1167,7 @@ function foldAnimated(on) {
   const m1 = $("#maid").getBoundingClientRect();
   const dy = m0.top - m1.top; // где горничная была относительно нового места
   const maidEl = $("#maid");
-  const hideAt = m1.height + 24; // настолько ниже своего места горничная целиком за панелью
   const alpha = String(cfg.opacity); // панели прозрачны по настройке — анимация кончается на ней, а не на 1
-  if (on) maidEl.style.visibility = "visible"; // до конца ухода — видна
   const anims = [];
   const run = (el, kf, opt) => {
     const a = el.animate(kf, opt);
@@ -1182,18 +1190,14 @@ function foldAnimated(on) {
     run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 560, fill: "forwards" });
     run(to, [{ opacity: 0, transform: "scale(.97)" }, { opacity: alpha, transform: "scale(1.02)", offset: 0.6 }, { opacity: alpha, transform: "none" }],
       { duration: 280, delay: 520, easing: "ease-out", fill: "backwards" });
-    // Горничная едет вниз на верхнем краю сжимающейся панели (низ картинки всё время закрыт панелью), потом тает в карточке.
+    // Горничная едет вниз на верхнем краю сжимающейся панели (низ картинки всё время закрыт панелью) и остаётся над карточкой.
     const ride = (hk) => `translateY(${(dy * (hk - h1)) / Math.max(1, h0 - h1)}px)`;
     run(maidEl, [
       { transform: ride(h0), offset: 0 },
       { transform: ride(h1 * 0.82), offset: 0.62 },
       { transform: ride(h1 * 1.07), offset: 0.8 },
       { transform: "none", offset: 1 },
-    ], { duration: 560, delay: 90, easing: "cubic-bezier(.45, 0, .2, 1)", fill: "both" });
-    const vanish = { duration: 240, delay: 640, easing: "cubic-bezier(.5, 0, .75, .4)", fill: "forwards" };
-    run(maidEl, [{ transform: "none" }, { transform: "scale(.3)" }], { ...vanish, composite: "add" });
-    run(maidEl, [{ opacity: 1 }, { opacity: 0 }], vanish).onfinish = () => {
-      maidEl.style.visibility = "";
+    ], { duration: 560, delay: 90, easing: "cubic-bezier(.45, 0, .2, 1)", fill: "both" }).onfinish = () => {
       if (folding === stop) stage.classList.remove("fold-anim");
     };
     setTimeout(() => {
@@ -1216,10 +1220,10 @@ function foldAnimated(on) {
     ], { duration: 520, delay: 60, fill: "backwards" });
     [...to.children].filter((c) => c.offsetParent).forEach((c, i) => run(c, [{ transform: "translateY(14px)", opacity: 0 }, { transform: "none", opacity: 1 }],
       { duration: 340, delay: 220 + i * 40, easing: "cubic-bezier(.2, .8, .3, 1)", fill: "backwards" }));
-    // Горничная выскакивает из-за выросшей панели, чуть взлетает и плавно садится на край — без пружинок в конце.
+    // Горничная подскакивает с карточки вместе с растущей панелью, чуть взлетает и плавно садится на край — без пружинок в конце.
     run(maidEl, [
-      { transform: `translateY(${hideAt}px)`, offset: 0 },
-      { transform: `translateY(${hideAt}px)`, offset: 0.18, easing: "cubic-bezier(.2, .75, .35, 1)" },
+      { transform: `translateY(${dy}px)`, offset: 0 },
+      { transform: `translateY(${dy}px)`, offset: 0.18, easing: "cubic-bezier(.2, .75, .35, 1)" },
       { transform: "translateY(-14px) scale(.98, 1.03)", offset: 0.62, easing: "cubic-bezier(.45, 0, .35, 1)" },
       { transform: "none", offset: 1 },
     ], { duration: 820, fill: "backwards" });
@@ -1415,7 +1419,7 @@ function dropDrag() {
 const head = $("#head");
 draggable(head, (e) => e.target.closest("button"));
 draggable($("#maid"), () => false);
-draggable($("#mini"), (e) => e.target.closest("button"));
+draggable($("#mini"), (e) => e.target.closest("button, input"));
 document.addEventListener("pointerup", dropDrag);
 window.addEventListener("blur", dropDrag);
 
@@ -1462,7 +1466,25 @@ $("#maid").addEventListener("dblclick", () => {
   foldAnimated(!collapsed);
 });
 $("#miniOpen").onclick = () => { autoOpened = false; foldAnimated(false); };
-$("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button")) return; autoOpened = false; foldAnimated(false); });
+$("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button, form")) return; autoOpened = false; foldAnimated(false); });
+// Строка ввода свёрнутой панели: Enter — в ту же очередь, что чат панели; ответ горничной развернёт панель сама (openForMessage).
+$("#miniAsk").onsubmit = (e) => {
+  e.preventDefault();
+  const text = $("#miniInput").value.trim();
+  if (!text) return;
+  $("#miniInput").value = "";
+  enqueue("/api/input", { text, id: crypto.randomUUID() }, text);
+};
+$("#miniInput").addEventListener("keydown", (e) => {
+  e.stopPropagation();
+  if (e.key === "Escape") { $("#miniInput").value = ""; $("#miniInput").blur(); }
+});
+// Голос — запись видна только в панели: разворачиваем её (она ваша, сама не свернётся) и начинаем.
+$("#miniMic").onclick = () => {
+  autoOpened = false;
+  foldAnimated(false);
+  setTimeout(() => { if (!Voice.on) toggleMic(); }, 380);
+};
 $("#maid").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   maid.grab(!grabbed);
