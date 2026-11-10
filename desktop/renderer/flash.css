@@ -5,11 +5,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
 /* Почти весь экран — белый, сильнее у линзы. */
 #fx > .wash { inset: 0; left: 0; top: 0; transform: none;
   background: radial-gradient(circle 1600px at var(--x, 50%) var(--y, 50%), #fff 0, rgba(244, 249, 255, .97) 30%, rgba(226, 238, 255, .9) 65%, rgba(214, 230, 255, .78) 100%); }
-.bloom { width: 900px; height: 900px; border-radius: 50%;
-  background: radial-gradient(circle, #fff 0, #fff 18%, rgba(255, 255, 255, .85) 34%, rgba(225, 238, 255, .4) 60%, rgba(225, 238, 255, 0) 72%); }
-.core { width: 120px; height: 120px; border-radius: 50%;
-  background: radial-gradient(circle, #fff 0, #fff 30%, rgba(255, 252, 235, .9) 50%, rgba(255, 245, 220, 0) 72%);
-  box-shadow: 0 0 60px 30px #fff; }
 /* Длинный анаморфный блик — голубая полоса через весь экран. */
 .streak { width: 260vw; height: 28px; border-radius: 50%;
   background: radial-gradient(ellipse at center, #fff 0, rgba(200, 228, 255, .95) 18%, rgba(120, 180, 255, .55) 45%, rgba(120, 180, 255, 0) 70%); }
@@ -19,21 +14,16 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
 
 #fx.on { animation: fxAll 1.4s linear both; }
 #fx.on .wash { animation: fxWash 1.4s ease-out both; }
-#fx.on .bloom { animation: fxBloom 1.4s ease-out both; }
 #fx.on .streak { animation: fxStreak 1.4s ease-out both; }
-#fx.on .core { animation: fxCore 1.4s ease-out both; }
 #fx.on .ghosts { animation: fxGhosts 1.4s ease-out both; }
 @keyframes fxAll { 0% { opacity: 0; } 3% { opacity: 1; } 100% { opacity: 1; } }
-/* Удар белым на ~0,1 с, потом белое сходит, а блик и ядро гаснут медленнее. */
+/* Удар белым на ~0,1 с, потом белое сходит, а блик гаснет медленнее. */
 @keyframes fxWash { 0% { opacity: 0; } 2% { opacity: 1; } 16% { opacity: 1; } 50% { opacity: .22; } 100% { opacity: 0; } }
-@keyframes fxBloom { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); } 4% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  60% { opacity: .35; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); } }
 @keyframes fxStreak { 0% { opacity: 0; transform: translate(-50%, -50%) scaleX(.2); } 4% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
   70% { opacity: .6; } 100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.05) scaleY(.6); } }
-@keyframes fxCore { 0% { opacity: 0; } 3% { opacity: 1; } 75% { opacity: .8; } 100% { opacity: 0; } }
 @keyframes fxGhosts { 0% { opacity: 0; } 5% { opacity: 1; } 55% { opacity: .5; } 100% { opacity: 0; } }
 
-/* «Уменьшить движение»: без удара белым на весь экран — мягкий короткий свет у линзы. */
+/* «Уменьшить движение»: без удара белым на весь экран — короткий блик у линзы. */
 @media (prefers-reduced-motion: reduce) {
   #fx.on > * { animation-duration: .5s; }
   #fx > .wash, .ghosts { display: none; }
