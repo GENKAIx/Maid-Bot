@@ -1190,21 +1190,27 @@ function foldAnimated(on) {
     run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 560, fill: "forwards" });
     run(to, [{ opacity: 0, transform: "scale(.97)" }, { opacity: alpha, transform: "scale(1.02)", offset: 0.6 }, { opacity: alpha, transform: "none" }],
       { duration: 280, delay: 520, easing: "ease-out", fill: "backwards" });
-    // Горничная едет вниз на верхнем краю сжимающейся панели (низ картинки всё время закрыт панелью) и остаётся над карточкой.
-    const ride = (hk) => `translateY(${(dy * (hk - h1)) / Math.max(1, h0 - h1)}px)`;
+    // Горничная едет вниз на верхнем краю сжимающейся панели и остаётся над карточкой. Низ картинки срезается по краю панели:
+    // сколько спрятано, плавно меняется от прежнего (у большой панели) до конечного (у карточки) — в конце срез совпадает
+    // с обрезкой свёрнутого вида, и ничего не прыгает.
+    const t = (hk) => (h0 - hk) / Math.max(1, h0 - h1);
+    const hid0 = m0.bottom - r0.top, hid1 = m1.bottom - r1.top;
+    const at = (hk) => ({ transform: `translateY(${dy * (1 - t(hk))}px)`, clipPath: `inset(-400px -400px ${hid0 + (hid1 - hid0) * t(hk)}px -400px)` });
     run(maidEl, [
-      { transform: ride(h0), offset: 0 },
-      { transform: ride(h1 * 0.82), offset: 0.62 },
-      { transform: ride(h1 * 1.07), offset: 0.8 },
-      { transform: "none", offset: 1 },
-    ], { duration: 560, delay: 90, easing: "cubic-bezier(.45, 0, .2, 1)", fill: "both" }).onfinish = () => {
+      { ...at(h0), offset: 0 },
+      { ...at(h1 * 0.82), offset: 0.62 },
+      { ...at(h1 * 1.07), offset: 0.8 },
+      { ...at(h1), offset: 1 },
+    ], { duration: 560, delay: 90, easing: "cubic-bezier(.45, 0, .2, 1)", fill: "backwards" }).onfinish = () => {
       if (folding === stop) stage.classList.remove("fold-anim");
     };
     setTimeout(() => {
       if (folding !== stop) return;
       popTone(1, { vol: 0.07, soft: true });
       dust(m1.left + m1.width / 2, r1.top);
-      run(to, [{ transform: "none" }, { transform: "translateY(3px) scale(1.01, .98)" }, { transform: "none" }], { duration: 260, easing: "ease-out", composite: "add" });
+      const squash = [{ transform: "none" }, { transform: "translateY(3px) scale(1.01, .98)" }, { transform: "none" }];
+      run(to, squash, { duration: 260, easing: "ease-out", composite: "add" });
+      run(maidEl, [{ transform: "none" }, { transform: "translateY(3px)" }, { transform: "none" }], { duration: 260, easing: "ease-out" }); // горничная оседает вместе с карточкой
     }, 700);
     popTone(5, { vol: 0.05, soft: true });
   } else {

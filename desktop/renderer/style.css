@@ -910,7 +910,6 @@ body.quick { background: transparent; }
 /* Во время свёртки/развёртки: панели без CSS-переходов (не спорят с анимацией), линия обрезки горничной — как у развёрнутой. */
 .stage.fold-anim .w, .stage.fold-anim .mini { transition: none; will-change: transform, opacity; }
 .stage.fold-anim .maid { will-change: transform, opacity; }
-.stage.folded.fold-anim .perch { --peek: inherit; }
 
 /* Полосы прокрутки в виджете: тонкая скруглённая сиреневая полоска без стрелок, едва заметна, ярче при наведении.
    (scrollbar-width / scrollbar-color не ставить — в новом Chromium они отключают эти правила.) */
