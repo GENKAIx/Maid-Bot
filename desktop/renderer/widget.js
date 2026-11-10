@@ -1167,7 +1167,10 @@ function syncLift() {
 function sendFold() {
   const m = $("#maid");
   const head = m.offsetHeight ? Math.max(0, Math.round(m.offsetHeight + parseFloat(getComputedStyle($("#perch")).marginBottom))) : 0;
-  maid.foldState(collapsed, $("#mini").offsetHeight || 68, head);
+  // Высота карточки — без строки вопроса, плюс место под неё снизу: при наведении это число не меняется.
+  const ask = $("#mini .mini-ask");
+  const h = ($("#mini").offsetHeight || 68) - (ask?.offsetHeight ? ask.offsetHeight + 10 : 0) + 46;
+  maid.foldState(collapsed, h, head);
 }
 new ResizeObserver(() => syncLift()).observe($("#mini"));
 new ResizeObserver(() => sendFold()).observe($("#maid"));
@@ -1226,8 +1229,9 @@ function foldAnimated(on) {
     [...ghost.children].forEach((c, i) => run(c, [{ transform: "none", opacity: 1 }, { transform: `translateY(${down ? -18 : 26}px) scale(.96)`, opacity: 0 }],
       { duration: 220, delay: i * 28, easing: "cubic-bezier(.5, 0, .9, .4)", fill: "forwards" }));
     // Панель сжимается вниз в карточку: низ на месте, верх опускается с пружинкой.
-    const h0 = r0.height, h1 = r1.height, bottom = r0.bottom;
-    const top = (hk) => `${down ? r0.top : bottom - hk}px`;
+    // Низ едет от низа панели к низу карточки (под ней место под строку вопроса).
+    const h0 = r0.height, h1 = r1.height;
+    const top = (hk) => `${down ? r0.top : r0.bottom + (r1.bottom - r0.bottom) * Math.min(1, (h0 - hk) / Math.max(1, h0 - h1)) - hk}px`;
     run(ghost, [
       { height: `${h0}px`, top: top(h0), borderRadius: "16px", offset: 0 },
       { height: `${h1 * 0.82}px`, top: top(h1 * 0.82), borderRadius: "22px", offset: 0.62 },
@@ -1267,7 +1271,7 @@ function foldAnimated(on) {
     const k = Math.min(1, r0.height / r1.height);
     to.style.transformOrigin = down ? "50% 0" : "50% 100%";
     run(to, [
-      { transform: `scaleY(${k}) scaleX(.96)`, opacity: 0, offset: 0, easing: "cubic-bezier(.25, .8, .35, 1)" },
+      { transform: `translateY(${down ? 0 : r0.bottom - r1.bottom}px) scaleY(${k}) scaleX(.96)`, opacity: 0, offset: 0, easing: "cubic-bezier(.25, .8, .35, 1)" },
       { transform: "scaleY(1.015)", opacity: alpha, offset: 0.7, easing: "cubic-bezier(.4, 0, .4, 1)" },
       { transform: "none", opacity: alpha, offset: 1 },
     ], { duration: 520, delay: 60, fill: "backwards" });

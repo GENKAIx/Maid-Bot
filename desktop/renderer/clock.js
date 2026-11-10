@@ -582,7 +582,9 @@ function syncDrawer() {
   const st = $("#stage");
   const down = collapsed && st.classList.contains("down");
   const open = collapsed && !box.classList.contains("hidden");
-  st.style.setProperty("--drawer", open && !down ? `${box.offsetHeight + 6}px` : "0px");
+  // Под карточкой и так оставлено место под строку вопроса (46 px), пока полоса открыта, оно не убирается.
+  st.classList.toggle("drawer-open", open && !down);
+  st.style.setProperty("--drawer", open && !down ? `${Math.max(0, box.offsetHeight + 6 - 46)}px` : "0px");
   box.style.bottom = down ? `${8 + (parseFloat(st.style.getPropertyValue("--lift")) || 0) - 6 - box.offsetHeight}px` : "";
 }
 new ResizeObserver(() => syncDrawer()).observe($("#planClock"));
