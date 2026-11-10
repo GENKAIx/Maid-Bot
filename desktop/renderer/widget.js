@@ -476,11 +476,28 @@ function drawHistory() {
     : `<div class="h-empty">Здесь будут последние ответы горничной.</div>`;
   box.scrollTop = box.scrollHeight;
 }
+// История встаёт на место списка задач (панель вытягивается, как с настройками) и занимает ровно свободное место:
+// раньше она росла до 260 px поверх всего и выталкивала строку ввода за низ панели.
 function toggleHistory(on = $("#chatHist").classList.contains("hidden")) {
   $("#chatHist").classList.toggle("hidden", !on);
   $("#chatHistBtn").classList.toggle("on", on);
+  $("#w").classList.toggle("hist-open", on);
   if (on) drawHistory();
+  fitHistory();
 }
+function fitHistory() {
+  const box = $("#chatHist");
+  const w = $("#w");
+  if (box.classList.contains("hidden")) return void box.style.removeProperty("max-height");
+  box.style.maxHeight = "60px";
+  // Низ строки ввода при истории в 60 px — сколько до низа панели осталось, отдать истории.
+  const chat = $("#chat");
+  const free = w.clientHeight - parseFloat(getComputedStyle(w).paddingBottom) - (chat.offsetTop + chat.offsetHeight);
+  box.style.maxHeight = `${Math.max(60, 60 + free)}px`;
+  w.scrollTop = 0;
+  box.scrollTop = box.scrollHeight;
+}
+addEventListener("resize", fitHistory);
 $("#chatHistBtn").addEventListener("click", (e) => { e.preventDefault(); toggleHistory(); chatInput.focus(); });
 chatInput.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#chatHist").classList.contains("hidden")) { e.preventDefault(); toggleHistory(false); } });
 $("#chatHist").addEventListener("click", async (e) => {
@@ -761,6 +778,7 @@ function render() {
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
   for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP
+  fitHistory(); // планы сверху могли стать выше или ниже
   for (const li of $("#body").querySelectorAll("li.woke")) li.style.setProperty("--wake-delay", `-${Date.now() - wokeAt.get(Number(li.dataset.woke))}ms`);
   for (const li of $("#body").querySelectorAll("li.leaving")) {
     const x = leavingRows.get(li.dataset.key);

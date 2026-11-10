@@ -283,7 +283,8 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .gear:hover, .w .gear.on { background: var(--panel-2); color: var(--text); }
 .stage.grab .w .head { cursor: move; }
 /* Настройки виджета — вместо списка дел, пока открыты. */
-.w.prefs-open { flex-basis: max(520px, calc(100vh - 380px)); }
+.w.prefs-open, .w.hist-open { flex-basis: max(520px, calc(100vh - 380px)); }
+.w.hist-open .scroll { display: none; }
 .w .prefs { flex: 1; overflow-x: hidden; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
 .w .prefs.hidden, .w .scroll.hidden, .w .next.hidden { display: none; }
 .prefs .pref { display: grid; gap: 6px; }
