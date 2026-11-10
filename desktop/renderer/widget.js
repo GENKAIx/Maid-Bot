@@ -330,6 +330,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     react(pick, Math.max(4000, Math.min(ms || 9000, 9000)));
   }
   if (sound) play(sound);
+  if (changes.some((c) => c.kind === "event")) farPlanSoon(changes);
   clearTimeout(bubbleTimer);
   // Вопрос «добавить?» облачко закрывает сам (полоса на «Не надо»).
   if (proposal) ms = 0;

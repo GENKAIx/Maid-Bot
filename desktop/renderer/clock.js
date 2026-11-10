@@ -869,6 +869,28 @@ function openCalendar(day) {
   });
 }
 
+// План дальше 14 дней в данные виджета не попадает (сервер отдаёт только ближние), и watchPlans его не видит. Поэтому после ответа,
+// где записан план: если панель так и не открылась, найти этот план среди дальних (по названию, самый новый) и съездить к его дню.
+let farPlanRun = 0;
+function farPlanSoon(changes) {
+  const titles = new Set(changes.filter((c) => c.kind === "event").map((c) => c.title));
+  const run = ++farPlanRun;
+  setTimeout(async () => {
+    if (run !== farPlanRun || !data || !$("#planClock").classList.contains("hidden")) return;
+    const from = dayAfter(data.day, NEAR_DAYS + 1);
+    let rows;
+    try {
+      rows = await loadRange(from, dayAfter(data.day, 400));
+    } catch {
+      return;
+    }
+    const known = new Set([...(lastPlans?.keys() ?? [])]);
+    const e = rows.filter((x) => titles.has(x.title) && x.status !== "deleted" && !known.has(x.id)).sort((a, b) => b.id - a.id)[0];
+    if (!e || run !== farPlanRun || !$("#planClock").classList.contains("hidden")) return;
+    flyToDay(e.date_iso, { fresh: [e.id] });
+  }, 1500);
+}
+
 // Новый план на другой день (из чата, Telegram, с телефона): панель открывается на сегодня, полоса едет день за днём к его дню —
 // видно, через сколько дней, — там план появляется, и через несколько секунд панель уходит сама (если мышь не над ней).
 const FLY_SHOWN = 5_000;
