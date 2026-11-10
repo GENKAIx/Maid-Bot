@@ -61,7 +61,7 @@ export async function widgetQuery(store: Store, pipeline: Pipeline, u: User, dat
     if (kind === "t") {
       const t = await store.task(id);
       if (t && t.user_id === u.id && t.status !== "deleted") {
-        await store.updateTask(id, { status: act === "d" ? "done" : "open" });
+        await store.updateTask(id, { status: act === "d" ? "done" : "open" }, now);
         pipeline.changed(u);
       }
     } else if (act === "d") {

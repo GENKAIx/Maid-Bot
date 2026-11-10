@@ -713,11 +713,13 @@ export class Store {
   task(id: number): Promise<TaskRow | undefined> {
     return this.get<TaskRow>("SELECT * FROM tasks WHERE id = ?", id);
   }
-  async updateTask(id: number, patch: Partial<Pick<TaskRow, "title" | "due_date" | "status" | "priority" | "notes">>) {
+  // at — время отметки (по умолчанию сейчас; виджет Telegram передаёт своё «сейчас», с которым считает «сегодня»).
+  async updateTask(id: number, patch: Partial<Pick<TaskRow, "title" | "due_date" | "status" | "priority" | "notes">>, at?: Date) {
     for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE tasks SET ${k} = ? WHERE id = ?`, v as never, id);
     if (patch.status) {
-      await this.run("UPDATE tasks SET done_at = ? WHERE id = ?", patch.status === "done" ? now() : null, id);
-      await this.run("UPDATE tasks SET closed_at = ? WHERE id = ?", patch.status === "open" ? null : now(), id);
+      const when = at ? at.toISOString() : now();
+      await this.run("UPDATE tasks SET done_at = ? WHERE id = ?", patch.status === "done" ? when : null, id);
+      await this.run("UPDATE tasks SET closed_at = ? WHERE id = ?", patch.status === "open" ? null : when, id);
     }
   }
   /** Задачи, закрытые как сделанные в промежутке [from, to) — «сделано сегодня» у виджета. */
