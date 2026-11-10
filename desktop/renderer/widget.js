@@ -23,11 +23,6 @@ const wokeAt = new Map(); // id задачи → когда проснулась
 let wakeTimer = 0;
 const asleep = (t) => cfg.laterTasks === "hide" && Boolean(t.due_date) && daysFrom(data.day, t.due_date) > TASK_WAKE;
 const wokeFresh = (t) => Date.now() - (wokeAt.get(t.id) ?? 0) < WAKE_SHOW;
-// Короткий день для задачи на ближайшие дни: «завтра», «послезавтра», дальше — день недели («пт»).
-function soonDay(day) {
-  const n = daysFrom(data.day, day);
-  return n === 1 ? "завтра" : n === 2 ? "послезавтра" : ["вс", "пн", "вт", "ср", "чт", "пт", "сб"][new Date(`${day}T12:00:00`).getDay()];
-}
 function dueWhen(day) {
   const n = daysFrom(data.day, day);
   return n <= 0 ? "сегодня" : n === 1 ? "завтра" : `через ${n} ${plural(n, "день", "дня", "дней")}`;
@@ -483,35 +478,25 @@ function render() {
   const later = data.tasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
   const awake = data.tasks.filter((t) => !asleep(t));
   noteWakes(awake, later);
-  // Сначала задачи на сегодня (без срока, со сроком сегодня или просроченные), потом «На неделе» — со сроком в ближайшие дни, по дате.
-  // Только что проснувшиеся — первыми в своей части, чтобы их было видно.
-  const ahead = (t) => Boolean(t.due_date) && t.due_date > data.day;
-  const tasks = [...awake].sort((a, b) => ahead(a) - ahead(b) || wokeFresh(b) - wokeFresh(a)
-    || (ahead(a) ? a.due_date.localeCompare(b.due_date) : 0) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
+  // Только что проснувшиеся — первыми, чтобы их было видно.
+  const tasks = [...awake].sort((a, b) => wokeFresh(b) - wokeFresh(a) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
   // Вытянутая панель (уголок справа внизу) показывает больше задач: +1 на каждые 26 px прибавки к высоте.
   const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6 + Math.floor(Math.max(0, innerHeight - 760) / 26));
   const todo = daily.filter((h) => !h.status);
   const hiding = cfg.doneTasks === "hide";
   // Вчерашний пропуск, который ещё можно спасти задним числом (fun.js).
   const rescueItem = (h) => `<li class="rescue"><span class="mark" data-rescue="${h.id}" title="Отметить вчерашний день"></span><span>${esc(h.title)} <span class="muted">· вчера — спасти серию</span></span></li>`;
-  const taskItem = (t) => {
-    const go = leavingRows.get(`t${t.id}`);
-    if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="t${t.id}"><button type="button" class="undo-back" data-undo="t${t.id}">↶ Вернуть</button></li>`;
-    return go
-      ? `<li class="${rowLeaving(go)}" data-key="t${t.id}"><span class="check done" data-done="${t.id}" title="Отменить">${UNDO_MARK}</span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`
-      : wokeFresh(t)
-        ? `<li class="woke" data-woke="${t.id}"><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span><span class="wake-tag">⏰ ${esc(dueWhen(t.due_date))}</span></li>`
-        : ahead(t)
-          ? `<li class="soon"><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span><span class="due-tag">${esc(soonDay(t.due_date))}</span></li>`
-          : `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`;
-  };
   const items = [
     ...todo.map(dayItem),
     ...daily.filter(missedYesterday).map(rescueItem),
-    ...(sec.tasks ? shownTasks : []).flatMap((t, i) => {
-      // Перед первой задачей на ближайшие дни — тонкий разделитель «На неделе» (если выше есть что-то сегодняшнее).
-      const head = ahead(t) && !ahead(shownTasks[i - 1] ?? {}) && (i > 0 || todo.length) ? [`<li class="soon-head">На неделе</li>`] : [];
-      return [...head, taskItem(t)];
+    ...(sec.tasks ? shownTasks : []).map((t) => {
+      const go = leavingRows.get(`t${t.id}`);
+      if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="t${t.id}"><button type="button" class="undo-back" data-undo="t${t.id}">↶ Вернуть</button></li>`;
+      return go
+        ? `<li class="${rowLeaving(go)}" data-key="t${t.id}"><span class="check done" data-done="${t.id}" title="Отменить">${UNDO_MARK}</span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`
+        : wokeFresh(t)
+          ? `<li class="woke" data-woke="${t.id}"><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span><span class="wake-tag">⏰ ${esc(dueWhen(t.due_date))}</span></li>`
+          : `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`;
     }),
     // Сделанное: в режиме «прятать» — только пока открыт счётчик.
     ...(hiding && !showingDone() ? [] : [
@@ -521,8 +506,7 @@ function render() {
   ];
   // Улетевшие, но ещё не отправленные (идёт «Вернуть») уже считаются сделанными.
   const gone = [...leavingRows.values()].filter((x) => x.gone).length;
-  // Счётчик — только то, что на сегодня: задачи «На неделе» не считаются.
-  const left = todo.length + (sec.tasks ? awake.filter((t) => !ahead(t) && !doneNow.has(t.id)).length : 0) - gone;
+  const left = todo.length + (sec.tasks ? awake.filter((t) => !doneNow.has(t.id)).length : 0) - gone;
   const doneCount = daily.filter((h) => h.status).length + (sec.tasks ? recentDone().length : 0) + gone;
   const allDone = hiding && !left && doneCount > 0;
   if (allDone && lastLeft > 0) { react("excited", 5000); allDoneAt = Date.now(); }
