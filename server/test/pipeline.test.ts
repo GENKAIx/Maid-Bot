@@ -379,3 +379,14 @@ test("отметки «уже отправлено» старше 60 дней у
   assert.equal(await store.kvGet("schema_version"), "5");
   assert.ok(await store.kvGet("llm:2026-01"));
 });
+
+test("переименовать задачу словами — rename с new_title, отменяется", async () => {
+  const { store, u, pipe } = await setup([]);
+  const t = await store.addTask({ user_id: u.id, title: "врач", priority: "normal", category: "", due_date: null, notes: "", message_id: null });
+  const p2 = new Pipeline(store, async () => JSON.stringify({ edits: [{ action: "rename", kind: "task", id: t, new_title: "стоматолог" }] }));
+  const r = await p2.handle({ user: u, ...msg("переименуй врач в стоматолог", "rn1") });
+  assert.equal((await store.task(t))!.title, "стоматолог");
+  assert.match(r.text, /переименовано/);
+  await pipe.undo(u);
+  assert.equal((await store.task(t))!.title, "врач");
+});

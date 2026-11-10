@@ -452,8 +452,9 @@ export class Pipeline {
       if (e.kind === "event") {
         const ev = await s.event(e.id);
         if (!ev || ev.user_id !== u.id) continue;
-        const before = { date_iso: ev.date_iso, time: ev.time, status: ev.status };
-        if (e.action === "cancel") await s.updateEvent(ev.id, { status: "cancelled" });
+        const before = { date_iso: ev.date_iso, time: ev.time, status: ev.status, title: ev.title };
+        if (e.action === "rename") await s.updateEvent(ev.id, { title: e.newTitle! });
+        else if (e.action === "cancel") await s.updateEvent(ev.id, { status: "cancelled" });
         else if (e.action === "done") await s.updateEvent(ev.id, { status: "done" });
         else if (e.action === "reopen") await s.updateEvent(ev.id, { status: "active" });
         else await s.updateEvent(ev.id, { date_iso: e.newDate ?? ev.date_iso, time: e.newTime ?? ev.time });
@@ -465,19 +466,22 @@ export class Pipeline {
           e.action === "cancel" ? `✖ отменено: ${esc(ev.title)}`
             : e.action === "done" ? `✔ состоялось: ${esc(ev.title)}`
             : e.action === "reopen" ? `↺ снова в планах: ${esc(ev.title)}`
+            : e.action === "rename" ? `✎ переименовано: ${esc(ev.title)} → ${esc(now.title)}`
             : `➜ перенесено: ${esc(ev.title)} → ${now.date_iso}${now.time ? " " + now.time : ""}`,
         );
       } else if (e.kind === "task") {
         const t = await s.task(e.id);
         if (!t || t.user_id !== u.id) continue;
-        const before = { status: t.status, due_date: t.due_date };
-        if (e.action === "done") await s.updateTask(t.id, { status: "done" });
+        const before = { status: t.status, due_date: t.due_date, title: t.title };
+        if (e.action === "rename") await s.updateTask(t.id, { title: e.newTitle! });
+        else if (e.action === "done") await s.updateTask(t.id, { status: "done" });
         else if (e.action === "cancel") await s.updateTask(t.id, { status: "cancelled" });
         else if (e.action === "reopen") await s.updateTask(t.id, { status: "open" });
         else await s.updateTask(t.id, { due_date: e.newDate ?? t.due_date });
         await log("update", "tasks", t.id, before);
         editLines.push(e.action === "done" ? `✔ сделано: ${esc(t.title)}` : e.action === "cancel" ? `✖ убрано: ${esc(t.title)}`
-          : e.action === "reopen" ? `↺ снова открыто: ${esc(t.title)}` : `➜ срок: ${esc(t.title)} → ${e.newDate}`);
+          : e.action === "reopen" ? `↺ снова открыто: ${esc(t.title)}`
+          : e.action === "rename" ? `✎ переименовано: ${esc(t.title)} → ${esc(e.newTitle!)}` : `➜ срок: ${esc(t.title)} → ${e.newDate}`);
       } else if (e.kind === "date") {
         const d = await s.date(e.id);
         if (!d || d.user_id !== u.id || e.action !== "cancel") continue;

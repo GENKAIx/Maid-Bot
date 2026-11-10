@@ -1392,6 +1392,14 @@ $("#maid").addEventListener("contextmenu", (e) => {
 
 $("#open").onclick = () => maid.openMain();
 $("#release").onclick = () => maid.grab(false);
+// Двойной щелчок по названию открытой задачи — переименовать (то же окошко, что в панели планов, clock.js openRename).
+$("#body").addEventListener("dblclick", (e) => {
+  const li = e.target.closest("ul.list li");
+  const tick = li?.querySelector(".check[data-done]:not(.done)");
+  if (!tick || e.target === tick || li.matches(".leaving, .undo-row")) return;
+  const t = (data?.tasks ?? []).find((x) => x.id === Number(tick.dataset.done));
+  if (t) openRename({ task: true, id: t.id, title: t.title, date_iso: t.due_date }, li);
+});
 $("#body").addEventListener("click", async (e) => {
   if (e.target.closest("#doneCount")) return toggleShowDone();
   const back = e.target.closest("[data-undo]");

@@ -522,6 +522,7 @@ function openTaskMenu(t, li, x, y) {
     + item("time", "🕒 Задать время")
     + item("move", "↪ Перенести на завтра")
     + item("copy", "⧉ Копия на завтра")
+    + item("rename", "✎ Переименовать")
     + item("done", "✓ Сделано") + item("delete", "× Удалить задачу");
   showPlanMenu(menu, x, y);
   menu.addEventListener("click", (ev) => {
@@ -532,6 +533,7 @@ function openTaskMenu(t, li, x, y) {
     if (act === "time") return openTime(t, x, y);
     if (act === "move") return moveTask(t, next, li);
     if (act === "copy") return copyTask(t, next);
+    if (act === "rename") return openRename(t, li);
     if (act === "done") return doneTaskHere(t.id, li.querySelector("[data-tdone]"));
     deleteTask(t, li);
   });
@@ -1382,6 +1384,7 @@ function openPlanMenu(e, li, x, y) {
     + ((e.status === "active" || !e.status) && e.time ? item("notime", "⌀ Убрать время") : "")
     + item("move", "↪ Перенести на завтра")
     + item("copy", "⧉ Копия на завтра")
+    + item("rename", "✎ Переименовать")
     + (e.status === "active" || !e.status ? item("done", "✓ Состоялось") + item("cancelled", "× Убрать из планов") : "");
   showPlanMenu(menu, x, y);
   menu.addEventListener("click", (ev) => {
@@ -1394,6 +1397,7 @@ function openPlanMenu(e, li, x, y) {
     if (act === "notime") return clearPlanTime(e);
     if (act === "move") return movePlan(e, dayAfter(e.date_iso, 1), li);
     if (act === "copy") return copyPlan(e, dayAfter(e.date_iso, 1));
+    if (act === "rename") return openRename(e, li);
     setPlanStatus(e.id, act);
   });
 }
@@ -1585,6 +1589,61 @@ function showSeriesMade(e, sp, at, r) {
     if (i < 14) setTimeout(() => popTone(i, { vol: 0.14, soft: true }), 120 + i * 55);
   });
 }
+
+// --- переименование (двойной щелчок по названию или ПКМ → «Переименовать») ---
+// Поле стоит поверх карточки отдельным окошком (как меню), поэтому перерисовка панели его не сбивает. Enter — сохранить, Esc — отмена.
+function openRename(e, li) {
+  closePlanMenu();
+  const r = li.getBoundingClientRect();
+  const box = document.createElement("div");
+  box.className = "pl-menu pl-rename";
+  box.innerHTML = `<input type="text" maxlength="200" spellcheck="true">`;
+  const input = box.querySelector("input");
+  input.value = e.title;
+  showPlanMenu(box, r.left, r.top);
+  box.style.width = `${Math.max(180, r.width)}px`;
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = async (save) => {
+    if (done) return;
+    done = true;
+    const title = input.value.trim();
+    closePlanMenu();
+    if (!save || !title || title === e.title) return;
+    try {
+      const res = await maid.api("POST", e.task ? `/api/tasks/${e.id}` : `/api/events/${e.id}`, { title });
+      popTone(2);
+      say(`Переименовала: «${title}» ✓`, { ms: 4000, undo: res.undo ?? null });
+      farPlans.clear();
+      maid.changed();
+    } catch (err) {
+      const msg = String(err?.message ?? err);
+      say(/нужно status/.test(msg) ? "Сервер ещё не умеет переименовывать — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+    }
+    setTimeout(() => load(), 300);
+  };
+  input.addEventListener("keydown", (ev) => {
+    ev.stopPropagation(); // Esc здесь не закрывает панель и не трогает другое
+    if (ev.key === "Enter") finish(true);
+    else if (ev.key === "Escape") finish(false);
+  });
+  input.addEventListener("blur", () => finish(true));
+}
+$("#planClock").addEventListener("dblclick", (ev) => {
+  const text = ev.target.closest(".pl-text");
+  if (!text) return;
+  const li = text.closest(".pl-card");
+  if (li.dataset.task) {
+    if (li.matches(".done, .fly")) return;
+    const t = taskOf(li);
+    if (t) openRename(t, li);
+    return;
+  }
+  if (!li.dataset.id || li.matches(".gone, .leaving")) return;
+  const e = plansOf(clockDay).find((x) => x.id === Number(li.dataset.id));
+  if (e) openRename(e, li);
+});
 
 $("#planClock").addEventListener("contextmenu", (ev) => {
   const tli = ev.target.closest(".pl-card[data-task]");

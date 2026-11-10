@@ -325,14 +325,14 @@ export function createApi(deps: ApiDeps) {
     if (m === "POST" && task) {
       // Разбор хвостов в виджете: failed — «не буду делать», dodged — закрыл крестиком, не ответив (сбежал от задачи);
       // обе закрывают задачу невыполненной; deleted — удалить задачу (ПКМ или × на карточке). due_date — перенос на день.
-      const b = parseBody(z.object({ status: z.enum(["open", "done", "cancelled", "failed", "dodged", "deleted"]).optional(), due_date: Day.optional() }), await readJson(req));
+      const b = parseBody(z.object({ status: z.enum(["open", "done", "cancelled", "failed", "dodged", "deleted"]).optional(), due_date: Day.optional(), title: z.string().trim().min(1).max(200).optional() }), await readJson(req));
       const t = await store.task(Number(task[1]));
       if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
-      if (!b.status && !b.due_date) throw new HttpError(400, "нужно status или due_date");
+      if (!b.status && !b.due_date && !b.title) throw new HttpError(400, "нужно status, due_date или title");
       // В журнал отмены: «Отменить» (и «Вернуть» после удаления) откатывает правку мышью.
-      const what = b.status === "deleted" ? "🗑" : b.status === "done" ? "✓" : b.status ? "✎" : "↪";
+      const what = b.status === "deleted" ? "🗑" : b.status === "done" ? "✓" : b.status || b.title ? "✎" : "↪";
       const undo = await pipeline.manual(u, `${what} ${t.title}`, async (log) => {
-        await log("tasks", t.id, { status: t.status, due_date: t.due_date });
+        await log("tasks", t.id, { status: t.status, due_date: t.due_date, title: t.title });
         await store.updateTask(t.id, b);
       });
       return { ...(await store.task(t.id)), undo };
@@ -384,16 +384,18 @@ export function createApi(deps: ApiDeps) {
         date: Day.optional(),
         time: Time.nullable().optional(),
         end_time: Time.nullable().optional(),
+        title: z.string().trim().min(1).max(200).optional(),
       }), await readJson(req));
-      if (!b.status && !b.date && b.time === undefined) throw new HttpError(400, "нужно status, date или time");
+      if (!b.status && !b.date && b.time === undefined && !b.title) throw new HttpError(400, "нужно status, date, time или title");
       if (b.end_time !== undefined && !b.time) throw new HttpError(400, "end_time — только вместе с time");
       if (b.time && b.end_time && b.end_time <= b.time) throw new HttpError(400, "конец раньше начала");
       const e = await store.event(Number(ev[1]));
       if (!e || e.user_id !== u.id) throw new HttpError(404, "нет плана");
-      const what = b.status === "done" ? "✓" : b.status === "cancelled" ? "✕" : b.status ? "✎" : "↪";
+      const what = b.status === "done" ? "✓" : b.status === "cancelled" ? "✕" : b.status || b.title ? "✎" : "↪";
       const undo = await pipeline.manual(u, `${what} ${e.title}`, async (log) => {
-        await log("events", e.id, { status: e.status, date_iso: e.date_iso, time: e.time, end_time: e.end_time });
+        await log("events", e.id, { status: e.status, date_iso: e.date_iso, time: e.time, end_time: e.end_time, title: e.title });
         await store.updateEvent(e.id, {
+          ...(b.title ? { title: b.title } : {}),
           ...(b.status ? { status: b.status } : {}),
           ...(b.date ? { date_iso: b.date } : {}),
           ...(b.time ? { time: b.time, end_time: b.end_time ?? null } : {}),

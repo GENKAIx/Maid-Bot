@@ -114,9 +114,10 @@ const Memory = z.object({
   replaces: z.number().int().nullable().optional(),
 });
 const Edit = z.object({
-  action: z.enum(["cancel", "done", "move", "reopen"]),
+  action: z.enum(["cancel", "done", "move", "reopen", "rename"]),
   kind: z.enum(["event", "task", "date", "memory", "habit"]),
   id: z.number().int(),
+  new_title: optStr,
   new_date: optStr,
   new_time: optStr,
 });
@@ -186,7 +187,7 @@ export interface Parsed {
   };
   marks: { habitId: number; status: "done" | "skipped"; dayKey: string }[];
   money: { kind: "income" | "expense"; amount: number; currency: string; category: string; note: string; dayKey: string }[];
-  edits: { action: "cancel" | "done" | "move" | "reopen"; kind: "event" | "task" | "date" | "memory" | "habit"; id: number; newDate: string | null; newTime: string | null }[];
+  edits: { action: "cancel" | "done" | "move" | "reopen" | "rename"; kind: "event" | "task" | "date" | "memory" | "habit"; id: number; newDate: string | null; newTime: string | null; newTitle?: string }[];
   question: string | null;
   lookup: { from: string; to: string } | null;
   /** Корни слов для поиска по всем записям («сердц», «голов»). */
@@ -239,7 +240,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "tasks": [{"title": "...", "priority": "high|normal|low", "due_date": "YYYY-MM-DD или null", "category": ""}],
  "dates": [{"title": "...", "date_iso": "YYYY-MM-DD", "type": "birthday|anniversary|holiday|deadline|other", "person": "", "yearly": true}],
  "memory": [{"kind": "fact|preference|person|goal", "subject": "о ком/о чём", "text": "...", "replaces": null}],
- "edits": [{"action": "cancel|done|move|reopen", "kind": "event|task|date|memory|habit", "id": 12, "new_date": null, "new_time": null}],
+ "edits": [{"action": "cancel|done|move|reopen|rename", "kind": "event|task|date|memory|habit", "id": 12, "new_date": null, "new_time": null, "new_title": null}],
  "question": "если пользователь спрашивает о своих данных — вопрос, иначе null",
  "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни нужны для ответа (null — за всё время),
  "search": ["корни слов для поиска по записям, напр. сердц, кардиолог"] — только если вопрос про конкретную вещь,
@@ -260,7 +261,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 - summary: начинается с [${ctx.now}], близко к словам пользователя, без фраз вроде «записано», «пользователь сообщил».
 - «Вчера я …» — day_iso вчерашнего дня. Записи о сне после полуночи относятся к ночи, которая началась вчера.
 - edits: только по номерам из списков ниже. «Встречу с Петей перенесли на пятницу» — move с new_date.
-  «Сделал лампочку» — done для задачи. Если номер неясен — clarify.
+  «Сделал лампочку» — done для задачи. «Переименуй "врач" в "стоматолог"» — rename с new_title (только план или задача). Если номер неясен — clarify.
 - Время «в 7» без утра/вечера, где оба варианта правдоподобны — clarify. «Завтра в 7 утра» — 07:00.
 - dates.yearly = true только для повторяющихся каждый год (дни рождения, годовщины, праздники).
 - Здоровье (самочувствие, врачи, таблетки, давление) — diary.health с topic. Числа (давление 130/85, пульс, вес) — ещё и metrics.
@@ -412,7 +413,13 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
       clarify ??= "На когда перенести?";
       continue;
     }
-    edits.push({ action: e.action, kind: e.kind, id: e.id, newDate, newTime });
+    const newTitle = (e.new_title ?? "").trim().slice(0, 200);
+    if (e.action === "rename" && (!newTitle || (e.kind !== "event" && e.kind !== "task"))) {
+      dropped.push(`edits: переименование #${e.id} без названия`);
+      clarify ??= "Как назвать?";
+      continue;
+    }
+    edits.push({ action: e.action, kind: e.kind, id: e.id, newDate, newTime, ...(e.action === "rename" ? { newTitle } : {}) });
   }
 
   const metrics: Parsed["metrics"] = [];
