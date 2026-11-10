@@ -846,7 +846,7 @@ function render() {
     // Сделанное: в режиме «прятать» — только пока открыт счётчик.
     ...(hiding && !showingDone() ? [] : [
       ...daily.filter((h) => h.status).map(dayItem),
-      ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done">✓</span><span>${esc(t.title)}</span></li>`),
+      ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done" data-reopen="${t.id}" title="Снять галочку"><i>✓</i><b>↶</b></span><span>${esc(t.title)}</span></li>`),
     ]),
   ];
   // Улетевшие, но ещё не отправленные (идёт «Вернуть») уже считаются сделанными.
@@ -1482,6 +1482,8 @@ $("#body").addEventListener("click", async (e) => {
   if (e.target.closest("#doneCount")) return toggleShowDone();
   const back = e.target.closest("[data-undo]");
   if (back) return undoGone(back.dataset.undo);
+  const reopen = e.target.closest("[data-reopen]");
+  if (reopen) return reopenTask(Number(reopen.dataset.reopen));
   const tick = e.target.closest("[data-done], [data-habit]");
   if (tick) {
     const key = tick.dataset.done ? `t${tick.dataset.done}` : `h${tick.dataset.habit}`;
@@ -1523,6 +1525,22 @@ $("#body").addEventListener("click", async (e) => {
     load();
   }
 });
+
+// Галочку у сделанной задачи можно снять: задача снова открыта (сервер помнит её срок и всё остальное).
+async function reopenTask(id) {
+  forgetDone(id);
+  popTone(-5, { vol: 0.2, soft: true });
+  render();
+  try {
+    await maid.api("POST", `/api/tasks/${id}`, { status: "open" });
+    maid.changed();
+    load();
+  } catch (err) {
+    play("oops");
+    say(err.message, { ms: 6000 });
+    load();
+  }
+}
 
 setCollapsed(Boolean(localStorage.getItem("maid.collapsed")));
 setState("idle");

@@ -214,6 +214,14 @@ function keepDone(id, title) {
   doneNow.set(id, { title, until: endOfDay(), at: Date.now() });
   localStorage.setItem(DONE_KEY_NOW, JSON.stringify([...doneNow]));
 }
+// Сняли галочку в самом виджете — забыть сразу (и минус один к счёту дня).
+function forgetDone(id) {
+  doneNow.delete(id);
+  localStorage.setItem(DONE_KEY_NOW, JSON.stringify([...doneNow]));
+  const day = data?.day;
+  const n = Number(localStorage.getItem(DONE_KEY(day))) || 0;
+  if (day && n > 0) localStorage.setItem(DONE_KEY(day), String(n - 1));
+}
 // Задачу вернули в работу (в приложении, в Telegram) — сервер снова отдаёт её открытой: забыть отметку.
 // Первые 15 с не считаются: отметка ещё могла не дойти до сервера.
 function forgetReopened(tasks) {

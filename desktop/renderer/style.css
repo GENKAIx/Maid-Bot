@@ -656,6 +656,13 @@ body.quick { background: transparent; }
 .w .list li.leaving .check:hover, .w .list li.leaving .mark:hover { background: #c94f4f; border-color: #c94f4f; color: #fff; cursor: pointer; }
 .w .list li.leaving .check:hover i, .w .list li.leaving .mark:hover i { display: none; }
 .w .list li.leaving .check:hover b, .w .list li.leaving .mark:hover b { display: inline; }
+/* Сделанная задача: при наведении галочка становится «↶» — щелчок снимает её. */
+.w .list li.did .check i, .w .list li.did .check b { font-style: normal; }
+.w .list li.did .check b { display: none; }
+.w .list li.did:hover { opacity: .8; }
+.w .list li.did .check:hover { background: var(--muted); border-color: var(--muted); color: var(--ink); cursor: pointer; }
+.w .list li.did .check:hover i { display: none; }
+.w .list li.did .check:hover b { display: inline; }
 .w .list li.shown-done { animation: doneIn .25s ease; }
 @keyframes doneIn { from { opacity: 0; transform: translateY(-3px); } }
 .w h4 .done-count { margin-left: 4px; padding: 0 7px; height: 18px; border-radius: 9px; border: 1px solid var(--line); background: transparent;
