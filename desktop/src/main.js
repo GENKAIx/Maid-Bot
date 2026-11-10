@@ -207,7 +207,9 @@ function widgetBounds(cur) {
   const area = (home ?? screen.getPrimaryDisplay()).workArea;
   const p1 = panel(x, y);
   x += Math.min(Math.max(p1.x, area.x), area.x + area.width - PANEL_W) - p1.x;
-  y += Math.min(Math.max(p1.y, area.y), area.y + area.height - ph) - p1.y;
+  // Горничная выглядывает над верхом панели (у свёрнутой у верха экрана — над карточкой на том же месте): её голова тоже на экране.
+  const head = !fold.folded || settings.widget.down ? fold.head : 0;
+  y += Math.min(Math.max(p1.y, area.y + head), area.y + area.height - ph) - p1.y;
   return { x, y, width: w, height: h };
 }
 
@@ -242,10 +244,20 @@ ipcMain.on("widget-drag", (_e, phase) => {
 // Свёрнутый виджет у верха экрана: развернуться вверх некуда — тогда карточка стоит там, где верх панели, и панель (и выдвижные
 // «Планы на день») раскрывается вниз (settings.widget.down). Режим решается, когда свёрнутую карточку отпустили; карточка при этом
 // остаётся на месте: окно сдвигается на разницу, а окно (спрятанное на кадр) переставляет карточку внутри себя.
-let fold = { folded: false, miniH: 68 };
+let fold = { folded: false, miniH: 68, head: 0 };
 let pendingDown = null;
-ipcMain.on("widget-fold", (_e, folded, miniH) => {
-  fold = { folded: Boolean(folded), miniH: Number(miniH) || fold.miniH };
+ipcMain.on("widget-fold", (_e, folded, miniH, head) => {
+  const was = fold;
+  fold = { folded: Boolean(folded), miniH: Number(miniH) || fold.miniH, head: Number(head) || 0 };
+  // Горничная выросла или виджет развернули у верха — сдвинуть, чтобы голова не ушла за экран.
+  if ((was.head !== fold.head || was.folded !== fold.folded) && widget && !widget.isDestroyed() && !drag && !sizing && !pendingDown) {
+    const b = widget.getBounds();
+    const nb = widgetBounds(b);
+    if (nb.y !== b.y || nb.x !== b.x) {
+      widget.setBounds(nb);
+      rememberWidget();
+    }
+  }
 });
 const panelInWindow = (h) => Math.max(380, h - 380); // CSS: высота панели — max(380px, 100vh − 380px), отступ снизу 8
 function settleWidget() {

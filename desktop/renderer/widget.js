@@ -1147,7 +1147,7 @@ function setCollapsed(on) {
   $("#w").classList.toggle("hidden", on);
   $("#stage").classList.toggle("folded", on);
   syncLift();
-  maid.foldState(on, $("#mini").offsetHeight || 68);
+  sendFold();
   // В свёрнутом виде над карточкой видна голова горничной: по ней видно настроение и «думаю».
   localStorage.setItem("maid.collapsed", on ? "1" : "");
 }
@@ -1159,10 +1159,17 @@ function syncLift() {
   const st = $("#stage");
   const h = $("#mini").offsetHeight || 68;
   st.style.setProperty("--lift", `${Math.max(0, Math.max(380, innerHeight - 380) - h)}px`);
-  if (collapsed) maid.foldState(true, h);
+  if (collapsed) sendFold();
   syncDrawer();
 }
+// Сколько горничная выглядывает над карточкой (или над панелью): main не пускает её голову за верх экрана.
+function sendFold() {
+  const m = $("#maid");
+  const head = m.offsetHeight ? Math.max(0, Math.round(m.offsetHeight + parseFloat(getComputedStyle($("#perch")).marginBottom))) : 0;
+  maid.foldState(collapsed, $("#mini").offsetHeight || 68, head);
+}
 new ResizeObserver(() => syncLift()).observe($("#mini"));
+new ResizeObserver(() => sendFold()).observe($("#maid"));
 addEventListener("resize", syncLift);
 maid.on("down", (on) => {
   const st = $("#stage");
