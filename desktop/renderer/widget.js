@@ -823,9 +823,11 @@ function render() {
   const later = data.tasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
   const awake = data.tasks.filter((t) => !asleep(t));
   noteWakes(awake, later);
-  // Просроченные — первыми (самые старые сверху), потом только что проснувшиеся, чтобы их было видно, потом по важности.
+  // Просроченные — первыми (самые старые сверху), потом только что проснувшиеся, чтобы их было видно, потом со сроком (ближний
+  // выше), потом без срока; внутри — по важности.
   const tasks = [...awake].sort((a, b) => overdue(b) - overdue(a) || (overdue(a) ? a.due_date.localeCompare(b.due_date) : 0)
-    || wokeFresh(b) - wokeFresh(a) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
+    || wokeFresh(b) - wokeFresh(a) || Boolean(b.due_date) - Boolean(a.due_date)
+    || (a.due_date && b.due_date ? a.due_date.localeCompare(b.due_date) : 0) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
   // Вытянутая панель (уголок справа внизу) показывает больше задач: +1 на каждые 26 px прибавки к высоте.
   const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6 + Math.floor(Math.max(0, innerHeight - 760) / 26));
   const todo = daily.filter((h) => !h.status);
