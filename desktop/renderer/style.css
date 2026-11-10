@@ -133,9 +133,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .mini-ask { display: none; gap: 8px; align-items: center; margin-top: 10px; }
 .mini:hover .mini-ask, .mini:focus-within .mini-ask, .mini-ask:has(input:not(:placeholder-shown)) { display: flex; }
 /* Под свёрнутой карточкой оставлено место под строку вопроса (36 + 10 px): при наведении карточка растёт вниз в это место,
-   её верх и горничная над ней не двигаются. Пока открыта полоса планов и в режиме «вниз» — как раньше. */
+   её верх и горничная над ней не двигаются. Полоса планов под карточкой стоит над этим местом и съезжает вниз вместе с ней.
+   В режиме «вниз» — как раньше. */
 .stage.folded::after { content: ""; flex: none; height: 46px; }
-.stage.folded:not(.drawer-open):has(.mini:hover, .mini:focus-within, .mini-ask input:not(:placeholder-shown))::after { height: 0; }
+.stage.folded .plan-clock { bottom: 54px; }
+.stage.folded:has(.mini:hover, .mini:focus-within, .mini-ask input:not(:placeholder-shown))::after { height: 0; }
+.stage.folded:has(.mini:hover, .mini:focus-within, .mini-ask input:not(:placeholder-shown)) .plan-clock { bottom: 8px; }
 .stage.folded.down::after { display: none; }
 .mini-ask input { flex: 1; min-width: 0; height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .05); color: var(--text); font: inherit; font-size: 13.5px; }
 .mini-ask input:focus { outline: none; border-color: var(--accent); }
