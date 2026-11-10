@@ -925,6 +925,17 @@ body.quick { background: transparent; }
 
 /* Карточка нового плана вылетает из чипа дня: место раскрывается, копия летит, потом блик и искры. */
 .pl-card.arriving { visibility: hidden; }
+/* Время пересеклось с другим планом (clashCards): карточки вздрагивают и горят оранжевым, в заголовке — с чем. */
+.pl-card.clash { animation: plClash .5s ease-in-out 2, plClashGlow 2.6s ease-out; }
+@keyframes plClash { 0%, 100% { transform: none; } 20% { transform: translateX(-4px) rotate(-.6deg); } 40% { transform: translateX(4px) rotate(.6deg); }
+  60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
+@keyframes plClashGlow { 0%, 70% { box-shadow: inset 0 0 0 1.5px #ffa53d, 0 0 14px rgba(255, 150, 50, .45); background-color: rgba(255, 150, 50, .14); } 100% { box-shadow: none; } }
+.pc-head.clashing { position: relative; }
+.pc-head.clashing > :not(.pc-clash) { visibility: hidden; }
+.pc-head .pc-clash { position: absolute; inset: 0 6px; display: block; color: #ffb35c; font-size: 13px; line-height: 20px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; animation: plClashNote .35s ease-out; }
+@keyframes plClashNote { from { opacity: 0; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .pl-card.clash { animation: plClashGlow 2.6s ease-out; } .pc-head .pc-clash { animation: none; } }
 /* Правка плана не здесь (stampEdits): старое зачёркивается, новое впечатывается поверх; на время — оба в одной ячейке. */
 .pl-card.edit .pl-text { background: linear-gradient(rgba(255, 255, 255, .85), rgba(255, 255, 255, .85)) no-repeat 0 55% / 0% 2px; }
 .pl-card.edit.striking .pl-text { animation: plEditStrike .38s ease-out forwards; }

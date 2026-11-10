@@ -594,7 +594,8 @@ function showClock(day, { fresh = [], gone = [], open = false } = {}) {
   drawClock();
   box.classList.remove("hidden");
   syncDrawer();
-  const out = Math.max(ejectGone(box, day), checkGone(box), stampEdits(box));
+  const stamped = stampEdits(box);
+  const out = Math.max(ejectGone(box, day), checkGone(box), stamped, clashCards(box, stamped || 300));
   if (out) dropUntil = performance.now() + out;
   hideClockLater(fresh.length || out ? FLY_SHOWN + out : CLOCK_SHOWN);
 }
@@ -1105,8 +1106,9 @@ function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = n
     cards.forEach((card, i) => dropIn(card, chip, 160 + i * 140, i ? null : flyCarry));
     flyCarry = null;
     // Отменённые и удалённые — зачёркиваются и улетают в чип своего дня.
-    const out = Math.max(ejectGone(box, day, 160 + cards.length * 140 + 200), checkGone(box, 160 + cards.length * 140 + 300),
-      stampEdits(box, 160 + cards.length * 140 + 150));
+    const stamped = stampEdits(box, 160 + cards.length * 140 + 150);
+    const out = Math.max(ejectGone(box, day, 160 + cards.length * 140 + 200), checkGone(box, 160 + cards.length * 140 + 300), stamped,
+      clashCards(box, stamped || 160 + cards.length * 140 + 380));
     const settle = Math.max(160 + cards.length * 140 + linger, out);
     dropUntil = performance.now() + settle + (next ? 500 : 0);
     loadFar();
@@ -1145,9 +1147,10 @@ function chainDays(all, fresh, freshTasks, gone) {
     const out = opts.gone.filter((e) => e._out).length;
     const ok = opts.gone.filter((e) => e._ok).length;
     const edits = opts.fresh.filter((id) => clockEdits.has(id)).length;
+    const clash = opts.fresh.some((id) => clashOf(id, d)) ? CLASH_TIME : 0;
     setTimeout(() => { if (run === flyRun && !box.classList.contains("hidden")) step(1); },
       Math.max(1500 + opts.fresh.length * 140, out ? 1900 + out * 180 : 0, ok ? 300 + ok * 260 + DONE_FADE + DONE_FLY + DONE_SHUT : 0,
-        edits ? 300 + edits * STAMP_GAP + STAMP_TIME : 0));
+        (edits ? 300 + edits * STAMP_GAP + STAMP_TIME : 300) + clash));
   };
   step(0);
 }
@@ -1269,6 +1272,61 @@ function slideToPlace(card) {
     if (dy) li.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 380, easing: "cubic-bezier(.3, 1.2, .5, 1)" });
   }
   popTone(3, { vol: 0.04, soft: true });
+}
+// Новый или поправленный план лёг на занятое время: его карточка и та, с которой он пересекается, вздрагивают и подсвечиваются
+// оранжевым, а заголовок на время — «⚠ Пересекается с 14:00 · название» поверх всей строки (дата и счёт под ним скрыты, но место держат:
+// высота панели та же; день виден на полосе дат).
+// Пересекаются: промежутки (11:00–12:00) — если заходят друг на друга, время без конца — если попадает в чужой промежуток или совпадает.
+const CLASH_TIME = 2600;
+function clashOf(id, day) {
+  const list = plansOf(day).filter((e) => e.status !== "cancelled" && e.status !== "done");
+  const a = list.find((e) => e.id === id);
+  const s = minutesOf(a?.time);
+  if (s === null || s === undefined) return null;
+  const end = (e, st) => { const x = minutesOf(e.end_time); return x !== null && x !== undefined && x > st ? x : st; };
+  const ae = end(a, s);
+  return list.find((b) => {
+    if (b.id === id) return false;
+    const bs = minutesOf(b.time);
+    if (bs === null || bs === undefined) return false;
+    const be = end(b, bs);
+    if (ae === s && be === bs) return s === bs;
+    if (ae === s) return s >= bs && s < be;
+    if (be === bs) return bs >= s && bs < ae;
+    return s < be && bs < ae;
+  }) ?? null;
+}
+function clashCards(box, start) {
+  const pairs = [...box.querySelectorAll(".pl-card.fresh[data-id], .pl-card.edit[data-id]")]
+    .map((card) => [card, clashOf(Number(card.dataset.id), clockDay)]).filter(([, other]) => other);
+  if (!pairs.length) return 0;
+  const run = flyRun;
+  setTimeout(() => {
+    if (run !== flyRun || box.classList.contains("hidden")) return;
+    const [card, other] = pairs[0];
+    const head = box.querySelector(".pc-head");
+    const note = document.createElement("span");
+    note.className = "pc-clash";
+    note.textContent = `⚠ Пересекается с ${other.time} · ${other.title}`;
+    note.title = note.textContent;
+    head?.classList.add("clashing");
+    head?.append(note);
+    const cards = new Set(pairs.flatMap(([c, o]) => [c, box.querySelector(`.pl-card[data-id="${o.id}"]`)]).filter(Boolean));
+    for (const c of cards) {
+      c.classList.remove("clash");
+      void c.offsetWidth;
+      c.classList.add("clash");
+    }
+    popTone(-3, { vol: 0.07 });
+    setTimeout(() => popTone(-3, { vol: 0.05 }), 150);
+    react?.("worried", 2200);
+    setTimeout(() => {
+      for (const c of cards) c.classList.remove("clash");
+      note.remove();
+      head?.classList.remove("clashing");
+    }, CLASH_TIME);
+  }, start);
+  return start + CLASH_TIME;
 }
 // Сделанная где-то ещё (в чате, в Telegram, с телефона): на её дне галочка ставится сама — вспышка, звук, потом заливка цветом и улёт,
 // как от щелчка по галочке здесь (planDone → planCountdown). Возвращает, сколько это займёт.
