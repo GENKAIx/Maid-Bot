@@ -134,11 +134,11 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .mini:hover .mini-ask, .mini:focus-within .mini-ask, .mini-ask:has(input:not(:placeholder-shown)) { display: flex; }
 /* Под свёрнутой карточкой оставлено место под строку вопроса (36 + 10 px): при наведении карточка растёт вниз в это место,
    её верх и горничная над ней не двигаются. Полоса планов под карточкой стоит над этим местом и съезжает вниз вместе с ней.
-   В режиме «вниз» — как раньше. */
-.stage.folded::after { content: ""; flex: none; height: 46px; }
-.stage.folded .plan-clock { bottom: 54px; }
-.stage.folded:has(.mini:hover, .mini:focus-within, .mini-ask input:not(:placeholder-shown))::after { height: 0; }
-.stage.folded:has(.mini:hover, .mini:focus-within, .mini-ask input:not(:placeholder-shown)) .plan-clock { bottom: 8px; }
+   Ещё 30 px внизу всегда — под тень карточки, иначе край окна срезает её ровной линией. В режиме «вниз» — как раньше. */
+.stage.folded::after { content: ""; flex: none; height: 76px; }
+.stage.folded .plan-clock { bottom: 84px; }
+.stage.folded:has(.mini:hover, .mini:focus-within, .mini-ask input:not(:placeholder-shown))::after { height: 30px; }
+.stage.folded:has(.mini:hover, .mini:focus-within, .mini-ask input:not(:placeholder-shown)) .plan-clock { bottom: 38px; }
 .stage.folded.down::after { display: none; }
 .mini-ask input { flex: 1; min-width: 0; height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .05); color: var(--text); font: inherit; font-size: 13.5px; }
 .mini-ask input:focus { outline: none; border-color: var(--accent); }

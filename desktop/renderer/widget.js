@@ -1167,9 +1167,9 @@ function syncLift() {
 function sendFold() {
   const m = $("#maid");
   const head = m.offsetHeight ? Math.max(0, Math.round(m.offsetHeight + parseFloat(getComputedStyle($("#perch")).marginBottom))) : 0;
-  // Высота карточки — без строки вопроса, плюс место под неё снизу: при наведении это число не меняется.
+  // Высота карточки — без строки вопроса, плюс место под неё и под тень снизу (76 px): при наведении это число не меняется.
   const ask = $("#mini .mini-ask");
-  const h = ($("#mini").offsetHeight || 68) - (ask?.offsetHeight ? ask.offsetHeight + 10 : 0) + 46;
+  const h = ($("#mini").offsetHeight || 68) - (ask?.offsetHeight ? ask.offsetHeight + 10 : 0) + 76;
   maid.foldState(collapsed, h, head);
 }
 new ResizeObserver(() => syncLift()).observe($("#mini"));
