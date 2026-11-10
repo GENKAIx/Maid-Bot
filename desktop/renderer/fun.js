@@ -228,7 +228,11 @@ function forgetReopened(tasks) {
 function takeServerDone(list) {
   if (!Array.isArray(list)) return;
   let added = false;
-  for (const t of list) if (!doneNow.has(t.id)) { doneNow.set(t.id, { title: t.title, until: endOfDay(), at: 0 }); added = true; }
+  for (const t of list) {
+    const d = doneNow.get(t.id);
+    if (!d) { doneNow.set(t.id, { title: t.title, until: endOfDay(), at: 0 }); added = true; }
+    else if (t.title && d.title !== t.title) { d.title = t.title; added = true; } // сервер знает точное название (и чинит записанное с ошибкой)
+  }
   if (added) localStorage.setItem(DONE_KEY_NOW, JSON.stringify([...doneNow]));
 }
 function recentDone() {

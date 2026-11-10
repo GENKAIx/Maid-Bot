@@ -1501,7 +1501,8 @@ $("#body").addEventListener("click", async (e) => {
       burst(e.target);
       react("done", 4000);
       const li = e.target.closest("li");
-      keepDone(Number(id), li.lastElementChild.textContent);
+      // Название — из данных, не из строки: последним в строке бывает метка срока («сегодня», «завтра»).
+      keepDone(Number(id), data.tasks.find((t) => t.id === Number(id))?.title ?? li.querySelector(".check + span").textContent);
       countDone(data.day);
       holdRender = Date.now() + 1100; // список не перерисовывать, пока строка едет вниз
       setTimeout(() => slideDown(li), 420);
