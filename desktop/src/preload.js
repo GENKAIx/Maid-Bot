@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("maid", {
   settings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
   trackNow: () => ipcRenderer.invoke("tracker:now"),
+  idle: () => ipcRenderer.invoke("idle"),
   changed: () => ipcRenderer.send("changed"),
   openMain: () => ipcRenderer.send("open-main"),
   /** Открыть день дневника в веб-приложении (браузер). */

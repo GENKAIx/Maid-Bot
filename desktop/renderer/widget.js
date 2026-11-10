@@ -129,14 +129,87 @@ function setState(s) {
   if (s === "think") { clearTimeout(moodTimer); moodUntil = 0; }
   settle();
 }
-function isNight() {
-  const h = new Date().getHours();
-  return h >= 23 || h < 7;
+// --- сон: спит, когда человека нет за ПК, а не по часам ---
+// Засыпает, если ПК не трогали NAP_AFTER (или не ответили на её сообщение NAP_UNHEARD), после обычного отбоя — уже через NAP_NIGHT.
+// Пока спит — молчит: уведомления только в ящик и в список «пока вас не было». Тронули ПК — просыпается, «О, вы вернулись!» и пересказ.
+// Обычный отбой она узнаёт сама: когда вечером человек уходил от ПК больше чем на 1,5 ч (медиана 14 последних ночей, по умолчанию 23:00).
+const NAP_AFTER = 15 * 60;
+const NAP_UNHEARD = 5 * 60;
+const NAP_NIGHT = 3 * 60;
+const MORNING = 7 * 60;
+let napping = false;
+let napSince = 0; // когда человек ушёл (мс)
+let missed = []; // уведомления, пришедшие во сне
+let unheardAt = 0; // её сообщение, на которое ещё не отреагировали
+const nightMin = (t) => { const m = t.getHours() * 60 + t.getMinutes(); return m < 12 * 60 ? m + 24 * 60 : m; }; // после полуночи — «24:30»
+function bedtime() {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem("maid.bedtimes") ?? "[]"); } catch {}
+  if (list.length < 3) return 23 * 60;
+  const s = [...list].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)];
 }
+function learnBedtime(from, to) {
+  const start = new Date(from);
+  const m = nightMin(start);
+  // Вечер 20:00 … утро 5:00, и ушёл надолго — похоже на отбой.
+  if (to - from < 90 * 60_000 || m < 20 * 60 || m > 29 * 60) return;
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem("maid.bedtimes") ?? "[]"); } catch {}
+  localStorage.setItem("maid.bedtimes", JSON.stringify([...list, m].slice(-14)));
+}
+function afterBedtime(t = new Date()) {
+  const m = nightMin(t);
+  return m >= bedtime() && m < MORNING + 24 * 60;
+}
+const restState = () => (napping ? "sleep" : "idle");
+function fallAsleep(idleSec) {
+  if (napping || state === "think") return;
+  napping = true;
+  napSince = Date.now() - idleSec * 1000;
+  hideBubble();
+  setState("sleep");
+}
+function wakeUp() {
+  if (!napping) return;
+  napping = false;
+  learnBedtime(napSince, Date.now());
+  const away = Date.now() - napSince;
+  const news = missed;
+  missed = [];
+  unheardAt = 0;
+  setState("idle");
+  // Потягивается: удивилась — и машет.
+  react("surprised", 1300);
+  setTimeout(() => {
+    if (napping) return;
+    react("hello", 4500);
+    if (away < 2 * 60_000 && !news.length) return;
+    const lines = news.slice(-4).map((n) => `• ${String(n.text).split("\n")[0].replace(/<[^>]+>/g, "")}`);
+    const more = news.length > 4 ? `\n…и ещё ${news.length - 4} — в ящике у головы.` : news.length ? "\nВсё это — в ящике у головы." : "";
+    say(`О, вы вернулись!${news.length ? `\nПока вас не было:\n${lines.join("\n")}${more}` : ""}`, { ms: news.length ? 20000 : 4000, emotion: "happy", sound: news.length ? "ding" : null });
+  }, 1300);
+}
+async function watchAway() {
+  let idle;
+  try { idle = await maid.idle(); } catch { return; }
+  if (typeof idle !== "number") return;
+  if (napping) return void (idle < 5 && wakeUp());
+  const unheard = unheardAt && idle >= NAP_UNHEARD && idle * 1000 >= Date.now() - unheardAt; // с её сообщения ПК не трогали
+  if (idle >= (afterBedtime() ? NAP_NIGHT : NAP_AFTER) || unheard) fallAsleep(idle);
+  if (idle < 5) unheardAt = 0;
+}
+setInterval(() => watchAway(), 3_000);
+// Мышь над самой горничной будит сразу, не дожидаясь опроса.
+document.addEventListener("pointermove", () => napping && wakeUp());
+document.addEventListener("keydown", () => napping && wakeUp());
+
 setInterval(() => {
   if (state === "think") return;
-  const want = isNight() ? "sleep" : "idle";
+  const want = restState();
   if (want !== state) setState(want);
+  // После отбоя — не суетится: без чая, уборки и радостей.
+  else if (afterBedtime()) return;
   // Изредка, пока ничего не происходит, — занимается своим: чай (утром чаще), уборка, поклон.
   else if (state === "idle" && online && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.1) {
     const h = new Date().getHours();
@@ -152,6 +225,8 @@ setInterval(() => {
 
 // --- облачко ---
 function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null } = {}) {
+  // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices).
+  if (napping) return;
   const b = $("#bubble");
   delete b.dataset.quip;
   stopProposal();
@@ -412,7 +487,7 @@ async function pump() {
     pumping = false;
     saveOutbox();
     drawOutbox();
-    setState(isNight() ? "sleep" : "idle");
+    setState(restState());
     if (next) pump();
   }
 }
@@ -1003,6 +1078,9 @@ async function pollNotices() {
       const emotion = /🎮/.test(n.text) ? "angry" : n.emotion;
       // В ящик непрочитанного (значок у головы) и сразу сказать; напоминание с кнопками — звонит в колокольчик.
       inboxAdd({ ...n, emotion });
+      // Спит (человека нет) — не будит и не звенит: перескажет, когда он вернётся.
+      if (napping) { missed.push(n); continue; }
+      unheardAt = Date.now();
       say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey", mood: n.buttons.length ? "remind" : /🎮/.test(n.text) ? "refuse" : null, notice: n.id });
     }
   } catch {
@@ -1347,8 +1425,8 @@ maid.on("grab", (on) => {
   $("#stage").classList.toggle("grab", on);
 });
 maid.on("changed", () => { loadCfg(); load(); });
-maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
-maid.on("reply", (r) => remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: failedButtons(r) }));
+maid.on("thinking", (on) => { wakeUp(); setState(on ? "think" : restState()); });
+maid.on("reply", (r) => wakeUp() || remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: failedButtons(r) }));
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
@@ -1446,8 +1524,8 @@ $("#body").addEventListener("click", async (e) => {
 });
 
 setCollapsed(Boolean(localStorage.getItem("maid.collapsed")));
-setState(isNight() ? "sleep" : "idle");
-if (!isNight()) react("hello", 4500);
+setState("idle");
+if (!afterBedtime()) react("hello", 4500);
 setInterval(render, 15_000);
 // Что записано из Telegram или с телефона — появляется здесь через несколько секунд.
 setInterval(load, 5_000);

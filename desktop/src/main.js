@@ -4,7 +4,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor } = require("electron");
 const { collectDay, localDay } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
 
@@ -502,6 +502,8 @@ ipcMain.handle("settings:set", (e, patch) => {
   return shown();
 });
 ipcMain.handle("tracker:now", trackOnce);
+// Сколько секунд человек не трогал мышь и клавиатуру (горничная засыпает, когда его нет; заблокированный экран — тоже нет).
+ipcMain.handle("idle", () => (powerMonitor.getSystemIdleState(1) === "locked" ? 86_400 : powerMonitor.getSystemIdleTime()));
 // Отладка: electron . --inspect → в инспекторе main maidDebug()
 global.maidDebug = () => ({
   grabbed, hovering, typing, regions, mouseOn, focused: widget?.isFocused(), focusable: widget?.isFocusable?.(),
