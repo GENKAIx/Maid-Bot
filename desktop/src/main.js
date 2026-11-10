@@ -33,6 +33,7 @@ const PANEL_H = 400;
 // Панель можно вытянуть вниз за правый нижний угол (widget-resize): окно выше на столько же, сколько панель (CSS: высота панели — 100vh − 380).
 // Прибавка к высоте запоминается в settings.widget.extra; 0 — исходный размер.
 const WIDGET_H = 760;
+const CLOCK_LEFT = 8; // левый край развёрнутых «Планов на день» в окне (CSS .plan-clock: right 342 + ширина 270)
 const extraH = () => Math.max(0, Math.round(settings.widget.extra ?? 0));
 const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
 let settings = structuredClone(DEFAULTS);
@@ -190,10 +191,8 @@ function widgetBounds(cur) {
   let y = cur?.y ?? settings.widget.y ?? a.y + a.height - h;
   // Окно высокое (760) и почти всё прозрачное: на экране должна остаться панель, а не всё окно. Иначе панель у верха экрана
   // или у края второго монитора считалась «за экраном», и виджет прыгал обратно в угол основного.
-  const panel = (px, py) => {
-    const left = settings.widget.side === "left" ? px : px + w - PANEL_W;
-    return { x: left, y: py + h - ph, width: PANEL_W, height: ph };
-  };
+  // Панель всегда у правого края окна (CSS .w); «горничная слева» двигает только фигурку.
+  const panel = (px, py) => ({ x: px + w - PANEL_W, y: py + h - ph, width: PANEL_W, height: ph });
   const p0 = panel(x, y);
   const cx = p0.x + p0.width / 2;
   const cy = p0.y + p0.height / 2;
@@ -206,7 +205,10 @@ function widgetBounds(cur) {
   // Не вылезать за рабочую область (под панель задач) — панелью; прозрачный верх окна может уйти за край экрана.
   const area = (home ?? screen.getPrimaryDisplay()).workArea;
   const p1 = panel(x, y);
-  x += Math.min(Math.max(p1.x, area.x), area.x + area.width - PANEL_W) - p1.x;
+  // Развёрнутый: «Планы на день» выезжают слева от панели (CSS .plan-clock, левый край — 8 px от края окна) — у левого края экрана
+  // окно сдвигается, чтобы они не ушли за экран.
+  const leftMost = fold.folded ? area.x : Math.min(area.x + w - PANEL_W - CLOCK_LEFT, area.x + area.width - PANEL_W);
+  x += Math.min(Math.max(p1.x, leftMost), area.x + area.width - PANEL_W) - p1.x;
   // Горничная выглядывает над верхом панели (у свёрнутой у верха экрана — над карточкой на том же месте): её голова тоже на экране.
   const head = !fold.folded || settings.widget.down ? fold.head : 0;
   y += Math.min(Math.max(p1.y, area.y + head), area.y + area.height - ph) - p1.y;
@@ -266,6 +268,12 @@ ipcMain.on("widget-fold", (_e, folded, miniH, head) => {
   }
 });
 const panelInWindow = (h) => Math.max(380, h - 380); // CSS: высота панели — max(380px, 100vh − 380px), отступ снизу 8
+// Вниз — если снизу хватает места на всю панель (виджет не у низа экрана) или сверху его нет: карточка поднимается на высоту панели,
+// и над ней ещё голова горничной (fold.head) — на маленьком экране (1280×720 при 150 %) она ушла бы за верх.
+function wantDown(cardBottom, panel, area) {
+  const roomBelow = cardBottom - fold.miniH + panel <= area.y + area.height;
+  return roomBelow || cardBottom - panel - fold.head < area.y;
+}
 function settleWidget() {
   if (!widget || widget.isDestroyed()) return;
   const b = widget.getBounds();
@@ -275,9 +283,7 @@ function settleWidget() {
   if (fold.folded) {
     const cardBottom = b.y + b.height - 8 - (wasDown ? lift : 0);
     const area = screen.getDisplayNearestPoint({ x: b.x + b.width - PANEL_W / 2, y: cardBottom - fold.miniH / 2 }).workArea;
-    // Вниз — если снизу хватает места на всю панель (виджет не у низа экрана) или сверху его нет.
-    const roomBelow = cardBottom - fold.miniH + panelInWindow(b.height) <= area.y + area.height;
-    down = roomBelow || cardBottom - panelInWindow(b.height) < area.y;
+    down = wantDown(cardBottom, panelInWindow(b.height), area);
   }
   if (down === wasDown) {
     widget.setBounds(widgetBounds(b));
