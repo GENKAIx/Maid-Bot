@@ -31,7 +31,10 @@
       "icon": "assets/icon.png"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
+      "include": "installer.nsh",
+      "installerLanguages": ["ru_RU"],
+      "language": "1049",
       "perMachine": false,
       "runAfterFinish": true,
       "createDesktopShortcut": true,
