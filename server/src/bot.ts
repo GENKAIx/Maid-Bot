@@ -35,6 +35,14 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   const replyKeyboard = (r: Reply) => {
     if (r.proposal) return proposalKeyboard(r.proposal, r.undoable ? r.messageId : null);
     if (r.failed) return new InlineKeyboard().text("🔁 Повторить", `retry:${r.messageId}`).text("📝 Оставить заметкой", `note:${r.messageId}`);
+    if (r.clash) {
+      // План лёг на занятое время: «Сдвинуть на 15:00» (если есть куда) и «Оставить»; ниже — «Отменить» / «Это просто заметка».
+      const c = r.clash, key = `clash:${r.messageId}:${c.eventId}:${c.withId}`;
+      const kb = new InlineKeyboard();
+      if (c.shiftTo) kb.text(`➜ Сдвинуть на ${c.shiftTo}`, `${key}:s`);
+      kb.text("Оставить", `${key}:k`).row();
+      return r.undoable ? undoRow(kb, r.messageId) : kb;
+    }
     return r.undoable ? undoRow(new InlineKeyboard(), r.messageId) : undefined;
   };
   // Вопрос «добавить?»: у нескольких пунктов — галочка на каждом (щелчок снимает/ставит), ниже ситуативная кнопка
@@ -245,6 +253,22 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     }
     const r = await pipeline.decideProposal(u, Number(id), act === "r" ? "remind" : act === "a" ? "add" : "decline");
     await ctx.answerCallbackQuery({ text: r.text.replace(/<[^>]+>/g, "").slice(0, 190) });
+  });
+
+  // «Сдвинуть» / «Оставить» после наложения: строка вопроса заменяется итогом, остаются «Отменить» / «Это просто заметка».
+  bot.callbackQuery(/^clash:(\d+):(\d+):(\d+):(s|k)$/, async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return ctx.answerCallbackQuery();
+    const [, msgId, eventId, withId, act] = ctx.match;
+    const r = await pipeline.decideClash(u, Number(msgId), Number(eventId), Number(withId), act === "s" ? "shift" : "keep");
+    await ctx.answerCallbackQuery({ text: r.text.replace(/<[^>]+>/g, "").slice(0, 190) });
+    const kb = (await store.actionsOf(Number(msgId))).length ? undoRow(new InlineKeyboard(), Number(msgId)) : undefined;
+    const opts = { parse_mode: "HTML" as const, reply_markup: kb };
+    if (r.reply) {
+      await ctx.editMessageText(r.reply, { ...opts, link_preview_options: { is_disabled: true } })
+        .catch(() => ctx.editMessageCaption({ caption: r.reply!, ...opts }))
+        .catch(() => ctx.editMessageReplyMarkup({ reply_markup: kb }).catch(() => {}));
+    } else await ctx.editMessageReplyMarkup({ reply_markup: kb }).catch(() => {});
   });
 
   bot.callbackQuery(/^retry:(\d+)$/, async (ctx) => {

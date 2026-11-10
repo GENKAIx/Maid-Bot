@@ -113,4 +113,6 @@ export interface Reply {
   duplicate?: boolean;
   /** Дни, о которых ответ на вопрос (ГГГГ-ММ-ДД). */
   days?: string[];
+  /** План лёг на занятое время: кнопки «Сдвинуть на shiftTo» (если не null) и «Оставить» (POST /api/clash). */
+  clash?: { eventId: number; withId: number; shiftTo: string | null };
 }

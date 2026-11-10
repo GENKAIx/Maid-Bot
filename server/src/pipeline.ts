@@ -8,6 +8,7 @@ import { changesList, esc, metricLine, moneyLine, upcomingDates } from "./report
 import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
 import { planEventReminders } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
+import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from "./clash.ts";
 
 // Сообщение → запись → разбор → действия → ответ.
 // Порядок важен: сначала сохраняем сырое сообщение (повтор доставки найдёт его), потом разбор,
@@ -34,7 +35,11 @@ export interface Reply {
   proposal?: Proposal;
   /** Разобрать не вышло (модель не ответила): кнопки «Повторить» и «Оставить заметкой»; сервер и сам повторит (retryFailed). */
   failed?: boolean;
+  /** План лёг на занятое время — кнопки «Сдвинуть на …» (если есть куда) и «Оставить» (clash.ts). */
+  clash?: Clash;
 }
+
+export type ClashChoice = "shift" | "keep";
 
 /** Потолки списков в запросе к модели: данные растут, а запрос — нет. Берётся ближайшее и упомянутое в сообщении. */
 export const PROMPT_CAP = { events: 120, tasks: 80, dates: 50, memory: 100 };
@@ -231,7 +236,7 @@ export class Pipeline {
     }
 
     const target = original ?? message;
-    const { lines, changes } = await s.transaction(() => this.apply(u, target, parsed, at));
+    const { lines, changes, touched } = await s.transaction(() => this.apply(u, target, parsed, at));
     if (original) await s.setMessage(message.id, { state: "done", reply: "(уточнение)" });
 
     const head = parsed.reply ? esc(parsed.reply) : pick(p.saved, message.id);
@@ -248,7 +253,9 @@ export class Pipeline {
       ask = k.habits && k.tasks ? "Добавить себе?" : k.tasks ? (items.length > 1 ? "Добавить в задачи?" : "Добавить в задачу?")
         : items.length > 1 ? "Хочешь отслеживать как привычки?" : "Хочешь отслеживать как привычку?";
     }
-    const reply = `${head}${body}${ask ? "\n" + ask : ""}`;
+    // План лёг на занятое время — спросить «Сдвинуть?» (не вместе с вопросом «добавить?»: два вопроса сразу путают).
+    const clash = !ask && touched.length ? (await findClash(s, u.id, touched)) ?? undefined : undefined;
+    const reply = `${head}${body}${ask ? "\n" + ask : ""}${clash ? "\n" + clashLine(clash, esc) : ""}`;
     let proposal: Proposal | undefined;
     if (ask) {
       const id = await s.addProposal({
@@ -258,7 +265,38 @@ export class Pipeline {
       proposal = proposalView((await s.proposal(id))!);
     }
     await s.setMessage(target.id, { state: "done", reply });
-    return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes, proposal };
+    return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes, proposal, clash };
+  }
+
+  /** Ответ на «Сдвинуть на …?»: shift — перенести план после занятого, keep — оставить оба и больше про эту пару не спрашивать.
+   *  reply — ответ сообщения с итогом вместо строки вопроса (для Telegram), null — строки вопроса там нет. */
+  async decideClash(u: User, messageId: number, eventId: number, withId: number, choice: ClashChoice): Promise<{ text: string; reply: string | null }> {
+    const s = this.store;
+    const [e, other, msg] = [await s.event(eventId), await s.event(withId), await s.message(messageId)];
+    if (!e || !other || !msg || e.user_id !== u.id || other.user_id !== u.id || msg.user_id !== u.id) return { text: "Не нашла эти планы.", reply: null };
+    let text: string;
+    if (choice === "keep" || e.status !== "active") {
+      await keepPair(s, u.id, e.id, other.id);
+      text = e.status === "active" ? "Хорошо, оставила оба." : "Этого плана уже нет в списке.";
+    } else {
+      const day = await s.eventsBetween(u.id, e.date_iso, e.date_iso);
+      const to = shiftTime(e, day);
+      if (!to) text = day.some((b) => b.id !== e.id && overlaps(e, b)) ? "Сдвинуть некуда: до конца дня всё занято." : "Уже ни на что не ложится.";
+      else {
+        await s.transaction(async () => {
+          await s.logAction(u.id, messageId, "update", "events", e.id, { time: e.time, end_time: e.end_time });
+          await s.updateEvent(e.id, { time: to.time, end_time: to.end });
+          await s.cancelReminders("event", e.id);
+          await planEventReminders(s, u, (await s.event(e.id))!, new Date());
+        });
+        text = `Сдвинула «${esc(e.title)}» на ${to.time}${to.end ? "–" + to.end : ""}.`;
+        this.changed(u);
+      }
+    }
+    const line = (msg.reply ?? "").split("\n").find((l) => l.startsWith("⚠ "));
+    const reply = line ? msg.reply!.replace(line, text) : null;
+    if (reply) await s.setMessage(messageId, { reply });
+    return { text, reply };
   }
 
   /** Отметить / снять пункт вопроса (галочки в Telegram). */
@@ -367,13 +405,15 @@ export class Pipeline {
   }
 
   /** Записать разобранное. Вызывать внутри транзакции. */
-  private async apply(u: User, msg: Message, r: Parsed, at: Date): Promise<{ lines: string[]; changes: Change[] }> {
+  /** touched — планы, которые записали или перенесли: их проверяет findClash. */
+  private async apply(u: User, msg: Message, r: Parsed, at: Date): Promise<{ lines: string[]; changes: Change[]; touched: number[] }> {
     const s = this.store;
     const log = (kind: string, tbl: Table, id: number, before?: unknown) => s.logAction(u.id, msg.id, kind, tbl, id, before);
     const sections: Section[] = [];
     const editLines: string[] = [];
     const markLines: string[] = [];
     const changes: Change[] = [];
+    const touched: number[] = [];
     const short = (t: string, n = 90) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
 
     for (const d of r.diary) {
@@ -390,6 +430,7 @@ export class Pipeline {
         domain: "life", message_id: msg.id,
       });
       await log("add", "events", id);
+      touched.push(id);
       await planEventReminders(s, u, (await s.event(id))!, at);
       changes.push({ kind: "event", title: e.title, detail: `${humanDay(e.date)}${e.time ? " " + e.time : ""}` });
     }
@@ -457,7 +498,10 @@ export class Pipeline {
         else if (e.action === "cancel") await s.updateEvent(ev.id, { status: "cancelled" });
         else if (e.action === "done") await s.updateEvent(ev.id, { status: "done" });
         else if (e.action === "reopen") await s.updateEvent(ev.id, { status: "active" });
-        else await s.updateEvent(ev.id, { date_iso: e.newDate ?? ev.date_iso, time: e.newTime ?? ev.time });
+        else {
+          await s.updateEvent(ev.id, { date_iso: e.newDate ?? ev.date_iso, time: e.newTime ?? ev.time });
+          touched.push(ev.id);
+        }
         await log("update", "events", ev.id, before);
         await s.cancelReminders("event", ev.id);
         const now = (await s.event(ev.id))!;
@@ -513,6 +557,7 @@ export class Pipeline {
         ...markLines,
       ],
       changes,
+      touched,
     };
   }
 

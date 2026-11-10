@@ -257,6 +257,16 @@ CREATE TABLE IF NOT EXISTS proposals (
 CREATE INDEX IF NOT EXISTS proposals_user ON proposals (user_id, status);
 ALTER TABLE habits ADD COLUMN quiet INTEGER NOT NULL DEFAULT 0;
 `,
+  // Шаг 7: план лёг на занятое время — горничная спрашивает «Сдвинуть?» (clash.ts). «Оставить» запоминает пару (a < b):
+  // про неё больше не спрашивает.
+  `
+CREATE TABLE IF NOT EXISTS clash_kept (
+  user_id INTEGER NOT NULL,
+  a INTEGER NOT NULL,
+  b INTEGER NOT NULL,
+  PRIMARY KEY (user_id, a, b)
+);
+`,
 ];
 
 export interface User {
@@ -915,6 +925,14 @@ export class Store {
   }
   async updateProposal(id: number, patch: Partial<Pick<ProposalRow, "picked" | "status" | "tg_chat" | "tg_msg">>) {
     for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE proposals SET ${k} = ? WHERE id = ?`, v as never, id);
+  }
+
+  // --- наложения планов, которые решили оставить (a < b) ---
+  async keepClash(userId: number, a: number, b: number) {
+    await this.run("INSERT INTO clash_kept (user_id, a, b) VALUES (?, ?, ?) ON CONFLICT (user_id, a, b) DO NOTHING", userId, a, b);
+  }
+  async clashKept(userId: number, a: number, b: number): Promise<boolean> {
+    return !!(await this.get("SELECT 1 AS x FROM clash_kept WHERE user_id = ? AND a = ? AND b = ?", userId, a, b));
   }
 
   // --- лента уведомлений ---

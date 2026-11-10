@@ -113,6 +113,19 @@ ${plainReply(r.text)}`, reply: r });
     }
   }
 
+  // «Сдвинуть на …» / «Оставить» после наложения планов.
+  async function clash(action: "shift" | "keep") {
+    const r0 = reply?.reply;
+    if (!r0?.clash) return;
+    try {
+      const r = await post<{ text: string }>("/api/clash", { messageId: r0.messageId, eventId: r0.clash.eventId, withId: r0.clash.withId, action });
+      show({ text: plainReply(r.text) }, 6000);
+      onChanged();
+    } catch (err) {
+      show({ text: (err as Error).message, error: true });
+    }
+  }
+
   async function undo() {
     if (!reply?.reply) return;
     try {
@@ -139,6 +152,8 @@ ${plainReply(r.text)}`, reply: r });
             )}
           </div>
           <div className="toast-actions">
+            {reply.reply?.clash?.shiftTo && <button onClick={() => clash("shift")}>➜ Сдвинуть на {reply.reply.clash.shiftTo}</button>}
+            {reply.reply?.clash && <button onClick={() => clash("keep")}>Оставить</button>}
             {reply.reply?.undoable && <button onClick={undo}>↩ Отменить</button>}
             <button className="ghost" onClick={() => setReply(null)}>✕</button>
           </div>

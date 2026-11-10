@@ -564,6 +564,14 @@ export function createApi(deps: ApiDeps) {
       if (again[2] === "retry") return pipeline.retry(u, Number(again[1]));
       return { text: await pipeline.asNote(u, Number(again[1])) };
     }
+    // Ответ на «Сдвинуть на …?» (план лёг на занятое время) — те же shift / keep, что у кнопок Telegram.
+    if (m === "POST" && p === "/api/clash") {
+      const b = parseBody(
+        z.object({ messageId: z.number().int(), eventId: z.number().int(), withId: z.number().int(), action: z.enum(["shift", "keep"]) }),
+        await readJson(req),
+      );
+      return pipeline.decideClash(u, b.messageId, b.eventId, b.withId, b.action);
+    }
     if (m === "POST" && p === "/api/undo") {
       const b = parseBody(z.object({ messageId: z.number().int().optional() }), await readJson(req));
       return { text: await pipeline.undo(u, b.messageId) };

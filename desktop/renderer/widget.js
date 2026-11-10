@@ -236,8 +236,9 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
   if (days.length) text = text.replace(/\n📅 .*$/, "");
   // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
-  // С вопросом «добавить?» — ещё и сам вопрос (последняя строка).
-  const plain = changes.length ? text.split("\n")[0] + (proposal ? "\n" + text.split("\n").at(-1) : "") : text;
+  // С вопросом «добавить?» или «Сдвинуть на …?» (план лёг на занятое время) — ещё и сам вопрос (последняя строка).
+  const ask = proposal || text.split("\n").at(-1).startsWith("⚠ ");
+  const plain = changes.length ? text.split("\n")[0] + (ask ? "\n" + text.split("\n").at(-1) : "") : text;
   $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + tgHtml(plain);
   const cards = $("#bubbleCards");
   cards.innerHTML = "";
@@ -472,7 +473,7 @@ async function pump() {
     const r = await maid.api("POST", m.path, m.body);
     outbox = outbox.filter((x) => x !== m);
     remember(m.body.text || r.heard || m.label, r);
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: failedButtons(r), stay: m.mini && collapsed });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)], stay: m.mini && collapsed });
     maid.changed();
   } catch (e) {
     if (offline(e)) {
@@ -641,13 +642,28 @@ document.addEventListener("drop", (e) => attachFiles(imagesFrom(e.dataTransfer))
 // даже если записалось; благодарность без записи — смущённо рада.
 const LEWD = /(?<![а-яё])(секс|интим|пошл|переспа|трах|минет|кунилин|оральн|голая|голый|голышом|раздел[аи]сь|эрот|порн|оргазм|возбужд|похот|дроч|мастурб|сиськ|задниц|презерватив|в постел[иь] с)/i;
 // Разбор не удался (модель не ответила): «Повторить» сейчас или «Оставить заметкой». Сервер и сам повторит через 2, 10 и 30 мин.
+// План лёг на занятое время: «Сдвинуть на 15:00» (если есть куда) и «Оставить» — как кнопки в Telegram (/api/clash).
+function clashButtons(r) {
+  const c = r.clash;
+  if (!c) return [];
+  const act = async (action) => {
+    try {
+      const x = await maid.api("POST", "/api/clash", { messageId: r.messageId, eventId: c.eventId, withId: c.withId, action });
+      say(x.text, { ms: 5000, sound: action === "shift" ? "ding" : null });
+      maid.changed();
+    } catch (e) {
+      say(e.message, { ms: 6000, emotion: "worried" });
+    }
+  };
+  return [...(c.shiftTo ? [{ text: `➜ Сдвинуть на ${c.shiftTo}`, run: () => act("shift") }] : []), { text: "Оставить", run: () => act("keep") }];
+}
 function failedButtons(r) {
   if (!r.failed) return [];
   const act = async (what) => {
     try {
       const x = await maid.api("POST", `/api/messages/${r.messageId}/${what}`);
       if (what === "note") say(x.text, { ms: 5000, sound: "ding" });
-      else say(x.text, { emotion: x.emotion, changes: x.changes ?? [], days: x.days ?? [], undo: x.undoable ? x.messageId : null, ms: 16000, sound: x.changes?.length ? "ding" : null, proposal: x.proposal, buttons: failedButtons(x) });
+      else say(x.text, { emotion: x.emotion, changes: x.changes ?? [], days: x.days ?? [], undo: x.undoable ? x.messageId : null, ms: 16000, sound: x.changes?.length ? "ding" : null, proposal: x.proposal, buttons: [...failedButtons(x), ...clashButtons(x)] });
       maid.changed();
     } catch (e) {
       say(e.message, { ms: 6000, emotion: "worried" });
@@ -1499,7 +1515,7 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => { wakeUp(); setState(on ? "think" : restState()); });
-maid.on("reply", (r) => wakeUp() || remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: failedButtons(r) }));
+maid.on("reply", (r) => wakeUp() || remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)] }));
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
