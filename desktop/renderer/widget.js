@@ -1489,6 +1489,83 @@ $("#body").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   openTaskMenu({ task: true, id: t.id, title: t.title, date_iso: t.due_date ?? data.day }, li, e.clientX, e.clientY, () => tick.click());
 });
+// ПКМ по привычке: отметить или пропустить сегодня, переименовать, напоминания, закончить, удалить.
+// «Закончить» — больше не появляется в новых днях, в истории остаётся со всеми отметками; «Удалить» — пропадает отовсюду,
+// отметки в базе остаются. Всё через журнал отмены (POST /api/habits/:id): «↩ Вернуть» / «Отменить».
+$("#body").addEventListener("contextmenu", (e) => {
+  const li = e.target.closest("ul.list li.habit");
+  const mark = li?.querySelector(".mark[data-habit]");
+  if (!mark || li.matches(".leaving, .undo-row")) return;
+  const h = (data?.habits ?? []).find((x) => x.id === Number(mark.dataset.habit));
+  if (!h) return;
+  e.preventDefault();
+  openHabitMenu(h, li, e.clientX, e.clientY);
+});
+function openHabitMenu(h, li, x, y) {
+  closePlanMenu();
+  const item = (act, text) => `<button type="button" data-act="${act}">${text}</button>`;
+  const menu = document.createElement("div");
+  menu.className = "pl-menu";
+  // Снять отметку — как повторный щелчок по галочке: день становится пропущенным (удалять отметки сервер не умеет).
+  menu.innerHTML = (h.status === "done" ? item("skip", "↶ Снять отметку") : item("done", "✓ Сделано сегодня"))
+    + (h.status ? "" : item("skip", "– Пропустить сегодня"))
+    + `<hr>`
+    + item("rename", "✎ Переименовать")
+    + (h.quiet ? item("loud", "🔔 С напоминаниями") : item("quiet", "🔕 Без напоминаний"))
+    + `<hr>`
+    + item("finish", "⏸ Закончить привычку")
+    + item("delete", "× Удалить привычку");
+  showPlanMenu(menu, x, y);
+  menu.addEventListener("click", (ev) => {
+    const act = ev.target.closest("[data-act]")?.dataset.act;
+    if (!act) return;
+    closePlanMenu();
+    if (act === "rename") return openRename({ habit: true, id: h.id, title: h.title }, li);
+    if (act === "done" || act === "skip") return markHabitDay(h, act === "done" ? "done" : "skipped");
+    editHabit(h, act, li);
+  });
+}
+async function markHabitDay(h, status) {
+  try {
+    await maid.api("POST", `/api/habits/${h.id}/mark`, { status });
+    if (status === "done") { popTone(2); react("streak", 4000); } else popTone(-3, { vol: 0.15, soft: true });
+    maid.changed();
+  } catch (err) {
+    play("oops");
+    say(err.message, { ms: 6000 });
+  }
+  load();
+}
+async function editHabit(h, act, li) {
+  const body = act === "quiet" ? { quiet: true } : act === "loud" ? { quiet: false } : act === "finish" ? { finish: true } : { status: "stopped" };
+  if (act === "finish" || act === "delete") { li.style.height = `${li.offsetHeight}px`; li.classList.add("fly"); }
+  try {
+    const r = await maid.api("POST", `/api/habits/${h.id}`, body);
+    const text = act === "quiet" ? `«${h.title}» — без напоминаний ✓`
+      : act === "loud" ? `«${h.title}» — снова с напоминаниями ✓`
+        : act === "finish" ? `Закончила привычку «${h.title}». В истории она осталась со всеми отметками.`
+          : `Удалила привычку «${h.title}».`;
+    popTone(act === "delete" ? -1 : 2, { soft: act === "delete" });
+    say(text, { ms: 5000, buttons: r.undo ? [{ text: "↩ Вернуть", run: () => undoHabit(h, r.undo) }] : [] });
+    maid.changed();
+  } catch (err) {
+    li.classList.remove("fly");
+    const msg = String(err?.message ?? err);
+    say(/нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет менять привычки — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+  }
+  setTimeout(() => load(), 400);
+}
+async function undoHabit(h, undo) {
+  try {
+    await maid.api("POST", "/api/undo", { messageId: undo });
+    popTone(3);
+    say(`Вернула «${h.title}» ✓`, { ms: 3000 });
+    maid.changed();
+  } catch (err) {
+    say(`Не вышло: ${String(err?.message ?? err)}`, { emotion: "worried", ms: 6000 });
+  }
+  setTimeout(() => load(), 300);
+}
 $("#body").addEventListener("click", async (e) => {
   if (e.target.closest("#doneCount")) return toggleShowDone();
   const back = e.target.closest("[data-undo]");

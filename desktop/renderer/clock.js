@@ -1613,7 +1613,7 @@ function openRename(e, li) {
     closePlanMenu();
     if (!save || !title || title === e.title) return;
     try {
-      const res = await maid.api("POST", e.task ? `/api/tasks/${e.id}` : `/api/events/${e.id}`, { title });
+      const res = await maid.api("POST", e.habit ? `/api/habits/${e.id}` : e.task ? `/api/tasks/${e.id}` : `/api/events/${e.id}`, { title });
       popTone(2);
       say(`Переименовала: «${title}» ✓`, { ms: 4000, undo: res.undo ?? null });
       farPlans.clear();

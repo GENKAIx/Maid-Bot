@@ -549,7 +549,11 @@ export class Pipeline {
         else if (a.tbl === "memory") await s.setMemoryStatus(a.row_id, a.kind === "add" ? "superseded" : before?.status ?? "active");
         else if (a.tbl === "metrics") await s.setMetricDeleted(a.row_id, true);
         else if (a.tbl === "money") await s.setMoneyDeleted(a.row_id, true);
-        else if (a.tbl === "habits") await s.updateHabit(a.row_id, { status: a.kind === "add" ? "deleted" : before?.status ?? "active" });
+        else if (a.tbl === "habits") {
+          // Правка мышью (POST /api/habits/:id) помнит и название, конец, «без напоминаний»; старые записи — только статус.
+          if (a.kind === "add") await s.updateHabit(a.row_id, { status: "deleted" });
+          else await s.updateHabit(a.row_id, before && Object.keys(before).length > 1 ? before : { status: before?.status ?? "active" });
+        }
         else if (a.tbl === "habit_marks") await s.restoreMark(a.row_id, before as MarkRow | null);
         await s.markUndone(a.id);
       }

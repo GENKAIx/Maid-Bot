@@ -823,7 +823,7 @@ export class Store {
   habit(id: number): Promise<HabitRow | undefined> {
     return this.get<HabitRow>("SELECT * FROM habits WHERE id = ?", id);
   }
-  async updateHabit(id: number, patch: Partial<Pick<HabitRow, "title" | "days" | "times" | "end_date" | "status">>) {
+  async updateHabit(id: number, patch: Partial<Pick<HabitRow, "title" | "days" | "times" | "end_date" | "status" | "quiet">>) {
     for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE habits SET ${k} = ? WHERE id = ?`, v as never, id);
   }
   /** Привычки, которые идут в этот день (по датам; день недели проверяет habits.ts). */

@@ -75,7 +75,7 @@ export async function dayJson(store: Store, u: User, day: string) {
     diary: await store.diaryOf(u.id, day),
     habits: (await habitsOfDay(store, u, day)).map((d) => ({
       id: d.habit.id, title: d.habit.title, times: d.times, status: d.status, streak: d.streak, done: d.doneDays, planned: d.plannedDays,
-      start: d.habit.start_date, end: d.habit.end_date, course: d.course, yesterday: d.yesterday,
+      start: d.habit.start_date, end: d.habit.end_date, course: d.course, yesterday: d.yesterday, quiet: d.habit.quiet ?? 0,
     })),
     metrics: await store.metricsRange(u.id, day, day),
     money: await store.moneyRange(u.id, day, day),
@@ -446,6 +446,32 @@ export function createApi(deps: ApiDeps) {
     if (m === "POST" && mark) {
       const b = parseBody(z.object({ status: z.enum(["done", "skipped"]).default("done"), day: Day.optional() }), await readJson(req));
       return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.status, "web") };
+    }
+
+    // Правка привычки мышью (ПКМ в виджете): title — переименовать, quiet — без напоминаний и вечерних вопросов,
+    // finish — закончить (end_date — сегодня, если сегодня уже отмечена, иначе вчера: в истории остаётся со всеми отметками),
+    // status stopped — удалить (пропадает отовсюду, отметки в базе остаются). Всё через журнал отмены.
+    const habitEdit = p.match(/^\/api\/habits\/(\d+)$/);
+    if (m === "POST" && habitEdit) {
+      const b = parseBody(z.object({
+        title: z.string().trim().min(1).max(200).optional(), quiet: z.boolean().optional(), finish: z.literal(true).optional(), status: z.enum(["active", "stopped"]).optional(),
+      }), await readJson(req));
+      const h = await store.habit(Number(habitEdit[1]));
+      if (!h || h.user_id !== u.id) throw new HttpError(404, "нет привычки");
+      if (!b.title && b.quiet === undefined && !b.finish && !b.status) throw new HttpError(400, "нужно title, quiet, finish или status");
+      const marked = (await store.marksOf(u.id, today, today)).some((x) => x.habit_id === h.id);
+      const patch = {
+        ...(b.title ? { title: b.title } : {}),
+        ...(b.quiet !== undefined ? { quiet: b.quiet ? 1 : 0 } : {}),
+        ...(b.finish ? { end_date: marked ? today : addDays(today, -1) } : {}),
+        ...(b.status ? { status: b.status } : {}),
+      };
+      const what = b.status === "stopped" ? "🗑" : b.finish ? "⏸" : "✎";
+      const undo = await pipeline.manual(u, `${what} ${h.title}`, async (log) => {
+        await log("habits", h.id, { status: h.status, title: h.title, end_date: h.end_date, quiet: h.quiet ?? 0 });
+        await store.updateHabit(h.id, patch);
+      });
+      return { ...(await store.habit(h.id)), undo };
     }
 
     // Деньги и показатели за период.
