@@ -408,3 +408,14 @@ test("«верни план из корзины» — модель видит к
   assert.match(r.text, /снова в планах: Тест/);
   assert.equal((await store.event(gone))!.status, "active");
 });
+
+test("эмоция awkward («сболтнул лишнее») доходит до ответа; незнакомая эмоция — neutral", async () => {
+  const { u, pipe } = await setup([
+    { reply: "Я ничего не слышала.", emotion: "awkward" },
+    { reply: "Хорошо.", emotion: "вспышка" },
+  ]);
+  const a = await pipe.handle({ user: u, ...msg("Вчера напился и написал бывшей. Забудь.", "aw1") });
+  assert.equal(a.emotion, "awkward");
+  const b = await pipe.handle({ user: u, ...msg("Ладно", "aw2") });
+  assert.equal(b.emotion, "neutral");
+});

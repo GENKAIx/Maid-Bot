@@ -82,15 +82,15 @@ function sectionOf(c) {
   return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits" }[c.kind] ?? "/";
 }
 
-// --- горничная: 26 анимаций (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации» и «…/Маскот/mascot2») ---
+// --- горничная: 27 анимаций (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации», «…/Маскот/mascot2» и «…/Маскот/3/forget») ---
 // Основа — ждёт / думает / спит / нет связи; на события она на несколько секунд реагирует (react), потом возвращается к основе.
 const MOODS = ["idle", "think", "sleep", "happy", "proud", "angry", "sad", "worried", "surprised", "neutral",
   "hello", "listen", "write", "done", "remind", "clean", "tea", "streak", "offline", "bow",
-  "smitten", "giggle", "refuse", "smug", "gasp", "excited"];
+  "smitten", "giggle", "refuse", "smug", "gasp", "excited", "forget"];
 for (const n of MOODS) new Image().src = `../assets/maid/${n}.webp`;
 // Эмоция ответа сервера → анимация.
 const EMOTION_MOOD = { neutral: "neutral", happy: "happy", proud: "proud", angry: "angry", sad: "sad", worried: "worried",
-  surprised: "surprised", thinking: "think", sleepy: "sleep", stern: "refuse", teasing: "smug" };
+  surprised: "surprised", thinking: "think", sleepy: "sleep", stern: "refuse", teasing: "smug", awkward: "forget" };
 let mood = "";
 let moodUntil = 0;
 let moodTimer = 0;
@@ -107,11 +107,39 @@ function baseMood() {
   return typeof dayMood !== "undefined" && dayMood === "bad" ? "clean" : "idle";
 }
 function showMood(n) {
-  if (n === mood || !MOODS.includes(n)) return;
+  if (!MOODS.includes(n)) return;
+  if (n === "forget") return forgetFlash();
+  if (n === mood) return;
   mood = n;
+  clearTimeout(forgetTimer);
   $("#face").src = `../assets/maid/${n}.webp`;
 }
+// «Стираю память» (forget): прибор щёлкает на 30-м кадре анимации — в этот миг виджет заливает вспышка от его линзы.
+// Картинка каждый раз грузится заново (?метка), чтобы анимация шла с первого кадра и вспышка попала в щелчок.
+const FORGET = { loop: 3000, click: 1250, x: 0.367, y: 0.584 }; // длина цикла, момент щелчка (мс), линза в долях картинки
+let forgetTimer = 0;
+function forgetFlash() {
+  mood = "forget";
+  clearTimeout(forgetTimer);
+  const face = $("#face");
+  face.src = `../assets/maid/forget.webp?${Date.now()}`;
+  const arm = () => {
+    forgetTimer = setTimeout(() => {
+      const r = face.getBoundingClientRect();
+      if (mood !== "forget" || !r.width) return;
+      const f = $("#flash");
+      f.style.setProperty("--fx", `${Math.round(r.left + r.width * FORGET.x)}px`);
+      f.style.setProperty("--fy", `${Math.round(r.top + r.height * FORGET.y)}px`);
+      f.classList.remove("on");
+      void f.offsetWidth;
+      f.classList.add("on");
+      if (typeof popTone !== "undefined" && !cfg.mute) popTone(9, { vol: 0.22 });
+    }, FORGET.click);
+  };
+  face.decode().then(arm, arm);
+}
 function react(n, ms = 6000) {
+  if (n === "forget") ms = FORGET.loop; // ровно один щелчок: анимация зациклена, второй вспышки не нужно
   clearTimeout(moodTimer);
   moodUntil = Date.now() + ms;
   showMood(n);
@@ -732,8 +760,12 @@ function failedButtons(r) {
   };
   return [{ text: "🔁 Повторить", run: () => act("retry") }, { text: "📝 Оставить заметкой", run: () => act("note") }];
 }
+// Сказал то, чего лучше было не говорить (сервер пометил ответ эмоцией awkward), или сам просит забыть — «стирает память».
+const UNSAY = /(?<![а-яё])((?<!не )забудь|я этого не говорил|я ничего не говорил|(ты|вы) (этого|ничего) не слышал|сделай(те)? вид,? что|этого разговора не было|проехали|зря (я )?(это )?(сказал|написал|ляпнул)|ляпнул[аи]? лишн|сболтнул|не стоило (мне )?(это(го)? )?говорить|никому не (говори|рассказывай))/i;
 function heardMood(text, r) {
+  if (r?.emotion === "awkward") return "forget";
   if (!text) return null;
+  if (UNSAY.test(text)) return "forget";
   if (LEWD.test(text)) return "smug";
   if (/спасиб|благодар/i.test(text) && !r.changes?.length) return "smitten";
   return null;

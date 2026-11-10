@@ -1,6 +1,6 @@
 // Характеры горничной. Голос задаёт промпт; короткие фразы — для ответов без LLM.
 
-export const EMOTIONS = ["neutral", "happy", "proud", "worried", "stern", "sleepy", "surprised", "sad", "teasing"] as const;
+export const EMOTIONS = ["neutral", "happy", "proud", "worried", "stern", "sleepy", "surprised", "sad", "teasing", "awkward"] as const;
 export type Emotion = (typeof EMOTIONS)[number];
 
 export interface Persona {

@@ -514,7 +514,21 @@ body.quick { background: transparent; }
 .medal::after { right: 6px; transform: rotate(-16deg); background: var(--accent-2); }
 .course.as-medal .c-head { margin-bottom: 9px; }
 
+/* «Стираю память» (forget): в момент щелчка прибора от его линзы (--fx, --fy) расходится свет — ядро, луч и широкое пятно. */
+.mem-flash { position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: 0;
+  background:
+    radial-gradient(circle 70px at var(--fx, 50%) var(--fy, 50%), #fff 0, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(ellipse 560px 7px at var(--fx, 50%) var(--fy, 50%), rgba(255, 255, 255, .95) 0, rgba(190, 222, 255, 0) 100%),
+    radial-gradient(circle 380px at var(--fx, 50%) var(--fy, 50%), rgba(240, 247, 255, .97) 0, rgba(214, 233, 255, .9) 28%, rgba(176, 210, 255, .45) 58%, rgba(176, 210, 255, 0) 100%);
+  /* у краёв окна свет сходит на нет — без обрезанной кромки на рабочем столе */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%), linear-gradient(0deg, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%);
+  -webkit-mask-composite: source-in; mask-composite: intersect; }
+.mem-flash.on { animation: memFlash .95s ease-out both; }
+@keyframes memFlash { 0% { opacity: 0; } 5% { opacity: 1; } 28% { opacity: .9; } 100% { opacity: 0; } }
+@keyframes memFlashSoft { 0% { opacity: 0; } 15% { opacity: .4; } 100% { opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
+  .mem-flash.on { animation: memFlashSoft .6s ease-out both; }
   .maid .face.boop, .maid .face.huff, .pip.wave, .pip.glued, .w .mark.glued, .course.as-medal .c-medal { animation: none; }
 }
 
