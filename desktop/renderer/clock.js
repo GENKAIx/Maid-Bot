@@ -426,7 +426,8 @@ function planFly(id) {
   doneTimers.set(id, setTimeout(() => {
     const done = () => { doneTimers.delete(id); if (planDone.get(id)?.fly) { planDone.delete(id); drawClock(); } };
     const el = document.querySelector(`#planClock .pl-card[data-id="${id}"]`);
-    if (!el) return done();
+    // Под свёрнутой карточкой после перелёта место держится (foldSlots): не сжимать — на его месте встанет пустая карточка.
+    if (!el || (collapsed && foldFly)) return done();
     el.style.height = `${el.offsetHeight}px`;
     void el.offsetHeight;
     el.classList.add("shut");
