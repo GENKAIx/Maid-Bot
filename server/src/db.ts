@@ -699,6 +699,14 @@ export class Store {
       userId, from, to, status,
     );
   }
+  /** Планы после дня after, добавленные или изменённые не раньше since (ISO) — виджет ПК замечает далёкие планы из Telegram. */
+  eventsChangedSince(userId: number, after: string, since: string): Promise<EventRow[]> {
+    return this.all<EventRow>(
+      `SELECT * FROM events WHERE user_id = ? AND date_iso > ? AND status = 'active' AND updated_at >= ?
+       ORDER BY updated_at DESC, id DESC LIMIT 20`,
+      userId, after, since,
+    );
+  }
   allEvents(userId: number): Promise<EventRow[]> {
     return this.all<EventRow>("SELECT * FROM events WHERE user_id = ? ORDER BY date_iso, COALESCE(time, '99:99'), id", userId);
   }

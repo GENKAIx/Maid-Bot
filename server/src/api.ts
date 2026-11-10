@@ -83,12 +83,16 @@ export async function dayJson(store: Store, u: User, day: string) {
   };
 }
 
+const FAR_FRESH_MS = 15 * 60_000;
+
 export async function todayJson(store: Store, u: User, now = new Date()) {
   const today = dayKey(now, u.tz);
   return {
     ...(await dayJson(store, u, today)),
     persona: u.persona,
     upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
+    // Далёкие (дальше upcoming) планы, добавленные или изменённые за 15 минут: виджет ПК едет к их дню, откуда бы их ни записали.
+    far_fresh: await store.eventsChangedSince(u.id, addDays(today, 14), new Date(now.getTime() - FAR_FRESH_MS).toISOString()),
     tasks: await store.openTasks(u.id),
     // Сделанные сегодня (где угодно: виджет, телефон, Telegram) — виджет показывает их внизу и считает в настроение дня.
     done_today: (await store.doneTasksBetween(u.id, zonedToUtc(today, "00:00", u.tz), zonedToUtc(addDays(today, 1), "00:00", u.tz)))

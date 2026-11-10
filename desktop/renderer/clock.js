@@ -20,6 +20,7 @@ let clockFresh = new Set(); // id планов, которые только чт
 let clockGone = []; // только что удалённые — тают на своих местах
 let clockColors = new Map(); // id плана → цвет: по порядку времени, чтобы соседние планы не совпадали
 let lastPlans = null; // id → JSON плана, чтобы заметить изменения
+let lastFar = null; // то же для далёких планов, записанных недавно (data.far_fresh)
 
 const minutesOf = (t) => {
   const m = /^(\d{1,2}):(\d{2})/.exec(t ?? "");
@@ -603,13 +604,24 @@ function watchPlans() {
   const now = new Map([...all.map((e) => [e.id, JSON.stringify(e)]), ...due.map((t) => [`t${t.id}`, JSON.stringify(t)])]);
   const prev = lastPlans;
   lastPlans = now;
+  // Далёкие планы (дальше 14 дней) сервер отдаёт, только пока они свежие (15 мин): новый или изменённый — к его дню.
+  const farRows = data.far_fresh ?? [];
+  const farNow = new Map(farRows.map((e) => [e.id, JSON.stringify(e)]));
+  const prevFar = lastFar;
+  lastFar = farNow;
   if (!prev) return;
+  const farFresh = prevFar ? farRows.filter((e) => prevFar.get(e.id) !== farNow.get(e.id) && !quietPlans.delete(e.id)) : [];
   const fresh = all.filter((e) => prev.get(e.id) !== now.get(e.id) && !quietPlans.delete(e.id));
   // Задача — новая или поменялся срок (изменение названия не в счёт).
   const freshTasks = due.filter((t) => { const was = prev.get(`t${t.id}`); return !was || JSON.parse(was).due_date !== t.due_date; });
   const gone = [...prev].filter(([id]) => !now.has(id)).map(([, j]) => JSON.parse(j)).filter((e) => e.date_iso >= data.day);
   if (!fresh.length && !freshTasks.length && !gone.length) {
     if (!$("#planClock").classList.contains("hidden")) drawClock(); // стрелка и прошедшие планы
+    else if (farFresh.length) {
+      farPlanRun++; // уже нашли — поиск после своей записи (farPlanSoon) не нужен
+      const days = new Set(farFresh.map((e) => e.date_iso));
+      flyToDay(farFresh[0].date_iso, { fresh: farFresh.filter((e) => e.date_iso === farFresh[0].date_iso).map((e) => e.id), more: days.size - 1 });
+    }
     return;
   }
   const day = fresh[0]?.date_iso ?? freshTasks[0]?.due_date ?? gone[0].date_iso;

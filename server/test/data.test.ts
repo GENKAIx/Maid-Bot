@@ -340,6 +340,22 @@ test("сервер отдаёт собранное веб-приложение: 
   }
 });
 
+test("/api/today: far_fresh — далёкие планы, записанные недавно", async () => {
+  const { todayJson } = await import("../src/api.ts");
+  const { addDays, dayKey } = await import("../src/time.ts");
+  const store = await Store.open(":memory:");
+  const u = await store.ensureUser("901", "Т", "Europe/Moscow");
+  const now = new Date();
+  const today = dayKey(now, u.tz);
+  const ev = (title: string, date: string) => store.addEvent({ user_id: u.id, title, date_iso: date, time: null, end_time: null, details: "", domain: "", message_id: null });
+  const far = await ev("Через месяц", addDays(today, 30));
+  await ev("Через неделю", addDays(today, 7));
+  const old = await ev("Давно записан", addDays(today, 40));
+  await store.raw("UPDATE events SET updated_at = ? WHERE id = ?", new Date(now.getTime() - 20 * 60_000).toISOString(), old);
+  const j = await todayJson(store, u, now);
+  assert.deepEqual(j.far_fresh.map((e) => e.id), [far]);
+});
+
 test("/api/today: done_today — задачи, закрытые сегодня по часам пользователя", async () => {
   const { todayJson } = await import("../src/api.ts");
   const store = await Store.open(":memory:");
