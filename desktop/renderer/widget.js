@@ -224,14 +224,15 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false } = {}) {
   // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices).
   if (napping) return;
   const b = $("#bubble");
   delete b.dataset.quip;
   stopProposal();
   if (proposal && proposal.status !== "open") proposal = null;
-  if (text !== "…") openForMessage();
+  // stay — ответ на строку свёрнутого виджета: облачко над головой, панель остаётся свёрнутой.
+  if (text !== "…" && !stay) openForMessage();
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
   if (days.length) text = text.replace(/\n📅 .*$/, "");
   // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
@@ -447,8 +448,8 @@ function sendChat() {
   enqueue("/api/input", { text, images, id: crypto.randomUUID() }, label);
   chatInput.focus();
 }
-function enqueue(path, body, label) {
-  outbox.push({ id: body.id, path, body, label, state: "wait", at: Date.now() });
+function enqueue(path, body, label, mini = false) {
+  outbox.push({ id: body.id, path, body, label, state: "wait", at: Date.now(), mini });
   saveOutbox();
   play("send");
   drawOutbox();
@@ -469,7 +470,7 @@ async function pump() {
     const r = await maid.api("POST", m.path, m.body);
     outbox = outbox.filter((x) => x !== m);
     remember(m.body.text || r.heard || m.label, r);
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: failedButtons(r) });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: failedButtons(r), stay: m.mini && collapsed });
     maid.changed();
   } catch (e) {
     if (offline(e)) {
@@ -856,7 +857,7 @@ function render() {
   const allDone = hiding && !left && doneCount > 0;
   if (allDone && lastLeft > 0) { react("excited", 5000); allDoneAt = Date.now(); }
   lastLeft = left;
-  renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left, doneCount);
+  renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left, doneCount, daily.filter((h) => !h.status && !leavingRows.has(`h${h.id}`)));
   const bump = Date.now() - bumpAt < 600 ? " bump" : "";
   const counter = hiding && doneCount
     ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}${allDone ? " all" : ""}${bump}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${doneCount}/${doneCount + left}</button>`
@@ -1111,7 +1112,14 @@ function miniPlan() {
   return null;
 }
 const RING = 2 * Math.PI * 16.5;
-function renderMini(open, todo, left, done) {
+let miniHabits = [];
+function renderMini(open, todo, left, done, habits = []) {
+  // Неотмеченные сегодня привычки — точка с числом на кольце; щелчок — отметить.
+  miniHabits = habits;
+  const hb = $("#miniHabit");
+  hb.classList.toggle("hidden", !habits.length);
+  hb.textContent = habits.length > 1 ? String(habits.length) : "";
+  hb.title = habits.length === 1 ? `«${habits[0].title}» — отметить сделанным` : `Привычки на сегодня: ${habits.map((h) => h.title).join(", ")}`;
   const plan = miniPlan();
   const late = open.filter(overdue).length;
   $("#miniTasks").innerHTML = plan
@@ -1472,14 +1480,38 @@ $("#maid").addEventListener("dblclick", () => {
   foldAnimated(!collapsed);
 });
 $("#miniOpen").onclick = () => { autoOpened = false; foldAnimated(false); };
+// Точка привычек на кольце: одна — сразу отмечается, несколько — меню со списком и «Все сразу».
+$("#miniHabit").onclick = (e) => {
+  e.stopPropagation();
+  if (miniHabits.length === 1) return markHabitDay(miniHabits[0], "done");
+  closePlanMenu();
+  const menu = document.createElement("div");
+  menu.className = "pl-menu";
+  menu.innerHTML = miniHabits.map((h, i) => `<button type="button" data-i="${i}">✓ ${esc(h.title)}</button>`).join("")
+    + `<hr><button type="button" data-all>✓ Все сразу</button>`;
+  const r = e.currentTarget.getBoundingClientRect();
+  showPlanMenu(menu, r.right - 200, r.top - 8 - (miniHabits.length + 1) * 30);
+  const list = miniHabits;
+  menu.addEventListener("click", async (ev) => {
+    const b = ev.target.closest("button");
+    if (!b) return;
+    closePlanMenu();
+    if (b.dataset.all === undefined) return markHabitDay(list[Number(b.dataset.i)], "done");
+    for (const h of list) await maid.api("POST", `/api/habits/${h.id}/mark`, { status: "done" }).catch(() => {});
+    popTone(3);
+    react("streak", 4000);
+    maid.changed();
+    load();
+  });
+};
 $("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button, form")) return; autoOpened = false; foldAnimated(false); });
-// Строка ввода свёрнутой панели: Enter — в ту же очередь, что чат панели; ответ горничной развернёт панель сама (openForMessage).
+// Строка ввода свёрнутой панели: Enter — в ту же очередь, что чат панели; ответ — облачком над головой, панель остаётся свёрнутой.
 $("#miniAsk").onsubmit = (e) => {
   e.preventDefault();
   const text = $("#miniInput").value.trim();
   if (!text) return;
   $("#miniInput").value = "";
-  enqueue("/api/input", { text, id: crypto.randomUUID() }, text);
+  enqueue("/api/input", { text, id: crypto.randomUUID() }, text, true);
 };
 $("#miniInput").addEventListener("keydown", (e) => {
   e.stopPropagation();

@@ -111,6 +111,14 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .stage.folded .perch { --peek: calc(var(--maid-w, 196px) * .4); } /* из-за маленькой карточки видна только голова */
 .mini.dragging { cursor: grabbing; }
 .mini-top { display: flex; align-items: center; gap: 12px; }
+/* Точка неотмеченных привычек на кольце: тёплая, с числом, если их несколько; щелчок — отметить. */
+.mini-top { position: relative; }
+.mini-habit { position: absolute; right: -5px; top: -7px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; border: 2px solid rgba(29, 24, 48, .95);
+  background: #f2b84b; color: #2a2140; font-size: 10px; font-weight: 700; line-height: 12px; cursor: pointer; box-sizing: border-box; animation: habitPulse 2.4s ease-in-out infinite; }
+.mini-habit:hover { background: #ffd27a; transform: scale(1.15); }
+.mini-habit.hidden { display: none; }
+@keyframes habitPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(242, 184, 75, .5); } 50% { box-shadow: 0 0 0 5px rgba(242, 184, 75, 0); } }
+@media (prefers-reduced-motion: reduce) { .mini-habit { animation: none; } }
 .mini-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .mini-sub { min-height: 15px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-sub.late { color: #f0a46b; }
