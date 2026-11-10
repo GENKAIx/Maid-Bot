@@ -167,6 +167,44 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 
 .chat { display: flex; flex-wrap: wrap; flex: none; gap: 6px; margin-top: 2px; align-items: flex-end; }
 /* Ряд картинок над строкой ввода. */
+/* Очередь отправки над строкой: что уходит сейчас, что ждёт, и карточка «не отправилось» с двумя выходами. */
+.chat .outbox, .chat .hist { flex: 0 0 100%; min-width: 0; }
+.chat .outbox.hidden, .chat .hist.hidden, .recording > .outbox { display: none; }
+.chat .outbox { display: flex; flex-direction: column; gap: 4px; }
+.chat .ob-row { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 4px 3px 10px; border-radius: 10px; background: rgba(183, 156, 255, .12); font-size: 12.5px; }
+.chat .ob-row.later { background: rgba(255, 255, 255, .06); color: var(--muted); }
+.chat .ob-text { flex: 1; min-width: 0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat .ob-spin, .chat .ob-dot, .chat .ob-wait { display: inline-block; vertical-align: -2px; margin-right: 7px; }
+.chat .ob-spin { width: 11px; height: 11px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .25); border-top-color: var(--accent); animation: obSpin .8s linear infinite; }
+.chat .ob-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .3); vertical-align: 0; }
+.chat .ob-wait { font-size: 11px; margin-right: 5px; }
+.chat .ob-note { flex: none; font-size: 11px; }
+.chat .ob-n { flex: none; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; background: var(--warn); color: #3a2410; }
+.chat button.ob-drop { width: 22px; height: 22px; border-radius: 50%; font-size: 10px; font-weight: 400; background: transparent; color: var(--muted); }
+.chat button.ob-drop:hover { background: rgba(229, 72, 77, .25); color: #ffb3b6; }
+.chat .ob-fail { display: flex; flex-direction: column; gap: 6px; padding: 9px 10px; border-radius: 12px; background: rgba(229, 72, 77, .16); border: 1px solid rgba(255, 138, 154, .28); }
+.chat .ob-msg { font-size: 12.5px; line-height: 1.35; }
+.chat .ob-fail .ob-row { background: rgba(0, 0, 0, .18); }
+.chat .ob-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat .ob-acts button { width: auto; height: 26px; padding: 0 11px; border-radius: 13px; font-size: 12px; font-weight: 600; }
+.chat .ob-acts .ob-retry { background: var(--warn); color: #3a2410; }
+.chat .ob-acts .ob-retry:hover { background: #ffc68f; }
+.chat .ob-acts .ob-later { background: rgba(255, 255, 255, .1); color: var(--text); }
+.chat .ob-acts .ob-later:hover { background: rgba(255, 255, 255, .18); }
+@keyframes obSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .chat .ob-spin { animation-duration: 2.4s; } }
+/* Лента последних ответов: свои сообщения справа, ответы горничной слева, у записи — «Отменить». */
+.chat .hist { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; padding: 8px; border-radius: 14px; background: rgba(0, 0, 0, .22); border: 1px solid rgba(255, 255, 255, .08); }
+.chat .hm { max-width: 86%; padding: 6px 10px; border-radius: 12px; font-size: 12.5px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat .hm i { display: block; margin-top: 2px; font-size: 10.5px; font-style: normal; color: var(--muted); }
+.chat .hm.me { align-self: flex-end; background: rgba(107, 63, 212, .45); }
+.chat .hm.her { align-self: flex-start; background: rgba(255, 255, 255, .08); }
+.chat button.h-undo { width: auto; height: auto; padding: 0; background: none; color: var(--accent); font-weight: 600; font-size: 12px; }
+.chat button.h-undo:hover { background: none; text-decoration: underline; }
+.chat .h-undone { color: var(--muted); font-size: 11.5px; }
+.chat .h-empty { color: var(--muted); font-size: 12.5px; text-align: center; padding: 10px 0; }
+.chat button.hist-btn.on { background: rgba(183, 156, 255, .22); color: var(--accent); }
+.chat button.hist-btn:hover { transform: none; }
 .chat .pics { flex: 0 0 100%; display: flex; gap: 8px; padding: 6px 2px 2px; overflow-x: auto; }
 .chat .pics.hidden, .recording > .pics { display: none; }
 .chat .pic { position: relative; flex: none; width: 52px; height: 52px; }

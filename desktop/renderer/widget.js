@@ -237,19 +237,168 @@ function hideBubbleWhenFree() {
 }
 
 // --- чат с горничной ---
+// Отправленное встаёт в очередь над строкой и уходит по одному: поле сразу свободно, можно писать следующее.
+// Нет связи — сообщение остаётся в очереди и на этом компьютере (localStorage): «Повторить» или «Отправить, когда появится связь».
+// Повтор безопасен: у сообщения свой id, сервер второй раз его не запишет.
 const chatInput = $("#chatInput");
-let sending = false;
-async function sendChat() {
+const OUTBOX_KEY = "maid.outbox";
+let outbox = (() => {
+  try {
+    // Прервалось на отправке (закрыли виджет) — снова в очередь.
+    return (JSON.parse(localStorage.getItem(OUTBOX_KEY)) ?? []).map((m) => ({ ...m, state: m.state === "sending" ? "wait" : m.state }));
+  } catch { return []; }
+})();
+let pumping = false;
+function saveOutbox() {
+  // Картинки и голос могут не влезть в хранилище — тогда на диск идут только небольшие сообщения.
+  const keep = outbox.filter((m) => JSON.stringify(m).length < 400_000);
+  try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(keep)); } catch { try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(keep.filter((m) => !m.body.images && !m.body.audio))); } catch {} }
+}
+const offline = (e) => /нет связи с сервером|сервер не ответил/.test(e?.message ?? "");
+const errText = (e) => String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+
+function sendChat() {
   const text = chatInput.value.trim();
-  if ((!text && !pictures.length) || sending) return;
+  if (!text && !pictures.length) return;
   const images = pictures.length ? pictures.map((p) => ({ data: p.data, mime: p.mime })) : undefined;
   chatInput.value = "";
   fitChat();
   setPictures([]);
   syncSend();
-  const label = images ? (images.length > 1 ? `📷×${images.length} Смотрю…` : "📷 Смотрю…") : text.length > 40 ? text.slice(0, 40) + "…" : text;
-  await ask("/api/input", { text, images, id: crypto.randomUUID() }, label);
+  const label = images ? `${images.length > 1 ? `📷×${images.length}` : "📷"} ${text}`.trim() : text;
+  enqueue("/api/input", { text, images, id: crypto.randomUUID() }, label);
+  chatInput.focus();
 }
+function enqueue(path, body, label) {
+  outbox.push({ id: body.id, path, body, label, state: "wait", at: Date.now() });
+  saveOutbox();
+  play("send");
+  drawOutbox();
+  pump();
+}
+// Отправляет первое ждущее сообщение; дошло — следующее.
+async function pump() {
+  if (pumping) return;
+  const m = outbox.find((x) => x.state === "wait");
+  if (!m) return;
+  pumping = true;
+  m.state = "sending";
+  drawOutbox();
+  setState("think");
+  say("…", { ms: 0 });
+  let next = true;
+  try {
+    const r = await maid.api("POST", m.path, m.body);
+    outbox = outbox.filter((x) => x !== m);
+    remember(m.body.text || r.heard || m.label, r);
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r) });
+    maid.changed();
+  } catch (e) {
+    if (offline(e)) {
+      // Связи нет — дальше по очереди тоже не пройдёт: все ждущие остаются на этом компьютере.
+      for (const x of outbox) if (x === m || x.state === "wait") x.state = x.auto ? "later" : "failed";
+      hideBubble();
+      play("oops");
+      react("sad", 3500);
+      next = false;
+    } else {
+      outbox = outbox.filter((x) => x !== m);
+      say(errText(e), { emotion: "worried", ms: 8000, sound: "oops" });
+    }
+  } finally {
+    pumping = false;
+    saveOutbox();
+    drawOutbox();
+    setState(isNight() ? "sleep" : "idle");
+    if (next) pump();
+  }
+}
+function retryOutbox(auto) {
+  for (const x of outbox) if (x.state === "failed" || (auto === null && x.state === "later")) { x.state = "wait"; if (auto) x.auto = true; }
+  saveOutbox();
+  drawOutbox();
+  pump();
+}
+// «Отправить, когда появится связь»: раз в 20 секунд и при появлении сети пробуем снова.
+setInterval(() => { if (outbox.some((x) => x.state === "later")) retryOutbox(null); }, 20_000);
+window.addEventListener("online", () => { if (outbox.some((x) => x.state === "later")) retryOutbox(null); });
+
+function drawOutbox() {
+  const box = $("#chatQueue");
+  const fails = outbox.filter((m) => m.state === "failed");
+  const rows = outbox.filter((m) => m.state !== "failed");
+  box.classList.toggle("hidden", !outbox.length);
+  const row = (m, i) => {
+    const icon = m.state === "sending" ? `<span class="ob-spin"></span>` : m.state === "later" ? `<span class="ob-wait" title="Ждёт связи">⏳</span>` : `<span class="ob-dot"></span>`;
+    const note = m.state === "later" ? `<span class="ob-note">ждёт связи</span>` : "";
+    const drop = m.state === "sending" ? "" : `<button type="button" class="ob-drop" data-ob-drop="${esc(m.id)}" title="Убрать из очереди" aria-label="Убрать из очереди">✕</button>`;
+    return `<div class="ob-row ${m.state}"><span class="ob-text" title="${esc(m.label)}">${icon}${esc(m.label)}</span>${note}${rows.length > 1 ? `<span class="ob-n">${i + 1}</span>` : ""}${drop}</div>`;
+  };
+  const fail = fails.length
+    ? `<div class="ob-fail" role="alert"><div class="ob-msg">Не отправилось: нет связи с сервером. ${fails.length > 1 ? `Сообщения (${fails.length}) сохранены` : "Сообщение сохранено"} на этом компьютере.</div>`
+      + fails.map((m) => `<div class="ob-row failed"><span class="ob-text" title="${esc(m.label)}">${esc(m.label)}</span><button type="button" class="ob-drop" data-ob-drop="${esc(m.id)}" title="Удалить сообщение" aria-label="Удалить сообщение">✕</button></div>`).join("")
+      + `<div class="ob-acts"><button type="button" class="ob-retry" data-ob="retry">Повторить</button><button type="button" class="ob-later" data-ob="later">Отправить, когда появится связь</button></div></div>`
+    : "";
+  box.innerHTML = fail + rows.map(row).join("");
+}
+$("#chatQueue").addEventListener("click", (e) => {
+  const drop = e.target.closest("[data-ob-drop]");
+  if (drop) {
+    outbox = outbox.filter((m) => m.id !== drop.dataset.obDrop || m.state === "sending");
+    saveOutbox();
+    return drawOutbox();
+  }
+  const b = e.target.closest("[data-ob]");
+  if (b) retryOutbox(b.dataset.ob === "later");
+});
+drawOutbox();
+setTimeout(pump, 1500); // что не ушло в прошлый раз — отправляется само
+
+// Последние ответы горничной (на этом компьютере): облачко исчезает, а ответ и «Отменить» остаются под рукой.
+const HIST_KEY = "maid.history";
+const HIST_MAX = 40;
+let chatLog = (() => { try { return JSON.parse(localStorage.getItem(HIST_KEY)) ?? []; } catch { return []; } })();
+function remember(me, r) {
+  if (!r?.text) return;
+  chatLog = [...chatLog, { at: Date.now(), me: String(me ?? "").slice(0, 400), reply: String(r.text).slice(0, 2000), undo: r.undoable ? r.messageId : null }].slice(-HIST_MAX);
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(chatLog)); } catch {}
+  if (!$("#chatHist").classList.contains("hidden")) drawHistory();
+}
+const clockOf = (t) => new Date(t).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+function drawHistory() {
+  const box = $("#chatHist");
+  box.innerHTML = chatLog.length
+    ? chatLog.map((h, i) => (h.me ? `<div class="hm me">${esc(h.me)}<i>${clockOf(h.at)}</i></div>` : "")
+      + `<div class="hm her">${tgHtml(h.reply)}${h.undo ? (h.undone ? ` <span class="h-undone">отменено</span>` : ` <button type="button" class="h-undo" data-h="${i}">Отменить</button>`) : ""}<i>${clockOf(h.at)}</i></div>`).join("")
+    : `<div class="h-empty">Здесь будут последние ответы горничной.</div>`;
+  box.scrollTop = box.scrollHeight;
+}
+function toggleHistory(on = $("#chatHist").classList.contains("hidden")) {
+  $("#chatHist").classList.toggle("hidden", !on);
+  $("#chatHistBtn").classList.toggle("on", on);
+  if (on) drawHistory();
+}
+$("#chatHistBtn").addEventListener("click", (e) => { e.preventDefault(); toggleHistory(); chatInput.focus(); });
+chatInput.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#chatHist").classList.contains("hidden")) { e.preventDefault(); toggleHistory(false); } });
+$("#chatHist").addEventListener("click", async (e) => {
+  const b = e.target.closest(".h-undo");
+  if (!b) return;
+  const h = chatLog[Number(b.dataset.h)];
+  b.disabled = true;
+  try {
+    const r = await maid.api("POST", "/api/undo", { messageId: h.undo });
+    h.undone = true;
+    try { localStorage.setItem(HIST_KEY, JSON.stringify(chatLog)); } catch {}
+    drawHistory();
+    play("send");
+    say(r.text, { ms: 6000, mood: "gasp" });
+    maid.changed();
+  } catch (err) {
+    b.disabled = false;
+    play("oops");
+    say(errText(err), { ms: 6000 });
+  }
+});
 
 // Картинки к сообщению (до PICS_MAX): скрепка, Ctrl+V в строке или перетащить на виджет.
 // Ряд миниатюр над строкой ввода; уходят с ближайшим Enter, подпись — по желанию.
@@ -300,26 +449,6 @@ function heardMood(text, r) {
   return null;
 }
 
-async function ask(path, body, waiting) {
-  sending = true;
-  chatInput.placeholder = waiting;
-  play("send");
-  setState("think");
-  say("…", { ms: 0 });
-  try {
-    const r = await maid.api("POST", path, body);
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(body?.text ?? r.heard, r) });
-    maid.changed();
-  } catch (e) {
-    say(e.message, { emotion: "worried", ms: 8000, sound: "oops" });
-  } finally {
-    sending = false;
-    chatInput.placeholder = "Скажи горничной…";
-    setState(isNight() ? "sleep" : "idle");
-    chatInput.focus();
-  }
-}
-
 // --- голосом: щелчок по микрофону — запись, ещё щелчок (или Enter) — отправить, Esc — отменить ---
 const mic = $("#chatMic");
 let micTick = 0;
@@ -341,7 +470,6 @@ function micUi(on) {
   Voice.wave(chatBox.querySelector(".rec-wave"), "#cdbcff");
 }
 async function toggleMic() {
-  if (sending) return;
   if (!Voice.on) {
     try {
       await Voice.start(toggleMic);
@@ -354,7 +482,7 @@ async function toggleMic() {
   }
   micUi(false);
   const v = await Voice.stop();
-  if (v) await ask("/api/voice", { ...v, id: crypto.randomUUID() }, "🎙 Распознаю…");
+  if (v) enqueue("/api/voice", { ...v, id: crypto.randomUUID() }, "🎙 Голосовое сообщение");
 }
 mic.addEventListener("click", (e) => { e.preventDefault(); toggleMic(); });
 const dropRecording = () => Voice.cancel().then(() => { micUi(false); play("oops"); });
@@ -1076,7 +1204,7 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
-maid.on("reply", (r) => say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r) }));
+maid.on("reply", (r) => remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r) }));
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам

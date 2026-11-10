@@ -67,7 +67,9 @@ async function api(method, p, body) {
       res = await fetch(url, { ...opts, signal: AbortSignal.timeout(90_000) });
       break;
     } catch (e) {
-      if (i >= 2 || e?.name === "TimeoutError") throw e;
+      // Понятные слова вместо «fetch failed»: по ним виджет понимает, что сообщение можно повторить позже.
+      if (e?.name === "TimeoutError") throw new Error("сервер не ответил");
+      if (i >= 2) throw new Error("нет связи с сервером");
       await new Promise((r) => setTimeout(r, 700 * (i + 1)));
     }
   }
