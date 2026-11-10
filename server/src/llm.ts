@@ -35,7 +35,16 @@ const wire = (m: ChatMessage) =>
       }
     : { role: m.role, content: m.content };
 
-export type LlmCall = (messages: ChatMessage[], opts?: { json?: boolean; temperature?: number }) => Promise<string>;
+export type LlmCall = (messages: ChatMessage[], opts?: { json?: boolean; temperature?: number; maxTokens?: number }) => Promise<string>;
+
+/** Потолок длины ответа: разбор (JSON) — длиннее, разговор и ответы на вопросы — короче. */
+export const MAX_TOKENS_JSON = 3000;
+export const MAX_TOKENS_TEXT = 800;
+
+/** Расход токенов: каждый ответ модели сообщает, сколько ушло (index.ts складывает по месяцам в kv). */
+export interface LlmUsage { input: number; output: number }
+let usageSink: ((u: LlmUsage) => void) | null = null;
+export const onLlmUsage = (fn: ((u: LlmUsage) => void) | null) => void (usageSink = fn);
 
 export const llmReady = () => Boolean(config.llm.apiKey);
 
@@ -45,6 +54,7 @@ export const callLlm: LlmCall = async (messages, opts = {}) => {
     model: config.llm.model,
     messages: messages.map(wire),
     temperature: opts.temperature ?? 0.2,
+    max_tokens: opts.maxTokens ?? (opts.json ? MAX_TOKENS_JSON : MAX_TOKENS_TEXT),
   };
   if (opts.json) body.response_format = { type: "json_object" };
   let lastErr: unknown;
@@ -58,7 +68,10 @@ export const callLlm: LlmCall = async (messages, opts = {}) => {
       });
       if (res.status === 429 || res.status >= 500) throw new Error(`LLM ${res.status}: ${await res.text()}`);
       if (!res.ok) throw Object.assign(new Error(`LLM ${res.status}: ${await res.text()}`), { fatal: true });
-      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+      if (data.usage) {
+        try { usageSink?.({ input: data.usage.prompt_tokens ?? 0, output: data.usage.completion_tokens ?? 0 }); } catch { /* учёт не мешает ответу */ }
+      }
       const text = data.choices?.[0]?.message?.content;
       if (!text) throw new Error("LLM вернул пустой ответ");
       return text;

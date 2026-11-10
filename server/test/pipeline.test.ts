@@ -346,3 +346,23 @@ test("сбой разбора: кнопки, фоновый повтор чер�
   await pipe.retryFailed(send, new Date(AT.getTime() + 60 * 60_000));
   assert.equal(sent.length, before);
 });
+
+test("запрос к модели: списки с потолком, упомянутое — даже за потолком", async () => {
+  const { promptLists, PROMPT_CAP } = await import("../src/pipeline.ts");
+  const store = await Store.open(":memory:");
+  const u = await store.ensureUser("101", "Т", TZ);
+  for (let i = 0; i < PROMPT_CAP.tasks + 20; i++) {
+    await store.addTask({ user_id: u.id, title: i === PROMPT_CAP.tasks + 10 ? "Починить велосипед" : `Задача ${i}`, priority: "normal", category: "", due_date: null, notes: "", message_id: null });
+  }
+  const l = await promptLists(store, u.id, "2026-11-08", "забрал велосипед из ремонта");
+  assert.equal(l.tasks.length, PROMPT_CAP.tasks);
+  assert.ok(l.tasks.some((t) => t.title === "Починить велосипед"));
+});
+
+test("учёт токенов: складывается по месяцам", async () => {
+  const store = await Store.open(":memory:");
+  await store.addLlmUsage(new Date("2026-11-03T10:00:00Z"), { input: 1200, output: 300 });
+  await store.addLlmUsage(new Date("2026-11-20T10:00:00Z"), { input: 800, output: 100 });
+  assert.deepEqual(await store.llmUsage("2026-11"), { calls: 2, input: 2000, output: 400 });
+  assert.deepEqual(await store.llmUsage("2026-10"), { calls: 0, input: 0, output: 0 });
+});

@@ -985,6 +985,17 @@ export class Store {
   }
 
   // --- служебное ---
+  /** Расход токенов модели за месяц: запросов, токенов на входе и на выходе. */
+  async llmUsage(month: string): Promise<{ calls: number; input: number; output: number }> {
+    try { return { calls: 0, input: 0, output: 0, ...JSON.parse((await this.kvGet(`llm:${month}`)) ?? "{}") }; } catch { return { calls: 0, input: 0, output: 0 }; }
+  }
+  async addLlmUsage(at: Date, x: { input: number; output: number }) {
+    const month = at.toISOString().slice(0, 7);
+    await this.transaction(async () => {
+      const u = await this.llmUsage(month);
+      await this.kvSet(`llm:${month}`, JSON.stringify({ calls: u.calls + 1, input: u.input + x.input, output: u.output + x.output }));
+    });
+  }
   async kvGet(key: string): Promise<string | undefined> {
     return (await this.get<{ value: string }>("SELECT value FROM kv WHERE key = ?", key))?.value;
   }

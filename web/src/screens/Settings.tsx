@@ -10,6 +10,7 @@ interface Me {
   id: number; login: string | null; name: string; tz: string; persona: string;
   morning_time: string; tomorrow_time: string; evening_time: string; event_lead_min: number;
   game_alerts: number; game_first_min: number; game_every_min: number;
+  llm_month?: { calls: number; input: number; output: number };
   sessions: { id: string; label: string; created_at: string; last_seen: string; current?: boolean }[];
 }
 interface PushInfo { key: string; subs: { endpoint: string; label: string; created_at: string; last_ok: string | null }[] }
@@ -140,6 +141,12 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
 
         <Card title="Учётная запись" className="reveal">
           <p>{me.login} <span className="muted small">· {me.tz}</span></p>
+          {me.llm_month ? (
+            <p className="muted small">
+              Модель за этот месяц: {me.llm_month.calls} запросов, {Math.round((me.llm_month.input + me.llm_month.output) / 1000).toLocaleString("ru-RU")} тыс. токенов
+              ({Math.round(me.llm_month.input / 1000).toLocaleString("ru-RU")} на вход, {Math.round(me.llm_month.output / 1000).toLocaleString("ru-RU")} на ответ)
+            </p>
+          ) : null}
           <p className="muted small">Где выполнен вход (вход, которым не пользовались 90 дней, закрывается сам):</p>
           <ul className="devices">
             {me.sessions.map((s) => (

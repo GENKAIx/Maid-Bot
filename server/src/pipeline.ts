@@ -4,7 +4,7 @@ import { extractJson } from "./llm.ts";
 import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
 import { scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
-import { changesList, esc, metricLine, moneyLine } from "./report.ts";
+import { changesList, esc, metricLine, moneyLine, upcomingDates } from "./report.ts";
 import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
 import { planEventReminders } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
@@ -34,6 +34,35 @@ export interface Reply {
   proposal?: Proposal;
   /** Разобрать не вышло (модель не ответила): кнопки «Повторить» и «Оставить заметкой»; сервер и сам повторит (retryFailed). */
   failed?: boolean;
+}
+
+/** Потолки списков в запросе к модели: данные растут, а запрос — нет. Берётся ближайшее и упомянутое в сообщении. */
+export const PROMPT_CAP = { events: 120, tasks: 80, dates: 50, memory: 100 };
+
+/** Слова сообщения (от 4 букв) — чтобы упомянутое попало в запрос, даже если оно старое или далёкое. */
+const wordsOf = (text: string) => new Set((text.toLowerCase().match(/[\p{L}\d]{4,}/gu) ?? []).map((w) => w.slice(0, 6)));
+const mentions = (words: Set<string>, s: string) => (s.toLowerCase().match(/[\p{L}\d]{4,}/gu) ?? []).some((w) => words.has(w.slice(0, 6)));
+/** Первые n, но упомянутые в сообщении — вперёд очереди (порядок внутри сохраняется). */
+function capped<T>(list: T[], n: number, words: Set<string>, textOf: (x: T) => string): T[] {
+  if (list.length <= n) return list;
+  const hit = list.filter((x) => mentions(words, textOf(x)));
+  const rest = list.filter((x) => !hit.includes(x));
+  const keep = new Set([...hit, ...rest].slice(0, n));
+  return list.filter((x) => keep.has(x));
+}
+
+/** Списки для запроса разбора: события на 46 дней, открытые задачи, ближайшие даты, память — каждый не длиннее PROMPT_CAP. */
+export async function promptLists(s: Store, userId: number, today: string, text: string) {
+  const words = wordsOf(text);
+  const dates = upcomingDates(await s.activeDates(userId), today, 400).map((d) => d.row);
+  // Память: сначала свежее (больший id), упомянутое — в любом случае.
+  const memory = capped([...(await s.activeMemory(userId))].reverse(), PROMPT_CAP.memory, words, (m) => `${m.subject} ${m.text}`).reverse();
+  return {
+    events: capped(await s.eventsBetween(userId, addDays(today, -1), addDays(today, 45)), PROMPT_CAP.events, words, (e) => e.title),
+    tasks: capped(await s.openTasks(userId), PROMPT_CAP.tasks, words, (t) => t.title),
+    dates: capped(dates, PROMPT_CAP.dates, words, (d) => `${d.title} ${d.person ?? ""}`),
+    memory,
+  };
 }
 
 /** Через сколько минут после сообщения повторять неудавшийся разбор; после последней попытки — заметкой. */
@@ -158,10 +187,7 @@ export class Pipeline {
       today,
       now: timeOf(at, u.tz),
       tz: u.tz,
-      events: await s.eventsBetween(u.id, addDays(today, -1), addDays(today, 45)),
-      tasks: await s.openTasks(u.id),
-      dates: await s.activeDates(u.id),
-      memory: await s.activeMemory(u.id),
+      ...(await promptLists(s, u.id, today, text)),
       habits: await s.activeHabits(u.id),
       recent: [],
       clarifying: original ? { original: original.text, question: original.reply ?? "" } : undefined,
@@ -594,7 +620,7 @@ export class Pipeline {
   private async chat(u: User, msg: Message, at: Date, images?: Picture[]): Promise<Reply> {
     const p = persona(u.persona);
     const today = dayKey(at, u.tz);
-    const mem = (await this.store.activeMemory(u.id)).map((m) => `${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n");
+    const mem = (await this.store.activeMemory(u.id)).slice(-PROMPT_CAP.memory).map((m) => `${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n");
     try {
       const out = await this.llm([
         { role: "system", content: `${p.voice}\nЭто просто разговор, ничего не записывай. Сегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}` },

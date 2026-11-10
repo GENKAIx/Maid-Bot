@@ -232,7 +232,11 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/me") {
       const { password_hash: _, ...me } = u;
       const mine = tokenHash(token).slice(0, 16);
-      return { ...me, sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })) };
+      return {
+        ...me,
+        sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })),
+        llm_month: await store.llmUsage(new Date().toISOString().slice(0, 7)),
+      };
     }
     // Выйти на другом устройстве (потерянный телефон, старый ПК).
     if (m === "POST" && p === "/api/sessions/drop") {
