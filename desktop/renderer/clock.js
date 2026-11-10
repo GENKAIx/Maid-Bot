@@ -559,7 +559,7 @@ function showClock(day, { fresh = [], gone = [] } = {}) {
   drawClock();
   box.classList.remove("hidden");
   syncDrawer();
-  hideClockLater();
+  hideClockLater(fresh.length ? FLY_SHOWN : CLOCK_SHOWN);
 }
 function hideClock() {
   clearTimeout(clockHideTimer);
@@ -576,7 +576,7 @@ function hideClock() {
 }
 // Выдвижная панель свёрнутого вида: карточка с головой горничной поднимается на её высоту (--drawer), панель раскрывается под ней.
 // В режиме «вниз» (у верха экрана) под карточкой уже есть место — карточка стоит, панель встаёт прямо под неё.
-const DRAWER_SHOWN = 4_000;
+const DRAWER_SHOWN = 2_000;
 function syncDrawer() {
   const box = $("#planClock");
   const st = $("#stage");
@@ -893,7 +893,7 @@ function farPlanSoon(changes) {
 
 // Новый план на другой день (из чата, Telegram, с телефона): панель открывается на сегодня, полоса едет день за днём к его дню —
 // видно, через сколько дней, — там план появляется, и через несколько секунд панель уходит сама (если мышь не над ней).
-const FLY_SHOWN = 5_000;
+const FLY_SHOWN = 2_000; // и для нового плана на ближний день — после того, как он появился в списке
 let flyNote = null; // «через 5 дней» — в заголовке вместо числа планов, пока не начали листать сами
 let flyRun = 0;
 const dayWord = (n) => {
