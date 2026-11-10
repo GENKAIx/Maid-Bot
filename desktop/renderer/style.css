@@ -888,6 +888,8 @@ body.quick { background: transparent; }
 /* Полёт к дню нового плана: пока полоса едет, список приглушён; «через N дней» в заголовке, чип дня подпрыгивает. */
 .pc-head .pc-far { margin-left: auto; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
 #planClock.flying .pl-list, #planClock.flying .pl-empty, #planClock.flying .pl-top { opacity: .3; }
+/* Под свёрнутой карточкой список маленький — планы сегодняшнего дня во время перелёта не показывать вовсе. */
+.stage.folded #planClock.flying .pl-list, .stage.folded #planClock.flying .pl-empty { opacity: 0; }
 #planClock.flying .day-chip.on { transition: none; }
 .day-chip.landed { animation: chipLand .55s cubic-bezier(.3, 1.6, .5, 1); }
 .day-chip.landed .cnt { display: inline-block; animation: cntPop .6s cubic-bezier(.3, 1.8, .5, 1) .1s both; }
