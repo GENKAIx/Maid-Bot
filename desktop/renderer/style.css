@@ -538,8 +538,8 @@ body.quick { background: transparent; }
 .stage.folded.down .mini { margin-bottom: calc(8px + var(--lift, 0px)); transition: none; }
 .stage.folded.down .perch { clip-path: none; }
 .stage.folded.down .maid { clip-path: inset(-400px -400px var(--peek, 26px) -400px); }
-.stage.folded.down .bubble { position: absolute; top: calc(100% - var(--peek, 26px)); right: 340px; margin: 0; }
-.stage.side-left.folded.down .bubble { right: auto; left: 340px; }
+.stage.folded.down:not(.bubble-up) .bubble { position: absolute; top: calc(100% - var(--peek, 26px)); right: 340px; margin: 0; }
+.stage.side-left.folded.down:not(.bubble-up) .bubble { right: auto; left: 340px; }
 .plan-clock svg { display: block; width: 254px; height: 254px; margin: 0 auto; overflow: visible; }
 .pc-head { display: flex; align-items: baseline; gap: 8px; padding: 0 6px 2px; }
 .pc-head b { font-size: 14px; }

@@ -323,6 +323,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     };
   });
   b.className = `bubble ${emotion}`;
+  placeBubble();
   // Реакция горничной: записала что-то — пишет, отметила — галочка, иначе по эмоции ответа.
   if (text !== "…") {
     const marked = changes.some((c) => c.kind === "mark" || c.kind === "habit");
@@ -1163,6 +1164,16 @@ function syncLift() {
   if (collapsed) sendFold();
   syncDrawer();
 }
+// Режим «вниз»: облачко — над головой, как обычно, если над карточкой на экране хватает места под горничную и облачко;
+// у самого верха экрана — слева от карточки (CSS .stage.folded.down:not(.bubble-up)).
+function placeBubble() {
+  const st = $("#stage");
+  const b = $("#bubble");
+  if (!st.classList.contains("down")) return st.classList.remove("bubble-up");
+  const top = screenY + $("#mini").getBoundingClientRect().top - (screen.availTop ?? 0);
+  const need = Math.max(b.offsetHeight, 120) + ($("#maid").offsetHeight || 0) * 0.6 + 20;
+  st.classList.toggle("bubble-up", top >= need);
+}
 // Сколько горничная выглядывает над карточкой (или над панелью): main не пускает её голову за верх экрана.
 function sendFold() {
   const m = $("#maid");
@@ -1184,6 +1195,7 @@ maid.on("down", (on) => {
   requestAnimationFrame(() => requestAnimationFrame(() => maid.downReady()));
 });
 maid.on("down-shown", () => requestAnimationFrame(() => {
+  placeBubble();
   $("#stage").style.opacity = "";
   $("#mini").style.transition = "";
 }));
