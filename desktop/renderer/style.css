@@ -884,6 +884,18 @@ body.quick { background: transparent; }
 .day-chip.swallow { animation: chipSwallow .5s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes chipSwallow { 0% { transform: none; } 30% { transform: scale(.86); box-shadow: 0 0 0 3px rgba(255, 138, 138, .5); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .day-chip.swallow { animation: none; } }
+/* Корзина внизу панели (clock.js showBin): выезжает, принимает отменённые и удалённые (крышка открывается, корзина подпрыгивает), уезжает. */
+.pl-bin { flex: none; display: flex; align-items: center; justify-content: center; height: 34px; margin-top: 6px; border-radius: 11px;
+  background: rgba(255, 138, 138, .07); color: rgba(255, 170, 170, .9); overflow: hidden; }
+.plan-clock .pl-bin svg { flex: none; width: 22px; height: 22px; margin: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; overflow: visible; transform-origin: 50% 100%; }
+.pl-bin .lid { transform-box: fill-box; transform-origin: 0% 100%; transition: transform .16s ease-out; }
+.pl-bin.open .lid { transform: translate(-1px, -2px) rotate(-30deg); }
+.pl-bin.in { animation: binIn .34s cubic-bezier(.3, 1.3, .5, 1) both; }
+.pl-bin.out { animation: binOut .3s cubic-bezier(.4, 0, .6, 1) forwards; }
+.pl-bin.gulp svg { animation: binGulp .45s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes binIn { from { height: 0; margin-top: 0; opacity: 0; } }
+@keyframes binOut { to { height: 0; margin-top: 0; opacity: 0; } }
+@keyframes binGulp { 0% { transform: none; } 30% { transform: translateY(2px) scale(1.14, .84); } 65% { transform: translateY(-2px) scale(.95, 1.07); } 100% { transform: none; } }
 #planClock.flying .day-chip.on { transition: none; }
 .day-chip.landed { animation: chipLand .55s cubic-bezier(.3, 1.6, .5, 1); }
 .day-chip.landed .cnt { display: inline-block; animation: cntPop .6s cubic-bezier(.3, 1.8, .5, 1) .1s both; }

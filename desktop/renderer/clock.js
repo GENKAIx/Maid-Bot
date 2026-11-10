@@ -166,7 +166,7 @@ function drawClock() {
   // Под свёрнутой карточкой — всегда список: полоса дат и «Планы на день», без циферблата.
   const asList = cfg.clock === "list" || collapsed;
   box.classList.toggle("as-list", asList);
-  if (asList) return drawPlanList(box);
+  if (asList) { drawPlanList(box); return keepBin(box); }
   const mode = cfg.clock === "12" ? "12" : "24";
   const d = new Date();
   const nowMin = d.getHours() * 60 + d.getMinutes();
@@ -612,6 +612,7 @@ function hideClock() {
   clockFresh = new Set();
   clockGone = [];
   clockEdits = new Map();
+  dropBin();
   stopFly();
 }
 // Выдвижная панель свёрнутого вида: карточка с головой горничной поднимается на её высоту (--drawer), панель раскрывается под ней.
@@ -1107,7 +1108,7 @@ function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = n
     flyCarry = null;
     // Отменённые и удалённые — зачёркиваются и улетают в чип своего дня.
     const stamped = stampEdits(box, 160 + cards.length * 140 + 150);
-    const out = Math.max(ejectGone(box, day, 160 + cards.length * 140 + 200), checkGone(box, 160 + cards.length * 140 + 300), stamped,
+    const out = Math.max(ejectGone(box, day, 160 + cards.length * 140 + 200, !!next), checkGone(box, 160 + cards.length * 140 + 300), stamped,
       clashCards(box, stamped || 160 + cards.length * 140 + 380));
     const settle = Math.max(160 + cards.length * 140 + linger, out);
     dropUntil = performance.now() + settle + (next ? 500 : 0);
@@ -1349,13 +1350,73 @@ function checkOff(e) {
   popTone(9, { vol: 0.08 });
   react?.("happy", 1800);
 }
-function ejectGone(box, day, start = 300) {
-  const chip = box.querySelector(`.day-chip[data-day="${day}"]`);
-  const cards = [...box.querySelectorAll(".pl-card.gone.out")];
-  cards.forEach((card, i) => ejectOut(card, chip, start + i * 180));
-  return cards.length ? start + cards.length * 180 + 1300 : 0;
+// Куда улетают отменённые и удалённые: в корзину, что выезжает внизу панели планов (true), или, как раньше, в чип своего дня (false).
+const GONE_TO_BIN = true;
+let bin = null; // корзина внизу панели (.pl-bin); пока она есть, перерисовка списка ставит её обратно (keepBin)
+let binHideTimer = 0;
+const BIN_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g class="lid"><path d="M4 7h16"/><path d="M9.5 7V5.2h5V7"/></g><path d="M6.2 9.5l1 10.3h9.6l1-10.3"/><path d="M10.2 12.5v4.6M13.8 12.5v4.6"/></svg>`;
+function showBin(box) {
+  clearTimeout(binHideTimer);
+  if (!bin) {
+    bin = document.createElement("div");
+    bin.className = "pl-bin in";
+    bin.innerHTML = BIN_SVG;
+    bin.addEventListener("animationend", (e) => e.animationName === "binIn" && bin?.classList.remove("in"));
+  }
+  bin.classList.remove("out");
+  if (bin.parentElement !== box) box.append(bin);
 }
-function ejectOut(card, chip, delay) {
+function keepBin(box) {
+  if (bin && !bin.classList.contains("out")) box.append(bin);
+}
+// Корзина уезжает (высота в 0 — панель опускается), потом убирается.
+function hideBinLater(ms) {
+  clearTimeout(binHideTimer);
+  binHideTimer = setTimeout(() => {
+    if (!bin) return;
+    bin.classList.add("out");
+    binHideTimer = setTimeout(dropBin, 320);
+  }, ms);
+}
+function dropBin() {
+  clearTimeout(binHideTimer);
+  bin?.remove();
+  bin = null;
+}
+const binAim = {
+  rect: () => bin?.isConnected && bin.querySelector("svg").getBoundingClientRect(),
+  open: () => bin?.classList.add("open"),
+  land() {
+    if (!bin) return;
+    bin.classList.remove("open", "gulp"); void bin.offsetWidth; bin.classList.add("gulp");
+    popTone(-6, { vol: 0.05, soft: true });
+  },
+};
+// keep — цепочка дней: корзина остаётся до последнего дня (её уберёт он или hideClock).
+function ejectGone(box, day, start = 300, keep = false) {
+  const cards = [...box.querySelectorAll(".pl-card.gone.out")];
+  if (!cards.length) return 0;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!GONE_TO_BIN || still) {
+    const chip = box.querySelector(`.day-chip[data-day="${day}"]`);
+    cards.forEach((card, i) => ejectOut(card, chipAim(chip), start + i * 180));
+    return start + cards.length * 180 + 1300;
+  }
+  showBin(box);
+  cards.forEach((card, i) => ejectOut(card, binAim, start + i * 180));
+  const landed = start + (cards.length - 1) * 180 + 420 + 640;
+  if (!keep) hideBinLater(landed + 650);
+  return landed + (keep ? 200 : 650 + 320);
+}
+const chipAim = (chip) => ({
+  rect: () => chip?.isConnected && chip.getBoundingClientRect(),
+  open() {},
+  land() {
+    if (!chip?.isConnected) return;
+    chip.classList.remove("landed", "swallow"); void chip.offsetWidth; chip.classList.add("swallow");
+  },
+});
+function ejectOut(card, aim, delay) {
   const id = Number(card.dataset.id);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
     card.classList.add("struck");
@@ -1368,7 +1429,7 @@ function ejectOut(card, chip, delay) {
     setTimeout(() => {
       if (!card.isConnected) return;
       const at = card.getBoundingClientRect();
-      const to = chip?.isConnected ? chip.getBoundingClientRect() : { left: at.left, top: at.top - 60, width: 30, height: 30 };
+      const to = aim.rect() || { left: at.left, top: at.top - 60, width: 30, height: 30 };
       const ghost = card.cloneNode(true);
       ghost.classList.remove("striking");
       ghost.classList.add("pl-ghost", "struck");
@@ -1386,14 +1447,12 @@ function ejectOut(card, chip, delay) {
         { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 30}px) scale(.55) rotate(6deg)`, opacity: 1, offset: 0.62 },
         { transform: `translate(${dx}px, ${dy}px) scale(.12) rotate(12deg)`, opacity: 0, offset: 1 },
       ], { duration: 640, easing: "cubic-bezier(.45, 0, .7, .5)" });
+      setTimeout(() => aim.open(), 330);
       fly.onfinish = () => {
         ghost.remove();
         clockGone = clockGone.filter((g) => g.id !== id);
         popTone(-4, { vol: 0.07 });
-        if (!chip?.isConnected) return;
-        chip.classList.remove("landed", "swallow");
-        void chip.offsetWidth;
-        chip.classList.add("swallow");
+        aim.land();
       };
     }, 420);
   }, delay);
