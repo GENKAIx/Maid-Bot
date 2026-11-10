@@ -148,8 +148,10 @@ function arcSvg(x, mode, nowMin, { gone = false } = {}) {
 function drawClock() {
   const box = $("#planClock");
   if (!box || !data || !clockDay) return;
-  box.classList.toggle("as-list", cfg.clock === "list");
-  if (cfg.clock === "list") return drawPlanList(box);
+  // Под свёрнутой карточкой — всегда список: полоса дат и «Планы на день», без циферблата.
+  const asList = cfg.clock === "list" || collapsed;
+  box.classList.toggle("as-list", asList);
+  if (asList) return drawPlanList(box);
   const mode = cfg.clock === "12" ? "12" : "24";
   const d = new Date();
   const nowMin = d.getHours() * 60 + d.getMinutes();
@@ -352,7 +354,8 @@ function drawPlanList(box) {
     li.style.setProperty("--fill-delay", `-${Math.min((x?.pausedAt ?? Date.now()) - at, DONE_FADE)}ms`);
     if (x?.pausedAt) li.classList.add("hold");
   }
-  box.style.height = `${Math.min(Math.max($("#w")?.offsetHeight ?? 0, 320), box.parentElement.clientHeight - 16)}px`;
+  // Под свёрнутой карточкой — по содержимому (список ограничен в CSS), иначе — высотой с панель.
+  box.style.height = collapsed ? "" : `${Math.min(Math.max($("#w")?.offsetHeight ?? 0, 320), box.parentElement.clientHeight - 16)}px`;
 }
 // Отсчёт до улёта. Пока мышь на карточке, он стоит (и заливка тоже) — чтобы карточка не улетела из-под курсора.
 // Наведение, оставшееся от самого щелчка по галочке, не в счёт: пауза — только когда мышь ушла с карточки и вернулась.
@@ -541,18 +544,22 @@ function openTaskMenu(t, li, x, y, done = () => doneTaskHere(t.id, li.querySelec
 }
 
 function showClock(day, { fresh = [], gone = [] } = {}) {
-  if (cfg.clock === "off" || collapsed || prefsOpen || !data) return;
+  // Свёрнутый виджет — панель выдвигается из-под карточки, только когда запись легла на день (watchPlans).
+  if (cfg.clock === "off" || (collapsed && !fresh.length) || prefsOpen || !data) return;
   const box = $("#planClock");
+  box.title = collapsed ? "Щелчок — развернуть панель" : "Планы дня · щелчок — спрятать";
   clockDay = day;
   clockFresh = new Set(fresh);
   clockGone = gone;
   drawClock();
   box.classList.remove("hidden");
+  syncDrawer();
   hideClockLater();
 }
 function hideClock() {
   clearTimeout(clockHideTimer);
   $("#planClock").classList.add("hidden");
+  syncDrawer();
   planDone.clear();
   for (const t of doneTimers.values()) clearTimeout(t);
   doneTimers.clear();
@@ -562,7 +569,16 @@ function hideClock() {
   clockGone = [];
   stopFly();
 }
+// Выдвижная панель свёрнутого вида: карточка с головой горничной поднимается на её высоту (--drawer), панель раскрывается под ней.
+const DRAWER_SHOWN = 4_000;
+function syncDrawer() {
+  const box = $("#planClock");
+  const open = collapsed && !box.classList.contains("hidden");
+  $("#stage").style.setProperty("--drawer", open ? `${box.offsetHeight + 6}px` : "0px");
+}
+new ResizeObserver(() => syncDrawer()).observe($("#planClock"));
 function hideClockLater(ms = CLOCK_SHOWN) {
+  if (collapsed) ms = Math.min(ms, DRAWER_SHOWN);
   clearTimeout(clockHideTimer);
   clockHideTimer = setTimeout(() => (clockHover ? hideClockLater() : hideClock()), ms);
 }
@@ -842,7 +858,7 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
   if (n <= 0) return showClock(day, { fresh, gone });
   const run = ++flyRun;
   stripFrom = 0;
-  showClock(data.day);
+  showClock(data.day, { fresh }); // fresh — чтобы панель выдвинулась и под свёрнутой карточкой
   const box = $("#planClock");
   if (box.classList.contains("hidden")) return; // панель выключена или свёрнута
   clearTimeout(clockHideTimer);

@@ -1141,7 +1141,7 @@ function renderMini(open, todo, left, done, habits = []) {
 
 function setCollapsed(on) {
   collapsed = on;
-  if (on) hideClock();
+  hideClock(); // свёрнутый вид — без панели планов; разворот — выдвижная панель уходит, а не превращается в обычную
   $("#w").classList.toggle("hidden", on);
   $("#stage").classList.toggle("folded", on);
   // В свёрнутом виде над карточкой видна голова горничной: по ней видно настроение и «думаю».
@@ -1480,6 +1480,15 @@ $("#maid").addEventListener("dblclick", () => {
   foldAnimated(!collapsed);
 });
 $("#miniOpen").onclick = () => { autoOpened = false; foldAnimated(false); };
+// Выдвижная панель планов под свёрнутой карточкой: щелчок (по дню, по плану) разворачивает всю панель; перетаскивать здесь нельзя.
+$("#planClock").addEventListener("pointerdown", (e) => { if (collapsed) e.stopImmediatePropagation(); }, true);
+$("#planClock").addEventListener("click", (e) => {
+  if (!collapsed) return;
+  e.stopImmediatePropagation();
+  autoOpened = false;
+  hideClock();
+  foldAnimated(false);
+}, true);
 // Точка привычек на кольце: одна — сразу отмечается, несколько — меню со списком и «Все сразу».
 $("#miniHabit").onclick = (e) => {
   e.stopPropagation();

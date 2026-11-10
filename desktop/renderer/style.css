@@ -518,7 +518,12 @@ body.quick { background: transparent; }
 .plan-clock svg, .pc-head, .pc-days { flex: none; }
 .plan-clock .pc-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; align-content: start; }
 .plan-clock.hidden { opacity: 0; transform: translateX(18px) scale(.92); pointer-events: none; }
-.stage.folded .plan-clock { display: none; }
+/* Свёрнутый вид: панель планов — выдвижная часть под карточкой (списком), карточка с горничной поднимается на её высоту. */
+.stage.folded .plan-clock { right: 8px; width: 324px; transform-origin: 50% 0; transition: opacity .3s, transform .45s cubic-bezier(.3, 1.2, .5, 1); }
+.stage.folded .plan-clock.hidden { transform: translateY(-16px) scaleY(.88); }
+.stage.folded .plan-clock .pc-list { max-height: 170px; }
+.stage.folded .mini { margin-bottom: calc(8px + var(--drawer, 0px)); transition: margin-bottom .45s cubic-bezier(.3, 1.15, .5, 1); }
+.stage.fold-anim .plan-clock { display: none; }
 .plan-clock svg { display: block; width: 254px; height: 254px; margin: 0 auto; overflow: visible; }
 .pc-head { display: flex; align-items: baseline; gap: 8px; padding: 0 6px 2px; }
 .pc-head b { font-size: 14px; }
