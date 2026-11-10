@@ -378,6 +378,7 @@ test("/api/today: gone_fresh — планы, отменённые или уда�
   await store.raw("UPDATE events SET updated_at = ? WHERE id = ?", new Date(now.getTime() - 20 * 60_000).toISOString(), old);
   const j = await todayJson(store, u, now);
   assert.deepEqual(j.gone_fresh.map((e) => e.id).sort(), [cancelled, deleted].sort());
+  assert.deepEqual(j.done_fresh.map((e) => e.id), [done]);
 });
 
 test("/api/today: done_today — задачи, закрытые сегодня по часам пользователя", async () => {

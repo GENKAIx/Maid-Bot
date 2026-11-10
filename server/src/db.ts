@@ -708,11 +708,11 @@ export class Store {
     );
   }
   /** Отменённые и удалённые (в том числе отменой записи) с from и дальше, изменённые не раньше since. */
-  eventsClosedSince(userId: number, from: string, since: string): Promise<EventRow[]> {
+  eventsClosedSince(userId: number, from: string, since: string, statuses = ["cancelled", "deleted"]): Promise<EventRow[]> {
     return this.all<EventRow>(
-      `SELECT * FROM events WHERE user_id = ? AND date_iso >= ? AND status IN ('cancelled', 'deleted') AND updated_at >= ?
+      `SELECT * FROM events WHERE user_id = ? AND date_iso >= ? AND status IN (${statuses.map(() => "?").join(", ")}) AND updated_at >= ?
        ORDER BY updated_at DESC, id DESC LIMIT 20`,
-      userId, from, since,
+      userId, from, ...statuses, since,
     );
   }
   allEvents(userId: number): Promise<EventRow[]> {

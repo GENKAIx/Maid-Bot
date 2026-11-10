@@ -627,6 +627,10 @@ body.quick { background: transparent; }
   color: #fff; font-size: 12px; line-height: 1; cursor: pointer; }
 .pl-check:hover { border-color: #fff; background: rgba(255, 255, 255, .08); }
 .pl-check.on { background: #2f9e6e; border-color: #2f9e6e; }
+/* Галочка, поставленная сама (план отметили сделанным в чате, checkOff): вздрагивает. */
+.pl-check.pop { animation: plCheckPop .45s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes plCheckPop { 0% { transform: scale(.6); } 45% { transform: scale(1.35); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pl-check.pop { animation: none; } }
 .pl-card.leaving { overflow: hidden; }
 .pl-card.leaving::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--c, #2f9e6e) 34%, transparent); transform: scaleX(0); transform-origin: left;
   animation: plFill 3s linear var(--fill-delay, 0ms) forwards; pointer-events: none; }
