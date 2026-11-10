@@ -356,6 +356,43 @@ function followResize() {
   widget.setBounds({ x: b.x, y: bottom - h, width: b.width, height: h });
 }
 ipcMain.on("widget-reset", resetWidgetPlace);
+
+// Вспышка «стираю память» (forget): своё прозрачное окно поверх всего, щелчки идут сквозь. Свет расходится на 380 px и луч на 560 —
+// в окне виджета он упирался бы в его край (справа от горничной окно кончается сразу), здесь — только в край экрана.
+const FLASH_W = 1200, FLASH_H = 820, FLASH_MS = 1100;
+let flashWin = null, flashReady = null, flashHide = 0;
+function memFlash(x, y) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+  const pt = { x: Math.round(x), y: Math.round(y) };
+  const b = screen.getDisplayNearestPoint(pt).bounds;
+  const w = Math.min(FLASH_W, b.width), h = Math.min(FLASH_H, b.height);
+  const left = Math.max(b.x, Math.min(pt.x - w / 2, b.x + b.width - w));
+  const top = Math.max(b.y, Math.min(pt.y - h / 2, b.y + b.height - h));
+  if (!flashWin) {
+    flashWin = new BrowserWindow({
+      x: left, y: top, width: w, height: h,
+      frame: false, transparent: true, resizable: false, skipTaskbar: true, focusable: false,
+      alwaysOnTop: true, hasShadow: false, show: false,
+      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+    });
+    flashWin.setAlwaysOnTop(true, "screen-saver");
+    flashWin.setIgnoreMouseEvents(true);
+    flashWin.on("closed", () => { flashWin = null; flashReady = null; });
+    flashReady = new Promise((ok) => flashWin.webContents.once("did-finish-load", ok));
+    flashWin.loadFile(page("flash.html"));
+  }
+  flashWin.setBounds({ x: left, y: top, width: w, height: h });
+  const win = flashWin;
+  flashReady.then(() => {
+    if (win.isDestroyed()) return;
+    win.showInactive();
+    win.moveTop();
+    win.webContents.executeJavaScript(`go(${pt.x - left}, ${pt.y - top})`).catch(() => {});
+    clearTimeout(flashHide);
+    flashHide = setTimeout(() => { if (!win.isDestroyed()) win.hide(); }, FLASH_MS);
+  });
+}
+ipcMain.on("mem-flash", (_e, x, y) => memFlash(Number(x), Number(y)));
 function resetWidgetPlace() {
   settings.widget = { ...settings.widget, x: null, y: null, display: null, down: false };
   saveSettings();

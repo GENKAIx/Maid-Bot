@@ -127,12 +127,17 @@ function forgetFlash() {
     forgetTimer = setTimeout(() => {
       const r = face.getBoundingClientRect();
       if (mood !== "forget" || !r.width) return;
-      const f = $("#flash");
-      f.style.setProperty("--fx", `${Math.round(r.left + r.width * FORGET.x)}px`);
-      f.style.setProperty("--fy", `${Math.round(r.top + r.height * FORGET.y)}px`);
-      f.classList.remove("on");
-      void f.offsetWidth;
-      f.classList.add("on");
+      const fx = r.left + r.width * FORGET.x, fy = r.top + r.height * FORGET.y;
+      // В программе — отдельным окном поверх экрана (свет не обрезает край виджета), без неё (страница в браузере) — внутри.
+      if (maid.memFlash) maid.memFlash(window.screenX + fx, window.screenY + fy);
+      else {
+        const f = $("#flash");
+        f.style.setProperty("--fx", `${Math.round(fx)}px`);
+        f.style.setProperty("--fy", `${Math.round(fy)}px`);
+        f.classList.remove("on");
+        void f.offsetWidth;
+        f.classList.add("on");
+      }
       if (typeof popTone !== "undefined" && !cfg.mute) popTone(9, { vol: 0.22 });
     }, FORGET.click);
   };
