@@ -973,6 +973,7 @@ async function load() {
     const json = JSON.stringify(fresh);
     data = fresh;
     forgetReopened(data.tasks);
+    takeServerDone(data.done_today);
     if (!online) { online = true; settle(); }
     // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.
     if (json === lastJson) return;

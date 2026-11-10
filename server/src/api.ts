@@ -14,7 +14,7 @@ import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { habitButtons, planEventReminders, snooze, type Button, type Send } from "./scheduler.ts";
-import { addDays, dayKey, isDayKey, isTime } from "./time.ts";
+import { addDays, dayKey, isDayKey, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
@@ -90,6 +90,9 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
     persona: u.persona,
     upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
     tasks: await store.openTasks(u.id),
+    // Сделанные сегодня (где угодно: виджет, телефон, Telegram) — виджет показывает их внизу и считает в настроение дня.
+    done_today: (await store.doneTasksBetween(u.id, zonedToUtc(today, "00:00", u.tz), zonedToUtc(addDays(today, 1), "00:00", u.tz)))
+      .map((t) => ({ id: t.id, title: t.title, done_at: t.done_at })),
     dates: upcomingDates(await store.activeDates(u.id), today, 30).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age })),
   };
 }

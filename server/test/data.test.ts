@@ -339,3 +339,14 @@ test("сервер отдаёт собранное веб-приложение: 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("/api/today: done_today — задачи, закрытые сегодня по часам пользователя", async () => {
+  const { todayJson } = await import("../src/api.ts");
+  const store = await Store.open(":memory:");
+  const u = await store.ensureUser("900", "Т", "Europe/Moscow");
+  const a = await store.addTask({ user_id: u.id, title: "Сегодня", priority: "normal", category: "", due_date: null, notes: "", message_id: null, status: "done", done_at: "2026-11-09T21:30:00.000Z" });
+  await store.addTask({ user_id: u.id, title: "Вчера", priority: "normal", category: "", due_date: null, notes: "", message_id: null, status: "done", done_at: "2026-11-09T20:30:00.000Z" });
+  await store.addTask({ user_id: u.id, title: "Открыта", priority: "normal", category: "", due_date: null, notes: "", message_id: null });
+  const j = await todayJson(store, u, new Date("2026-11-10T09:00:00.000Z"));
+  assert.deepEqual(j.done_today.map((t) => [t.id, t.title]), [[a, "Сегодня"]]);
+});

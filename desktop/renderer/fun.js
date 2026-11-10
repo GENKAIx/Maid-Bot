@@ -84,7 +84,8 @@ function dayTarget() {
   const overdue = data.tasks.filter((t) => t.due_date && t.due_date < day).length;
   const dueToday = data.tasks.filter((t) => t.due_date === day).length;
   const missed = habits.filter((h) => h.yesterday === "none").length;
-  const tasksDone = Number(localStorage.getItem(DONE_KEY(day))) || 0;
+  // Сделанные сегодня — с сервера (и с телефона, и из Telegram); старый сервер без поля — свой счёт виджета.
+  const tasksDone = Math.max(data.done_today?.length ?? 0, Number(localStorage.getItem(DONE_KEY(day))) || 0);
   const h = new Date().getHours();
   const late = h >= 18 ? 1 : h >= 14 ? 0.5 : 0.15;
   let s = 0.3 * Math.min(done, 4) + 0.25 * Math.min(tasksDone, 4) - 0.35 * Math.min(overdue, 4)
@@ -222,6 +223,13 @@ function forgetReopened(tasks) {
     if (d && Date.now() - (d.at ?? 0) > 15_000) { doneNow.delete(t.id); dropped = true; }
   }
   if (dropped) localStorage.setItem(DONE_KEY_NOW, JSON.stringify([...doneNow]));
+}
+// Сделанные сегодня в другом месте (телефон, Telegram) — тоже внизу списка зачёркнутыми. at 0 — сервер уже знает.
+function takeServerDone(list) {
+  if (!Array.isArray(list)) return;
+  let added = false;
+  for (const t of list) if (!doneNow.has(t.id)) { doneNow.set(t.id, { title: t.title, until: endOfDay(), at: 0 }); added = true; }
+  if (added) localStorage.setItem(DONE_KEY_NOW, JSON.stringify([...doneNow]));
 }
 function recentDone() {
   const now = Date.now();

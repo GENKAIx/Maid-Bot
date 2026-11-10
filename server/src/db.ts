@@ -720,6 +720,13 @@ export class Store {
       await this.run("UPDATE tasks SET closed_at = ? WHERE id = ?", patch.status === "open" ? null : now(), id);
     }
   }
+  /** Задачи, закрытые как сделанные в промежутке [from, to) — «сделано сегодня» у виджета. */
+  doneTasksBetween(userId: number, from: Date, to: Date): Promise<TaskRow[]> {
+    return this.all<TaskRow>(
+      "SELECT * FROM tasks WHERE user_id = ? AND status = 'done' AND done_at >= ? AND done_at < ? ORDER BY done_at",
+      userId, from.toISOString(), to.toISOString(),
+    );
+  }
   openTasks(userId: number): Promise<TaskRow[]> {
     return this.all<TaskRow>(
       `SELECT * FROM tasks WHERE user_id = ? AND status = 'open'
