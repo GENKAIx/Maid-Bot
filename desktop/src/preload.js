@@ -37,6 +37,6 @@ contextBridge.exposeInMainWorld("maid", {
   /** Окно применило режим «вниз» (и спрятано) — main может сдвинуть его. */
   downReady: () => ipcRenderer.send("down-ready"),
   on: (channel, fn) => {
-    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity", "down", "down-shown"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
+    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity", "down", "down-shown", "prefs"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },
 });

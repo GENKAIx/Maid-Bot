@@ -11,6 +11,7 @@ import { Plans } from "./screens/Plans";
 import { Settings } from "./screens/Settings";
 import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
+import { desktop, Widget } from "./screens/Widget";
 import { Icon } from "./icons";
 
 // Каталог для разработки — отдельным куском: обычным экранам его тексты не нужны.
@@ -28,6 +29,8 @@ const TABS = [
   { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
   { id: "stats", path: "/stats", title: "Статистика", icon: "stats", more: true },
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
+  // Только в программе для ПК (сайт открыт в её окне): настройки виджета на рабочем столе.
+  ...(desktop() ? [{ id: "widget", path: "/widget", title: "Виджет", icon: "widget", more: true }] : []),
   { id: "catalog", path: "/catalog", title: "Каталог", icon: "catalog", more: true },
 ];
 
@@ -66,6 +69,7 @@ export function App() {
     : tab === "money" ? <Money version={version} />
     : tab === "stats" ? <Stats version={version} />
     : tab === "settings" ? <Settings onLogout={logout} />
+    : tab === "widget" ? <Widget />
     : tab === "catalog" ? <Suspense fallback={null}><Catalog chapter={arg} /></Suspense>
     : <Today version={version} onChanged={onChanged} />;
 

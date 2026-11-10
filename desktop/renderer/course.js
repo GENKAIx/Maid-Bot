@@ -5,7 +5,7 @@
 // --- звук поп-ита: синтез WebAudio, без файлов ---
 let actx = null;
 function popTone(step = 0, { vol = 0.32, soft = false } = {}) {
-  if (localStorage.getItem("maid.mute")) return;
+  if (cfg.mute) return;
   try {
     actx ??= new AudioContext();
     const t = actx.currentTime + 0.005;
@@ -74,7 +74,7 @@ function dotHtml(h, x, i) {
 function renderCourses() {
   const box = $("#courses");
   if (!box) return;
-  const list = data && !prefsOpen ? coursesOf(data) : [];
+  const list = data ? coursesOf(data) : [];
   if (!list.length) {
     box.innerHTML = "";
     box.classList.add("hidden");

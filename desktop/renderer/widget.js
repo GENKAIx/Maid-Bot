@@ -54,7 +54,7 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10 };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
 
@@ -66,7 +66,7 @@ for (const n of ["pop", "ding", "send", "oops", "hey"]) {
 }
 function play(name) {
   const a = SOUNDS[name];
-  if (!a || localStorage.getItem("maid.mute")) return;
+  if (!a || cfg.mute) return;
   a.currentTime = 0;
   a.play().catch(() => {});
 }
@@ -1393,111 +1393,43 @@ function applyCfg() {
   // За панелью прячется только низ корсета — фигурка почти целиком над краем.
   st.style.setProperty("--peek", `${Math.round(w * 0.13)}px`);
   $("#w").style.opacity = $("#mini").style.opacity = String(cfg.opacity);
-  $("#next").classList.toggle("hidden", !cfg.sections.next || prefsOpen);
-  $("#pins").classList.toggle("hidden", prefsOpen);
+  $("#next").classList.toggle("hidden", !cfg.sections.next);
 }
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10) }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute) }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  // «Звуки выключены» раньше жили в localStorage виджета — переносим в настройки один раз.
+  if (w.mute === undefined && localStorage.getItem("maid.mute")) {
+    cfg.mute = true;
+    maid.saveSettings({ widget: { mute: true } });
+  }
+  localStorage.removeItem("maid.mute");
   applyCfg();
-  if (prefsOpen) drawPrefs();
 }
 // Секунды до самонажатия кнопки (настройки виджета): число 3…60, иначе — по умолчанию.
 function secs(v, d) {
   const n = Number(v);
   return Number.isFinite(n) && n >= 3 && n <= 60 ? n : d;
 }
-function saveCfg(patch) {
-  Object.assign(cfg, patch);
-  applyCfg();
+// Настройки поменяли в разделе «Виджет» полной версии — перечитать и перерисовать.
+maid.on("prefs", async () => {
+  const was = { clock: cfg.clock, dateLead: cfg.dateLead };
+  await loadCfg();
   render();
-  drawPrefs();
-  maid.saveSettings({ widget: patch });
-}
+  if (cfg.clock !== was.clock) hideClock();
+  else if (cfg.dateLead !== was.dateLead) drawClock();
+});
 
-let prefsOpen = false;
-function togglePrefs(on = !prefsOpen) {
-  prefsOpen = on;
-  if (on) hideClock();
-  $("#gear").classList.toggle("on", on);
-  $("#prefs").classList.toggle("hidden", !on);
-  $("#body").classList.toggle("hidden", on);
-  $("#w").classList.toggle("prefs-open", on);
-  applyCfg();
-  if (on) drawPrefs();
-  renderCourses();
-}
-const SECTIONS = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"], ["soon", "Скоро"]];
-function seg(name, value, opts) {
-  return `<div class="seg" data-seg="${name}">${opts.map(([v, t]) => `<button type="button" data-v="${v}" class="${String(value) === v ? "on" : ""}">${t}</button>`).join("")}</div>`;
-}
-function drawPrefs() {
-  if (!prefsOpen) return;
-  const muted = Boolean(localStorage.getItem("maid.mute"));
-  $("#prefs").innerHTML = `
-    <div class="pref"><span>Показывать на панели</span><div class="checks">${SECTIONS.map(([k, t]) =>
-      `<label class="tick"><input type="checkbox" data-sec="${k}" ${cfg.sections[k] ? "checked" : ""}/>${t}</label>`).join("")}</div></div>
-    <div class="pref"><span>Горничная</span>${seg("side", cfg.side, [["left", "Слева"], ["right", "Справа"], ["none", "Скрыть"]])}</div>
-    <div class="pref"><span>Размер горничной</span>${seg("size", cfg.size, [["s", "Меньше"], ["m", "Обычная"], ["l", "Больше"]])}</div>
-    <div class="pref"><span>Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%</span><input type="range" id="prefOpacity" min="0.4" max="1" step="0.02" value="${cfg.opacity}" /></div>
-    <div class="pref"><span>Планы дня</span>${seg("clock", cfg.clock, [["list", "Список"], ...(CLOCK_DIAL ? [["12", "Часы 12"], ["24", "Часы 24"]] : []), ["off", "Нет"]])}</div>
-    <div class="pref"><span>Важные даты</span>${seg("dateLead", String(cfg.dateLead), [["0", "В день"], ["1", "За день"], ["3", "За 3 дня"], ["7", "За неделю"]])}</div>
-    <div class="pref"><span>Сделанные задачи</span><div class="done-modes">
-      <button type="button" data-dmode="keep" class="dm${cfg.doneTasks === "keep" ? " on" : ""}">
-        <div class="dm-mini"><b>Задачи</b><p><i></i>Купить хлеб</p><p class="did"><i>✓</i><s>Пить Аевит</s></p></div>
-        <span>Остаются зачёркнутыми</span></button>
-      <button type="button" data-dmode="hide" class="dm${cfg.doneTasks === "hide" ? " on" : ""}">
-        <div class="dm-mini"><b>Задачи <em>1/2</em></b><p><i></i>Купить хлеб</p><p class="go"><i>✓</i><span>Пить Аевит</span></p></div>
-        <span>Улетают, счётчик сделанного</span></button>
-    </div></div>
-    <div class="pref"><span>Дальние задачи (срок дальше недели)</span>${seg("laterTasks", cfg.laterTasks, [["hide", "Скрывать до срока"], ["show", "Показывать все"]])}</div>
-    <div class="pref"><span>Сама отвечает «Не надо» на «добавить?» через</span>${seg("proposalWait", String(cfg.proposalWait), [["6", "6 с"], ["12", "12 с"], ["20", "20 с"], ["30", "30 с"]])}</div>
-    <div class="pref"><span>Сама жмёт «Оставить», если план на занятое время, через</span>${seg("clashWait", String(cfg.clashWait), [["5", "5 с"], ["10", "10 с"], ["20", "20 с"], ["30", "30 с"]])}</div>
-    <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>
-    <div class="row2"><button type="button" id="prefReset">Вернуть в угол</button><button type="button" id="prefDone" class="primary">Готово</button></div>`;
-}
-$("#prefs").addEventListener("click", (e) => {
-  const b = e.target.closest("button");
-  if (!b) return;
-  if (b.id === "prefDone") return togglePrefs(false);
-  if (b.id === "prefReset") return maid.resetWidget();
-  if (b.dataset.dmode) return saveCfg({ doneTasks: b.dataset.dmode });
-  const kind = b.parentElement?.dataset.seg;
-  if (kind === "sound") {
-    localStorage.setItem("maid.mute", b.dataset.v === "off" ? "1" : "");
-    drawPrefs();
-    if (b.dataset.v === "on") play("pop");
-  } else if (kind === "clock") {
-    saveCfg({ clock: b.dataset.v, plans: b.dataset.v });
-    hideClock();
-  } else if (kind === "dateLead") {
-    saveCfg({ dateLead: b.dataset.v });
-    drawClock();
-  } else if (kind === "proposalWait" || kind === "clashWait") saveCfg({ [kind]: Number(b.dataset.v) });
-  else if (kind) saveCfg({ [kind]: b.dataset.v });
-});
-$("#prefs").addEventListener("change", (e) => {
-  const k = e.target.dataset?.sec;
-  if (k) saveCfg({ sections: { ...cfg.sections, [k]: e.target.checked } });
-  else if (e.target.id === "prefOpacity") saveCfg({ opacity: Number(e.target.value) });
-});
-$("#prefs").addEventListener("input", (e) => {
-  if (e.target.id !== "prefOpacity") return;
-  cfg.opacity = Number(e.target.value);
-  $("#w").style.opacity = $("#mini").style.opacity = String(cfg.opacity);
-  e.target.previousElementSibling.textContent = `Непрозрачность панели · ${Math.round(cfg.opacity * 100)}%`;
-});
-// Кнопка в шапке — полная версия приложения; настройки виджета — правым щелчком по ней (или если они уже открыты — закрыть).
+// Кнопка в шапке — полная версия приложения; правым щелчком — сразу её раздел «Виджет» (настройки виджета).
 $("#gear").addEventListener("click", (e) => {
   e.stopPropagation();
-  if (prefsOpen) return togglePrefs(false);
   maid.openMain();
 });
 $("#gear").addEventListener("contextmenu", (e) => {
   e.preventDefault();
   e.stopPropagation();
-  togglePrefs();
+  maid.openSection("/widget");
 });
 
 // --- перетаскивание за шапку и за горничную: окно двигает main.js по курсору (так верно и на экранах с разным масштабом) ---

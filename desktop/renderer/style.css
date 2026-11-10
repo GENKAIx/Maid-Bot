@@ -317,21 +317,9 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .gear:hover, .w .gear.on { background: var(--panel-2); color: var(--text); }
 .stage.grab .w .head { cursor: move; }
 /* Настройки виджета — вместо списка дел, пока открыты. */
-.w.prefs-open, .w.hist-open { flex-basis: max(520px, calc(100vh - 380px)); }
+.w.hist-open { flex-basis: max(520px, calc(100vh - 380px)); }
 .w.hist-open .scroll { display: none; }
-.w .prefs { flex: 1; overflow-x: hidden; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
-.w .prefs.hidden, .w .scroll.hidden, .w .next.hidden { display: none; }
-.prefs .pref { display: grid; gap: 6px; }
-.prefs .pref > span { color: var(--muted); font-size: 12.5px; }
-.prefs .seg { display: flex; padding: 2px; gap: 2px; background: var(--panel-2); border-radius: 10px; }
-.prefs .seg button { flex: 1; min-width: 0; white-space: nowrap; padding: 5px 2px; font-size: 12.5px; background: transparent; border-color: transparent; color: var(--muted); border-radius: 8px; }
-.prefs .seg button.on { background: var(--brand); color: #fff; }
-.prefs .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
-.prefs label.tick { display: flex; align-items: center; gap: 7px; cursor: pointer; }
-.prefs label.tick input { width: 15px; height: 15px; margin: 0; accent-color: var(--brand); }
-.prefs input[type=range] { width: 100%; accent-color: var(--brand); padding: 0; }
-.prefs .row2 { display: flex; gap: 8px; }
-.prefs .row2 button { flex: 1; font-size: 12.5px; padding: 6px 8px; }
+.w .scroll.hidden, .w .next.hidden { display: none; }
 .w .clock { font-size: 30px; line-height: 1; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .w .next { background: rgba(183, 156, 255, .1); border-left: 3px solid var(--accent); border-radius: 4px 10px 10px 4px; padding: 8px 10px; }
 .w .next b { color: var(--accent); }
@@ -348,7 +336,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
   background: linear-gradient(135deg, transparent 0 46%, var(--muted) 46% 54%, transparent 54% 66%, var(--muted) 66% 74%, transparent 74% 86%, var(--muted) 86% 94%, transparent 94%); -webkit-app-region: no-drag; }
 .w:hover .grip { opacity: .7; }
 .w .grip:hover, .w .grip.on { opacity: 1; }
-.stage.folded .grip, .w.prefs-open .grip { display: none; }
+.stage.folded .grip { display: none; }
 .w .bar { display: none; gap: 6px; }
 .w.grab .bar { display: flex; }
 
@@ -725,25 +713,6 @@ body.quick { background: transparent; }
 .w h4 .done-count:hover, .w h4 .done-count.on { color: var(--text); background: color-mix(in srgb, var(--accent-2) 25%, transparent); border-color: transparent; }
 @media (prefers-reduced-motion: reduce) { .w .list li.leaving::after { animation-duration: 0s; } .w .list li.fly { animation: none; opacity: 0; } }
 
-/* Настройки: выбор режима — маленькие картинки списка. */
-.prefs .done-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.prefs .dm { display: grid; gap: 6px; padding: 6px; border-radius: 10px; background: var(--panel-2); border: 1.5px solid transparent; color: var(--muted); font-size: 11.5px; text-align: center; cursor: pointer; }
-.prefs .dm.on { border-color: var(--brand); color: var(--text); }
-.prefs .dm:hover:not(.on) { border-color: var(--line); }
-.dm-mini { display: grid; gap: 4px; padding: 7px 8px; border-radius: 7px; background: rgba(0, 0, 0, .22); text-align: left; font-size: 10.5px; color: var(--text); overflow: hidden; height: 62px; align-content: start; }
-.dm-mini b { font-size: 10px; font-weight: 600; color: var(--muted); }
-.dm-mini em { font-style: normal; padding: 0 5px; border-radius: 6px; border: 1px solid var(--line); }
-.dm-mini p { position: relative; margin: 0; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
-.dm-mini i { flex: none; width: 10px; height: 10px; border: 1px solid var(--muted); border-radius: 3px; font-style: normal; font-size: 8px; display: grid; place-items: center; line-height: 1; }
-.dm-mini .did { opacity: .5; }
-.dm-mini .did i, .dm-mini .go i { background: var(--accent-2); border-color: var(--accent-2); color: var(--ink); }
-.dm-mini .go::after { content: ""; position: absolute; inset: -1px -3px; border-radius: 4px; background: color-mix(in srgb, var(--accent-2) 30%, transparent);
-  transform-origin: left; animation: dmFill 3.6s linear infinite; }
-.dm-mini .go { animation: dmFly 3.6s cubic-bezier(.5, 0, .9, .4) infinite; }
-.dm-mini .go > * { position: relative; z-index: 1; }
-@keyframes dmFill { 0% { transform: scaleX(0); } 62%, 100% { transform: scaleX(1); } }
-@keyframes dmFly { 0%, 66% { transform: none; opacity: 1; } 80%, 94% { transform: translateX(120%); opacity: 0; } 100% { transform: none; opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .dm-mini .go, .dm-mini .go::after { animation: none; } }
 
 /* Счётчик: «+1» вылетает из него, когда строка улетела; всё сделано — золотой. */
 .w h4 .done-count { position: relative; }

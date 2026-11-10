@@ -585,7 +585,7 @@ function openTaskMenu(t, li, x, y, done = () => doneTaskHere(t.id, li.querySelec
 
 function showClock(day, { fresh = [], gone = [], open = false } = {}) {
   // Свёрнутый виджет — панель выдвигается из-под карточки, только когда запись легла на день или ушла с него (watchPlans).
-  if (cfg.clock === "off" || (collapsed && !fresh.length && !gone.some(loudGone) && !open) || prefsOpen || !data) return;
+  if (cfg.clock === "off" || (collapsed && !fresh.length && !gone.some(loudGone) && !open) || !data) return;
   const box = $("#planClock");
   box.title = collapsed ? "Щелчок — развернуть панель" : "Планы дня · щелчок — спрятать";
   clockDay = day;

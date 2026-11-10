@@ -121,8 +121,9 @@ const icon = () => nativeImage.createFromPath(path.join(__dirname, "..", "assets
 const page = (name) => path.join(__dirname, "..", "renderer", name);
 const prefs = { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true };
 
-// Главное окно — веб-приложение с сервера (то же, что на телефоне). Страница с сервера — без preload:
-// ключ десктопа ей не нужен, вход там свой (логин и пароль). Сервер не отвечает — локальная страница настроек.
+// Главное окно — веб-приложение с сервера (то же, что на телефоне). Страница с сервера — со своим маленьким preload
+// (preload-app.js: только настройки виджета, раздел «Виджет»): ключ десктопа ей не нужен, вход там свой (логин и пароль).
+// Сервер не отвечает — локальная страница настроек.
 function showMain(settingsOnly = false) {
   const local = settingsOnly || !settings.server;
   if (mainWin && mainWin.isLocal !== local) {
@@ -132,7 +133,7 @@ function showMain(settingsOnly = false) {
   if (!mainWin) {
     mainWin = new BrowserWindow({
       width: 1060, height: 760, minWidth: 640, minHeight: 480, title: "Горничная", icon: icon(), backgroundColor: local ? "#1d1830" : "#f4f3f8",
-      webPreferences: local ? prefs : { contextIsolation: true, nodeIntegration: false, sandbox: true },
+      webPreferences: local ? prefs : { preload: path.join(__dirname, "preload-app.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
     mainWin.isLocal = local;
     mainWin.removeMenu();
@@ -354,13 +355,14 @@ function followResize() {
   settings.widget.extra = extra;
   widget.setBounds({ x: b.x, y: bottom - h, width: b.width, height: h });
 }
-ipcMain.on("widget-reset", () => {
+ipcMain.on("widget-reset", resetWidgetPlace);
+function resetWidgetPlace() {
   settings.widget = { ...settings.widget, x: null, y: null, display: null, down: false };
   saveSettings();
   widget?.setBounds(widgetBounds());
   widget?.webContents.send("down", false);
   widget?.webContents.send("down-shown");
-});
+}
 
 function createWidget() {
   if (widget) return;
@@ -570,6 +572,45 @@ ipcMain.handle("settings:set", (e, patch) => {
   if (patch.tracker) startTracker();
   broadcast("changed", null);
   return shown();
+});
+// --- раздел «Виджет» полной версии (сайт в главном окне, preload-app.js) ---
+// Только из главного окна и только со страницы сервера из настроек; только эти поля и только допустимые значения.
+const fromApp = (e) => {
+  try {
+    return e.sender === mainWin?.webContents && !mainWin.isLocal && new URL(e.senderFrame.url).origin === new URL(settings.server).origin;
+  } catch { return false; }
+};
+const oneOf = (...vs) => (v) => vs.includes(v);
+const secsOk = (v) => Number.isInteger(v) && v >= 3 && v <= 60;
+const WIDGET_PREFS = {
+  show: (v) => typeof v === "boolean",
+  opacity: (v) => typeof v === "number" && v >= 0.4 && v <= 1,
+  side: oneOf("left", "right", "none"),
+  size: oneOf("s", "m", "l"),
+  plans: oneOf("list", "off"),
+  dateLead: oneOf("0", "1", "3", "7"),
+  doneTasks: oneOf("keep", "hide"),
+  laterTasks: oneOf("hide", "show"),
+  proposalWait: secsOk,
+  clashWait: secsOk,
+  mute: (v) => typeof v === "boolean",
+  sections: (v) => v && typeof v === "object" && Object.entries(v).every(([k, x]) => ["next", "habits", "tasks", "soon"].includes(k) && typeof x === "boolean"),
+};
+const widgetPrefs = () => Object.fromEntries(Object.keys(WIDGET_PREFS).filter((k) => k in settings.widget).map((k) => [k, settings.widget[k]]));
+ipcMain.handle("app:widget-get", (e) => (fromApp(e) ? widgetPrefs() : null));
+ipcMain.handle("app:widget-set", (e, patch) => {
+  if (!fromApp(e) || !patch || typeof patch !== "object") return null;
+  const clean = {};
+  for (const [k, v] of Object.entries(patch)) if (WIDGET_PREFS[k]?.(v)) clean[k] = k === "sections" ? { ...settings.widget.sections, ...v } : v;
+  settings.widget = { ...settings.widget, ...clean };
+  saveSettings();
+  widget?.webContents.send("opacity", settings.widget.opacity);
+  widget?.webContents.send("prefs");
+  if ("show" in clean) toggleWidget(clean.show);
+  return widgetPrefs();
+});
+ipcMain.handle("app:widget-reset", (e) => {
+  if (fromApp(e)) resetWidgetPlace();
 });
 ipcMain.handle("tracker:now", trackOnce);
 // Сколько секунд человек не трогал мышь и клавиатуру (горничная засыпает, когда его нет; заблокированный экран — тоже нет).
