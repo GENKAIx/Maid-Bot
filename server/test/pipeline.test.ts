@@ -254,3 +254,64 @@ test("«Это просто заметка» заменяет разбор за�
   const notes = (await store.diaryOf(u.id, "2026-11-08")).filter((d) => d.section === "notes");
   assert.equal(notes[0]?.text, "надо бы позвонить, но это просто мысль");
 });
+
+test("рассказ о распорядке — дневник сразу, привычки только по кнопке", async () => {
+  const { store, u, pipe } = await setup([
+    {
+      diary: [{ section: "notes", text: "перед сном читаю и чищу зубы" }],
+      summary: "[14:30] Перед сном читаю и чищу зубы",
+      suggest_habits: [{ title: "Читать перед сном", days: "1234567", times: [] }, { title: "Чистить зубы", days: "1234567", times: [] }],
+      suggest_remind: { label: "Напоминать перед сном", time: "22:30" },
+    },
+    {
+      diary: [{ section: "notes", text: "по утрам кофе" }],
+      summary: "[14:31] По утрам пью кофе",
+      suggest_habits: [{ title: "Кофе утром", days: "1234567", times: [] }],
+    },
+    { summary: "[14:32] просто так" },
+  ]);
+  const closed: string[] = [];
+  pipe.onProposal = async (_u, _p, _text, outcome) => void closed.push(outcome);
+  const r = await pipe.handle({ user: u, ...msg("Перед сном я читаю и чищу зубы", "p1") });
+  assert.equal((await store.activeHabits(u.id)).length, 0);
+  assert.match(r.text, /Хочешь отслеживать как привычки\?/);
+  assert.deepEqual(r.proposal?.items.map((i) => i.title), ["Читать перед сном", "Чистить зубы"]);
+  assert.equal(r.proposal?.remind?.time, "22:30");
+  // Снять галочку со второго — добавится только первый, с напоминанием.
+  await pipe.toggleProposal(u, r.proposal!.id, 1);
+  const ok = await pipe.decideProposal(u, r.proposal!.id, "remind");
+  assert.ok(ok.done);
+  const hs = await store.activeHabits(u.id);
+  assert.deepEqual(hs.map((h) => [h.title, h.times, h.quiet]), [["Читать перед сном", '["22:30"]', 0]]);
+  assert.match(closed[0], /напомню в 22:30/);
+  // Повторный ответ ничего не создаёт.
+  assert.equal((await pipe.decideProposal(u, r.proposal!.id, "add")).done, false);
+  // «Отменить» сообщения убирает и добавленную по кнопке привычку.
+  await pipe.undo(u, r.messageId);
+  assert.equal((await store.activeHabits(u.id)).length, 0);
+
+  // Не ответил, а написал дальше — вопрос закрывается и ничего не создаёт.
+  const r2 = await pipe.handle({ user: u, ...msg("По утрам пью кофе", "p2") });
+  assert.match(r2.text, /как привычку\?/);
+  await pipe.handle({ user: u, ...msg("просто так", "p3") });
+  assert.equal((await store.proposal(r2.proposal!.id))?.status, "expired");
+  assert.equal(closed.at(-1), "Не стала добавлять в привычки.");
+  assert.match((await store.message(r2.messageId))?.reply ?? "", /Не стала добавлять в привычки\.$/);
+  assert.equal((await store.activeHabits(u.id)).length, 0);
+});
+
+test("«Добавить в привычки» — в список без напоминаний; вопрос истекает через сутки", async () => {
+  const { store, u, pipe } = await setup([
+    { summary: "[14:30] вечером гуляю", suggest_habits: [{ title: "Прогулка", days: "1234567", times: ["20:00"] }] },
+    { summary: "[14:31] надо бы как-нибудь", suggest_tasks: [{ title: "Разобрать балкон" }] },
+  ]);
+  const r = await pipe.handle({ user: u, ...msg("Вечером я гуляю", "q1") });
+  await pipe.decideProposal(u, r.proposal!.id, "add");
+  const [h] = await store.activeHabits(u.id);
+  assert.deepEqual([h.title, h.times, h.quiet], ["Прогулка", "[]", 1]);
+  const r2 = await pipe.handle({ user: u, ...msg("Надо бы как-нибудь разобрать балкон", "q2") });
+  assert.equal(r2.proposal?.add, "Добавить в задачи");
+  await pipe.sweepProposals(new Date(Date.now() + 25 * 60 * 60_000));
+  assert.equal((await store.proposal(r2.proposal!.id))?.status, "expired");
+  assert.equal((await store.openTasks(u.id)).length, 0);
+});

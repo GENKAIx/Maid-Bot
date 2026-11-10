@@ -239,6 +239,22 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions button { background: #f0eef5; color: var(--ink); border-color: #e4e1ec; padding: 4px 10px; font-size: 12px; }
 .bubble-actions button:hover { border-color: #c9c2da; }
 .bubble-actions button.ghost { margin-left: auto; background: transparent; border-color: transparent; }
+/* Вопрос «добавить?»: пункты с галочками и кнопки; «Не надо» тихо заполняется полосой (пауза под курсором). */
+.prop-list { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border-radius: 10px; background: #f3f1f8; border-left: 3px solid #2fa86e; animation: cardIn .35s cubic-bezier(.2,.9,.3,1.2) both; }
+.prop-item { display: flex; gap: 7px; align-items: flex-start; font-size: 12.5px; line-height: 1.3; cursor: pointer; }
+.prop-item.one { cursor: default; }
+.prop-item input { width: auto; height: auto; padding: 0; margin: 2px 0 0; accent-color: #2fa86e; cursor: pointer; flex: none; }
+.prop-item b { font-weight: 600; color: var(--ink); }
+.prop-item i { display: block; font-style: normal; color: #6b6680; font-size: 11.5px; }
+.prop-item:has(input:not(:checked)) b { color: #9a94ad; text-decoration: line-through; text-decoration-color: rgba(154,148,173,.6); }
+.bubble-actions button.prop-yes { background: #e6f5ec; border-color: #c7e8d4; color: #1f6e47; }
+.bubble-actions button.prop-yes:hover { border-color: #8fd0aa; }
+.bubble-actions button.prop-no { position: relative; overflow: hidden; background: #f0eef5; color: #6b6680; }
+.bubble-actions button.prop-no .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #a29db2; transform: scaleX(0); transform-origin: left; }
+.bubble-actions button.prop-no .lbl { position: relative; }
+.bubble-actions.shake { animation: propShake .32s ease; }
+@keyframes propShake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .bubble-actions.shake { animation: none; } }
 /* Разбор хвостов (tails.js): ответы столбиком, после «Перенести» — дни недели */
 .tail-choices { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
 .tail-choices button { text-align: left; padding: 7px 12px; border-radius: 10px; border: 1px solid #e4e1ec; background: #f0eef5; color: var(--ink);

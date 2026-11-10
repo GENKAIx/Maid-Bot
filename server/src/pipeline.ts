@@ -1,4 +1,4 @@
-import type { MarkRow, Message, Store, Table, User } from "./db.ts";
+import type { MarkRow, Message, ProposalRow, Store, Table, User } from "./db.ts";
 import type { LlmCall, Picture } from "./llm.ts";
 import { extractJson } from "./llm.ts";
 import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
@@ -30,6 +30,53 @@ export interface Reply {
   changes?: Change[];
   /** Дни, о которых ответ на вопрос (ГГГГ-ММ-ДД) — ссылки на дневник. */
   days?: string[];
+  /** Спорное — спросить кнопками: завести ли привычки / задачи из рассказа. */
+  proposal?: Proposal;
+}
+
+/** Вопрос «добавить?» с пунктами-галочками. Кнопки: remind (если есть) — завести с напоминанием, add — просто в список, «Не надо». */
+export interface Proposal {
+  id: number;
+  items: { kind: "habit" | "task"; title: string; detail: string }[];
+  /** Отмеченные номера пунктов (по умолчанию все). */
+  picked: number[];
+  /** Ситуативная кнопка: «Напоминать перед сном» и её время. */
+  remind: { label: string; time: string } | null;
+  /** Текст кнопки «добавить»: «Добавить в привычки», «Добавить в задачи» или «Добавить». */
+  add: string;
+  status: ProposalRow["status"];
+}
+type ProposalItem = { kind: "habit"; habit: Parsed["habits"][number] } | { kind: "task"; task: Parsed["tasks"][number] };
+export type ProposalChoice = "remind" | "add" | "decline";
+/** Сколько ждать ответа: дальше вопрос закрывается сам и ничего не создаёт. */
+export const PROPOSAL_TTL_MS = 24 * 60 * 60_000;
+
+const itemsOf = (p: ProposalRow): ProposalItem[] => JSON.parse(p.items) as ProposalItem[];
+const pickedOf = (p: ProposalRow): number[] => {
+  const all = itemsOf(p).map((_, i) => i);
+  try {
+    const v = JSON.parse(p.picked) as number[];
+    return Array.isArray(v) ? v.filter((i) => all.includes(i)) : all;
+  } catch {
+    return all;
+  }
+};
+const kindsOf = (items: { kind: string }[]) => ({ habits: items.some((i) => i.kind === "habit"), tasks: items.some((i) => i.kind === "task") });
+
+export function proposalView(p: ProposalRow): Proposal {
+  const items = itemsOf(p).map((it) =>
+    it.kind === "habit"
+      ? {
+          kind: "habit" as const, title: it.habit.title,
+          detail: `${scheduleText({ days: it.habit.days, start_date: it.habit.start, end_date: it.habit.end })}${it.habit.times.length ? " · " + it.habit.times.join(", ") : ""}`,
+        }
+      : { kind: "task" as const, title: it.task.title, detail: it.task.due ? `до ${humanDay(it.task.due)}` : "" },
+  );
+  const k = kindsOf(items);
+  return {
+    id: p.id, items, picked: pickedOf(p), remind: p.remind ? JSON.parse(p.remind) : null, status: p.status,
+    add: k.habits && k.tasks ? "Добавить" : k.tasks ? "Добавить в задачи" : "Добавить в привычки",
+  };
 }
 
 export interface Incoming {
@@ -62,6 +109,9 @@ export class Pipeline {
 
   /** Зовётся, когда у пользователя что-то поменялось (записали, отметили, отменили) — например, чтобы обновить список-виджет. */
   onChange: ((u: User) => void) | null = null;
+  /** Вопрос «добавить?» закрыт (ответили, отказались, истёк) — убрать кнопки там, где он висит (Telegram).
+   *  text — новый текст ответа целиком, outcome — строка итога. */
+  onProposal: ((u: User, p: ProposalRow, text: string, outcome: string) => Promise<void>) | null = null;
   changed(u: User) {
     try { this.onChange?.(u); } catch (e) { console.error("[pipeline] onChange", e); }
   }
@@ -87,6 +137,8 @@ export class Pipeline {
     if (!created && message.state === "done") {
       return { text: message.reply ?? p.saved[0], emotion: "neutral", messageId: message.id, undoable: false, duplicate: true };
     }
+    // Новое сообщение — прежний вопрос «добавить?» без ответа закрывается (кнопки висят до следующего сообщения).
+    await this.closeProposals(u, "expired");
 
     if (inc.chatOnly) return this.chat(u, message, at, pics);
 
@@ -151,9 +203,124 @@ export class Pipeline {
 
     const head = parsed.reply ? esc(parsed.reply) : pick(p.saved, message.id);
     const body = lines.length ? "\n" + lines.join("\n") : "";
-    const reply = `${head}${body}`;
+    // Спорное (распорядок, «надо бы когда-нибудь») не записано — спросить кнопками.
+    const sug = parsed.suggest;
+    const items: ProposalItem[] = [
+      ...sug.habits.map((habit) => ({ kind: "habit" as const, habit })),
+      ...sug.tasks.map((task) => ({ kind: "task" as const, task })),
+    ];
+    let ask = "";
+    if (items.length) {
+      const k = kindsOf(items);
+      ask = k.habits && k.tasks ? "Добавить себе?" : k.tasks ? (items.length > 1 ? "Добавить в задачи?" : "Добавить в задачу?")
+        : items.length > 1 ? "Хочешь отслеживать как привычки?" : "Хочешь отслеживать как привычку?";
+    }
+    const reply = `${head}${body}${ask ? "\n" + ask : ""}`;
+    let proposal: Proposal | undefined;
+    if (ask) {
+      const id = await s.addProposal({
+        user_id: u.id, message_id: target.id, text: reply, ask, items: JSON.stringify(items),
+        picked: JSON.stringify(items.map((_, i) => i)), remind: sug.remind ? JSON.stringify(sug.remind) : "",
+      });
+      proposal = proposalView((await s.proposal(id))!);
+    }
     await s.setMessage(target.id, { state: "done", reply });
-    return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes };
+    return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes, proposal };
+  }
+
+  /** Отметить / снять пункт вопроса (галочки в Telegram). */
+  async toggleProposal(u: User, id: number, index: number): Promise<Proposal | null> {
+    const p = await this.store.proposal(id);
+    if (!p || p.user_id !== u.id || p.status !== "open" || !itemsOf(p)[index]) return null;
+    const picked = pickedOf(p);
+    const next = picked.includes(index) ? picked.filter((i) => i !== index) : [...picked, index].sort((a, b) => a - b);
+    await this.store.updateProposal(id, { picked: JSON.stringify(next) });
+    return proposalView({ ...p, picked: JSON.stringify(next) });
+  }
+
+  /** Ответ на вопрос «добавить?». picked — отмеченные (из приложения); без него — сохранённые. */
+  async decideProposal(u: User, id: number, choice: ProposalChoice, picked?: number[]): Promise<{ text: string; changes: Change[]; proposal: Proposal | null; done: boolean }> {
+    const s = this.store;
+    const p = await s.proposal(id);
+    if (!p || p.user_id !== u.id) return { text: "Не нашла этот вопрос.", changes: [], proposal: null, done: false };
+    if (p.status !== "open") {
+      const said = p.status === "accepted" ? "Уже добавила." : p.status === "declined" ? "Уже решили: не добавляю." : "Этот вопрос уже закрыт.";
+      return { text: said, changes: [], proposal: proposalView(p), done: false };
+    }
+    const items = itemsOf(p);
+    const chosen = (picked ?? pickedOf(p)).filter((i, k, a) => items[i] && a.indexOf(i) === k);
+    if (choice !== "decline" && !chosen.length) return { text: "Отметь хотя бы одно.", changes: [], proposal: proposalView(p), done: false };
+    if (choice === "decline") {
+      await this.close(u, p, "declined", "Хорошо, не добавляю.");
+      return { text: "Хорошо, не добавляю.", changes: [], proposal: proposalView({ ...p, status: "declined" }), done: true };
+    }
+    const remind: Proposal["remind"] = choice === "remind" && p.remind ? JSON.parse(p.remind) : null;
+    const changes: Change[] = [];
+    const habits: string[] = [];
+    const tasks: string[] = [];
+    await s.transaction(async () => {
+      for (const i of chosen) {
+        const it = items[i];
+        if (it.kind === "habit") {
+          const h = it.habit;
+          // «Добавить в привычки» — только в список: без напоминаний и вечерних вопросов.
+          const times = remind ? [remind.time] : [];
+          const hid = await s.addHabit({
+            user_id: u.id, title: h.title, days: h.days, times: JSON.stringify(times), start_date: h.start, end_date: h.end,
+            message_id: p.message_id, quiet: remind ? 0 : 1,
+          });
+          await s.logAction(u.id, p.message_id, "add", "habits", hid);
+          habits.push(h.title);
+          changes.push({ kind: "habit", title: h.title, detail: `${scheduleText({ days: h.days, start_date: h.start, end_date: h.end })}${times.length ? " · " + times.join(", ") : " · без напоминаний"}` });
+        } else {
+          const t = it.task;
+          const tid = await s.addTask({ user_id: u.id, title: t.title, priority: t.priority, category: t.category, due_date: t.due, notes: "", message_id: p.message_id });
+          await s.logAction(u.id, p.message_id, "add", "tasks", tid);
+          tasks.push(t.title);
+          changes.push({ kind: "task", title: t.title, detail: t.due ? `до ${humanDay(t.due)}` : undefined });
+        }
+      }
+    });
+    const out = [
+      habits.length ? `✅ В привычках: ${habits.map(esc).join(", ")}${remind ? ` · напомню в ${remind.time}` : ""}` : "",
+      tasks.length ? `✅ В задачах: ${tasks.map(esc).join(", ")}` : "",
+    ].filter(Boolean).join("\n");
+    await this.close(u, p, "accepted", out);
+    this.changed(u);
+    return { text: out, changes, proposal: proposalView({ ...p, status: "accepted", picked: JSON.stringify(chosen) }), done: true };
+  }
+
+  /** Закрыть открытые вопросы пользователя (только по одному сообщению, если указано). */
+  private async closeProposals(u: User, status: "expired" | "declined", messageId?: number) {
+    for (const p of await this.store.openProposals(u.id)) {
+      if (messageId !== undefined && p.message_id !== messageId) continue;
+      const k = kindsOf(itemsOf(p));
+      const out = status === "declined" ? "Хорошо, не добавляю."
+        : k.habits && k.tasks ? "Не стала добавлять." : k.tasks ? "Не стала добавлять в задачи." : "Не стала добавлять в привычки.";
+      await this.close(u, p, status, out);
+    }
+  }
+  private async close(u: User, p: ProposalRow, status: ProposalRow["status"], outcome: string) {
+    await this.store.updateProposal(p.id, { status });
+    const text = p.ask && p.text.includes(p.ask) ? p.text.replace(p.ask, outcome) : `${p.text}\n${outcome}`;
+    await this.store.setMessage(p.message_id, { reply: text });
+    try {
+      await this.onProposal?.(u, { ...p, status }, text, outcome);
+    } catch (e) {
+      console.error("[pipeline] onProposal", e);
+    }
+  }
+
+  /** Вопросы без ответа дольше суток — закрыть (зовётся по таймеру). */
+  async sweepProposals(now = new Date()) {
+    const before = new Date(now.getTime() - PROPOSAL_TTL_MS).toISOString();
+    const seen = new Set<number>();
+    for (const p of await this.store.openProposals(null, before)) {
+      if (seen.has(p.user_id)) continue;
+      seen.add(p.user_id);
+      const u = await this.store.user(p.user_id);
+      if (u) await this.closeProposals(u, "expired");
+    }
   }
 
   private async history(userId: number, beforeId: number) {
@@ -323,6 +490,7 @@ export class Pipeline {
     const p = persona(u.persona);
     const msg = messageId ? await s.message(messageId) : await s.lastDoneMessage(u.id);
     if (!msg || msg.user_id !== u.id) return "Нечего отменять.";
+    await this.closeProposals(u, "declined", msg.id);
     const acts = await s.actionsOf(msg.id);
     if (!acts.length) return "Нечего отменять.";
     await s.transaction(async () => {

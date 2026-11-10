@@ -49,6 +49,9 @@ const backup = tg
   : undefined;
 scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
 scheduler.start();
+// Вопросы «добавить?» без ответа дольше суток — закрыть (ничего не создают).
+const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => console.error("[proposals]", e)), 10 * 60_000);
+void pipeline.sweepProposals().catch(() => {});
 
 let botName: string | undefined;
 const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, push, botName: () => botName });
@@ -67,6 +70,7 @@ server.listen(config.port, async () => {
 
 const shutdown = async () => {
   scheduler?.stop();
+  clearInterval(sweep);
   if (tg && !config.publicUrl) await tg.bot.stop();
   server.close();
   await store.close();

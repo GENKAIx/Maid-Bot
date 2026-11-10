@@ -5,7 +5,7 @@ import { config, ROOT } from "./config.ts";
 import { issueToken } from "./auth.ts";
 import type { Store, User } from "./db.ts";
 import { habitLine, habitsOfDay } from "./habits.ts";
-import type { Pipeline, Reply } from "./pipeline.ts";
+import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
 import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, memoryText, plansText, tasksText, todayText } from "./report.ts";
 import type { Scheduler, Send } from "./scheduler.ts";
@@ -31,18 +31,43 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     return store.ensureUser(chat, ctx.from?.first_name ?? "", config.defaultTimezone);
   };
 
-  const replyKeyboard = (r: Reply) =>
-    r.undoable ? new InlineKeyboard().text("↩ Отменить", `undo:${r.messageId}`).text("📝 Это просто заметка", `note:${r.messageId}`) : undefined;
+  const undoRow = (kb: InlineKeyboard, messageId: number) => kb.text("↩ Отменить", `undo:${messageId}`).text("📝 Это просто заметка", `note:${messageId}`);
+  const replyKeyboard = (r: Reply) => {
+    if (r.proposal) return proposalKeyboard(r.proposal, r.undoable ? r.messageId : null);
+    return r.undoable ? undoRow(new InlineKeyboard(), r.messageId) : undefined;
+  };
+  // Вопрос «добавить?»: у нескольких пунктов — галочка на каждом (щелчок снимает/ставит), ниже ситуативная кнопка
+  // напоминания, «Добавить в …» и «Не надо»; под ними, если было что записать, — «Отменить» / «Это просто заметка».
+  function proposalKeyboard(p: Proposal, undoId: number | null) {
+    const kb = new InlineKeyboard();
+    if (p.items.length > 1) {
+      p.items.forEach((it, i) => kb.text(`${p.picked.includes(i) ? "☑" : "☐"} ${it.title}`.slice(0, 60), `prop:${p.id}:t:${i}`).row());
+    }
+    if (p.remind) kb.text(`✅ ${p.remind.label}`.slice(0, 60), `prop:${p.id}:r`).row();
+    kb.text(`✅ ${p.add}`, `prop:${p.id}:a`).text("Не надо", `prop:${p.id}:n`).row();
+    if (undoId) undoRow(kb, undoId);
+    return kb;
+  }
 
   async function answer(ctx: Context, u: User, r: Reply) {
     const markup = replyKeyboard(r);
     const img = emotionImage(u.persona, r.emotion);
-    if (img && r.text.length <= 1000) {
-      await ctx.replyWithPhoto(new InputFile(img), { caption: r.text, parse_mode: "HTML", reply_markup: markup });
-    } else {
-      await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: markup, link_preview_options: { is_disabled: true } });
-    }
+    const sent = img && r.text.length <= 1000
+      ? await ctx.replyWithPhoto(new InputFile(img), { caption: r.text, parse_mode: "HTML", reply_markup: markup })
+      : await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: markup, link_preview_options: { is_disabled: true } });
+    // Запомнить, где висит вопрос: ответят в приложении или он истечёт — кнопки отсюда уберутся.
+    if (r.proposal) await store.updateProposal(r.proposal.id, { tg_chat: String(sent.chat.id), tg_msg: sent.message_id });
   }
+
+  // Вопрос закрыт (где угодно): в Telegram заменить строку вопроса итогом и убрать кнопки вопроса.
+  pipeline.onProposal = async (_u, p, text) => {
+    if (!p.tg_chat || !p.tg_msg) return;
+    const kb = (await store.actionsOf(p.message_id)).length ? undoRow(new InlineKeyboard(), p.message_id) : undefined;
+    const opts = { parse_mode: "HTML" as const, reply_markup: kb };
+    await bot.api.editMessageText(p.tg_chat, p.tg_msg, text, { ...opts, link_preview_options: { is_disabled: true } })
+      .catch(() => bot.api.editMessageCaption(p.tg_chat!, p.tg_msg!, { caption: text, ...opts }))
+      .catch((e) => console.warn("[bot] вопрос не поправить:", e.message));
+  };
 
   // Чужим — только chat id, чтобы владелец мог себя добавить.
   bot.use(async (ctx, next) => {
@@ -202,6 +227,23 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const text = await pipeline.markHabit(u, Number(id), day, status as "done" | "skipped", "telegram");
     await ctx.answerCallbackQuery({ text: text.replace(/<[^>]+>/g, "").slice(0, 190) });
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  });
+
+  // Вопрос «добавить?»: t:N — галочка пункта, r — с напоминанием, a — в список, n — не надо.
+  bot.callbackQuery(/^prop:(\d+):(t:\d+|r|a|n)$/, async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return ctx.answerCallbackQuery();
+    const [, id, act] = ctx.match;
+    if (act.startsWith("t:")) {
+      const p = await pipeline.toggleProposal(u, Number(id), Number(act.slice(2)));
+      if (!p) return ctx.answerCallbackQuery({ text: "Этот вопрос уже закрыт." });
+      const msg = await store.proposal(p.id);
+      const undoId = msg && (await store.actionsOf(msg.message_id)).length ? msg.message_id : null;
+      await ctx.editMessageReplyMarkup({ reply_markup: proposalKeyboard(p, undoId) }).catch(() => {});
+      return ctx.answerCallbackQuery();
+    }
+    const r = await pipeline.decideProposal(u, Number(id), act === "r" ? "remind" : act === "a" ? "add" : "decline");
+    await ctx.answerCallbackQuery({ text: r.text.replace(/<[^>]+>/g, "").slice(0, 190) });
   });
 
   bot.callbackQuery(/^(undo|note|persona):(.+)$/, async (ctx) => {

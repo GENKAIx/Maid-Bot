@@ -142,6 +142,14 @@ export const ParseSchema = z.object({
   memory: arr(Memory),
   metrics: arr(Metric),
   habits: arr(Habit),
+  // Спорное — только предложить кнопками (см. правила промпта).
+  suggest_habits: arr(Habit),
+  suggest_tasks: arr(Task),
+  suggest_remind: z
+    .object({ label: str.min(1), time: optStr })
+    .nullable()
+    .optional()
+    .catch(null),
   habit_marks: arr(HabitMark),
   money: arr(Money),
   edits: arr(Edit),
@@ -169,6 +177,13 @@ export interface Parsed {
   memory: { kind: string; subject: string; text: string; replaces: number | null }[];
   metrics: { key: string; label: string; value: number; unit: string; note: string; dayKey: string }[];
   habits: { title: string; days: string; times: string[]; start: string; end: string | null }[];
+  /** Предложить, а не записывать: привычки из рассказа о распорядке, задачи из «надо бы когда-нибудь».
+   *  remind — ситуативная кнопка («Напоминать перед сном») и её время. */
+  suggest: {
+    habits: { title: string; days: string; times: string[]; start: string; end: string | null }[];
+    tasks: { title: string; priority: "high" | "normal" | "low"; due: string | null; category: string }[];
+    remind: { label: string; time: string } | null;
+  };
   marks: { habitId: number; status: "done" | "skipped"; dayKey: string }[];
   money: { kind: "income" | "expense"; amount: number; currency: string; category: string; note: string; dayKey: string }[];
   edits: { action: "cancel" | "done" | "move" | "reopen"; kind: "event" | "task" | "date" | "memory" | "habit"; id: number; newDate: string | null; newTime: string | null }[];
@@ -213,6 +228,9 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "diary": [{"section": "notes|sleep|food|sport|health|hobby|mood", "topic": "только для health: ${Object.keys(HEALTH_TOPICS).join("|")} или новое слово латиницей", "text": "...", "day_iso": "если не date_iso"}],
  "metrics": [{"key": "${Object.keys(METRICS).join("|")} или новый ключ латиницей", "label": "подпись по-русски для нового ключа", "value": 85.3, "unit": "", "note": "", "day_iso": null}],
  "habits": [{"title": "...", "days": "1234567 (1 — пн … 7 — вс)", "times": ["ЧЧ:ММ"], "start_iso": null, "end_iso": null, "duration_days": 30}],
+ "suggest_habits": [то же, что habits] — регулярные дела из рассказа о распорядке: не заводить, а спросить,
+ "suggest_tasks": [то же, что tasks] — дела из размышлений «надо бы как-нибудь…»: не записывать, а спросить,
+ "suggest_remind": {"label": "текст кнопки по смыслу, до 28 символов", "time": "ЧЧ:ММ"} или null,
  "habit_marks": [{"habit_id": 3, "status": "done|skipped", "day_iso": null}],
  "money": [{"kind": "income|expense", "amount": 450, "currency": "RUB|USD|EUR…", "category": "${MONEY_CATEGORIES.join("|")}", "note": "на что / от кого", "day_iso": null}],
  "tags": ["короткие теги"],
@@ -247,8 +265,16 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 - dates.yearly = true только для повторяющихся каждый год (дни рождения, годовщины, праздники).
 - Здоровье (самочувствие, врачи, таблетки, давление) — diary.health с topic. Числа (давление 130/85, пульс, вес) — ещё и metrics.
 - Числа дня — metrics: вес, часы сна, шаги, минуты спорта, оценки 1–10. Только названные числа, ничего не досчитывай.
-- Привычка — то, что надо делать регулярно («пить таблетку каждый день месяц», «зарядка по будням в 8»): habits.
+- Привычка — регулярное дело, которое пользователь сам хочет завести: «хочу каждый день…», «буду…», «напоминай…»,
+  «заведи привычку…», курс («пить таблетку каждый день месяц», «зарядка по будням в 8»): habits.
   «Каждый день месяц» — duration_days 30; без срока — end_iso и duration_days null. Время — только если названо.
+- Рассказ о том, как он обычно живёт («перед сном читаю и чищу зубы», «по утрам пью кофе») — НЕ habits:
+  это diary (и memory, если устойчиво), а регулярные дела оттуда — suggest_habits, горничная спросит кнопками.
+  suggest_remind — если у этих дел есть естественное время: label по смыслу («Напоминать перед сном», «Напоминать по утрам»),
+  time — названное или обычное для этого (перед сном — 22:30, утром — 08:00, после обеда — 14:00); неясно — null.
+- tasks — явные дела и просьбы («купить хлеб», «напомни позвонить маме», «надо сдать отчёт до пятницы»).
+  Размышления без решения («надо бы как-нибудь…», «хорошо бы когда-то…», «может, стоит…») — suggest_tasks.
+  Одно и то же не клади и в habits/tasks, и в suggest_*.
 - «Выпил таблетку», «сделал зарядку» про привычку из списка — habit_marks с её номером (не задача и не дневник).
   «Бросаю привычку X» — edits kind=habit action=cancel.
 - Деньги: «потратил 450 на такси», «пришло 30к за заказ» — money; сумма числом (30к = 30000), валюта по умолчанию RUB.
@@ -407,8 +433,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     });
   }
 
-  const habits: Parsed["habits"] = [];
-  for (const h of r.habits) {
+  const habitOf = (h: RawParse["habits"][number]): Parsed["habits"][number] => {
     const raw = Array.isArray(h.days) ? h.days.join("") : (h.days ?? "");
     const days = [...new Set(raw.replace(/[^1-7]/g, "").split(""))].sort().join("") || "1234567";
     const times = h.times.map(normalizeTime).filter((t): t is string => Boolean(t));
@@ -419,8 +444,20 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
       dropped.push(`habits: срок до начала «${h.title}»`);
       end = null;
     }
-    habits.push({ title: h.title, days, times: [...new Set(times)].sort(), start, end });
-  }
+    return { title: h.title, days, times: [...new Set(times)].sort(), start, end };
+  };
+  const habits = r.habits.map(habitOf);
+  const known = new Set([...habits.map((h) => h.title.toLowerCase()), ...tasks.map((t) => t.title.toLowerCase())]);
+  const remindTime = r.suggest_remind?.time ? normalizeTime(r.suggest_remind.time) : null;
+  const suggest: Parsed["suggest"] = {
+    habits: r.suggest_habits.map(habitOf).filter((h) => !known.has(h.title.toLowerCase())).slice(0, 8),
+    tasks: r.suggest_tasks
+      .filter((t) => !known.has(t.title.toLowerCase()))
+      .slice(0, 8)
+      .map((t) => ({ title: t.title, priority: t.priority ?? "normal", due: day(t.due_date, "suggest_tasks.due_date"), category: t.category ?? "" })),
+    remind: r.suggest_remind && remindTime ? { label: r.suggest_remind.label.slice(0, 40), time: remindTime } : null,
+  };
+  if (!suggest.habits.length) suggest.remind = null;
 
   const marks: Parsed["marks"] = r.habit_marks.map((m) => ({
     habitId: m.habit_id,
@@ -472,6 +509,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     memory: memory(r),
     metrics,
     habits,
+    suggest,
     marks,
     money,
     edits,

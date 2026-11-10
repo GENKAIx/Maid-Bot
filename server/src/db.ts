@@ -234,6 +234,29 @@ ALTER TABLE tasks ADD COLUMN closed_at TEXT;
 ALTER TABLE events ADD COLUMN repeat TEXT NOT NULL DEFAULT '';
 ALTER TABLE events ADD COLUMN series INTEGER;
 `,
+  // Шаг 6: спорное — подтвердить кнопками. Пользователь рассказал о своём распорядке или «надо бы когда-нибудь…» —
+  // горничная не заводит привычки и задачи сама, а предлагает (proposals). items — JSON пунктов, picked — JSON отмеченных номеров,
+  // remind — ситуативная кнопка «Напоминать перед сном» {label, time} или ''. status: open, accepted, declined, expired.
+  // tg_chat/tg_msg — сообщение в Telegram, чтобы убрать с него кнопки, когда ответили в другом месте.
+  // habits.quiet — привычка «в список», без напоминаний и вечерних вопросов.
+  `
+CREATE TABLE IF NOT EXISTS proposals (
+  id {pk},
+  user_id INTEGER NOT NULL,
+  message_id INTEGER NOT NULL,
+  text TEXT NOT NULL DEFAULT '',
+  ask TEXT NOT NULL DEFAULT '',
+  items TEXT NOT NULL,
+  picked TEXT NOT NULL DEFAULT '',
+  remind TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',
+  tg_chat TEXT,
+  tg_msg INTEGER,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS proposals_user ON proposals (user_id, status);
+ALTER TABLE habits ADD COLUMN quiet INTEGER NOT NULL DEFAULT 0;
+`,
 ];
 
 export interface User {
@@ -348,6 +371,22 @@ export interface HabitRow {
   end_date: string | null;
   status: string;
   message_id: number | null;
+  /** 1 — «в список»: без напоминаний и вечерних вопросов. */
+  quiet?: number;
+}
+export interface ProposalRow {
+  id: number;
+  user_id: number;
+  message_id: number;
+  text: string;
+  ask: string;
+  items: string;
+  picked: string;
+  remind: string;
+  status: "open" | "accepted" | "declined" | "expired";
+  tg_chat: string | null;
+  tg_msg: number | null;
+  created_at: string;
 }
 export interface MarkRow {
   id: number;
@@ -756,8 +795,8 @@ export class Store {
   // --- привычки ---
   addHabit(h: Omit<HabitRow, "id" | "status"> & { status?: string }): Promise<number> {
     return this.insert(
-      "INSERT INTO habits (user_id, title, days, times, start_date, end_date, status, message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      h.user_id, h.title, h.days, h.times, h.start_date, h.end_date, h.status ?? "active", h.message_id, now(),
+      "INSERT INTO habits (user_id, title, days, times, start_date, end_date, status, message_id, quiet, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      h.user_id, h.title, h.days, h.times, h.start_date, h.end_date, h.status ?? "active", h.message_id, h.quiet ?? 0, now(),
     );
   }
   habit(id: number): Promise<HabitRow | undefined> {
@@ -819,6 +858,26 @@ export class Store {
       "INSERT INTO reminders (user_id, ref_kind, ref_id, due_at, text, buttons) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (ref_kind, ref_id, due_at) DO NOTHING",
       userId, refKind, refId, dueAt.toISOString(), text, buttons,
     );
+  }
+
+  // --- предложения (подтвердить кнопками) ---
+  addProposal(p: Pick<ProposalRow, "user_id" | "message_id" | "text" | "ask" | "items" | "picked" | "remind">): Promise<number> {
+    return this.insert(
+      "INSERT INTO proposals (user_id, message_id, text, ask, items, picked, remind, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      p.user_id, p.message_id, p.text, p.ask, p.items, p.picked, p.remind, now(),
+    );
+  }
+  proposal(id: number): Promise<ProposalRow | undefined> {
+    return this.get<ProposalRow>("SELECT * FROM proposals WHERE id = ?", id);
+  }
+  /** Открытые: у одного пользователя или (без userId) у всех, созданные раньше before. */
+  openProposals(userId: number | null, before?: string): Promise<ProposalRow[]> {
+    return userId === null
+      ? this.all<ProposalRow>("SELECT * FROM proposals WHERE status = 'open' AND created_at < ? ORDER BY id", before ?? now())
+      : this.all<ProposalRow>("SELECT * FROM proposals WHERE user_id = ? AND status = 'open' ORDER BY id", userId);
+  }
+  async updateProposal(id: number, patch: Partial<Pick<ProposalRow, "picked" | "status" | "tg_chat" | "tg_msg">>) {
+    for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE proposals SET ${k} = ? WHERE id = ?`, v as never, id);
   }
 
   // --- лента уведомлений ---

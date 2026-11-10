@@ -8,7 +8,7 @@ import type { Store, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { habitMonth, habitsOfDay } from "./habits.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
-import type { Pipeline } from "./pipeline.ts";
+import { proposalView, type Pipeline } from "./pipeline.ts";
 import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
@@ -470,6 +470,18 @@ export function createApi(deps: ApiDeps) {
       if (!heard) throw new HttpError(422, "ничего не расслышала");
       const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: heard.slice(0, 4000) });
       return { ...r, heard };
+    }
+    // Вопрос «добавить?» из ответа: action remind / add / decline, picked — отмеченные пункты. GET — его состояние
+    // (приложение убирает кнопки, если ответили в Telegram).
+    const prop = p.match(/^\/api\/proposals\/(\d+)$/);
+    if (prop && m === "GET") {
+      const row = await store.proposal(Number(prop[1]));
+      if (!row || row.user_id !== u.id) throw new HttpError(404, "нет вопроса");
+      return proposalView(row);
+    }
+    if (prop && m === "POST") {
+      const b = parseBody(z.object({ action: z.enum(["remind", "add", "decline"]), picked: z.array(z.number().int().min(0)).max(20).optional() }), await readJson(req));
+      return pipeline.decideProposal(u, Number(prop[1]), b.action, b.picked);
     }
     if (m === "POST" && p === "/api/undo") {
       const b = parseBody(z.object({ messageId: z.number().int().optional() }), await readJson(req));

@@ -139,14 +139,17 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null } = {}) {
   const b = $("#bubble");
   delete b.dataset.quip;
+  stopProposal();
+  if (proposal && proposal.status !== "open") proposal = null;
   if (text !== "…") openForMessage();
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
   if (days.length) text = text.replace(/\n📅 .*$/, "");
   // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
-  const plain = changes.length ? text.split("\n")[0] : text;
+  // С вопросом «добавить?» — ещё и сам вопрос (последняя строка).
+  const plain = changes.length ? text.split("\n")[0] + (proposal ? "\n" + text.split("\n").at(-1) : "") : text;
   $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + tgHtml(plain);
   const cards = $("#bubbleCards");
   cards.innerHTML = "";
@@ -171,16 +174,32 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     el.onclick = () => maid.openDay(d);
     cards.appendChild(el);
   }
+  // Вопрос «добавить?»: пункты (у нескольких — галочки, по умолчанию отмечены все).
+  if (proposal) {
+    const list = document.createElement("div");
+    list.className = "prop-list";
+    const many = proposal.items.length > 1;
+    list.innerHTML = proposal.items.map((it, i) => `<label class="prop-item${many ? "" : " one"}">${many ? `<input type="checkbox" data-pi="${i}"${proposal.picked.includes(i) ? " checked" : ""}>` : ""}<span><b>${esc(it.title)}</b>${it.detail ? `<i>${esc(it.detail)}</i>` : ""}</span></label>`).join("");
+    list.style.animationDelay = `${160 + changes.length * 140}ms`;
+    cards.appendChild(list);
+  }
   const acts = $("#bubbleActions");
-  acts.innerHTML = buttons.map((x, i) => `<button data-i="${i}">${esc(x.text)}</button>`).join("")
-    + (undo ? `<button data-i="undo">↩ Отменить</button>` : "") + `<button class="ghost" data-i="close">✕</button>`;
+  acts.innerHTML = proposal
+    ? (proposal.remind ? `<button class="prop-yes" data-p="remind">✅ ${esc(proposal.remind.label)}</button>` : "")
+      + `<button class="prop-yes" data-p="add">✅ ${esc(proposal.add)}</button>`
+      + `<button class="prop-no" data-p="decline" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">Не надо</span></button>`
+      + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
+    : buttons.map((x, i) => `<button data-i="${i}">${esc(x.text)}</button>`).join("")
+      + (undo ? `<button data-i="undo">↩ Отменить</button>` : "") + `<button class="ghost" data-i="close">✕</button>`;
   // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
   b.dataset.notice = notice ?? "";
   $("#inbox").classList.add("away"); // пока говорит — значок не мешает облачку
   b.onmouseenter = notice && !buttons.length
     ? () => setTimeout(() => { if (b.dataset.notice === String(notice) && !b.classList.contains("hidden")) inboxRead(notice); }, 1200)
     : null;
+  if (proposal) startProposal(proposal);
   acts.querySelectorAll("button").forEach((btn) => {
+    if (btn.dataset.p) return; // кнопки вопроса «добавить?» — startProposal
     btn.onclick = async () => {
       if (notice) inboxRead(notice);
       if (btn.dataset.i === "close") return hideBubble();
@@ -224,8 +243,80 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   }
   if (sound) play(sound);
   clearTimeout(bubbleTimer);
+  // Вопрос «добавить?» облачко закрывает сам (полоса на «Не надо»).
+  if (proposal) ms = 0;
   // Длинный текст висит дольше (время на чтение), а под курсором не пропадает вовсе — см. hideBubbleWhenFree.
   if (ms) bubbleTimer = setTimeout(hideBubbleWhenFree, ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55));
+}
+
+// --- вопрос «добавить?» (привычки из рассказа о распорядке, задачи из «надо бы…») ---
+// Кнопка «Не надо» заполняется спокойной полосой PROPOSAL_WAIT мс; пока курсор на облачке — пауза; дошла — «Не надо», облачко закрывается.
+// Ответили в Telegram — облачко само закрывается (раз в 4 с спрашивает сервер).
+const PROPOSAL_WAIT = 12000;
+let propRun = null;
+function stopProposal() {
+  if (!propRun) return;
+  cancelAnimationFrame(propRun.raf);
+  clearInterval(propRun.poll);
+  propRun = null;
+}
+function startProposal(p) {
+  const b = $("#bubble");
+  const acts = $("#bubbleActions");
+  const fill = acts.querySelector(".prop-no .fill");
+  const run = (propRun = { id: p.id, left: PROPOSAL_WAIT, last: performance.now(), raf: 0, poll: 0, busy: false });
+  const picked = () => {
+    const boxes = [...$("#bubbleCards").querySelectorAll("input[data-pi]")];
+    return boxes.length ? boxes.filter((x) => x.checked).map((x) => Number(x.dataset.pi)) : p.items.map((_, i) => i);
+  };
+  const decide = async (action, quiet = false) => {
+    if (run.busy || propRun !== run) return;
+    run.busy = true;
+    const choice = action === "decline" ? [] : picked();
+    if (action !== "decline" && !choice.length) {
+      run.busy = false;
+      play("oops");
+      acts.classList.remove("shake");
+      void acts.offsetWidth;
+      return acts.classList.add("shake");
+    }
+    stopProposal();
+    if (action === "decline") {
+      popTone(-3, { vol: 0.12, soft: true });
+      if (quiet) hideBubble();
+    } else popTone(3);
+    try {
+      const r = await maid.api("POST", `/api/proposals/${p.id}`, { action, picked: action === "decline" ? undefined : choice });
+      if (action === "decline" && quiet) return;
+      if (r.done && action !== "decline") {
+        say(r.text, { changes: r.changes ?? [], ms: 6000, sound: "ding", mood: "done" });
+        maid.changed();
+      } else say(r.text, { ms: 4000 });
+    } catch (e) {
+      if (!quiet) say(e.message, { ms: 6000, emotion: "worried" });
+    }
+  };
+  acts.querySelectorAll("button[data-p]").forEach((btn) => (btn.onclick = () => decide(btn.dataset.p)));
+  const tick = (t) => {
+    if (propRun !== run) return;
+    const dt = t - run.last;
+    run.last = t;
+    // Пауза, пока курсор на облачке (или облачко скрыто под свёрнутой панелью).
+    if (!b.matches(":hover") && !b.classList.contains("hidden")) run.left -= dt;
+    if (fill) fill.style.transform = `scaleX(${Math.min(1, 1 - run.left / PROPOSAL_WAIT)})`;
+    if (run.left <= 0) return void decide("decline", true);
+    run.raf = requestAnimationFrame(tick);
+  };
+  run.raf = requestAnimationFrame(tick);
+  run.poll = setInterval(async () => {
+    try {
+      const now = await maid.api("GET", `/api/proposals/${p.id}`);
+      if (propRun === run && now.status !== "open") {
+        stopProposal();
+        hideBubble();
+      }
+    } catch { /* нет связи — ждём */ }
+  }, 4000);
 }
 
 // Облачко ждёт, пока курсор на нём, и ещё немного после того, как его увели.
@@ -291,7 +382,7 @@ async function pump() {
     const r = await maid.api("POST", m.path, m.body);
     outbox = outbox.filter((x) => x !== m);
     remember(m.body.text || r.heard || m.label, r);
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r) });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal });
     maid.changed();
   } catch (e) {
     if (offline(e)) {
@@ -514,6 +605,7 @@ chatInput.addEventListener("keydown", (e) => {
   }
 });
 function hideBubble() {
+  stopProposal();
   $("#bubble").classList.add("hidden");
   maid.hover(false);
   $("#inbox").classList.remove("away");
@@ -1204,7 +1296,7 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => setState(on ? "think" : isNight() ? "sleep" : "idle"));
-maid.on("reply", (r) => remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r) }));
+maid.on("reply", (r) => remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal }));
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам

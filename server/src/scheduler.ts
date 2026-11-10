@@ -116,7 +116,7 @@ export class Scheduler {
   private async habits(u: User, now: Date) {
     const today = dayKey(now, u.tz);
     for (const d of await habitsOfDay(this.store, u, today)) {
-      if (d.status) continue;
+      if (d.status || d.habit.quiet) continue;
       for (const t of d.times.length ? d.times : [habitAskTime(u)]) {
         if (!this.due(u, t, now, HABIT_LATE_MIN) || !(await this.store.once(`habit:${d.habit.id}:${today}:${t}`))) continue;
         await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today));
