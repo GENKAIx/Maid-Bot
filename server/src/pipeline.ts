@@ -64,11 +64,15 @@ export async function promptLists(s: Store, userId: number, today: string, text:
   const memory = capped([...(await s.activeMemory(userId))].reverse(), PROMPT_CAP.memory, words, (m) => `${m.subject} ${m.text}`).reverse();
   return {
     events: capped(await s.eventsBetween(userId, addDays(today, -1), addDays(today, 45)), PROMPT_CAP.events, words, (e) => e.title),
+    trash: await s.eventsClosedSince(userId, addDays(today, -1), new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString()),
     tasks: capped(await s.openTasks(userId), PROMPT_CAP.tasks, words, (t) => t.title),
     dates: capped(dates, PROMPT_CAP.dates, words, (d) => `${d.title} ${d.person ?? ""}`),
     memory,
   };
 }
+
+/** Сколько дней отменённый или удалённый план виден разбору в «Корзине» (можно вернуть словами). */
+const TRASH_DAYS = 14;
 
 /** Через сколько минут после сообщения повторять неудавшийся разбор; после последней попытки — заметкой. */
 export const RETRY_AFTER_MIN = [2, 10, 30];
@@ -200,15 +204,22 @@ export class Pipeline {
 
     let parsed: Parsed;
     try {
-      const raw = await this.llm(
-        [
-          { role: "system", content: buildPrompt(ctx, p.voice) },
-          ...(await this.history(u.id, message.id)),
-          { role: "user", content: text, images: pics },
-        ],
-        { json: true },
-      );
-      parsed = normalize(extractJson(raw), { today, now: ctx.now, text: inc.text });
+      const ask = [
+        { role: "system" as const, content: buildPrompt(ctx, p.voice) },
+        ...(await this.history(u.id, message.id)),
+        { role: "user" as const, content: text, images: pics },
+      ];
+      let raw = await this.llm(ask, { json: true });
+      let json: unknown;
+      try {
+        json = extractJson(raw);
+      } catch {
+        // Модель иногда отвечает словами вместо JSON — один раз переспрашиваем, только потом это сбой.
+        console.warn("[parse] без JSON, переспрашиваю:", raw.slice(0, 200));
+        raw = await this.llm([...ask, { role: "assistant", content: raw }, { role: "user", content: "Ответь одним JSON-объектом по схеме из инструкции, без текста вокруг." }], { json: true });
+        json = extractJson(raw);
+      }
+      parsed = normalize(json, { today, now: ctx.now, text: inc.text });
     } catch (e) {
       await s.setMessage(message.id, { state: "failed", reply: String(e) });
       console.error("[parse]", e);

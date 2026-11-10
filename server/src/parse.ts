@@ -208,6 +208,8 @@ export interface ParseContext {
   dates: DateRow[];
   memory: MemoryRow[];
   habits: HabitRow[];
+  /** Корзина: отменённые и удалённые планы за последние дни — их можно вернуть (edits reopen). */
+  trash?: EventRow[];
   recent: { role: "user" | "assistant"; text: string }[];
   /** Если ответ на уточнение — исходное сообщение и вопрос. */
   clarifying?: { original: string; question: string };
@@ -218,6 +220,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
   const tks = ctx.tasks.map((t) => `#${t.id} ${t.title}${t.due_date ? " (до " + t.due_date + ")" : ""}`).join("\n") || "нет";
   const dts = ctx.dates.map((d) => `#${d.id} ${d.date_iso.slice(5)} — ${d.title}`).join("\n") || "нет";
   const mem = ctx.memory.map((m) => `#${m.id} [${m.kind}] ${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n") || "нет";
+  const bin = (ctx.trash ?? []).map((e) => `#${e.id} ${e.date_iso}${e.time ? " " + e.time : ""} — ${e.title} (${e.status === "deleted" ? "удалено" : "отменено"})`).join("\n") || "пусто";
   const hab = ctx.habits.map((h) => `#${h.id} ${h.title} (дни ${h.days}${h.end_date ? ", до " + h.end_date : ""})`).join("\n") || "нет";
   return `Ты разбираешь сообщения пользователя для его личного дневника-помощника.
 Сегодня ${ctx.today} (${weekdayLong(ctx.today)}), сейчас ${ctx.now}, часовой пояс ${ctx.tz}.
@@ -262,6 +265,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 - «Вчера я …» — day_iso вчерашнего дня. Записи о сне после полуночи относятся к ночи, которая началась вчера.
 - edits: только по номерам из списков ниже. «Встречу с Петей перенесли на пятницу» — move с new_date.
   «Сделал лампочку» — done для задачи. «Переименуй "врач" в "стоматолог"» — rename с new_title (только план или задача). Если номер неясен — clarify.
+  «Верни/восстанови … (из корзины)», «отмени удаление» — reopen kind=event с номером из «Корзины»; несколько похожих — ближайший по дате.
 - Время «в 7» без утра/вечера, где оба варианта правдоподобны — clarify. «Завтра в 7 утра» — 07:00.
 - dates.yearly = true только для повторяющихся каждый год (дни рождения, годовщины, праздники).
 - Здоровье (самочувствие, врачи, таблетки, давление) — diary.health с topic. Числа (давление 130/85, пульс, вес) — ещё и metrics.
@@ -300,6 +304,8 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 
 Ближайшие планы:
 ${evs}
+Корзина (отменённые и удалённые планы):
+${bin}
 Открытые задачи:
 ${tks}
 Важные даты:

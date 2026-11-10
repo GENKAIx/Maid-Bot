@@ -390,3 +390,21 @@ test("переименовать задачу словами — rename с new_t
   await pipe.undo(u);
   assert.equal((await store.task(t))!.title, "врач");
 });
+
+test("«верни план из корзины» — модель видит корзину, а ответ словами переспрашивается", async () => {
+  const store = await Store.open(":memory:");
+  const u = await store.ensureUser("100", "Тест", TZ);
+  const ev = (status: string) => store.addEvent({ user_id: u.id, title: "Тест", date_iso: "2026-11-09", time: "12:00", end_time: null, details: "", domain: "", message_id: null, status });
+  const gone = await ev("deleted");
+  await ev("cancelled");
+  const calls: ChatMessage[][] = [];
+  const answers = ["Сейчас верну план «Тест» из корзины!", JSON.stringify({ summary: "s", edits: [{ action: "reopen", kind: "event", id: gone }] })];
+  const llm: LlmCall = async (m) => { calls.push(m); return answers.shift() ?? "{}"; };
+  const pipe = new Pipeline(store, llm);
+  const r = await pipe.handle({ user: u, ...msg("верни ближайший план с тестом из корзины", "bin1") });
+  assert.ok(calls[0][0].content.includes(`Корзина (отменённые и удалённые планы):`) && calls[0][0].content.includes(`#${gone} 2026-11-09 12:00 — Тест (удалено)`));
+  assert.equal(calls.length, 2);
+  assert.equal(r.failed, undefined);
+  assert.match(r.text, /снова в планах: Тест/);
+  assert.equal((await store.event(gone))!.status, "active");
+});
