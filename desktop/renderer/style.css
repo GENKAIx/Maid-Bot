@@ -215,7 +215,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .chat .field { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 2px; min-height: 36px; box-sizing: border-box; padding: 0 4px 0 3px;
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: 18px; transition: border-color .15s ease, box-shadow .15s ease; }
 .chat .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(183,156,255,.2); }
-.chat textarea { flex: 1; min-width: 0; resize: none; min-height: 34px; max-height: 116px; line-height: 1.35; overflow-y: auto; background: transparent; border: 0; border-radius: 0; padding: 7px 6px 7px 2px; font-size: 13.5px; }
+.chat textarea { flex: 1; min-width: 0; resize: none; min-height: 34px; max-height: 116px; line-height: 1.35; overflow-y: auto; background: transparent; border: 0; border-radius: 0; padding: 8px 6px 7px 2px; font-size: 13.5px; }
 .chat textarea:focus { border: 0; box-shadow: none; outline: none; }
 .chat button.plus { flex: none; width: 28px; height: 28px; margin: 3px 0; border-radius: 50%; display: grid; place-items: center; background: transparent; color: var(--muted); transition: background .15s ease, color .15s ease, transform .2s ease; }
 .chat button.plus:hover { background: rgba(255,255,255,.12); color: var(--text, #fff); transform: rotate(90deg); }
