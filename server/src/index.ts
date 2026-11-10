@@ -1,3 +1,4 @@
+import path from "node:path";
 import { webhookCallback } from "grammy";
 import { createApi } from "./api.ts";
 import { createBot } from "./bot.ts";
@@ -10,6 +11,7 @@ import { Pipeline } from "./pipeline.ts";
 import { WIDGET_UPDATES } from "./widget.ts";
 import { Push } from "./push.ts";
 import { Scheduler, type Send } from "./scheduler.ts";
+import { takeSnapshot } from "./snapshot.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
@@ -50,7 +52,14 @@ const backup = tg
     }
   : undefined;
 scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
-scheduler.extra = (now) => pipeline.retryFailed((u, text, emotion) => send(u, text, emotion), now);
+// Ночной снимок всей базы (SQLite) — раз в сутки после 00:00 UTC, в snapshots/ рядом с базой (snapshot.ts).
+const snapshotDir = config.dbFile && !config.databaseUrl ? path.join(path.dirname(config.dbFile), "snapshots") : null;
+scheduler.extra = async (now) => {
+  await pipeline.retryFailed((u, text, emotion) => send(u, text, emotion), now);
+  if (snapshotDir && (await store.once(`snapshot:${now.toISOString().slice(0, 10)}`))) {
+    await takeSnapshot(store, snapshotDir, now).then((f) => f && console.log("[snapshot]", f)).catch((e) => console.error("[snapshot]", e));
+  }
+};
 scheduler.start();
 // Вопросы «добавить?» без ответа дольше суток — закрыть (ничего не создают).
 const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => console.error("[proposals]", e)), 10 * 60_000);

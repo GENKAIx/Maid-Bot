@@ -1007,11 +1007,15 @@ export class Store {
   /** Поставить отметку один раз; true — если её ещё не было. */
   /** Отметки «уже отправлено» (once), поставленные раньше before, — удалить: таблица иначе только растёт. Возвращает, сколько удалено. */
   pruneOnce(before: Date): Promise<number> {
-    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune"];
+    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot"];
     return this.run(
       `DELETE FROM kv WHERE value < ? AND (${kinds.map(() => "key LIKE ?").join(" OR ")})`,
       before.toISOString(), ...kinds.map((k) => `${k}:%`),
     );
+  }
+  /** Команда без разбора результата (снимок базы: VACUUM INTO). */
+  async raw(sql: string, ...args: unknown[]): Promise<void> {
+    await this.driver.run(sql, args);
   }
   async once(key: string): Promise<boolean> {
     return (await this.run("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING", key, now())) > 0;
