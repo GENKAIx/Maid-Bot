@@ -344,7 +344,9 @@ function drawPlanList(box) {
       tasks = onlyTasks;
     }
   }
+  // После приезда — пустые места до foldSlots (цепочка дней: место под самый занятый день, панель не прыгает).
   const hold = collapsed && foldFly === "fly" ? Math.max(1, foldSlots) : 0;
+  const pad = collapsed && foldFly === "land" ? Math.max(0, foldSlots - shown.length - tasks.length) : 0;
   const dayName = today ? "Сегодня" : humanDay(clockDay);
   const count = [open && `${open} ${planWord(open)}`, tasks.length && `${tasks.length} ${taskWord(tasks.length)}`].filter(Boolean).join(" · ") || "планов нет";
   const taskCard = (t) => `<li class="pl-card pl-task${clockFresh.has(`t${t.id}`) ? " fresh" : ""}${clockDay < data.day ? " late" : ""}" data-task="${t.id}">
@@ -373,7 +375,7 @@ function drawPlanList(box) {
     </div>
     <div class="pl-top"><span>Планы на день</span></div>
     ${hold ? `<ul class="pl-list">${'<li class="pl-card pl-hold"></li>'.repeat(hold)}</ul>`
-    : shown.length || shownPins.length || tasks.length ? `<ul class="pl-list">${shownPins.map(pinCard).join("")}${tasks.map(taskCard).join("")}${shown.map(card).join("")}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
+    : shown.length || shownPins.length || tasks.length ? `<ul class="pl-list">${shownPins.map(pinCard).join("")}${tasks.map(taskCard).join("")}${shown.map(card).join("")}${'<li class="pl-card pl-hold"></li>'.repeat(pad)}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
   // Цвет полоски карточки — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
   for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
   // Заливка продолжает идти с того же места, хотя список перерисован.
@@ -616,7 +618,9 @@ new ResizeObserver(() => syncDrawer()).observe($("#planClock"));
 function hideClockLater(ms = CLOCK_SHOWN) {
   if (collapsed) ms = Math.min(ms, DRAWER_SHOWN);
   clearTimeout(clockHideTimer);
-  clockHideTimer = setTimeout(() => (clockHover ? hideClockLater() : hideClock()), ms);
+  // Пока полоса едет или карточки летят (и между днями цепочки) — не прятать, подождать.
+  const busy = () => $("#planClock").classList.contains("flying") || performance.now() < dropUntil;
+  clockHideTimer = setTimeout(() => (clockHover ? hideClockLater() : busy() ? hideClockLater(Math.min(ms, 1200)) : hideClock()), ms);
 }
 
 // После каждой загрузки данных: что из планов появилось, поменялось или пропало (неважно, где — здесь, в Telegram, с телефона).
@@ -667,6 +671,10 @@ function watchPlans() {
   }
   const day = fresh[0]?.date_iso ?? freshTasks[0]?.due_date ?? (gone.find((e) => e._out) ?? gone[0]).date_iso;
   const freshKeys = [...fresh.map((e) => e.id), ...freshTasks.map((t) => `t${t.id}`)];
+  // Записи легли на разные дни или ушли с разных дней (несколько одним сообщением): полоса едет по этим дням по очереди (chainDays).
+  const chain = [...new Set([...fresh.map((e) => e.date_iso), ...freshTasks.map((t) => t.due_date), ...gone.filter((e) => e._out).map((e) => e.date_iso)])]
+    .filter((d) => d >= data.day).sort();
+  if (chain.length > 1 && $("#planClock").classList.contains("hidden")) return chainDays(chain, fresh, freshTasks, gone);
   // Панель была спрятана, а план — на другой день: едем к нему по полосе (свои действия в открытой панели — без этого).
   if ((freshKeys.length || gone.some((e) => e._out)) && day > data.day && $("#planClock").classList.contains("hidden")) {
     const days = new Set([...fresh.map((e) => e.date_iso), ...freshTasks.map((t) => t.due_date)]);
@@ -970,14 +978,15 @@ function stopFly() {
 }
 // start — полоса едет не от сегодня, а от этого дня (номер от сегодня) с того места, где стоит (перенос плана, moveDay);
 // then — по приезде вместо выпадения новых карточек (первая часть переноса).
-function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = null } = {}) {
+// next — после приезда и выпадения карточек ехать дальше (chainDays); slots — место под свёрнутой карточкой на всю цепочку.
+function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = null, next = null, slots = null } = {}) {
   const n = daysFrom(data.day, day);
   if (n <= 0 && start === null) return showClock(day, { fresh, gone });
   const run = ++flyRun;
   const s0 = start === null ? 0 : stripFrom;
   stripFrom = s0;
   foldFly = collapsed ? "fly" : null;
-  foldSlots = Math.max(fresh.length + gone.filter((e) => e._out || e._mv).length, start === null ? 0 : 1);
+  foldSlots = slots ?? Math.max(fresh.length + gone.filter((e) => e._out || e._mv).length, start === null ? 0 : 1);
   if (start === null) showClock(data.day, { fresh, open: true }); // open — чтобы панель выдвинулась и под свёрнутой карточкой
   else {
     clockDay = dayAfter(data.day, start);
@@ -1072,8 +1081,10 @@ function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = n
     flyCarry = null;
     // Отменённые и удалённые — зачёркиваются и улетают в чип своего дня.
     const out = ejectGone(box, day, 160 + cards.length * 140 + 200);
-    dropUntil = performance.now() + Math.max(160 + cards.length * 140 + 1400, out);
+    const settle = Math.max(160 + cards.length * 140 + 1400, out);
+    dropUntil = performance.now() + settle + (next ? 500 : 0);
     loadFar();
+    if (next) return void setTimeout(() => { if (run === flyRun) next(); }, settle + 250);
     hideClockLater(FLY_SHOWN + out);
   };
   flyNote = " "; // заголовок с местом под «через N дней»
@@ -1083,6 +1094,31 @@ function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = n
     rail = mount();
     requestAnimationFrame((a) => frame(a, a));
   }, 420);
+}
+// Несколько записей на разных днях: полоса едет к первому дню, там новые выпадают и ушедшие улетают в чип, потом от него — к следующему,
+// и так до CHAIN_DAYS дней (остальные — «ещё N» в заголовке). Под свёрнутой карточкой место — под самый занятый день, панель не прыгает.
+const CHAIN_DAYS = 3;
+function chainDays(all, fresh, freshTasks, gone) {
+  const days = all.slice(0, CHAIN_DAYS);
+  const keysOn = (d) => [...fresh.filter((e) => e.date_iso === d).map((e) => e.id), ...freshTasks.filter((t) => t.due_date === d).map((t) => `t${t.id}`)];
+  const goneOn = (d) => gone.filter((e) => e.date_iso === d);
+  const slots = Math.max(...days.map((d) => keysOn(d).length + goneOn(d).filter((e) => e._out).length));
+  const step = (i) => {
+    const d = days[i];
+    const opts = { fresh: keysOn(d), gone: goneOn(d), more: all.length - 1 - i, slots, next: i < days.length - 1 ? () => step(i + 1) : null };
+    if (i) return flyToDay(d, { ...opts, start: daysFrom(data.day, days[i - 1]) });
+    if (d > data.day) return flyToDay(d, opts);
+    // Первый день — сегодня: полоса уже на нём, отсюда и едем дальше.
+    foldFly = collapsed ? "land" : null;
+    showClock(d, { fresh: opts.fresh, gone: opts.gone, open: true });
+    const box = $("#planClock");
+    if (box.classList.contains("hidden")) return;
+    clearTimeout(clockHideTimer);
+    const run = flyRun;
+    const out = opts.gone.filter((e) => e._out).length;
+    setTimeout(() => { if (run === flyRun && !box.classList.contains("hidden")) step(1); }, Math.max(1500 + opts.fresh.length * 140, out ? 1900 + out * 180 : 0));
+  };
+  step(0);
 }
 // Перенос плана на другой день: полоса едет к старому дню, карточка там поднимается, уменьшается в билетик над чипом дня,
 // едет с выделением по полосе к новому дню и выпадает в его список, как новая.
