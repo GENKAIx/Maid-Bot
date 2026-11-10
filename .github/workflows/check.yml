@@ -1,0 +1,17 @@
+# Проверки при каждой отправке в GitHub: типы и тесты сервера, сборка сайта (с проверкой типов), синтаксис программы на ПК.
+name: Проверки
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm --workspace server run typecheck
+      - run: npm --workspace server test
+      - run: npm --workspace web run build
+      - run: for f in desktop/src/*.js desktop/renderer/*.js; do node --check "$f"; done
