@@ -329,9 +329,13 @@ export function createApi(deps: ApiDeps) {
       const t = await store.task(Number(task[1]));
       if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
       if (!b.status && !b.due_date) throw new HttpError(400, "нужно status или due_date");
-      await store.updateTask(t.id, b);
-      pipeline.changed(u);
-      return store.task(t.id);
+      // В журнал отмены: «Отменить» (и «Вернуть» после удаления) откатывает правку мышью.
+      const what = b.status === "deleted" ? "🗑" : b.status === "done" ? "✓" : b.status ? "✎" : "↪";
+      const undo = await pipeline.manual(u, `${what} ${t.title}`, async (log) => {
+        await log("tasks", t.id, { status: t.status, due_date: t.due_date });
+        await store.updateTask(t.id, b);
+      });
+      return { ...(await store.task(t.id)), undo };
     }
 
     // Задача становится планом (ПКМ по задаче в виджете → «Задать время» или «Повторять…»): план с тем же названием на её день
@@ -386,17 +390,20 @@ export function createApi(deps: ApiDeps) {
       if (b.time && b.end_time && b.end_time <= b.time) throw new HttpError(400, "конец раньше начала");
       const e = await store.event(Number(ev[1]));
       if (!e || e.user_id !== u.id) throw new HttpError(404, "нет плана");
-      await store.updateEvent(e.id, {
-        ...(b.status ? { status: b.status } : {}),
-        ...(b.date ? { date_iso: b.date } : {}),
-        ...(b.time ? { time: b.time, end_time: b.end_time ?? null } : {}),
-        ...(b.time === null ? { time: null, end_time: null } : {}),
+      const what = b.status === "done" ? "✓" : b.status === "cancelled" ? "✕" : b.status ? "✎" : "↪";
+      const undo = await pipeline.manual(u, `${what} ${e.title}`, async (log) => {
+        await log("events", e.id, { status: e.status, date_iso: e.date_iso, time: e.time, end_time: e.end_time });
+        await store.updateEvent(e.id, {
+          ...(b.status ? { status: b.status } : {}),
+          ...(b.date ? { date_iso: b.date } : {}),
+          ...(b.time ? { time: b.time, end_time: b.end_time ?? null } : {}),
+          ...(b.time === null ? { time: null, end_time: null } : {}),
+        });
+        await store.cancelReminders("event", e.id);
+        const now = (await store.event(e.id))!;
+        if (now.status === "active") await planEventReminders(store, u, now, new Date());
       });
-      if (b.date || b.time !== undefined) pipeline.changed(u);
-      await store.cancelReminders("event", e.id);
-      const now = (await store.event(e.id))!;
-      if (now.status === "active") await planEventReminders(store, u, now, new Date());
-      return now;
+      return { ...(await store.event(e.id))!, undo };
     }
 
     // Повтор плана (ПКМ по плану в виджете → окно настройки): repeat — настройка (repeat.ts) или null — перестать повторять.

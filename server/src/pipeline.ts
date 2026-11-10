@@ -553,6 +553,20 @@ export class Pipeline {
     return p.undone;
   }
 
+  /** Правка мышью (виджет, сайт): служебное сообщение с журналом, чтобы «Отменить» её откатило, как сказанное словами.
+   *  fn делает правку и пишет в журнал: log(таблица, id, как было). Возвращает id сообщения (для кнопки «Вернуть»). */
+  async manual(u: User, text: string, fn: (log: (tbl: Table, id: number, before: unknown) => Promise<void>) => Promise<void>, source = "panel"): Promise<number> {
+    const s = this.store;
+    const at = new Date();
+    const { message } = await s.saveMessage({
+      userId: u.id, source, sourceId: `edit:${at.getTime()}:${Math.random().toString(36).slice(2, 8)}`, text, dayKey: dayKey(at, u.tz), at,
+    });
+    await s.transaction(() => fn((tbl, id, before) => s.logAction(u.id, message.id, "edit", tbl, id, before)));
+    await s.setMessage(message.id, { state: "done", reply: text });
+    this.changed(u);
+    return message.id;
+  }
+
   /** Отметить привычку кнопкой (уведомление, приложение). Отменяется, как сообщение. */
   async markHabit(u: User, habitId: number, day: string, status: MarkRow["status"], source = "button"): Promise<string> {
     const r = await this.markHabitOne(u, habitId, day, status, source);

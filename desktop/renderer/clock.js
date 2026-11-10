@@ -473,9 +473,10 @@ async function deleteTask(t, li) {
   li.style.height = `${li.offsetHeight}px`;
   li.classList.add("fly");
   try {
-    await maid.api("POST", `/api/tasks/${t.id}`, { status: "deleted" });
+    const r = await maid.api("POST", `/api/tasks/${t.id}`, { status: "deleted" });
     popTone(-1, { soft: true });
-    say(`Удалила задачу «${t.title}».`, { ms: 4000 });
+    // 5 секунд можно вернуть: та же отмена, что у «Отменить» (журнал правок мышью на сервере).
+    say(`Удалила задачу «${t.title}».`, { ms: 5000, buttons: r.undo ? [{ text: "↩ Вернуть", run: () => restoreTask(t, r.undo) }] : [] });
     maid.changed();
   } catch (err) {
     li.classList.remove("fly");
@@ -484,13 +485,24 @@ async function deleteTask(t, li) {
   }
   setTimeout(() => load(), 400);
 }
+async function restoreTask(t, undo) {
+  try {
+    await maid.api("POST", "/api/undo", { messageId: undo });
+    popTone(3);
+    say(`Вернула «${t.title}» ✓`, { ms: 3000 });
+    maid.changed();
+  } catch (err) {
+    say(`Не вышло: ${String(err?.message ?? err)}`, { emotion: "worried", ms: 6000 });
+  }
+  setTimeout(() => load(), 300);
+}
 async function moveTask(t, day, li) {
   li.style.height = `${li.offsetHeight}px`;
   li.classList.add("fly");
   try {
-    await maid.api("POST", `/api/tasks/${t.id}`, { due_date: day });
+    const r = await maid.api("POST", `/api/tasks/${t.id}`, { due_date: day });
     popTone(2);
-    say(`Перенесла задачу «${t.title}» на ${humanDay(day)} ✓`, { ms: 4000 });
+    say(`Перенесла задачу «${t.title}» на ${humanDay(day)} ✓`, { ms: 4000, undo: r.undo ?? null });
     maid.changed();
   } catch (err) {
     li.classList.remove("fly");
@@ -1215,9 +1227,9 @@ async function retimePlan(e, start, end, r) {
 // Убрать время: план остаётся на своём дне, без начала и конца.
 async function clearPlanTime(e) {
   try {
-    await maid.api("POST", `/api/events/${e.id}`, { time: null });
+    const r = await maid.api("POST", `/api/events/${e.id}`, { time: null });
     popTone(2);
-    say(`Убрала время у «${e.title}» — просто на этот день ✓`, { ms: 5000 });
+    say(`Убрала время у «${e.title}» — просто на этот день ✓`, { ms: 5000, undo: r.undo ?? null });
     farPlans.clear();
     maid.changed();
   } catch (err) {
