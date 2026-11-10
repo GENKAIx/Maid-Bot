@@ -247,6 +247,10 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .next { background: rgba(183, 156, 255, .1); border-left: 3px solid var(--accent); border-radius: 4px 10px 10px 4px; padding: 8px 10px; }
 .w .next b { color: var(--accent); }
 .w .next .nx + .nx { margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(183, 156, 255, .12); }
+/* Планы на другие дни: день серым, текст бледнее; первый после сегодняшних отделён линией поярче. */
+.w .next .nx.ahead { color: rgba(255, 255, 255, .62); }
+.w .next .nx.ahead b { color: var(--muted); font-weight: 600; }
+.w .next .nx:not(.ahead) + .nx.ahead { margin-top: 6px; padding-top: 6px; border-top-color: rgba(183, 156, 255, .3); }
 .w h4 { margin: 8px 0 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .w .list { gap: 3px; font-size: 13px; }
 .w .scroll { flex: 1; overflow: auto; min-height: 0; }

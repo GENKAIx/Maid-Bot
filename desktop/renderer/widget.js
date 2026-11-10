@@ -455,7 +455,8 @@ function render() {
       const wd = WD_SHORT[wdOf(e.date_iso)];
       const when = e.date_iso !== data.day ? `${n === 1 ? "Завтра" : n === 2 ? "Послезавтра" : wd[0].toUpperCase() + wd.slice(1)}${e.time ? `, ${e.time}` : ""}`
         : m === null ? "Сегодня" : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : e.time;
-      return `<div class="nx" data-day="${esc(e.date_iso)}"><b>${esc(when)}</b> · ${esc(e.title)}</div>`;
+      // Сегодняшние — яркие, планы на другие дни — приглушены (день серым, текст бледнее), чтобы сразу видеть, что сегодня.
+      return `<div class="nx${e.date_iso === data.day ? "" : " ahead"}" data-day="${esc(e.date_iso)}"><b>${esc(when)}</b> · ${esc(e.title)}</div>`;
     }).join("")
     : `<span class="muted">Планов нет</span>`;
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
