@@ -3,11 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="flash.css" />
 </head>
-<body class="widget">
-  <!-- Вспышка «стираю память» поверх экрана: окно шире виджета, поэтому свет не упирается в его край. -->
-  <div class="mem-flash" id="flash" aria-hidden="true"></div>
+<body>
+  <!-- Вспышка «стираю память» поверх всего экрана, как у нейралайзера в «Людях в чёрном»: щелчок — экран белеет почти целиком,
+       из линзы звезда лучей и длинный голубой блик поперёк, по линии через середину экрана — блики-«зайчики», потом всё медленно гаснет. -->
+  <div id="fx">
+    <div class="wash"></div>
+    <div class="bloom"></div>
+    <div class="streak"></div>
+    <div class="streak thin"></div>
+    <div class="rays"></div>
+    <div class="core"></div>
+    <div class="ghosts"></div>
+  </div>
   <script src="flash.js"></script>
 </body>
 </html>
