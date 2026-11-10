@@ -93,6 +93,8 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
     upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
     // Далёкие (дальше upcoming) планы, добавленные или изменённые за 15 минут: виджет ПК едет к их дню, откуда бы их ни записали.
     far_fresh: await store.eventsChangedSince(u.id, addDays(today, 14), new Date(now.getTime() - FAR_FRESH_MS).toISOString()),
+    // Планы, отменённые или удалённые за 15 минут (откуда угодно): виджет ПК едет к их дню и показывает, как запись уходит.
+    gone_fresh: await store.eventsClosedSince(u.id, today, new Date(now.getTime() - FAR_FRESH_MS).toISOString()),
     tasks: await store.openTasks(u.id),
     // Сделанные сегодня (где угодно: виджет, телефон, Telegram) — виджет показывает их внизу и считает в настроение дня.
     done_today: (await store.doneTasksBetween(u.id, zonedToUtc(today, "00:00", u.tz), zonedToUtc(addDays(today, 1), "00:00", u.tz)))

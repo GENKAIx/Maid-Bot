@@ -356,6 +356,30 @@ test("/api/today: far_fresh — далёкие планы, записанные 
   assert.deepEqual(j.far_fresh.map((e) => e.id), [far]);
 });
 
+test("/api/today: gone_fresh — планы, отменённые или удалённые недавно", async () => {
+  const { todayJson } = await import("../src/api.ts");
+  const { addDays, dayKey } = await import("../src/time.ts");
+  const store = await Store.open(":memory:");
+  const u = await store.ensureUser("902", "Т", "Europe/Moscow");
+  const now = new Date();
+  const today = dayKey(now, u.tz);
+  const ev = (title: string, date: string) => store.addEvent({ user_id: u.id, title, date_iso: date, time: null, end_time: null, details: "", domain: "", message_id: null });
+  const cancelled = await ev("Отменили", addDays(today, 3));
+  const deleted = await ev("Удалили", addDays(today, 40));
+  const done = await ev("Сделали", addDays(today, 2));
+  const past = await ev("Вчера", addDays(today, -1));
+  const old = await ev("Давно отменили", addDays(today, 5));
+  await ev("Стоит", addDays(today, 4));
+  await store.updateEvent(cancelled, { status: "cancelled" });
+  await store.updateEvent(deleted, { status: "deleted" });
+  await store.updateEvent(done, { status: "done" });
+  await store.updateEvent(past, { status: "cancelled" });
+  await store.updateEvent(old, { status: "cancelled" });
+  await store.raw("UPDATE events SET updated_at = ? WHERE id = ?", new Date(now.getTime() - 20 * 60_000).toISOString(), old);
+  const j = await todayJson(store, u, now);
+  assert.deepEqual(j.gone_fresh.map((e) => e.id).sort(), [cancelled, deleted].sort());
+});
+
 test("/api/today: done_today — задачи, закрытые сегодня по часам пользователя", async () => {
   const { todayJson } = await import("../src/api.ts");
   const store = await Store.open(":memory:");

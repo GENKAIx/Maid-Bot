@@ -707,6 +707,14 @@ export class Store {
       userId, after, since,
     );
   }
+  /** Отменённые и удалённые (в том числе отменой записи) с from и дальше, изменённые не раньше since. */
+  eventsClosedSince(userId: number, from: string, since: string): Promise<EventRow[]> {
+    return this.all<EventRow>(
+      `SELECT * FROM events WHERE user_id = ? AND date_iso >= ? AND status IN ('cancelled', 'deleted') AND updated_at >= ?
+       ORDER BY updated_at DESC, id DESC LIMIT 20`,
+      userId, from, since,
+    );
+  }
   allEvents(userId: number): Promise<EventRow[]> {
     return this.all<EventRow>("SELECT * FROM events WHERE user_id = ? ORDER BY date_iso, COALESCE(time, '99:99'), id", userId);
   }
