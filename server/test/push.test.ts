@@ -73,7 +73,8 @@ test("push: подписка, кнопка без входа отмечает п
     assert.match((await call("/api/push/act", { act, action: 2 })).json.text, /Напомню/);
     const later = new Date(before + 31 * 60_000);
     const sent: { text: string; buttons?: Button[] }[] = [];
-    const sch = new Scheduler(store, null, async (_u, text, _e, buttons) => void sent.push({ text, buttons }));
+    // Считаем только напоминания: вечером тот же тик шлёт ещё и «Итог дня» — тест зависел от часа запуска.
+    const sch = new Scheduler(store, null, async (_u, text, _e, buttons) => void (/Итог дня/.test(text) || sent.push({ text, buttons })));
     await sch.tick(new Date(before + 5 * 60_000));
     assert.equal(sent.length, 0);
     await sch.tick(later);
