@@ -357,40 +357,52 @@ function followResize() {
 }
 ipcMain.on("widget-reset", resetWidgetPlace);
 
-// Вспышка «стираю память» (forget), как у нейралайзера в «Людях в чёрном»: своё прозрачное окно на весь экран, где стоит горничная,
-// поверх всего, щелчки идут сквозь (flash.html). В окне виджета свет упирался бы в его край — здесь заливает экран целиком.
-const FLASH_MS = 1500;
-let flashWin = null, flashReady = null, flashHide = 0;
+// Вспышка «стираю память» (forget), как у нейралайзера в «Людях в чёрном»: на каждом мониторе своё прозрачное окно во весь экран,
+// поверх всего, щелчки идут сквозь (flash.html). Линза — на мониторе горничной, на остальных засветка и полоса на той же высоте.
+const FLASH_MS = 2700;
+const flashWins = new Map(); // id монитора -> { win, ready }
+let flashHide = 0;
+function flashWinFor(d) {
+  let f = flashWins.get(d.id);
+  if (f && !f.win.isDestroyed()) return f;
+  const win = new BrowserWindow({
+    ...d.bounds,
+    frame: false, transparent: true, resizable: false, skipTaskbar: true, focusable: false,
+    alwaysOnTop: true, hasShadow: false, show: false,
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.setIgnoreMouseEvents(true);
+  win.on("closed", () => flashWins.delete(d.id));
+  f = { win, ready: new Promise((ok) => win.webContents.once("did-finish-load", ok)) };
+  win.loadFile(page("flash.html"));
+  flashWins.set(d.id, f);
+  return f;
+}
 function memFlash(x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   const pt = { x: Math.round(x), y: Math.round(y) };
-  const b = screen.getDisplayNearestPoint(pt).bounds;
-  const left = b.x, top = b.y;
-  if (!flashWin) {
-    flashWin = new BrowserWindow({
-      ...b,
-      frame: false, transparent: true, resizable: false, skipTaskbar: true, focusable: false,
-      alwaysOnTop: true, hasShadow: false, show: false,
-      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  const shown = [];
+  for (const d of screen.getAllDisplays()) {
+    const { win, ready } = flashWinFor(d);
+    const b = d.bounds;
+    win.setBounds(b);
+    shown.push(win);
+    ready.then(() => {
+      if (win.isDestroyed()) return;
+      win.showInactive();
+      win.moveTop();
+      win.webContents.executeJavaScript(`go(${pt.x - b.x}, ${pt.y - b.y})`).catch(() => {});
     });
-    flashWin.setAlwaysOnTop(true, "screen-saver");
-    flashWin.setIgnoreMouseEvents(true);
-    flashWin.on("closed", () => { flashWin = null; flashReady = null; });
-    flashReady = new Promise((ok) => flashWin.webContents.once("did-finish-load", ok));
-    flashWin.loadFile(page("flash.html"));
   }
-  flashWin.setBounds(b);
-  const win = flashWin;
-  flashReady.then(() => {
-    if (win.isDestroyed()) return;
-    win.showInactive();
-    win.moveTop();
-    win.webContents.executeJavaScript(`go(${pt.x - left}, ${pt.y - top})`).catch(() => {});
-    clearTimeout(flashHide);
-    flashHide = setTimeout(() => { if (!win.isDestroyed()) win.hide(); }, FLASH_MS);
-  });
+  // Окна мониторов, которых больше нет, — закрыть.
+  for (const [id, f] of flashWins) if (!shown.includes(f.win)) { flashWins.delete(id); if (!f.win.isDestroyed()) f.win.destroy(); }
+  clearTimeout(flashHide);
+  flashHide = setTimeout(() => { for (const w of shown) if (!w.isDestroyed()) w.hide(); }, FLASH_MS);
 }
 ipcMain.on("mem-flash", (_e, x, y) => memFlash(Number(x), Number(y)));
+// Горничная подняла прибор — окна вспышки загружаются заранее, чтобы к щелчку уже были готовы.
+ipcMain.on("mem-flash-prep", () => { for (const d of screen.getAllDisplays()) flashWinFor(d); });
 function resetWidgetPlace() {
   settings.widget = { ...settings.widget, x: null, y: null, display: null, down: false };
   saveSettings();

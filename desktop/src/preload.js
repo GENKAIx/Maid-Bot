@@ -34,8 +34,10 @@ contextBridge.exposeInMainWorld("maid", {
   resizeWidget: (phase) => ipcRenderer.send("widget-resize", phase),
   /** Свёрнут ли виджет и высота свёрнутой карточки — main решает, раскрываться ли панели вниз (у верха экрана). */
   foldState: (folded, miniH, head) => ipcRenderer.send("widget-fold", folded, miniH, head),
-  /** Вспышка «стираю память» из точки экрана (x, y) — отдельным окном поверх, чтобы свет не обрезал край виджета. */
+  /** Вспышка «стираю память» из точки экрана (x, y) — окнами поверх всех мониторов, чтобы свет не обрезал край виджета. */
   memFlash: (x, y) => ipcRenderer.send("mem-flash", x, y),
+  /** Горничная подняла прибор — загрузить окна вспышки заранее. */
+  memFlashPrep: () => ipcRenderer.send("mem-flash-prep"),
   /** Окно применило режим «вниз» (и спрятано) — main может сдвинуть его. */
   downReady: () => ipcRenderer.send("down-ready"),
   on: (channel, fn) => {

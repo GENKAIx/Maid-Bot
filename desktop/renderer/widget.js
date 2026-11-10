@@ -117,21 +117,27 @@ function showMood(n) {
 // «Стираю память» (forget): поднимает прибор, 3 с на линзе горит огонёк, на 84-м кадре (3,5 с) щелчок — в этот миг
 // вспышка от его линзы, потом ещё 2 с стоит с прибором. Анимация играет один раз (5,5 с).
 // Картинка каждый раз грузится заново (?метка), чтобы анимация шла с первого кадра и вспышка попала в щелчок.
-const FORGET = { loop: 5500, click: 3500, x: 0.367, y: 0.584 }; // длина цикла, момент щелчка (мс), линза в долях картинки
-let forgetTimer = 0;
+const FORGET = { loop: 5500, click: 3500, x: 0.367, y: 0.584, zap: 700 }; // длина, щелчок (мс), линза в долях картинки, звук до щелчка
+let forgetTimer = 0, zapTimer = 0;
 function forgetFlash() {
   mood = "forget";
   clearTimeout(forgetTimer);
+  clearTimeout(zapTimer);
   const face = $("#face");
   face.src = `../assets/maid/forget.webp?${Date.now()}`;
+  maid.memFlashPrep?.();
   const arm = () => {
+    zapTimer = setTimeout(() => { if (mood === "forget") zapTone(); }, FORGET.click - FORGET.zap);
     forgetTimer = setTimeout(() => {
       const r = face.getBoundingClientRect();
       if (mood !== "forget" || !r.width) return;
       const fx = r.left + r.width * FORGET.x, fy = r.top + r.height * FORGET.y;
-      // В программе — отдельным окном поверх экрана (свет не обрезает край виджета), без неё (страница в браузере) — внутри.
-      if (maid.memFlash) maid.memFlash(window.screenX + fx, window.screenY + fy);
-      else {
+      // В программе — окнами поверх экранов (свет не обрезает край виджета) и засветкой самого виджета, кроме горничной;
+      // без неё (страница в браузере) — внутри.
+      if (maid.memFlash) {
+        maid.memFlash(window.screenX + fx, window.screenY + fy);
+        veilFlash(face, fx, fy);
+      } else {
         const f = $("#flash");
         f.style.setProperty("--fx", `${Math.round(fx)}px`);
         f.style.setProperty("--fy", `${Math.round(fy)}px`);
@@ -139,10 +145,84 @@ function forgetFlash() {
         void f.offsetWidth;
         f.classList.add("on");
       }
-      if (typeof popTone !== "undefined" && !cfg.mute) popTone(9, { vol: 0.22 });
     }, FORGET.click);
   };
   face.decode().then(arm, arm);
+}
+// Засветка самого виджета: окно вспышки лежит под ним, и без неё панель и облачко остались бы чёткими.
+// Холст во всё окно, белый, с дыркой по силуэту горничной (её текущий кадр) — сама она не ослеплена.
+function veilFlash(face, fx, fy) {
+  const v = $("#veil");
+  const dpr = devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+  v.width = Math.round(W * dpr);
+  v.height = Math.round(H * dpr);
+  const g = v.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const grad = g.createRadialGradient(fx, fy, 0, fx, fy, Math.max(W, H));
+  grad.addColorStop(0, "rgba(255, 255, 255, .95)");
+  grad.addColorStop(0.4, "rgba(240, 246, 255, .88)");
+  grad.addColorStop(1, "rgba(226, 238, 255, .8)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, W, H);
+  // Видна только та часть фигурки, что над панелью: ниже её прячет панель — там дырки нет.
+  const r = face.getBoundingClientRect();
+  const tops = ["#w", "#mini"].map((s) => $(s)?.getBoundingClientRect()).filter((b) => b && b.height > 0).map((b) => b.top);
+  const cut = tops.length ? Math.min(...tops) : H;
+  g.save();
+  g.beginPath();
+  g.rect(0, 0, W, cut);
+  g.clip();
+  g.globalCompositeOperation = "destination-out";
+  g.filter = "blur(1.5px)";
+  g.drawImage(face, r.left, r.top, r.width, r.height);
+  g.restore();
+  v.classList.remove("on");
+  void v.offsetWidth;
+  v.classList.add("on");
+}
+// Звук нейралайзера: тонкий писк нарастает (FORGET.zap мс), щелчок, «пиу» вниз и глухой хлопок.
+function zapTone() {
+  if (cfg.mute) return;
+  try {
+    actx ??= new AudioContext();
+    const t0 = actx.currentTime + 0.005, t = t0 + FORGET.zap / 1000;
+    const out = actx.createGain();
+    out.gain.value = 0.55;
+    out.connect(actx.destination);
+    const tone = (type, f0, f1, a, b, vol) => {
+      const o = actx.createOscillator(), og = actx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(f0, a);
+      o.frequency.exponentialRampToValueAtTime(f1, b);
+      og.gain.setValueAtTime(0.0001, a);
+      og.gain.exponentialRampToValueAtTime(vol, a + 0.01);
+      og.gain.exponentialRampToValueAtTime(0.0001, b);
+      o.connect(og).connect(out);
+      o.start(a);
+      o.stop(b + 0.02);
+      return og;
+    };
+    // Писк зарядки: тише в начале, громче к щелчку.
+    const whine = tone("sine", 1500, 3400, t0, t + 0.01, 0.006);
+    whine.gain.exponentialRampToValueAtTime(0.05, t - 0.02);
+    whine.gain.exponentialRampToValueAtTime(0.0001, t + 0.01);
+    // Щелчок: 14 мс шума выше 2,5 кГц.
+    const n = actx.createBufferSource();
+    const buf = actx.createBuffer(1, Math.round(actx.sampleRate * 0.014), actx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    n.buffer = buf;
+    const hp = actx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 2500;
+    const ng = actx.createGain();
+    ng.gain.value = 0.5;
+    n.connect(hp).connect(ng).connect(out);
+    n.start(t);
+    // «Пиу» вниз и хлопок.
+    tone("triangle", 3200, 420, t, t + 0.38, 0.13);
+    tone("sine", 150, 48, t, t + 0.3, 0.32);
+  } catch {}
 }
 function react(n, ms = 6000) {
   if (n === "forget") ms = FORGET.loop; // ровно один показ: огонёк, щелчок, 2 с с прибором
@@ -371,6 +451,11 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     const marked = changes.some((c) => c.kind === "mark" || c.kind === "habit");
     const pick = as ?? (marked ? "done" : changes.length ? "write" : EMOTION_MOOD[emotion] ?? "neutral");
     react(pick, Math.max(4000, Math.min(ms || 9000, 9000)));
+    // «Стираю память»: облачко с ответом — когда сойдёт засветка (щелчок + ~0,9 с), а не одновременно со вспышкой.
+    if (pick === "forget") {
+      b.classList.add("after-flash");
+      setTimeout(() => b.classList.remove("after-flash"), FORGET.click + 900);
+    }
   }
   if (sound) play(sound);
   if (changes.some((c) => c.kind === "event")) farPlanSoon(changes);

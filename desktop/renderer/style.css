@@ -525,10 +525,17 @@ body.quick { background: transparent; }
   -webkit-mask-composite: source-in; mask-composite: intersect; }
 .mem-flash.on { animation: memFlash .95s ease-out both; }
 @keyframes memFlash { 0% { opacity: 0; } 5% { opacity: 1; } 28% { opacity: .9; } 100% { opacity: 0; } }
+/* Засветка виджета при вспышке в программе (veilFlash): как засветка экрана в flash.css — удар, сходит, чуть молочный хвост. */
+.veil { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 60; pointer-events: none; opacity: 0; }
+.veil.on { animation: veilFlash 2.6s ease-out both; }
+@keyframes veilFlash { 0% { opacity: 0; } 1.5% { opacity: .85; } 7% { opacity: .85; } 28% { opacity: .15; } 40% { opacity: .12; } 100% { opacity: 0; } }
+/* Ответ на «забудь» ждёт, пока сойдёт засветка (widget.js, say). */
+.bubble.after-flash { opacity: 0; pointer-events: none; }
 @keyframes memFlashSoft { 0% { opacity: 0; } 15% { opacity: .4; } 100% { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   .mem-flash.on { animation: memFlashSoft .6s ease-out both; }
+  .veil.on { animation: none; }
   .maid .face.boop, .maid .face.huff, .pip.wave, .pip.glued, .w .mark.glued, .course.as-medal .c-medal { animation: none; }
 }
 

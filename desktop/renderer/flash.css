@@ -1,30 +1,31 @@
-/* Окно вспышки нейралайзера (flash.html): весь экран, прозрачное, щелчки сквозь. Точка линзы — --x, --y. */
+/* Окно вспышки нейралайзера (flash.html): на каждом мониторе своё, прозрачное, щелчки сквозь. Точка линзы — --x, --y
+   (на других мониторах она за краем окна — там только засветка и полоса). Длина — 2,6 с, как FLASH_MS в main.js. */
 html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; pointer-events: none; }
 #fx { position: fixed; inset: 0; opacity: 0; }
 #fx > * { position: absolute; left: var(--x, 50%); top: var(--y, 50%); transform: translate(-50%, -50%); }
-/* Почти весь экран — белый, сильнее у линзы. */
-#fx > .wash { inset: 0; left: 0; top: 0; transform: none;
-  background: radial-gradient(circle 1600px at var(--x, 50%) var(--y, 50%), #fff 0, rgba(244, 249, 255, .97) 30%, rgba(226, 238, 255, .9) 65%, rgba(214, 230, 255, .78) 100%); }
+/* Засветка экрана — не добела: сквозь неё видно, что под ней, сильнее у линзы. */
+#fx > .wash, #fx > .haze { inset: 0; left: 0; top: 0; transform: none; }
+.wash { background: radial-gradient(circle 1600px at var(--x, 50%) var(--y, 50%), rgba(255, 255, 255, .9) 0, rgba(244, 249, 255, .82) 30%, rgba(226, 238, 255, .7) 65%, rgba(214, 230, 255, .6) 100%); }
+/* «Глаза привыкают»: после удара экран ещё полторы секунды чуть молочный, сильнее по краям. */
+.haze { background: radial-gradient(ellipse at var(--x, 50%) var(--y, 50%), rgba(236, 244, 255, .1) 0, rgba(236, 244, 255, .28) 70%, rgba(236, 244, 255, .4) 100%); }
 /* Длинный анаморфный блик — голубая полоса через весь экран. */
-.streak { width: 260vw; height: 28px; border-radius: 50%;
-  background: radial-gradient(ellipse at center, #fff 0, rgba(200, 228, 255, .95) 18%, rgba(120, 180, 255, .55) 45%, rgba(120, 180, 255, 0) 70%); }
-.streak.thin { height: 5px; border-radius: 0; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff 30%, #fff 70%, rgba(255, 255, 255, 0)); }
-.ghosts { width: 0; height: 0; }
-.ghost { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); }
+.streak { width: 260vw; height: 24px; border-radius: 50%;
+  background: radial-gradient(ellipse at center, #fff 0, rgba(200, 228, 255, .9) 18%, rgba(120, 180, 255, .5) 45%, rgba(120, 180, 255, 0) 70%); }
+.streak.thin { height: 4px; border-radius: 0; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff 30%, #fff 70%, rgba(255, 255, 255, 0)); }
 
-#fx.on { animation: fxAll 1.4s linear both; }
-#fx.on .wash { animation: fxWash 1.4s ease-out both; }
-#fx.on .streak { animation: fxStreak 1.4s ease-out both; }
-#fx.on .ghosts { animation: fxGhosts 1.4s ease-out both; }
-@keyframes fxAll { 0% { opacity: 0; } 3% { opacity: 1; } 100% { opacity: 1; } }
-/* Удар белым на ~0,1 с, потом белое сходит, а блик гаснет медленнее. */
-@keyframes fxWash { 0% { opacity: 0; } 2% { opacity: 1; } 16% { opacity: 1; } 50% { opacity: .22; } 100% { opacity: 0; } }
-@keyframes fxStreak { 0% { opacity: 0; transform: translate(-50%, -50%) scaleX(.2); } 4% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
-  70% { opacity: .6; } 100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.05) scaleY(.6); } }
-@keyframes fxGhosts { 0% { opacity: 0; } 5% { opacity: 1; } 55% { opacity: .5; } 100% { opacity: 0; } }
+#fx.on { animation: fxAll 2.6s linear both; }
+#fx.on .wash { animation: fxWash 2.6s ease-out both; }
+#fx.on .haze { animation: fxHaze 2.6s ease-in-out both; }
+#fx.on .streak { animation: fxStreak 2.6s ease-out both; }
+@keyframes fxAll { 0% { opacity: 0; } 2% { opacity: 1; } 100% { opacity: 1; } }
+/* Удар ~0,2 с, потом засветка сходит за полсекунды, а полоса гаснет медленнее. */
+@keyframes fxWash { 0% { opacity: 0; } 1.5% { opacity: 1; } 7% { opacity: 1; } 28% { opacity: .15; } 42% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes fxHaze { 0% { opacity: 0; } 14% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes fxStreak { 0% { opacity: 0; transform: translate(-50%, -50%) scaleX(.2); } 2% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
+  38% { opacity: .55; } 60% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.05) scaleY(.6); } 100% { opacity: 0; } }
 
-/* «Уменьшить движение»: без удара белым на весь экран — короткий блик у линзы. */
+/* «Уменьшить движение»: без засветки экрана — короткий блик у линзы. */
 @media (prefers-reduced-motion: reduce) {
-  #fx.on > * { animation-duration: .5s; }
-  #fx > .wash, .ghosts { display: none; }
+  #fx.on > * { animation-duration: .8s; }
+  #fx > .wash, #fx > .haze { display: none; }
 }
