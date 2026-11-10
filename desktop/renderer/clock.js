@@ -1403,10 +1403,19 @@ function ejectGone(box, day, start = 300, keep = false) {
     return start + cards.length * 180 + 1300;
   }
   showBin(box);
-  cards.forEach((card, i) => ejectOut(card, binAim, start + i * 180));
+  // Место улетающих держится, пока последняя не попала в корзину, — иначе ряд с корзиной съезжает вверх прямо под летящей;
+  // потом все промежутки закрываются разом, и корзина уезжает.
+  cards.forEach((card, i) => ejectOut(card, binAim, start + i * 180, true));
   const landed = start + (cards.length - 1) * 180 + 420 + 640;
+  setTimeout(() => !foldFly && cards.forEach((card) => card.isConnected && closeGap(card, 0)), landed + 120);
   if (!keep) hideBinLater(landed + 650);
   return landed + (keep ? 200 : 650 + 320);
+}
+// Карточка, чей двойник улетел, сжимается в 0 — ряд ниже подтягивается.
+function closeGap(card, delay) {
+  const h = card.getBoundingClientRect().height;
+  card.animate([{ height: `${h}px` }, { height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "-7px" }],
+    { duration: 320, delay, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" });
 }
 const chipAim = (chip) => ({
   rect: () => chip?.isConnected && chip.getBoundingClientRect(),
@@ -1416,7 +1425,7 @@ const chipAim = (chip) => ({
     chip.classList.remove("landed", "swallow"); void chip.offsetWidth; chip.classList.add("swallow");
   },
 });
-function ejectOut(card, aim, delay) {
+function ejectOut(card, aim, delay, hold = false) {
   const id = Number(card.dataset.id);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
     card.classList.add("struck");
@@ -1437,8 +1446,7 @@ function ejectOut(card, aim, delay) {
       Object.assign(ghost.style, { left: `${at.left}px`, top: `${at.top}px`, width: `${at.width}px`, height: `${at.height}px`, transformOrigin: "50% 50%" });
       document.body.append(ghost);
       card.style.visibility = "hidden";
-      if (!foldFly) card.animate([{ height: `${at.height}px` }, { height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "-7px" }],
-        { duration: 320, delay: 200, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" });
+      if (!foldFly && !hold) closeGap(card, 200);
       const dx = to.left + to.width / 2 - (at.left + at.width / 2);
       const dy = to.top + to.height / 2 - (at.top + at.height / 2);
       const fly = ghost.animate([
