@@ -67,7 +67,7 @@ async function renderSettings() {
     <h2>Настройки</h2>
     <div class="form">
       <label>Адрес сервера<input id="server" value="${esc(s.server)}" /></label>
-      <label>Ключ (команда /token в боте)<input id="token" type="password" value="${esc(s.token)}" /></label>
+      <label>Ключ (команда /token в боте)<input id="token" type="password" autocomplete="off" placeholder="${s.hasToken ? "ключ задан — оставьте пустым, чтобы не менять" : "вставьте ключ"}" /></label>
       <label class="row"><input type="checkbox" id="wshow" style="width:auto" ${s.widget.show ? "checked" : ""}/> Виджет поверх всех окон</label>
       <label>Прозрачность виджета <input id="wop" type="range" min="0.4" max="1" step="0.02" value="${s.widget.opacity}" /></label>
       <label class="row"><input type="checkbox" id="auto" style="width:auto" ${s.autostart ? "checked" : ""}/> Запускать вместе с Windows</label>
@@ -80,16 +80,17 @@ async function renderSettings() {
     </div>`;
   // Сохранить, проверить ключ на сервере и, если всё верно, открыть свой аккаунт (сайт) в этом окне.
   $("#save").onclick = async () => {
-    const saved = await maid.saveSettings({
+    let saved;
+    try { saved = await maid.saveSettings({
       server: $("#server").value.trim(),
       token: $("#token").value.trim(),
       widget: { show: $("#wshow").checked, opacity: Number($("#wop").value) },
       tracker: { enabled: $("#track").checked, games: $("#games").value.split("\n").map((x) => x.trim()).filter(Boolean) },
       keys: { quick: $("#kq").value.trim(), grab: $("#kg").value.trim() },
       autostart: $("#auto").checked,
-    });
+    }); } catch (e) { return toast(esc(String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""))); }
     today = null;
-    if (!saved.server || !saved.token) return toast("Сохранено. Чтобы войти, нужны адрес сервера и ключ.");
+    if (!saved.server || !saved.hasToken) return toast("Сохранено. Чтобы войти, нужны адрес сервера и ключ.");
     toast("Сохранено. Проверяю ключ…");
     try {
       await maid.api("GET", "/api/today");

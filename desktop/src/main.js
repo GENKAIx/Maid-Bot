@@ -1,9 +1,10 @@
 // Горничная на ПК: главное окно, виджет поверх всех окон, быстрый ввод, трей, трекер ПК.
-// Ключ и адрес сервера хранятся в userData/settings.json; запросы к серверу идут только отсюда.
+// Ключ и адрес сервера хранятся в userData/settings.json (ключ — зашифрован защитой Windows, safeStorage); запросы к серверу идут только отсюда.
+// Окна ключа не видят: им отдаётся только признак hasToken; адрес и ключ меняет только окно настроек программы.
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage } = require("electron");
 const { collectDay, localDay } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
 
@@ -42,18 +43,48 @@ function loadSettings() {
     // Окно виджета стало шире слева (там облачко): панель остаётся там, где её поставили.
     if (settings.widget.x != null && settings.widget.width !== WIDGET_W) settings.widget.x -= WIDGET_W - (settings.widget.width ?? 340);
     settings.widget.width = WIDGET_W;
+    // Ключ в файле — зашифрованный (tokenEnc); старый открытый перешифруется при первом сохранении.
+    if (s.tokenEnc) {
+      try { settings.token = safeStorage.decryptString(Buffer.from(s.tokenEnc, "base64")); } catch { settings.token = ""; }
+    }
+    delete settings.tokenEnc;
+    if (s.token && canEncrypt()) saveSettings();
   } catch {
     settings = structuredClone(DEFAULTS);
   }
 }
+const canEncrypt = () => { try { return safeStorage.isEncryptionAvailable(); } catch { return false; } };
 function saveSettings() {
   fs.mkdirSync(path.dirname(settingsFile()), { recursive: true });
-  fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2));
+  // Без защиты Windows (редко: другой пользователь, сломанный профиль) ключ остаётся как был — иначе пропал бы вход.
+  const out = { ...settings };
+  if (out.token && canEncrypt()) {
+    out.tokenEnc = safeStorage.encryptString(out.token).toString("base64");
+    delete out.token;
+  }
+  fs.writeFileSync(settingsFile(), JSON.stringify(out, null, 2));
 }
+// Адрес сервера: только http(s), без пути — иначе null.
+function serverBase(s = settings.server) {
+  try {
+    const u = new URL(String(s));
+    return /^https?:$/.test(u.protocol) ? u.origin : null;
+  } catch { return null; }
+}
+// Окно настроек программы — своя страница из папки renderer, а не сайт и не виджет.
+const isSettingsPage = (wc) => {
+  try { return wc === mainWin?.webContents && new URL(wc.getURL()).protocol === "file:"; } catch { return false; }
+};
 
 async function api(method, p, body) {
   if (!settings.token) throw new Error("Нет ключа: напишите боту /token и вставьте его в настройках.");
-  const url = settings.server.replace(/\/$/, "") + p;
+  // Только пути /api/… и только на сервер из настроек: окно не может увести ключ на чужой адрес.
+  const base = serverBase();
+  if (!base) throw new Error("Неверный адрес сервера в настройках.");
+  if (typeof p !== "string" || !/^\/api\/[^\s]*$/.test(p) || p.includes("..") || p.includes("//")) throw new Error("неверный запрос");
+  const url = new URL(p, base);
+  if (url.origin !== base) throw new Error("неверный запрос");
+  if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) throw new Error("неверный запрос");
   const opts = {
     method,
     headers: { Authorization: `Bearer ${settings.token}`, "Content-Type": "application/json" },
@@ -441,9 +472,20 @@ ipcMain.on("open-section", (_e, p) => {
   showMain();
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
 });
-ipcMain.handle("settings:get", () => ({ ...settings, tracker: { ...settings.tracker, state: trackerState } }));
+// Окнам — настройки без ключа.
+const shown = () => { const { token, ...rest } = settings; return { ...rest, hasToken: Boolean(token), tracker: { ...settings.tracker, state: trackerState } }; };
+ipcMain.handle("settings:get", shown);
 ipcMain.on("widget-ready", (e) => e.sender.send("opacity", settings.widget.opacity));
-ipcMain.handle("settings:set", (_e, patch) => {
+ipcMain.handle("settings:set", (e, patch) => {
+  patch = { ...patch };
+  // Адрес и ключ — только из окна настроек; пустой ключ — «оставить прежний».
+  if (!isSettingsPage(e.sender)) { delete patch.server; delete patch.token; }
+  if ("token" in patch && !String(patch.token ?? "").trim()) delete patch.token;
+  if ("server" in patch) {
+    const b = serverBase(String(patch.server ?? "").trim());
+    if (!b) throw new Error("Адрес сервера: нужен вида https://example.com");
+    patch.server = b;
+  }
   settings = { ...settings, ...patch, widget: { ...settings.widget, ...patch.widget }, tracker: { ...settings.tracker, ...patch.tracker }, keys: { ...settings.keys, ...patch.keys } };
   saveSettings();
   registerKeys();
@@ -453,7 +495,7 @@ ipcMain.handle("settings:set", (_e, patch) => {
   if (patch.widget && "show" in patch.widget) toggleWidget(patch.widget.show);
   if (patch.tracker) startTracker();
   broadcast("changed", null);
-  return settings;
+  return shown();
 });
 ipcMain.handle("tracker:now", trackOnce);
 // Отладка: electron . --inspect → в инспекторе main maidDebug()
