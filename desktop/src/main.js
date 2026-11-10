@@ -246,9 +246,15 @@ ipcMain.on("widget-drag", (_e, phase) => {
 // остаётся на месте: окно сдвигается на разницу, а окно (спрятанное на кадр) переставляет карточку внутри себя.
 let fold = { folded: false, miniH: 68, head: 0 };
 let pendingDown = null;
+let foldSettled = false;
 ipcMain.on("widget-fold", (_e, folded, miniH, head) => {
   const was = fold;
   fold = { folded: Boolean(folded), miniH: Number(miniH) || fold.miniH, head: Number(head) || 0 };
+  // Первый отчёт после запуска: решить «вверх или вниз» по месту, где стоит карточка (раньше — только после перетаскивания).
+  if (fold.folded && !foldSettled && widget && !widget.isDestroyed() && !drag) {
+    foldSettled = true;
+    setTimeout(() => !drag && !pendingDown && settleWidget(), 300);
+  }
   // Горничная выросла или виджет развернули у верха — сдвинуть, чтобы голова не ушла за экран.
   if ((was.head !== fold.head || was.folded !== fold.folded) && widget && !widget.isDestroyed() && !drag && !sizing && !pendingDown) {
     const b = widget.getBounds();
@@ -269,7 +275,9 @@ function settleWidget() {
   if (fold.folded) {
     const cardBottom = b.y + b.height - 8 - (wasDown ? lift : 0);
     const area = screen.getDisplayNearestPoint({ x: b.x + b.width - PANEL_W / 2, y: cardBottom - fold.miniH / 2 }).workArea;
-    down = cardBottom - panelInWindow(b.height) < area.y;
+    // Вниз — если снизу хватает места на всю панель (виджет не у низа экрана) или сверху его нет.
+    const roomBelow = cardBottom - fold.miniH + panelInWindow(b.height) <= area.y + area.height;
+    down = roomBelow || cardBottom - panelInWindow(b.height) < area.y;
   }
   if (down === wasDown) {
     widget.setBounds(widgetBounds(b));
