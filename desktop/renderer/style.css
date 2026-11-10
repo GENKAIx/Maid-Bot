@@ -447,6 +447,17 @@ body.quick { background: transparent; }
 .w .check.done { display: grid; place-items: center; color: var(--ink); font-size: 11px; font-weight: 800; }
 
 /* Вчерашний пропуск, который можно спасти: пунктир и золото. */
+/* Привычки — круглая отметка (задачи — квадрат), у курса справа полоска и «9/30». */
+.w .list li.habit .mark { border-radius: 50%; }
+.w .list li .t { flex: 1; min-width: 0; }
+.w .list .course-meter { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.w .list .course-meter .cm-bar { width: 48px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.w .list .course-meter .cm-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent-2); }
+/* Срок задачи справа: просроченное — красным, сегодня — светлее. */
+.w .list .due { margin-left: auto; flex: none; padding: 1px 7px; border-radius: 8px; font-size: 11px; line-height: 16px; white-space: nowrap;
+  color: var(--muted); background: rgba(255, 255, 255, .07); }
+.w .list .due.today { color: var(--text, #e8e4f4); background: rgba(255, 255, 255, .12); }
+.w .list .due.over { color: #ff9a9a; background: rgba(255, 90, 90, .18); }
 .w .list li.rescue .mark { border-style: dashed; border-color: #ffd76a; }
 .w .list li.rescue .mark:hover { background: rgba(255, 215, 106, .18); }
 .w .list li.rescue .mark.done { background: #ffd76a; border-style: solid; border-color: #ffd76a; color: var(--ink); }

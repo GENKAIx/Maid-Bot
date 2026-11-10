@@ -27,6 +27,18 @@ function dueWhen(day) {
   const n = daysFrom(data.day, day);
   return n <= 0 ? "сегодня" : n === 1 ? "завтра" : `через ${n} ${plural(n, "день", "дня", "дней")}`;
 }
+// Срок задачи справа в строке: «вчера», «сегодня», «завтра», день недели в пределах недели, дальше — «12 нояб».
+// Просроченное — красным (и такие задачи стоят в списке первыми).
+const MONTH_SHORT = ["янв", "февр", "марта", "апр", "мая", "июня", "июля", "авг", "сент", "окт", "нояб", "дек"];
+const overdue = (t) => Boolean(t.due_date) && daysFrom(data.day, t.due_date) < 0;
+function dueTag(t) {
+  if (!t.due_date) return "";
+  const n = daysFrom(data.day, t.due_date);
+  const [, m, d] = t.due_date.split("-").map(Number);
+  const text = n === -1 ? "вчера" : n === -2 ? "позавчера" : n === 0 ? "сегодня" : n === 1 ? "завтра"
+    : n > 1 && n < 7 ? WD_SHORT[wdOf(t.due_date)] : `${d} ${MONTH_SHORT[m - 1]}`;
+  return `<span class="due${n < 0 ? " over" : n === 0 ? " today" : ""}" title="Срок: ${esc(humanDay(t.due_date))}">${esc(text)}</span>`;
+}
 function noteWakes(awake, later) {
   let was = null;
   try { was = new Set(JSON.parse(localStorage.getItem("maid.sleeping") ?? "null")); } catch {}
@@ -689,18 +701,23 @@ function render() {
   const daily = (sec.habits ? data.habits ?? [] : []).filter((h) => h.course?.find((x) => x.day === data.day)?.s !== "rest");
   const dayItem = (h) => {
     const i = h.course?.length ? h.course.findIndex((x) => x.day === data.day) : -1;
-    const sub = i >= 0 ? ` <span class="muted">· день ${i + 1} из ${h.course.length}</span>` : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
+    // Курс — полоска и «9/30» справа; у обычной привычки — серия 🔥 после названия.
+    const sub = i >= 0
+      ? `<span class="course-meter" title="День ${i + 1} из ${h.course.length}"><span class="cm-bar"><i data-w="${Math.round(((i + 1) / h.course.length) * 100)}"></i></span>${i + 1}/${h.course.length}</span>`
+      : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
     const go = leavingRows.get(`h${h.id}`);
     if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
-    if (go) return `<li class="${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span><span>${esc(h.title)}${sub}</span></li>`;
-    return `<li class="${h.status ? "did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span><span>${esc(h.title)}${sub}</span></li>`;
+    const name = i >= 0 ? `<span class="t">${esc(h.title)}</span>${sub}` : `<span class="t">${esc(h.title)}${sub}</span>`;
+    if (go) return `<li class="habit ${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span>${name}</li>`;
+    return `<li class="habit${h.status ? " did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}</li>`;
   };
   const RANK = { high: 0, normal: 1, low: 2 };
   const later = data.tasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
   const awake = data.tasks.filter((t) => !asleep(t));
   noteWakes(awake, later);
-  // Только что проснувшиеся — первыми, чтобы их было видно.
-  const tasks = [...awake].sort((a, b) => wokeFresh(b) - wokeFresh(a) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
+  // Просроченные — первыми (самые старые сверху), потом только что проснувшиеся, чтобы их было видно, потом по важности.
+  const tasks = [...awake].sort((a, b) => overdue(b) - overdue(a) || (overdue(a) ? a.due_date.localeCompare(b.due_date) : 0)
+    || wokeFresh(b) - wokeFresh(a) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
   // Вытянутая панель (уголок справа внизу) показывает больше задач: +1 на каждые 26 px прибавки к высоте.
   const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6 + Math.floor(Math.max(0, innerHeight - 760) / 26));
   const todo = daily.filter((h) => !h.status);
@@ -717,7 +734,7 @@ function render() {
         ? `<li class="${rowLeaving(go)}" data-key="t${t.id}"><span class="check done" data-done="${t.id}" title="Отменить">${UNDO_MARK}</span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`
         : wokeFresh(t)
           ? `<li class="woke" data-woke="${t.id}"><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span><span class="wake-tag">⏰ ${esc(dueWhen(t.due_date))}</span></li>`
-          : `<li><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`;
+          : `<li><span class="check" data-done="${t.id}"></span><span class="t${t.priority === "high" ? " high" : ""}">${esc(t.title)}</span>${dueTag(t)}</li>`;
     }),
     // Сделанное: в режиме «прятать» — только пока открыт счётчик.
     ...(hiding && !showingDone() ? [] : [
@@ -743,6 +760,7 @@ function render() {
     (sec.tasks || daily.length ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
+  for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP
   for (const li of $("#body").querySelectorAll("li.woke")) li.style.setProperty("--wake-delay", `-${Date.now() - wokeAt.get(Number(li.dataset.woke))}ms`);
   for (const li of $("#body").querySelectorAll("li.leaving")) {
     const x = leavingRows.get(li.dataset.key);
