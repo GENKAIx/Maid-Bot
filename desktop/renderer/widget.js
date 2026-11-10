@@ -612,6 +612,33 @@ function fitHistory() {
 addEventListener("resize", fitHistory);
 $("#chatHistBtn").addEventListener("click", (e) => { e.preventDefault(); toggleHistory(); chatInput.focus(); });
 chatInput.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#chatHist").classList.contains("hidden")) { e.preventDefault(); toggleHistory(false); } });
+// Копировать из истории: выделенное (Ctrl+C или ПКМ) или всё сообщение (ПКМ без выделения) — без строки времени.
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); } catch { document.execCommand("copy"); }
+  play("send");
+}
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.code === "KeyC" && document.activeElement !== chatInput && histPicked()) { e.preventDefault(); copyText(histPicked()); }
+});
+$("#chatHist").addEventListener("contextmenu", (e) => {
+  const msg = e.target.closest(".hm");
+  const picked = histPicked();
+  if (!msg && !picked) return;
+  e.preventDefault();
+  closePlanMenu();
+  const whole = () => { const c = msg.cloneNode(true); c.querySelectorAll("i, button, .h-undone").forEach((x) => x.remove()); return c.textContent.trim(); };
+  const menu = document.createElement("div");
+  menu.className = "pl-menu";
+  menu.innerHTML = (picked ? `<button type="button" data-act="sel">⧉ Копировать выделенное</button>` : "")
+    + (msg ? `<button type="button" data-act="msg">⧉ Копировать сообщение</button>` : "");
+  showPlanMenu(menu, e.clientX, e.clientY);
+  menu.addEventListener("click", (ev) => {
+    const act = ev.target.closest("[data-act]")?.dataset.act;
+    if (!act) return;
+    closePlanMenu();
+    copyText(act === "sel" ? picked : whole());
+  });
+});
 $("#chatHist").addEventListener("click", async (e) => {
   const b = e.target.closest(".h-undo");
   if (!b) return;
@@ -760,8 +787,16 @@ $("#chat").onsubmit = (e) => { e.preventDefault(); if (Voice.on) toggleMic(); el
 // Окно «сквозное» и без фокуса: навёл на строку чата — окно принимает мышь и клавиатуру, ушёл и не печатаешь — отдаёт.
 const chatBox = $("#chat");
 // Наведение только готовит окно (main.js делает его фокусируемым), фокус забирается щелчком — не крадём его у игры от одного наведения.
-chatBox.addEventListener("mousedown", () => { maid.focusInput(true); chatInput.focus(); setTimeout(() => chatInput.focus(), 30); });
-chatBox.addEventListener("mouseleave", () => { if (document.activeElement !== chatInput && !grabbed) maid.focusInput(false); });
+// В истории щелчок не уводит в строку ввода — там выделяют текст; окну нужна только клавиатура (Ctrl+C).
+const inHist = (el) => el?.closest?.("#chatHist") && !el.closest("button");
+chatBox.addEventListener("mousedown", (e) => {
+  maid.focusInput(true);
+  if (e.button !== 0 || inHist(e.target)) return;
+  chatInput.focus();
+  setTimeout(() => chatInput.focus(), 30);
+});
+const histPicked = () => { const sel = getSelection(); return !sel.isCollapsed && $("#chatHist").contains(sel.anchorNode) ? sel.toString() : ""; };
+chatBox.addEventListener("mouseleave", () => { if (document.activeElement !== chatInput && !grabbed && !histPicked()) maid.focusInput(false); });
 chatInput.addEventListener("blur", () => { if (!grabbed) maid.focusInput(false); });
 // Enter — отправить, Shift+Enter — новая строка; поле растёт по тексту (до пяти строк, дальше прокрутка).
 function fitChat() {
