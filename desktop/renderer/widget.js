@@ -1478,6 +1478,17 @@ $("#body").addEventListener("dblclick", (e) => {
   const t = (data?.tasks ?? []).find((x) => x.id === Number(tick.dataset.done));
   if (t) openRename({ task: true, id: t.id, title: t.title, date_iso: t.due_date }, li);
 });
+// ПКМ по открытой задаче — то же меню, что в панели планов (clock.js openTaskMenu): переименовать, перенести, удалить с «↩ Вернуть»…
+// У задачи без срока дни меню (завтра, время, повтор) считаются от сегодня.
+$("#body").addEventListener("contextmenu", (e) => {
+  const li = e.target.closest("ul.list li");
+  const tick = li?.querySelector(".check[data-done]:not(.done)");
+  if (!tick || li.matches(".leaving, .undo-row, .fly")) return;
+  const t = (data?.tasks ?? []).find((x) => x.id === Number(tick.dataset.done));
+  if (!t) return;
+  e.preventDefault();
+  openTaskMenu({ task: true, id: t.id, title: t.title, date_iso: t.due_date ?? data.day }, li, e.clientX, e.clientY, () => tick.click());
+});
 $("#body").addEventListener("click", async (e) => {
   if (e.target.closest("#doneCount")) return toggleShowDone();
   const back = e.target.closest("[data-undo]");

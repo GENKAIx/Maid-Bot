@@ -510,7 +510,8 @@ async function moveTask(t, day, li) {
   }
   setTimeout(() => load(), 400);
 }
-function openTaskMenu(t, li, x, y) {
+// done — как отметить задачу сделанной там, откуда открыли меню (по умолчанию — галочка карточки в панели планов).
+function openTaskMenu(t, li, x, y, done = () => doneTaskHere(t.id, li.querySelector("[data-tdone]"))) {
   closePlanMenu();
   const item = (act, text) => `<button type="button" data-act="${act}">${text}</button>`;
   const menu = document.createElement("div");
@@ -534,7 +535,7 @@ function openTaskMenu(t, li, x, y) {
     if (act === "move") return moveTask(t, next, li);
     if (act === "copy") return copyTask(t, next);
     if (act === "rename") return openRename(t, li);
-    if (act === "done") return doneTaskHere(t.id, li.querySelector("[data-tdone]"));
+    if (act === "done") return done();
     deleteTask(t, li);
   });
 }
