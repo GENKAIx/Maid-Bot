@@ -336,7 +336,9 @@ function drawPlanList(box) {
       <button type="button" class="pl-x${off ? " back" : ""}" data-dact="1" title="${off ? "Вернуть" : "Убрать — больше не показывать до этой даты"}">${off ? "↺" : "×"}</button></li>`;
   };
   const open = list.filter((e) => !e._st).length;
-  let tasks = tasksOn(clockDay);
+  const tIds = new Set();
+  let tasks = [...[...taskDone.values()].filter((x) => x.t.due_date === clockDay).map((x) => x.t), ...tasksOn(clockDay)]
+    .filter((t) => !tIds.has(t.id) && tIds.add(t.id));
   // Перелёт под свёрнутой карточкой: панель выдвигается один раз — полоса дат и место под новый план. Пока едет полоса — пустое место
   // размером с карточку, после приезда — только новый план (остальные планы дня панель не растягивают).
   let shown = list, shownPins = pins;
@@ -358,10 +360,14 @@ function drawPlanList(box) {
   const pad = collapsed && foldFly === "land" ? Math.max(0, foldSlots - shown.length - tasks.length) : 0;
   const dayName = today ? "Сегодня" : humanDay(clockDay);
   const count = [open && `${open} ${planWord(open)}`, tasks.length && `${tasks.length} ${taskWord(tasks.length)}`].filter(Boolean).join(" · ") || "планов нет";
-  const taskCard = (t) => `<li class="pl-card pl-task${clockFresh.has(`t${t.id}`) ? " fresh" : ""}${clockDay < data.day ? " late" : ""}" data-task="${t.id}">
-      <span class="pl-text">${esc(t.title)}</span>
-      <button type="button" class="pl-x" data-tdel="1" title="Удалить задачу">×</button>
-      <button type="button" class="pl-check" data-tdone="1" title="Сделано"></button></li>`;
+  const taskCard = (t) => {
+    const x = taskDone.get(t.id);
+    const tools = x ? `<button type="button" class="pl-check on" data-tundo="1" title="Отменить — вернуть в задачи"><i>✓</i><b>×</b></button>`
+      : `<button type="button" class="pl-x" data-tdel="1" title="Удалить задачу">×</button>
+      <button type="button" class="pl-check" data-tdone="1" title="Сделано"></button>`;
+    return `<li class="pl-card pl-task${x ? ` done leaving${x.fly ? " fly" : ""}` : ""}${clockFresh.has(`t${t.id}`) ? " fresh" : ""}${clockDay < data.day ? " late" : ""}" data-task="${t.id}">
+      <span class="pl-text">${esc(t.title)}</span>${tools}</li>`;
+  };
   const card = (e) => {
     const st = e._st ?? "";
     const start = minutesOf(e.time);
@@ -388,9 +394,9 @@ function drawPlanList(box) {
   for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
   // Заливка продолжает идти с того же места, хотя список перерисован.
   for (const li of box.querySelectorAll(".pl-card.leaving")) {
-    const at = planDone.get(Number(li.dataset.id))?.at ?? Date.now();
-    const x = planDone.get(Number(li.dataset.id));
-    li.style.setProperty("--fill-delay", `-${Math.min((x?.pausedAt ?? Date.now()) - at, DONE_FADE)}ms`);
+    const x = goneOf(li);
+    const at = x?.at ?? Date.now();
+    li.style.setProperty("--fill-delay", `-${Math.min((x?.pausedAt || Date.now()) - at, DONE_FADE)}ms`);
     if (x?.pausedAt) li.classList.add("hold");
   }
   // Под свёрнутой карточкой — по содержимому (список ограничен в CSS), иначе — высотой с панель.
@@ -470,20 +476,82 @@ async function setPlanStatus(id, status) {
   lastPlans?.delete(id);
 }
 
-async function doneTaskHere(id, btn) {
-  const li = btn.closest(".pl-card");
-  btn.classList.add("on");
-  btn.innerHTML = "<i>✓</i>";
-  li.classList.add("done");
+// Задача, отмеченная здесь, уходит как план: заливка DONE_FADE мс (пока можно вернуть — галочка при наведении ×), потом улёт.
+const taskDone = new Map(); // id → { t, at, pausedAt, fly, armed }
+const taskTimers = new Map();
+const goneOf = (li) => (li?.dataset.task ? taskDone.get(Number(li.dataset.task)) : planDone.get(Number(li?.dataset.id)));
+function taskCountdown(id) {
+  const x = taskDone.get(id);
+  if (!x || x.pausedAt) return;
+  clearTimeout(taskTimers.get(id));
+  taskTimers.set(id, setTimeout(() => taskFly(id), Math.max(0, DONE_FADE - (Date.now() - x.at))));
+}
+function taskHold(id, on) {
+  const x = taskDone.get(id);
+  if (!x || x.fly) return;
+  const li = document.querySelector(`#planClock .pl-card[data-task="${id}"]`);
+  if (on && !x.pausedAt) {
+    x.pausedAt = Date.now();
+    clearTimeout(taskTimers.get(id));
+    li?.classList.add("hold");
+  } else if (!on && x.pausedAt) {
+    x.at += Date.now() - x.pausedAt;
+    x.pausedAt = 0;
+    li?.classList.remove("hold");
+    taskCountdown(id);
+  }
+}
+function taskFly(id) {
+  const x = taskDone.get(id);
+  if (!x) return taskTimers.delete(id);
+  x.fly = true;
+  document.querySelector(`#planClock .pl-card[data-task="${id}"]`)?.classList.add("fly");
+  taskTimers.set(id, setTimeout(() => {
+    const done = () => { taskTimers.delete(id); if (taskDone.get(id)?.fly) { taskDone.delete(id); drawClock(); } };
+    const el = document.querySelector(`#planClock .pl-card[data-task="${id}"]`);
+    if (!el || (collapsed && foldFly)) return done();
+    el.style.height = `${el.offsetHeight}px`;
+    void el.offsetHeight;
+    el.classList.add("shut");
+    el.nextElementSibling?.classList.add("pull");
+    taskTimers.set(id, setTimeout(done, DONE_SHUT));
+  }, DONE_FLY));
+}
+async function doneTaskHere(id) {
+  const t = (data?.tasks ?? []).find((x) => x.id === id) ?? taskDone.get(id)?.t;
+  if (!t || taskDone.has(id)) return;
+  taskDone.set(id, { t, at: Date.now() });
+  taskCountdown(id);
+  drawClock();
   popTone(4);
   react?.("done", 4000);
   try {
     await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
     maid.changed();
   } catch (err) {
+    clearTimeout(taskTimers.get(id));
+    taskDone.delete(id);
+    drawClock();
     say(err.message, { ms: 6000 });
+    return;
   }
   setTimeout(() => load(), 900);
+}
+// Отмена до улёта: задача снова открыта и встаёт на место.
+async function undoTaskHere(id) {
+  const x = taskDone.get(id);
+  if (!x || x.fly) return;
+  clearTimeout(taskTimers.get(id));
+  taskTimers.delete(id);
+  taskDone.delete(id);
+  drawClock();
+  try {
+    await maid.api("POST", `/api/tasks/${id}`, { status: "open" });
+    maid.changed();
+  } catch (err) {
+    say(err.message, { ms: 6000 });
+  }
+  await load();
 }
 
 // Задачи в панели планов — как планы: то же меню ПКМ, перенос и копия на день (перетащить, с Ctrl — копия), удаление (× или ПКМ).
@@ -554,7 +622,7 @@ async function moveTask(t, day, li) {
   setTimeout(() => load(), 400);
 }
 // done — как отметить задачу сделанной там, откуда открыли меню (по умолчанию — галочка карточки в панели планов).
-function openTaskMenu(t, li, x, y, done = () => doneTaskHere(t.id, li.querySelector("[data-tdone]"))) {
+function openTaskMenu(t, li, x, y, done = () => doneTaskHere(t.id)) {
   closePlanMenu();
   const item = (act, text) => `<button type="button" data-act="${act}">${text}</button>`;
   const menu = document.createElement("div");
@@ -727,19 +795,27 @@ $("#planClock").addEventListener("mouseleave", () => { clockHover = false; hideC
 // Пауза отсчёта у выполненного плана: мышь ушла с карточки — «взвести», вернулась — стоп, ушла снова — дальше.
 $("#planClock").addEventListener("mouseover", (e) => {
   const li = e.target.closest(".pl-card.leaving");
-  if (li && !li.contains(e.relatedTarget) && planDone.get(Number(li.dataset.id))?.armed) planHold(Number(li.dataset.id), true);
+  if (!li || li.contains(e.relatedTarget) || !goneOf(li)?.armed) return;
+  if (li.dataset.task) taskHold(Number(li.dataset.task), true);
+  else planHold(Number(li.dataset.id), true);
 });
 $("#planClock").addEventListener("mouseout", (e) => {
   const li = e.target.closest(".pl-card.leaving");
   if (!li || li.contains(e.relatedTarget)) return;
-  const x = planDone.get(Number(li.dataset.id));
+  const x = goneOf(li);
   if (x) x.armed = true;
-  planHold(Number(li.dataset.id), false);
+  if (li.dataset.task) taskHold(Number(li.dataset.task), false);
+  else planHold(Number(li.dataset.id), false);
 });
 $("#planClock").addEventListener("click", (e) => {
   const tdone = e.target.closest("[data-tdone]");
   if (tdone) {
-    doneTaskHere(Number(tdone.closest(".pl-card").dataset.task), tdone);
+    doneTaskHere(Number(tdone.closest(".pl-card").dataset.task));
+    return hideClockLater();
+  }
+  const tundo = e.target.closest("[data-tundo]");
+  if (tundo) {
+    undoTaskHere(Number(tundo.closest(".pl-card").dataset.task));
     return hideClockLater();
   }
   const tdel = e.target.closest("[data-tdel]");
