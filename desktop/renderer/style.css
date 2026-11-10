@@ -523,7 +523,15 @@ body.quick { background: transparent; }
 .stage.folded .plan-clock.hidden { transform: translateY(-16px) scaleY(.88); }
 .stage.folded .plan-clock .pc-list { max-height: 170px; }
 .stage.folded .mini { margin-bottom: calc(8px + var(--drawer, 0px)); transition: margin-bottom .45s cubic-bezier(.3, 1.15, .5, 1); }
+.stage.folded .plan-clock .pl-list { max-height: 150px; }
 .stage.fold-anim .plan-clock { display: none; }
+/* Режим «вниз» (у верха экрана): карточка на месте верха панели (--lift), выдвижная панель — под ней (clock.js syncDrawer),
+   облачко — слева от карточки и растёт вниз. Голову горничной срезает своя обрезка: у ряда горничной обрезки нет, иначе облачко срезалось бы. */
+.stage.folded.down .mini { margin-bottom: calc(8px + var(--lift, 0px)); transition: none; }
+.stage.folded.down .perch { clip-path: none; }
+.stage.folded.down .maid { clip-path: inset(-400px -400px var(--peek, 26px) -400px); }
+.stage.folded.down .bubble { position: absolute; top: calc(100% - var(--peek, 26px)); right: 340px; margin: 0; }
+.stage.side-left.folded.down .bubble { right: auto; left: 340px; }
 .plan-clock svg { display: block; width: 254px; height: 254px; margin: 0 auto; overflow: visible; }
 .pc-head { display: flex; align-items: baseline; gap: 8px; padding: 0 6px 2px; }
 .pc-head b { font-size: 14px; }

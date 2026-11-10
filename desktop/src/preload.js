@@ -32,7 +32,11 @@ contextBridge.exposeInMainWorld("maid", {
   resetWidget: () => ipcRenderer.send("widget-reset"),
   /** Вытянуть панель за правый нижний угол: start / move / end, reset — исходная высота. */
   resizeWidget: (phase) => ipcRenderer.send("widget-resize", phase),
+  /** Свёрнут ли виджет и высота свёрнутой карточки — main решает, раскрываться ли панели вниз (у верха экрана). */
+  foldState: (folded, miniH) => ipcRenderer.send("widget-fold", folded, miniH),
+  /** Окно применило режим «вниз» (и спрятано) — main может сдвинуть его. */
+  downReady: () => ipcRenderer.send("down-ready"),
   on: (channel, fn) => {
-    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
+    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity", "down", "down-shown"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },
 });

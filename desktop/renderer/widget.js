@@ -1144,9 +1144,36 @@ function setCollapsed(on) {
   hideClock(); // свёрнутый вид — без панели планов; разворот — выдвижная панель уходит, а не превращается в обычную
   $("#w").classList.toggle("hidden", on);
   $("#stage").classList.toggle("folded", on);
+  syncLift();
+  maid.foldState(on, $("#mini").offsetHeight || 68);
   // В свёрнутом виде над карточкой видна голова горничной: по ней видно настроение и «думаю».
   localStorage.setItem("maid.collapsed", on ? "1" : "");
 }
+
+// Режим «вниз» (решает main, когда свёрнутую карточку отпустили у верха экрана): карточка стоит на месте верха панели (--lift над низом
+// окна), панель и выдвижные «Планы на день» раскрываются вниз, облачко — слева от карточки. Пока карточка переставляется внутри окна,
+// а main сдвигает окно, виджет на кадр спрятан — на экране карточка не прыгает.
+function syncLift() {
+  const st = $("#stage");
+  const h = $("#mini").offsetHeight || 68;
+  st.style.setProperty("--lift", `${Math.max(0, Math.max(380, innerHeight - 380) - h)}px`);
+  if (collapsed) maid.foldState(true, h);
+  syncDrawer();
+}
+new ResizeObserver(() => syncLift()).observe($("#mini"));
+addEventListener("resize", syncLift);
+maid.on("down", (on) => {
+  const st = $("#stage");
+  st.style.opacity = "0";
+  $("#mini").style.transition = "none"; // карточка встаёт на новое место сразу, без съезда по margin-bottom
+  st.classList.toggle("down", Boolean(on));
+  syncLift();
+  requestAnimationFrame(() => requestAnimationFrame(() => maid.downReady()));
+});
+maid.on("down-shown", () => requestAnimationFrame(() => {
+  $("#stage").style.opacity = "";
+  $("#mini").style.transition = "";
+}));
 
 // Свернуть/развернуть с анимацией. Свернуть: содержимое панели ссыпается вниз, панель сжимается в карточку с пружинкой,
 // горничная едет вниз на её верхнем краю и выглядывает из-за карточки головой, из-за края — облачко пыли.
@@ -1183,17 +1210,19 @@ function foldAnimated(on) {
     return a;
   };
   maidEl.style.transformOrigin = "50% 100%";
+  const down = stage.classList.contains("down"); // у верха экрана: верх панели на месте, она сжимается и растёт снизу
   if (on) {
-    // Содержимое ссыпается вниз, сверху вниз по очереди.
-    [...ghost.children].forEach((c, i) => run(c, [{ transform: "none", opacity: 1 }, { transform: "translateY(26px) scale(.96)", opacity: 0 }],
+    // Содержимое ссыпается вниз, сверху вниз по очереди (в режиме «вниз» — уходит вверх, к карточке).
+    [...ghost.children].forEach((c, i) => run(c, [{ transform: "none", opacity: 1 }, { transform: `translateY(${down ? -18 : 26}px) scale(.96)`, opacity: 0 }],
       { duration: 220, delay: i * 28, easing: "cubic-bezier(.5, 0, .9, .4)", fill: "forwards" }));
     // Панель сжимается вниз в карточку: низ на месте, верх опускается с пружинкой.
     const h0 = r0.height, h1 = r1.height, bottom = r0.bottom;
+    const top = (hk) => `${down ? r0.top : bottom - hk}px`;
     run(ghost, [
-      { height: `${h0}px`, top: `${bottom - h0}px`, borderRadius: "16px", offset: 0 },
-      { height: `${h1 * 0.82}px`, top: `${bottom - h1 * 0.82}px`, borderRadius: "22px", offset: 0.62 },
-      { height: `${h1 * 1.07}px`, top: `${bottom - h1 * 1.07}px`, offset: 0.8 },
-      { height: `${h1}px`, top: `${bottom - h1}px`, borderRadius: "22px", offset: 1 },
+      { height: `${h0}px`, top: top(h0), borderRadius: "16px", offset: 0 },
+      { height: `${h1 * 0.82}px`, top: top(h1 * 0.82), borderRadius: "22px", offset: 0.62 },
+      { height: `${h1 * 1.07}px`, top: top(h1 * 1.07), offset: 0.8 },
+      { height: `${h1}px`, top: top(h1), borderRadius: "22px", offset: 1 },
     ], { duration: 560, delay: 90, easing: "cubic-bezier(.45, 0, .2, 1)", fill: "forwards" });
     run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 560, fill: "forwards" });
     run(to, [{ opacity: 0, transform: "scale(.97)" }, { opacity: alpha, transform: "scale(1.02)", offset: 0.6 }, { opacity: alpha, transform: "none" }],
@@ -1226,7 +1255,7 @@ function foldAnimated(on) {
     run(ghost, [{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: "forwards" });
     // Панель вырастает из карточки: только transform и прозрачность (дёшево, без перерисовки размытого фона), один мягкий перелёт.
     const k = Math.min(1, r0.height / r1.height);
-    to.style.transformOrigin = "50% 100%";
+    to.style.transformOrigin = down ? "50% 0" : "50% 100%";
     run(to, [
       { transform: `scaleY(${k}) scaleX(.96)`, opacity: 0, offset: 0, easing: "cubic-bezier(.25, .8, .35, 1)" },
       { transform: "scaleY(1.015)", opacity: alpha, offset: 0.7, easing: "cubic-bezier(.4, 0, .4, 1)" },

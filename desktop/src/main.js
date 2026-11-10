@@ -235,10 +235,48 @@ ipcMain.on("widget-drag", (_e, phase) => {
   } else if (phase === "end" && drag) {
     clearInterval(drag.timer);
     drag = null;
-    widget.setBounds(widgetBounds(widget.getBounds()));
-    rememberWidget();
+    settleWidget();
   }
 });
+
+// Свёрнутый виджет у верха экрана: развернуться вверх некуда — тогда карточка стоит там, где верх панели, и панель (и выдвижные
+// «Планы на день») раскрывается вниз (settings.widget.down). Режим решается, когда свёрнутую карточку отпустили; карточка при этом
+// остаётся на месте: окно сдвигается на разницу, а окно (спрятанное на кадр) переставляет карточку внутри себя.
+let fold = { folded: false, miniH: 68 };
+let pendingDown = null;
+ipcMain.on("widget-fold", (_e, folded, miniH) => {
+  fold = { folded: Boolean(folded), miniH: Number(miniH) || fold.miniH };
+});
+const panelInWindow = (h) => Math.max(380, h - 380); // CSS: высота панели — max(380px, 100vh − 380px), отступ снизу 8
+function settleWidget() {
+  if (!widget || widget.isDestroyed()) return;
+  const b = widget.getBounds();
+  const wasDown = Boolean(settings.widget.down);
+  const lift = panelInWindow(b.height) - fold.miniH;
+  let down = wasDown;
+  if (fold.folded) {
+    const cardBottom = b.y + b.height - 8 - (wasDown ? lift : 0);
+    const area = screen.getDisplayNearestPoint({ x: b.x + b.width - PANEL_W / 2, y: cardBottom - fold.miniH / 2 }).workArea;
+    down = cardBottom - panelInWindow(b.height) < area.y;
+  }
+  if (down === wasDown) {
+    widget.setBounds(widgetBounds(b));
+    rememberWidget();
+    return;
+  }
+  settings.widget.down = down;
+  pendingDown = widgetBounds({ ...b, y: b.y + (down ? lift : -lift) });
+  widget.webContents.send("down", down);
+  setTimeout(() => pendingDown && placeDown(), 400); // окно не ответило — всё равно поставить
+}
+function placeDown() {
+  if (!widget || widget.isDestroyed()) return;
+  if (pendingDown) widget.setBounds(pendingDown);
+  pendingDown = null;
+  rememberWidget();
+  widget.webContents.send("down-shown");
+}
+ipcMain.on("down-ready", placeDown);
 function followCursor() {
   if (!drag || !widget || widget.isDestroyed()) return;
   const c = screen.getCursorScreenPoint();
@@ -291,9 +329,11 @@ function followResize() {
   widget.setBounds({ x: b.x, y: bottom - h, width: b.width, height: h });
 }
 ipcMain.on("widget-reset", () => {
-  settings.widget = { ...settings.widget, x: null, y: null, display: null };
+  settings.widget = { ...settings.widget, x: null, y: null, display: null, down: false };
   saveSettings();
   widget?.setBounds(widgetBounds());
+  widget?.webContents.send("down", false);
+  widget?.webContents.send("down-shown");
 });
 
 function createWidget() {
@@ -479,7 +519,11 @@ function insecure(s) {
   try { const u = new URL(String(s)); return u.protocol === "http:" && !/^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(u.hostname); } catch { return false; }
 }
 ipcMain.handle("settings:get", shown);
-ipcMain.on("widget-ready", (e) => e.sender.send("opacity", settings.widget.opacity));
+ipcMain.on("widget-ready", (e) => {
+  e.sender.send("opacity", settings.widget.opacity);
+  e.sender.send("down", Boolean(settings.widget.down));
+  e.sender.send("down-shown");
+});
 ipcMain.handle("settings:set", (e, patch) => {
   patch = { ...patch };
   // Адрес и ключ — только из окна настроек; пустой ключ — «оставить прежний».
