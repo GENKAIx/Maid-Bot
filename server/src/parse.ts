@@ -239,7 +239,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "tasks": [{"title": "...", "priority": "high|normal|low", "due_date": "YYYY-MM-DD или null", "category": ""}],
  "dates": [{"title": "...", "date_iso": "YYYY-MM-DD", "type": "birthday|anniversary|holiday|deadline|other", "person": "", "yearly": true}],
  "memory": [{"kind": "fact|preference|person|goal", "subject": "о ком/о чём", "text": "...", "replaces": null}],
- "edits": [{"action": "cancel|done|move|reopen", "kind": "event|task|date|memory", "id": 12, "new_date": null, "new_time": null}],
+ "edits": [{"action": "cancel|done|move|reopen", "kind": "event|task|date|memory|habit", "id": 12, "new_date": null, "new_time": null}],
  "question": "если пользователь спрашивает о своих данных — вопрос, иначе null",
  "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни нужны для ответа (null — за всё время),
  "search": ["корни слов для поиска по записям, напр. сердц, кардиолог"] — только если вопрос про конкретную вещь,
