@@ -18,6 +18,7 @@ let clockHideTimer = 0;
 let clockHover = false;
 let clockFresh = new Set(); // id планов, которые только что добавили или поменяли, — подсвечиваются
 let clockGone = []; // только что удалённые — тают на своих местах
+let clockEdits = new Map(); // id → план до правки (время, название поменяли не здесь): карточка показывает старое, пока не «впечатается» новое
 let clockColors = new Map(); // id плана → цвет: по порядку времени, чтобы соседние планы не совпадали
 let lastPlans = null; // id → JSON плана, чтобы заметить изменения
 let lastFar = null; // то же для далёких планов, записанных недавно (data.far_fresh)
@@ -310,6 +311,11 @@ const DONE_FADE = 3000;
 const DONE_FLY = 380;
 const DONE_SHUT = 220;
 const doneTimers = new Map(); // id → таймер ухода
+// Текст карточки плана: время (если есть) и название.
+function planLabel(e) {
+  const when = e.time ? `<b class="pl-when">${timeSpan(e.time, e.end_time)}</b> · ` : ""; // без времени — только название
+  return `${when}${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}`;
+}
 function drawPlanList(box) {
   const today = clockDay === data.day;
   const d = new Date();
@@ -320,7 +326,7 @@ function drawPlanList(box) {
     ...plansOf(clockDay),
     ...clockGone.map((e) => ({ ...e, _st: e._ok ? undefined : "gone" })), // сделанная где-то ещё — пока как была, потом галочка (checkOff)
   ].filter((e) => !ids.has(e.id) && ids.add(e.id))
-    .sort((a, b) => (minutesOf(a.time) ?? 1441) - (minutesOf(b.time) ?? 1441));
+    .sort((a, b) => (minutesOf((clockEdits.get(a.id) ?? a).time) ?? 1441) - (minutesOf((clockEdits.get(b.id) ?? b).time) ?? 1441)); // правленый — на старом месте
   clockColors = new Map(layout(list, "24").map((x, i) => [x.e.id, ARC_COLORS[i % ARC_COLORS.length]]));
   const pins = datesOf(clockDay, true).filter((d) => !hiddenDates.has(dateKey(d)) || datesHiddenNow.has(dateKey(d)));
   const pinCard = (d) => {
@@ -363,11 +369,10 @@ function drawPlanList(box) {
     if (start !== null && (end === null || end <= start)) end = start + NO_END_MIN;
     const past = today && !st && end !== null && end <= nowMin;
     const now = today && !st && start !== null && start <= nowMin && nowMin < end;
-    const when = e.time ? `<b class="pl-when">${timeSpan(e.time, e.end_time)}</b> · ` : ""; // без времени — только название
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
       <button type="button" class="pl-check${st === "done" ? " on" : st === "cancelled" ? " on off" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : st === "cancelled" ? "<i>×</i><b>↺</b>" : ""}</button>`;
-    return `<li class="pl-card${st ? ` ${st}` : ""}${e._out ? " out" : ""}${e._mv ? " mv" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
-      <span class="pl-text">${when}${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}</span>${tools}</li>`;
+    return `<li class="pl-card${st ? ` ${st}` : ""}${e._out ? " out" : ""}${e._mv ? " mv" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockEdits.has(e.id) ? " edit" : clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
+      <span class="pl-text">${planLabel(clockEdits.get(e.id) ?? e)}</span>${tools}</li>`;
   };
   box.innerHTML = `
     ${headHtml(dayName, count)}
@@ -589,7 +594,7 @@ function showClock(day, { fresh = [], gone = [], open = false } = {}) {
   drawClock();
   box.classList.remove("hidden");
   syncDrawer();
-  const out = Math.max(ejectGone(box, day), checkGone(box));
+  const out = Math.max(ejectGone(box, day), checkGone(box), stampEdits(box));
   if (out) dropUntil = performance.now() + out;
   hideClockLater(fresh.length || out ? FLY_SHOWN + out : CLOCK_SHOWN);
 }
@@ -605,6 +610,7 @@ function hideClock() {
   stripFrom = 0;
   clockFresh = new Set();
   clockGone = [];
+  clockEdits = new Map();
   stopFly();
 }
 // Выдвижная панель свёрнутого вида: карточка с головой горничной поднимается на её высоту (--drawer), панель раскрывается под ней.
@@ -658,6 +664,13 @@ function watchPlans() {
   const fresh = all.filter((e) => prev.get(e.id) !== now.get(e.id) && !quietPlans.delete(e.id));
   // Задача — новая или поменялся срок (изменение названия не в счёт).
   const freshTasks = due.filter((t) => { const was = prev.get(`t${t.id}`); return !was || JSON.parse(was).due_date !== t.due_date; });
+  // Поправили время или название (день тот же): на карточке старое зачёркивается, новое впечатывается поверх (stampEdits).
+  const edited = new Map();
+  for (const e of fresh) {
+    const was = prev.get(e.id) && JSON.parse(prev.get(e.id));
+    if (was && was.date_iso === e.date_iso && (was.title !== e.title || was.time !== e.time || was.end_time !== e.end_time)) edited.set(e.id, was);
+  }
+  if (edited.size) clockEdits = edited;
   const gone = [...prev].filter(([id]) => !now.has(id)).map(([, j]) => JSON.parse(j))
     .filter((e) => e.date_iso >= data.day && !planDone.has(e.id))
     .map((e) => (out.has(e.id) ? { ...e, _out: true } : ok.has(e.id) ? { ...e, _ok: true } : e));
@@ -990,7 +1003,8 @@ function stopFly() {
 // start — полоса едет не от сегодня, а от этого дня (номер от сегодня) с того места, где стоит (перенос плана, moveDay);
 // then — по приезде вместо выпадения новых карточек (первая часть переноса).
 // next — после приезда и выпадения карточек ехать дальше (chainDays); slots — место под свёрнутой карточкой на всю цепочку.
-function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = null, next = null, slots = null } = {}) {
+// linger — сколько постоять на дне после выпадения карточек (в длинной цепочке дней — меньше).
+function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = null, next = null, slots = null, linger = 1400 } = {}) {
   const n = daysFrom(data.day, day);
   if (n <= 0 && start === null) return showClock(day, { fresh, gone });
   const run = ++flyRun;
@@ -1091,8 +1105,9 @@ function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = n
     cards.forEach((card, i) => dropIn(card, chip, 160 + i * 140, i ? null : flyCarry));
     flyCarry = null;
     // Отменённые и удалённые — зачёркиваются и улетают в чип своего дня.
-    const out = Math.max(ejectGone(box, day, 160 + cards.length * 140 + 200), checkGone(box, 160 + cards.length * 140 + 300));
-    const settle = Math.max(160 + cards.length * 140 + 1400, out);
+    const out = Math.max(ejectGone(box, day, 160 + cards.length * 140 + 200), checkGone(box, 160 + cards.length * 140 + 300),
+      stampEdits(box, 160 + cards.length * 140 + 150));
+    const settle = Math.max(160 + cards.length * 140 + linger, out);
     dropUntil = performance.now() + settle + (next ? 500 : 0);
     loadFar();
     if (next) return void setTimeout(() => { if (run === flyRun) next(); }, settle + 250);
@@ -1108,7 +1123,7 @@ function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = n
 }
 // Несколько записей на разных днях: полоса едет к первому дню, там новые выпадают и ушедшие улетают в чип, потом от него — к следующему,
 // и так до CHAIN_DAYS дней (остальные — «ещё N» в заголовке). Под свёрнутой карточкой место — под самый занятый день, панель не прыгает.
-const CHAIN_DAYS = 3;
+const CHAIN_DAYS = 5;
 function chainDays(all, fresh, freshTasks, gone) {
   const days = all.slice(0, CHAIN_DAYS);
   const keysOn = (d) => [...fresh.filter((e) => e.date_iso === d).map((e) => e.id), ...freshTasks.filter((t) => t.due_date === d).map((t) => `t${t.id}`)];
@@ -1116,7 +1131,8 @@ function chainDays(all, fresh, freshTasks, gone) {
   const slots = Math.max(...days.map((d) => keysOn(d).length + goneOn(d).filter(loudGone).length));
   const step = (i) => {
     const d = days[i];
-    const opts = { fresh: keysOn(d), gone: goneOn(d), more: all.length - 1 - i, slots, next: i < days.length - 1 ? () => step(i + 1) : null };
+    const opts = { fresh: keysOn(d), gone: goneOn(d), more: all.length - 1 - i, slots, next: i < days.length - 1 ? () => step(i + 1) : null,
+      linger: days.length > 3 ? 900 : 1400 };
     if (i) return flyToDay(d, { ...opts, start: daysFrom(data.day, days[i - 1]) });
     if (d > data.day) return flyToDay(d, opts);
     // Первый день — сегодня: полоса уже на нём, отсюда и едем дальше.
@@ -1128,8 +1144,10 @@ function chainDays(all, fresh, freshTasks, gone) {
     const run = flyRun;
     const out = opts.gone.filter((e) => e._out).length;
     const ok = opts.gone.filter((e) => e._ok).length;
+    const edits = opts.fresh.filter((id) => clockEdits.has(id)).length;
     setTimeout(() => { if (run === flyRun && !box.classList.contains("hidden")) step(1); },
-      Math.max(1500 + opts.fresh.length * 140, out ? 1900 + out * 180 : 0, ok ? 300 + ok * 260 + DONE_FADE + DONE_FLY + DONE_SHUT : 0));
+      Math.max(1500 + opts.fresh.length * 140, out ? 1900 + out * 180 : 0, ok ? 300 + ok * 260 + DONE_FADE + DONE_FLY + DONE_SHUT : 0,
+        edits ? 300 + edits * STAMP_GAP + STAMP_TIME : 0));
   };
   step(0);
 }
@@ -1191,6 +1209,67 @@ function dropCarry() {
 }
 // Отменённая или удалённая запись уходит со своего дня: красная черта перечёркивает её, карточка приподнимается и по дуге
 // улетает в чип дня, уменьшаясь; место в списке закрывается (под свёрнутой карточкой — остаётся до ухода панели), чип её «глотает».
+// Правка плана не здесь (в чате, в Telegram, с телефона): старый текст карточки перечёркивается, затем новый «впечатывается» поверх —
+// падает с увеличения со штампом, старый тает под ним. Без полёта. Высота карточки меняется плавно, если новый текст длиннее или короче.
+const STAMP_GAP = 320; // между карточками
+const STAMP_TIME = 1300; // от начала зачёркивания до конца
+function stampEdits(box, start = 300) {
+  const cards = [...box.querySelectorAll(".pl-card.edit")];
+  cards.forEach((card, i) => stampOne(card, start + i * STAMP_GAP));
+  return cards.length ? start + cards.length * STAMP_GAP + STAMP_TIME : 0;
+}
+function stampOne(card, delay) {
+  const id = Number(card.dataset.id);
+  const fresh = () => plansOf(clockDay).find((e) => e.id === id);
+  const finish = () => {
+    clockEdits.delete(id);
+    card.classList.remove("edit", "striking", "stamping");
+    const e = fresh();
+    if (e) card.querySelector(".pl-text").innerHTML = planLabel(e);
+  };
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return setTimeout(finish, delay);
+  setTimeout(() => {
+    if (!card.isConnected) return clockEdits.delete(id);
+    card.classList.add("striking");
+    popTone(2, { vol: 0.04, soft: true });
+    setTimeout(() => {
+      const e = fresh();
+      if (!card.isConnected || !e) return clockEdits.delete(id);
+      const text = card.querySelector(".pl-text");
+      const h0 = card.offsetHeight;
+      text.innerHTML = `<span class="pl-old">${text.innerHTML}</span><span class="pl-new">${planLabel(e)}</span>`;
+      card.classList.remove("striking");
+      card.classList.add("stamping");
+      popTone(6, { vol: 0.08 });
+      setTimeout(() => {
+        if (!card.isConnected) return clockEdits.delete(id);
+        finish();
+        const h1 = card.offsetHeight;
+        if (h0 !== h1 && !(collapsed && foldFly)) card.animate([{ height: `${Math.max(h0, h1)}px` }, { height: `${h1}px` }], { duration: 220, easing: "ease-out" });
+        card.classList.add("shine");
+        setTimeout(() => card.isConnected && slideToPlace(card), 260);
+      }, 620);
+    }, 420);
+  }, delay);
+}
+// Новое время поставило карточку на другое место в списке: список перерисовывается, карточки съезжают со старых мест на новые.
+function slideToPlace(card) {
+  const box = card.closest("#planClock");
+  const ids = [...box.querySelectorAll(".pl-card[data-id]")].map((li) => li.dataset.id);
+  // Порядок не поменялся — не перерисовывать (рядом могут ещё лететь другие карточки).
+  const t = (e) => minutesOf((clockEdits.get(e.id) ?? e).time) ?? 1441;
+  const want = [...plansOf(clockDay)].sort((x, y) => t(x) - t(y)).map((e) => String(e.id)).filter((id) => ids.includes(id));
+  if (want.join() === ids.filter((id) => want.includes(id)).join()) return;
+  const before = new Map([...box.querySelectorAll(".pl-card[data-id]")].map((li) => [li.dataset.id, li.getBoundingClientRect().top]));
+  drawClock();
+  const now = [...box.querySelectorAll(".pl-card[data-id]")];
+  if (now.map((li) => li.dataset.id).join() === ids.join()) return;
+  for (const li of now) {
+    const dy = (before.get(li.dataset.id) ?? li.getBoundingClientRect().top) - li.getBoundingClientRect().top;
+    if (dy) li.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 380, easing: "cubic-bezier(.3, 1.2, .5, 1)" });
+  }
+  popTone(3, { vol: 0.04, soft: true });
+}
 // Сделанная где-то ещё (в чате, в Telegram, с телефона): на её дне галочка ставится сама — вспышка, звук, потом заливка цветом и улёт,
 // как от щелчка по галочке здесь (planDone → planCountdown). Возвращает, сколько это займёт.
 function checkGone(box, start = 300) {
@@ -1563,6 +1642,7 @@ async function retimePlan(e, start, end, r) {
   const body = { time: hhmm(start), end_time: end !== null ? hhmm(Math.min(end, 1439)) : null };
   try {
     e = await asPlan(e); // задаче задали время — она становится планом
+    quietPlans.add(e.id);
     await maid.api("POST", `/api/events/${e.id}`, body);
     popTone(2);
     sayUnlessClash({ ...e, ...body }, e.date_iso, `${e.time ? "Сдвинула" : "Поставила"} «${e.title}» на ${body.time}${body.end_time ? `–${body.end_time}` : ""} ✓`);

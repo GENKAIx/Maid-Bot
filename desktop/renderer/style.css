@@ -925,6 +925,22 @@ body.quick { background: transparent; }
 
 /* Карточка нового плана вылетает из чипа дня: место раскрывается, копия летит, потом блик и искры. */
 .pl-card.arriving { visibility: hidden; }
+/* Правка плана не здесь (stampEdits): старое зачёркивается, новое впечатывается поверх; на время — оба в одной ячейке. */
+.pl-card.edit .pl-text { background: linear-gradient(rgba(255, 255, 255, .85), rgba(255, 255, 255, .85)) no-repeat 0 55% / 0% 2px; }
+.pl-card.edit.striking .pl-text { animation: plEditStrike .38s ease-out forwards; }
+@keyframes plEditStrike { to { background-size: 100% 2px; } }
+.pl-card.edit.stamping .pl-text { display: grid; background: none; }
+.pl-card.stamping .pl-old, .pl-card.stamping .pl-new { grid-area: 1 / 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pl-card.stamping .pl-old { text-decoration: line-through; animation: plOldFade .45s ease-in forwards; }
+@keyframes plOldFade { to { opacity: 0; filter: blur(2px); transform: translateY(2px); } }
+.pl-card.stamping .pl-new { transform-origin: 30% 55%; animation: plStamp .55s cubic-bezier(.2, .9, .3, 1.25) both; }
+@keyframes plStamp {
+  0% { opacity: 0; transform: scale(1.9) rotate(-4deg); filter: blur(3px); }
+  55% { opacity: 1; transform: scale(.94) rotate(0); filter: none; }
+  75% { transform: scale(1.03); }
+  100% { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .pl-card.edit .pl-text, .pl-card.stamping .pl-old, .pl-card.stamping .pl-new { animation: none; } }
 .pl-ghost { position: fixed; z-index: 50; margin: 0; list-style: none; pointer-events: none; box-shadow: 0 8px 22px rgba(0, 0, 0, .45);
   background: color-mix(in srgb, var(--c, var(--accent)) 22%, #2a2638); }
 .pl-card.shine::after { content: ""; position: absolute; inset: 0; pointer-events: none;
