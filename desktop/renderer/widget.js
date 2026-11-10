@@ -54,7 +54,7 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10 };
 const MAID_W = { s: 160, m: 196, l: 236 };
 
 
@@ -278,7 +278,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       + `<button class="prop-yes" data-p="add">✅ ${esc(proposal.add)}</button>`
       + `<button class="prop-no" data-p="decline" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">Не надо</span></button>`
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
-    : buttons.map((x, i) => `<button data-i="${i}">${esc(x.text)}</button>`).join("")
+    : buttons.map((x, i) => (x.auto ? `<button class="auto" data-i="${i}" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">${esc(x.text)}</span></button>` : `<button data-i="${i}">${esc(x.text)}</button>`)).join("")
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "") + `<button class="ghost" data-i="close">✕</button>`;
   // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
   b.dataset.notice = notice ?? "";
@@ -287,6 +287,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     ? () => setTimeout(() => { if (b.dataset.notice === String(notice) && !b.classList.contains("hidden")) inboxRead(notice); }, 1200)
     : null;
   if (proposal) startProposal(proposal);
+  stopAuto();
   acts.querySelectorAll("button").forEach((btn) => {
     if (btn.dataset.p) return; // кнопки вопроса «добавить?» — startProposal
     btn.onclick = async () => {
@@ -325,6 +326,12 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   });
   b.className = `bubble ${emotion}`;
   placeBubble();
+  // Кнопка с самонажатием (auto: секунды) — облачко держит она, своего таймера нет.
+  const autoBtn = acts.querySelector("button.auto");
+  if (autoBtn) {
+    startAuto(autoBtn, buttons[Number(autoBtn.dataset.i)].auto * 1000);
+    ms = 0;
+  }
   // Реакция горничной: записала что-то — пишет, отметила — галочка, иначе по эмоции ответа.
   if (text !== "…") {
     const marked = changes.some((c) => c.kind === "mark" || c.kind === "habit");
@@ -341,9 +348,8 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
 }
 
 // --- вопрос «добавить?» (привычки из рассказа о распорядке, задачи из «надо бы…») ---
-// Кнопка «Не надо» заполняется спокойной полосой PROPOSAL_WAIT мс; пока курсор на облачке — пауза; дошла — «Не надо», облачко закрывается.
+// Кнопка «Не надо» заполняется спокойной полосой (настройка «proposalWait», 12 с); пока курсор на облачке — пауза; дошла — «Не надо», облачко закрывается.
 // Ответили в Telegram — облачко само закрывается (раз в 4 с спрашивает сервер).
-const PROPOSAL_WAIT = 12000;
 let propRun = null;
 function stopProposal() {
   if (!propRun) return;
@@ -355,7 +361,8 @@ function startProposal(p) {
   const b = $("#bubble");
   const acts = $("#bubbleActions");
   const fill = acts.querySelector(".prop-no .fill");
-  const run = (propRun = { id: p.id, left: PROPOSAL_WAIT, last: performance.now(), raf: 0, poll: 0, busy: false });
+  const wait = cfg.proposalWait * 1000;
+  const run = (propRun = { id: p.id, left: wait, last: performance.now(), raf: 0, poll: 0, busy: false });
   const picked = () => {
     const boxes = [...$("#bubbleCards").querySelectorAll("input[data-pi]")];
     return boxes.length ? boxes.filter((x) => x.checked).map((x) => Number(x.dataset.pi)) : p.items.map((_, i) => i);
@@ -394,7 +401,7 @@ function startProposal(p) {
     run.last = t;
     // Пауза, пока курсор на облачке (или облачко скрыто под свёрнутой панелью).
     if (!b.matches(":hover") && !b.classList.contains("hidden")) run.left -= dt;
-    if (fill) fill.style.transform = `scaleX(${Math.min(1, 1 - run.left / PROPOSAL_WAIT)})`;
+    if (fill) fill.style.transform = `scaleX(${Math.min(1, 1 - run.left / wait)})`;
     if (run.left <= 0) return void decide("decline", true);
     run.raf = requestAnimationFrame(tick);
   };
@@ -408,6 +415,32 @@ function startProposal(p) {
       }
     } catch { /* нет связи — ждём */ }
   }, 4000);
+}
+
+// Кнопка, которая нажмётся сама (у наложения планов — «Оставить»): фон заполняется слева направо за wait мс,
+// пока курсор на облачке — пауза; дошла — вспыхивает и нажимается (тот же onclick, что у щелчка).
+let autoRun = null;
+function stopAuto() {
+  if (!autoRun) return;
+  cancelAnimationFrame(autoRun.raf);
+  clearTimeout(autoRun.press);
+  autoRun = null;
+}
+function startAuto(btn, wait) {
+  const b = $("#bubble");
+  const fill = btn.querySelector(".fill");
+  const run = (autoRun = { left: wait, last: performance.now(), raf: 0, press: 0 });
+  const tick = (t) => {
+    if (autoRun !== run) return;
+    const dt = t - run.last;
+    run.last = t;
+    if (!b.matches(":hover") && !b.classList.contains("hidden")) run.left -= dt;
+    fill.style.transform = `scaleX(${Math.min(1, 1 - run.left / wait)})`;
+    if (run.left > 0) return void (run.raf = requestAnimationFrame(tick));
+    btn.classList.add("pressed");
+    run.press = setTimeout(() => autoRun === run && (stopAuto(), btn.click()), 380);
+  };
+  run.raf = requestAnimationFrame(tick);
 }
 
 // Облачко ждёт, пока курсор на нём, и ещё немного после того, как его увели.
@@ -655,7 +688,8 @@ function clashButtons(r) {
       say(e.message, { ms: 6000, emotion: "worried" });
     }
   };
-  return [...(c.shiftTo ? [{ text: `➜ Сдвинуть на ${c.shiftTo}`, run: () => act("shift") }] : []), { text: "Оставить", run: () => act("keep") }];
+  // «Оставить» заполняется и нажимается сама через cfg.clashWait секунд — молчание и есть «оставить».
+  return [...(c.shiftTo ? [{ text: `➜ Сдвинуть на ${c.shiftTo}`, run: () => act("shift") }] : []), { text: "Оставить", run: () => act("keep"), auto: cfg.clashWait }];
 }
 function failedButtons(r) {
   if (!r.failed) return [];
@@ -744,6 +778,7 @@ chatInput.addEventListener("keydown", (e) => {
 });
 function hideBubble() {
   stopProposal();
+  stopAuto();
   $("#bubble").classList.add("hidden");
   maid.hover(false);
   $("#inbox").classList.remove("away");
@@ -1364,9 +1399,14 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10) }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   applyCfg();
   if (prefsOpen) drawPrefs();
+}
+// Секунды до самонажатия кнопки (настройки виджета): число 3…60, иначе — по умолчанию.
+function secs(v, d) {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 3 && n <= 60 ? n : d;
 }
 function saveCfg(patch) {
   Object.assign(cfg, patch);
@@ -1412,6 +1452,8 @@ function drawPrefs() {
         <span>Улетают, счётчик сделанного</span></button>
     </div></div>
     <div class="pref"><span>Дальние задачи (срок дальше недели)</span>${seg("laterTasks", cfg.laterTasks, [["hide", "Скрывать до срока"], ["show", "Показывать все"]])}</div>
+    <div class="pref"><span>Сама отвечает «Не надо» на «добавить?» через</span>${seg("proposalWait", String(cfg.proposalWait), [["6", "6 с"], ["12", "12 с"], ["20", "20 с"], ["30", "30 с"]])}</div>
+    <div class="pref"><span>Сама жмёт «Оставить», если план на занятое время, через</span>${seg("clashWait", String(cfg.clashWait), [["5", "5 с"], ["10", "10 с"], ["20", "20 с"], ["30", "30 с"]])}</div>
     <div class="pref"><span>Звуки</span>${seg("sound", muted ? "off" : "on", [["on", "Включены"], ["off", "Выключены"]])}</div>
     <div class="row2"><button type="button" id="prefReset">Вернуть в угол</button><button type="button" id="prefDone" class="primary">Готово</button></div>`;
 }
@@ -1432,7 +1474,8 @@ $("#prefs").addEventListener("click", (e) => {
   } else if (kind === "dateLead") {
     saveCfg({ dateLead: b.dataset.v });
     drawClock();
-  } else if (kind) saveCfg({ [kind]: b.dataset.v });
+  } else if (kind === "proposalWait" || kind === "clashWait") saveCfg({ [kind]: Number(b.dataset.v) });
+  else if (kind) saveCfg({ [kind]: b.dataset.v });
 });
 $("#prefs").addEventListener("change", (e) => {
   const k = e.target.dataset?.sec;

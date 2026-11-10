@@ -278,6 +278,14 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions button.prop-no { position: relative; overflow: hidden; background: #f0eef5; color: #6b6680; }
 .bubble-actions button.prop-no .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #a29db2; transform: scaleX(0); transform-origin: left; }
 .bubble-actions button.prop-no .lbl { position: relative; }
+/* Кнопка, которая нажмётся сама (widget.js startAuto): фон заполняется слева направо, в конце — вспышка и нажатие */
+.bubble-actions button.auto { position: relative; overflow: hidden; }
+.bubble-actions button.auto .fill { position: absolute; inset: 0; background: rgba(125, 82, 230, .22); transform: scaleX(0); transform-origin: left; }
+.bubble-actions button.auto .lbl { position: relative; }
+.bubble-actions button.auto.pressed { animation: autoPress .38s ease; }
+.bubble-actions button.auto.pressed .fill { background: rgba(125, 82, 230, .42); }
+@keyframes autoPress { 0% { transform: none; } 35% { transform: scale(.93); box-shadow: 0 0 0 0 rgba(125, 82, 230, .6); } 100% { transform: none; box-shadow: 0 0 0 9px rgba(125, 82, 230, 0); } }
+@media (prefers-reduced-motion: reduce) { .bubble-actions button.auto.pressed { animation: none; } }
 .bubble-actions.shake { animation: propShake .32s ease; }
 @keyframes propShake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 @media (prefers-reduced-motion: reduce) { .bubble-actions.shake { animation: none; } }
