@@ -332,7 +332,7 @@ function drawPlanList(box) {
   // размером с карточку, после приезда — только новый план (остальные планы дня панель не растягивают).
   let shown = list, shownPins = pins;
   if (collapsed && foldFly) {
-    const only = list.filter((e) => clockFresh.has(e.id) || e._out);
+    const only = list.filter((e) => clockFresh.has(e.id) || e._out || e._mv);
     const onlyTasks = tasks.filter((t) => clockFresh.has(`t${t.id}`));
     if (foldFly === "fly") {
       shown = [];
@@ -361,7 +361,7 @@ function drawPlanList(box) {
     const when = e.time ? `<b class="pl-when">${timeSpan(e.time, e.end_time)}</b> · ` : ""; // без времени — только название
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
       <button type="button" class="pl-check${st === "done" ? " on" : st === "cancelled" ? " on off" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : st === "cancelled" ? "<i>×</i><b>↺</b>" : ""}</button>`;
-    return `<li class="pl-card${st ? ` ${st}` : ""}${e._out ? " out" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
+    return `<li class="pl-card${st ? ` ${st}` : ""}${e._out ? " out" : ""}${e._mv ? " mv" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
       <span class="pl-text">${when}${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}</span>${tools}</li>`;
   };
   box.innerHTML = `
@@ -591,6 +591,7 @@ function hideClock() {
   clearTimeout(clockHideTimer);
   $("#planClock").classList.add("hidden");
   syncDrawer();
+  dropCarry();
   planDone.clear();
   for (const t of doneTimers.values()) clearTimeout(t);
   doneTimers.clear();
@@ -648,6 +649,11 @@ function watchPlans() {
     .map((e) => (out.has(e.id) ? { ...e, _out: true } : e));
   // Далёкие (их не было в списке) — тоже.
   for (const e of removed) if (!gone.some((g) => g.id === e.id)) gone.push({ ...e, _out: true });
+  // Перенесли один план на другой день (в чате, в Telegram, с телефона): карточка уезжает со старого дня на новый (moveDay).
+  if (fresh.length === 1 && !freshTasks.length && !gone.length && $("#planClock").classList.contains("hidden")) {
+    const was = prev.get(fresh[0].id) && JSON.parse(prev.get(fresh[0].id));
+    if (was && was.date_iso !== fresh[0].date_iso && was.date_iso >= data.day && fresh[0].date_iso >= data.day) return moveDay(was, fresh[0]);
+  }
   if (!fresh.length && !freshTasks.length && !gone.length) {
     // Стрелка и прошедшие планы. Пока план выпадает из чипа дня в список, не перерисовывать: опрос раз в 5 с (данные меняются
     // и от учёта времени за ПК) сносил карточку посреди полёта — план просто появлялся.
@@ -955,28 +961,41 @@ let foldFly = null; // "fly" — полоса едет под свёрнутой
 let foldSlots = 1; // сколько карточек места оставить под свёрнутой карточкой (новые и уходящие)
 function stopFly() {
   const was = $("#planClock").classList.contains("flying") || foldFly;
+  dropCarry();
   foldFly = null;
   flyRun++;
   flyNote = null;
   $("#planClock").classList.remove("flying");
   if (was && !$("#planClock").classList.contains("hidden")) drawClock();
 }
-function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
+// start — полоса едет не от сегодня, а от этого дня (номер от сегодня) с того места, где стоит (перенос плана, moveDay);
+// then — по приезде вместо выпадения новых карточек (первая часть переноса).
+function flyToDay(day, { fresh = [], gone = [], more = 0, start = null, then = null } = {}) {
   const n = daysFrom(data.day, day);
-  if (n <= 0) return showClock(day, { fresh, gone });
+  if (n <= 0 && start === null) return showClock(day, { fresh, gone });
   const run = ++flyRun;
-  stripFrom = 0;
+  const s0 = start === null ? 0 : stripFrom;
+  stripFrom = s0;
   foldFly = collapsed ? "fly" : null;
-  foldSlots = fresh.length + gone.filter((e) => e._out).length;
-  showClock(data.day, { fresh, open: true }); // open — чтобы панель выдвинулась и под свёрнутой карточкой
+  foldSlots = Math.max(fresh.length + gone.filter((e) => e._out || e._mv).length, start === null ? 0 : 1);
+  if (start === null) showClock(data.day, { fresh, open: true }); // open — чтобы панель выдвинулась и под свёрнутой карточкой
+  else {
+    clockDay = dayAfter(data.day, start);
+    clockFresh = new Set();
+    clockGone = [];
+  }
   const box = $("#planClock");
   if (box.classList.contains("hidden")) return; // панель выключена или свёрнута
   clearTimeout(clockHideTimer);
   box.classList.add("flying");
   // Полоса едет одним движением: на время полёта в ней лента из всех дней до нужного (очень далёкие — последние 120),
   // лента сдвигается непрерывно, выделение идёт по дням. Медленный старт, разгон, плавная остановка — одна кривая.
-  const from = Math.max(0, n - 120);
   const last = Math.max(0, n - DAYS_AHEAD); // с какого дня полоса начнётся в конце
+  const from = start === null ? Math.max(0, n - 120) : Math.min(s0, last); // первый день ленты
+  const upTo = start === null ? n : Math.max(s0, last) + DAYS_AHEAD; // последний
+  const k0 = start ?? from; // день, с которого едет выделение
+  const sh0 = s0 - from; // сдвиг ленты в начале и в конце
+  const sh1 = Math.max(from, last) - from;
   // Дальние дни (их нет в /api/today) — загрузить заново, пока полоса едет: к приезду новый план уже в списке и выпадает из чипа.
   let ready = nearDay(day);
   if (!ready) {
@@ -984,7 +1003,7 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     for (let d = a; d <= b; d = dayAfter(d, 1)) farPlans.delete(d);
     loadRange(a, b).catch(() => {}).finally(() => { ready = true; });
   }
-  const dur = Math.min(2200, Math.max(800, 650 + n * 45));
+  const dur = Math.min(2200, Math.max(800, 650 + Math.abs(n - k0) * 45));
   const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
   let lastK = -1;
   let tickAt = 0;
@@ -997,9 +1016,9 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     const w = (days.getBoundingClientRect().width - 3 * DAYS_AHEAD) / (DAYS_AHEAD + 1);
     step = w + 3;
     days.classList.add("rail-box");
-    days.innerHTML = `<div class="fly-rail">${dayStrip(from, n - from + 1)}</div>`;
+    days.innerHTML = `<div class="fly-rail">${dayStrip(from, upTo - from + 1)}</div>`;
     const r = days.firstElementChild;
-    r.style.gridTemplateColumns = `repeat(${n - from + 1}, ${w}px)`;
+    r.style.gridTemplateColumns = `repeat(${upTo - from + 1}, ${w}px)`;
     return r;
   };
   const frame = (at, t0) => {
@@ -1007,9 +1026,14 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     if (!rail?.isConnected) rail = mount();
     const t = Math.min(1, (at - t0) / dur);
     const e = ease(t);
-    const k = from + (n - from) * e; // выбранный день
-    const shift = (Math.max(from, last) - from) * e; // лента едет по той же кривой с первого кадра
+    const k = k0 + (n - k0) * e; // выбранный день
+    const shift = sh0 + (sh1 - sh0) * e; // лента едет по той же кривой с первого кадра
     if (rail) rail.style.transform = `translateX(${(-shift * step).toFixed(1)}px)`;
+    // Переносимая карточка едет билетиком над выделенным днём.
+    if (flyCarry && rail) {
+      const r = rail.getBoundingClientRect();
+      ride(flyCarry, r.left + (k - from + 0.5) * step - 1.5, r.top - 2, at);
+    }
     const kd = Math.round(k);
     if (kd !== lastK && t < 1) {
       lastK = kd;
@@ -1022,7 +1046,7 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
       if (far) far.textContent = kd ? inDays(kd) : "";
       if (at - tickAt > 45) {
         tickAt = at;
-        popTone(Math.round(((kd - from) / Math.max(1, n - from)) * 7), { vol: 0.03, soft: true });
+        popTone(Math.round((Math.abs(kd - k0) / Math.max(1, Math.abs(n - k0))) * 7), { vol: 0.03, soft: true });
       }
     }
     if (t < 1 || !ready) return requestAnimationFrame((a) => frame(a, t0));
@@ -1038,9 +1062,14 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     const chip = $(`#planClock .day-chip[data-day="${day}"]`);
     chip?.classList.add("landed");
     popTone(7, { vol: 0.09 });
+    if (then) {
+      dropUntil = performance.now() + 4000;
+      return then(box, chip);
+    }
     // Новые карточки не «уже были»: выпадают из чипа дня в список.
     const cards = [...box.querySelectorAll(".pl-card.fresh")];
-    cards.forEach((card, i) => dropIn(card, chip, 160 + i * 140));
+    cards.forEach((card, i) => dropIn(card, chip, 160 + i * 140, i ? null : flyCarry));
+    flyCarry = null;
     // Отменённые и удалённые — зачёркиваются и улетают в чип своего дня.
     const out = ejectGone(box, day, 160 + cards.length * 140 + 200);
     dropUntil = performance.now() + Math.max(160 + cards.length * 140 + 1400, out);
@@ -1054,6 +1083,62 @@ function flyToDay(day, { fresh = [], gone = [], more = 0 } = {}) {
     rail = mount();
     requestAnimationFrame((a) => frame(a, a));
   }, 420);
+}
+// Перенос плана на другой день: полоса едет к старому дню, карточка там поднимается, уменьшается в билетик над чипом дня,
+// едет с выделением по полосе к новому дню и выпадает в его список, как новая.
+let flyCarry = null; // билетик переносимой карточки, пока едет по полосе
+function moveDay(was, e) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return flyToDay(e.date_iso, { fresh: [e.id] });
+  const leave = (box, chip) => {
+    const run = flyRun;
+    setTimeout(() => {
+      const card = box.querySelector(`.pl-card.mv[data-id="${was.id}"]`);
+      if (run !== flyRun || !card) return flyToDay(e.date_iso, { fresh: [e.id] });
+      const at = card.getBoundingClientRect();
+      const ghost = card.cloneNode(true);
+      ghost.classList.remove("gone", "mv");
+      ghost.classList.add("pl-ghost", "move");
+      ghost.style.setProperty("--c", getComputedStyle(card).getPropertyValue("--c"));
+      Object.assign(ghost.style, { left: `${at.left}px`, top: `${at.top}px`, width: `${at.width}px`, height: `${at.height}px`, transformOrigin: "50% 50%" });
+      ghost._cx = at.left + at.width / 2;
+      ghost._cy = at.top + at.height / 2;
+      document.body.append(ghost);
+      card.style.visibility = "hidden";
+      if (!foldFly) card.animate([{ height: `${at.height}px` }, { height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "-7px" }],
+        { duration: 320, delay: 350, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" });
+      popTone(4, { vol: 0.05, soft: true });
+      const to = chip?.isConnected ? chip.getBoundingClientRect() : { left: at.left, top: at.top - 60, width: 30, height: 30 };
+      const end = `translate(${to.left + to.width / 2 - ghost._cx}px, ${to.top - 2 - ghost._cy}px) scale(.2)`;
+      flyCarry = ghost;
+      const lift = ghost.animate([
+        { transform: "none", offset: 0 },
+        { transform: "translate(-3px, -9px) scale(1.05) rotate(-2deg)", offset: 0.3 },
+        { transform: end, offset: 1 },
+      ], { duration: 700, easing: "cubic-bezier(.45, 0, .3, 1)" });
+      lift.onfinish = () => {
+        ghost.style.transform = end;
+        if (flyCarry !== ghost) return ghost.remove();
+        popTone(6, { vol: 0.05, soft: true });
+        flyToDay(e.date_iso, { fresh: [e.id], start: daysFrom(data.day, was.date_iso) });
+      };
+    }, 380);
+  };
+  const mv = { ...was, _mv: true };
+  if (was.date_iso > data.day) return flyToDay(was.date_iso, { gone: [mv], then: leave });
+  // Старый день — сегодня: полоса уже на нём.
+  foldFly = collapsed ? "land" : null;
+  foldSlots = 1;
+  showClock(was.date_iso, { gone: [mv], open: true });
+  const box = $("#planClock");
+  if (!box.classList.contains("hidden")) leave(box, box.querySelector(`.day-chip[data-day="${was.date_iso}"]`));
+}
+// Билетик над точкой (x, y) экрана, слегка покачивается.
+function ride(ghost, x, y, at) {
+  ghost.style.transform = `translate(${(x - ghost._cx).toFixed(1)}px, ${(y - ghost._cy).toFixed(1)}px) scale(.2) rotate(${(Math.sin(at / 110) * 7).toFixed(1)}deg)`;
+}
+function dropCarry() {
+  flyCarry?.remove();
+  flyCarry = null;
 }
 // Отменённая или удалённая запись уходит со своего дня: красная черта перечёркивает её, карточка приподнимается и по дуге
 // улетает в чип дня, уменьшаясь; место в списке закрывается (под свёрнутой карточкой — остаётся до ухода панели), чип её «глотает».
@@ -1081,7 +1166,7 @@ function ejectOut(card, chip, delay) {
       ghost.classList.remove("striking");
       ghost.classList.add("pl-ghost", "struck");
       ghost.style.setProperty("--c", getComputedStyle(card).getPropertyValue("--c"));
-      Object.assign(ghost.style, { left: `${at.left}px`, top: `${at.top}px`, width: `${at.width}px`, height: `${at.height}px` });
+      Object.assign(ghost.style, { left: `${at.left}px`, top: `${at.top}px`, width: `${at.width}px`, height: `${at.height}px`, transformOrigin: "50% 50%" });
       document.body.append(ghost);
       card.style.visibility = "hidden";
       if (!foldFly) card.animate([{ height: `${at.height}px` }, { height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "-7px" }],
@@ -1108,8 +1193,8 @@ function ejectOut(card, chip, delay) {
 }
 // Карточка вылетает из чипа дня: место в списке раскрывается, копия карточки летит по дуге из чипа, растёт с перелётом и встаёт
 // на место, затем блик по карточке и искры у галочки.
-function dropIn(card, chip, delay) {
-  if (!card || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+function dropIn(card, chip, delay, carry = null) {
+  if (!card || matchMedia("(prefers-reduced-motion: reduce)").matches) return carry?.remove();
   const h = card.offsetHeight;
   card.classList.add("arriving");
   // Под свёрнутой карточкой место уже оставлено — панель не растёт ещё раз.
@@ -1123,13 +1208,14 @@ function dropIn(card, chip, delay) {
     ghost.classList.remove("arriving", "fresh");
     ghost.classList.add("pl-ghost");
     ghost.style.setProperty("--c", getComputedStyle(card).getPropertyValue("--c"));
-    Object.assign(ghost.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` });
+    Object.assign(ghost.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px`, transformOrigin: "50% 50%" });
     document.body.append(ghost);
     const dx = from.left + from.width / 2 - (to.left + to.width / 2);
     const dy = from.top + from.height / 2 - (to.top + to.height / 2);
     popTone(3, { vol: 0.05, soft: true });
+    carry?.remove(); // билетик переноса сам становится карточкой — с него и начинается падение
     const fly = ghost.animate([
-      { transform: `translate(${dx}px, ${dy}px) scale(.18) rotate(-8deg)`, opacity: 0, offset: 0 },
+      { transform: `translate(${dx}px, ${dy - (carry ? 2 + from.height / 2 : 0)}px) scale(.18) rotate(-8deg)`, opacity: carry ? 1 : 0, offset: 0 },
       { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 26}px) scale(.62) rotate(-4deg)`, opacity: 1, offset: 0.4 },
       { transform: "translate(0, 3px) scale(1.05) rotate(1deg)", offset: 0.78 },
       { transform: "none", opacity: 1, offset: 1 },

@@ -896,6 +896,9 @@ body.quick { background: transparent; }
 .pl-card.gone.out .pl-text { text-decoration: none; opacity: 1; background: linear-gradient(#ff8a8a, #ff8a8a) no-repeat 0 55% / 0% 2px; }
 .pl-card.gone.out.striking .pl-text { animation: plStrike .35s ease-out forwards; }
 .pl-card.gone.out.struck .pl-text { background-size: 100% 2px; opacity: .55; }
+/* Переносимая (moveDay): на старом дне — как обычная карточка, пока не поднимется. */
+.pl-card.gone.mv { opacity: 1; background: rgba(255, 255, 255, .06); }
+.pl-card.gone.mv .pl-text { text-decoration: none; opacity: 1; }
 @keyframes plStrike { to { background-size: 100% 2px; opacity: .55; } }
 .day-chip.swallow { animation: chipSwallow .5s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes chipSwallow { 0% { transform: none; } 30% { transform: scale(.86); box-shadow: 0 0 0 3px rgba(255, 138, 138, .5); } 100% { transform: none; } }
