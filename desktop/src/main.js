@@ -641,6 +641,8 @@ const WIDGET_PREFS = {
   proposalWait: secsOk,
   clashWait: secsOk,
   mute: (v) => typeof v === "boolean",
+  typing: oneOf("sound", "quiet", "off"),
+  typeSpeed: oneOf("slow", "normal", "fast"),
   accent: oneOf("violet", "blue", "green", "pink", "amber"),
   textSize: oneOf("s", "m", "l"),
   taskCount: oneOf(4, 6, 10),

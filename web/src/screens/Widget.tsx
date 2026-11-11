@@ -8,7 +8,7 @@ export interface WidgetPrefs {
   show?: boolean; opacity?: number; side?: "left" | "right" | "none"; size?: "s" | "m" | "l";
   sections?: { next?: boolean; habits?: boolean; tasks?: boolean; soon?: boolean };
   plans?: "list" | "off"; dateLead?: "0" | "1" | "3" | "7"; doneTasks?: "keep" | "hide"; laterTasks?: "hide" | "show";
-  proposalWait?: number; clashWait?: number; mute?: boolean;
+  proposalWait?: number; clashWait?: number; mute?: boolean; typing?: "sound" | "quiet" | "off"; typeSpeed?: "slow" | "normal" | "fast";
   accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: 4 | 6 | 10; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
 }
 type Accent = "violet" | "blue" | "green" | "pink" | "amber";
@@ -25,7 +25,7 @@ export const desktop = () => window.maidDesktop;
 // Те же значения по умолчанию, что у виджета (desktop/renderer/widget.js, cfg).
 const DEFAULTS: Required<WidgetPrefs> = {
   show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true },
-  plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false,
+  plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
   accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim",
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
@@ -121,6 +121,8 @@ export function Widget() {
                 options={(["s", "m", "l"] as const).map((v) => [v, { s: "Меньше", m: "Обычная", l: "Больше" }[v], <Perch side={p.side} size={v} />])} />
             </>}
             <label>Звуки<Segment label="Звуки" value={p.mute ? "off" : "on"} onPick={(v) => save({ mute: v === "off" })} options={[["on", "Включены"], ["off", "Выключены"]]} /></label>
+            <label>Текст в облачке<Segment label="Текст в облачке" value={p.typing} onPick={(typing) => save({ typing })} options={[["sound", "Печатает со звуком"], ["quiet", "Печатает тихо"], ["off", "Сразу целиком"]]} /></label>
+            {p.typing !== "off" && <label>Скорость печати<Segment label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => save({ typeSpeed })} options={[["slow", "Медленно"], ["normal", "Обычно"], ["fast", "Быстро"]]} /></label>}
           </div>
         </Card>
 

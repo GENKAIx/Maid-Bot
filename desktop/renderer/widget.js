@@ -52,7 +52,7 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 // Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
 const ACCENTS = { violet: ["#b79cff", "#4fd09a"], blue: ["#8ab8ff", "#5ec8f0"], green: ["#7fd9a8", "#4fd09a"], pink: ["#ff9cc8", "#ff7eb3"], amber: ["#ffc46b", "#f2b84b"] };
@@ -360,7 +360,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + tgHtml(plain);
   // Печать по буквам: не у «…», вопросов с полосой и кнопок-самонажатий (у них свои таймеры), не при «меньше движения».
   stopType();
-  const typed = text !== "…" && !proposal && !buttons.some((x) => x.auto) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const typed = cfg.typing !== "off" && text !== "…" && !proposal && !buttons.some((x) => x.auto) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
   const tw = typed ? planType($("#bubbleText"), plain.length > 140 ? 2.5 : 1) : null;
   const late = tw ? tw.total : 0; // карточки и кнопки — когда текст допечатан
   const cards = $("#bubbleCards");
@@ -492,7 +492,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
 
 // --- печать текста в облачке: буквы появляются по одной, тихий «бип» на каждые 2–3 буквы (как речь персонажей в играх) ---
 // Место под текст занято сразу (буквы просто невидимы), поэтому облачко не прыгает. Щелчок по облачку — весь текст сразу.
-const TYPE_CPS = 35; // знаков в секунду
+const TYPE_CPS = { slow: 22, normal: 35, fast: 60 }; // знаков в секунду (настройка «typeSpeed»)
 const TYPE_PITCH = { happy: 1.18, excited: 1.25, love: 1.12, sad: 0.82, angry: 0.78, annoyed: 0.85, surprised: 1.3, neutral: 1 };
 let typing = null;
 let typeTimers = [];
@@ -515,7 +515,7 @@ function planType(box, speed) {
   };
   walk(box);
   // Когда показать каждую букву: ровно по TYPE_CPS, после .!? — пауза 260 мс, после , ; : — 120 мс, перевод строки — 180 мс.
-  const step = 1000 / (TYPE_CPS * speed);
+  const step = 1000 / ((TYPE_CPS[cfg.typeSpeed] ?? 35) * speed);
   let t = 0;
   const at = chars.map((sp) => {
     const now = t;
@@ -574,7 +574,7 @@ function stopType() {
 }
 // «Бип» речи: короткий квадратный тон с мягким фильтром, высота чуть гуляет.
 function typeBlip(base) {
-  if (cfg.mute) return;
+  if (cfg.mute || cfg.typing === "quiet") return;
   try {
     actx ??= new AudioContext();
     const t = actx.currentTime + 0.002;
@@ -688,18 +688,17 @@ function startAuto(btn, wait) {
   run.raf = requestAnimationFrame(tick);
 }
 
-// Время жизни облачка: у важных (см. say) кольцо вокруг ✕ тает к нулю; последние LIFE_FADE мс оно бледнеет и чуть уменьшается.
+// Время жизни облачка: у важных (см. say) кольцо вокруг ✕ тает к нулю; время вышло — облачко просто пропадает.
 // Короткие реплики (без кольца) живут как раньше: целые, потом просто исчезают.
 // Пока курсор на облачке — время стоит (кольцо замирает и становится ярче), увели — ещё не меньше LIFE_GRACE мс.
 // Облачко под свёрнутой панелью (hidden) тоже ждёт.
 const LIFE_GRACE = 2500;
-const LIFE_FADE = 2500;
 const LIFE_RING = 2 * Math.PI * 10; // длина кольца (r = 10 в viewBox 24)
 let life = null;
 function stopLife() {
   if (life) cancelAnimationFrame(life.raf);
   life = null;
-  $("#bubble").classList.remove("timed", "held", "fading");
+  $("#bubble").classList.remove("timed", "held");
 }
 function startLife(total, shown) {
   const b = $("#bubble");
@@ -714,7 +713,6 @@ function startLife(total, shown) {
     if (held) run.left = Math.max(run.left, LIFE_GRACE);
     else if (!b.classList.contains("hidden")) run.left -= dt;
     b.classList.toggle("held", held);
-    if (shown) b.classList.toggle("fading", !held && run.left < LIFE_FADE);
     if (ring) ring.style.strokeDashoffset = String(LIFE_RING * (1 - Math.max(0, run.left) / total));
     if (run.left <= 0) return void hideBubble();
     run.raf = requestAnimationFrame(tick);
@@ -1805,7 +1803,7 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: [4, 6, 10].includes(w.taskCount) ? w.taskCount : 6, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: [4, 6, 10].includes(w.taskCount) ? w.taskCount : 6, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   // «Звуки выключены» раньше жили в localStorage виджета — переносим в настройки один раз.
   if (w.mute === undefined && localStorage.getItem("maid.mute")) {
     cfg.mute = true;
