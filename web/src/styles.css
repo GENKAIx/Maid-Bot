@@ -681,6 +681,26 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .wp-say.side-left .wp-say-beep { right: auto; left: 58px; }
 .wp-say-hint { position: absolute; left: 12px; top: 10px; font-size: 11.5px; color: #a8a1bd; }
 .wp-say-hint:empty { display: none; }
+/* пример самонажатия: те же кнопки, что в облачке виджета (desktop/renderer/style.css, .bubble-actions) */
+.wp-ask { height: 230px; }
+.wp-ask .wp-say-bubble { bottom: 64px; max-width: 300px; }
+.wp-say-bubble.rich span, .wp-say-bubble.rich em, .wp-say-bubble.rich b { opacity: 1; }
+.wp-say-bubble.rich p { margin: 0; }
+.wp-ask-list { display: grid; gap: 3px; margin-bottom: 6px; padding: 6px 8px; border-radius: 10px; background: #f3f1f8; border-left: 3px solid #2fa86e; }
+.wp-ask-list label { display: flex; gap: 7px; align-items: flex-start; font-size: 12.5px; line-height: 1.3; margin: 0; color: #1d1830; }
+.wp-ask-list i { flex: none; width: 13px; height: 13px; margin-top: 2px; border-radius: 3px; background: #2fa86e; color: #fff; font-style: normal; font-size: 9px; display: grid; place-items: center; }
+.wp-ask-list b { font-weight: 600; } .wp-ask-list em { display: block; font-style: normal; color: #6b6680; font-size: 11.5px; }
+.wp-ask-acts { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.wp-ask-acts button { position: relative; overflow: hidden; pointer-events: none; background: #f0eef5; color: #1d1830; border: 1px solid #e4e1ec; border-radius: 8px; padding: 4px 10px; font-size: 12px; font-family: inherit; }
+.wp-ask-acts button.yes { background: #e6f5ec; border-color: #c7e8d4; color: #1f6e47; }
+.wp-ask-acts button.no { color: #6b6680; }
+.wp-ask-acts .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #a29db2; transform-origin: left; }
+.wp-ask-acts .fill { position: absolute; inset: 0; z-index: -1; background: rgba(125, 82, 230, .22); transform-origin: left; }
+.wp-ask-acts button.auto { isolation: isolate; }
+.wp-ask-acts button.pressed { animation: wpPress .38s ease; }
+.wp-ask-acts button.pressed .fill { background: rgba(125, 82, 230, .42); }
+@keyframes wpPress { 0% { transform: none; } 35% { transform: scale(.93); box-shadow: 0 0 0 0 rgba(125, 82, 230, .6); } 100% { transform: none; box-shadow: 0 0 0 9px rgba(125, 82, 230, 0); } }
+@media (prefers-reduced-motion: reduce) { .wp-ask-acts button.pressed { animation: none; } }
 @keyframes wpPop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes wpBeep { from { transform: translateY(4px); opacity: 1; } to { transform: translateY(-14px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .wp-say-bubble.up, .wp-say-beep { animation: none; } }

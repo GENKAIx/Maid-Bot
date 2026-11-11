@@ -165,12 +165,73 @@ function SayPreview({ mode, speed, side, mute, ping }: { mode: "sound" | "quiet"
   );
 }
 
+/** Живая копия облачка с самонажатием (desktop/renderer/widget.js: startProposal, startAuto): облачко появляется, кнопка
+ *  заполняется за выбранные секунды, пока курсор на облачке — стоит; дошла — «Не надо» закрывает облачко, «Оставить» вспыхивает,
+ *  нажимается и горничная отвечает. По кругу. */
+function AutoPreview({ kind, wait, side, ping }: { kind: "add" | "clash"; wait: number; side: "left" | "right"; ping: number }) {
+  const [t, setT] = useState(0);
+  const [hover, setHover] = useState(false);
+  const clock = useRef({ t: 0, last: 0, hover: false });
+  clock.current.hover = hover;
+  const GAP = 800, POP = 250, FILL = wait * 1000, PRESS = 380, REPLY = 1800, FADE = 300;
+  const cycle = GAP + POP + FILL + (kind === "clash" ? PRESS + REPLY : 0) + FADE;
+  useEffect(() => {
+    const c = clock.current;
+    c.t = 0;
+    c.last = performance.now();
+    const id = setInterval(() => {
+      const now = performance.now();
+      const dt = now - c.last;
+      c.last = now;
+      const at = c.t % cycle;
+      // Как в виджете: пока курсор на облачке, время кнопки стоит.
+      if (!(c.hover && at >= GAP + POP && at < GAP + POP + FILL)) c.t += dt;
+      setT(c.t);
+    }, 16);
+    return () => clearInterval(id);
+  }, [kind, wait, ping, cycle]);
+  const c = t % cycle;
+  const since = c - GAP - POP;
+  const up = c >= GAP && c < cycle - FADE;
+  const filled = Math.max(0, Math.min(1, since / FILL));
+  const pressed = kind === "clash" && since >= FILL && since < FILL + PRESS;
+  const replied = kind === "clash" && since >= FILL + PRESS;
+  const left = Math.max(0, Math.ceil((FILL - Math.max(0, since)) / 1000));
+  const holding = hover && since >= 0 && since < FILL;
+  return (
+    <div className={`wp-say wp-ask side-${side}`} onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}>
+      <div className="wp-say-hint">{!up || since < 0 ? "" : holding ? "⏸ курсор на облачке — ждёт" : since < FILL ? `нажмёт сама через ${left} с · наведите — пауза` : kind === "add" ? "нажала «Не надо» — облачко закрылось" : "нажала «Оставить»"}</div>
+      <div className={`wp-say-bubble rich${up ? " up" : ""}${c >= cycle - FADE ? " out" : ""}`} key={Math.floor(t / cycle)}>
+        {replied ? <p>Хорошо, оставила оба.</p> : kind === "add" ? <>
+          <div className="wp-ask-list">
+            <label><i>✓</i><span><b>Купить хлеб</b><em>завтра к 10:00</em></span></label>
+            <label><i>✓</i><span><b>Позвонить маме</b><em>сегодня вечером</em></span></label>
+          </div>
+          <p>Добавить в планы?</p>
+          <div className="wp-ask-acts">
+            <button tabIndex={-1} className="yes">✅ Добавить</button>
+            <button tabIndex={-1} className="no"><span className="bar" style={{ transform: `scaleX(${filled})` }} />Не надо</button>
+          </div>
+        </> : <>
+          <p>В 14:30 уже «Созвон». Сдвинуть «Врач» на 15:00?</p>
+          <div className="wp-ask-acts">
+            <button tabIndex={-1}>➜ Сдвинуть на 15:00</button>
+            <button tabIndex={-1} className={`auto${pressed ? " pressed" : ""}`}><span className="fill" style={{ transform: `scaleX(${filled})` }} />Оставить</button>
+          </div>
+        </>}
+      </div>
+      <img className="wp-say-maid" src="/maid/idle.webp" alt="" />
+    </div>
+  );
+}
+
 export function Widget() {
   const bridge = desktop();
   const [p, setP] = useState<Required<WidgetPrefs> | null>(null);
   const [opacity, setOpacity] = useState(DEFAULTS.opacity);
   const [msg, setMsg] = useState("");
   const [ping, setPing] = useState(0); // выбрали что-то про облачко — показать его ещё раз со звуком
+  const [ask, setAsk] = useState<"add" | "clash">("add"); // какой пример самонажатия показать
 
   useEffect(() => {
     if (!bridge) return;
@@ -301,11 +362,14 @@ export function Widget() {
 
         <section className="wp-sec reveal">
           <h3>Если не ответить</h3>
+          <Setting title="Так это выглядит" hint="Кнопка заполняется полосой; пока курсор на облачке — ждёт"
+            side={<Segment label="Пример" value={ask} onPick={(v) => { setAsk(v); setPing((n) => n + 1); }} options={[["add", "«Добавить?»"], ["clash", "Занятое время"]]} />}>
+            <AutoPreview kind={ask} wait={ask === "add" ? p.proposalWait : p.clashWait} side={p.side === "left" ? "left" : "right"} ping={ping} />
+          </Setting>
           <Setting title="Вопрос «добавить?»" hint="Сама жмёт «Не надо» через"
-            side={<Segment label="«Не надо» через" value={p.proposalWait} onPick={(proposalWait) => save({ proposalWait })} options={[[6, "6 с"], [12, "12 с"], [20, "20 с"], [30, "30 с"]]} />} />
+            side={<Segment label="«Не надо» через" value={p.proposalWait} onPick={(proposalWait) => { void save({ proposalWait }); setAsk("add"); setPing((n) => n + 1); }} options={[[6, "6 с"], [12, "12 с"], [20, "20 с"], [30, "30 с"]]} />} />
           <Setting title="План на занятое время" hint="Сама жмёт «Оставить» через"
-            side={<Segment label="«Оставить» через" value={p.clashWait} onPick={(clashWait) => save({ clashWait })} options={[[5, "5 с"], [10, "10 с"], [20, "20 с"], [30, "30 с"]]} />} />
-          <p className="muted small wp-foot">Кнопка заполняется полосой; пока курсор на облачке горничной — ждёт.</p>
+            side={<Segment label="«Оставить» через" value={p.clashWait} onPick={(clashWait) => { void save({ clashWait }); setAsk("clash"); setPing((n) => n + 1); }} options={[[5, "5 с"], [10, "10 с"], [20, "20 с"], [30, "30 с"]]} />} />
         </section>
       </div>
     </div>
