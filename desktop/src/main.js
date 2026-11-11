@@ -40,13 +40,15 @@ let settings = structuredClone(DEFAULTS);
 // Зашифрованный ключ из файла, пока он не расшифровался (защита Windows бывает недоступна в первые секунды после
 // установки или входа): token() пробует ещё раз при каждом запросе, а saveSettings его не теряет.
 let tokenEnc = "";
+let tokenFailed = false; // уже не расшифровывался — удачу стоит записать в журнал
 function token() {
   if (!settings.token && tokenEnc) {
     try {
       settings.token = safeStorage.decryptString(Buffer.from(tokenEnc, "base64"));
       tokenEnc = "";
-      maidLog("ключ расшифрован со второй попытки");
+      if (tokenFailed) maidLog("ключ расшифровался с повторной попытки");
     } catch (e) {
+      tokenFailed = true;
       maidLog("ключ не расшифровался:", e?.message ?? e);
     }
   }
