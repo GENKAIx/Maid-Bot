@@ -6,6 +6,7 @@ import { AbsoluteFill, AnimatedImage, Img, Sequence, interpolate, spring, static
 import { Audio } from "@remotion/media";
 import { loadFont as loadUnbounded } from "@remotion/google-fonts/Unbounded";
 import { loadFont as loadManrope } from "@remotion/google-fonts/Manrope";
+import SOUND_LOG from "./trailer-sounds.json";
 
 const { fontFamily: HEAD } = loadUnbounded("normal", { weights: ["800"], subsets: ["cyrillic", "latin"] });
 const { fontFamily: BODY } = loadManrope("normal", { weights: ["500", "700"], subsets: ["cyrillic", "latin"] });
@@ -14,18 +15,23 @@ const C = { ink: "#fff6ec", soft: "rgba(255,246,236,.74)", violet: "#b79cff", gr
 const BAR = 60, BEAT = 15;
 const RW = 930, RH = 1140; // кадр записи виджета (страница 620×760 ×1,5)
 
-// Длина записей (кадры) и звуки по меткам записи.
+// Длина записей (кадры).
 const LEN: Record<string, number> = { hello_open: 135, hello_fold: 135, poke: 228, write_open: 300, write_fold: 240, cancel: 315, clash: 240, remind_open: 135, remind_fold: 135,
   angry: 135, clean: 135, done: 270, sleep: 240, thanks: 195, games: 135, girl: 465, forget_fold: 210, full_diary: 225, full_stats: 240 };
-type Mark = [number, string, number?];
-const MARKS: Record<string, Mark[]> = {
-  hello_open: [[9, "hey"]], remind_open: [[9, "hey"]], angry: [[9, "oops"]], games: [[9, "hey"]],
-  poke: [[12, "pop"], [31, "pop"], [49, "pop"], [68, "pop"], [86, "pop"], [105, "pop"], [124, "pop"], [142, "pop"], [161, "pop"], [179, "oops"]],
-  write_open: [[108, "send"], [159, "ding"]], write_fold: [[60, "send"], [108, "ding"]],
-  cancel: [[72, "send"], [120, "pop"], [216, "send"], [264, "ding"]], clash: [[57, "send"], [162, "pop"]],
-  done: [[18, "pop"], [66, "pop"], [99, "pop"], [132, "pop"], [156, "pop"]], sleep: [[108, "hey"]], thanks: [[48, "send"]], girl: [[69, "send"], [219, "send"]],
-  full_diary: [[72, "pop", 0.35], [126, "pop", 0.35], [177, "pop", 0.35]],
-};
+// Родные звуки приложения: что и на каком кадре записи сыграл сам виджет (tools/trailer-record.mjs).
+// Файл — из desktop/assets/sounds (громкость как в приложении), синтез WebAudio — отрендерен в public/sfx/app.
+type Snd = { frame: number; file?: string; vol?: number; synth?: string };
+const SOUNDS = SOUND_LOG as Record<string, Snd[]>;
+const sndSrc = (s: Snd) => staticFile(s.file ? `sfx/${s.file}` : `sfx/app/${s.synth}.wav`);
+const sndVol = (s: Snd) => (s.file ? (s.vol ?? 0.45) * 2 : 1); // всё ×2 к громкости приложения (синтез — уже в wav)
+// Один звук, повторённый в двух виджетах дуэта на одном кадре, звучит один раз.
+const AppSounds: React.FC<{ rec: string; from?: number; speed?: number; skip?: (s: Snd) => boolean }> = ({ rec, from = 0, speed = 1, skip }) => (
+  <>
+    {(SOUNDS[rec] ?? []).filter((s) => s.frame >= from && s.frame < LEN[rec] && !skip?.(s)).map((s, i) => (
+      <Sequence key={i} from={Math.round((s.frame - from) / speed)} layout="none"><Audio src={sndSrc(s)} volume={sndVol(s)} /></Sequence>
+    ))}
+  </>
+);
 const GIRL_FLASH = 363; // кадр записи, где щёлкает прибор
 
 const beatPulse = (f: number) => Math.exp(-((f % BEAT) / BEAT) * 3.2);
@@ -54,22 +60,19 @@ const Desktop: React.FC = () => {
 };
 
 // --- записанный виджет ---
-const Widget: React.FC<{ name: string; x: number; y: number; scale: number; speed?: number; from?: number; delay?: number; label?: string; labelAt?: "top" | "mid"; color?: string; fx?: "up" | "left" | "right" | "pop" }> =
-  ({ name, x, y, scale, speed = 1, from = 0, delay = 0, label, labelAt = "top", color = C.violet, fx = "up" }) => {
+const Widget: React.FC<{ name: string; x: number; y: number; scale: number; speed?: number; from?: number; delay?: number; label?: string; labelAt?: "top" | "mid"; color?: string; fx?: "up" | "left" | "right" | "pop"; skip?: (s: Snd) => boolean }> =
+  ({ name, x, y, scale, speed = 1, from = 0, delay = 0, label, labelAt = "top", color = C.violet, fx = "up", skip }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const n = Math.min(LEN[name] - 1, Math.max(0, Math.round(from + f * speed)));
   const s = spring({ frame: f - delay, fps, config: { damping: 15, stiffness: 150 } });
   const move = fx === "left" ? `translateX(${(1 - s) * -260}px)` : fx === "right" ? `translateX(${(1 - s) * 260}px)` : fx === "pop" ? `scale(${0.8 + 0.2 * s})` : `translateY(${(1 - s) * 220}px)`;
-  const bump = 1 + 0.008 * beatPulse(f);
   return (
-    <div style={{ position: "absolute", left: x, top: y, width: RW * scale, height: RH * scale, opacity: Math.min(1, s * 1.6), transform: `${move} scale(${bump})`, transformOrigin: "70% 100%" }}>
+    <div style={{ position: "absolute", left: x, top: y, width: RW * scale, height: RH * scale, opacity: Math.min(1, s * 1.6), transform: move, transformOrigin: "70% 100%" }}>
       <Img src={staticFile(`rec/t_${name}/${String(n).padStart(4, "0")}.png`)} style={{ width: "100%", height: "100%", filter: "drop-shadow(0 30px 50px rgba(0,0,0,.4))" }} />
       {label ? <div style={{ position: "absolute", right: 30 * scale, top: labelAt === "top" ? 20 : RH * scale * 0.5, fontFamily: BODY, fontWeight: 700, fontSize: 28, color: "#241a3d", background: color,
         borderRadius: 30, padding: "8px 24px", whiteSpace: "nowrap" }}>{label}</div> : null}
-      {(MARKS[name] ?? []).filter(([at]) => at >= from).map(([at, sfx, vol], i) => (
-        <Sequence key={i} from={Math.round((at - from) / speed)} layout="none"><Audio src={staticFile(`sfx/${sfx}.wav`)} volume={vol ?? 0.7} /></Sequence>
-      ))}
+      <AppSounds rec={name} from={from} speed={speed} skip={skip} />
     </div>
   );
 };
@@ -119,7 +122,8 @@ const DuoScene: React.FC<Duo> = ({ a, b, speedA, speedB, title, sub, color, labe
       </div>
     ))}
     <Widget name={a} speed={speedA} x={150} y={204} scale={0.76} fx="left" />
-    <Widget name={b} speed={speedB} x={1080} y={204} scale={0.76} fx="right" delay={5} />
+    <Widget name={b} speed={speedB} x={1080} y={204} scale={0.76} fx="right" delay={5}
+      skip={(s) => (SOUNDS[a] ?? []).some((o) => o.file === s.file && o.synth === s.synth && Math.abs(o.frame / (speedA ?? 1) - s.frame / (speedB ?? 1)) < 8)} />
     <div style={{ position: "absolute", left: 958, top: 330, width: 4, height: 600, borderRadius: 2, background: "linear-gradient(transparent, rgba(255,255,255,.28), transparent)" }} />
   </AbsoluteFill>
 );
@@ -146,7 +150,7 @@ const FullScene: React.FC<{ rec: string; speed: number; len: number; caps: { at:
           <div style={{ visibility: "hidden", fontFamily: HEAD, fontSize: 58, lineHeight: 1.1, paddingTop: 36 }}>{cur.title}<div style={{ fontFamily: BODY, fontSize: 27, marginTop: 24 }}>{cur.sub ?? ""}</div></div>
         </div>
       </Sequence>
-      {(MARKS[rec] ?? []).map(([at, sfx, vol], i) => <Sequence key={i} from={Math.round(at / speed)} layout="none"><Audio src={staticFile(`sfx/${sfx}.wav`)} volume={vol ?? 0.6} /></Sequence>)}
+      <AppSounds rec={rec} speed={speed} />
     </AbsoluteFill>
   );
 };
@@ -205,7 +209,7 @@ const Cta: React.FC = () => {
           })}
         </div>
         <div style={{ display: "inline-block", fontFamily: BODY, fontWeight: 700, fontSize: 40, color: "#241a3d", background: C.violet, borderRadius: 50, padding: "20px 46px", marginTop: 44,
-          opacity: u, transform: `translateY(${(1 - u) * 30}px) scale(${1 + 0.03 * beatPulse(f)})`, boxShadow: "0 16px 40px rgba(183,156,255,.4)" }}>Добавь в список желаемого ✨</div>
+          opacity: u, transform: `translateY(${(1 - u) * 30}px)`, boxShadow: "0 16px 40px rgba(183,156,255,.4)" }}>Добавь в список желаемого ✨</div>
       </div>
     </AbsoluteFill>
   );
@@ -262,7 +266,6 @@ export const Trailer: React.FC = () => (
       </Sequence>
     ))}
     <Flash />
-    <Sequence from={FLASH_AT - 21} layout="none"><Audio src={staticFile("sfx/zap.wav")} volume={0.9} /></Sequence>
-    <Audio src={staticFile("sfx/trailer.mp3")} volume={0.5} />
+    <Audio src={staticFile("sfx/trailer.mp3")} volume={0.38} />
   </AbsoluteFill>
 );

@@ -1,0 +1,319 @@
+{
+ "hello_open": [],
+ "hello_fold": [],
+ "poke": [
+  {
+   "frame": 12,
+   "synth": "popTone__6_vol_0.2_soft_true"
+  },
+  {
+   "frame": 31,
+   "synth": "popTone__2_vol_0.2_soft_true"
+  },
+  {
+   "frame": 50,
+   "synth": "popTone__0_vol_0.2_soft_true"
+  },
+  {
+   "frame": 68,
+   "synth": "popTone__2_vol_0.2_soft_true"
+  },
+  {
+   "frame": 87,
+   "synth": "popTone__6_vol_0.2_soft_true"
+  },
+  {
+   "frame": 105,
+   "synth": "popTone__2_vol_0.2_soft_true"
+  },
+  {
+   "frame": 124,
+   "synth": "popTone__-4_vol_0.18_soft_true"
+  },
+  {
+   "frame": 143,
+   "synth": "popTone__-4_vol_0.18_soft_true"
+  },
+  {
+   "frame": 161,
+   "synth": "popTone__-4_vol_0.18_soft_true"
+  },
+  {
+   "frame": 180,
+   "file": "oops.wav",
+   "vol": 0.45
+  }
+ ],
+ "write_open": [
+  {
+   "frame": 108,
+   "file": "send.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 141,
+   "file": "ding.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 146,
+   "file": "pop.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 150,
+   "file": "pop.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 155,
+   "file": "pop.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 173,
+   "synth": "popTone__0_vol_0.03_soft_true"
+  },
+  {
+   "frame": 185,
+   "synth": "popTone__7_vol_0.03_soft_true"
+  },
+  {
+   "frame": 197,
+   "synth": "popTone__7_vol_0.09"
+  },
+  {
+   "frame": 206,
+   "synth": "popTone__3_vol_0.05_soft_true"
+  },
+  {
+   "frame": 225,
+   "synth": "popTone__9_vol_0.08"
+  }
+ ],
+ "write_fold": [
+  {
+   "frame": 60,
+   "file": "send.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 93,
+   "file": "ding.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 98,
+   "file": "pop.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 121,
+   "synth": "popTone__0_vol_0.03_soft_true"
+  },
+  {
+   "frame": 129,
+   "synth": "popTone__1_vol_0.03_soft_true"
+  },
+  {
+   "frame": 132,
+   "synth": "popTone__3_vol_0.03_soft_true"
+  },
+  {
+   "frame": 135,
+   "synth": "popTone__4_vol_0.03_soft_true"
+  },
+  {
+   "frame": 136,
+   "synth": "popTone__6_vol_0.03_soft_true"
+  },
+  {
+   "frame": 140,
+   "synth": "popTone__7_vol_0.03_soft_true"
+  },
+  {
+   "frame": 148,
+   "synth": "popTone__7_vol_0.09"
+  },
+  {
+   "frame": 156,
+   "synth": "popTone__3_vol_0.05_soft_true"
+  },
+  {
+   "frame": 176,
+   "synth": "popTone__9_vol_0.08"
+  }
+ ],
+ "cancel": [
+  {
+   "frame": 10,
+   "synth": "popTone__9_vol_0.08"
+  },
+  {
+   "frame": 72,
+   "file": "send.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 105,
+   "file": "ding.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 110,
+   "file": "pop.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 134,
+   "synth": "popTone__0_vol_0.03_soft_true"
+  },
+  {
+   "frame": 146,
+   "synth": "popTone__7_vol_0.03_soft_true"
+  },
+  {
+   "frame": 158,
+   "synth": "popTone__7_vol_0.09"
+  },
+  {
+   "frame": 169,
+   "synth": "popTone__2_vol_0.05_soft_true"
+  },
+  {
+   "frame": 201,
+   "synth": "popTone__-4_vol_0.07"
+  },
+  {
+   "frame": 201,
+   "synth": "popTone__-6_vol_0.05_soft_true"
+  },
+  {
+   "frame": 217,
+   "file": "send.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 250,
+   "file": "ding.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 254,
+   "file": "pop.wav",
+   "vol": 0.45
+  }
+ ],
+ "clash": [
+  {
+   "frame": 10,
+   "synth": "popTone__9_vol_0.08"
+  },
+  {
+   "frame": 57,
+   "file": "send.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 90,
+   "file": "ding.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 95,
+   "file": "pop.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 149,
+   "synth": "popTone__0_vol_0.03_soft_true"
+  },
+  {
+   "frame": 161,
+   "synth": "popTone__7_vol_0.03_soft_true"
+  },
+  {
+   "frame": 163,
+   "file": "ding.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 170,
+   "synth": "popTone__6_vol_0.07_soft_true"
+  },
+  {
+   "frame": 187,
+   "synth": "popTone__9_vol_0.06_soft_true"
+  }
+ ],
+ "remind_open": [],
+ "remind_fold": [],
+ "angry": [],
+ "clean": [],
+ "done": [
+  {
+   "frame": 18,
+   "synth": "popTone__2"
+  },
+  {
+   "frame": 66,
+   "synth": "popTone__4"
+  },
+  {
+   "frame": 99,
+   "synth": "popTone__4"
+  },
+  {
+   "frame": 132,
+   "synth": "popTone__4"
+  },
+  {
+   "frame": 156,
+   "synth": "popTone__2"
+  }
+ ],
+ "sleep": [
+  {
+   "frame": 107,
+   "synth": "popTone__6_vol_0.07_soft_true"
+  },
+  {
+   "frame": 124,
+   "synth": "popTone__9_vol_0.06_soft_true"
+  },
+  {
+   "frame": 247,
+   "synth": "popTone__5_vol_0.05_soft_true"
+  }
+ ],
+ "thanks": [
+  {
+   "frame": 48,
+   "file": "send.wav",
+   "vol": 0.45
+  }
+ ],
+ "games": [],
+ "girl": [
+  {
+   "frame": 70,
+   "file": "send.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 219,
+   "file": "send.wav",
+   "vol": 0.45
+  },
+  {
+   "frame": 338,
+   "synth": "zapTone"
+  }
+ ],
+ "forget_fold": [
+  {
+   "frame": 91,
+   "synth": "zapTone"
+  }
+ ]
+}

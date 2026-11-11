@@ -31,6 +31,42 @@ const evalJs = async (js) => {
 await send("Page.enable");
 await send("Runtime.enable");
 
+// --- звуки приложения ---
+// Файловые звуки (play → HTMLMediaElement.play) ловятся с загрузки страницы, синтез WebAudio (popTone, zapTone) — обёрткой после неё.
+const STAMP = `performance.timeOrigin + performance.now()`;
+const HOOK_MEDIA = `(() => { const P = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () {
+  (window.__snd ??= []).push({ at: ${STAMP}, file: decodeURIComponent(this.src.split("/").pop()), vol: this.volume }); return P.call(this); }; })();`;
+const SYNTH_FNS = { popTone: 0.5, zapTone: 1.8 }; // имя → длина записи, с
+const HOOK_SYNTH = `(() => { for (const n of ${JSON.stringify(Object.keys(SYNTH_FNS))}) { const f = window[n]; if (typeof f !== "function" || f.__hooked) continue;
+  const w = function (...a) { (window.__snd ??= []).push({ at: ${STAMP}, fn: n, args: JSON.stringify(a) }); return f.apply(this, a); }; w.__hooked = true; window[n] = w; } })(); 0`;
+const SOUNDS = {}, SYNTH = new Map();
+const synthKey = (s) => (s.fn + "_" + s.args.replace(/[^\w.-]+/g, "_")).replace(/_+$/, "");
+const SOUND_JSON = new URL("../src/trailer-sounds.json", import.meta.url);
+const SFX_APP = new URL("../public/sfx/app/", import.meta.url);
+
+// Синтез в wav: та же функция приложения, но actx — OfflineAudioContext.
+async function renderSynth() {
+  mkdirSync(SFX_APP, { recursive: true });
+  await send("Page.navigate", { url: `${PAGE}?v=${Date.now()}` });
+  await sleep(2600);
+  for (const [key, s] of SYNTH) {
+    const len = SYNTH_FNS[s.fn];
+    const r = await send("Runtime.evaluate", { awaitPromise: true, returnByValue: true, expression: `(async () => {
+      actx = new OfflineAudioContext(1, ${Math.round(48000 * len)}, 48000); cfg.mute = false; ${s.fn}(...${s.args});
+      const d = (await actx.startRendering()).getChannelData(0); actx = null;
+      const pcm = new Int16Array(d.length); for (let i = 0; i < d.length; i++) pcm[i] = Math.max(-1, Math.min(1, d[i] * 2)) * 32767; /* ×2: в ролике поверх музыки */
+      let bin = ""; const u = new Uint8Array(pcm.buffer); for (let i = 0; i < u.length; i++) bin += String.fromCharCode(u[i]); return btoa(bin); })()` });
+    const b64 = r.result?.result?.value;
+    if (!b64) { console.log("! синтез", key, JSON.stringify(r.result?.exceptionDetails?.exception?.description ?? r.result).slice(0, 200)); continue; }
+    const pcm = Buffer.from(b64, "base64");
+    const head = Buffer.alloc(44);
+    head.write("RIFF", 0); head.writeUInt32LE(36 + pcm.length, 4); head.write("WAVEfmt ", 8); head.writeUInt32LE(16, 16); head.writeUInt16LE(1, 20); head.writeUInt16LE(1, 22);
+    head.writeUInt32LE(48000, 24); head.writeUInt32LE(96000, 28); head.writeUInt16LE(2, 32); head.writeUInt16LE(16, 34); head.write("data", 36); head.writeUInt32LE(pcm.length, 40);
+    writeFileSync(new URL(key + ".wav", SFX_APP), Buffer.concat([head, pcm]));
+    console.log("синтез", key);
+  }
+}
+
 async function record(name, sc, { url, W, H, SCALE, before }) {
   const out = new URL(`../public/rec/t_${name}/`, import.meta.url);
   rmSync(out, { recursive: true, force: true });
@@ -44,7 +80,9 @@ async function record(name, sc, { url, W, H, SCALE, before }) {
   if (sc.mode) { await evalJs(`hideBubble(); setCollapsed(${sc.mode === "fold"}); window.__h?.down?.(false); 0`); await sleep(900); }
   if (sc.setup) { await evalJs(sc.setup + "; 0"); await sleep(1300); }
   if (sc.mode) await evalJs(`hideBubble(); hideClock?.(); 0`);
+  if (sc.mode) await evalJs(HOOK_SYNTH);
   await sleep(500);
+  await evalJs(`window.__snd = []; 0`);
   const steps = [...(sc.steps ?? [])].sort((a, b) => a[0] - b[0]);
   const marks = [];
   shots = [];
@@ -57,6 +95,10 @@ async function record(name, sc, { url, W, H, SCALE, before }) {
   }
   await send("Page.stopScreencast");
   await sleep(250);
+  // Звуки, которые сыграло само приложение: кадр, файл или синтез WebAudio (рендерится в wav ниже).
+  const snd = JSON.parse((await evalJs(`JSON.stringify(window.__snd ?? [])`)) ?? "[]");
+  SOUNDS[name] = snd.filter((s) => s.at >= t0 * 1000).map((s) => ({ frame: Math.round((s.at / 1000 - t0) * FPS), ...(s.file ? { file: s.file, vol: s.vol } : { synth: synthKey(s) }) }));
+  for (const s of snd) if (s.fn) SYNTH.set(synthKey(s), s);
   const got = shots;
   shots = null;
   const frames = Math.round(sc.seconds * FPS);
@@ -84,8 +126,12 @@ for (const a of args) {
     const want = new Date(2026, 10, 10, 18, 40, 0).getTime();
     await send("Emulation.setDefaultBackgroundColorOverride", { color: { r: 0, g: 0, b: 0, a: 0 } });
     await record(a, SCENES[a], { url: `${PAGE}?v=${Date.now()}`, W: 620, H: 760, SCALE: 1.5, before: [`(() => { const d = ${want} - Date.now(); const N = Date.now; const D = Date;
-      class F extends D { constructor(...a) { a.length ? super(...a) : super(N() + d); } static now() { return N() + d; } } window.Date = F; })();`] });
+      class F extends D { constructor(...a) { a.length ? super(...a) : super(N() + d); } static now() { return N() + d; } } window.Date = F; })();`, HOOK_MEDIA] });
   } else console.log("нет сценки", a);
 }
+if (SYNTH.size) await renderSynth();
+let saved = {};
+try { saved = JSON.parse(readFileSync(SOUND_JSON, "utf8")); } catch {}
+writeFileSync(SOUND_JSON, JSON.stringify({ ...saved, ...SOUNDS }, null, 1));
 ws.close();
 proc.kill();
