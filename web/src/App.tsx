@@ -8,6 +8,7 @@ import { Health } from "./screens/Health";
 import { Login } from "./screens/Login";
 import { Money } from "./screens/Money";
 import { Plans } from "./screens/Plans";
+import { Profile } from "./screens/Profile";
 import { Settings } from "./screens/Settings";
 import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
@@ -27,6 +28,7 @@ const TABS = [
   { id: "diary", path: "/diary", title: "Дневник", icon: "diary" },
   { id: "plans", path: "/plans", title: "Планы", icon: "plans" },
   { id: "habits", path: "/habits", title: "Привычки", icon: "habits" },
+  { id: "profile", path: "/profile", title: "Профиль", icon: "profile", more: true },
   { id: "search", path: "/search", title: "Поиск", icon: "search", more: true },
   { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true },
   { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
@@ -81,6 +83,7 @@ export function App() {
     tab === "diary" ? <Diary day={arg} version={version} onChanged={onChanged} />
     : tab === "habits" ? <Habits month={arg} version={version} onChanged={onChanged} />
     : tab === "plans" ? <Plans version={version} onChanged={onChanged} />
+    : tab === "profile" ? <Profile version={version} onChanged={onChanged} />
     : tab === "health" ? <Health version={version} />
     : tab === "money" ? <Money version={version} />
     : tab === "stats" ? <Stats version={version} />

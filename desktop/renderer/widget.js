@@ -77,12 +77,13 @@ function play(name) {
 const KIND = {
   diary: ["📓", "Дневник"], event: ["📅", "План"], task: ["✅", "Задача"], date: ["🎂", "Дата"], memory: ["🧠", "Память"],
   metric: ["📊", "Показатель"], money: ["💰", "Деньги"], habit: ["🔁", "Привычка"], mark: ["✔", "Отметка"], edit: ["✎", "Правка"],
+  trait: ["🛡", "Профиль"],
 };
 
 // Куда ведёт карточка записи из облачка: раздел приложения (веб-приложение в главном окне).
 function sectionOf(c) {
   if (c.kind === "diary") return /^Здоровье/.test(c.title) ? "/health" : `/diary/${data?.day ?? ""}`.replace(/\/$/, "");
-  return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits" }[c.kind] ?? "/";
+  return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits", trait: "/profile" }[c.kind] ?? "/";
 }
 
 // --- горничная: 27 анимаций (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации», «…/Маскот/mascot2» и «…/Маскот/3/forget») ---
@@ -429,12 +430,17 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
         hideBubble();
         return x.run();
       }
-      const m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/);
+      let m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/);
       try {
         if (m) {
           if (m[3] === "done") { popTone(3); react("streak", 4000); } else { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
           const r = await maid.api("POST", `/api/habits/${m[1]}/mark`, { status: m[3], day: m[2] });
           say(r.text, { ms: 5000 });
+          maid.changed();
+        } else if ((m = x.data.match(/^trait:(\d+):(yes|no)$/))) {
+          // Закономерность из уведомления: добавить в дебафы профиля или нет.
+          const r = await maid.api("POST", `/api/traits/${m[1]}`, { status: m[2] === "yes" ? "active" : "declined" });
+          say(r.text || "Готово", { ms: 5000 });
           maid.changed();
         } else hideBubble();
       } catch (e) {
