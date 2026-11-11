@@ -169,6 +169,11 @@ export const ParseSchema = z.object({
     .optional()
     .catch(null),
   clarify: optStr,
+  draw: z
+    .object({ prompt: str.min(1), title: optStr })
+    .nullable()
+    .optional()
+    .catch(null),
   emotion: z.enum(EMOTIONS).catch("neutral"),
   reply: optStr,
 });
@@ -202,6 +207,8 @@ export interface Parsed {
   /** Корни слов для поиска по всем записям («сердц», «голов»). */
   search: string[];
   clarify: string | null;
+  /** Просьба нарисовать картинку: prompt — описание для модели картинок по-английски, title — коротко по-русски. */
+  draw: { prompt: string; title: string } | null;
   emotion: (typeof EMOTIONS)[number];
   reply: string | null;
   /** Что код отбросил и почему — в журнал. */
@@ -260,12 +267,16 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни нужны для ответа (null — за всё время),
  "search": ["корни слов для поиска по записям, напр. сердц, кардиолог"] — только если вопрос про конкретную вещь,
  "clarify": "один короткий вопрос, если без него нельзя записать правильно, иначе null",
+ "draw": {"prompt": "подробное описание картинки по-английски для генератора", "title": "коротко по-русски, что рисуем"} или null — только если просят нарисовать/сгенерировать/создать картинку,
  "emotion": "${EMOTIONS.join("|")}",
  "reply": "короткая живая реплика на сообщение (1 предложение) или null"
 }
 
 Правила:
 - Одно сообщение может содержать много всего сразу: дневник, планы, задачи, даты — разбери всё.
+- Просьба нарисовать / сгенерировать / создать картинку («нарисуй кота в шляпе», «сделай картинку заката») — draw:
+  prompt — подробное описание по-английски (что, стиль, свет, фон), title — коротко по-русски; reply — живая реплика, что берёшься рисовать.
+  Остальное (дневник, summary, задачи) тогда пустое. Рассказ о том, что пользователь сам рисовал, — это дневник, не draw.
 - Обычный рассказ о дне — это дневник. Будущее с датой/временем («встреча завтра в 15») — events.
   Дело с точным временем, даже без даты («Озон в 20:00», «забрать посылку в 18:30») — events на ближайший такой час.
   Дело без конкретного времени («надо купить лампочку») — tasks. День рождения, годовщина — dates.
@@ -551,6 +562,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     lookup,
     search,
     clarify,
+    draw: r.draw?.prompt.trim() ? { prompt: r.draw.prompt.trim().slice(0, 1500), title: (r.draw.title ?? "").trim().slice(0, 80) } : null,
     emotion: r.emotion,
     reply: r.reply ?? null,
     dropped,

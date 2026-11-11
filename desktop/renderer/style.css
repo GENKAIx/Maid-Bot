@@ -181,6 +181,15 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-text { max-height: 220px; overflow: auto; white-space: pre-wrap; }
 .bubble-cards { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; max-height: 190px; overflow-y: auto; }
 .bubble-cards:empty { display: none; }
+/* Нарисованная картинка (draw.ts): в облачке и в переписке; щелчок — крупнее. */
+.b-drawing { display: block; width: auto; max-width: 100%; max-height: 176px; margin: 0 auto; border-radius: 10px; cursor: zoom-in; animation: cardIn .35s cubic-bezier(.2,.9,.3,1.2) both; flex: none; }
+.b-drawing.big { max-height: none; cursor: zoom-out; }
+.bubble-cards:has(.b-drawing.big) { max-height: 340px; }
+.chat .hm .h-drawing { display: block; width: 180px; max-width: 100%; aspect-ratio: 1; object-fit: cover; margin-top: 5px; border-radius: 9px; background: rgba(255, 255, 255, .08); cursor: zoom-in; }
+.chat .hm .h-drawing.loading { animation: drawingWait 1.2s ease-in-out infinite alternate; }
+.chat .hm .h-drawing.big { width: 100%; aspect-ratio: auto; cursor: zoom-out; }
+.chat .hm .h-drawing-gone { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
+@keyframes drawingWait { from { opacity: .35; } to { opacity: .8; } }
 /* Печать по буквам (runType): невидимые буквы держат место, облачко не прыгает. Кнопки — после текста. */
 .tw { opacity: 0; }
 .tw.on { opacity: 1; }

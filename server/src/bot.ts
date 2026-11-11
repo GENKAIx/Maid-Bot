@@ -61,9 +61,10 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
 
   async function answer(ctx: Context, u: User, r: Reply) {
     const markup = replyKeyboard(r);
-    const img = emotionImage(u.persona, r.emotion);
+    // Нарисованная картинка — вместо картинки настроения.
+    const img = r.drawing ? new InputFile(Buffer.from(r.drawing.data, "base64"), `drawing-${r.drawing.id}.jpg`) : emotionImage(u.persona, r.emotion);
     const sent = img && r.text.length <= 1000
-      ? await ctx.replyWithPhoto(new InputFile(img), { caption: r.text, parse_mode: "HTML", reply_markup: markup })
+      ? await ctx.replyWithPhoto(img instanceof InputFile ? img : new InputFile(img), { caption: r.text, parse_mode: "HTML", reply_markup: markup })
       : await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: markup, link_preview_options: { is_disabled: true } });
     // Запомнить, где висит вопрос: ответят в приложении или он истечёт — кнопки отсюда уберутся.
     if (r.proposal) await store.updateProposal(r.proposal.id, { tg_chat: String(sent.chat.id), tg_msg: sent.message_id });

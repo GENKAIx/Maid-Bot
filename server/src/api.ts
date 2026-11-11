@@ -354,6 +354,13 @@ export function createApi(deps: ApiDeps) {
       else await store.addTrait({ user_id: u.id, kind: b.kind, category: traitCategory(b.category), title: b.title, note: b.note, source: "user", status: "active", evidence: "[]", message_id: null });
       return profileView(store, u, today);
     }
+    // Нарисованная картинка (pipeline.drawFor): виджет хранит в переписке только id и догружает её отсюда.
+    const drawingRow = p.match(/^\/api\/drawings\/(\d+)$/);
+    if (m === "GET" && drawingRow) {
+      const d = await store.drawing(Number(drawingRow[1]));
+      if (!d || d.user_id !== u.id) throw new HttpError(404, "нет такой картинки");
+      return { id: d.id, mime: d.mime, data: d.data, title: d.title, prompt: d.prompt };
+    }
     const traitRow = p.match(/^\/api\/traits\/(\d+)$/);
     if (m === "POST" && traitRow) {
       const b = parseBody(z.object({

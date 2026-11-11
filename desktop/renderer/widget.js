@@ -359,7 +359,7 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false, drawing = null } = {}) {
   // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices).
   if (napping) return;
   const b = $("#bubble");
@@ -414,7 +414,20 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   }
   // ✕ с кольцом времени — только у важного: записи и карточки, «Отменить» (что-то записала), дни, напоминания, кнопки (кроме самонажатия), длинный текст.
   // Короткие реплики (тык по горничной, «привет», «вернула ✓») уходят сами — без ✕ и кольца.
-  const weighty = !!(changes.length || days.length || undo || notice || buttons.some((x) => !x.auto) || plain.length > 140 || (ms === 0 && text !== "…"));
+  // Нарисованная по просьбе картинка (сервер: draw.ts) — под текстом; щелчок — крупнее.
+  if (drawing?.data) {
+    const src = `data:${drawing.mime};base64,${drawing.data}`;
+    drawingCache.set(drawing.id, Promise.resolve({ src, title: drawing.title || "" }));
+    const img = document.createElement("img");
+    img.className = "b-drawing";
+    img.src = src;
+    img.alt = drawing.title || "Картинка";
+    img.title = (drawing.title ? drawing.title + " — " : "") + "щёлкните, чтобы увеличить";
+    img.style.animationDelay = `${late + 160}ms`;
+    img.onclick = () => img.classList.toggle("big");
+    cards.appendChild(img);
+  }
+  const weighty = !!(drawing || changes.length || days.length || undo || notice || buttons.some((x) => !x.auto) || plain.length > 140 || (ms === 0 && text !== "…"));
   const acts = $("#bubbleActions");
   acts.innerHTML = proposal
     ? (proposal.remind ? `<button class="prop-yes" data-p="remind">✅ ${esc(proposal.remind.label)}</button>` : "")
@@ -796,7 +809,7 @@ async function pump() {
     const r = await maid.api("POST", m.path, m.body);
     outbox = outbox.filter((x) => x !== m);
     remember(m.body.text || r.heard || m.label, r);
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)], stay: m.mini && collapsed });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)], stay: m.mini && collapsed, drawing: r.drawing });
     maid.changed();
   } catch (e) {
     if (offline(e)) {
@@ -865,7 +878,7 @@ const HIST_MAX = 40;
 let chatLog = (() => { try { return JSON.parse(localStorage.getItem(HIST_KEY)) ?? []; } catch { return []; } })();
 function remember(me, r) {
   if (!r?.text) return;
-  chatLog = [...chatLog, { at: Date.now(), me: String(me ?? "").slice(0, 400), reply: String(r.text).slice(0, 2000), undo: r.undoable ? r.messageId : null }].slice(-HIST_MAX);
+  chatLog = [...chatLog, { at: Date.now(), me: String(me ?? "").slice(0, 400), reply: String(r.text).slice(0, 2000), undo: r.undoable ? r.messageId : null, pic: r.drawing?.id ?? null }].slice(-HIST_MAX);
   try { localStorage.setItem(HIST_KEY, JSON.stringify(chatLog)); } catch {}
   if (!$("#chatHist").classList.contains("hidden")) drawHistory();
 }
@@ -874,9 +887,32 @@ function drawHistory() {
   const box = $("#chatHist");
   box.innerHTML = chatLog.length
     ? chatLog.map((h, i) => (h.me ? `<div class="hm me">${esc(h.me)}<i>${clockOf(h.at)}</i></div>` : "")
-      + `<div class="hm her">${tgHtml(h.reply)}${h.undo ? (h.undone ? ` <span class="h-undone">отменено</span>` : ` <button type="button" class="h-undo" data-h="${i}">Отменить</button>`) : ""}<i>${clockOf(h.at)}</i></div>`).join("")
+      + `<div class="hm her">${tgHtml(h.reply)}${h.pic ? `<img class="h-drawing" data-drawing="${Number(h.pic)}" alt="Картинка">` : ""}${h.undo ? (h.undone ? ` <span class="h-undone">отменено</span>` : ` <button type="button" class="h-undo" data-h="${i}">Отменить</button>`) : ""}<i>${clockOf(h.at)}</i></div>`).join("")
     : `<div class="h-empty">Здесь будут последние ответы горничной.</div>`;
   box.scrollTop = box.scrollHeight;
+  fillDrawings(box);
+}
+// Картинки в переписке: в localStorage лежит только id (картинка — сотни килобайт), сама картинка — с сервера, один раз за запуск
+// (в кэше — обещание: перерисовка истории, пока картинка грузится, не просит её снова).
+const drawingCache = new Map();
+function fillDrawings(box) {
+  for (const img of box.querySelectorAll("img[data-drawing]:not([src])")) {
+    const id = Number(img.dataset.drawing);
+    img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="; // пока грузится — пусто
+    img.classList.add("loading");
+    if (!drawingCache.has(id)) {
+      const got = maid.api("GET", `/api/drawings/${id}`).then((d) => ({ src: `data:${d.mime};base64,${d.data}`, title: d.title || "" }));
+      got.catch(() => drawingCache.delete(id)); // не загрузилась — в следующий раз спросить снова
+      drawingCache.set(id, got);
+    }
+    drawingCache.get(id).then(({ src, title }) => {
+      img.classList.remove("loading");
+      img.title = title;
+      img.onload = () => { if (box.scrollHeight - box.scrollTop - box.clientHeight < img.height + 60) box.scrollTop = box.scrollHeight; };
+      img.onclick = () => img.classList.toggle("big");
+      img.src = src;
+    }, () => img.replaceWith(Object.assign(document.createElement("span"), { className: "h-drawing-gone", textContent: "🖼 картинка не загрузилась" })));
+  }
 }
 // История встаёт на место списка задач (панель вытягивается, как с настройками) и занимает ровно свободное место:
 // раньше она росла до 260 px поверх всего и выталкивала строку ввода за низ панели.

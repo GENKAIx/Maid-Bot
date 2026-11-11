@@ -39,6 +39,11 @@ export const config = {
     apiKey: env("STT_API_KEY", env("LLM_API_KEY")),
     model: "",
   },
+  /** Картинки по просьбе («нарисуй кота»): RunPod, модель Z-Image Turbo ($0,005 за картинку). Пусто — горничная не рисует. */
+  drawing: {
+    apiKey: env("RUNPOD_API_KEY"),
+    model: env("RUNPOD_DRAW_MODEL", "z-image-turbo"),
+  },
   port: Number(env("PORT", "3000")),
   /** Postgres (Render). Если задан — главнее файла SQLite. */
   databaseUrl: env("DATABASE_URL"),

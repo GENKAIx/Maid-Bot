@@ -291,7 +291,35 @@ CREATE INDEX IF NOT EXISTS traits_user ON traits (user_id, status);
   `
 ALTER TABLE users ADD COLUMN event_reminders TEXT NOT NULL DEFAULT '';
 `,
+  // Шаг 10: картинки, нарисованные по просьбе (draw.ts). data — base64: ссылка RunPod живёт 7 дней, картинка хранится у нас.
+  `
+CREATE TABLE IF NOT EXISTS drawings (
+  id {pk},
+  user_id INTEGER NOT NULL,
+  message_id INTEGER,
+  prompt TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  mime TEXT NOT NULL,
+  data TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS drawings_user ON drawings (user_id, id);
+`,
 ];
+
+export interface DrawingRow {
+  id: number;
+  user_id: number;
+  message_id: number | null;
+  /** Описание для модели картинок (по-английски). */
+  prompt: string;
+  /** Коротко по-русски, что нарисовано. */
+  title: string;
+  mime: string;
+  /** base64 без префикса data: */
+  data: string;
+  created_at: string;
+}
 
 export interface User {
   id: number;
@@ -1019,6 +1047,17 @@ export class Store {
         "DO UPDATE SET status = 'pending', text = excluded.text, buttons = excluded.buttons WHERE reminders.status = 'cancelled'",
       userId, refKind, refId, dueAt.toISOString(), text, buttons,
     );
+  }
+
+  // --- нарисованные картинки ---
+  addDrawing(d: Pick<DrawingRow, "user_id" | "message_id" | "prompt" | "title" | "mime" | "data">): Promise<number> {
+    return this.insert(
+      "INSERT INTO drawings (user_id, message_id, prompt, title, mime, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      d.user_id, d.message_id, d.prompt, d.title, d.mime, d.data, now(),
+    );
+  }
+  drawing(id: number): Promise<DrawingRow | undefined> {
+    return this.get<DrawingRow>("SELECT * FROM drawings WHERE id = ?", id);
   }
 
   // --- предложения (подтвердить кнопками) ---

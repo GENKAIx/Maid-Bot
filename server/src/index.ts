@@ -8,6 +8,7 @@ import { callLlm, llmReady, onLlmUsage } from "./llm.ts";
 import { backupName, exportJson } from "./backup.ts";
 import type { User } from "./db.ts";
 import { Pipeline } from "./pipeline.ts";
+import { callDraw, drawReady } from "./draw.ts";
 import { WIDGET_UPDATES } from "./widget.ts";
 import { Push } from "./push.ts";
 import { Scheduler, type Send } from "./scheduler.ts";
@@ -19,6 +20,7 @@ import { takeSnapshot } from "./snapshot.ts";
 const store = await Store.open(config.databaseUrl || config.dbFile);
 console.log(`[start] база: ${config.databaseUrl ? "Postgres" : "SQLite " + config.dbFile}`);
 const pipeline = new Pipeline(store, callLlm, config.publicUrl);
+if (drawReady()) pipeline.draw = callDraw;
 // Расход токенов модели — по месяцам (kv llm:ГГГГ-ММ), строка в настройках сайта.
 onLlmUsage((x) => void store.addLlmUsage(new Date(), x).catch((e) => console.error("[usage]", e)));
 

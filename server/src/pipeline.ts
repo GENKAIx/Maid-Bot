@@ -1,5 +1,6 @@
 import type { MarkRow, Message, ProposalRow, Store, Table, User } from "./db.ts";
 import type { LlmCall, Picture } from "./llm.ts";
+import type { DrawCall } from "./draw.ts";
 import { extractJson } from "./llm.ts";
 import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
 import { scheduleText } from "./habits.ts";
@@ -38,6 +39,8 @@ export interface Reply {
   failed?: boolean;
   /** План лёг на занятое время — кнопки «Сдвинуть на …» (если есть куда) и «Оставить» (clash.ts). */
   clash?: Clash;
+  /** Нарисованная по просьбе картинка (draw.ts): показать в облачке и в переписке; id — для GET /api/drawings/:id. */
+  drawing?: { id: number; mime: string; data: string; title: string };
 }
 
 export type ClashChoice = "shift" | "keep";
@@ -153,6 +156,8 @@ export class Pipeline {
   /** publicUrl — адрес веб-приложения для ссылок на дни в ответах (пусто — без ссылок). */
   constructor(private store: Store, private llm: LlmCall, private publicUrl = "") {}
 
+  /** Рисовалка картинок (draw.ts); null — ключа RunPod нет, горничная честно говорит, что не рисует. */
+  draw: DrawCall | null = null;
   /** Зовётся, когда у пользователя что-то поменялось (записали, отметили, отменили) — например, чтобы обновить список-виджет. */
   onChange: ((u: User) => void) | null = null;
   /** Вопрос «добавить?» закрыт (ответили, отказались, истёк) — убрать кнопки там, где он висит (Telegram).
@@ -238,6 +243,9 @@ export class Pipeline {
       return { text: q, emotion: "neutral", messageId: message.id, undoable: false };
     }
 
+    // Просьба нарисовать — рисуем, ничего не записываем.
+    if (parsed.draw) return this.drawFor(u, message, parsed);
+
     // Вопрос про саму картинку («что это?») — отвечаем по ней, а не по записям.
     if (parsed.question && pics) return this.chat(u, message, at, pics);
 
@@ -279,6 +287,27 @@ export class Pipeline {
     }
     await s.setMessage(target.id, { state: "done", reply });
     return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes, proposal, clash };
+  }
+
+  /** «Нарисуй …»: картинка от RunPod сохраняется (drawings) и уходит в ответ. Без ключа или при сбое — сказать словами. */
+  private async drawFor(u: User, message: Message, parsed: Parsed): Promise<Reply> {
+    const s = this.store;
+    const d = parsed.draw!;
+    const done = async (text: string, emotion: Emotion, drawing?: Reply["drawing"]): Promise<Reply> => {
+      await s.setMessage(message.id, { state: "done", reply: text });
+      return { text, emotion, messageId: message.id, undoable: false, drawing };
+    };
+    if (!this.draw) return done("Рисовать я пока не умею: на сервере не задан ключ RunPod (RUNPOD_API_KEY).", "awkward");
+    let pic: Picture;
+    try {
+      pic = await this.draw(d.prompt);
+    } catch (e) {
+      console.error("[draw]", e);
+      return done(`Не вышло нарисовать${d.title ? ` «${esc(d.title)}»` : ""} — художник не ответил. Попробуйте ещё раз чуть позже.`, "worried");
+    }
+    const id = await s.addDrawing({ user_id: u.id, message_id: message.id, prompt: d.prompt, title: d.title, mime: pic.mime, data: pic.data });
+    const text = parsed.reply ? esc(parsed.reply) : d.title ? `Готово: ${esc(d.title)}.` : "Готово, вот картинка.";
+    return done(text, parsed.emotion === "neutral" ? "proud" : parsed.emotion, { id, mime: pic.mime, data: pic.data, title: d.title });
   }
 
   /** Ответ на «Сдвинуть на …?»: shift — перенести план после занятого, keep — оставить оба и больше про эту пару не спрашивать.
