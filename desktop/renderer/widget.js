@@ -1685,10 +1685,11 @@ $("#gear").addEventListener("contextmenu", (e) => {
   maid.openSection("/widget");
 });
 
-// Корзина в шапке: полная версия на разделе «Корзина» — удалённое и отменённое за 14 дней, с «↩ Вернуть».
-$("#binBtn").addEventListener("click", (e) => {
+// Свернуть в шапке: панель сворачивается в карточку (как двойной щелчок по горничной).
+$("#foldBtn").addEventListener("click", (e) => {
   e.stopPropagation();
-  maid.openSection("/trash");
+  autoOpened = false;
+  foldAnimated(true);
 });
 
 // --- перетаскивание за шапку и за горничную: окно двигает main.js по курсору (так верно и на экранах с разным масштабом) ---
