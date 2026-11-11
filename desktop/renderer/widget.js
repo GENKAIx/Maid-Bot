@@ -575,7 +575,8 @@ function startAuto(btn, wait) {
   run.raf = requestAnimationFrame(tick);
 }
 
-// Время жизни облачка: у важных (см. say) кольцо вокруг ✕ тает к нулю; последние LIFE_FADE мс любое облачко бледнеет и чуть уменьшается.
+// Время жизни облачка: у важных (см. say) кольцо вокруг ✕ тает к нулю; последние LIFE_FADE мс оно бледнеет и чуть уменьшается.
+// Короткие реплики (без кольца) живут как раньше: целые, потом просто исчезают.
 // Пока курсор на облачке — время стоит (кольцо замирает и становится ярче), увели — ещё не меньше LIFE_GRACE мс.
 // Облачко под свёрнутой панелью (hidden) тоже ждёт.
 const LIFE_GRACE = 2500;
@@ -600,7 +601,7 @@ function startLife(total, shown) {
     if (held) run.left = Math.max(run.left, LIFE_GRACE);
     else if (!b.classList.contains("hidden")) run.left -= dt;
     b.classList.toggle("held", held);
-    b.classList.toggle("fading", !held && run.left < LIFE_FADE);
+    if (shown) b.classList.toggle("fading", !held && run.left < LIFE_FADE);
     if (ring) ring.style.strokeDashoffset = String(LIFE_RING * (1 - Math.max(0, run.left) / total));
     if (run.left <= 0) return void hideBubble();
     run.raf = requestAnimationFrame(tick);
