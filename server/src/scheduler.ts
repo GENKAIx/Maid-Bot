@@ -6,6 +6,7 @@ import {
   activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, plansText, sectionName, todayText, upcomingDates,
 } from "./report.ts";
 import { escapesText } from "./escapes.ts";
+import { findPatterns, patternText, traitButtons } from "./profile.ts";
 import { extendSeries } from "./repeat.ts";
 import { addDays, dayKey, humanDay, timeOf, zonedToUtc } from "./time.ts";
 
@@ -156,6 +157,12 @@ export class Scheduler {
         const text = escapesText(await s.allTasks(u.id), today, u.tz);
         if (text) await this.safeSend(u, text, "worried");
       }
+    }
+    // Закономерности в самочувствии: раз в день днём — предложить дебаф (добавится, только если человек согласится).
+    if (this.llm && this.due(u, "13:00", now) && (await s.once(`patterns:${u.id}:${today}`))) {
+      try {
+        for (const t of await findPatterns(s, this.llm, u, today)) await this.safeSend(u, patternText(t, esc), "worried", traitButtons(t.id));
+      } catch (err) { console.error("[patterns]", u.id, err); }
     }
     // Повторяющиеся планы: раз в день разложить серии дальше.
     if (await s.once(`series:${u.id}:${today}`)) {

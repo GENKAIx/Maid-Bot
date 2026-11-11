@@ -10,6 +10,7 @@ import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, memoryText, plansText, tasksText, todayText } from "./report.ts";
 import type { Scheduler, Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
+import { decideTrait } from "./profile.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
@@ -234,6 +235,15 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (!u) return ctx.answerCallbackQuery();
     const [, id, day, status] = ctx.match;
     const text = await pipeline.markHabit(u, Number(id), day, status as "done" | "skipped", "telegram");
+    await ctx.answerCallbackQuery({ text: text.replace(/<[^>]+>/g, "").slice(0, 190) });
+    await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  });
+
+  // Закономерность: добавить в дебафы профиля или нет.
+  bot.callbackQuery(/^trait:(\d+):(yes|no)$/, async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return ctx.answerCallbackQuery();
+    const text = await decideTrait(store, u, Number(ctx.match[1]), ctx.match[2] === "yes");
     await ctx.answerCallbackQuery({ text: text.replace(/<[^>]+>/g, "").slice(0, 190) });
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
   });

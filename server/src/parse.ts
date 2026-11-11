@@ -113,6 +113,12 @@ const Memory = z.object({
   text: str.min(1),
   replaces: z.number().int().nullable().optional(),
 });
+const Trait = z.object({
+  kind: z.enum(["debuff", "buff"]).catch("debuff"),
+  category: optStr,
+  title: str.min(1),
+  note: optStr,
+});
 const Edit = z.object({
   action: z.enum(["cancel", "done", "move", "reopen", "rename"]),
   kind: z.enum(["event", "task", "date", "memory", "habit"]),
@@ -141,6 +147,7 @@ export const ParseSchema = z.object({
   tasks: arr(Task),
   dates: arr(DateItem),
   memory: arr(Memory),
+  traits: arr(Trait),
   metrics: arr(Metric),
   habits: arr(Habit),
   // Спорное — только предложить кнопками (см. правила промпта).
@@ -176,6 +183,8 @@ export interface Parsed {
   tasks: { title: string; priority: "high" | "normal" | "low"; due: string | null; category: string }[];
   dates: { title: string; date: string; type: string; person: string; yearly: boolean }[];
   memory: { kind: string; subject: string; text: string; replaces: number | null }[];
+  /** Дебафы и бафы профиля, которые пользователь назвал сам («у меня аллергия на арахис»). */
+  traits: { kind: "debuff" | "buff"; category: string; title: string; note: string }[];
   metrics: { key: string; label: string; value: number; unit: string; note: string; dayKey: string }[];
   habits: { title: string; days: string; times: string[]; start: string; end: string | null }[];
   /** Предложить, а не записывать: привычки из рассказа о распорядке, задачи из «надо бы когда-нибудь».
@@ -207,6 +216,8 @@ export interface ParseContext {
   tasks: TaskRow[];
   dates: DateRow[];
   memory: MemoryRow[];
+  /** Активные дебафы и бафы — готовым текстом (profile.traitPrompt); пусто — нет. */
+  traits?: string;
   habits: HabitRow[];
   /** Корзина: отменённые и удалённые планы за последние дни — их можно вернуть (edits reopen). */
   trash?: EventRow[];
@@ -243,6 +254,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "tasks": [{"title": "...", "priority": "high|normal|low", "due_date": "YYYY-MM-DD или null", "category": ""}],
  "dates": [{"title": "...", "date_iso": "YYYY-MM-DD", "type": "birthday|anniversary|holiday|deadline|other", "person": "", "yearly": true}],
  "memory": [{"kind": "fact|preference|person|goal", "subject": "о ком/о чём", "text": "...", "replaces": null}],
+ "traits": [{"kind": "debuff|buff", "category": "allergy|food|med|condition|body|habit|other", "title": "коротко: «Аллергия на арахис»", "note": "подробности, если названы"}],
  "edits": [{"action": "cancel|done|move|reopen|rename", "kind": "event|task|date|memory|habit", "id": 12, "new_date": null, "new_time": null, "new_title": null}],
  "question": "если пользователь спрашивает о своих данных — вопрос, иначе null",
  "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни нужны для ответа (null — за всё время),
@@ -286,6 +298,10 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
   Долги: дал в долг — expense с category «долг», вернули — income с «долг»; кто должен — ещё и memory.
 - memory — устойчивые факты о жизни пользователя (люди, предпочтения, цели), не события дня.
   Если факт меняет старый — replaces = номер старого.
+- traits — устойчивые особенности тела, которые пользователь сам называет про себя: аллергия («у меня аллергия на арахис»),
+  непереносимость еды («не переношу лактозу», «мне нельзя глютен»), противопоказания и хроническое («мне нельзя бегать — колено»):
+  kind debuff. Что ему устойчиво помогает («от мигрени помогает темнота») — buff. Разовое самочувствие («сегодня тошнило») — НЕ traits,
+  это diary.health. Уже есть в списке «Дебафы» ниже — не повторять. Такое — только в traits, не в memory.
 - Вопрос о прошлом («что я ел в понедельник?») — question + lookup, остальное пустое.
   «Когда болело сердце?» — question + search ["сердц", "кардиолог"], lookup null (искать за всё время).
   «Сколько потратил на еду в октябре?» — question + lookup на октябрь, search пустой (суммы код посчитает сам).
@@ -315,6 +331,7 @@ ${tks}
 ${dts}
 Что известно о пользователе:
 ${mem}
+${ctx.traits || "Дебафов нет."}
 Привычки:
 ${hab}`;
 }
@@ -507,7 +524,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
   }
 
   let summary = r.summary.trim();
-  const hasContent = diary.length || events.length || tasks.length || dates.length || memory(r).length || edits.length ||
+  const hasContent = diary.length || events.length || tasks.length || dates.length || memory(r).length || r.traits.length || edits.length ||
     metrics.length || habits.length || marks.length || money.length;
   if (!summary && !r.question && (hasContent || ctx.text.trim().length > 0) && !clarify) {
     summary = `[${ctx.now}] ${ctx.text.trim()}`;
@@ -523,6 +540,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     tasks,
     dates,
     memory: memory(r),
+    traits: r.traits.map((t) => ({ kind: t.kind, category: t.category ?? "other", title: t.title.trim().slice(0, 60), note: (t.note ?? "").trim().slice(0, 200) })),
     metrics,
     habits,
     suggest,

@@ -16,6 +16,7 @@ import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
+import { decideTrait, profileView, saveProfile, sameTrait, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { habitButtons, planEventReminders, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
@@ -172,6 +173,8 @@ export function createApi(deps: ApiDeps) {
     const HABIT = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/;
     const habit = data.match(HABIT);
     if (habit) return pipeline.markHabit(u, Number(habit[1]), habit[2], habit[3] as "done" | "skipped", "push");
+    const trait = data.match(/^trait:(\d+):(yes|no)$/);
+    if (trait) return decideTrait(store, u, Number(trait[1]), trait[2] === "yes");
     if (data === "snooze") {
       const buttons: Button[] = all.filter((d) => d !== "snooze").map((d) => {
         const h = d.match(HABIT);
@@ -309,6 +312,39 @@ export function createApi(deps: ApiDeps) {
       return rows.map((r) => ({ ...r, buttons: r.buttons ? (JSON.parse(r.buttons) as Button[]) : [] }));
     }
     if (m === "GET" && p === "/api/today") return todayJson(store, u);
+    // Профиль как в RPG: уровень за дела, характеристики, дебафы и бафы, найденные закономерности.
+    if (m === "GET" && p === "/api/profile") return profileView(store, u, today);
+    if (m === "POST" && p === "/api/profile") {
+      const b = parseBody(z.object({
+        title: z.string().trim().max(40).optional(), height: z.number().nullable().optional(), avatar: z.string().max(AVATAR_MAX * 1.4).optional(),
+      }), await readJson(req, 700_000));
+      try { await saveProfile(store, u.id, b); } catch (e) { throw new HttpError(400, (e as Error).message); }
+      return profileView(store, u, today);
+    }
+    if (m === "POST" && p === "/api/traits") {
+      const b = parseBody(z.object({
+        kind: z.enum(["debuff", "buff"]).default("debuff"), category: z.string().max(20).optional(),
+        title: z.string().trim().min(1).max(60), note: z.string().trim().max(200).default(""),
+      }), await readJson(req));
+      const had = sameTrait(await store.traitsOf(u.id), b.title);
+      if (had && had.status === "active") throw new HttpError(409, "такой уже есть");
+      if (had) await store.updateTrait(had.id, { status: "active", kind: b.kind, category: traitCategory(b.category), note: b.note || had.note });
+      else await store.addTrait({ user_id: u.id, kind: b.kind, category: traitCategory(b.category), title: b.title, note: b.note, source: "user", status: "active", evidence: "[]", message_id: null });
+      return profileView(store, u, today);
+    }
+    const traitRow = p.match(/^\/api\/traits\/(\d+)$/);
+    if (m === "POST" && traitRow) {
+      const b = parseBody(z.object({
+        status: z.enum(["active", "declined", "removed"]).optional(), title: z.string().trim().min(1).max(60).optional(), note: z.string().trim().max(200).optional(),
+      }), await readJson(req));
+      const t = await store.trait(Number(traitRow[1]));
+      if (!t || t.user_id !== u.id) throw new HttpError(404, "нет такой черты");
+      if (t.status === "suggested" && (b.status === "active" || b.status === "declined")) {
+        return { text: await decideTrait(store, u, t.id, b.status === "active"), profile: await profileView(store, u, today) };
+      }
+      await store.updateTrait(t.id, { status: b.status, title: b.title, note: b.note });
+      return { text: "", profile: await profileView(store, u, today), trait: traitView({ ...t, ...b } as typeof t) };
+    }
     if (m === "GET" && p === "/api/day") {
       const day = q("day") ?? today;
       if (!isDayKey(day)) throw new HttpError(400, "day: YYYY-MM-DD");

@@ -9,6 +9,7 @@ import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
 import { planEventReminders } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
 import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from "./clash.ts";
+import { addTraitFromChat, traitPrompt } from "./profile.ts";
 
 // Сообщение → запись → разбор → действия → ответ.
 // Порядок важен: сначала сохраняем сырое сообщение (повтор доставки найдёт его), потом разбор,
@@ -16,7 +17,7 @@ import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from 
 
 /** Что и куда записалось — для карточек в приложении. */
 export interface Change {
-  kind: "diary" | "event" | "task" | "date" | "memory" | "metric" | "money" | "habit" | "mark" | "edit";
+  kind: "diary" | "event" | "task" | "date" | "memory" | "metric" | "money" | "habit" | "mark" | "edit" | "trait";
   title: string;
   detail?: string;
 }
@@ -198,6 +199,7 @@ export class Pipeline {
       tz: u.tz,
       ...(await promptLists(s, u.id, today, text)),
       habits: await s.activeHabits(u.id),
+      traits: traitPrompt(await s.traitsOf(u.id)),
       recent: [],
       clarifying: original ? { original: original.text, question: original.reply ?? "" } : undefined,
     };
@@ -470,6 +472,14 @@ export class Pipeline {
       await log("add", "memory", await s.addMemory(u.id, m.kind, m.subject, m.text, msg.id));
       changes.push({ kind: "memory", title: m.subject || "Запомнила", detail: short(m.text) });
     }
+    const traitLines: string[] = [];
+    for (const t of r.traits) {
+      const got = await addTraitFromChat(s, u.id, t, msg.id);
+      if (!got) continue;
+      await log(got.before ? "status" : "add", "traits", got.id, got.before ?? undefined);
+      traitLines.push(`${t.kind === "buff" ? "✨ в профиль, баф" : "🛡 в профиль, дебаф"}: ${esc(t.title)}`);
+      changes.push({ kind: "trait", title: t.title, detail: t.note || (t.kind === "buff" ? "Баф профиля" : "Дебаф профиля") });
+    }
     for (const m of r.metrics) {
       await log("add", "metrics", await s.addMetric({
         user_id: u.id, day_key: m.dayKey, key: m.key, label: m.label, value: m.value, unit: m.unit, note: m.note,
@@ -563,7 +573,7 @@ export class Pipeline {
       lines: [
         ...changesList({
           sections, summary: Boolean(r.summary), events: r.events.length, tasks: r.tasks.length, dates: r.dates.length,
-          memory: r.memory.length, metrics: r.metrics, money: r.money, habits: r.habits.map((h) => h.title), edits: editLines,
+          memory: r.memory.length, metrics: r.metrics, money: r.money, habits: r.habits.map((h) => h.title), edits: [...traitLines, ...editLines],
         }),
         ...markLines,
       ],
@@ -604,6 +614,7 @@ export class Pipeline {
         } else if (a.tbl === "dates") await s.setDateStatus(a.row_id, a.kind === "add" ? "deleted" : before?.status ?? "active");
         else if (a.tbl === "memory") await s.setMemoryStatus(a.row_id, a.kind === "add" ? "superseded" : before?.status ?? "active");
         else if (a.tbl === "metrics") await s.setMetricDeleted(a.row_id, true);
+        else if (a.tbl === "traits") await s.updateTrait(a.row_id, a.kind === "add" ? { status: "removed" } : before ?? {});
         else if (a.tbl === "money") await s.setMoneyDeleted(a.row_id, true);
         else if (a.tbl === "habits") {
           // Правка мышью (POST /api/habits/:id) помнит и название, конец, «без напоминаний»; старые записи — только статус.
@@ -678,13 +689,14 @@ export class Pipeline {
   private async answer(u: User, r: Parsed, question: string, today: string): Promise<{ text: string; days: string[] }> {
     const range = r.lookup ?? (r.search.length ? { from: EVER, to: today } : { from: addDays(today, -7), to: today });
     const data = await answerData(this.store, u, range, r.search);
+    const traits = traitPrompt(await this.store.traitsOf(u.id));
     try {
       const out = await this.llm([
         {
           role: "system",
           content: `${persona(u.persona).voice}\nОтвечай на вопрос пользователя только по его записям ниже. ` +
             `Нет данных — так и скажи, не выдумывай. Коротко, 1–4 предложения. Сегодня ${today}. ` +
-            `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай.\n\n${data}`,
+            `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай.\n\n${data}${traits ? "\n\n" + traits : ""}`,
         },
         { role: "user", content: question },
       ], { temperature: 0.4 });
@@ -698,10 +710,11 @@ export class Pipeline {
   private async chat(u: User, msg: Message, at: Date, images?: Picture[]): Promise<Reply> {
     const p = persona(u.persona);
     const today = dayKey(at, u.tz);
+    const traits = traitPrompt(await this.store.traitsOf(u.id));
     const mem = (await this.store.activeMemory(u.id)).slice(-PROMPT_CAP.memory).map((m) => `${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n");
     try {
       const out = await this.llm([
-        { role: "system", content: `${p.voice}\nЭто просто разговор, ничего не записывай. Сегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}` },
+        { role: "system", content: `${p.voice}\nЭто просто разговор, ничего не записывай. Сегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}${traits ? "\n\n" + traits : ""}` },
         ...(await this.history(u.id, msg.id)),
         { role: "user", content: images ? `${msg.text}\n(Приложено изображений: ${images.length}.)` : msg.text, images },
       ], { temperature: 0.7 });

@@ -267,6 +267,25 @@ CREATE TABLE IF NOT EXISTS clash_kept (
   PRIMARY KEY (user_id, a, b)
 );
 `,
+  // Шаг 8: профиль — дебафы (аллергия, непереносимость, противопоказания) и бафы. Горничная учитывает активные в ответах;
+  // закономерности из дневника («плохо после молока» 3 раза) она предлагает (suggested), в дебафы — только после «да».
+  `
+CREATE TABLE IF NOT EXISTS traits (
+  id {pk},
+  user_id INTEGER NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'debuff',
+  category TEXT NOT NULL DEFAULT 'other',
+  title TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'user',
+  status TEXT NOT NULL DEFAULT 'active',
+  evidence TEXT NOT NULL DEFAULT '',
+  message_id INTEGER,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS traits_user ON traits (user_id, status);
+`,
 ];
 
 export interface User {
@@ -398,6 +417,23 @@ export interface ProposalRow {
   tg_msg: number | null;
   created_at: string;
 }
+/** Дебаф или баф профиля. status: active — действует; suggested — горничная заметила, ждёт «да»; declined — «не надо»
+ *  (больше не предлагать); removed — сняли. source: user — сам на экране профиля, chat — сказал горничной, pattern — найдено в дневнике. */
+export interface TraitRow {
+  id: number;
+  user_id: number;
+  kind: "debuff" | "buff";
+  category: string;
+  title: string;
+  note: string;
+  source: string;
+  status: "active" | "suggested" | "declined" | "removed";
+  /** JSON: дни, по которым замечена закономерность (ГГГГ-ММ-ДД). */
+  evidence: string;
+  message_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
 export interface MarkRow {
   id: number;
   habit_id: number;
@@ -466,7 +502,7 @@ export interface ActionRow {
 type Row = Record<string, unknown>;
 const now = () => new Date().toISOString();
 
-export type Table = "diary" | "events" | "tasks" | "dates" | "memory" | "metrics" | "habits" | "habit_marks" | "money";
+export type Table = "diary" | "events" | "tasks" | "dates" | "memory" | "metrics" | "habits" | "habit_marks" | "money" | "traits";
 
 export class Store {
   private constructor(readonly driver: Driver) {}
@@ -827,6 +863,37 @@ export class Store {
     return this.all("SELECT * FROM memory WHERE user_id = ? AND status = 'active' ORDER BY id", userId);
   }
 
+  // --- профиль: дебафы и бафы ---
+  addTrait(t: Pick<TraitRow, "user_id" | "kind" | "category" | "title" | "note" | "source" | "status" | "evidence" | "message_id">): Promise<number> {
+    const at = now();
+    return this.insert(
+      "INSERT INTO traits (user_id, kind, category, title, note, source, status, evidence, message_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      t.user_id, t.kind, t.category, t.title, t.note, t.source, t.status, t.evidence, t.message_id, at, at,
+    );
+  }
+  trait(id: number): Promise<TraitRow | undefined> {
+    return this.get<TraitRow>("SELECT * FROM traits WHERE id = ?", id);
+  }
+  /** Все, кроме снятых (removed) — снятые не нужны ни экрану, ни горничной. declined — чтобы не предлагать снова. */
+  traitsOf(userId: number): Promise<TraitRow[]> {
+    return this.all<TraitRow>("SELECT * FROM traits WHERE user_id = ? AND status <> 'removed' ORDER BY id", userId);
+  }
+  async updateTrait(id: number, f: Partial<Pick<TraitRow, "status" | "title" | "note" | "category" | "kind">>) {
+    const keys = Object.keys(f) as (keyof typeof f)[];
+    if (!keys.length) return;
+    await this.run(`UPDATE traits SET ${keys.map((k) => `${k} = ?`).join(", ")}, updated_at = ? WHERE id = ?`, ...keys.map((k) => f[k]), now(), id);
+  }
+
+  /** Для уровня профиля: сделано задач, отмечено привычек, дней с записями в дневнике. */
+  async xpCounts(userId: number): Promise<{ tasks: number; habits: number; days: number }> {
+    const n = async (sql: string) => Number((await this.get<{ n: number | string }>(sql, userId))?.n ?? 0);
+    return {
+      tasks: await n("SELECT COUNT(*) AS n FROM tasks WHERE user_id = ? AND status = 'done'"),
+      habits: await n("SELECT COUNT(*) AS n FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.status = 'done'"),
+      days: await n("SELECT COUNT(DISTINCT day_key) AS n FROM diary WHERE user_id = ? AND deleted = 0"),
+    };
+  }
+
   // --- показатели дня: вес, сон в часах, шаги, оценки… (новый ключ — новая «колонка» без правки схемы) ---
   addMetric(m: Omit<MetricRow, "id">): Promise<number> {
     return this.insert(
@@ -1080,7 +1147,7 @@ export class Store {
   /** Поставить отметку один раз; true — если её ещё не было. */
   /** Отметки «уже отправлено» (once), поставленные раньше before, — удалить: таблица иначе только растёт. Возвращает, сколько удалено. */
   pruneOnce(before: Date): Promise<number> {
-    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot"];
+    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns"];
     return this.run(
       `DELETE FROM kv WHERE value < ? AND (${kinds.map(() => "key LIKE ?").join(" OR ")})`,
       before.toISOString(), ...kinds.map((k) => `${k}:%`),
