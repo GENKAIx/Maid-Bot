@@ -9,6 +9,9 @@ import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.t
 import { habitMonth, habitsOfDay } from "./habits.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import { proposalView, TRASH_DAYS, type Pipeline } from "./pipeline.ts";
+
+/** Для поиска: нижний регистр, «ё» как «е». */
+const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е");
 import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
@@ -325,6 +328,29 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/trash") {
       const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
       return { days: TRASH_DAYS, tasks: await store.trashTasks(u.id, since), events: await store.trashEvents(u.id, since) };
+    }
+    // Поиск по задачам и планам (экран «Поиск»): все слова запроса — в названии, заметках или подробностях, без учёта регистра и «ё».
+    // Ищет и в корзине (удалённое/отменённое за TRASH_DAYS дней, inTrash); удалённое навсегда (purged) и давно удалённое — нет.
+    if (m === "GET" && p === "/api/search") {
+      const words = norm(q("q") ?? "").split(/\s+/).filter(Boolean).slice(0, 8);
+      if (!words.length) return { tasks: [], events: [], days: TRASH_DAYS };
+      const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
+      const hit = (...texts: (string | null)[]) => { const t = norm(texts.filter(Boolean).join(" ")); return words.every((w) => t.includes(w)); };
+      const binned = (status: string, at: string | null) => status === "deleted" || status === "cancelled" ? (at && at >= since ? "trash" : "gone") : "";
+      const tasks = (await store.allTasks(u.id))
+        .filter((t) => t.status !== "purged" && hit(t.title, t.notes))
+        .map((t) => ({ ...t, bin: binned(t.status, t.closed_at ?? null) }))
+        .filter((t) => t.bin !== "gone")
+        .sort((x, y) => (x.status === "open" ? 0 : 1) - (y.status === "open" ? 0 : 1) || y.id - x.id)
+        .slice(0, 60);
+      const events = (await store.allEvents(u.id))
+        .filter((e) => e.status !== "purged" && hit(e.title, e.details))
+        .map((e) => ({ ...e, bin: binned(e.status, (e as { updated_at?: string }).updated_at ?? null) }))
+        .filter((e) => e.bin !== "gone")
+        .sort((x, y) => (x.date_iso >= today ? 0 : 1) - (y.date_iso >= today ? 0 : 1)
+          || (x.date_iso >= today ? x.date_iso.localeCompare(y.date_iso) : y.date_iso.localeCompare(x.date_iso)))
+        .slice(0, 60);
+      return { tasks, events, days: TRASH_DAYS };
     }
     // «Удалить навсегда» (× у строки) и «Очистить корзину» (all): из корзины пропадают, вернуть уже нельзя.
     if (m === "POST" && p === "/api/trash/purge") {

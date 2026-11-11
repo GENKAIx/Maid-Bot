@@ -128,6 +128,12 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .card .sub { margin: 16px 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
 .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
 .list li { display: flex; gap: 10px; align-items: center; }
+.search-box { margin: 10px 0 14px; max-width: 640px; }
+.search-box input { font-size: 16px; padding: 11px 14px; }
+.search-hint { margin: 0; }
+.list.search li { flex-wrap: wrap; row-gap: 2px; }
+.list.search li.closed .grow { color: var(--muted); }
+.list.search .note { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .trash-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 14px; }
 .trash-top .trash-note { margin: 0; flex: 1 1 320px; }
 button.link.forever { color: var(--muted); }

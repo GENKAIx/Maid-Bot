@@ -11,6 +11,7 @@ import { Plans } from "./screens/Plans";
 import { Settings } from "./screens/Settings";
 import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
+import { Search } from "./screens/Search";
 import { Trash } from "./screens/Trash";
 import { desktop, Widget } from "./screens/Widget";
 import { Icon } from "./icons";
@@ -26,6 +27,7 @@ const TABS = [
   { id: "diary", path: "/diary", title: "Дневник", icon: "diary" },
   { id: "plans", path: "/plans", title: "Планы", icon: "plans" },
   { id: "habits", path: "/habits", title: "Привычки", icon: "habits" },
+  { id: "search", path: "/search", title: "Поиск", icon: "search", more: true },
   { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true },
   { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
   { id: "stats", path: "/stats", title: "Статистика", icon: "stats", more: true },
@@ -54,6 +56,18 @@ export function App() {
     return () => document.removeEventListener("visibilitychange", on);
   }, [onChanged]);
   useEffect(() => setMore(false), [path]);
+  // Ctrl+K (⌘K) или «/» вне поля ввода — поиск по задачам и планам.
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && e.target.closest("input, textarea, [contenteditable]");
+      if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") || (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        e.preventDefault();
+        navigate("/search");
+      }
+    };
+    addEventListener("keydown", on);
+    return () => removeEventListener("keydown", on);
+  }, []);
 
   if (!authed) return <Login onDone={() => { setAuthed(true); onChanged(); }} />;
 
@@ -70,6 +84,7 @@ export function App() {
     : tab === "health" ? <Health version={version} />
     : tab === "money" ? <Money version={version} />
     : tab === "stats" ? <Stats version={version} />
+    : tab === "search" ? <Search query={arg} version={version} />
     : tab === "trash" ? <Trash version={version} onChanged={onChanged} />
     : tab === "settings" ? <Settings onLogout={logout} />
     : tab === "widget" ? <Widget />
