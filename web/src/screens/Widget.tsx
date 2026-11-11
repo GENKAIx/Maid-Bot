@@ -69,6 +69,17 @@ function Perch({ side, size = "m", plans }: { side: "left" | "right" | "none"; s
   );
 }
 
+/** Облачко горничной: как в виджете появляется ответ — печатается (со звуком или тихо) или сразу целиком. */
+function Typing({ mode, speed }: { mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast" }) {
+  return (
+    <div className={`wm-say type-${mode} speed-${speed}`}>
+      <div className="wm-bubble"><span>Купила хлеб!</span></div>
+      {mode === "sound" && <div className="wm-notes"><i>♪</i><i>♫</i><i>♪</i></div>}
+      <img className="wm-maid" src="/maid/idle.webp" alt="" />
+    </div>
+  );
+}
+
 export function Widget() {
   const bridge = desktop();
   const [p, setP] = useState<Required<WidgetPrefs> | null>(null);
@@ -121,8 +132,14 @@ export function Widget() {
                 options={(["s", "m", "l"] as const).map((v) => [v, { s: "Меньше", m: "Обычная", l: "Больше" }[v], <Perch side={p.side} size={v} />])} />
             </>}
             <label>Звуки<Segment label="Звуки" value={p.mute ? "off" : "on"} onPick={(v) => save({ mute: v === "off" })} options={[["on", "Включены"], ["off", "Выключены"]]} /></label>
-            <label>Текст в облачке<Segment label="Текст в облачке" value={p.typing} onPick={(typing) => save({ typing })} options={[["sound", "Печатает со звуком"], ["quiet", "Печатает тихо"], ["off", "Сразу целиком"]]} /></label>
-            {p.typing !== "off" && <label>Скорость печати<Segment label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => save({ typeSpeed })} options={[["slow", "Медленно"], ["normal", "Обычно"], ["fast", "Быстро"]]} /></label>}
+            <label>Текст в облачке</label>
+            <Cards label="Текст в облачке" value={p.typing} onPick={(typing) => save({ typing })}
+              options={(["sound", "quiet", "off"] as const).map((v) => [v, { sound: "Печатает со звуком", quiet: "Печатает тихо", off: "Сразу целиком" }[v], <Typing mode={v} speed={p.typeSpeed} />])} />
+            {p.typing !== "off" && <>
+              <label>Скорость печати</label>
+              <Cards label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => save({ typeSpeed })}
+                options={(["slow", "normal", "fast"] as const).map((v) => [v, { slow: "Медленно", normal: "Обычно", fast: "Быстро" }[v], <Typing mode={p.typing} speed={v} />])} />
+            </>}
           </div>
         </Card>
 
