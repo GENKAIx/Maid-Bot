@@ -48,8 +48,21 @@ async function avatarImage(file: File): Promise<string> {
 
 /** Дебаф или баф — квадратный значок эффекта; наведение (или фокус) — подсказка: что это, откуда, «Убрать». */
 function Aura({ t, onRemove }: { t: Trait; onRemove: () => void }) {
+  const [below, setBelow] = useState(false);
+  // Над значком места не хватает (первый ряд у верха окна, длинная заметка) — подсказка открывается под ним.
+  function place(e: { currentTarget: HTMLLIElement }) {
+    const li = e.currentTarget, tip = li.querySelector<HTMLElement>(".aura-tip");
+    if (!tip) return;
+    const was = tip.style.display;
+    tip.style.display = "grid";
+    const h = tip.offsetHeight;
+    tip.style.display = was;
+    const top = li.getBoundingClientRect().top;
+    const roof = Math.max(0, li.closest("main")?.getBoundingClientRect().top ?? 0);
+    setBelow(top - h - 12 < roof);
+  }
   return (
-    <li className={`aura ${t.kind}`}>
+    <li className={`aura ${t.kind}${below ? " tip-below" : ""}`} onMouseEnter={place} onFocus={place}>
       <button className="aura-icon" aria-label={t.title}><AuraGlyph name={auraIcon(t.kind, t.category, `${t.title} ${t.note}`)} /></button>
       <div className="aura-tip" role="tooltip">
         <b>{t.title}</b>
