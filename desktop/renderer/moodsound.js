@@ -5,6 +5,40 @@ const MOOD_SOUND_GAP = 1200; // не чаще раза в 1,2 с
 let moodSoundAt = 0;
 let fileSoundAt = 0; // когда играл звук-файл (widget.js, play)
 
+// Звук появления облачка (настройка «popSound»): «пузырёк» — короткий тон снизу вверх, «колокольчик» — два чистых тона.
+// Тот же синтез — в примере на странице «Виджет» (web/src/screens/Widget.tsx, popTone).
+function popTone(ctx, dest, kind) {
+  const t = ctx.currentTime + 0.005;
+  const tone = (at, f0, f1, vol, len) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(f0, t + at);
+    o.frequency.exponentialRampToValueAtTime(f1, t + at + Math.min(len, 0.09));
+    g.gain.setValueAtTime(0.0001, t + at);
+    g.gain.exponentialRampToValueAtTime(vol, t + at + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + at + len);
+    o.connect(g).connect(dest);
+    o.start(t + at);
+    o.stop(t + at + len + 0.05);
+  };
+  if (kind === "chime") {
+    tone(0, 1318.5, 1318.5, 0.09, 0.55);
+    tone(0.07, 1975.5, 1975.5, 0.07, 0.6);
+  } else {
+    tone(0, 380, 920, 0.22, 0.13);
+    tone(0, 570, 1380, 0.06, 0.1);
+  }
+}
+function bubbleSound() {
+  if (cfg.mute || cfg.popSound === "off") return;
+  try {
+    actx ??= new AudioContext();
+    popTone(actx, actx.destination, cfg.popSound);
+  } catch {
+    /* нет звука — не беда */
+  }
+}
+
 function moodSound(n) {
   const make = MOOD_SOUNDS[n];
   if (!make || cfg.mute) return;

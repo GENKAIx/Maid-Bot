@@ -10,8 +10,9 @@ export interface WidgetPrefs {
   plans?: "list" | "off"; dateLead?: "0" | "1" | "3" | "7"; doneTasks?: "keep" | "hide"; laterTasks?: "hide" | "show";
   proposalWait?: number; clashWait?: number; mute?: boolean; typing?: "sound" | "quiet" | "off"; typeSpeed?: "slow" | "normal" | "fast";
   accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: 4 | 6 | 10; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
-  napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; bedtime?: Bedtime; morning?: 6 | 7 | 8 | 9; napRecap?: boolean; napFold?: boolean;
+  napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; bedtime?: Bedtime; morning?: 6 | 7 | 8 | 9; napRecap?: boolean; napFold?: boolean; popSound?: Pop;
 }
+type Pop = "bubble" | "chime" | "off";
 type Bedtime = "auto" | "22:00" | "23:00" | "00:00" | "01:00";
 /** Общее программы на ПК (раньше — только в меню значка у часов). */
 export interface General { autostart: boolean; canAutostart: boolean; keys: { quick: string; grab: string }; error?: string }
@@ -34,7 +35,7 @@ const DEFAULTS: Required<WidgetPrefs> = {
   show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true },
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
   accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim",
-  napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true,
+  napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble",
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
 const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"], ["soon", "Скоро"]];
@@ -151,6 +152,37 @@ const SAY_AT = (speed: keyof typeof TYPE_CPS) => {
 
 let actx: AudioContext | null = null;
 /** Тот же «бип», что у виджета при печати (desktop/renderer/widget.js, typeBlip). */
+// Звук появления облачка (настройка «popSound»): «пузырёк» — короткий тон снизу вверх, «колокольчик» — два чистых тона.
+// Тот же синтез, что у виджета (desktop/renderer/moodsound.js, popTone).
+function popTone(ctx: AudioContext, dest: AudioNode, kind: Pop) {
+  const t = ctx.currentTime + 0.005;
+  const tone = (at: number, f0: number, f1: number, vol: number, len: number) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(f0, t + at);
+    o.frequency.exponentialRampToValueAtTime(f1, t + at + Math.min(len, 0.09));
+    g.gain.setValueAtTime(0.0001, t + at);
+    g.gain.exponentialRampToValueAtTime(vol, t + at + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + at + len);
+    o.connect(g).connect(dest);
+    o.start(t + at);
+    o.stop(t + at + len + 0.05);
+  };
+  if (kind === "chime") {
+    tone(0, 1318.5, 1318.5, 0.09, 0.55);
+    tone(0.07, 1975.5, 1975.5, 0.07, 0.6);
+  } else {
+    tone(0, 380, 920, 0.22, 0.13);
+    tone(0, 570, 1380, 0.06, 0.1);
+  }
+}
+function pop(kind: Pop) {
+  if (kind === "off") return;
+  try {
+    actx ??= new AudioContext();
+    popTone(actx, actx.destination, kind);
+  } catch { /* без звука */ }
+}
 function blip(base: number) {
   try {
     actx ??= new AudioContext();
@@ -170,7 +202,7 @@ function blip(base: number) {
 }
 
 /** Живая копия облачка виджета: пусто → облачко появляется → текст печатается (или сразу целиком) → висит → пропадает, по кругу. */
-function SayPreview({ mode, speed, side, mute, ping }: { mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast"; side: "left" | "right"; mute: boolean; ping: number }) {
+function SayPreview({ mode, speed, side, mute, ping, popSound }: { mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast"; side: "left" | "right"; mute: boolean; ping: number; popSound: Pop }) {
   const [t, setT] = useState(0);
   const [hover, setHover] = useState(false);
   const [loudTill, setLoudTill] = useState(0); // после выбора — один показ со звуком
@@ -193,7 +225,17 @@ function SayPreview({ mode, speed, side, mute, ping }: { mode: "sound" | "quiet"
   const beep = mode === "sound" && since >= 0 && shown < SAY.length ? Math.floor((letters + 2) / 3) : -1;
   // Звук — как у виджета (typeBlip): короткий «бип» на каждую третью букву. Слышно при наведении и один круг после выбора.
   useEffect(() => { if (ping) setLoudTill(performance.now() + cycle); }, [ping]); // eslint-disable-line react-hooks/exhaustive-deps
-  const loud = !mute && mode === "sound" && (hover || performance.now() < loudTill);
+  const audible = hover || performance.now() < loudTill;
+  const loud = !mute && mode === "sound" && audible;
+  // Облачко появилось — его звук (как say в виджете), тоже при наведении и один круг после выбора.
+  const round = `${ping}:${mode}:${speed}:${Math.floor(t / cycle)}`; // выбор начинает круг заново — и снова со звуком
+  const popped = useRef("");
+  useEffect(() => {
+    if (!up || popped.current === round) return;
+    popped.current = round;
+    if (!mute && audible) pop(popSound);
+  }, [up, round]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sounds = !mute && (mode === "sound" || popSound !== "off");
   useEffect(() => {
     if (beep <= 0 || beep === lastBeep.current) { if (beep <= 0) lastBeep.current = 0; return; }
     lastBeep.current = beep;
@@ -201,7 +243,7 @@ function SayPreview({ mode, speed, side, mute, ping }: { mode: "sound" | "quiet"
   }, [beep, loud]);
   return (
     <div className={`wp-say side-${side}`} onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}>
-      <div className="wp-say-hint">{mode !== "sound" ? "" : mute ? "🔇 звуки выключены" : loud ? "🔊 со звуком" : "🔈 наведите — будет слышно"}</div>
+      <div className="wp-say-hint">{mode !== "sound" && popSound === "off" ? "" : mute ? "🔇 звуки выключены" : sounds && audible ? "🔊 со звуком" : "🔈 наведите — будет слышно"}</div>
       <div className={`wp-say-bubble${up ? " up" : ""}${c >= cycle - 300 ? " out" : ""}`} key={Math.floor(t / cycle)}>
         {[...SAY].map((ch, i) => <span key={i} className={i < shown ? "on" : ""}>{ch}</span>)}
       </div>
@@ -400,10 +442,12 @@ export function Widget() {
         <section className="wp-sec reveal">
           <h3>Облачко</h3>
           <Setting title="Так это выглядит" hint="Меняйте настройки ниже — облачко покажет сразу">
-            <SayPreview mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} mute={p.mute} ping={ping} />
+            <SayPreview mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} mute={p.mute} ping={ping} popSound={p.popSound} />
           </Setting>
           <Setting title="Звуки" hint="Все звуки виджета"
             side={<Toggle label="Звуки" on={!p.mute} set={(on) => { void save({ mute: !on }); setPing((n) => n + 1); }} />} />
+          <Setting title="Звук облачка" hint="Когда облачко появляется"
+            side={<Segment label="Звук облачка" value={p.popSound} onPick={(popSound) => { void save({ popSound }); setPing((n) => n + 1); }} options={[["bubble", "Пузырёк"], ["chime", "Колокольчик"], ["off", "Без звука"]]} />} />
           <Setting title="Текст в облачке">
             <Choices label="Текст в облачке" value={p.typing} onPick={(typing) => { void save({ typing }); setPing((n) => n + 1); }}
               options={[["sound", "Печатает со звуком", "по буквам, с тихим «бип»"], ["quiet", "Печатает тихо", "по буквам, без звука"], ["off", "Сразу целиком", "весь ответ разом"]]} />

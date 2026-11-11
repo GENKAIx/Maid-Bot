@@ -654,6 +654,7 @@ const WIDGET_PREFS = {
   morning: oneOf(6, 7, 8, 9),
   napRecap: (v) => typeof v === "boolean",
   napFold: (v) => typeof v === "boolean",
+  popSound: oneOf("bubble", "chime", "off"),
   sections: (v) => v && typeof v === "object" && Object.entries(v).every(([k, x]) => ["next", "habits", "tasks", "soon"].includes(k) && typeof x === "boolean"),
 };
 const widgetPrefs = () => Object.fromEntries(Object.keys(WIDGET_PREFS).filter((k) => k in settings.widget).map((k) => [k, settings.widget[k]]));
