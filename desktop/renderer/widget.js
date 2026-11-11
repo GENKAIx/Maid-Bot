@@ -1999,15 +1999,16 @@ $("#inbox").addEventListener("click", (e) => {
   if (ib) openInbox(ib.dataset.id);
 });
 drawInbox();
-// Щелчок по горничной — тычок (fun.js), двойной — свернуть/развернуть панель. Тычок ждёт, не будет ли второго щелчка.
+// Щелчок по горничной — тычок (fun.js), двойной по свёрнутой — развернуть панель (свернуть — кнопкой #foldBtn). Тычок ждёт, не будет ли второго щелчка.
 $("#maid").addEventListener("click", () => {
   clearTimeout(clickTimer);
   clickTimer = setTimeout(poke, 230);
 });
 $("#maid").addEventListener("dblclick", () => {
   clearTimeout(clickTimer);
+  if (!collapsed) return;
   autoOpened = false;
-  foldAnimated(!collapsed);
+  foldAnimated(false);
 });
 $("#miniOpen").onclick = () => { autoOpened = false; foldAnimated(false); };
 // Выдвижная панель планов под свёрнутой карточкой: щелчок (по дню, по плану) разворачивает всю панель; перетаскивать здесь нельзя.
