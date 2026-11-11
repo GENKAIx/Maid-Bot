@@ -6,8 +6,8 @@ let moodSoundAt = 0;
 let fileSoundAt = 0; // когда играл звук-файл (widget.js, play)
 
 // Звук появления облачка (настройка «popSound»): «пузырёк» — короткий тон снизу вверх, «колокольчик» — два чистых тона.
-// Тот же синтез — в примере на странице «Виджет» (web/src/screens/Widget.tsx, popTone).
-function popTone(ctx, dest, kind) {
+// Тот же синтез — в примере на странице «Виджет» (web/src/screens/Widget.tsx, bubbleTone). Не «popTone» — это имя занято в course.js.
+function bubbleTone(ctx, dest, kind) {
   const t = ctx.currentTime + 0.005;
   const tone = (at, f0, f1, vol, len) => {
     const o = ctx.createOscillator(), g = ctx.createGain();
@@ -33,7 +33,7 @@ function bubbleSound() {
   if (cfg.mute || cfg.popSound === "off") return;
   try {
     actx ??= new AudioContext();
-    popTone(actx, actx.destination, cfg.popSound);
+    bubbleTone(actx, actx.destination, cfg.popSound);
   } catch {
     /* нет звука — не беда */
   }

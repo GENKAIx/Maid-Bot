@@ -153,8 +153,8 @@ const SAY_AT = (speed: keyof typeof TYPE_CPS) => {
 let actx: AudioContext | null = null;
 /** Тот же «бип», что у виджета при печати (desktop/renderer/widget.js, typeBlip). */
 // Звук появления облачка (настройка «popSound»): «пузырёк» — короткий тон снизу вверх, «колокольчик» — два чистых тона.
-// Тот же синтез, что у виджета (desktop/renderer/moodsound.js, popTone).
-function popTone(ctx: AudioContext, dest: AudioNode, kind: Pop) {
+// Тот же синтез, что у виджета (desktop/renderer/moodsound.js, bubbleTone).
+function bubbleTone(ctx: AudioContext, dest: AudioNode, kind: Pop) {
   const t = ctx.currentTime + 0.005;
   const tone = (at: number, f0: number, f1: number, vol: number, len: number) => {
     const o = ctx.createOscillator(), g = ctx.createGain();
@@ -180,7 +180,7 @@ function pop(kind: Pop) {
   if (kind === "off") return;
   try {
     actx ??= new AudioContext();
-    popTone(actx, actx.destination, kind);
+    bubbleTone(actx, actx.destination, kind);
   } catch { /* без звука */ }
 }
 function blip(base: number) {
