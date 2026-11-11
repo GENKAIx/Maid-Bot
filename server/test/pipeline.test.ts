@@ -163,6 +163,30 @@ test("напоминание за час приходит один раз; ус�
   assert.equal(sent.filter((t) => t.includes("Кино")).length, 0);
 });
 
+test("итог дня после полуночи — за вчера; поздний вечер, на который опоздали за полночь, — тоже за вчера и один раз", async () => {
+  const { store, u } = await setup([]);
+  const sent: string[] = [];
+  const sch = new Scheduler(store, null, async (_u, text) => void sent.push(text));
+  const evening = () => sent.filter((t) => t.includes("Итог дня")).map((t) => t.match(/Итог дня, (\d+)/)?.[1]);
+
+  await store.updateUser(u.id, { evening_time: "00:15", tomorrow_time: "00:10" });
+  await sch.tick(zonedToUtc("2026-11-12", "00:21", TZ));
+  assert.deepEqual(evening(), ["11"]); // наступило 12-е, а итог — за прошедшее 11-е
+  await sch.tick(zonedToUtc("2026-11-12", "23:00", TZ)); // днём 12-го итога за 12-е ещё нет
+  assert.deepEqual(evening(), ["11"]);
+  await sch.tick(zonedToUtc("2026-11-13", "00:16", TZ));
+  assert.deepEqual(evening(), ["11", "12"]);
+
+  sent.length = 0;
+  await store.updateUser(u.id, { evening_time: "22:00" });
+  await store.pruneOnce(new Date("2100-01-01")); // отметки прошлой части теста не мешают
+  await sch.tick(zonedToUtc("2026-11-14", "00:30", TZ)); // сервер спал с 21:50 — итог 13-го приходит за полночь, за 13-е
+  await sch.tick(zonedToUtc("2026-11-14", "00:40", TZ));
+  assert.deepEqual(evening(), ["13"]);
+  await sch.tick(zonedToUtc("2026-11-14", "22:01", TZ));
+  assert.deepEqual(evening(), ["13", "14"]);
+});
+
 test("игры: первое уведомление на 2 ч, дальше каждые 2 ч, каждое один раз", async () => {
   const { store, u } = await setup([]);
   const sent: string[] = [];

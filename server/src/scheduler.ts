@@ -86,6 +86,8 @@ export async function snooze(store: Store, u: User, text: string, buttons: Butto
 
 /** Окно, в котором ещё не поздно прислать дайджест после простоя сервера. */
 const LATE_MIN = 180;
+/** Вечерние часы до 05:00 относятся к прошлому дню (nightSlot). */
+const NIGHT_END_MIN = 5 * 60;
 /** Напоминание о привычке позже часа уже не шлём. */
 const HABIT_LATE_MIN = 60;
 
@@ -146,6 +148,20 @@ export class Scheduler {
     }
   }
 
+  /**
+   * Вечерние часы (итог, «что завтра»): время до 05:00 — ещё ночь прошлого дня, итог в 00:15 — за вчера, а не за только что
+   * наступивший день. И поздний вечер, на который сервер опоздал за полночь (22:00 → 00:30), — тоже за вчера.
+   * key — день, когда наступило само время (по нему отметка «уже отправлено», как раньше), day — день, о котором речь.
+   */
+  private nightSlot(u: User, at: string, now: Date, late = LATE_MIN): { key: string; day: string } | null {
+    const atMin = minutesOf(at);
+    let m = minutesOf(timeOf(now, u.tz)) - atMin;
+    let key = dayKey(now, u.tz);
+    if (m < 0) { m += 24 * 60; key = addDays(key, -1); }
+    if (m > late) return null;
+    return { key, day: atMin < NIGHT_END_MIN ? addDays(key, -1) : key };
+  }
+
   private due(u: User, at: string, now: Date, late = LATE_MIN) {
     const m = minutesOf(timeOf(now, u.tz)) - minutesOf(at);
     return m >= 0 && m <= late;
@@ -174,18 +190,20 @@ export class Scheduler {
         }
       }
     }
-    if (this.due(u, u.tomorrow_time, now) && (await s.once(`tomorrow:${u.id}:${today}`))) {
-      const tomorrow = addDays(today, 1);
+    const tom = this.nightSlot(u, u.tomorrow_time, now);
+    if (tom && (await s.once(`tomorrow:${u.id}:${tom.key}`))) {
+      const tomorrow = addDays(tom.day, 1);
       const evs = await s.eventsBetween(u.id, tomorrow, tomorrow);
       if (evs.length) {
         await this.safeSend(u, `🌙 Завтра, ${humanDay(tomorrow)}:\n${evs.map((e) => "• " + eventLine(e)).join("\n")}`, "neutral");
       }
     }
-    if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
-      await this.safeSend(u, await this.eveningText(u, today), "proud");
+    const eve = this.nightSlot(u, u.evening_time, now);
+    if (eve && (await s.once(`evening:${u.id}:${eve.key}`))) {
+      await this.safeSend(u, await this.eveningText(u, eve.day), "proud");
       // В воскресенье вечером — мягко о задачах, от которых сбежали за неделю.
-      if (new Date(`${today}T12:00:00Z`).getUTCDay() === 0 && (await s.once(`escapes:${u.id}:${today}`))) {
-        const text = escapesText(await s.allTasks(u.id), today, u.tz);
+      if (new Date(`${eve.day}T12:00:00Z`).getUTCDay() === 0 && (await s.once(`escapes:${u.id}:${eve.day}`))) {
+        const text = escapesText(await s.allTasks(u.id), eve.day, u.tz);
         if (text) await this.safeSend(u, text, "worried");
       }
     }
