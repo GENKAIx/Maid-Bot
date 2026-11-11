@@ -220,7 +220,7 @@ function party(el) {
     el.appendChild(c);
   }
   setTimeout(() => { el.querySelectorAll(".confetti").forEach((e) => e.remove()); el.classList.remove("party"); }, 1600);
-  say("Курс пройден до конца! Горжусь тобой, хозяин ✨", { emotion: "proud", ms: 7000, mood: "bow" });
+  say(line("courseDone"), { emotion: "proud", ms: 7000, mood: "bow" });
 }
 
 const pendingPopped = new Set();

@@ -305,7 +305,7 @@ function wakeUp() {
     if (away < 2 * 60_000 && !news.length) return;
     const lines = news.slice(-4).map((n) => `• ${String(n.text).split("\n")[0].replace(/<[^>]+>/g, "")}`);
     const more = news.length > 4 ? `\n…и ещё ${news.length - 4} — в ящике у головы.` : news.length ? "\nВсё это — в ящике у головы." : "";
-    say(`О, вы вернулись!${news.length ? `\nПока вас не было:\n${lines.join("\n")}${more}` : ""}`, { ms: news.length ? 20000 : 4000, emotion: "happy", sound: news.length ? "ding" : null });
+    say(news.length ? `${line("backNews")}\n${lines.join("\n")}${more}` : line("back"), { ms: news.length ? 20000 : 4000, emotion: "happy", sound: news.length ? "ding" : null });
   }, 1300);
 }
 async function watchAway() {

@@ -4,15 +4,10 @@
 // --- тап по голове ---
 // Щелчок по верхней части фигурки — она реагирует (панель не сворачивается). Частые тычки подряд — сначала просит
 // перестать, на десятом обижается на полминуты.
-const POKES = [
-  ["gasp", "Ой!"], ["giggle", "Хи-хи, щекотно"], ["neutral", "Чепчик съехал… поправила"], ["smitten", "Ну что вы… смущаюсь"],
-  ["bow", "Я тут, хозяин"], ["listen", "М?"], ["gasp", "Ай!"], ["happy", "Чего изволите?"],
-];
-const POKE_ANNOYED = ["Ну хватит…", "Хозяин, ну правда…", "Ещё раз — и обижусь!"];
+// Фразы — в lines.js (line / lineItem): много вариантов, без повторов.
 const POKE_SULK = 30_000;
 let pokes = 0;
 let lastPoke = 0;
-let lastPick = -1;
 let sulkUntil = 0;
 
 function boop(kind) {
@@ -34,7 +29,7 @@ function poke() {
   const now = Date.now();
   if (now < sulkUntil) {
     boop("huff");
-    quip(["Хмф.", "Не разговариваю.", "Я обиделась, между прочим."][Math.floor(Math.random() * 3)], "refuse", 1800);
+    quip(line("sulk"), "refuse", 1800);
     return;
   }
   pokes = now - lastPoke < 4000 ? pokes + 1 : 1;
@@ -44,24 +39,22 @@ function poke() {
     sulkUntil = now + POKE_SULK;
     boop("huff");
     play("oops");
-    quip("Всё! Я обиделась. Не трогайте меня 😤", "angry", 4000);
+    quip(line("sulkStart"), "angry", 4000);
     setTimeout(() => {
       if (Date.now() < sulkUntil - 50) return;
-      quip("Ладно, прощаю… но больше не тыкайте 🙂", "bow", 3500);
+      quip(line("forgive"), "bow", 3500);
     }, POKE_SULK);
     return;
   }
   boop("boop");
   if (pokes >= 7) {
     popTone(-4, { vol: 0.18, soft: true });
-    quip(POKE_ANNOYED[pokes - 7], "worried");
+    quip(line(`annoyed${pokes}`), "worried");
     return;
   }
-  let i;
-  do i = Math.floor(Math.random() * POKES.length); while (i === lastPick);
-  lastPick = i;
+  const p = lineItem("poke");
   popTone(Math.floor(Math.random() * 8), { vol: 0.2, soft: true });
-  quip(POKES[i][1], POKES[i][0]);
+  quip(p.t, p.m);
 }
 
 // --- настроение от того, как идёт день ---
@@ -192,7 +185,7 @@ async function rescue(el, id) {
   await load();
   const now = data?.habits?.find((x) => x.id === h.id);
   setTimeout(() => {
-    say(`Пропуск спасён — «${h.title}» вчера отмечено${now?.streak >= 2 ? `, серия цела 🔥${now.streak}` : ""}`, { ms: 5000, mood: "proud" });
+    say(`${line("spared", { title: h.title })}${now?.streak >= 2 ? `, серия цела 🔥${now.streak}` : ""}`, { ms: 5000, mood: "proud" });
   }, 700);
   maid.changed();
 }
