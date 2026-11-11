@@ -390,6 +390,9 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     list.style.animationDelay = `${160 + changes.length * 140}ms`;
     cards.appendChild(list);
   }
+  // ✕ с кольцом времени — только у важного: записи и карточки, дни, напоминания, кнопки (кроме самонажатия), длинный текст.
+  // Короткие реплики (тык по горничной, «привет», «вернула ✓») уходят сами — без ✕ и кольца.
+  const weighty = !!(changes.length || days.length || notice || buttons.some((x) => !x.auto) || plain.length > 140 || (ms === 0 && text !== "…"));
   const acts = $("#bubbleActions");
   acts.innerHTML = proposal
     ? (proposal.remind ? `<button class="prop-yes" data-p="remind">✅ ${esc(proposal.remind.label)}</button>` : "")
@@ -398,7 +401,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
     : buttons.map((x, i) => (x.auto ? `<button class="auto" data-i="${i}" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">${esc(x.text)}</span></button>` : `<button data-i="${i}">${esc(x.text)}</button>`)).join("")
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
-      + `<button class="ghost life" data-i="close" title="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="life-ring" cx="12" cy="12" r="10"/><path class="x" d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg></button>`;
+      + (!weighty ? "" : `<button class="ghost life" data-i="close" title="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="life-ring" cx="12" cy="12" r="10"/><path class="x" d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg></button>`);
   // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
   b.dataset.notice = notice ?? "";
   $("#inbox").classList.add("away"); // пока говорит — значок не мешает облачку
@@ -473,9 +476,6 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   // Вопрос «добавить?» облачко закрывает сам (полоса на «Не надо»).
   if (proposal) ms = 0;
   // Длинный текст висит дольше (время на чтение), а под курсором не пропадает вовсе — см. startLife.
-  // Кольцо времени — только у важного: записи и карточки, дни, напоминания, кнопки (кроме самонажатия), длинный текст.
-  // Короткие реплики (тык по горничной, «привет», «вернула ✓») уходят сами, без кольца.
-  const weighty = changes.length || days.length || notice || buttons.some((x) => !x.auto) || plain.length > 140;
   if (ms) startLife(ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55), weighty);
 }
 
