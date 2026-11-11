@@ -969,7 +969,8 @@ function refoldLater() {
     foldAnimated(true);
   }, 900);
 }
-$("#w").addEventListener("pointerdown", () => { autoOpened = false; }); // взялись за панель — она ваша
+// Взялись за панель — она ваша: остаётся развёрнутой и после перезапуска.
+$("#w").addEventListener("pointerdown", () => { if (autoOpened) { autoOpened = false; saveFold(); } });
 
 // --- панель ---
 function minutesUntil(e) {
@@ -1450,8 +1451,11 @@ function setCollapsed(on) {
   $("#stage").classList.toggle("folded", on);
   syncLift();
   sendFold();
-  // В свёрнутом виде над карточкой видна голова горничной: по ней видно настроение и «думаю».
-  localStorage.setItem("maid.collapsed", on ? "1" : "");
+  // Запоминается свёрнутость, выбранная вами: панель, развёрнутая сама ради сообщения (autoOpened), после перезапуска снова свёрнута.
+  if (!autoOpened) saveFold();
+}
+function saveFold() {
+  try { localStorage.setItem("maid.collapsed", collapsed ? "1" : ""); } catch {}
 }
 
 // Режим «вниз» (решает main, когда свёрнутую карточку отпустили у верха экрана): карточка стоит на месте верха панели (--lift над низом
