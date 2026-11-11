@@ -69,13 +69,53 @@ function Perch({ side, size = "m", plans }: { side: "left" | "right" | "none"; s
   );
 }
 
-/** Облачко горничной: как в виджете появляется ответ — печатается (со звуком или тихо) или сразу целиком. */
-function Typing({ mode, speed }: { mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast" }) {
+/** Выбор списком: каждый вариант — своя строка с пояснением. */
+function Choices<T extends string>({ value, options, onPick, label }: { value: T; options: [T, string, string][]; onPick: (v: T) => void; label: string }) {
   return (
-    <div className={`wm-say type-${mode} speed-${speed}`}>
-      <div className="wm-bubble"><span>Купила хлеб!</span></div>
-      {mode === "sound" && <div className="wm-notes"><i>♪</i><i>♫</i><i>♪</i></div>}
-      <img className="wm-maid" src="/maid/idle.webp" alt="" />
+    <div className="wp-choices" role="radiogroup" aria-label={label}>
+      {options.map(([v, name, hint]) => (
+        <button key={v} role="radio" aria-checked={value === v} className={value === v ? "on" : ""} onClick={() => onPick(v)}>
+          <i /><b>{name}</b><span>{hint}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Как печатает виджет (desktop/renderer/widget.js, planType/runType): знаков в секунду, паузы после знаков, «бип» на каждую третью букву.
+const TYPE_CPS = { slow: 22, normal: 35, fast: 60 };
+const SAY = "Записала: купить хлеб завтра к 10:00. Не забудь пакет!";
+const SAY_AT = (speed: keyof typeof TYPE_CPS) => {
+  let t = 0;
+  return [...SAY].map((ch) => { const now = t; t += 1000 / TYPE_CPS[speed] + (/[.!?…]/.test(ch) ? 260 : /[,;:]/.test(ch) ? 120 : 0); return now; });
+};
+
+/** Живая копия облачка виджета: пусто → облачко появляется → текст печатается (или сразу целиком) → висит → пропадает, по кругу. */
+function SayPreview({ mode, speed, side }: { mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast"; side: "left" | "right" }) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    const t0 = performance.now();
+    const id = setInterval(() => setT(performance.now() - t0), 16);
+    return () => clearInterval(id);
+  }, [mode, speed]);
+  const at = SAY_AT(speed);
+  const typed = mode !== "off";
+  const GAP = 900, POP = 200;
+  const total = typed ? at[at.length - 1] + 60 : 0;
+  const cycle = GAP + POP + total + 2600 + 300;
+  const c = t % cycle;
+  const since = c - GAP - POP; // от конца появления облачка
+  const up = c >= GAP && c < cycle - 300;
+  const shown = !typed ? SAY.length : since < 0 ? 0 : at.filter((x) => x <= since).length;
+  const letters = [...SAY].slice(0, shown).filter((ch) => /\S/.test(ch)).length;
+  const beep = mode === "sound" && since >= 0 && shown < SAY.length ? Math.floor((letters + 2) / 3) : -1;
+  return (
+    <div className={`wp-say side-${side}`} aria-hidden>
+      <div className={`wp-say-bubble${up ? " up" : ""}${c >= cycle - 300 ? " out" : ""}`} key={Math.floor(t / cycle)}>
+        {[...SAY].map((ch, i) => <span key={i} className={i < shown ? "on" : ""}>{ch}</span>)}
+      </div>
+      {mode === "sound" && beep > 0 && <div className="wp-say-beep" key={beep}>♪</div>}
+      <img className="wp-say-maid" src="/maid/idle.webp" alt="" />
     </div>
   );
 }
@@ -133,13 +173,14 @@ export function Widget() {
             </>}
             <label>Звуки<Segment label="Звуки" value={p.mute ? "off" : "on"} onPick={(v) => save({ mute: v === "off" })} options={[["on", "Включены"], ["off", "Выключены"]]} /></label>
             <label>Текст в облачке</label>
-            <Cards label="Текст в облачке" value={p.typing} onPick={(typing) => save({ typing })}
-              options={(["sound", "quiet", "off"] as const).map((v) => [v, { sound: "Печатает со звуком", quiet: "Печатает тихо", off: "Сразу целиком" }[v], <Typing mode={v} speed={p.typeSpeed} />])} />
+            <Choices label="Текст в облачке" value={p.typing} onPick={(typing) => save({ typing })}
+              options={[["sound", "Печатает со звуком", "по буквам, с тихим «бип»"], ["quiet", "Печатает тихо", "по буквам, без звука"], ["off", "Сразу целиком", "весь ответ разом"]]} />
             {p.typing !== "off" && <>
               <label>Скорость печати</label>
-              <Cards label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => save({ typeSpeed })}
-                options={(["slow", "normal", "fast"] as const).map((v) => [v, { slow: "Медленно", normal: "Обычно", fast: "Быстро" }[v], <Typing mode={p.typing} speed={v} />])} />
+              <Choices label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => save({ typeSpeed })}
+                options={[["slow", "Медленно", "22 буквы в секунду"], ["normal", "Обычно", "35 букв в секунду"], ["fast", "Быстро", "60 букв в секунду"]]} />
             </>}
+            <SayPreview mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} />
           </div>
         </Card>
 

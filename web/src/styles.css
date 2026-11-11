@@ -635,22 +635,32 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 @keyframes dmFill { 0% { transform: scaleX(0); } 62%, 100% { transform: scaleX(1); } }
 @keyframes dmFly { 0%, 66% { transform: none; opacity: 1; } 80%, 94% { transform: translateX(120%); opacity: 0; } 100% { transform: none; opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .dm-mini .go, .dm-mini .go::after { animation: none; } }
-/* облачко с ответом: текст печатается (ширина растёт шагами), каретка мигает; «со звуком» — ноты; «сразу» — весь текст без каретки */
-.wm-say { position: relative; height: 76px; margin: -7px -8px; }
-.wm-say .wm-maid { right: 2px; bottom: 2px; height: 46px; clip-path: none; }
-.wm-bubble { position: absolute; left: 5px; right: 36px; top: 14px; padding: 5px 6px; border-radius: 9px; background: #262038; border: 1px solid rgba(255, 255, 255, .12); font-size: 10px; line-height: 1.3; }
-.wm-bubble::after { content: ""; position: absolute; right: -6px; bottom: 9px; width: 9px; height: 9px; background: #262038; border: solid rgba(255, 255, 255, .12); border-width: 1px 1px 0 0; transform: rotate(45deg) skew(10deg, 10deg); }
-.wm-bubble span { display: inline-block; max-width: 100%; overflow: hidden; white-space: nowrap; vertical-align: top; }
-.wm-say:not(.type-off) .wm-bubble span { border-right: 1.5px solid var(--wa); animation: wmType var(--tt) steps(var(--steps)) infinite, wmCaret .55s step-end infinite; }
-.wm-say { --tt: 3.4s; --steps: 12; } .wm-say.speed-slow { --tt: 5.2s; } .wm-say.speed-fast { --tt: 2s; }
-@keyframes wmType { 0% { width: 0; } 70%, 100% { width: 100%; } }
-@keyframes wmCaret { 50% { border-right-color: transparent; } }
-.wm-notes { position: absolute; left: 22px; right: 60px; top: 46px; display: flex; justify-content: space-around; color: var(--wa); font-size: 13px; font-weight: 700; font-style: normal; }
-.wm-notes i { border: 0; width: auto; height: auto; animation: wmNote 1.2s ease-out infinite; opacity: 0; }
-.wm-notes i:nth-child(2) { animation-delay: .4s; } .wm-notes i:nth-child(3) { animation-delay: .8s; }
-.speed-slow .wm-notes i { animation-duration: 1.8s; } .speed-fast .wm-notes i { animation-duration: .8s; }
-@keyframes wmNote { 0% { transform: translateY(6px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-8px); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .wm-say .wm-bubble span, .wm-notes i { animation: none; } .wm-notes i { opacity: 1; } }
+/* «Текст в облачке», «Скорость печати»: варианты строками, под ними живая копия облачка виджета (как desktop/renderer/style.css .bubble) */
+.wp-choices { display: grid; gap: 4px; }
+.wp-choices button { display: grid; grid-template-columns: 16px auto 1fr; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; font-size: 13.5px; color: var(--text); }
+.wp-choices button i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--muted); }
+.wp-choices button span { color: var(--muted); font-size: 12.5px; justify-self: end; text-align: right; }
+.wp-choices button b { font-weight: 500; }
+.wp-choices button.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.wp-choices button.on b { font-weight: 650; }
+.wp-choices button.on i { border: 4px solid var(--accent); }
+.wp-say { position: relative; height: 190px; margin-top: 4px; border-radius: 12px; overflow: hidden; background: radial-gradient(120% 90% at 70% 100%, #2c2546, #16121f); border: 1px solid var(--line);
+  font-family: "Onest", "Segoe UI", system-ui, sans-serif; }
+.wp-say-maid { position: absolute; bottom: 0; right: 10px; width: 120px; }
+.wp-say-bubble { position: absolute; bottom: 72px; right: 136px; left: 14px; width: auto; max-width: 270px; margin-left: auto; padding: 10px 12px; border-radius: 14px; font-size: 13px; line-height: 1.35;
+  width: fit-content; background: rgba(255, 255, 255, .97); color: #1d1830; box-shadow: 0 10px 28px rgba(0, 0, 0, .3); opacity: 0; transition: opacity .25s; }
+.wp-say-bubble.up { opacity: 1; animation: wpPop .2s ease; }
+.wp-say-bubble.out { opacity: 0; }
+.wp-say-bubble::after { content: ""; position: absolute; right: -7px; bottom: min(22px, calc(50% - 8px)); border: 8px solid transparent; border-left: 8px solid rgba(255, 255, 255, .97); border-right: 0; }
+.wp-say-bubble span { opacity: 0; } .wp-say-bubble span.on { opacity: 1; }
+.wp-say.side-left .wp-say-maid { right: auto; left: 10px; }
+.wp-say.side-left .wp-say-bubble { right: 14px; left: 136px; margin-left: 0; }
+.wp-say.side-left .wp-say-bubble::after { right: auto; left: -7px; border-left: 0; border-right: 8px solid rgba(255, 255, 255, .97); }
+.wp-say-beep { position: absolute; right: 58px; top: 40px; color: #cdb9ff; font-size: 16px; font-weight: 700; animation: wpBeep .45s ease-out forwards; pointer-events: none; }
+.wp-say.side-left .wp-say-beep { right: auto; left: 58px; }
+@keyframes wpPop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes wpBeep { from { transform: translateY(4px); opacity: 1; } to { transform: translateY(-14px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wp-say-bubble.up, .wp-say-beep { animation: none; } }
 
 
 @media (max-width: 760px) {
