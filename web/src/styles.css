@@ -383,6 +383,9 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .form input[type="checkbox"] { width: 18px; height: 18px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .nav-more-group { display: contents; }
+/* линия между группами меню; профиль под логотипом отделён от разделов */
+.nav-sep { height: 1px; margin: 8px 12px; background: var(--line); flex: none; }
+.nav-profile .nav-item { margin-bottom: 10px; }
 .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 16px; }
 .week-day { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 96px; font-size: 13px; }
 .week-day.today { outline: 2px solid var(--accent); }

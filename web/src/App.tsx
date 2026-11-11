@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { getToken, post, setToken, whenUnauthorized } from "./api";
 import { Composer } from "./Composer";
 import { navigate, parsePath, usePath } from "./router";
@@ -23,20 +23,22 @@ const Catalog = lazy(() => import("./screens/Catalog").then((m) => ({ default: m
 // Каркас: вход, навигация (слева на ПК; снизу на телефоне — четыре экрана и «Ещё»), экран, строка ввода.
 // version растёт после каждой записи — экраны перечитывают данные.
 
-const TABS = [
+// Порядок — от частого к редкому: каждый день, учёт, служебное. group — разделитель перед группой в меню.
+// Профиль — на ПК сразу под логотипом, на телефоне — первым в «Ещё».
+const TABS: { id: string; path: string; title: string; icon: string; more?: boolean; group?: "track" | "tools" }[] = [
   { id: "today", path: "/", title: "Сегодня", icon: "today" },
-  { id: "diary", path: "/diary", title: "Дневник", icon: "diary" },
   { id: "plans", path: "/plans", title: "Планы", icon: "plans" },
   { id: "habits", path: "/habits", title: "Привычки", icon: "habits" },
+  { id: "diary", path: "/diary", title: "Дневник", icon: "diary" },
   { id: "profile", path: "/profile", title: "Профиль", icon: "profile", more: true },
-  { id: "search", path: "/search", title: "Поиск", icon: "search", more: true },
-  { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true },
+  { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true, group: "track" },
   { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
   { id: "stats", path: "/stats", title: "Статистика", icon: "stats", more: true },
+  { id: "search", path: "/search", title: "Поиск", icon: "search", more: true, group: "tools" },
   { id: "trash", path: "/trash", title: "Корзина", icon: "trash", more: true },
-  { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
   // Только в программе для ПК (сайт открыт в её окне): настройки виджета на рабочем столе.
   ...(desktop() ? [{ id: "widget", path: "/widget", title: "Виджет", icon: "widget", more: true }] : []),
+  { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
   { id: "catalog", path: "/catalog", title: "Каталог", icon: "catalog", more: true },
 ];
 
@@ -99,14 +101,17 @@ export function App() {
       <span className="nav-icon"><Icon name={t.icon} /></span><span>{t.title}</span>
     </a>
   );
+  // Перед первым пунктом группы («Учёт», «Служебное») — тонкая линия.
+  const grouped = (t: (typeof TABS)[number]) => (t.group ? <Fragment key={t.id}><div className="nav-sep" />{item(t)}</Fragment> : item(t));
   const inMore = TABS.some((t) => t.more && t.id === tab);
 
   return (
     <div className="app">
       <nav className="nav">
         <div className="brand"><img src="/icon.svg" alt="" width={28} height={28} /><span>Горничная</span></div>
+        <div className="nav-more-group nav-profile">{TABS.filter((t) => t.id === "profile").map(item)}</div>
         {TABS.filter((t) => !t.more).map(item)}
-        <div className="nav-more-group">{TABS.filter((t) => t.more).map(item)}</div>
+        <div className="nav-more-group">{TABS.filter((t) => t.more && t.id !== "profile").map(grouped)}</div>
         <button className={`nav-item nav-more ${more || inMore ? "on" : ""}`} onClick={() => setMore(!more)}>
           <span className="nav-icon"><Icon name="more" /></span><span>Ещё</span>
         </button>
@@ -115,7 +120,7 @@ export function App() {
       {more && (
         <div className="sheet-back" onClick={() => setMore(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            {TABS.filter((t) => t.more).map(item)}
+            {TABS.filter((t) => t.more).map(grouped)}
           </div>
         </div>
       )}
