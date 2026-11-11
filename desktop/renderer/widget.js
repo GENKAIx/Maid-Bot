@@ -398,7 +398,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
     : buttons.map((x, i) => (x.auto ? `<button class="auto" data-i="${i}" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">${esc(x.text)}</span></button>` : `<button data-i="${i}">${esc(x.text)}</button>`)).join("")
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
-      + `<button class="ghost life" data-i="close" title="Закрыть"><svg class="life-ring" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg><span class="lbl">✕</span></button>`;
+      + `<button class="ghost life" data-i="close" title="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="life-ring" cx="12" cy="12" r="10"/><path class="x" d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg></button>`;
   // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
   b.dataset.notice = notice ?? "";
   $("#inbox").classList.add("away"); // пока говорит — значок не мешает облачку
@@ -473,7 +473,10 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   // Вопрос «добавить?» облачко закрывает сам (полоса на «Не надо»).
   if (proposal) ms = 0;
   // Длинный текст висит дольше (время на чтение), а под курсором не пропадает вовсе — см. startLife.
-  if (ms) startLife(ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55));
+  // Кольцо времени — только у важного: записи и карточки, дни, напоминания, кнопки (кроме самонажатия), длинный текст.
+  // Короткие реплики (тык по горничной, «привет», «вернула ✓») уходят сами, без кольца.
+  const weighty = changes.length || days.length || notice || buttons.some((x) => !x.auto) || plain.length > 140;
+  if (ms) startLife(ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55), weighty);
 }
 
 // --- вопрос «добавить?» (привычки из рассказа о распорядке, задачи из «надо бы…») ---
@@ -572,7 +575,7 @@ function startAuto(btn, wait) {
   run.raf = requestAnimationFrame(tick);
 }
 
-// Время жизни облачка видно: кольцо вокруг ✕ тает к нулю, последние LIFE_FADE мс облачко бледнеет и чуть уменьшается.
+// Время жизни облачка: у важных (см. say) кольцо вокруг ✕ тает к нулю; последние LIFE_FADE мс любое облачко бледнеет и чуть уменьшается.
 // Пока курсор на облачке — время стоит (кольцо замирает и становится ярче), увели — ещё не меньше LIFE_GRACE мс.
 // Облачко под свёрнутой панелью (hidden) тоже ждёт.
 const LIFE_GRACE = 2500;
@@ -584,11 +587,11 @@ function stopLife() {
   life = null;
   $("#bubble").classList.remove("timed", "held", "fading");
 }
-function startLife(total) {
+function startLife(total, shown) {
   const b = $("#bubble");
-  const ring = b.querySelector(".life-ring circle");
+  const ring = shown ? b.querySelector(".life-ring") : null;
   const run = (life = { left: total, last: performance.now(), raf: 0 });
-  b.classList.add("timed");
+  if (shown) b.classList.add("timed");
   const tick = (t) => {
     if (life !== run) return;
     const dt = t - run.last;

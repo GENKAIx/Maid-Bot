@@ -270,12 +270,13 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions button:hover { border-color: #c9c2da; }
 .bubble-actions button.ghost { margin-left: auto; background: transparent; border-color: transparent; }
 /* Время жизни облачка: кольцо вокруг ✕ тает к нулю (widget.js startLife), под курсором — стоит и ярче; в конце облачко бледнеет. */
-.bubble-actions button.life { position: relative; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
-.bubble-actions button.life .lbl { position: relative; font-size: 12px; line-height: 1; }
-.life-ring { position: absolute; inset: 1px; width: 24px; height: 24px; transform: rotate(-90deg); pointer-events: none; display: none; }
-.life-ring circle { fill: none; stroke: #9a7de8; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 62.83; stroke-dashoffset: 0; opacity: .7; transition: opacity .2s, stroke .2s; }
-.bubble.timed .life-ring { display: block; }
-.bubble.held .life-ring circle { stroke: #7d52e6; opacity: 1; }
+.bubble-actions button.life { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
+.bubble-actions button.life svg { width: 24px; height: 24px; display: block; overflow: visible; }
+.bubble-actions button.life .x { stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; fill: none; }
+.life-ring { fill: none; stroke: #9a7de8; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 62.83; stroke-dashoffset: 0; opacity: .7;
+  transform: rotate(-90deg); transform-origin: 12px 12px; transition: opacity .2s, stroke .2s; display: none; }
+.bubble.timed .life-ring { display: inline; }
+.bubble.held .life-ring { stroke: #7d52e6; opacity: 1; }
 .bubble.timed { transition: opacity .25s, transform .25s; }
 .bubble.fading { opacity: .55; transform: scale(.97); transition: opacity 2.4s linear, transform 2.4s ease-in; }
 .bubble.fading.hidden { opacity: 0; transition: opacity .25s; }
