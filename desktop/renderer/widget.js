@@ -2114,8 +2114,8 @@ function openHabitMenu(h, li, x, y) {
   const item = (act, text) => `<button type="button" data-act="${act}">${text}</button>`;
   const menu = document.createElement("div");
   menu.className = "pl-menu";
-  // Снять отметку — как повторный щелчок по галочке: день становится пропущенным (удалять отметки сервер не умеет).
-  menu.innerHTML = (h.status === "done" ? item("skip", "↶ Снять отметку") : item("done", "✓ Сделано сегодня"))
+  // Снять отметку — как повторный щелчок по галочке: день снова пустой (/unmark), крестик ставит полночь.
+  menu.innerHTML = (h.status === "done" ? "" : item("done", "✓ Сделано сегодня")) + (h.status ? item("unmark", "↶ Снять отметку") : "")
     + (h.status ? "" : item("skip", "– Пропустить сегодня"))
     + `<hr>`
     + item("rename", "✎ Переименовать")
@@ -2129,9 +2129,21 @@ function openHabitMenu(h, li, x, y) {
     if (!act) return;
     closePlanMenu();
     if (act === "rename") return openRename({ habit: true, id: h.id, title: h.title }, li);
+    if (act === "unmark") return unmarkHabitDay(h);
     if (act === "done" || act === "skip") return markHabitDay(h, act === "done" ? "done" : "skipped");
     editHabit(h, act, li);
   });
+}
+async function unmarkHabitDay(h) {
+  try {
+    await maid.api("POST", `/api/habits/${h.id}/unmark`, {});
+    popTone(-3, { vol: 0.15, soft: true });
+    maid.changed();
+    load();
+  } catch (err) {
+    play("oops");
+    say(err.message, { ms: 6000 });
+  }
 }
 async function markHabitDay(h, status) {
   try {
@@ -2210,9 +2222,10 @@ $("#body").addEventListener("click", async (e) => {
       const was = e.target.classList.contains("done");
       e.target.classList.toggle("done", !was);
       e.target.classList.add("pressed");
-      if (was) { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
+      // Сняли галочку — день снова пустой, а не пропуск: можно сделать позже; крестик ставит полночь, если так и не сделали.
+      if (was) { e.target.textContent = ""; popTone(-5, { vol: 0.2, soft: true }); }
       else { popTone(2); burst(e.target); react("streak", 4000); }
-      await maid.api("POST", `/api/habits/${habit}/mark`, { status: was ? "skipped" : "done" });
+      await maid.api("POST", was ? `/api/habits/${habit}/unmark` : `/api/habits/${habit}/mark`, was ? {} : { status: "done" });
       maid.changed();
     }
   } catch (err) {
