@@ -67,6 +67,7 @@ for (const n of ["pop", "ding", "send", "oops", "hey"]) {
 function play(name) {
   const a = SOUNDS[name];
   if (!a || cfg.mute) return;
+  fileSoundAt = Date.now(); // звук эмоции рядом промолчит (moodsound.js)
   a.currentTime = 0;
   a.play().catch(() => {});
 }
@@ -228,6 +229,7 @@ function react(n, ms = 6000) {
   if (n === "forget") ms = FORGET.loop; // ровно один показ: огонёк, щелчок, 2 с с прибором
   clearTimeout(moodTimer);
   moodUntil = Date.now() + ms;
+  if (n !== mood) moodSound(n); // свой короткий звук у каждой реакции (moodsound.js)
   showMood(n);
   moodTimer = setTimeout(() => { moodUntil = 0; showMood(baseMood()); }, ms);
 }
