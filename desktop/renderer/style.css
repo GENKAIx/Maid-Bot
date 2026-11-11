@@ -180,6 +180,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-text { max-height: 220px; overflow: auto; white-space: pre-wrap; }
 .bubble-cards { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; max-height: 190px; overflow-y: auto; }
 .bubble-cards:empty { display: none; }
+/* Печать по буквам (runType): невидимые буквы держат место, облачко не прыгает. Кнопки — после текста. */
+.tw { opacity: 0; }
+.tw.on { opacity: 1; }
+.bubble.typing .bubble-actions { opacity: 0; pointer-events: none; }
+.bubble .bubble-actions { transition: opacity .2s; }
+.bubble.typing { cursor: pointer; }
 .card { display: flex; gap: 8px; align-items: flex-start; padding: 6px 9px; border-radius: 10px; background: #f3f1f8; border: 0; border-left: 3px solid var(--brand); animation: cardIn .35s cubic-bezier(.2,.9,.3,1.2) both; }
 .card-icon { font-size: 15px; line-height: 1.2; }
 .card-body { font-size: 12.5px; line-height: 1.3; min-width: 0; }

@@ -358,6 +358,11 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   const ask = proposal || text.split("\n").at(-1).startsWith("⚠ ");
   const plain = changes.length ? text.split("\n")[0] + (ask ? "\n" + text.split("\n").at(-1) : "") : text;
   $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + tgHtml(plain);
+  // Печать по буквам: не у «…», вопросов с полосой и кнопок-самонажатий (у них свои таймеры), не при «меньше движения».
+  stopType();
+  const typed = text !== "…" && !proposal && !buttons.some((x) => x.auto) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const tw = typed ? planType($("#bubbleText"), plain.length > 140 ? 2.5 : 1) : null;
+  const late = tw ? tw.total : 0; // карточки и кнопки — когда текст допечатан
   const cards = $("#bubbleCards");
   cards.innerHTML = "";
   changes.forEach((c, i) => {
@@ -369,10 +374,10 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       hideBubble();
       maid.openSection(sectionOf(c));
     };
-    el.style.animationDelay = `${160 + i * 140}ms`;
+    el.style.animationDelay = `${late + 160 + i * 140}ms`;
     el.innerHTML = `<span class="card-icon">${icon}</span><span class="card-body"><b>${esc(name)}</b> ${esc(c.title)}${c.detail ? `<span class="card-detail">${esc(c.detail)}</span>` : ""}</span>`;
     cards.appendChild(el);
-    setTimeout(() => play("pop"), 160 + i * 140);
+    typeTimers.push(setTimeout(() => play("pop"), late + 160 + i * 140));
   });
   for (const d of days) {
     const el = document.createElement("button");
@@ -453,6 +458,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   });
   b.className = `bubble ${emotion}`;
   placeBubble();
+  if (tw) runType(tw, emotion);
   // Кнопка с самонажатием (auto: секунды) — облачко держит она, своего таймера нет.
   const autoBtn = acts.querySelector("button.auto");
   if (autoBtn) {
@@ -476,7 +482,114 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   // Вопрос «добавить?» облачко закрывает сам (полоса на «Не надо»).
   if (proposal) ms = 0;
   // Длинный текст висит дольше (время на чтение), а под курсором не пропадает вовсе — см. startLife.
-  if (ms) startLife(ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55), weighty);
+  if (ms) {
+    const total = ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55);
+    // Время жизни пошло — когда текст допечатан.
+    if (typing) typing.then = () => startLife(total, weighty);
+    else startLife(total, weighty);
+  }
+}
+
+// --- печать текста в облачке: буквы появляются по одной, тихий «бип» на каждые 2–3 буквы (как речь персонажей в играх) ---
+// Место под текст занято сразу (буквы просто невидимы), поэтому облачко не прыгает. Щелчок по облачку — весь текст сразу.
+const TYPE_CPS = 35; // знаков в секунду
+const TYPE_PITCH = { happy: 1.18, excited: 1.25, love: 1.12, sad: 0.82, angry: 0.78, annoyed: 0.85, surprised: 1.3, neutral: 1 };
+let typing = null;
+let typeTimers = [];
+function planType(box, speed) {
+  const chars = [];
+  const walk = (n) => {
+    for (const c of [...n.childNodes]) {
+      if (c.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        for (const ch of c.data) {
+          const sp = document.createElement("span");
+          sp.className = "tw";
+          sp.textContent = ch;
+          frag.appendChild(sp);
+          chars.push(sp);
+        }
+        c.replaceWith(frag);
+      } else if (c.nodeType === 1 && !c.classList.contains("heard")) walk(c);
+    }
+  };
+  walk(box);
+  // Когда показать каждую букву: ровно по TYPE_CPS, после .!? — пауза 260 мс, после , ; : — 120 мс, перевод строки — 180 мс.
+  const step = 1000 / (TYPE_CPS * speed);
+  let t = 0;
+  const at = chars.map((sp) => {
+    const now = t;
+    const ch = sp.textContent;
+    t += step + (/[.!?…]/.test(ch) ? 260 : /[,;:]/.test(ch) ? 120 : ch === "\n" ? 180 : 0) / speed;
+    return now;
+  });
+  return { chars, at, total: Math.round(t) };
+}
+function runType(tw, emotion) {
+  const b = $("#bubble");
+  const pitch = (TYPE_PITCH[emotion] ?? 1) * 640;
+  const run = (typing = { i: 0, t0: performance.now(), timer: 0, then: null, n: 0 });
+  b.classList.add("typing");
+  const finish = () => {
+    if (typing !== run) return;
+    clearInterval(run.timer);
+    for (const sp of tw.chars) sp.classList.add("on");
+    typing = null;
+    b.classList.remove("typing");
+    b.removeEventListener("click", skip, true);
+    run.then?.();
+  };
+  // Щелчок во время печати — дописать сразу; карточки и кнопки тоже сразу.
+  const skip = (e) => {
+    e.stopPropagation();
+    typeTimers.forEach(clearTimeout);
+    typeTimers = [];
+    b.querySelectorAll(".card, .prop-list").forEach((el) => (el.style.animationDelay = "0ms"));
+    finish();
+  };
+  b.addEventListener("click", skip, true);
+  // Обычный таймер, а не кадры отрисовки: печать идёт и когда окно не перерисовывается.
+  const tick = () => {
+    if (typing !== run) return;
+    if (b.classList.contains("hidden")) return;
+    const t = performance.now() - run.t0;
+    let shown = false;
+    while (run.i < tw.chars.length && tw.at[run.i] <= t) {
+      const sp = tw.chars[run.i++];
+      sp.classList.add("on");
+      if (/\S/.test(sp.textContent)) shown = true;
+    }
+    if (shown && run.n++ % 3 === 0) typeBlip(pitch);
+    if (run.i >= tw.chars.length) finish();
+  };
+  run.timer = setInterval(tick, 16);
+}
+function stopType() {
+  typeTimers.forEach(clearTimeout);
+  typeTimers = [];
+  if (!typing) return;
+  clearInterval(typing.timer);
+  typing = null;
+  $("#bubble").classList.remove("typing");
+}
+// «Бип» речи: короткий квадратный тон с мягким фильтром, высота чуть гуляет.
+function typeBlip(base) {
+  if (cfg.mute) return;
+  try {
+    actx ??= new AudioContext();
+    const t = actx.currentTime + 0.002;
+    const o = actx.createOscillator(), f = actx.createBiquadFilter(), g = actx.createGain();
+    o.type = "square";
+    o.frequency.setValueAtTime(base * (0.9 + Math.random() * 0.22), t);
+    f.type = "lowpass";
+    f.frequency.value = 2200;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.045, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
+    o.connect(f).connect(g).connect(actx.destination);
+    o.start(t);
+    o.stop(t + 0.07);
+  } catch {}
 }
 
 // --- вопрос «добавить?» (привычки из рассказа о распорядке, задачи из «надо бы…») ---
@@ -974,6 +1087,7 @@ chatInput.addEventListener("keydown", (e) => {
   }
 });
 function hideBubble() {
+  stopType();
   stopLife();
   stopProposal();
   stopAuto();
