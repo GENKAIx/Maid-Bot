@@ -449,13 +449,21 @@ let regions = [];
 let overChat = false;
 const flog = (...a) => { if (process.env.MAID_FOCUS_LOG) fs.appendFileSync(process.env.MAID_FOCUS_LOG, `${Date.now() % 100000} ${a.join(" ")} focused=${widget?.isFocused()} focusable=${widget?.isFocusable?.()}
 `); };
+// Курсор над фигуркой, облачком или панелью (regions от виджета, в координатах окна).
+function cursorOver() {
+  const b = widget.getBounds();
+  const c = screen.getCursorScreenPoint();
+  const x = c.x - b.x;
+  const y = c.y - b.y;
+  return x >= 0 && y >= 0 && x < b.width && y < b.height && regions.some((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+}
 setInterval(() => {
   if (!widget || widget.isDestroyed() || grabbed || typing || drag || sizing) return;
   const b = widget.getBounds();
   const c = screen.getCursorScreenPoint();
   const x = c.x - b.x;
   const y = c.y - b.y;
-  const inside = x >= 0 && y >= 0 && x < b.width && y < b.height && regions.some((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+  const inside = cursorOver();
   if (inside !== hovering) {
     hovering = inside;
     applyMouse();
@@ -729,7 +737,8 @@ ipcMain.on("focus-input", (_e, on) => {
     widget.webContents.focus();
   } else if (!grabbed) {
     overChat = false;
-    hovering = false;
+    // Фокус ушёл из строки чата щелчком по облачку или панели — курсор ещё над ними, мышь не отключать посреди щелчка.
+    hovering = cursorOver();
     applyMouse();
   }
 });
