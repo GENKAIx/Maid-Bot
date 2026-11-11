@@ -202,7 +202,7 @@ export function changesList(c: {
 }): string[] {
   const out: string[] = [];
   if (c.sections.length) out.push("📓 " + [...new Set(c.sections)].map((s) => SECTIONS[s]).join(", "));
-  else if (c.summary) out.push("📓 Саммари");
+  // Только строка в хронике дня (болтовня, шутка) — ответ как обычное сообщение: без «📓 …» и без «Отменить».
   if (c.events) out.push(`📅 планов: ${c.events}`);
   if (c.tasks) out.push(`✅ задач: ${c.tasks}`);
   if (c.dates) out.push(`🎂 дат: ${c.dates}`);

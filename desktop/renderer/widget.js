@@ -395,9 +395,9 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     list.style.animationDelay = `${160 + changes.length * 140}ms`;
     cards.appendChild(list);
   }
-  // ✕ с кольцом времени — только у важного: записи и карточки, дни, напоминания, кнопки (кроме самонажатия), длинный текст.
+  // ✕ с кольцом времени — только у важного: записи и карточки, «Отменить» (что-то записала), дни, напоминания, кнопки (кроме самонажатия), длинный текст.
   // Короткие реплики (тык по горничной, «привет», «вернула ✓») уходят сами — без ✕ и кольца.
-  const weighty = !!(changes.length || days.length || notice || buttons.some((x) => !x.auto) || plain.length > 140 || (ms === 0 && text !== "…"));
+  const weighty = !!(changes.length || days.length || undo || notice || buttons.some((x) => !x.auto) || plain.length > 140 || (ms === 0 && text !== "…"));
   const acts = $("#bubbleActions");
   acts.innerHTML = proposal
     ? (proposal.remind ? `<button class="prop-yes" data-p="remind">✅ ${esc(proposal.remind.label)}</button>` : "")
