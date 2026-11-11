@@ -37,6 +37,34 @@ const CLOCK_LEFT = 8; // левый край развёрнутых «Плано
 const extraH = () => Math.max(0, Math.round(settings.widget.extra ?? 0));
 const settingsFile = () => path.join(app.getPath("userData"), "settings.json");
 let settings = structuredClone(DEFAULTS);
+// Зашифрованный ключ из файла, пока он не расшифровался (защита Windows бывает недоступна в первые секунды после
+// установки или входа): token() пробует ещё раз при каждом запросе, а saveSettings его не теряет.
+let tokenEnc = "";
+function token() {
+  if (!settings.token && tokenEnc) {
+    try {
+      settings.token = safeStorage.decryptString(Buffer.from(tokenEnc, "base64"));
+      tokenEnc = "";
+      maidLog("ключ расшифрован со второй попытки");
+    } catch (e) {
+      maidLog("ключ не расшифровался:", e?.message ?? e);
+    }
+  }
+  return settings.token;
+}
+// Журнал программы для разбора сбоев: userData/maid.log, без ключа и содержимого; больше 200 КБ — начинается заново.
+const logFile = () => path.join(app.getPath("userData"), "maid.log");
+const logged = new Map(); // одна и та же строка — не чаще раза в минуту
+function maidLog(...a) {
+  const line = a.join(" ");
+  if (Date.now() - (logged.get(line) ?? 0) < 60_000) return;
+  logged.set(line, Date.now());
+  try {
+    if ((fs.statSync(logFile(), { throwIfNoEntry: false })?.size ?? 0) > 200_000) fs.rmSync(logFile());
+    fs.appendFileSync(logFile(), `${new Date().toISOString()} ${line}
+`);
+  } catch { /* журнал не обязателен */ }
+}
 function loadSettings() {
   try {
     const s = JSON.parse(fs.readFileSync(settingsFile(), "utf8"));
@@ -46,11 +74,14 @@ function loadSettings() {
     settings.widget.width = WIDGET_W;
     // Ключ в файле — зашифрованный (tokenEnc); старый открытый перешифруется при первом сохранении.
     if (s.tokenEnc) {
-      try { settings.token = safeStorage.decryptString(Buffer.from(s.tokenEnc, "base64")); } catch { settings.token = ""; }
+      settings.token = "";
+      tokenEnc = s.tokenEnc;
+      token();
     }
     delete settings.tokenEnc;
     if (s.token && canEncrypt()) saveSettings();
-  } catch {
+  } catch (e) {
+    if (fs.existsSync(settingsFile())) maidLog("настройки не прочитались:", e?.message ?? e);
     settings = structuredClone(DEFAULTS);
   }
 }
@@ -61,6 +92,9 @@ function saveSettings() {
   const out = { ...settings };
   if (out.token && canEncrypt()) {
     out.tokenEnc = safeStorage.encryptString(out.token).toString("base64");
+    delete out.token;
+  } else if (!out.token && tokenEnc) {
+    out.tokenEnc = tokenEnc; // ещё не расшифрован — оставить как был, иначе вход пропадёт
     delete out.token;
   }
   fs.writeFileSync(settingsFile(), JSON.stringify(out, null, 2));
@@ -78,7 +112,7 @@ const isSettingsPage = (wc) => {
 };
 
 async function api(method, p, body) {
-  if (!settings.token) throw new Error("Нет ключа: напишите боту /token и вставьте его в настройках.");
+  if (!token()) throw new Error(tokenEnc ? "Ключ ещё не расшифровался (защита Windows) — пробую снова." : "Нет ключа: напишите боту /token и вставьте его в настройках.");
   // Только пути /api/… и только на сервер из настроек: окно не может увести ключ на чужой адрес.
   const base = serverBase();
   if (!base) throw new Error("Неверный адрес сервера в настройках.");
@@ -101,7 +135,10 @@ async function api(method, p, body) {
     } catch (e) {
       // Понятные слова вместо «fetch failed»: по ним виджет понимает, что сообщение можно повторить позже.
       if (e?.name === "TimeoutError") throw new Error("сервер не ответил");
-      if (i >= 2) throw new Error("нет связи с сервером");
+      if (i >= 2) {
+        maidLog("нет связи с сервером:", e?.cause?.code ?? e?.message ?? e);
+        throw new Error("нет связи с сервером");
+      }
       await new Promise((r) => setTimeout(r, 700 * (i + 1)));
     }
   }
@@ -544,7 +581,7 @@ function registerKeys() {
 let trackerTimer = null;
 let trackerState = { last: null, error: null };
 async function trackOnce() {
-  if (!settings.tracker.enabled || !settings.token) return;
+  if (!settings.tracker.enabled || !token()) return;
   const days = [localDay()];
   // Сразу после полуночи досчитать вчерашний день.
   const now = new Date();
@@ -596,7 +633,7 @@ ipcMain.on("open-section", (_e, p) => {
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
 });
 // Окнам — настройки без ключа.
-const shown = () => { const { token, ...rest } = settings; return { ...rest, hasToken: Boolean(token), insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
+const shown = () => { const { token: _t, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
 // http:// не на этом компьютере — ключ и дневник идут открытым текстом.
 function insecure(s) {
   try { const u = new URL(String(s)); return u.protocol === "http:" && !/^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(u.hostname); } catch { return false; }
@@ -617,6 +654,7 @@ ipcMain.handle("settings:set", (e, patch) => {
     if (!b) throw new Error("Адрес сервера: нужен вида https://example.com");
     patch.server = b;
   }
+  if (patch.token) tokenEnc = ""; // новый ключ — старый зашифрованный больше не нужен
   settings = { ...settings, ...patch, widget: { ...settings.widget, ...patch.widget }, tracker: { ...settings.tracker, ...patch.tracker }, keys: { ...settings.keys, ...patch.keys } };
   saveSettings();
   registerKeys();
@@ -759,7 +797,8 @@ app.whenReady().then(() => {
   registerKeys();
   applyAutostart();
   if (settings.widget.show) createWidget();
-  if (!settings.token) showMain(true);
+  maidLog("запуск", app.getVersion(), token() ? "ключ есть" : tokenEnc ? "ключ не расшифровался" : "ключа нет");
+  if (!token() && !tokenEnc) showMain(true);
   else if (process.argv.includes("--show")) showMain();
   startTracker();
   screen.on("display-removed", () => widget?.setBounds(widgetBounds()));

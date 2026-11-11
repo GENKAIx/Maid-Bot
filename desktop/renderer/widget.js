@@ -1202,7 +1202,7 @@ function render() {
   const sec = cfg.sections;
   $("#clock").textContent = $("#miniClock").textContent = now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
   if (!data) {
-    $("#next").innerHTML = `<span class="muted">Нет связи с сервером</span>`;
+    $("#next").innerHTML = `<span class="muted">Нет связи с сервером${loadFail && !/^нет связи с сервером$/i.test(loadFail) ? `<br><small>${esc(loadFail)}</small>` : ""}</span>`;
     $("#body").innerHTML = "";
     renderCourses();
     return;
@@ -1558,9 +1558,11 @@ $("#body").addEventListener("mouseout", (e) => {
 });
 
 let lastJson = "";
+let loadFail = ""; // почему не загрузилось — пишется под «Нет связи с сервером»
 async function load() {
   try {
     const fresh = await maid.api("GET", "/api/today");
+    loadFail = "";
     const json = JSON.stringify(fresh);
     data = fresh;
     forgetReopened(data.tasks);
@@ -1569,10 +1571,12 @@ async function load() {
     // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.
     if (json === lastJson) return;
     lastJson = json;
-  } catch {
+  } catch (err) {
     // Нет связи — старые данные пока оставить, следующий опрос через 5 с.
+    loadFail = String(err?.message ?? "").replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
     if (online) { online = false; settle(); }
-    if (data) return;
+    if (!data) render(); // «Нет связи» и почему
+    return;
   }
   noteGoneTasks();
   renderSoon();
