@@ -324,6 +324,11 @@ CREATE TABLE IF NOT EXISTS llm_usage (
   `
 UPDATE users SET evening_time = '23:55' WHERE evening_time < '12:00';
 `,
+  // Шаг 13: когда спрашивать про привычки без своего времени — первый раз (habit_first) и ещё раз, если не ответили (habit_last); в полночь — минус.
+  `
+ALTER TABLE users ADD COLUMN habit_first TEXT NOT NULL DEFAULT '12:00';
+ALTER TABLE users ADD COLUMN habit_last TEXT NOT NULL DEFAULT '23:00';
+`,
 ];
 
 /** Строка расхода: день (UTC) × на что × модель. cost — доллары. */
@@ -354,6 +359,10 @@ export interface User {
   morning_time: string;
   tomorrow_time: string;
   evening_time: string;
+  /** Первый вопрос про привычку без своего времени (12:00). */
+  habit_first: string;
+  /** Второй вопрос, если до него не ответили (23:00); не ответили и до полуночи — минус. */
+  habit_last: string;
   event_lead_min: number;
   event_reminders: string;
   game_alerts: number;

@@ -3,7 +3,7 @@ import type { LlmCall, Picture } from "./llm.ts";
 import type { DrawCall } from "./draw.ts";
 import { extractJson } from "./llm.ts";
 import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
-import { habitLaterTime, scheduleText } from "./habits.ts";
+import { scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
 import { changesList, esc, metricLine, moneyLine, upcomingDates } from "./report.ts";
 import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
@@ -694,13 +694,12 @@ export class Pipeline {
     return text;
   }
 
-  /** «Ещё нет» у вопроса про привычку: отметки нет, вопрос придёт снова через 2 ч (habitLaterTime); не отметят до конца дня — минус. */
+  /** «Ещё нет» у вопроса про привычку: отметки нет; второй вопрос придёт в habit_last (планировщик), не отметят до полуночи — минус. */
   async habitLater(u: User, habitId: number, day: string, at = new Date()): Promise<string> {
     const h = await this.store.habit(habitId);
     if (!h || h.user_id !== u.id) return "Нет такой привычки.";
-    const ask = day === dayKey(at, u.tz) ? habitLaterTime(timeOf(at, u.tz)) : null;
-    if (ask) await this.store.kvSet(`habitLater:${habitId}:${day}`, ask);
-    return `⏳ ${esc(h.title)} — хорошо, ${ask ? `спрошу ещё раз в ${ask}` : "подожду"}. Не отметите до конца дня — поставлю минус.`;
+    const again = day === dayKey(at, u.tz) && timeOf(at, u.tz) < u.habit_last;
+    return `⏳ ${esc(h.title)} — хорошо, ${again ? `спрошу ещё раз в ${u.habit_last}` : "подожду"}. Не отметите до 00:00 — поставлю минус.`;
   }
 
   /** «Это просто заметка»: отменить разбор и записать текст целиком в заметки. */

@@ -83,15 +83,6 @@ function yesterdayOf(h: HabitRow, own: MarkRow[], day: string): HabitDay["yester
 /** Минус за день без ответа ставит планировщик в полночь — отметка без сообщения. */
 export const isAutoMinus = (m: Pick<MarkRow, "status" | "message_id">) => m.status === "skipped" && m.message_id === null;
 
-/** «Ещё нет» на вопрос про привычку: спросить снова через 2 ч, но не позже 23:30; позже 23:00 — уже не переспрашивать. */
-export const HABIT_LATER_MIN = 120;
-export function habitLaterTime(now: string): string | null {
-  const [h, m] = now.split(":").map(Number);
-  const at = h * 60 + m;
-  if (at >= 23 * 60) return null;
-  const t = Math.min(23 * 60 + 30, at + HABIT_LATER_MIN);
-  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
-}
 
 /** Что из привычек идёт в этот день, с отметками и сериями. */
 export async function habitsOfDay(store: Store, u: User, day: string): Promise<HabitDay[]> {

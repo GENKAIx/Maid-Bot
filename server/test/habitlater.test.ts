@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Store } from "../src/db.ts";
-import { habitLaterTime, habitsOfDay } from "../src/habits.ts";
+import { habitsOfDay } from "../src/habits.ts";
 import { Pipeline } from "../src/pipeline.ts";
-import { habitButtons, Scheduler, type Button } from "../src/scheduler.ts";
+import { habitAskTimes, habitButtons, Scheduler, type Button } from "../src/scheduler.ts";
 
 // «Да / Ещё нет / Нет» у вопроса про привычку и минус за день без ответа.
 
@@ -22,24 +22,26 @@ test("вопрос про привычку — три кнопки: Да, Ещё
     ["⏳ Ещё нет", "habit:7:2026-11-12:later"],
     ["✖ Нет", "habit:7:2026-11-12:skipped"],
   ]);
-  assert.equal(habitLaterTime("09:05"), "11:05");
-  assert.equal(habitLaterTime("22:10"), "23:30");
-  assert.equal(habitLaterTime("23:00"), null);
+  const u = { habit_first: "12:00", habit_last: "23:00" };
+  assert.deepEqual(habitAskTimes(u, []), ["12:00", "23:00"]);
+  assert.deepEqual(habitAskTimes(u, ["09:00"]), ["09:00", "23:00"]);
+  assert.deepEqual(habitAskTimes(u, ["23:30"]), ["23:30"]); // своё время позже второго — второго нет
 });
 
-test("«Ещё нет»: отметки нет, спрашивает ещё раз через 2 часа — один раз", async () => {
+test("«Ещё нет»: отметки нет, спрашивает ещё раз в 23:00 — один раз", async () => {
   const { store, u, hid, sent, sch, pipe } = await setup();
   await sch.tick(new Date("2026-11-12T06:05:00Z")); // 09:05 МСК
   assert.equal(sent.length, 1);
   const text = await pipe.habitLater(u, hid, "2026-11-12", new Date("2026-11-12T06:06:00Z"));
-  assert.match(text, /спрошу ещё раз в 11:06/);
-  assert.match(text, /минус/);
+  assert.match(text, /спрошу ещё раз в 23:00/);
+  assert.match(text, /до 00:00 — поставлю минус/);
   assert.equal((await store.marksOf(u.id, "2026-11-12", "2026-11-12")).length, 0);
-  await sch.tick(new Date("2026-11-12T07:00:00Z"));
+  await sch.tick(new Date("2026-11-12T19:59:00Z")); // 22:59
   assert.equal(sent.length, 1);
-  await sch.tick(new Date("2026-11-12T08:10:00Z")); // 11:10
-  await sch.tick(new Date("2026-11-12T08:20:00Z"));
+  await sch.tick(new Date("2026-11-12T20:00:00Z")); // 23:00
+  await sch.tick(new Date("2026-11-12T20:30:00Z"));
   assert.equal(sent.length, 2);
+  assert.match(await pipe.habitLater(u, hid, "2026-11-12", new Date("2026-11-12T20:31:00Z")), /подожду/);
   await store.close();
 });
 

@@ -9,7 +9,7 @@ import { SpendCard } from "./Spend";
 
 interface Me {
   id: number; login: string | null; name: string; tz: string; persona: string;
-  morning_time: string; tomorrow_time: string; evening_time: string; event_lead_min: number; event_reminders: string;
+  morning_time: string; tomorrow_time: string; evening_time: string; habit_first: string; habit_last: string; event_lead_min: number; event_reminders: string;
   game_alerts: number; game_first_min: number; game_every_min: number;
   sessions: { id: string; label: string; created_at: string; last_seen: string; current?: boolean }[];
 }
@@ -177,6 +177,9 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
             <label>Что завтра {field("tomorrow_time", "time")}</label>
             <label>Вечерний итог {field("evening_time", "time", { min: "12:00", max: "23:59" })}</label>
             <p className="muted small">Итог — за этот день, поэтому его время — до полуночи, с 12:00 до 23:59 (например 23:55).</p>
+            <label>Привычки: первый вопрос {field("habit_first", "time")}</label>
+            <label>Привычки: ещё раз, если не ответили {field("habit_last", "time")}</label>
+            <p className="muted small">Так горничная спрашивает про привычки без своего времени, а второй вопрос приходит всем неотмеченным. Не ответили до 00:00 — день с минусом. Второй вопрос — позже первого.</p>
           </div>
         </Card>
 

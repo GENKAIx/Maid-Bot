@@ -272,6 +272,8 @@ export function createApi(deps: ApiDeps) {
         morning_time: Time.optional(), tomorrow_time: Time.optional(),
         // Итог — за этот день, поэтому до полуночи (12:00–23:59): в 00:15 был бы итог только что наступившего дня.
         evening_time: z.string().refine(isEveningTime, "вечерний итог — с 12:00 до 23:59").optional(),
+        // Привычки без своего времени: первый вопрос и второй (если не ответили); второй — позже первого, в полночь минус.
+        habit_first: Time.optional(), habit_last: Time.optional(),
         event_lead_min: z.coerce.number().int().min(5).max(24 * 60).optional(),
         // «day,60,5,0» — когда напоминать о планах (remindPlan), «off» — никогда.
         event_reminders: z.string().max(200).regex(/^(off|((day|\d{1,5})(,(day|\d{1,5}))*))$/, "day, минуты через запятую или off").optional(),
@@ -280,6 +282,7 @@ export function createApi(deps: ApiDeps) {
         game_every_min: z.coerce.number().int().min(15).max(24 * 60).optional(),
       }), await readJson(req));
       if (b.event_reminders !== undefined) b.event_reminders = remindText(b.event_reminders);
+      if ((b.habit_last ?? u.habit_last) <= (b.habit_first ?? u.habit_first)) throw new HttpError(400, "второй вопрос про привычки — позже первого");
       await store.updateUser(u.id, b);
       const fresh = (await store.user(u.id))!;
       // Сменили, когда напоминать, — напоминания о будущих планах перекладываются заново.

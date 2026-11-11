@@ -27,11 +27,10 @@ export const habitButtons = (habitId: number, day: string): Button[] => [
   { text: "✖ Нет", data: `habit:${habitId}:${day}:skipped` },
 ];
 
-/** Привычку без своего времени спросить вечером — за час до вечернего итога, но не позже 20:00. */
-export function habitAskTime(u: Pick<User, "evening_time">): string {
-  const [h, m] = u.evening_time.split(":").map(Number);
-  const t = Math.min(20 * 60, Math.max(0, h * 60 + m - 60));
-  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+/** Когда спросить про привычку: в её время (или habit_first, 12:00), и ещё раз в habit_last (23:00), если тот позже. */
+export function habitAskTimes(u: Pick<User, "habit_first" | "habit_last">, own: string[]): string[] {
+  const first = own.length ? own : [u.habit_first];
+  return first.some((t) => t >= u.habit_last) ? first : [...first, u.habit_last];
 }
 
 /** Вопрос горничной про привычку: «Витамины — сегодня сделали?», с серией, если есть. */
@@ -152,18 +151,13 @@ export class Scheduler {
     return m >= 0 && m <= late;
   }
 
-  /** Привычки: спросить в своё время (или вечером, если времени нет), пока не отмечена. */
+  /** Привычки: спросить в своё время (или в habit_first), ещё раз в habit_last, пока не отмечена; в полночь — минус (daily). */
   private async habits(u: User, now: Date) {
     const today = dayKey(now, u.tz);
     for (const d of await habitsOfDay(this.store, u, today)) {
       if (d.status || d.habit.quiet) continue;
-      for (const t of d.times.length ? d.times : [habitAskTime(u)]) {
+      for (const t of habitAskTimes(u, d.times)) {
         if (!this.due(u, t, now, HABIT_LATE_MIN) || !(await this.store.once(`habit:${d.habit.id}:${today}:${t}`))) continue;
-        await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today));
-      }
-      // «Ещё нет» — спросить снова в назначенное время.
-      const later = await this.store.kvGet(`habitLater:${d.habit.id}:${today}`);
-      if (later && this.due(u, later, now, HABIT_LATE_MIN) && (await this.store.once(`habit:${d.habit.id}:${today}:later:${later}`))) {
         await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today));
       }
     }

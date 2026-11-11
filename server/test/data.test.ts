@@ -91,7 +91,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await store.close();
   });
 
-  test(`${kind}: привычку без времени горничная спрашивает вечером один раз, отмеченную — нет`, async () => {
+  test(`${kind}: привычку без времени горничная спрашивает в 12:00 и ещё раз в 23:00, отмеченную — нет`, async () => {
     const { store, u, pipe } = await setup(open, [
       { habits: [{ title: "Аевит", days: "1234567", times: [], duration_days: 30 }], summary: "s" },
     ]);
@@ -99,16 +99,32 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     const [h] = await store.activeHabits(u.id);
     const sent: { text: string; buttons?: Button[] }[] = [];
     const sch = new Scheduler(store, null, async (_u, text, _e, buttons) => void sent.push({ text, buttons }));
+    const asks = () => sent.filter((s) => s.text.includes("Аевит — сегодня сделали?"));
+    await sch.tick(zonedToUtc("2026-11-09", "11:59", TZ));
+    assert.equal(asks().length, 0);
     await sch.tick(zonedToUtc("2026-11-09", "12:00", TZ));
-    assert.equal(sent.filter((s) => s.text.includes("Аевит — сегодня")).length, 0);
-    await sch.tick(zonedToUtc("2026-11-09", "20:01", TZ));
-    await sch.tick(zonedToUtc("2026-11-09", "20:30", TZ));
-    const asks = sent.filter((s) => s.text.includes("Аевит — сегодня сделали?"));
-    assert.equal(asks.length, 1);
-    assert.deepEqual(asks[0].buttons?.map((b) => b.text), ["✅ Да", "⏳ Ещё нет", "✖ Нет"]);
+    await sch.tick(zonedToUtc("2026-11-09", "12:30", TZ));
+    assert.equal(asks().length, 1);
+    assert.deepEqual(asks()[0].buttons?.map((b) => b.text), ["✅ Да", "⏳ Ещё нет", "✖ Нет"]);
+    await sch.tick(zonedToUtc("2026-11-09", "22:59", TZ));
+    assert.equal(asks().length, 1);
+    await sch.tick(zonedToUtc("2026-11-09", "23:00", TZ));
+    await sch.tick(zonedToUtc("2026-11-09", "23:30", TZ));
+    assert.equal(asks().length, 2);
+    // Отмеченную днём — вечером уже не спрашивает.
+    await sch.tick(zonedToUtc("2026-11-10", "12:05", TZ));
     await pipe.markHabit(u, h.id, "2026-11-10", "done", "telegram");
-    await sch.tick(zonedToUtc("2026-11-10", "20:05", TZ));
-    assert.equal(sent.filter((s) => s.text.includes("Аевит — сегодня")).length, 1);
+    await sch.tick(zonedToUtc("2026-11-10", "23:05", TZ));
+    assert.equal(asks().length, 3);
+    // Своё время в настройках.
+    await store.updateUser(u.id, { habit_first: "15:00", habit_last: "21:00" });
+    const u2 = (await store.user(u.id))!;
+    await sch.tick(zonedToUtc("2026-11-11", "12:05", TZ));
+    assert.equal(asks().length, 3);
+    await sch.tick(zonedToUtc("2026-11-11", "15:05", TZ));
+    await sch.tick(zonedToUtc("2026-11-11", "21:05", TZ));
+    assert.equal(asks().length, 5);
+    assert.match(await pipe.habitLater(u2, h.id, "2026-11-11", zonedToUtc("2026-11-11", "15:06", TZ)), /спрошу ещё раз в 21:00/);
     await store.close();
   });
 

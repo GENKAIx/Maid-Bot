@@ -83,6 +83,13 @@ test("remind: смена настройки перекладывает напо�
     assert.equal((await call("/api/settings", { evening_time: "00:15" }, token)).status, 400);
     assert.equal((await call("/api/settings", { evening_time: "11:59" }, token)).status, 400);
     assert.equal((await call("/api/settings", { evening_time: "23:55" }, token)).json.evening_time, "23:55");
+    // Когда спрашивать про привычки: по умолчанию 12:00 и 23:00, второй — позже первого.
+    const h0 = (await call("/api/settings", {}, token)).json;
+    assert.deepEqual([h0.habit_first, h0.habit_last], ["12:00", "23:00"]);
+    const h1 = (await call("/api/settings", { habit_first: "10:30", habit_last: "22:15" }, token)).json;
+    assert.deepEqual([h1.habit_first, h1.habit_last], ["10:30", "22:15"]);
+    assert.equal((await call("/api/settings", { habit_last: "10:00" }, token)).status, 400);
+    assert.equal((await call("/api/settings", { habit_first: "25:00" }, token)).status, 400);
   } finally {
     server.close();
   }
@@ -95,10 +102,14 @@ test("шаг 12 базы: ночное время вечернего итога 
   const b = await store.ensureUser("2", "Б", "Europe/Moscow");
   await store.updateUser(a.id, { evening_time: "00:15" });
   await store.updateUser(b.id, { evening_time: "21:30" });
-  await store.kvSet("schema_version", "11"); // как до шага 12
+  // Как до шага 12: и столбцов шага 13 ещё нет.
+  await store.driver.exec("ALTER TABLE users DROP COLUMN habit_first; ALTER TABLE users DROP COLUMN habit_last;");
+  await store.kvSet("schema_version", "11");
   await store.close();
   store = await Store.open(file);
   assert.equal((await store.user(a.id))!.evening_time, "23:55");
   assert.equal((await store.user(b.id))!.evening_time, "21:30");
+  // Шаг 13: у старых пользователей привычки спрашиваются в 12:00 и 23:00.
+  assert.deepEqual([(await store.user(a.id))!.habit_first, (await store.user(a.id))!.habit_last], ["12:00", "23:00"]);
   await store.close();
 });
