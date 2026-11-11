@@ -103,9 +103,8 @@ let online = true;
 function baseMood() {
   if (state === "think") return "think";
   if (!online) return "offline";
-  // Скоро план (≤ 10 мин) — показывает часики, даже ночью; есть просроченные задачи — недовольна, но сон важнее (fun.js, dueMood).
+  // Есть просроченные задачи — недовольна, но сон важнее (fun.js, dueMood).
   const due = typeof dueMood !== "undefined" ? dueMood : "";
-  if (due === "remind") return due;
   if (state === "sleep") return "sleep";
   if (due) return due;
   // День не задался (просрочено, не отмечено) — грустно метёт (fun.js, dayMood).
@@ -1584,7 +1583,14 @@ async function load() {
   renderSoon();
   watchPlans();
   if (dayScore === null) tickDayMood();
-  tickDue(); // часики перед планом и недовольство просрочкой — сразу по свежим данным
+  tickDue(); // недовольство просрочкой — сразу по свежим данным
+}
+
+// Напоминание «⏰ Пора: …» (план начинается) — своя кнопка «Окей»: облачко висит, пока не ответят, и всё это время
+// горничная звонит в колокольчик (настроение «remind»). Остальным — кнопки с сервера.
+function startButtons(n) {
+  if (n.buttons?.length || !/^⏰ Пора:/.test(n.text)) return n.buttons ?? [];
+  return [{ text: "👌 Окей", run: () => react("bow", 2500) }];
 }
 
 // Лента уведомлений: что ушло в Telegram — показать и здесь, с кнопками.
@@ -1604,7 +1610,8 @@ async function pollNotices() {
       // Спит (человека нет) — не будит и не звенит: перескажет, когда он вернётся.
       if (napping) { missed.push(n); continue; }
       unheardAt = Date.now();
-      say(n.text, { buttons: n.buttons, emotion, ms: n.buttons.length ? 0 : 20000, sound: "hey", mood: n.buttons.length ? "remind" : /🎮/.test(n.text) ? "refuse" : null, notice: n.id });
+      const buttons = startButtons(n);
+      say(n.text, { buttons, emotion, ms: buttons.length ? 0 : 20000, sound: "hey", mood: buttons.length ? "remind" : /🎮/.test(n.text) ? "refuse" : null, notice: n.id });
     }
   } catch {
     /* нет связи — молчим */

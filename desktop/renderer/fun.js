@@ -149,34 +149,13 @@ function tickDayEvents() {
 setInterval(tickDayEvents, 30_000);
 
 // --- реакция на дела ---
-// За 10 минут до плана со временем — машет и потом держит часики, пока план не начнётся; есть просроченные задачи —
-// недовольная мордочка вместо обычной (основа, см. baseMood). Сервер свои напоминания и так присылает — тут без слов.
+// Есть просроченные задачи — недовольная мордочка вместо обычной (основа, см. baseMood). В колокольчик звонит только
+// в момент начала плана, пока висит облачко «⏰ Пора» (widget.js, startButtons).
 let dueMood = "";
-let soonWaved = "";
-function soonPlan() {
-  const now = new Date();
-  const cur = now.getHours() * 60 + now.getMinutes();
-  for (const e of data?.events ?? []) {
-    if (!e.time || (e.status && e.status !== "active")) continue;
-    const [h, m] = e.time.split(":").map(Number);
-    const left = h * 60 + m - cur;
-    if (left > 0 && left <= 10) return e;
-  }
-  return null;
-}
 function tickDue() {
   if (!data) return;
-  const soon = soonPlan();
   const overdue = (data.tasks ?? []).some((t) => t.due_date && t.due_date < data.day);
-  const next = soon ? "remind" : overdue ? "angry" : "";
-  const key = soon ? `${data.day}|${soon.id ?? soon.title}|${soon.time}` : "";
-  if (soon && key !== soonWaved) {
-    // Только что стало «через 10 минут» — помахать и тихонько звякнуть, потом часики.
-    soonWaved = key;
-    dueMood = next;
-    popTone(5, { vol: 0.08, soft: true });
-    return react("hello", 3500);
-  }
+  const next = overdue ? "angry" : "";
   if (next !== dueMood) {
     dueMood = next;
     settle();

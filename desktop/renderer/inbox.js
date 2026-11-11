@@ -135,5 +135,6 @@ function drawInbox(fresh = false) {
 function openInbox(id) {
   const n = inbox.find((x) => String(x.id) === String(id)) ?? inbox[0];
   if (!n) return;
-  say(n.text, { buttons: n.buttons, emotion: n.emotion, ms: 0, notice: n.id, mood: n.buttons.length ? "remind" : null });
+  const buttons = startButtons(n);
+  say(n.text, { buttons, emotion: n.emotion, ms: 0, notice: n.id, mood: buttons.length ? "remind" : null });
 }
