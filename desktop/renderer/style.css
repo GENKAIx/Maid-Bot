@@ -172,7 +172,8 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 }
 .stage.side-left .bubble { margin: 0 0 calc(var(--peek, 26px) + 70px) 4px; }
 .stage.side-left .bubble::after { right: auto; left: -8px; border-left: 0; border-right: 8px solid var(--tail, rgba(255,255,255,.97)); }
-.bubble::after { content: ""; position: absolute; right: -8px; bottom: 22px; border: 8px solid transparent; border-left: 8px solid var(--tail, rgba(255,255,255,.97)); border-right: 0; }
+/* Хвостик: 22 px от низа, а у низкого облачка (реплика без кнопок) — посередине, иначе вылезает за верхний угол. */
+.bubble::after { content: ""; position: absolute; right: -8px; bottom: min(22px, calc(50% - 8px)); border: 8px solid transparent; border-left: 8px solid var(--tail, rgba(255,255,255,.97)); border-right: 0; }
 .bubble.hidden { opacity: 0; pointer-events: none; }
 .bubble.angry { background: #fde6ea; --tail: #fde6ea; }
 .bubble.happy, .bubble.proud { background: #e9f8ef; --tail: #e9f8ef; }
