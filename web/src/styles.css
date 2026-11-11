@@ -619,10 +619,15 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .wp-key kbd { font: inherit; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: color-mix(in srgb, var(--muted) 18%, transparent); border-bottom: 2px solid color-mix(in srgb, var(--muted) 35%, transparent); }
 .wp-key.wait { color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
 .wp .done-modes, .wp .done-modes.cols-3, .wp .done-modes.cols-5 { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+/* пять цветов — в один ряд, без одинокой карточки во втором */
+.wp .done-modes.cols-5 { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+/* два варианта — карточки шире: облачку планов рядом с горничной нужно место */
+.wp .done-modes.cols-2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
 /* примеры крупно: вся маленькая копия виджета увеличена целиком, пропорции те же */
 .wp .dm { padding: 8px; gap: 8px; font-size: 14px; border-radius: 12px; }
-.wp .dm-mini { zoom: 1.4; height: 84px; }
-.wp .wm-stage { height: 84px; }
+/* высота — по самому длинному примеру (10 задач, 5 планов, крупная горничная): ничего не обрезается */
+.wp .dm-mini { zoom: 1.4; height: 100px; }
+.wp .wm-stage { height: 100px; }
 .wp .done-modes.cols-5 .dm { flex: none; }
 @media (max-width: 560px) { .wp-set-head { flex-wrap: wrap; } }
 .wp-sub { margin: 10px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 650; }
@@ -656,23 +661,27 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .wm-next { display: grid; gap: 2px; font-size: 10px; }
 /* размер текста */
 .wm-ts { display: grid; gap: 3px; }
-.wm-ts.ts-s { zoom: .9; } .wm-ts.ts-l { zoom: 1.15; }
+.wm-ts.ts-s { zoom: .9; } .wm-ts.ts-l { zoom: 1.1; }
 /* сколько задач — строки мельче, чтобы влезли все */
-.wm-count { display: grid; gap: 1px; font-size: 6.5px; line-height: 1.05; }
+.wm-count { display: grid; gap: 1px; font-size: 7px; line-height: 1.1; }
 .wm-count i { width: 6px; height: 6px; border-radius: 2px; }
 /* горничная над панелью */
 .wm-stage { position: relative; height: 76px; margin: -7px -8px; }
-.wm-panel { position: absolute; left: 6px; right: 6px; bottom: 5px; height: 24px; padding: 3px 6px; border-radius: 6px; background: #262038; border: 1px solid rgba(255, 255, 255, .1); font-size: 9px; }
-.wm-panel b { color: #f1eef8; font-size: 9px; margin-right: 6px; }
+/* панель — одна строка: время и задача рядом, длинное обрезается, а не уходит на вторую строку */
+.wm-panel { position: absolute; left: 6px; right: 6px; bottom: 5px; height: 20px; padding: 0 6px; border-radius: 6px; background: #262038; border: 1px solid rgba(255, 255, 255, .1); font-size: 9px;
+  display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+.wm-panel b { color: #f1eef8; font-size: 9px; }
 .wm-panel p { display: inline-flex; font-size: 9px; }
 .wm-panel i { width: 8px; height: 8px; }
-.wm-maid { position: absolute; bottom: 22px; height: 46px; z-index: 0; clip-path: inset(0 0 4px 0); }
-.wm-maid.size-s { height: 36px; } .wm-maid.size-l { height: 56px; }
+/* картинка 180×192: ширина = 0,94 высоты; над крупной остаётся воздух до края */
+.wm-maid { position: absolute; bottom: 21px; height: 52px; z-index: 0; clip-path: inset(0 0 4px 0); }
+.wm-maid.size-s { height: 40px; } .wm-maid.size-l { height: 64px; }
 .wm-stage.side-right .wm-maid { right: 8px; } .wm-stage.side-left .wm-maid { left: 8px; }
 .wm-panel { z-index: 1; }
 .wm-plans { position: absolute; top: 8px; display: grid; gap: 2px; padding: 3px 5px; border-radius: 5px; background: rgba(38, 32, 56, .9); font-size: 8.5px; }
 .wm-plans em { border: 0; padding: 0; color: var(--wa); font-weight: 650; }
-.wm-stage.side-right .wm-plans { right: 46px; } .wm-stage.side-left .wm-plans { left: 46px; }
+/* планы рядом с маленькой горничной (8 px от края + её ширина 38 px + зазор), не поверх неё */
+.wm-stage.side-right .wm-plans { right: 54px; } .wm-stage.side-left .wm-plans { left: 54px; }
 .dm-mini .go::after { content: ""; position: absolute; inset: -1px -3px; border-radius: 4px; background: color-mix(in srgb, var(--wd) 25%, transparent); transform-origin: left; animation: dmFill 3.6s linear infinite; }
 .dm-mini .go { animation: dmFly 3.6s cubic-bezier(.5, 0, .9, .4) infinite; }
 .dm-mini .go > * { position: relative; z-index: 1; }
