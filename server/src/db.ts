@@ -778,6 +778,20 @@ export class Store {
       userId, since,
     );
   }
+  /** «Удалить навсегда» в корзине: задачи и планы из корзины (удалённые/отменённые не раньше since) получают статус purged —
+   *  в корзине их больше нет. Строки остаются: на них ссылается журнал отмены. pick не задан — вся корзина. */
+  async purgeTrash(userId: number, since: string, pick?: { tasks?: number[]; events?: number[] }): Promise<{ tasks: number; events: number }> {
+    const ids = (list: number[] = []) => (!pick ? "" : list.length ? ` AND id IN (${list.map(() => "?").join(", ")})` : " AND 0");
+    const tasks = await this.run(
+      `UPDATE tasks SET status = 'purged' WHERE user_id = ? AND status IN ('deleted', 'cancelled') AND closed_at >= ?${ids(pick?.tasks)}`,
+      userId, since, ...(pick?.tasks ?? []),
+    );
+    const events = await this.run(
+      `UPDATE events SET status = 'purged' WHERE user_id = ? AND status IN ('cancelled', 'deleted') AND updated_at >= ?${ids(pick?.events)}`,
+      userId, since, ...(pick?.events ?? []),
+    );
+    return { tasks, events };
+  }
   allTasks(userId: number): Promise<TaskRow[]> {
     return this.all<TaskRow>("SELECT * FROM tasks WHERE user_id = ? ORDER BY id", userId);
   }

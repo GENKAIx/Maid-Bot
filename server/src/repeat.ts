@@ -82,7 +82,7 @@ const laidKey = (id: number) => `series:${id}:laid`;
 /** Досоздать копии серии: без конца — до today + HORIZON, с концом — до конца. Возвращает созданные даты. */
 export async function extendSeries(store: Store, u: User, head: EventRow, today: string, now = new Date()): Promise<string[]> {
   const spec = specOf(head.repeat, head.date_iso);
-  if (!spec || head.status === "deleted") return [];
+  if (!spec || head.status === "deleted" || head.status === "purged") return [];
   const finite = Boolean(spec.count || spec.until);
   const until = finite ? addDays(head.date_iso, FAR) : addDays(today, HORIZON);
   const laid = (await store.kvGet(laidKey(head.id))) ?? head.date_iso;

@@ -5,7 +5,8 @@ import { shortDay, todayKey } from "../format";
 import type { EventRow, TaskRow } from "../types";
 
 // Корзина: удалённые и отменённые задачи и планы за последние дни (сервер держит их TRASH_DAYS дней). «Вернуть» —
-// задача снова открыта, план снова в планах; то же, что «верни … из корзины» словами.
+// задача снова открыта, план снова в планах; то же, что «верни … из корзины» словами. «✕» — удалить навсегда,
+// «Очистить корзину» — всё сразу (после вопроса «точно?»); вернуть такое уже нельзя.
 
 type Trash = {
   days: number;
@@ -58,6 +59,19 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
     }
   }
 
+  async function purge(body: { all: true } | { tasks: number[] } | { events: number[] }, ask: string, key: string) {
+    if (!confirm(ask)) return;
+    setBusy(key);
+    try {
+      await post("/api/trash/purge", body);
+      onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!trash) return <Spinner />;
   // Меньше 3 дней до исчезновения — красным.
@@ -65,11 +79,22 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
   const back = (kind: "task" | "event", id: number) => (
     <button className="link" disabled={busy === `${kind}${id}`} onClick={() => restore(kind, id)}>↩ Вернуть</button>
   );
+  const gone = (kind: "task" | "event", id: number, title: string) => (
+    <button className="link forever" disabled={busy === `${kind}${id}`} title="Удалить навсегда" aria-label={`Удалить навсегда: ${title}`}
+      onClick={() => purge(kind === "task" ? { tasks: [id] } : { events: [id] }, `Удалить «${title}» навсегда? Вернуть будет нельзя.`, `${kind}${id}`)}>✕</button>
+  );
+  const total = trash.tasks.length + trash.events.length;
 
   return (
     <div className="screen">
       <h2 className="screen-title">Корзина</h2>
-      <p className="muted small trash-note">Удалённое и отменённое лежит здесь {trash.days} дней — справа видно, сколько ещё осталось, потом пропадёт.</p>
+      <div className="trash-top">
+        <p className="muted small trash-note">Удалённое и отменённое лежит здесь {trash.days} дней — справа видно, сколько ещё осталось, потом пропадёт.</p>
+        {total > 0 && (
+          <button className="ghost" disabled={busy === "all"}
+            onClick={() => purge({ all: true }, `Очистить корзину? ${total} — навсегда, вернуть будет нельзя.`, "all")}>Очистить корзину</button>
+        )}
+      </div>
       <div className="cards">
         <Card title={`Задачи · ${trash.tasks.length}`} className="reveal wide">
           {trash.tasks.length ? (
@@ -80,6 +105,7 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
                   <span className="muted small">{t.status === "deleted" ? "удалена" : "отменена"} {when(t.closed_at)}</span>
                   <Chip tone={stays(t.closed_at)}>{left(t.closed_at, trash.days)}</Chip>
                   {back("task", t.id)}
+                  {gone("task", t.id, t.title)}
                 </li>
               ))}
             </ul>
@@ -95,6 +121,7 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
                   <span className="muted small">{e.status === "deleted" ? "удалён" : "отменён"} {when(e.updated_at)}</span>
                   <Chip tone={stays(e.updated_at)}>{left(e.updated_at, trash.days)}</Chip>
                   {back("event", e.id)}
+                  {gone("event", e.id, e.title)}
                 </li>
               ))}
             </ul>

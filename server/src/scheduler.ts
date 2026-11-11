@@ -176,7 +176,7 @@ export class Scheduler {
     }
     const act = activityLines(await s.activityOf(u.id, today)).map((l) => l.replace(/<[^>]+>/g, ""));
     const done = (await s.allTasks(u.id)).filter((t) => t.done_at && dayKey(new Date(t.done_at), u.tz) === today);
-    const plans = (await s.allEvents(u.id)).filter((e) => e.date_iso === today && e.status !== "deleted");
+    const plans = (await s.allEvents(u.id)).filter((e) => e.date_iso === today && e.status !== "deleted" && e.status !== "purged");
     const habits = await habitsOfDay(s, u, today);
     const metrics = metricLine(await s.metricsRange(u.id, today, today));
     const money = await s.moneyRange(u.id, today, today);

@@ -326,6 +326,14 @@ export function createApi(deps: ApiDeps) {
       const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
       return { days: TRASH_DAYS, tasks: await store.trashTasks(u.id, since), events: await store.trashEvents(u.id, since) };
     }
+    // «Удалить навсегда» (× у строки) и «Очистить корзину» (all): из корзины пропадают, вернуть уже нельзя.
+    if (m === "POST" && p === "/api/trash/purge") {
+      const Ids = z.array(z.number().int().positive()).max(500);
+      const b = parseBody(z.object({ all: z.literal(true).optional(), tasks: Ids.optional(), events: Ids.optional() }), await readJson(req));
+      if (!b.all && !b.tasks && !b.events) throw new HttpError(400, "нужно all, tasks или events");
+      const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
+      return store.purgeTrash(u.id, since, b.all ? undefined : { tasks: b.tasks ?? [], events: b.events ?? [] });
+    }
 
     // ?all=1 — все даты с ближайшим наступлением (в течение года), иначе ближайшие 30 дней.
     if (m === "GET" && p === "/api/dates") {
