@@ -97,6 +97,7 @@ const EMOTION_MOOD = { neutral: "neutral", happy: "happy", proud: "proud", angry
 let mood = "";
 let moodUntil = 0;
 let moodTimer = 0;
+let moodOfBubble = false; // реакция держится, пока висит облачко, с которым пришла (say → hideBubble)
 let online = true;
 function baseMood() {
   if (state === "think") return "think";
@@ -230,6 +231,7 @@ function zapTone() {
 function react(n, ms = 6000) {
   if (n === "forget") ms = FORGET.loop; // ровно один показ: огонёк, щелчок, 2 с с прибором
   clearTimeout(moodTimer);
+  moodOfBubble = false;
   moodUntil = Date.now() + ms;
   if (n !== mood) moodSound(n); // свой короткий звук у каждой реакции (moodsound.js)
   showMood(n);
@@ -469,7 +471,9 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   if (text !== "…") {
     const marked = changes.some((c) => c.kind === "mark" || c.kind === "habit");
     const pick = as ?? (marked ? "done" : changes.length ? "write" : EMOTION_MOOD[emotion] ?? "neutral");
-    react(pick, Math.max(4000, Math.min(ms || 9000, 9000)));
+    // Эмоция держится, пока висит облачко (уходит в hideBubble); «стираю память» — свой один показ.
+    react(pick, pick === "forget" ? 0 : 30 * 60_000);
+    moodOfBubble = pick !== "forget";
     // «Стираю память»: облачко с ответом — когда сойдёт засветка (щелчок + ~0,9 с), а не одновременно со вспышкой.
     if (pick === "forget") {
       b.classList.add("after-flash");
@@ -1085,6 +1089,12 @@ chatInput.addEventListener("keydown", (e) => {
   }
 });
 function hideBubble() {
+  if (moodOfBubble) {
+    moodOfBubble = false;
+    clearTimeout(moodTimer);
+    moodUntil = 0;
+    settle();
+  }
   stopType();
   stopLife();
   stopProposal();
