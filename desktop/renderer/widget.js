@@ -229,12 +229,13 @@ function zapTone() {
     tone("sine", 150, 48, t, t + 0.3, 0.32);
   } catch {}
 }
-function react(n, ms = 6000) {
+// silent — без звука: фоновые анимации, которые она берёт сама, без события (чай, уборка, радость дня).
+function react(n, ms = 6000, silent = false) {
   if (n === "forget") ms = FORGET.loop; // ровно один показ: огонёк, щелчок, 2 с с прибором
   clearTimeout(moodTimer);
   moodOfBubble = false;
   moodUntil = Date.now() + ms;
-  if (n !== mood) moodSound(n); // свой короткий звук у каждой реакции (moodsound.js)
+  if (n !== mood && !silent) moodSound(n); // свой короткий звук у каждой реакции (moodsound.js)
   showMood(n);
   moodTimer = setTimeout(() => { moodUntil = 0; showMood(baseMood()); }, ms);
 }
@@ -345,17 +346,17 @@ setInterval(() => {
   if (want !== state) setState(want);
   // После отбоя — не суетится: без чая, уборки и радостей.
   else if (afterBedtime()) return;
-  // Изредка, пока ничего не происходит, — занимается своим: чай (утром чаще), уборка, поклон.
+  // Изредка, пока ничего не происходит, — занимается своим: чай (утром чаще), уборка, поклон. Всё это — молча: событий нет.
   else if (state === "idle" && online && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.1) {
     const h = new Date().getHours();
     const pick = h < 11 && Math.random() < 0.5 ? "tea" : ["tea", "clean", "clean", "bow"][Math.floor(Math.random() * 4)];
-    react(pick, 6000);
+    react(pick, 6000, true);
   }
   // День идёт хорошо — радуется чаще, сама по себе.
   else if (state === "idle" && online && dayMood === "good" && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.25)
-    react(["happy", "proud", "giggle", "bow", "excited"][Math.floor(Math.random() * 5)], 5000);
+    react(["happy", "proud", "giggle", "bow", "excited"][Math.floor(Math.random() * 5)], 5000, true);
   // Не задался — изредка вздыхает.
-  else if (state === "idle" && online && dayMood === "bad" && Date.now() > moodUntil && Math.random() < 0.12) react("sad", 5000);
+  else if (state === "idle" && online && dayMood === "bad" && Date.now() > moodUntil && Math.random() < 0.12) react("sad", 5000, true);
 }, 30_000);
 
 // --- облачко ---
