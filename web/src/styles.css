@@ -190,6 +190,7 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 .habit-list .dot { width: 18px; height: 18px; flex: none; padding: 0; border-radius: 50%; border: 1.5px solid var(--grey); background: transparent; }
 .habit-list .dot:hover:not(:disabled) { border-color: var(--green); background: var(--good-bg); }
 .habit-list .dot.done { background: var(--green); border-color: var(--green); opacity: 1; }
+.habit-list .dot.done:hover, .habit-list .dot.skipped:hover { background: var(--panel-2); border-color: var(--grey); }
 .habit-list .dot.skipped { background: var(--grey); border-color: var(--grey); opacity: 1; }
 .habit-list li.done .grow { color: var(--muted); }
 .habit-list .count { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; }

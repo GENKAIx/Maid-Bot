@@ -874,7 +874,16 @@ export class Store {
   }
   async restoreMark(id: number, before: MarkRow | null) {
     if (!before) await this.run("DELETE FROM habit_marks WHERE id = ?", id);
-    else await this.run("UPDATE habit_marks SET status = ?, at = ?, message_id = ? WHERE id = ?", before.status, before.at, before.message_id, id);
+    // Строки может уже не быть (отметку сняли) — тогда вставляется заново с прежними значениями.
+    else await this.run(
+      `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (habit_id, day_key) DO UPDATE SET status = excluded.status, at = excluded.at, message_id = excluded.message_id`,
+      before.habit_id, before.day_key, before.status, before.at, before.message_id,
+    );
+  }
+  /** Снять отметку дня (галочку поставили по ошибке). */
+  async deleteMark(id: number) {
+    await this.run("DELETE FROM habit_marks WHERE id = ?", id);
   }
   marksOf(userId: number, from: string, to: string): Promise<MarkRow[]> {
     return this.all<MarkRow>(

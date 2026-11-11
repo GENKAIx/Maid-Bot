@@ -466,6 +466,22 @@ export function createApi(deps: ApiDeps) {
       return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.status, "web") };
     }
 
+    // Снять отметку дня («Сегодня» на сайте: галочку поставили по ошибке). Отменяется («↩ Отменить» вернёт отметку).
+    const unmark = p.match(/^\/api\/habits\/(\d+)\/unmark$/);
+    if (m === "POST" && unmark) {
+      const b = parseBody(z.object({ day: Day.optional() }), await readJson(req));
+      const h = await store.habit(Number(unmark[1]));
+      if (!h || h.user_id !== u.id) throw new HttpError(404, "нет привычки");
+      const day = b.day ?? today;
+      const was = (await store.marksOf(u.id, day, day)).find((x) => x.habit_id === h.id);
+      if (!was) return { undo: null };
+      const undo = await pipeline.manual(u, `↩ ${h.title}: отметка снята`, async (log) => {
+        await store.deleteMark(was.id);
+        await log("habit_marks", was.id, was);
+      });
+      return { undo };
+    }
+
     // Правка привычки мышью (ПКМ в виджете): title — переименовать, quiet — без напоминаний и вечерних вопросов,
     // finish — закончить (end_date — сегодня, если сегодня уже отмечена, иначе вчера: в истории остаётся со всеми отметками),
     // status stopped — удалить (пропадает отовсюду, отметки в базе остаются). Всё через журнал отмены.

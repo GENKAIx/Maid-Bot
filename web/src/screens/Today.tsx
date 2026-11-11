@@ -335,16 +335,46 @@ function courseOf(h: HabitToday, day: string) {
 }
 
 function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; onChanged: () => void }) {
-  const [err, setErr] = useState("");
-  async function mark(h: HabitToday) {
-    setErr("");
+  const [note, setNote] = useState<Note | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const timer = useRef(0);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  function say(n: Note) {
+    setNote(n);
+    clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setNote(null), 8000);
+  }
+
+  // Щелчок по кружку: не отмечено — «сделал»; отмечено (или пропуск) — снять отметку, с «↩ Отменить».
+  async function toggle(h: HabitToday) {
+    if (busy !== null) return;
+    setBusy(h.id);
     try {
-      await post(`/api/habits/${h.id}/mark`, { status: "done" });
+      if (h.status) {
+        const r = await post<{ undo: number | null }>(`/api/habits/${h.id}/unmark`, {});
+        if (r.undo) say({ text: `«${h.title}» — отметка снята`, undo: r.undo });
+      } else {
+        await post(`/api/habits/${h.id}/mark`, { status: "done" });
+        setNote(null);
+      }
       onChanged();
     } catch (e) {
-      setErr(`Не получилось отметить «${h.title}»: ${(e as Error).message}`);
+      say({ text: `Не получилось ${h.status ? "снять отметку" : "отметить"} «${h.title}»: ${(e as Error).message}`, bad: true });
+    } finally {
+      setBusy(null);
     }
   }
+
+  async function undo(id: number) {
+    setNote(null);
+    try {
+      await post("/api/undo", { messageId: id });
+      onChanged();
+    } catch (e) {
+      say({ text: `Не получилось отменить: ${(e as Error).message}`, bad: true });
+    }
+  }
+
   return (
     <div className="side-block">
       <div className="side-head"><h3>Каждый день</h3><button className="link" onClick={() => navigate("/habits")}>Месяц</button></div>
@@ -354,8 +384,8 @@ function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; 
             const c = courseOf(h, day);
             return (
               <li key={h.id} className={`habit ${h.status ?? ""}`}>
-                <button className={`dot ${h.status ?? ""}`} onClick={() => mark(h)} disabled={h.status === "done"}
-                  title={h.status === "done" ? "Отмечено" : "Сделал"} aria-label={`Отметить: ${h.title}`} />
+                <button className={`dot ${h.status ?? ""}`} onClick={() => toggle(h)} disabled={busy === h.id}
+                  title={h.status ? "Снять отметку" : "Сделал"} aria-label={`${h.status ? "Снять отметку" : "Отметить"}: ${h.title}`} />
                 <span className="grow">{h.title}</span>
                 {c ? <span className="count">{c.done}/{c.total}</span> : h.streak >= 2 ? <span className="count fire">🔥 {h.streak}</span> : null}
               </li>
@@ -363,7 +393,12 @@ function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; 
           })}
         </ul>
       ) : <p className="muted small side-empty">Привычек нет. Напишите, например: «каждый день в 9 пить витамины»</p>}
-      {err && <p className="form-error small">{err}</p>}
+      {note && (
+        <div className={`task-note ${note.bad ? "bad" : ""}`} role="status">
+          <span className="grow">{note.text}</span>
+          {note.undo !== undefined && <button className="link" onClick={() => undo(note.undo!)}>↩ Отменить</button>}
+        </div>
+      )}
     </div>
   );
 }
