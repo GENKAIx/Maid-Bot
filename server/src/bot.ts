@@ -231,11 +231,13 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await ctx.reply(`Ключ для приложения на ПК (никому не показывайте):\n<code>${token}</code>`, { parse_mode: "HTML" });
   });
 
-  bot.callbackQuery(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/, async (ctx) => {
+  bot.callbackQuery(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped|later)$/, async (ctx) => {
     const u = await userOf(ctx);
     if (!u) return ctx.answerCallbackQuery();
     const [, id, day, status] = ctx.match;
-    const text = await pipeline.markHabit(u, Number(id), day, status as "done" | "skipped", "telegram");
+    const text = status === "later"
+      ? await pipeline.habitLater(u, Number(id), day)
+      : await pipeline.markHabit(u, Number(id), day, status as "done" | "skipped", "telegram");
     await ctx.answerCallbackQuery({ text: text.replace(/<[^>]+>/g, "").slice(0, 190) });
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
   });

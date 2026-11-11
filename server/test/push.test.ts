@@ -32,12 +32,13 @@ test("push: подпись кнопок — верная проходит, чу�
   assert.equal(push.verify(token, Date.now() + 48 * 3600_000), null); // через двое суток — устарело
   const other = new Push(store, { ...keys, privateKey: webpush.generateVAPIDKeys().privateKey });
   assert.equal(other.verify(token), null);
-  assert.equal(push.action(token, 1)?.data, "habit:5:2026-11-08:skipped");
+  assert.equal(push.action(token, 1)?.data, "habit:5:2026-11-08:later");
+  assert.equal(push.action(token, 2)?.data, "habit:5:2026-11-08:skipped");
   assert.equal(push.action(token, 7), null);
   const p = push.payload(u, "<b>Заголовок</b>\nтело &lt;x&gt;", buttons);
   assert.equal(p.title, "Заголовок");
   assert.equal(p.body, "тело <x>");
-  assert.deepEqual(p.actions.map((a) => a.title), ["✅ Да", "✖ Нет", "⏰ Через 30 мин"]);
+  assert.deepEqual(p.actions.map((a) => a.title), ["✅ Да", "⏳ Ещё нет", "✖ Нет"]);
   await store.close();
 });
 
@@ -70,7 +71,7 @@ test("push: подписка, кнопка без входа отмечает п
     assert.equal((await call("/api/push/act", { act, action: 5 })).status, 403);
 
     const before = Date.now();
-    assert.match((await call("/api/push/act", { act, action: 2 })).json.text, /Напомню/);
+    assert.match((await call("/api/push/act", { act, action: 3 })).json.text, /Напомню/);
     const later = new Date(before + 31 * 60_000);
     const sent: { text: string; buttons?: Button[] }[] = [];
     // Считаем только напоминания: вечером тот же тик шлёт ещё и «Итог дня» — тест зависел от часа запуска.
@@ -108,7 +109,8 @@ test("push: подписка, кнопка без входа отмечает п
     const b = (await r.json()) as any;
     assert.equal(b.format, "maid-backup-1");
     assert.equal(b.habits.length, 1);
-    assert.equal(b.habit_marks.length, 1);
+    // Тик планировщика выше ставит ещё и минус за вчерашний (настоящий) день без ответа — считаем только отмеченный кнопкой.
+    assert.equal(b.habit_marks.filter((m: any) => m.day_key === day).length, 1);
     assert.equal(b.user.password_hash, undefined);
     assert.deepEqual(Object.keys(await exportJson(store, u.id)).sort(), Object.keys(b).sort());
   } finally {

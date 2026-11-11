@@ -23,6 +23,7 @@ export type Send = (u: User, text: string, emotion: Emotion, buttons?: Button[])
 /** Кнопки «да / нет» для привычки на день: «нет» — пропуск (в курсе — крестик за день). */
 export const habitButtons = (habitId: number, day: string): Button[] => [
   { text: "✅ Да", data: `habit:${habitId}:${day}:done` },
+  { text: "⏳ Ещё нет", data: `habit:${habitId}:${day}:later` },
   { text: "✖ Нет", data: `habit:${habitId}:${day}:skipped` },
 ];
 
@@ -160,6 +161,11 @@ export class Scheduler {
         if (!this.due(u, t, now, HABIT_LATE_MIN) || !(await this.store.once(`habit:${d.habit.id}:${today}:${t}`))) continue;
         await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today));
       }
+      // «Ещё нет» — спросить снова в назначенное время.
+      const later = await this.store.kvGet(`habitLater:${d.habit.id}:${today}`);
+      if (later && this.due(u, later, now, HABIT_LATE_MIN) && (await this.store.once(`habit:${d.habit.id}:${today}:later:${later}`))) {
+        await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today));
+      }
     }
   }
 
@@ -188,6 +194,11 @@ export class Scheduler {
         const text = escapesText(await s.allTasks(u.id), today, u.tz);
         if (text) await this.safeSend(u, text, "worried");
       }
+    }
+    // Привычки вчерашнего дня, на которые так и не ответили, — минус (без сообщения: «спасти серию» ещё может его исправить).
+    if (await s.once(`habitMinus:${u.id}:${today}`)) {
+      const y = addDays(today, -1);
+      for (const d of await habitsOfDay(s, u, y)) if (!d.status) await s.markHabit(d.habit.id, y, "skipped", null);
     }
     // Закономерности в самочувствии: раз в день днём — предложить дебаф (добавится, только если человек согласится).
     if (this.llm && this.due(u, "13:00", now) && (await s.once(`patterns:${u.id}:${today}`))) {

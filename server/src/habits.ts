@@ -72,10 +72,25 @@ export function courseDays(h: HabitRow, marks: Map<string, MarkRow["status"]>, t
   return out.length > COURSE_MAX_DAYS ? null : out;
 }
 
-function yesterdayOf(h: HabitRow, marks: Map<string, MarkRow["status"]>, day: string): HabitDay["yesterday"] {
+function yesterdayOf(h: HabitRow, own: MarkRow[], day: string): HabitDay["yesterday"] {
   const y = addDays(day, -1);
   if (y < h.start_date || !dueOn({ ...h, status: "active" }, y)) return null;
-  return marks.get(y) ?? "none";
+  const m = own.find((x) => x.day_key === y);
+  // Минус, поставленный сам в полночь (без сообщения, autoMinus), — как «не отмечено»: вчера ещё можно спасти.
+  return !m || isAutoMinus(m) ? "none" : m.status;
+}
+
+/** Минус за день без ответа ставит планировщик в полночь — отметка без сообщения. */
+export const isAutoMinus = (m: Pick<MarkRow, "status" | "message_id">) => m.status === "skipped" && m.message_id === null;
+
+/** «Ещё нет» на вопрос про привычку: спросить снова через 2 ч, но не позже 23:30; позже 23:00 — уже не переспрашивать. */
+export const HABIT_LATER_MIN = 120;
+export function habitLaterTime(now: string): string | null {
+  const [h, m] = now.split(":").map(Number);
+  const at = h * 60 + m;
+  if (at >= 23 * 60) return null;
+  const t = Math.min(23 * 60 + 30, at + HABIT_LATER_MIN);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }
 
 /** Что из привычек идёт в этот день, с отметками и сериями. */
@@ -100,7 +115,7 @@ export async function habitsOfDay(store: Store, u: User, day: string): Promise<H
       doneDays: [...done].filter((d) => d <= end && (h.end_date || d > addDays(day, -30))).length,
       plannedDays: planned,
       course: courseDays(h, byDay, day),
-      yesterday: yesterdayOf(h, byDay, day),
+      yesterday: yesterdayOf(h, own, day),
     };
   });
 }

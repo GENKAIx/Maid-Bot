@@ -469,10 +469,11 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
         hideBubble();
         return x.run();
       }
-      let m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/);
+      let m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped|later)$/);
       try {
         if (m) {
-          if (m[3] === "done") { popTone(3); react("streak", 4000); } else { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
+          // «Ещё нет» — без звука и грусти: отметки нет, спросит позже.
+          if (m[3] === "done") { popTone(3); react("streak", 4000); } else if (m[3] === "skipped") { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
           const r = await maid.api("POST", `/api/habits/${m[1]}/mark`, { status: m[3], day: m[2] });
           say(r.text, { ms: 5000 });
           maid.changed();

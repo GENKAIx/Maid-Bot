@@ -55,7 +55,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await sch.tick(zonedToUtc("2026-11-09", "08:06", TZ));
     const pings = sent.filter((s) => s.text.includes("Зарядка — сегодня сделали?"));
     assert.equal(pings.length, 1);
-    assert.deepEqual(pings[0].buttons?.map((b) => b.data), [`habit:${h.id}:2026-11-09:done`, `habit:${h.id}:2026-11-09:skipped`]);
+    assert.deepEqual(pings[0].buttons?.map((b) => b.data), [`habit:${h.id}:2026-11-09:done`, `habit:${h.id}:2026-11-09:later`, `habit:${h.id}:2026-11-09:skipped`]);
 
     const answer = await pipe.markHabit(u, h.id, "2026-11-09", "done", "telegram");
     assert.match(answer, /Зарядка/);
@@ -105,7 +105,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await sch.tick(zonedToUtc("2026-11-09", "20:30", TZ));
     const asks = sent.filter((s) => s.text.includes("Аевит — сегодня сделали?"));
     assert.equal(asks.length, 1);
-    assert.deepEqual(asks[0].buttons?.map((b) => b.text), ["✅ Да", "✖ Нет"]);
+    assert.deepEqual(asks[0].buttons?.map((b) => b.text), ["✅ Да", "⏳ Ещё нет", "✖ Нет"]);
     await pipe.markHabit(u, h.id, "2026-11-10", "done", "telegram");
     await sch.tick(zonedToUtc("2026-11-10", "20:05", TZ));
     assert.equal(sent.filter((s) => s.text.includes("Аевит — сегодня")).length, 1);

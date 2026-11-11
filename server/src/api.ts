@@ -170,15 +170,16 @@ export function createApi(deps: ApiDeps) {
 
   /** Кнопка из уведомления (push): отметка привычки или «отложить» — то же, что callback в боте. */
   async function runButton(u: User, data: string, all: string[]): Promise<string> {
-    const HABIT = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/;
+    const HABIT = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped|later)$/;
     const habit = data.match(HABIT);
+    if (habit?.[3] === "later") return pipeline.habitLater(u, Number(habit[1]), habit[2]);
     if (habit) return pipeline.markHabit(u, Number(habit[1]), habit[2], habit[3] as "done" | "skipped", "push");
     const trait = data.match(/^trait:(\d+):(yes|no)$/);
     if (trait) return decideTrait(store, u, Number(trait[1]), trait[2] === "yes");
     if (data === "snooze") {
       const buttons: Button[] = all.filter((d) => d !== "snooze").map((d) => {
         const h = d.match(HABIT);
-        return { text: h ? (h[3] === "done" ? "✅ Да" : "✖ Нет") : d, data: d };
+        return { text: h ? (h[3] === "done" ? "✅ Да" : h[3] === "later" ? "⏳ Ещё нет" : "✖ Нет") : d, data: d };
       });
       const first = buttons[0]?.data.match(HABIT);
       const title = first ? (await store.habit(Number(first[1])))?.title : undefined;
@@ -575,7 +576,9 @@ export function createApi(deps: ApiDeps) {
     }
     const mark = p.match(/^\/api\/habits\/(\d+)\/mark$/);
     if (m === "POST" && mark) {
-      const b = parseBody(z.object({ status: z.enum(["done", "skipped"]).default("done"), day: Day.optional() }), await readJson(req));
+      // later — «Ещё нет»: отметки нет, вопрос придёт снова (pipeline.habitLater).
+      const b = parseBody(z.object({ status: z.enum(["done", "skipped", "later"]).default("done"), day: Day.optional() }), await readJson(req));
+      if (b.status === "later") return { text: await pipeline.habitLater(u, Number(mark[1]), b.day ?? today) };
       return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.status, "web") };
     }
 
