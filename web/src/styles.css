@@ -664,6 +664,8 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .wp-say.side-left .wp-say-bubble::after { right: auto; left: -7px; border-left: 0; border-right: 8px solid rgba(255, 255, 255, .97); }
 .wp-say-beep { position: absolute; right: 58px; top: 40px; color: #cdb9ff; font-size: 16px; font-weight: 700; animation: wpBeep .45s ease-out forwards; pointer-events: none; }
 .wp-say.side-left .wp-say-beep { right: auto; left: 58px; }
+.wp-say-hint { position: absolute; left: 12px; top: 10px; font-size: 11.5px; color: #a8a1bd; }
+.wp-say-hint:empty { display: none; }
 @keyframes wpPop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes wpBeep { from { transform: translateY(4px); opacity: 1; } to { transform: translateY(-14px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .wp-say-bubble.up, .wp-say-beep { animation: none; } }

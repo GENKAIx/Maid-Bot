@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Card, Empty, Spinner } from "../components";
 
 // Виджет на рабочем столе: что на панели, горничная, задачи, сроки самонажатия кнопок. Настройки живут в программе на ПК
@@ -90,14 +90,37 @@ const SAY_AT = (speed: keyof typeof TYPE_CPS) => {
   return [...SAY].map((ch) => { const now = t; t += 1000 / TYPE_CPS[speed] + (/[.!?…]/.test(ch) ? 260 : /[,;:]/.test(ch) ? 120 : 0); return now; });
 };
 
+let actx: AudioContext | null = null;
+/** Тот же «бип», что у виджета при печати (desktop/renderer/widget.js, typeBlip). */
+function blip(base: number) {
+  try {
+    actx ??= new AudioContext();
+    const t = actx.currentTime + 0.002;
+    const o = actx.createOscillator(), f = actx.createBiquadFilter(), g = actx.createGain();
+    o.type = "square";
+    o.frequency.setValueAtTime(base * (0.9 + Math.random() * 0.22), t);
+    f.type = "lowpass";
+    f.frequency.value = 2200;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.045, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
+    o.connect(f).connect(g).connect(actx.destination);
+    o.start(t);
+    o.stop(t + 0.07);
+  } catch { /* без звука */ }
+}
+
 /** Живая копия облачка виджета: пусто → облачко появляется → текст печатается (или сразу целиком) → висит → пропадает, по кругу. */
-function SayPreview({ mode, speed, side }: { mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast"; side: "left" | "right" }) {
+function SayPreview({ mode, speed, side, mute, ping }: { mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast"; side: "left" | "right"; mute: boolean; ping: number }) {
   const [t, setT] = useState(0);
+  const [hover, setHover] = useState(false);
+  const [loudTill, setLoudTill] = useState(0); // после выбора — один показ со звуком
+  const lastBeep = useRef(0);
   useEffect(() => {
     const t0 = performance.now();
     const id = setInterval(() => setT(performance.now() - t0), 16);
     return () => clearInterval(id);
-  }, [mode, speed]);
+  }, [mode, speed, ping]);
   const at = SAY_AT(speed);
   const typed = mode !== "off";
   const GAP = 900, POP = 200;
@@ -109,8 +132,17 @@ function SayPreview({ mode, speed, side }: { mode: "sound" | "quiet" | "off"; sp
   const shown = !typed ? SAY.length : since < 0 ? 0 : at.filter((x) => x <= since).length;
   const letters = [...SAY].slice(0, shown).filter((ch) => /\S/.test(ch)).length;
   const beep = mode === "sound" && since >= 0 && shown < SAY.length ? Math.floor((letters + 2) / 3) : -1;
+  // Звук — как у виджета (typeBlip): короткий «бип» на каждую третью букву. Слышно при наведении и один круг после выбора.
+  useEffect(() => { if (ping) setLoudTill(performance.now() + cycle); }, [ping]); // eslint-disable-line react-hooks/exhaustive-deps
+  const loud = !mute && mode === "sound" && (hover || performance.now() < loudTill);
+  useEffect(() => {
+    if (beep <= 0 || beep === lastBeep.current) { if (beep <= 0) lastBeep.current = 0; return; }
+    lastBeep.current = beep;
+    if (loud) blip(640);
+  }, [beep, loud]);
   return (
-    <div className={`wp-say side-${side}`} aria-hidden>
+    <div className={`wp-say side-${side}`} onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}>
+      <div className="wp-say-hint">{mode !== "sound" ? "" : mute ? "🔇 звуки выключены" : loud ? "🔊 со звуком" : "🔈 наведите — будет слышно"}</div>
       <div className={`wp-say-bubble${up ? " up" : ""}${c >= cycle - 300 ? " out" : ""}`} key={Math.floor(t / cycle)}>
         {[...SAY].map((ch, i) => <span key={i} className={i < shown ? "on" : ""}>{ch}</span>)}
       </div>
@@ -125,6 +157,7 @@ export function Widget() {
   const [p, setP] = useState<Required<WidgetPrefs> | null>(null);
   const [opacity, setOpacity] = useState(DEFAULTS.opacity);
   const [msg, setMsg] = useState("");
+  const [ping, setPing] = useState(0); // выбрали что-то про облачко — показать его ещё раз со звуком
 
   useEffect(() => {
     if (!bridge) return;
@@ -241,16 +274,16 @@ export function Widget() {
 
         <Card title="Облачко" className="reveal">
           <div className="form">
-            <label>Звуки<Segment label="Звуки" value={p.mute ? "off" : "on"} onPick={(v) => save({ mute: v === "off" })} options={[["on", "Включены"], ["off", "Выключены"]]} /></label>
+            <label>Звуки<Segment label="Звуки" value={p.mute ? "off" : "on"} onPick={(v) => { void save({ mute: v === "off" }); setPing((n) => n + 1); }} options={[["on", "Включены"], ["off", "Выключены"]]} /></label>
             <label>Текст в облачке</label>
-            <Choices label="Текст в облачке" value={p.typing} onPick={(typing) => save({ typing })}
+            <Choices label="Текст в облачке" value={p.typing} onPick={(typing) => { void save({ typing }); setPing((n) => n + 1); }}
               options={[["sound", "Печатает со звуком", "по буквам, с тихим «бип»"], ["quiet", "Печатает тихо", "по буквам, без звука"], ["off", "Сразу целиком", "весь ответ разом"]]} />
             {p.typing !== "off" && <>
               <label>Скорость печати</label>
-              <Choices label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => save({ typeSpeed })}
+              <Choices label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => { void save({ typeSpeed }); setPing((n) => n + 1); }}
                 options={[["slow", "Медленно", "22 буквы в секунду"], ["normal", "Обычно", "35 букв в секунду"], ["fast", "Быстро", "60 букв в секунду"]]} />
             </>}
-            <SayPreview mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} />
+            <SayPreview mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} mute={p.mute} ping={ping} />
             <h4 className="wp-sub">Если не ответить</h4>
             <label>Вопрос «добавить?» — сама жмёт «Не надо» через
               <Segment label="«Не надо» через" value={p.proposalWait} onPick={(proposalWait) => save({ proposalWait })} options={[[6, "6 с"], [12, "12 с"], [20, "20 с"], [30, "30 с"]]} />
