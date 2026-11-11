@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 // Рисунки экрана «Профиль»: значки дебафов и бафов (заливкой, как иконки эффектов в MMORPG), значки характеристик (контуром)
-// и фигура-манекен вместо портрета, пока картинку не загрузили. Всё — SVG 24×24 в currentColor, цвет задаёт CSS.
+// и значки характеристик (контуром). Всё — SVG 24×24 в currentColor, цвет задаёт CSS.
 
 const fill = (d: string) => <path d={d} fill="currentColor" fillRule="evenodd" />;
 const line = (children: ReactNode) => (
@@ -85,38 +85,6 @@ export function StatGlyph({ name }: { name: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
       {STAT[name] ?? STAT.deeds}
-    </svg>
-  );
-}
-
-/** Манекен на месте портрета, пока картинку не загрузили: светлая фигура в свете снизу, как в окне персонажа. */
-export function Mannequin() {
-  const limb = { fill: "none", stroke: "url(#mq-skin)", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  return (
-    <svg className="mannequin" viewBox="0 0 120 230" aria-hidden="true">
-      <defs>
-        <linearGradient id="mq-skin" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#e4dcf6" />
-          <stop offset=".55" stopColor="#b9acdc" />
-          <stop offset="1" stopColor="#8d7fbb" />
-        </linearGradient>
-        <radialGradient id="mq-floor" cx=".5" cy=".5" r=".5">
-          <stop offset="0" stopColor="#120a26" stopOpacity=".7" />
-          <stop offset="1" stopColor="#120a26" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <ellipse cx="60" cy="214" rx="34" ry="7" fill="url(#mq-floor)" />
-      <path {...limb} strokeWidth={15} d="M52 120 50 164 49 204" />
-      <path {...limb} strokeWidth={15} d="M68 120 70 164 71 204" />
-      <ellipse cx="47" cy="207" rx="8" ry="4.5" fill="url(#mq-skin)" />
-      <ellipse cx="73" cy="207" rx="8" ry="4.5" fill="url(#mq-skin)" />
-      <path {...limb} strokeWidth={11} d="M41 64 34 94 32 124" />
-      <path {...limb} strokeWidth={11} d="M79 64 86 94 88 124" />
-      <ellipse cx="31.5" cy="128" rx="5" ry="7" fill="url(#mq-skin)" />
-      <ellipse cx="88.5" cy="128" rx="5" ry="7" fill="url(#mq-skin)" />
-      <path fill="url(#mq-skin)" d="M38 62c4-6 12-8 22-8s18 2 22 8l-3 38c-.8 10-3.5 18-9 23H50c-5.5-5-8.2-13-9-23l-3-38Z" />
-      <rect x="54" y="42" width="12" height="16" rx="5" fill="url(#mq-skin)" />
-      <ellipse cx="60" cy="27" rx="14.5" ry="17.5" fill="url(#mq-skin)" />
     </svg>
   );
 }

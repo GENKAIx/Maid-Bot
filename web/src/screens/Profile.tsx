@@ -2,18 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { get, post } from "../api";
 import { Empty, Spinner } from "../components";
 import { shortDay } from "../format";
-import { AuraGlyph, Mannequin, StatGlyph, auraIcon } from "./ProfileArt";
+import { AuraGlyph, StatGlyph, auraIcon } from "./ProfileArt";
 
-// Профиль как окно персонажа в MMORPG (GET /api/profile): слева портрет в золотой рамке (или манекен) со знаком уровня и
-// опытом, в середине имя и характеристики плашками со значками, справа за чертой — дебафы и бафы сеткой квадратных значков
-// эффектов; наведение показывает, что это. Уровень вместо возраста в игре — опыт за сделанные задачи, отмеченные привычки и
-// дни с записями; настоящий возраст — из даты рождения. «Горничная заметила» — закономерности из дневника: в дебафы — только после «Добавить».
+// Профиль (GET /api/profile) — практичная карточка, как профиль в Steam: слева квадратная аватарка (своя картинка или из профиля
+// Steam по ссылке), в середине имя и характеристики плашками в две колонки, справа за чертой — дебафы и бафы сеткой квадратных
+// значков; наведение показывает, что это. Возраст — из даты рождения. «Горничная заметила» — закономерности из дневника:
+// в дебафы — только после «Добавить».
 
 type Trait = { id: number; kind: "debuff" | "buff"; category: string; title: string; note: string; source: string; status: string; days: string[]; created_at: string };
 type Stat = { key: string; label: string; value: string; hint: string };
 type ProfileData = {
-  name: string; title: string; height: number | null; birthday: string; avatar: string;
-  xp: number; level: number; into: number; need: number;
+  name: string; height: number | null; birthday: string; avatar: string; steam: string;
   counts: { tasks: number; habits: number; days: number }; days: number | null;
   stats: Stat[]; traits: Trait[]; suggested: Trait[];
 };
@@ -25,8 +24,8 @@ const SOURCE: Record<string, string> = { user: "Добавили сами", chat
 // Эти строки видны всегда (их заполняют руками или они главные), остальные — только когда есть данные.
 const ALWAYS = new Set(["age", "height", "weight"]);
 
-/** Картинку — в портрет 240×320 (webp/jpeg), чтобы аватар был лёгким. Кадр — середина, чуть выше центра (там обычно лицо). */
-async function portraitImage(file: File): Promise<string> {
+/** Картинку — в квадрат 256×256 (webp/jpeg), чтобы аватар был лёгким. Кадр — середина, чуть выше центра (там обычно лицо). */
+async function avatarImage(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((ok, fail) => {
@@ -35,11 +34,11 @@ async function portraitImage(file: File): Promise<string> {
       i.onerror = () => fail(new Error("не картинка"));
       i.src = url;
     });
-    const w = Math.min(img.naturalWidth, img.naturalHeight * 0.75), h = w / 0.75;
+    const w = Math.min(img.naturalWidth, img.naturalHeight);
     const c = document.createElement("canvas");
-    c.width = 240;
-    c.height = 320;
-    c.getContext("2d")!.drawImage(img, (img.naturalWidth - w) / 2, Math.max(0, (img.naturalHeight - h) * 0.35), w, h, 0, 0, 240, 320);
+    c.width = 256;
+    c.height = 256;
+    c.getContext("2d")!.drawImage(img, (img.naturalWidth - w) / 2, Math.max(0, (img.naturalHeight - w) * 0.35), w, w, 0, 0, 256, 256);
     const webp = c.toDataURL("image/webp", 0.86);
     return webp.startsWith("data:image/webp") ? webp : c.toDataURL("image/jpeg", 0.86);
   } finally {
@@ -60,6 +59,18 @@ function Aura({ t, onRemove }: { t: Trait; onRemove: () => void }) {
         <button className="link" onClick={onRemove}>Убрать из профиля</button>
       </div>
     </li>
+  );
+}
+
+/** Знак Steam — круг с «шатуном», в цвет текста. */
+function SteamMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="15.5" cy="9" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M13.4 10.6 8.3 14.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="7.6" cy="15" r="1.7" fill="currentColor" />
+    </svg>
   );
 }
 
@@ -88,7 +99,8 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
   const [p, setP] = useState<ProfileData | null>(null);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
-  const [editTitle, setEditTitle] = useState<string | null>(null);
+  const [steamLink, setSteamLink] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<{ key: string; value: string } | null>(null);
   const [adding, setAdding] = useState<"debuff" | "buff" | null>(null);
   const [form, setForm] = useState({ category: "allergy", title: "", note: "" });
@@ -111,7 +123,7 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
       return false;
     }
   }
-  const save = (patch: Partial<Pick<ProfileData, "title" | "height" | "birthday" | "avatar">>) => run(() => post<ProfileData>("/api/profile", patch));
+  const save = (patch: Partial<Pick<ProfileData, "height" | "birthday" | "avatar">>) => run(() => post<ProfileData>("/api/profile", patch));
   const setStatus = (t: Trait, status: string) => run(() => post<{ text?: string; profile: ProfileData }>(`/api/traits/${t.id}`, { status }));
   const toggleAdd = (kind: "debuff" | "buff") => setAdding((a) => (a === kind ? null : kind));
   function saveEdit() {
@@ -126,7 +138,6 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
 
   const debuffs = p.traits.filter((t) => t.kind === "debuff");
   const buffs = p.traits.filter((t) => t.kind === "buff");
-  const share = p.need ? p.into / p.need : 0;
   const stats = p.stats.filter((s) => ALWAYS.has(s.key) || s.value !== "—");
   const editable = (k: string) => k === "height" || k === "age";
 
@@ -135,38 +146,42 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
       <h2 className="screen-title">Профиль</h2>
 
       <section className="char-sheet">
-        <div className="portrait-col">
-          <div className="portrait-wrap">
-            <button className="portrait" onClick={() => file.current?.click()} title={p.avatar ? "Сменить портрет" : "Загрузить портрет"}>
-              {p.avatar ? <img src={p.avatar} alt="" /> : <Mannequin />}
-            </button>
-            <span className="lvl-badge" aria-label={`Уровень ${p.level}`}><small>LVL</small>{p.level}</span>
-          </div>
+        <div className="avatar-col">
+          <button className="avatar-big" onClick={() => file.current?.click()} title={p.avatar ? "Сменить фото" : "Загрузить фото"}>
+            {p.avatar ? <img src={p.avatar} alt="" /> : <span className="avatar-letter">{(p.name || "Х").slice(0, 1).toUpperCase()}</span>}
+          </button>
           <input ref={file} type="file" accept="image/*" hidden onChange={async (e) => {
             const f = e.target.files?.[0];
             e.target.value = "";
             if (!f) return;
-            try { await save({ avatar: await portraitImage(f) }); } catch (err) { setNote((err as Error).message); }
+            try { await save({ avatar: await avatarImage(f) }); } catch (err) { setNote((err as Error).message); }
           }} />
-          <div className="xp" title={`Опыт: задача — 10, привычка — 5, день с записями — 3. Всего ${p.xp}`}>
-            <div className="xp-bar"><span style={{ width: `${Math.round(share * 100)}%` }} /></div>
-            <div className="xp-text"><b>{p.into}</b> / {p.need} до {p.level + 1} ур.</div>
-          </div>
+          {steamLink === null ? (
+            <div className="avatar-actions">
+              <button className="link" onClick={() => file.current?.click()}>Фото с компьютера</button>
+              <button className="link steam-link" onClick={() => setSteamLink(p.steam)}><SteamMark />Из Steam</button>
+            </div>
+          ) : (
+            <form className="steam-form" onSubmit={async (e) => {
+              e.preventDefault();
+              if (!steamLink.trim() || busy) return;
+              setBusy(true);
+              if (await run(() => post<ProfileData>("/api/profile/steam", { link: steamLink }))) setSteamLink(null);
+              setBusy(false);
+            }}>
+              <input autoFocus value={steamLink} maxLength={200} placeholder="steamcommunity.com/id/…" aria-label="Ссылка на профиль Steam"
+                onChange={(e) => setSteamLink(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setSteamLink(null)} />
+              <div className="steam-form-row">
+                <button className="primary tiny" disabled={busy || !steamLink.trim()}>{busy ? "Беру…" : "Взять аватар"}</button>
+                <button type="button" className="ghost tiny" onClick={() => setSteamLink(null)}>Отмена</button>
+              </div>
+            </form>
+          )}
         </div>
 
         <div className="char-sheet-main">
           <div className="char-sheet-name">{p.name || "Хозяин"}</div>
-          {editTitle === null ? (
-            <button className="link char-sheet-title" onClick={() => setEditTitle(p.title)} title="Изменить класс">
-              {p.title || "Выбрать класс…"}
-            </button>
-          ) : (
-            <form className="inline-edit" onSubmit={(e) => { e.preventDefault(); save({ title: editTitle }); setEditTitle(null); }}>
-              <input autoFocus value={editTitle} maxLength={40} placeholder="Паладин порядка, бард дедлайнов…" aria-label="Класс"
-                onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setEditTitle(null)} />
-              <button className="primary">Сохранить</button>
-            </form>
-          )}
+          {p.steam && <a className="char-sheet-steam" href={p.steam} target="_blank" rel="noreferrer"><SteamMark />Профиль Steam</a>}
 
           <ul className="stat-pills">
             {stats.map((s) => (
@@ -193,7 +208,7 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
             ))}
             <li className="stat-pill" title={`Задач сделано: ${p.counts.tasks}, привычек отмечено: ${p.counts.habits}, дней в дневнике: ${p.counts.days}`}>
               <StatGlyph name="deeds" />
-              <span className="stat-name">Подвиги</span>
+              <span className="stat-name">Сделано</span>
               <span className="stat-val">{p.counts.tasks + p.counts.habits}</span>
             </li>
           </ul>

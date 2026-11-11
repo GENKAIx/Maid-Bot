@@ -73,7 +73,7 @@ button:disabled { opacity: .45; cursor: default; }
 button.primary { background: var(--ink-bg); color: var(--on-ink); border-color: transparent; font-weight: 600; }
 button.primary:hover { background: var(--accent-fill); }
 :root[data-theme="dark"] button.primary:hover { background: #7d52e8; }
-button.primary:disabled { background: var(--grey); opacity: .6; }
+button.primary:disabled { background: var(--grey); color: #fff; opacity: .55; }
 button.ghost { background: transparent; border-color: transparent; }
 button.ghost:hover { background: var(--panel-2); }
 button.link { background: none; border: none; color: var(--accent); padding: 0; font-size: 13.5px; font-weight: 500; }
@@ -643,42 +643,34 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
   .now-title { font-size: 19px; }
 }
 
-/* Профиль — окно персонажа, как в MMORPG: слева портрет в золотой восьмиугольной рамке (или манекен) со знаком уровня
-   на нижней кромке и полосой опыта, в середине имя и характеристики плашками со значками, справа за чертой — дебафы и
-   бафы сеткой глянцевых квадратных значков; наведение показывает, что это. */
-.profile { --frame-hi: #f0cf72; --frame-lo: #8a6326; --debuff: var(--red); --buff: var(--green); --octa: polygon(14% 0, 86% 0, 100% 10%, 100% 90%, 86% 100%, 14% 100%, 0 90%, 0 10%); }
+/* Профиль — практичная карточка, как профиль в Steam: слева квадратная аватарка (своя или из Steam), в середине имя и
+   характеристики плашками в две колонки, справа за чертой — дебафы и бафы сеткой глянцевых значков; наведение показывает, что это. */
+.profile { --debuff: var(--red); --buff: var(--green); }
 .char-sheet { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 28px; align-items: start; margin-top: 14px; padding: 24px 26px 22px;
   background: linear-gradient(160deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: var(--r); }
 
-.portrait-col { width: 184px; display: grid; gap: 10px; justify-items: center; }
-.portrait-wrap { position: relative; width: 184px; height: 240px; margin-bottom: 18px; filter: drop-shadow(0 6px 16px rgba(110, 70, 200, .35)); }
-.portrait { display: block; width: 100%; height: 100%; padding: 4px; border: none; border-radius: 0; clip-path: var(--octa);
-  background: linear-gradient(155deg, var(--frame-hi), var(--frame-lo) 40%, var(--frame-hi) 68%, var(--frame-lo)); }
-.portrait:active { transform: none; }
-.portrait img, .portrait svg { display: block; width: 100%; height: 100%; clip-path: var(--octa); }
-.portrait img { object-fit: cover; }
-.portrait svg { padding: 14px 0 6px; background: radial-gradient(ellipse at 50% 42%, #5b3d9e, #2a1b4f 62%, #160e2c); }
-.portrait:hover img, .portrait:hover svg { filter: brightness(1.1); }
-.portrait:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
-.lvl-badge { position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); display: grid; place-items: center; width: 64px; height: 56px;
-  background: linear-gradient(var(--frame-hi), var(--frame-lo)); color: #2a1a05; font-size: 22px; font-weight: 850; line-height: 1;
-  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); font-variant-numeric: tabular-nums; pointer-events: none; }
-.lvl-badge::before { content: ""; position: absolute; inset: 3px; z-index: -1; clip-path: inherit; background: linear-gradient(#ffe7a3, #c08e3a); }
-.lvl-badge { isolation: isolate; }
-.lvl-badge small { display: block; margin-bottom: -6px; font-size: 10px; font-weight: 850; letter-spacing: .12em; opacity: .75; }
-.xp { width: 100%; }
-.xp-bar { height: 10px; border-radius: 99px; background: var(--ring-bg); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
-.xp-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8b5cf6, #4f8cff); box-shadow: 0 0 10px rgba(110, 120, 255, .5);
-  transition: width .9s cubic-bezier(.3,.7,.3,1); }
-.xp-text { margin-top: 5px; font-size: 12.5px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
-.xp-text b { color: var(--text); }
+.avatar-col { width: 168px; display: grid; gap: 10px; }
+.avatar-big { display: block; width: 168px; height: 168px; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+  background: linear-gradient(145deg, #3a4a63, #1e2735); box-shadow: 0 0 0 3px var(--panel), 0 0 0 4px var(--line), 0 8px 22px rgba(0, 0, 0, .25); }
+.avatar-big:active { transform: none; }
+.avatar-big img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.avatar-big:hover img { filter: brightness(1.08); }
+.avatar-big:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
+.avatar-letter { display: grid; place-items: center; height: 100%; color: #c7d5e8; font-size: 72px; font-weight: 750; }
+.avatar-actions { display: grid; gap: 4px; justify-items: start; font-size: 13px; }
+.avatar-actions button.link { font-size: 13px; }
+.steam-link, .char-sheet-steam { display: inline-flex; align-items: center; gap: 6px; }
+.steam-form { display: grid; gap: 6px; }
+.steam-form input { width: 100%; padding: 5px 8px; font-size: 13px; }
+.steam-form-row { display: flex; gap: 6px; }
+.ghost.tiny { padding: 3px 10px; font-size: 13px; }
+.primary.tiny, .ghost.tiny { white-space: nowrap; }
 
 .char-sheet-main { min-width: 0; display: grid; gap: 2px; align-content: start; padding-top: 6px; }
 .char-sheet-name { font-size: 40px; font-weight: 850; letter-spacing: -.03em; line-height: 1.05; overflow-wrap: anywhere; }
-.char-sheet-title { justify-self: start; font-size: 14px; font-weight: 600; color: var(--frame-lo); }
-:root[data-theme="dark"] .char-sheet-title { color: var(--frame-hi); }
-.inline-edit { display: flex; gap: 8px; max-width: 380px; }
-.stat-pills { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; max-width: 340px; }
+.char-sheet-steam { justify-self: start; margin-top: 4px; font-size: 13px; color: var(--muted); text-decoration: none; }
+.char-sheet-steam:hover { color: var(--accent); }
+.stat-pills { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 560px; }
 .stat-pill { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 6px 14px 6px 12px; border: 1px solid var(--line); border-radius: 12px;
   background: var(--panel); font-size: 14px; cursor: help; }
 .stat-pill > svg { flex: none; width: 22px; height: 22px; color: var(--accent); }
@@ -749,15 +741,16 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 }
 @media (max-width: 640px) {
   .char-sheet { grid-template-columns: 1fr; gap: 18px; padding: 18px 14px; justify-items: center; text-align: center; }
-  .portrait-col { width: 150px; }
-  .portrait-wrap { width: 150px; height: 196px; }
-  .lvl-badge { width: 56px; height: 48px; font-size: 19px; bottom: -16px; }
+  .avatar-col { width: min(280px, 100%); justify-items: center; }
+  .steam-form { width: 100%; }
+  .steam-form-row { justify-content: center; }
+  .avatar-big { width: 140px; height: 140px; }
+  .avatar-actions { justify-items: center; }
   .char-sheet-main { justify-items: center; width: 100%; padding-top: 0; }
   .char-sheet-name { font-size: 30px; }
-  .char-sheet-title { justify-self: center; }
-  .stat-pills { width: 100%; max-width: none; text-align: left; }
+  .char-sheet-steam { justify-self: center; }
+  .stat-pills { width: 100%; max-width: none; grid-template-columns: 1fr; text-align: left; }
   .char-sheet-auras { width: 100%; grid-template-columns: 1fr; justify-items: center; text-align: left; }
   .aura-grid { grid-template-columns: repeat(4, 54px); }
   .aura-icon, .aura-add { width: 54px; height: 54px; }
 }
-@media (prefers-reduced-motion: reduce) { .xp-bar span { transition: none; } }

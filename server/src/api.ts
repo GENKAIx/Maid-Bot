@@ -16,7 +16,7 @@ import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
-import { decideTrait, profileView, saveProfile, sameTrait, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
+import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { habitButtons, planEventReminders, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
@@ -319,6 +319,15 @@ export function createApi(deps: ApiDeps) {
         title: z.string().trim().max(40).optional(), height: z.number().nullable().optional(), birthday: z.string().max(10).optional(), avatar: z.string().max(AVATAR_MAX * 1.4).optional(),
       }), await readJson(req, 700_000));
       try { await saveProfile(store, u.id, b); } catch (e) { throw new HttpError(400, (e as Error).message); }
+      return profileView(store, u, today);
+    }
+    // Аватар из Steam: ссылка на профиль → его картинка 184×184 становится аватаром (ключ API не нужен).
+    if (m === "POST" && p === "/api/profile/steam") {
+      const b = parseBody(z.object({ link: z.string().trim().min(2).max(200) }), await readJson(req, 4_000));
+      try {
+        const s = await steamAvatar(b.link);
+        await saveProfile(store, u.id, { avatar: s.avatar, steam: s.steam });
+      } catch (e) { throw new HttpError(400, (e as Error).message); }
       return profileView(store, u, today);
     }
     if (m === "POST" && p === "/api/traits") {

@@ -4,7 +4,7 @@ import { Store } from "../src/db.ts";
 import type { ChatMessage, LlmCall } from "../src/llm.ts";
 import { normalize } from "../src/parse.ts";
 import { Pipeline } from "../src/pipeline.ts";
-import { ageOn, decideTrait, findPatterns, levelOf, profileView, saveProfile, traitPrompt } from "../src/profile.ts";
+import { ageOn, steamAvatar, steamXmlUrl, decideTrait, findPatterns, levelOf, profileView, saveProfile, traitPrompt } from "../src/profile.ts";
 import { addDays, zonedToUtc } from "../src/time.ts";
 
 // Профиль как в RPG: уровень за дела, дебафы из чата и найденные закономерности, которые горничная учитывает в ответах.
@@ -113,4 +113,20 @@ test("возраст: полных лет по дате рождения, про
   assert.equal(v.stats[0].value, "13 лет");
   await saveProfile(store, u.id, { birthday: "" });
   assert.equal((await profileView(store, u, "2026-11-11")).stats[0].value, "—");
+});
+
+test("аватар из Steam: ссылка → XML профиля → картинка, чужие адреса не берёт", async () => {
+  assert.equal(steamXmlUrl("https://steamcommunity.com/id/gk_name/"), "https://steamcommunity.com/id/gk_name/?xml=1");
+  assert.equal(steamXmlUrl("steamcommunity.com/profiles/76561197960287930?l=russian"), "https://steamcommunity.com/profiles/76561197960287930/?xml=1");
+  assert.equal(steamXmlUrl("76561197960287930"), "https://steamcommunity.com/profiles/76561197960287930/?xml=1");
+  assert.equal(steamXmlUrl("https://evil.example/id/x"), null);
+  const xml = (img: string) => `<profile><steamID64>76561197960287930</steamID64><steamID><![CDATA[GK]]></steamID><avatarFull><![CDATA[${img}]]></avatarFull></profile>`;
+  const fake = (img: string) => (async (url: string | URL | Request) => String(url).includes("?xml=1")
+    ? new Response(xml(img)) : new Response(new Uint8Array([255, 216, 255]), { headers: { "content-type": "image/jpeg" } })) as typeof fetch;
+  const r = await steamAvatar("gk_name", fake("https://avatars.fastly.steamstatic.com/abc_full.jpg"));
+  assert.equal(r.avatar, "data:image/jpeg;base64,/9j/");
+  assert.equal(r.name, "GK");
+  assert.equal(r.steam, "https://steamcommunity.com/profiles/76561197960287930");
+  await assert.rejects(steamAvatar("gk_name", fake("https://evil.example/a.jpg")), /странный адрес/);
+  await assert.rejects(steamAvatar("gk_name", (async () => new Response("<profile/>")) as typeof fetch), /не найден/);
 });

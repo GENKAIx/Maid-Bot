@@ -12,8 +12,9 @@ export const TRAIT_CATEGORIES: Record<string, string> = {
 };
 export const traitCategory = (c: unknown) => (typeof c === "string" && c in TRAIT_CATEGORIES ? c : "other");
 
-/** Что пользователь заполняет сам: класс («Паладин»), рост в см, дата рождения (ГГГГ-ММ-ДД — для возраста), аватар (картинка data:… до AVATAR_MAX). */
-export interface ProfileInfo { title: string; height: number | null; birthday: string; avatar: string }
+/** Что пользователь заполняет сам: класс (старое поле, на сайте больше не показывается), рост в см, дата рождения (ГГГГ-ММ-ДД — для возраста),
+ *  аватар (картинка data:… до AVATAR_MAX), steam — ссылка на профиль Steam, откуда взят аватар (steamAvatar). */
+export interface ProfileInfo { title: string; height: number | null; birthday: string; avatar: string; steam: string }
 export const AVATAR_MAX = 400_000;
 const profileKey = (userId: number) => `profile:${userId}`;
 
@@ -23,9 +24,10 @@ export async function profileInfo(store: Store, userId: number): Promise<Profile
     return {
       title: typeof v.title === "string" ? v.title : "", height: typeof v.height === "number" ? v.height : null,
       birthday: typeof v.birthday === "string" ? v.birthday : "", avatar: typeof v.avatar === "string" ? v.avatar : "",
+      steam: typeof v.steam === "string" ? v.steam : "",
     };
   } catch {
-    return { title: "", height: null, birthday: "", avatar: "" };
+    return { title: "", height: null, birthday: "", avatar: "", steam: "" };
   }
 }
 
@@ -47,9 +49,41 @@ export async function saveProfile(store: Store, userId: number, patch: Partial<P
     if (a && !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(a)) throw new Error("аватар — картинка png, jpg, webp или gif");
     if (a.length > AVATAR_MAX) throw new Error("картинка слишком большая");
     cur.avatar = a;
+    if (patch.steam === undefined) cur.steam = "";
   }
+  if (patch.steam !== undefined) cur.steam = String(patch.steam).slice(0, 120);
   await store.kvSet(profileKey(userId), JSON.stringify(cur));
   return cur;
+}
+
+/** Ссылка на профиль Steam (…/id/<имя>, …/profiles/<SteamID64>, просто SteamID64 или имя) → адрес XML этого профиля. Без ключа API:
+ *  steamcommunity.com отдаёт ?xml=1 и для закрытых профилей — с аватаром. */
+export function steamXmlUrl(link: string): string | null {
+  const s = link.trim().replace(/[?#].*$/, "").replace(/\/+$/, "");
+  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?steamcommunity\.com\/(id|profiles)\/([A-Za-z0-9_-]{2,64})$/i);
+  if (m) return `https://steamcommunity.com/${m[1].toLowerCase()}/${m[2]}/?xml=1`;
+  if (/^7656\d{13}$/.test(s)) return `https://steamcommunity.com/profiles/${s}/?xml=1`;
+  if (/^[A-Za-z0-9_-]{2,32}$/.test(s)) return `https://steamcommunity.com/id/${s}/?xml=1`;
+  return null;
+}
+
+/** Аватар из Steam: XML профиля → avatarFull (184×184, только с серверов Steam) → картинка data:… для профиля. fetcher — для тестов. */
+export async function steamAvatar(link: string, fetcher: typeof fetch = fetch): Promise<{ avatar: string; name: string; steam: string }> {
+  const url = steamXmlUrl(link);
+  if (!url) throw new Error("Не похоже на ссылку на профиль Steam: steamcommunity.com/id/… или /profiles/…");
+  const xml = await (await fetcher(url, { signal: AbortSignal.timeout(15_000) })).text();
+  const pick = (tag: string) => { const a = xml.indexOf(`<${tag}><![CDATA[`), b = xml.indexOf("]]>", a); return a < 0 || b < 0 ? "" : xml.slice(a + tag.length + 11, b).trim(); };
+  const img = pick("avatarFull") || pick("avatarMedium");
+  if (!img) throw new Error("Профиль Steam не найден — проверьте ссылку");
+  if (!/^https:\/\/(avatars\.[a-z]+\.steamstatic\.com|avatars\.steamstatic\.com|steamcdn-a\.akamaihd\.net)\//.test(img)) throw new Error("Steam вернул странный адрес картинки");
+  const res = await fetcher(img, { signal: AbortSignal.timeout(15_000) });
+  const type = (res.headers.get("content-type") ?? "image/jpeg").split(";")[0].trim();
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(type)) throw new Error("Steam вернул не картинку");
+  const buf = Buffer.from(await res.arrayBuffer());
+  const avatar = `data:${type};base64,${buf.toString("base64")}`;
+  if (avatar.length > AVATAR_MAX) throw new Error("картинка слишком большая");
+  const id = xml.match(/<steamID64>(\d+)<\/steamID64>/)?.[1];
+  return { avatar, name: pick("steamID"), steam: id ? `https://steamcommunity.com/profiles/${id}` : url.replace("?xml=1", "") };
 }
 
 /** Опыт: задача — 10, отмеченная привычка — 5, день с записями — 3. На следующий уровень нужно 100 + 25·(уровень − 1). */
