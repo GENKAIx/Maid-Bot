@@ -99,12 +99,15 @@ export interface HabitMonthRow {
   times: string[];
   start_date: string;
   end_date: string | null;
+  quiet?: number;
   days_: never;
 }
 export interface HabitMonth {
   month: string;
   today: { habit: { id: number; title: string }; status: "done" | "skipped" | null; streak: number; doneDays: number; plannedDays: number }[];
   habits: (Omit<HabitMonthRow, "days_"> & { days: { day: string; due: boolean; status: string | null }[] })[];
+  /** Общее время вопросов из настроек (habit_first, habit_last). */
+  ask?: { first: string; last: string };
 }
 
 export interface Reply {

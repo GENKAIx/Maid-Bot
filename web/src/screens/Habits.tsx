@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
-import { Card, Chip, Empty, Ring, Spinner } from "../components";
+import { Card, Chip, Empty, Spinner } from "../components";
 import { WEEKDAYS, addMonths, monthTitle, todayKey } from "../format";
 import { navigate } from "../router";
 import type { HabitMonth } from "../types";
 
-// Привычки: сетка месяца (строка — привычка, столбец — день), отметка щелчком, серии и кольца.
+// Привычки: сетка месяца (строка — привычка, столбец — день), отметка щелчком, серии и время напоминаний (🔔 — правка прямо в строке).
 
 const WEEK_SHORT = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
@@ -14,6 +14,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
   const current = month ?? today.slice(0, 7);
   const [data, setData] = useState<HabitMonth | null>(null);
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -42,22 +43,11 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
         <button className="ghost" onClick={() => go(addMonths(current, 1))} aria-label="Следующий месяц">›</button>
       </div>
 
-      {data.today.length > 0 && (
-        <div className="rings reveal">
-          {data.today.map((h) => (
-            <Ring key={h.habit.id} value={h.plannedDays ? h.doneDays / h.plannedDays : 0} label={h.habit.title} size={84}>
-              <span className="ring-text">{h.doneDays}/{h.plannedDays}</span>
-              {h.streak >= 2 && <span className="ring-sub">🔥{h.streak}</span>}
-            </Ring>
-          ))}
-        </div>
-      )}
-
       {data.habits.length === 0 ? (
         <Card className="reveal"><Empty>Привычек пока нет. Напишите, например: «каждый будний день в 7:30 зарядка до конца года»</Empty></Card>
       ) : (
         <Card className="reveal wide grid-card">
-          <div className="habit-grid" style={{ gridTemplateColumns: `minmax(120px, 1.4fr) repeat(${days.length}, minmax(26px, 1fr))` }}>
+          <div className="habit-grid" style={{ gridTemplateColumns: `minmax(180px, 2.2fr) repeat(${days.length}, minmax(26px, 1fr))` }}>
             <span />
             {days.map((d) => {
               const wd = WEEK_SHORT[(new Date(d).getDay() + 6) % 7];
@@ -70,10 +60,24 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
             {data.habits.map((h) => {
               const done = h.days.filter((x) => x.status === "done").length;
               const due = h.days.filter((x) => x.due && x.day <= today).length;
+              const fire = data.today.find((t) => t.habit.id === h.id)?.streak ?? 0;
+              const ask = data.ask ?? { first: "12:00", last: "23:00" };
+              const shown = h.times.length ? h.times : [ask.first];
               return [
                 <span key={`t${h.id}`} className="hg-title">
-                  <span className="grow">{h.title}</span>
-                  <Chip>{done}/{due}</Chip>
+                  <span className="hg-name">
+                    <span className="grow">{h.title}</span>
+                    {fire >= 2 && <span className="hg-fire" title={`Серия: ${fire} дн. подряд`}>🔥{fire}</span>}
+                    <Chip>{done}/{due}</Chip>
+                  </span>
+                  <button
+                    className={`hg-bell ${editing === h.id ? "on" : ""}`}
+                    onClick={() => setEditing(editing === h.id ? null : h.id)}
+                    title={h.quiet ? "Без напоминаний" : `Напомнит в ${shown.join(", ")}${shown.some((t) => t >= ask.last) ? "" : `; не отметите — ещё раз в ${ask.last}`}. Щелчок — изменить`}
+                  >
+                    {h.quiet ? "🔕 без напоминаний" : `🔔 ${shown.join(", ")}`}
+                    {!h.quiet && !h.times.length && <i> · общее</i>}
+                  </button>
                 </span>,
                 ...h.days.map((x) => (
                   <button
@@ -86,12 +90,56 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                     {x.status === "done" ? "✓" : x.status === "skipped" ? "–" : ""}
                   </button>
                 )),
+                ...(editing === h.id
+                  ? [<HabitTimes key={`e${h.id}`} id={h.id} times={h.times} quiet={!!h.quiet} ask={ask} onDone={() => { setEditing(null); onChanged(); }} onCancel={() => setEditing(null)} />]
+                  : []),
               ];
             })}
           </div>
-          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано.</p>
+          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить.</p>
         </Card>
       )}
+    </div>
+  );
+}
+
+/** Время напоминаний одной привычки — строка во всю ширину сетки под ней. Пусто — общее время из «Настроек». */
+function HabitTimes({ id, times, quiet, ask, onDone, onCancel }: {
+  id: number; times: string[]; quiet: boolean; ask: { first: string; last: string }; onDone: () => void; onCancel: () => void;
+}) {
+  const [list, setList] = useState<string[]>(times.length ? times : [ask.first]);
+  const [busy, setBusy] = useState(false);
+  const [fail, setFail] = useState("");
+  const valid = list.filter((t) => /^\d\d:\d\d$/.test(t));
+  async function save(next: string[]) {
+    setBusy(true);
+    setFail("");
+    try {
+      // Привычка была «без напоминаний» — сохранённое время их включает.
+      await post(`/api/habits/${id}`, quiet ? { times: next, quiet: false } : { times: next });
+      onDone();
+    } catch (e) {
+      setFail((e as Error).message);
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="hg-times" style={{ gridColumn: "1 / -1" }}>
+      <span className="muted small">Напомнить в</span>
+      {list.map((t, i) => (
+        <span key={i} className="hg-time">
+          <input type="time" value={t} onChange={(e) => setList(list.map((x, j) => (j === i ? e.target.value : x)))} aria-label={`Время ${i + 1}`} />
+          {list.length > 1 && <button className="ghost" onClick={() => setList(list.filter((_, j) => j !== i))} aria-label="Убрать время">×</button>}
+        </span>
+      ))}
+      {list.length < 4 && <button className="ghost" onClick={() => setList([...list, list.at(-1) ?? ask.first])}>+ ещё время</button>}
+      <span className="grow" />
+      <button className="primary" disabled={busy || !valid.length} onClick={() => save(valid)}>Сохранить</button>
+      {times.length > 0 && <button className="ghost" disabled={busy} onClick={() => save([])} title={`${ask.first} и ${ask.last} — меняется в «Настройках»`}>Как в настройках</button>}
+      <button className="ghost" disabled={busy} onClick={onCancel}>Отмена</button>
+      <span className="muted small hg-times-hint">
+        {quiet && "Сейчас напоминаний нет — «Сохранить» их включит. "}Не отметите — спросит ещё раз в {ask.last}. Общее время — в «Настройках».{fail && <b style={{ color: "var(--red)" }}> {fail}</b>}
+      </span>
     </div>
   );
 }

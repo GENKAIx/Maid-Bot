@@ -646,7 +646,7 @@ export class Pipeline {
         else if (a.tbl === "traits") await s.updateTrait(a.row_id, a.kind === "add" ? { status: "removed" } : before ?? {});
         else if (a.tbl === "money") await s.setMoneyDeleted(a.row_id, true);
         else if (a.tbl === "habits") {
-          // Правка мышью (POST /api/habits/:id) помнит и название, конец, «без напоминаний»; старые записи — только статус.
+          // Правка мышью (POST /api/habits/:id) помнит и название, конец, «без напоминаний», время напоминаний; старые записи — только статус.
           if (a.kind === "add") await s.updateHabit(a.row_id, { status: "deleted" });
           else await s.updateHabit(a.row_id, before && Object.keys(before).length > 1 ? before : { status: before?.status ?? "active" });
         }
