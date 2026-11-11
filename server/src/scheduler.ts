@@ -243,7 +243,7 @@ export class Scheduler {
           content: `${head.join("\n").replace(/<[^>]+>/g, "")}\n\nЗаписи дня:\n${summaries || "нет"}\n\nЗавтра:\n${
             (await plansText(s, u, addDays(today, 1), 0)).replace(/<[^>]+>/g, "")}`,
         },
-      ], { temperature: 0.6 });
+      ], { temperature: 0.6, kind: "summary" });
       return `${head.join("\n")}\n\n${esc(words.trim())}`;
     } catch (e) {
       console.error("[evening]", e);

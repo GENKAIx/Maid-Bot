@@ -214,7 +214,7 @@ export async function findPatterns(store: Store, llm: LlmCall, u: User, today: s
           `Уже известно:\n${known}`,
       },
       { role: "user", content: log },
-    ], { json: true, temperature: 0.2 });
+    ], { json: true, temperature: 0.2, kind: "patterns" });
   } catch (e) {
     console.error("[patterns]", u.id, e);
     return [];

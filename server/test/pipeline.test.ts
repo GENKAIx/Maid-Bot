@@ -358,14 +358,6 @@ test("запрос к модели: списки с потолком, упомя
   assert.ok(l.tasks.some((t) => t.title === "Починить велосипед"));
 });
 
-test("учёт токенов: складывается по месяцам", async () => {
-  const store = await Store.open(":memory:");
-  await store.addLlmUsage(new Date("2026-11-03T10:00:00Z"), { input: 1200, output: 300 });
-  await store.addLlmUsage(new Date("2026-11-20T10:00:00Z"), { input: 800, output: 100 });
-  assert.deepEqual(await store.llmUsage("2026-11"), { calls: 2, input: 2000, output: 400 });
-  assert.deepEqual(await store.llmUsage("2026-10"), { calls: 0, input: 0, output: 0 });
-});
-
 test("отметки «уже отправлено» старше 60 дней удаляются, прочее в kv — нет", async () => {
   const store = await Store.open(":memory:");
   await store.kvSet("habit:1:2026-08-01:09:00", "2026-08-01T06:00:00.000Z");

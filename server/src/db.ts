@@ -305,7 +305,25 @@ CREATE TABLE IF NOT EXISTS drawings (
 );
 CREATE INDEX IF NOT EXISTS drawings_user ON drawings (user_id, id);
 `,
+  // Шаг 11: расход модели по дням (UTC) × на что ушло × модель: запросы, токены, деньги.
+  // micro_usd — миллионные доллара (целым, без ошибок округления); priced — сколько запросов пришло с ценой (у других цены нет).
+  `
+CREATE TABLE IF NOT EXISTS llm_usage (
+  day TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  model TEXT NOT NULL,
+  calls INTEGER NOT NULL DEFAULT 0,
+  input INTEGER NOT NULL DEFAULT 0,
+  output INTEGER NOT NULL DEFAULT 0,
+  micro_usd INTEGER NOT NULL DEFAULT 0,
+  priced INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, kind, model)
+);
+`,
 ];
+
+/** Строка расхода: день (UTC) × на что × модель. cost — доллары. */
+export interface UsageRow { day: string; kind: string; model: string; calls: number; input: number; output: number; cost: number; priced: number }
 
 export interface DrawingRow {
   id: number;
@@ -1174,16 +1192,35 @@ export class Store {
   }
 
   // --- служебное ---
-  /** Расход токенов модели за месяц: запросов, токенов на входе и на выходе. */
-  async llmUsage(month: string): Promise<{ calls: number; input: number; output: number }> {
-    try { return { calls: 0, input: 0, output: 0, ...JSON.parse((await this.kvGet(`llm:${month}`)) ?? "{}") }; } catch { return { calls: 0, input: 0, output: 0 }; }
+  /** Расход модели за месяц: запросов, токенов, денег. До шага 11 месяц копился в kv (llm:ГГГГ-ММ, без денег) — он прибавляется. */
+  async llmUsage(month: string): Promise<{ calls: number; input: number; output: number; cost: number; priced: number }> {
+    let old = { calls: 0, input: 0, output: 0 };
+    try { old = { ...old, ...JSON.parse((await this.kvGet(`llm:${month}`)) ?? "{}") }; } catch { /* битая запись — без неё */ }
+    const r = await this.get<Record<string, unknown>>(
+      "SELECT SUM(calls) AS calls, SUM(input) AS input, SUM(output) AS output, SUM(micro_usd) AS micro, SUM(priced) AS priced FROM llm_usage WHERE day LIKE ?", `${month}-%`,
+    );
+    const n = (v: unknown) => Number(v ?? 0) || 0;
+    return { calls: old.calls + n(r?.calls), input: old.input + n(r?.input), output: old.output + n(r?.output), cost: n(r?.micro) / 1e6, priced: n(r?.priced) };
   }
-  async addLlmUsage(at: Date, x: { input: number; output: number }) {
-    const month = at.toISOString().slice(0, 7);
-    await this.transaction(async () => {
-      const u = await this.llmUsage(month);
-      await this.kvSet(`llm:${month}`, JSON.stringify({ calls: u.calls + 1, input: u.input + x.input, output: u.output + x.output }));
-    });
+  /** Один запрос к модели (или картинка, или голосовое) — в строку своего дня, назначения и модели. cost — доллары или null. */
+  async addUsage(at: Date, x: { kind: string; model: string; input: number; output: number; cost: number | null }) {
+    const micro = x.cost == null ? 0 : Math.round(x.cost * 1e6);
+    await this.run(
+      `INSERT INTO llm_usage (day, kind, model, calls, input, output, micro_usd, priced) VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+       ON CONFLICT (day, kind, model) DO UPDATE SET calls = llm_usage.calls + 1, input = llm_usage.input + excluded.input,
+       output = llm_usage.output + excluded.output, micro_usd = llm_usage.micro_usd + excluded.micro_usd, priced = llm_usage.priced + excluded.priced`,
+      at.toISOString().slice(0, 10), x.kind, x.model.slice(0, 120), Math.max(0, Math.round(x.input)), Math.max(0, Math.round(x.output)), micro, x.cost == null ? 0 : 1,
+    );
+  }
+  /** Расход по дням с from по to (ГГГГ-ММ-ДД, включительно), по дням и назначениям. */
+  async usageDays(from: string, to: string): Promise<UsageRow[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT day, kind, model, calls, input, output, micro_usd, priced FROM llm_usage WHERE day >= ? AND day <= ? ORDER BY day, kind, model", from, to,
+    );
+    return rows.map((r) => ({
+      day: String(r.day), kind: String(r.kind), model: String(r.model), calls: Number(r.calls), input: Number(r.input),
+      output: Number(r.output), cost: Number(r.micro_usd) / 1e6, priced: Number(r.priced),
+    }));
   }
   async kvGet(key: string): Promise<string | undefined> {
     return (await this.get<{ value: string }>("SELECT value FROM kv WHERE key = ?", key))?.value;

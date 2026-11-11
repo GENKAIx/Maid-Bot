@@ -35,16 +35,27 @@ const wire = (m: ChatMessage) =>
       }
     : { role: m.role, content: m.content };
 
-export type LlmCall = (messages: ChatMessage[], opts?: { json?: boolean; temperature?: number; maxTokens?: number }) => Promise<string>;
+export type LlmCall = (messages: ChatMessage[], opts?: { json?: boolean; temperature?: number; maxTokens?: number; kind?: UsageKind }) => Promise<string>;
 
 /** Потолок длины ответа: разбор (JSON) — длиннее, разговор и ответы на вопросы — короче. */
 export const MAX_TOKENS_JSON = 3000;
 export const MAX_TOKENS_TEXT = 800;
 
-/** Расход токенов: каждый ответ модели сообщает, сколько ушло (index.ts складывает по месяцам в kv). */
-export interface LlmUsage { input: number; output: number }
+/** На что ушёл запрос к модели (строки на сайте — web/src/screens/Settings.tsx, KIND_NAMES). */
+export const USAGE_KINDS = ["parse", "answer", "chat", "summary", "patterns", "draw", "voice", "other"] as const;
+export type UsageKind = (typeof USAGE_KINDS)[number];
+/** Расход одного запроса: токены и деньги (cost — доллары, null — провайдер цену не сообщил). index.ts складывает по дням (таблица llm_usage). */
+export interface LlmUsage { kind: UsageKind; model: string; input: number; output: number; cost: number | null }
 let usageSink: ((u: LlmUsage) => void) | null = null;
 export const onLlmUsage = (fn: ((u: LlmUsage) => void) | null) => void (usageSink = fn);
+/** Сообщить о расходе (модель, рисование, голос); ошибка учёта ответу не мешает. */
+export function reportUsage(u: LlmUsage) {
+  try { usageSink?.(u); } catch { /* учёт не мешает ответу */ }
+}
+/** OpenRouter присылает цену запроса в usage.cost (доллары), если попросить usage: { include: true }. */
+export const isOpenRouter = (url: string) => /openrouter\.ai/.test(url);
+const price = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
+export const usageCost = (u: { cost?: unknown } | undefined) => price(u?.cost);
 
 export const llmReady = () => Boolean(config.llm.apiKey);
 
@@ -57,6 +68,7 @@ export const callLlm: LlmCall = async (messages, opts = {}) => {
     max_tokens: opts.maxTokens ?? (opts.json ? MAX_TOKENS_JSON : MAX_TOKENS_TEXT),
   };
   if (opts.json) body.response_format = { type: "json_object" };
+  if (isOpenRouter(config.llm.baseUrl)) body.usage = { include: true };
   let lastErr: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -68,9 +80,9 @@ export const callLlm: LlmCall = async (messages, opts = {}) => {
       });
       if (res.status === 429 || res.status >= 500) throw new Error(`LLM ${res.status}: ${await res.text()}`);
       if (!res.ok) throw Object.assign(new Error(`LLM ${res.status}: ${await res.text()}`), { fatal: true });
-      const data = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+      const data = (await res.json()) as { model?: string; choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number } };
       if (data.usage) {
-        try { usageSink?.({ input: data.usage.prompt_tokens ?? 0, output: data.usage.completion_tokens ?? 0 }); } catch { /* учёт не мешает ответу */ }
+        reportUsage({ kind: opts.kind ?? "other", model: config.llm.model, input: data.usage.prompt_tokens ?? 0, output: data.usage.completion_tokens ?? 0, cost: usageCost(data.usage) });
       }
       const text = data.choices?.[0]?.message?.content;
       if (!text) throw new Error("LLM вернул пустой ответ");

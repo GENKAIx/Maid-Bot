@@ -4,7 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { z } from "zod";
 import { login, LoginGate, tokenHash, userByToken } from "./auth.ts";
-import type { Store, User } from "./db.ts";
+import type { Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { habitMonth, habitsOfDay } from "./habits.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
@@ -249,8 +249,13 @@ export function createApi(deps: ApiDeps) {
       return {
         ...me,
         sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })),
-        llm_month: await store.llmUsage(new Date().toISOString().slice(0, 7)),
       };
+    }
+    // Расход модели, рисования и голоса: по дням (UTC, все дни подряд — и пустые), по назначениям и моделям за эти дни, итог месяца.
+    if (m === "GET" && p === "/api/usage") {
+      const n = Math.min(90, Math.max(7, Number(q("days")) || 30));
+      const utc = new Date().toISOString().slice(0, 10);
+      return usageReport(await store.usageDays(addDays(utc, 1 - n), utc), n, await store.llmUsage(utc.slice(0, 7)), utc);
     }
     // Выйти на другом устройстве (потерянный телефон, старый ПК).
     if (m === "POST" && p === "/api/sessions/drop") {
@@ -733,4 +738,34 @@ export function createApi(deps: ApiDeps) {
       res.end(JSON.stringify({ error: e instanceof HttpError ? e.message : "ошибка сервера" }));
     }
   });
+}
+
+/** Сумма расхода: запросы, токены, доллары; priced — сколько запросов пришло с ценой. */
+export interface UsageSum { calls: number; input: number; output: number; cost: number; priced: number }
+const noUsage = (): UsageSum => ({ calls: 0, input: 0, output: 0, cost: 0, priced: 0 });
+const addTo = (a: UsageSum, r: UsageSum) => {
+  a.calls += r.calls; a.input += r.input; a.output += r.output; a.cost += r.cost; a.priced += r.priced;
+};
+
+/** Отчёт для страницы «Расход»: каждый из n последних дней (до сегодня, UTC), назначения и модели — дороже выше. */
+export function usageReport(rows: UsageRow[], n: number, month: UsageSum, today = new Date().toISOString().slice(0, 10)) {
+  const days = Array.from({ length: n }, (_, i) => ({ day: addDays(today, i - n + 1), ...noUsage(), kinds: {} as Record<string, number> }));
+  const byDay = new Map(days.map((d) => [d.day, d]));
+  const kinds = new Map<string, UsageSum>();
+  const models = new Map<string, UsageSum>();
+  const total = noUsage();
+  for (const r of rows) {
+    const d = byDay.get(r.day);
+    if (!d) continue;
+    addTo(d, r);
+    d.kinds[r.kind] = (d.kinds[r.kind] ?? 0) + r.cost;
+    if (!kinds.has(r.kind)) kinds.set(r.kind, noUsage());
+    addTo(kinds.get(r.kind)!, r);
+    if (!models.has(r.model)) models.set(r.model, noUsage());
+    addTo(models.get(r.model)!, r);
+    addTo(total, r);
+  }
+  const rank = <K extends string>(m: Map<string, UsageSum>, key: K) =>
+    [...m].map(([k, v]) => ({ [key]: k, ...v }) as Record<K, string> & UsageSum).sort((a, b) => b.cost - a.cost || b.calls - a.calls);
+  return { from: days[0].day, to: today, days, total, kinds: rank(kinds, "kind"), models: rank(models, "model"), month };
 }

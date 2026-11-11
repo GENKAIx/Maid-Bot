@@ -3,6 +3,7 @@ import { get, getToken, post } from "../api";
 import { Card, Empty, Spinner } from "../components";
 import { currentSubscription, isIos, pushSupported, standalone, subscribe, unsubscribe } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
+import { SpendCard } from "./Spend";
 
 // Настройки: тема и уведомления на этом устройстве, время утреннего списка и итога, предупреждения об играх, копия, выход.
 
@@ -10,7 +11,6 @@ interface Me {
   id: number; login: string | null; name: string; tz: string; persona: string;
   morning_time: string; tomorrow_time: string; evening_time: string; event_lead_min: number; event_reminders: string;
   game_alerts: number; game_first_min: number; game_every_min: number;
-  llm_month?: { calls: number; input: number; output: number };
   sessions: { id: string; label: string; created_at: string; last_seen: string; current?: boolean }[];
 }
 /** Настройка users.event_reminders: «day» — в начале дня, число — за столько минут, 0 — в момент начала; «off» — никогда; пусто — за event_lead_min и в момент. */
@@ -191,14 +191,12 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
           </div>
         </Card>
 
+        <Card title="Расход модели" className="reveal">
+          <SpendCard />
+        </Card>
+
         <Card title="Учётная запись" className="reveal">
           <p>{me.login} <span className="muted small">· {me.tz}</span></p>
-          {me.llm_month ? (
-            <p className="muted small">
-              Модель за этот месяц: {me.llm_month.calls} запросов, {Math.round((me.llm_month.input + me.llm_month.output) / 1000).toLocaleString("ru-RU")} тыс. токенов
-              ({Math.round(me.llm_month.input / 1000).toLocaleString("ru-RU")} на вход, {Math.round(me.llm_month.output / 1000).toLocaleString("ru-RU")} на ответ)
-            </p>
-          ) : null}
           <p className="muted small">Где выполнен вход (вход, которым не пользовались 90 дней, закрывается сам):</p>
           <ul className="devices">
             {me.sessions.map((s) => (

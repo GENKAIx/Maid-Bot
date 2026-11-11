@@ -1,5 +1,5 @@
 import { config } from "./config.ts";
-import type { Picture } from "./llm.ts";
+import { reportUsage, usageCost, type Picture } from "./llm.ts";
 
 // Картинка по описанию — RunPod (по умолчанию Z-Image Turbo), а без ключа RunPod — OpenRouter (по умолчанию Gemini 2.5 Flash Image).
 // Ответ RunPod — ссылка на картинку на 7 дней, OpenRouter — картинка в base64; в обоих случаях храним у себя (таблица drawings).
@@ -42,6 +42,7 @@ export async function callRunpod(prompt: string): Promise<Picture> {
     job = await ask(`${base}/status/${job.id}`);
   }
   const out = typeof job.output === "string" ? job.output : job.output?.result;
+  if (job.status === "COMPLETED") reportUsage({ kind: "draw", model: config.drawing.model, input: 0, output: 0, cost: typeof job.output === "object" ? usageCost(job.output) : null });
   if (job.status !== "COMPLETED" || !out) throw new Error(`RunPod: ${job.status ?? "?"} ${job.error ?? ""}`.trim());
   const img = await fetch(out, { signal: signal() });
   if (!img.ok) throw new Error(`RunPod: картинка не скачалась (${img.status})`);
@@ -52,6 +53,7 @@ export async function callRunpod(prompt: string): Promise<Picture> {
 interface OpenRouterImageAnswer {
   error?: { message?: string };
   choices?: { message?: { content?: string; images?: { image_url?: { url?: string } }[] } }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
 }
 
 /** OpenRouter: chat/completions с modalities image — картинка приходит data:-ссылкой в message.images. */
@@ -63,11 +65,15 @@ export async function callOpenRouterDraw(prompt: string): Promise<Picture> {
       model: config.drawing.openrouterModel,
       modalities: ["image", "text"],
       messages: [{ role: "user", content: `Draw a single square picture: ${prompt}` }],
+      usage: { include: true },
     }),
     signal: AbortSignal.timeout(DRAW_TIMEOUT_MS),
   });
   if (!r.ok) throw new Error(`OpenRouter ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const ans = (await r.json()) as OpenRouterImageAnswer;
+  if (ans.usage) {
+    reportUsage({ kind: "draw", model: config.drawing.openrouterModel, input: ans.usage.prompt_tokens ?? 0, output: ans.usage.completion_tokens ?? 0, cost: usageCost(ans.usage) });
+  }
   const url = ans.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? "";
   const m = /^data:(image\/[\w.+-]+);base64,(.+)$/s.exec(url);
   if (!m) throw new Error(`OpenRouter: картинки нет ${ans.error?.message ?? (ans.choices?.[0]?.message?.content ?? "").slice(0, 200)}`.trim());

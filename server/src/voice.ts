@@ -1,4 +1,5 @@
 import { config } from "./config.ts";
+import { reportUsage, usageCost } from "./llm.ts";
 
 // Распознавание речи: OpenAI-совместимый /audio/transcriptions (OpenAI, Groq, локальный whisper-сервер).
 // По умолчанию — тот же адрес и ключ, что у LLM; свой задаётся STT_BASE_URL / STT_API_KEY / STT_MODEL.
@@ -36,7 +37,9 @@ export async function transcribe(audio: Buffer, mime: string): Promise<string> {
       });
       if (res.status === 429 || res.status >= 500) throw new Error(`распознавание ${res.status}: ${await res.text()}`);
       if (!res.ok) throw Object.assign(new Error(`распознавание ${res.status}: ${(await res.text()).slice(0, 300)}`), { fatal: true });
-      const data = (await res.json()) as { text?: string };
+      // usage есть не у всех: OpenAI — токены (input_tokens) или секунды, OpenRouter ещё и цену (cost).
+      const data = (await res.json()) as { text?: string; usage?: { input_tokens?: number; output_tokens?: number; cost?: number } };
+      reportUsage({ kind: "voice", model: config.stt.model, input: data.usage?.input_tokens ?? 0, output: data.usage?.output_tokens ?? 0, cost: usageCost(data.usage) });
       return (data.text ?? "").trim();
     } catch (e) {
       lastErr = e;

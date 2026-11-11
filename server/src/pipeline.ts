@@ -216,14 +216,14 @@ export class Pipeline {
         ...(await this.history(u.id, message.id)),
         { role: "user" as const, content: text, images: pics },
       ];
-      let raw = await this.llm(ask, { json: true });
+      let raw = await this.llm(ask, { json: true, kind: "parse" });
       let json: unknown;
       try {
         json = extractJson(raw);
       } catch {
         // Модель иногда отвечает словами вместо JSON — один раз переспрашиваем, только потом это сбой.
         console.warn("[parse] без JSON, переспрашиваю:", raw.slice(0, 200));
-        raw = await this.llm([...ask, { role: "assistant", content: raw }, { role: "user", content: "Ответь одним JSON-объектом по схеме из инструкции, без текста вокруг." }], { json: true });
+        raw = await this.llm([...ask, { role: "assistant", content: raw }, { role: "user", content: "Ответь одним JSON-объектом по схеме из инструкции, без текста вокруг." }], { json: true, kind: "parse" });
         json = extractJson(raw);
       }
       parsed = normalize(json, { today, now: ctx.now, text: inc.text });
@@ -728,7 +728,7 @@ export class Pipeline {
             `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай.\n\n${data}${traits ? "\n\n" + traits : ""}`,
         },
         { role: "user", content: question },
-      ], { temperature: 0.4 });
+      ], { temperature: 0.4, kind: "answer" });
       return linkDays(esc(out.trim()), this.publicUrl, today);
     } catch (e) {
       console.error("[answer]", e);
@@ -746,7 +746,7 @@ export class Pipeline {
         { role: "system", content: `${p.voice}\nЭто просто разговор, ничего не записывай. Сегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}${traits ? "\n\n" + traits : ""}` },
         ...(await this.history(u.id, msg.id)),
         { role: "user", content: images ? `${msg.text}\n(Приложено изображений: ${images.length}.)` : msg.text, images },
-      ], { temperature: 0.7 });
+      ], { temperature: 0.7, kind: "chat" });
       const text = esc(out.trim());
       await this.store.setMessage(msg.id, { state: "done", reply: text });
       return { text, emotion: "neutral", messageId: msg.id, undoable: false };
