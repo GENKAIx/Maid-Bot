@@ -3,9 +3,10 @@ import { get, post } from "../api";
 import { Empty, Spinner } from "../components";
 import { shortDay } from "../format";
 
-// Профиль как лист персонажа в RPG (GET /api/profile): аватар, уровень вместо возраста — опыт за сделанные задачи,
-// отмеченные привычки и дни с записями; характеристики из дневника здоровья; дебафы (аллергии, непереносимость…)
-// и бафы — горничная учитывает их в ответах. «Горничная заметила» — закономерности из дневника: в дебафы — только после «Добавить».
+// Профиль как окно персонажа в MMORPG (GET /api/profile): вертикальный портрет в рамке с уровнем, рядом плотный список
+// характеристик; уровень вместо возраста — опыт за сделанные задачи, отмеченные привычки и дни с записями. Дебафы
+// (аллергии, непереносимость…) и бафы — квадратные иконки, наведение показывает, что это; горничная учитывает их в ответах.
+// «Горничная заметила» — закономерности из дневника: в дебафы — только после «Добавить».
 
 type Trait = { id: number; kind: "debuff" | "buff"; category: string; title: string; note: string; source: string; status: string; days: string[]; created_at: string };
 type Stat = { key: string; label: string; value: string; hint: string };
@@ -22,8 +23,8 @@ const CATS: Record<string, [string, string]> = {
 };
 const SOURCE: Record<string, string> = { user: "добавили сами", chat: "из разговора с горничной", pattern: "горничная заметила в дневнике" };
 
-/** Картинку — в квадрат 256 px (webp/jpeg), чтобы аватар был лёгким. */
-async function squareImage(file: File): Promise<string> {
+/** Картинку — в портрет 240×320 (webp/jpeg), чтобы аватар был лёгким. Кадр — середина, чуть выше центра (там обычно лицо). */
+async function portraitImage(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((ok, fail) => {
@@ -32,10 +33,11 @@ async function squareImage(file: File): Promise<string> {
       i.onerror = () => fail(new Error("не картинка"));
       i.src = url;
     });
-    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const w = Math.min(img.naturalWidth, img.naturalHeight * 0.75), h = w / 0.75;
     const c = document.createElement("canvas");
-    c.width = c.height = 256;
-    c.getContext("2d")!.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+    c.width = 240;
+    c.height = 320;
+    c.getContext("2d")!.drawImage(img, (img.naturalWidth - w) / 2, Math.max(0, (img.naturalHeight - h) * 0.35), w, h, 0, 0, 240, 320);
     const webp = c.toDataURL("image/webp", 0.86);
     return webp.startsWith("data:image/webp") ? webp : c.toDataURL("image/jpeg", 0.86);
   } finally {
@@ -43,18 +45,36 @@ async function squareImage(file: File): Promise<string> {
   }
 }
 
-function TraitTile({ t, onRemove }: { t: Trait; onRemove: () => void }) {
+/** Дебаф или баф — квадратная иконка; наведение (или фокус) — подсказка: что это, откуда, «Убрать». */
+function TraitIcon({ t, onRemove }: { t: Trait; onRemove: () => void }) {
   const [icon, cat] = CATS[t.category] ?? CATS.other;
-  const why = [SOURCE[t.source] ?? "", t.days.length ? `дни: ${t.days.map(shortDay).join(", ")}` : ""].filter(Boolean).join("; ");
   return (
-    <li className={`trait ${t.kind}`} title={why}>
-      <span className="trait-icon" aria-hidden="true">{icon}</span>
-      <span className="grow">
+    <li className={`aura ${t.kind}`}>
+      <button className="aura-icon" aria-label={`${t.title}: ${cat}`}><span aria-hidden="true">{icon}</span></button>
+      <div className="aura-tip" role="tooltip">
         <b>{t.title}</b>
-        <span className="muted small">{cat}{t.note ? ` — ${t.note}` : ""}</span>
-      </span>
-      <button className="ghost tiny" onClick={onRemove} title="Убрать из профиля" aria-label={`Убрать «${t.title}»`}>✕</button>
+        <span className="aura-kind">{t.kind === "buff" ? "Баф" : "Дебаф"}, {cat.toLowerCase()}</span>
+        {t.note && <span>{t.note}</span>}
+        <span className="aura-src">
+          {SOURCE[t.source] ?? ""}{t.days.length ? `: ${t.days.map(shortDay).join(", ")}` : ""}
+        </span>
+        <button className="link" onClick={onRemove}>Убрать из профиля</button>
+      </div>
     </li>
+  );
+}
+
+function AuraRow({ kind, list, onAdd, onRemove }: { kind: "debuff" | "buff"; list: Trait[]; onAdd: () => void; onRemove: (t: Trait) => void }) {
+  const label = kind === "buff" ? "Бафы" : "Дебафы";
+  return (
+    <div className="aura-row">
+      <span className={`aura-label ${kind}`}>{label}</span>
+      <ul>
+        {list.map((t) => <TraitIcon key={t.id} t={t} onRemove={() => onRemove(t)} />)}
+        <li><button className="aura-add" onClick={onAdd} title={kind === "buff" ? "Добавить баф — что помогает" : "Добавить дебаф — аллергия, непереносимость, что вредит"}
+          aria-label={kind === "buff" ? "Добавить баф" : "Добавить дебаф"}>+</button></li>
+      </ul>
+    </div>
   );
 }
 
@@ -64,7 +84,8 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
   const [note, setNote] = useState("");
   const [editTitle, setEditTitle] = useState<string | null>(null);
   const [editHeight, setEditHeight] = useState<string | null>(null);
-  const [form, setForm] = useState({ kind: "debuff" as "debuff" | "buff", category: "allergy", title: "", note: "" });
+  const [adding, setAdding] = useState<"debuff" | "buff" | null>(null);
+  const [form, setForm] = useState({ category: "allergy", title: "", note: "" });
   const file = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -78,12 +99,15 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
       const r = await fn();
       if ("profile" in r) { setP(r.profile); setNote(r.text ?? ""); } else { setP(r); setNote(""); }
       onChanged();
+      return true;
     } catch (e) {
       setNote((e as Error).message);
+      return false;
     }
   }
   const save = (patch: Partial<Pick<ProfileData, "title" | "height" | "avatar">>) => run(() => post<ProfileData>("/api/profile", patch));
   const setStatus = (t: Trait, status: string) => run(() => post<{ text?: string; profile: ProfileData }>(`/api/traits/${t.id}`, { status }));
+  const toggleAdd = (kind: "debuff" | "buff") => setAdding((a) => (a === kind ? null : kind));
 
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!p) return <Spinner />;
@@ -97,16 +121,22 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
       <h2 className="screen-title">Профиль</h2>
 
       <section className="char-sheet">
-        <button className="avatar-frame" onClick={() => file.current?.click()} title="Сменить аватар">
-          {p.avatar ? <img src={p.avatar} alt="" /> : <span className="avatar-empty">{(p.name || "?").slice(0, 1).toUpperCase()}</span>}
-          <span className="lvl-badge" aria-label={`Уровень ${p.level}`}><small>LVL</small>{p.level}</span>
-        </button>
-        <input ref={file} type="file" accept="image/*" hidden onChange={async (e) => {
-          const f = e.target.files?.[0];
-          e.target.value = "";
-          if (!f) return;
-          try { await save({ avatar: await squareImage(f) }); } catch (err) { setNote((err as Error).message); }
-        }} />
+        <div className="portrait-col">
+          <button className="portrait" onClick={() => file.current?.click()} title="Сменить портрет">
+            {p.avatar ? <img src={p.avatar} alt="" /> : <span className="avatar-empty">{(p.name || "?").slice(0, 1).toUpperCase()}</span>}
+            <span className="lvl-badge" aria-label={`Уровень ${p.level}`}><small>LVL</small>{p.level}</span>
+          </button>
+          <input ref={file} type="file" accept="image/*" hidden onChange={async (e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (!f) return;
+            try { await save({ avatar: await portraitImage(f) }); } catch (err) { setNote((err as Error).message); }
+          }} />
+          <div className="xp" title={`Опыт: задача — 10, привычка — 5, день с записями — 3. Всего ${p.xp}`}>
+            <div className="xp-bar"><span style={{ width: `${Math.round(share * 100)}%` }} /></div>
+            <div className="xp-text"><b>{p.into}</b> / {p.need} до {p.level + 1} ур.</div>
+          </div>
+        </div>
 
         <div className="char-sheet-main">
           <div className="char-sheet-name">{p.name || "Хозяин"}</div>
@@ -116,42 +146,63 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
             </button>
           ) : (
             <form className="inline-edit" onSubmit={(e) => { e.preventDefault(); save({ title: editTitle }); setEditTitle(null); }}>
-              <input autoFocus value={editTitle} maxLength={40} placeholder="Паладин порядка, бард дедлайнов…"
+              <input autoFocus value={editTitle} maxLength={40} placeholder="Паладин порядка, бард дедлайнов…" aria-label="Класс"
                 onChange={(e) => setEditTitle(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setEditTitle(null)} />
               <button className="primary">Сохранить</button>
             </form>
           )}
-          <div className="xp" title="Опыт: задача — 10, привычка — 5, день с записями — 3">
-            <div className="xp-bar"><span style={{ width: `${Math.round(share * 100)}%` }} /></div>
-            <div className="xp-text"><b>{p.into}</b> / {p.need} опыта до {p.level + 1} уровня</div>
-          </div>
-          <div className="char-sheet-counts muted small">
-            Задач сделано: {p.counts.tasks} · привычек отмечено: {p.counts.habits} · дней в дневнике: {p.counts.days}
+
+          <dl className="stat-list">
+            {p.stats.map((s) => (
+              <div key={s.key} className="stat-row" title={s.hint}>
+                <dt>{s.label}</dt>
+                <dd>
+                  {s.key === "height" && editHeight !== null ? (
+                    <form onSubmit={(e) => { e.preventDefault(); save({ height: editHeight ? Number(editHeight) : null }); setEditHeight(null); }}>
+                      <input autoFocus inputMode="numeric" value={editHeight} placeholder="см" aria-label="Рост, см"
+                        onChange={(e) => setEditHeight(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                        onBlur={() => setEditHeight(null)} onKeyDown={(e) => e.key === "Escape" && setEditHeight(null)} />
+                    </form>
+                  ) : s.key === "height" ? (
+                    <button className="link" onClick={() => setEditHeight(p.height ? String(p.height) : "")} title="Указать рост">{s.value}</button>
+                  ) : s.value}
+                </dd>
+              </div>
+            ))}
+            <div className="stat-row" title={`Задач сделано: ${p.counts.tasks}, привычек отмечено: ${p.counts.habits}, дней в дневнике: ${p.counts.days}`}>
+              <dt>Задачи / привычки / дни</dt><dd>{p.counts.tasks} / {p.counts.habits} / {p.counts.days}</dd>
+            </div>
+          </dl>
+
+          <div className="auras">
+            <AuraRow kind="debuff" list={debuffs} onAdd={() => toggleAdd("debuff")} onRemove={(t) => setStatus(t, "removed")} />
+            <AuraRow kind="buff" list={buffs} onAdd={() => toggleAdd("buff")} onRemove={(t) => setStatus(t, "removed")} />
           </div>
         </div>
       </section>
 
       {note && <p className="profile-note">{note}</p>}
 
-      <h3 className="profile-head">Характеристики</h3>
-      <div className="stats-grid">
-        {p.stats.map((s) => (
-          <div key={s.key} className="stat" title={s.hint}>
-            <span className="stat-label">{s.label}</span>
-            {s.key === "height" && editHeight !== null ? (
-              <form onSubmit={(e) => { e.preventDefault(); save({ height: editHeight ? Number(editHeight) : null }); setEditHeight(null); }}>
-                <input autoFocus inputMode="numeric" value={editHeight} placeholder="см" aria-label="Рост, см"
-                  onChange={(e) => setEditHeight(e.target.value.replace(/\D/g, "").slice(0, 3))}
-                  onBlur={() => setEditHeight(null)} onKeyDown={(e) => e.key === "Escape" && setEditHeight(null)} />
-              </form>
-            ) : s.key === "height" ? (
-              <button className="stat-value link" onClick={() => setEditHeight(p.height ? String(p.height) : "")} title="Указать рост">{s.value}</button>
-            ) : (
-              <span className="stat-value">{s.value}</span>
-            )}
-          </div>
-        ))}
-      </div>
+      {adding && (
+        <form className="trait-form" onSubmit={async (e) => {
+          e.preventDefault();
+          if (!form.title.trim()) return;
+          if (await run(() => post<ProfileData>("/api/traits", { ...form, kind: adding }))) {
+            setForm((f) => ({ ...f, title: "", note: "" }));
+            setAdding(null);
+          }
+        }}>
+          <b className={`aura-label ${adding}`}>{adding === "buff" ? "Новый баф" : "Новый дебаф"}</b>
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} aria-label="Вид">
+            {Object.entries(CATS).map(([k, [icon, label]]) => <option key={k} value={k}>{icon} {label}</option>)}
+          </select>
+          <input autoFocus value={form.title} maxLength={60} onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder={adding === "debuff" ? "Аллергия на арахис" : "Прогулка — сон лучше"} aria-label="Название" />
+          <input value={form.note} maxLength={200} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Подробнее (необязательно)" aria-label="Подробнее" />
+          <button className="primary" disabled={!form.title.trim()}>Добавить</button>
+          <button type="button" className="ghost" onClick={() => setAdding(null)}>Отмена</button>
+        </form>
+      )}
 
       {p.suggested.length > 0 && (
         <section className="noticed">
@@ -171,39 +222,6 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
           </ul>
         </section>
       )}
-
-      <div className="traits-cols">
-        <section>
-          <h3 className="profile-head debuff">Дебафы <span className="muted small">{debuffs.length || ""}</span></h3>
-          {debuffs.length ? <ul className="traits">{debuffs.map((t) => <TraitTile key={t.id} t={t} onRemove={() => setStatus(t, "removed")} />)}</ul>
-            : <p className="muted small">Аллергии, непереносимость, что вредит. Горничная предупредит, если спросите о таком.</p>}
-        </section>
-        <section>
-          <h3 className="profile-head buff">Бафы <span className="muted small">{buffs.length || ""}</span></h3>
-          {buffs.length ? <ul className="traits">{buffs.map((t) => <TraitTile key={t.id} t={t} onRemove={() => setStatus(t, "removed")} />)}</ul>
-            : <p className="muted small">Что помогает: «после прогулки лучше сплю», «кофе бодрит».</p>}
-        </section>
-      </div>
-
-      <form className="trait-form" onSubmit={(e) => {
-        e.preventDefault();
-        if (!form.title.trim()) return;
-        run(() => post<ProfileData>("/api/traits", form)).then(() => setForm((f) => ({ ...f, title: "", note: "" })));
-      }}>
-        <div className="seg" role="radiogroup" aria-label="Что добавить">
-          <button type="button" role="radio" aria-checked={form.kind === "debuff"} className={form.kind === "debuff" ? "on debuff" : ""}
-            onClick={() => setForm({ ...form, kind: "debuff" })}>Дебаф</button>
-          <button type="button" role="radio" aria-checked={form.kind === "buff"} className={form.kind === "buff" ? "on buff" : ""}
-            onClick={() => setForm({ ...form, kind: "buff" })}>Баф</button>
-        </div>
-        <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} aria-label="Вид">
-          {Object.entries(CATS).map(([k, [icon, label]]) => <option key={k} value={k}>{icon} {label}</option>)}
-        </select>
-        <input value={form.title} maxLength={60} onChange={(e) => setForm({ ...form, title: e.target.value })}
-          placeholder={form.kind === "debuff" ? "Аллергия на арахис" : "Прогулка — сон лучше"} aria-label="Название" />
-        <input value={form.note} maxLength={200} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Подробнее (необязательно)" aria-label="Подробнее" />
-        <button className="primary" disabled={!form.title.trim()}>Добавить</button>
-      </form>
     </div>
   );
 }
