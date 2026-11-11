@@ -1662,6 +1662,8 @@ function renderMini(open, todo, left, done, habits = []) {
 function setCollapsed(on) {
   collapsed = on;
   hideClock(); // свёрнутый вид — без панели планов; разворот — выдвижная панель уходит, а не превращается в обычную
+  // История чата закрывается со сворачиванием: развернули — снова список задач, а не старая история.
+  if (on && !$("#chatHist").classList.contains("hidden")) toggleHistory(false);
   $("#w").classList.toggle("hidden", on);
   $("#stage").classList.toggle("folded", on);
   // Строка чата спряталась вместе с панелью — фокус из неё убрать сразу. Иначе он оставался в невидимой строке, и первый же щелчок
