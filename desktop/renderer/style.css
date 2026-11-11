@@ -334,7 +334,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .next .nx:not(.ahead) + .nx.ahead { margin-top: 6px; padding-top: 6px; border-top-color: rgba(183, 156, 255, .3); }
 .w h4 { margin: 8px 0 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .w .list { gap: 3px; font-size: 13px; }
-.w .scroll { flex: 1; overflow: auto; min-height: 0; }
+.w .scroll { flex: 1; overflow: auto; min-height: 0; padding-right: 6px; } /* отступ — чтобы полоса прокрутки не лезла на сроки задач */
 /* Уголок для вытягивания панели вниз (окно растёт в main.js, высота панели следует за окном). */
 .w .grip { position: absolute; right: 2px; bottom: 2px; width: 11px; height: 11px; cursor: ns-resize; z-index: 3; opacity: .35; transition: opacity .15s ease;
   background: linear-gradient(135deg, transparent 0 46%, var(--muted) 46% 54%, transparent 54% 66%, var(--muted) 66% 74%, transparent 74% 86%, var(--muted) 86% 94%, transparent 94%); -webkit-app-region: no-drag; }
@@ -1014,7 +1014,7 @@ body.quick { background: transparent; }
 
 /* Полосы прокрутки в виджете: тонкая скруглённая сиреневая полоска без стрелок, едва заметна, ярче при наведении.
    (scrollbar-width / scrollbar-color не ставить — в новом Chromium они отключают эти правила.) */
-body.widget ::-webkit-scrollbar { width: 6px; height: 6px; }
+body.widget ::-webkit-scrollbar { width: 4px; height: 4px; }
 body.widget ::-webkit-scrollbar-track, body.widget ::-webkit-scrollbar-corner { background: transparent; }
 body.widget ::-webkit-scrollbar-track { margin: 6px 0; }
 body.widget ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
