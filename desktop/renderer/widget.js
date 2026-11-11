@@ -7,7 +7,6 @@ let grabbed = false;
 let collapsed = false;
 let lastNotice = 0;
 let state = "idle"; // idle | think | sleep
-let bubbleTimer = 0;
 // Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
 // Циферблат планов (Часы 12/24) пока выключен: код в clock.js остаётся, в настройках его нет, сохранённый выбор показывается списком.
 const CLOCK_DIAL = false;
@@ -398,7 +397,8 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       + `<button class="prop-no" data-p="decline" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">Не надо</span></button>`
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
     : buttons.map((x, i) => (x.auto ? `<button class="auto" data-i="${i}" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">${esc(x.text)}</span></button>` : `<button data-i="${i}">${esc(x.text)}</button>`)).join("")
-      + (undo ? `<button data-i="undo">↩ Отменить</button>` : "") + `<button class="ghost" data-i="close">✕</button>`;
+      + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
+      + `<button class="ghost life" data-i="close" title="Закрыть"><svg class="life-ring" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg><span class="lbl">✕</span></button>`;
   // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
   b.dataset.notice = notice ?? "";
   $("#inbox").classList.add("away"); // пока говорит — значок не мешает облачку
@@ -469,11 +469,11 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   }
   if (sound) play(sound);
   if (changes.some((c) => c.kind === "event")) farPlanSoon(changes);
-  clearTimeout(bubbleTimer);
+  stopLife();
   // Вопрос «добавить?» облачко закрывает сам (полоса на «Не надо»).
   if (proposal) ms = 0;
-  // Длинный текст висит дольше (время на чтение), а под курсором не пропадает вовсе — см. hideBubbleWhenFree.
-  if (ms) bubbleTimer = setTimeout(hideBubbleWhenFree, ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55));
+  // Длинный текст висит дольше (время на чтение), а под курсором не пропадает вовсе — см. startLife.
+  if (ms) startLife(ms + changes.length * 900 + Math.min(60000, Math.max(0, plain.length - 120) * 55));
 }
 
 // --- вопрос «добавить?» (привычки из рассказа о распорядке, задачи из «надо бы…») ---
@@ -572,12 +572,37 @@ function startAuto(btn, wait) {
   run.raf = requestAnimationFrame(tick);
 }
 
-// Облачко ждёт, пока курсор на нём, и ещё немного после того, как его увели.
-let bubbleLeftAt = 0;
-$("#bubble").addEventListener("mouseleave", () => (bubbleLeftAt = Date.now()));
-function hideBubbleWhenFree() {
-  if ($("#bubble").matches(":hover") || Date.now() - bubbleLeftAt < 2500) return (bubbleTimer = setTimeout(hideBubbleWhenFree, 400));
-  hideBubble();
+// Время жизни облачка видно: кольцо вокруг ✕ тает к нулю, последние LIFE_FADE мс облачко бледнеет и чуть уменьшается.
+// Пока курсор на облачке — время стоит (кольцо замирает и становится ярче), увели — ещё не меньше LIFE_GRACE мс.
+// Облачко под свёрнутой панелью (hidden) тоже ждёт.
+const LIFE_GRACE = 2500;
+const LIFE_FADE = 2500;
+const LIFE_RING = 2 * Math.PI * 10; // длина кольца (r = 10 в viewBox 24)
+let life = null;
+function stopLife() {
+  if (life) cancelAnimationFrame(life.raf);
+  life = null;
+  $("#bubble").classList.remove("timed", "held", "fading");
+}
+function startLife(total) {
+  const b = $("#bubble");
+  const ring = b.querySelector(".life-ring circle");
+  const run = (life = { left: total, last: performance.now(), raf: 0 });
+  b.classList.add("timed");
+  const tick = (t) => {
+    if (life !== run) return;
+    const dt = t - run.last;
+    run.last = t;
+    const held = b.matches(":hover");
+    if (held) run.left = Math.max(run.left, LIFE_GRACE);
+    else if (!b.classList.contains("hidden")) run.left -= dt;
+    b.classList.toggle("held", held);
+    b.classList.toggle("fading", !held && run.left < LIFE_FADE);
+    if (ring) ring.style.strokeDashoffset = String(LIFE_RING * (1 - Math.max(0, run.left) / total));
+    if (run.left <= 0) return void hideBubble();
+    run.raf = requestAnimationFrame(tick);
+  };
+  run.raf = requestAnimationFrame(tick);
 }
 
 // --- чат с горничной ---
@@ -945,6 +970,7 @@ chatInput.addEventListener("keydown", (e) => {
   }
 });
 function hideBubble() {
+  stopLife();
   stopProposal();
   stopAuto();
   $("#bubble").classList.add("hidden");
