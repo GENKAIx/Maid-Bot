@@ -578,14 +578,47 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .done-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .done-modes .dm { display: grid; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 12.5px; color: var(--muted); text-align: center; }
 .done-modes .dm.on { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 3px var(--accent-soft); font-weight: 600; }
-.dm-mini { display: grid; gap: 4px; padding: 7px 8px; border-radius: 7px; background: var(--panel-2); text-align: left; font-size: 11.5px; font-weight: 400; color: var(--text); overflow: hidden; height: 66px; align-content: start; }
-.dm-mini b { font-size: 11px; font-weight: 600; color: var(--muted); }
-.dm-mini em { font-style: normal; padding: 0 5px; border-radius: 6px; border: 1px solid var(--line); }
+/* Превью — маленькая копия виджета: всегда тёмная, как сама панель на рабочем столе (--wa — акцент, --wd — цвет галочек). */
+.done-modes.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.done-modes.cols-5 { grid-template-columns: repeat(5, 1fr); }
+.dm-mini { --wa: #b79cff; --wd: #4fd09a; display: grid; gap: 4px; padding: 7px 8px; border-radius: 7px; background: #1d1830; border: 1px solid rgba(255, 255, 255, .08);
+  text-align: left; font-size: 11.5px; font-weight: 400; color: #f1eef8; overflow: hidden; height: 76px; align-content: start; }
+.dm-mini b { font-size: 11px; font-weight: 600; color: #a8a1bd; }
+.dm-mini em { font-style: normal; padding: 0 5px; border-radius: 6px; border: 1px solid #3d3553; }
 .dm-mini p { position: relative; margin: 0; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
-.dm-mini i { flex: none; width: 11px; height: 11px; border: 1px solid var(--muted); border-radius: 3px; font-style: normal; font-size: 8px; display: grid; place-items: center; line-height: 1; }
+.dm-mini i { flex: none; width: 11px; height: 11px; border: 1px solid #a8a1bd; border-radius: 3px; font-style: normal; font-size: 8px; display: grid; place-items: center; line-height: 1; }
 .dm-mini .did { opacity: .5; }
-.dm-mini .did i, .dm-mini .go i { background: var(--green); border-color: var(--green); color: #fff; }
-.dm-mini .go::after { content: ""; position: absolute; inset: -1px -3px; border-radius: 4px; background: color-mix(in srgb, var(--green) 25%, transparent); transform-origin: left; animation: dmFill 3.6s linear infinite; }
+.dm-mini .did i, .dm-mini .go i { background: var(--wd); border-color: var(--wd); color: #1d1830; }
+/* ближайшие планы: время акцентом, планы других дней бледнее */
+.dm-mini .nx em { border: 0; padding: 0; color: var(--wa); font-weight: 650; }
+.dm-mini .nx.ahead { opacity: .6; }
+.dm-mini .wm-due { margin-left: auto; padding: 0 5px; border-radius: 6px; background: rgba(255, 255, 255, .08); color: #a8a1bd; font-size: 10px; }
+/* цвет */
+.wm-acc { display: grid; gap: 4px; }
+.wm-acc em { color: var(--wa); border-color: var(--wa); }
+.acc-violet { --wa: #b79cff; --wd: #4fd09a; } .acc-blue { --wa: #8ab8ff; --wd: #5ec8f0; } .acc-green { --wa: #7fd9a8; --wd: #4fd09a; }
+.acc-pink { --wa: #ff9cc8; --wd: #ff7eb3; } .acc-amber { --wa: #ffc46b; --wd: #f2b84b; }
+.wm-next { display: grid; gap: 2px; font-size: 10px; }
+/* размер текста */
+.wm-ts { display: grid; gap: 3px; }
+.wm-ts.ts-s { zoom: .9; } .wm-ts.ts-l { zoom: 1.15; }
+/* сколько задач — строки мельче, чтобы влезли все */
+.wm-count { display: grid; gap: 1px; font-size: 6.5px; line-height: 1.05; }
+.wm-count i { width: 6px; height: 6px; border-radius: 2px; }
+/* горничная над панелью */
+.wm-stage { position: relative; height: 76px; margin: -7px -8px; }
+.wm-panel { position: absolute; left: 6px; right: 6px; bottom: 5px; height: 24px; padding: 3px 6px; border-radius: 6px; background: #262038; border: 1px solid rgba(255, 255, 255, .1); font-size: 9px; }
+.wm-panel b { color: #f1eef8; font-size: 9px; margin-right: 6px; }
+.wm-panel p { display: inline-flex; font-size: 9px; }
+.wm-panel i { width: 8px; height: 8px; }
+.wm-maid { position: absolute; bottom: 22px; height: 46px; z-index: 0; clip-path: inset(0 0 4px 0); }
+.wm-maid.size-s { height: 36px; } .wm-maid.size-l { height: 56px; }
+.wm-stage.side-right .wm-maid { right: 8px; } .wm-stage.side-left .wm-maid { left: 8px; }
+.wm-panel { z-index: 1; }
+.wm-plans { position: absolute; top: 8px; display: grid; gap: 2px; padding: 3px 5px; border-radius: 5px; background: rgba(38, 32, 56, .9); font-size: 8.5px; }
+.wm-plans em { border: 0; padding: 0; color: var(--wa); font-weight: 650; }
+.wm-stage.side-right .wm-plans { right: 46px; } .wm-stage.side-left .wm-plans { left: 46px; }
+.dm-mini .go::after { content: ""; position: absolute; inset: -1px -3px; border-radius: 4px; background: color-mix(in srgb, var(--wd) 25%, transparent); transform-origin: left; animation: dmFill 3.6s linear infinite; }
 .dm-mini .go { animation: dmFly 3.6s cubic-bezier(.5, 0, .9, .4) infinite; }
 .dm-mini .go > * { position: relative; z-index: 1; }
 @keyframes dmFill { 0% { transform: scaleX(0); } 62%, 100% { transform: scaleX(1); } }

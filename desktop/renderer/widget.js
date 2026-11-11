@@ -12,7 +12,6 @@ let bubbleTimer = 0;
 // Циферблат планов (Часы 12/24) пока выключен: код в clock.js остаётся, в настройках его нет, сохранённый выбор показывается списком.
 const CLOCK_DIAL = false;
 const dialOff = (v) => (!CLOCK_DIAL && (v === "12" || v === "24") ? "list" : v);
-const NEXT_MAX = 3; // сколько ближайших планов в строке над задачами
 // Настройка «Дальние задачи» (cfg.laterTasks): «hide» — скрывать до срока (по умолчанию), «show» — все задачи в списке.
 // Задача со сроком дальше TASK_WAKE дней «спит»: в списке её нет совсем, она стоит только на своём дне в панели планов.
 // За TASK_WAKE дней до срока она просыпается: всплывает в списке с золотым бликом и «⏰ через 7 дней», горничная напоминает.
@@ -54,8 +53,11 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim" };
 const MAID_W = { s: 160, m: 196, l: 236 };
+// Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
+const ACCENTS = { violet: ["#b79cff", "#4fd09a"], blue: ["#8ab8ff", "#5ec8f0"], green: ["#7fd9a8", "#4fd09a"], pink: ["#ff9cc8", "#ff7eb3"], amber: ["#ffc46b", "#f2b84b"] };
+const TEXT_ZOOM = { s: 0.9, m: 1, l: 1.12 }; // «Размер текста» — список планов и задач
 
 
 // --- звуки ---
@@ -995,11 +997,11 @@ function render() {
   }
   $("#day").textContent = humanDay(data.day);
   $("#miniClock").title = miniDay(data.day);
-  // Ближайшие планы, до NEXT_MAX строк: сначала сегодняшние (не начавшиеся больше 30 мин назад), не хватает — из следующих дней,
+  // Ближайшие планы, до cfg.nextCount строк: сначала сегодняшние (не начавшиеся больше 30 мин назад), не хватает — из следующих дней,
   // не дальше недели вперёд (поэтому дня недели хватает: «Завтра», «Послезавтра», «Сб»).
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
   const week = data.upcoming.filter((e) => daysFrom(data.day, e.date_iso) <= 6);
-  const nexts = [...today, ...week].slice(0, NEXT_MAX);
+  const nexts = [...today, ...week].slice(0, cfg.nextCount);
   $("#next").dataset.day = nexts[0]?.date_iso ?? "";
   $("#next").innerHTML = nexts.length
     ? nexts.map((e) => {
@@ -1042,8 +1044,8 @@ function render() {
   const tasks = [...awake].sort((a, b) => overdue(b) - overdue(a) || (overdue(a) ? a.due_date.localeCompare(b.due_date) : 0)
     || wokeFresh(b) - wokeFresh(a) || Boolean(b.due_date) - Boolean(a.due_date)
     || (a.due_date && b.due_date ? a.due_date.localeCompare(b.due_date) : 0) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
-  // Вытянутая панель (уголок справа внизу) показывает больше задач: +1 на каждые 26 px прибавки к высоте.
-  const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, 6 + Math.floor(Math.max(0, innerHeight - 760) / 26));
+  // Сколько задач — настройка «Сколько задач» (cfg.taskCount); вытянутая панель (уголок справа внизу) показывает больше: +1 на каждые 26 px прибавки к высоте.
+  const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, cfg.taskCount + Math.floor(Math.max(0, innerHeight - 760) / 26));
   shownTaskIds = new Set(sec.tasks ? shownTasks.map((t) => t.id) : []);
   const todo = daily.filter((h) => !h.status);
   const hiding = cfg.doneTasks === "hide";
@@ -1064,7 +1066,8 @@ function render() {
     }),
     // Сделанное: в режиме «прятать» — только пока открыт счётчик.
     ...(hiding && !showingDone() ? [] : [
-      ...daily.filter((h) => h.status).map(dayItem),
+      // Отмеченные сегодня привычки: «бледным внизу» или не показывать (cfg.doneHabits).
+      ...(cfg.doneHabits === "hide" ? [] : daily.filter((h) => h.status).map(dayItem)),
       ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done" data-reopen="${t.id}" title="Снять галочку"><i>✓</i><b>↶</b></span><span>${esc(t.title)}</span></li>`),
     ]),
   ];
@@ -1640,11 +1643,15 @@ function applyCfg() {
   st.style.setProperty("--peek", `${Math.round(w * 0.13)}px`);
   $("#w").style.opacity = $("#mini").style.opacity = String(cfg.opacity);
   $("#next").classList.toggle("hidden", !cfg.sections.next);
+  const [accent, done] = ACCENTS[cfg.accent] ?? ACCENTS.violet;
+  st.style.setProperty("--accent", accent);
+  st.style.setProperty("--accent-2", done);
+  for (const id of ["#pins", "#next", "#body"]) $(id).style.zoom = String(TEXT_ZOOM[cfg.textSize] ?? 1);
 }
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute) }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: [4, 6, 10].includes(w.taskCount) ? w.taskCount : 6, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   // «Звуки выключены» раньше жили в localStorage виджета — переносим в настройки один раз.
   if (w.mute === undefined && localStorage.getItem("maid.mute")) {
     cfg.mute = true;

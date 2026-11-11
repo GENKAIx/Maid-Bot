@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Card, Empty, Spinner } from "../components";
 
 // Виджет на рабочем столе: что на панели, горничная, задачи, сроки самонажатия кнопок. Настройки живут в программе на ПК
@@ -9,7 +9,9 @@ export interface WidgetPrefs {
   sections?: { next?: boolean; habits?: boolean; tasks?: boolean; soon?: boolean };
   plans?: "list" | "off"; dateLead?: "0" | "1" | "3" | "7"; doneTasks?: "keep" | "hide"; laterTasks?: "hide" | "show";
   proposalWait?: number; clashWait?: number; mute?: boolean;
+  accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: 4 | 6 | 10; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
 }
+type Accent = "violet" | "blue" | "green" | "pink" | "amber";
 interface Bridge {
   widget(): Promise<WidgetPrefs | null>;
   saveWidget(patch: WidgetPrefs): Promise<WidgetPrefs | null>;
@@ -24,7 +26,9 @@ export const desktop = () => window.maidDesktop;
 const DEFAULTS: Required<WidgetPrefs> = {
   show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true },
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false,
+  accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim",
 };
+const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
 const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"], ["soon", "Скоро"]];
 
 function Segment<T extends string | number>({ value, options, onPick, label }: { value: T; options: [T, string][]; onPick: (v: T) => void; label: string }) {
@@ -33,6 +37,34 @@ function Segment<T extends string | number>({ value, options, onPick, label }: {
       {options.map(([v, name]) => (
         <button key={String(v)} role="radio" aria-checked={value === v} className={value === v ? "on" : ""} onClick={() => onPick(v)}>{name}</button>
       ))}
+    </div>
+  );
+}
+
+/** Выбор карточками: у каждого варианта — маленькая копия того, как это выглядит в виджете. */
+function Cards<T extends string | number>({ value, options, onPick, label }: { value: T; options: [T, string, ReactNode][]; onPick: (v: T) => void; label: string }) {
+  return (
+    <div className={`done-modes cols-${options.length}`} role="radiogroup" aria-label={label}>
+      {options.map(([v, name, pic]) => (
+        <button key={String(v)} role="radio" aria-checked={value === v} className={`dm${value === v ? " on" : ""}`} onClick={() => onPick(v)}>
+          <div className="dm-mini">{pic}</div>
+          <span>{name}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+const Row = ({ t, did }: { t: string; did?: boolean }) => (did ? <p className="did"><i>✓</i><s>{t}</s></p> : <p><i></i>{t}</p>);
+const TASKS = ["Купить хлеб", "Позвонить маме", "Оплатить свет", "Полить цветы", "Разобрать почту", "Записаться к врачу", "Купить лампочку", "Вынести мусор", "Почистить кофеварку", "Ответить Лёше"];
+const PLANS: [string, string][] = [["10:00", "Врач"], ["14:30", "Созвон"], ["Завтра", "Спорт"], ["Сб", "Дача"], ["Вс", "Кино"]];
+
+/** Горничная над панелью: где стоит и какого размера. */
+function Perch({ side, size = "m", plans }: { side: "left" | "right" | "none"; size?: "s" | "m" | "l"; plans?: boolean }) {
+  return (
+    <div className={`wm-stage side-${side}`}>
+      {plans && <div className="wm-plans"><p><em>10:00</em> Врач</p><p><em>14:30</em> Созвон</p></div>}
+      {side !== "none" && <img className={`wm-maid size-${size}`} src="/maid/idle.webp" alt="" />}
+      <div className="wm-panel"><b>12:40</b><p><i></i>Купить хлеб</p></div>
     </div>
   );
 }
@@ -80,8 +112,14 @@ export function Widget() {
 
         <Card title="Горничная" className="reveal">
           <div className="form">
-            <label>Где стоит<Segment label="Где стоит" value={p.side} onPick={(side) => save({ side })} options={[["left", "Слева"], ["right", "Справа"], ["none", "Скрыть"]]} /></label>
-            <label>Размер<Segment label="Размер" value={p.size} onPick={(size) => save({ size })} options={[["s", "Меньше"], ["m", "Обычная"], ["l", "Больше"]]} /></label>
+            <label>Где стоит</label>
+            <Cards label="Где стоит" value={p.side} onPick={(side) => save({ side })}
+              options={(["left", "right", "none"] as const).map((v) => [v, { left: "Слева", right: "Справа", none: "Скрыть" }[v], <Perch side={v} size={p.size} />])} />
+            {p.side !== "none" && <>
+              <label>Размер</label>
+              <Cards label="Размер" value={p.size} onPick={(size) => save({ size })}
+                options={(["s", "m", "l"] as const).map((v) => [v, { s: "Меньше", m: "Обычная", l: "Больше" }[v], <Perch side={p.side} size={v} />])} />
+            </>}
             <label>Звуки<Segment label="Звуки" value={p.mute ? "off" : "on"} onPick={(v) => save({ mute: v === "off" })} options={[["on", "Включены"], ["off", "Выключены"]]} /></label>
           </div>
         </Card>
@@ -93,13 +131,38 @@ export function Widget() {
                 <label key={k} className="row"><input type="checkbox" checked={p.sections[k] !== false} onChange={(e) => save({ sections: { [k]: e.target.checked } })} /> {name}</label>
               ))}
             </div>
-            <label>Планы дня<Segment label="Планы дня" value={p.plans} onPick={(plans) => save({ plans })} options={[["list", "Список"], ["off", "Нет"]]} /></label>
+            <label>Ближайшие планы — сколько строк над задачами</label>
+            <Cards label="Ближайшие планы" value={p.nextCount} onPick={(nextCount) => save({ nextCount })}
+              options={([1, 3, 5] as const).map((n) => [n, `${n} ${n === 1 ? "строка" : n === 3 ? "строки" : "строк"}`,
+                <div className="wm-next">{PLANS.slice(0, n).map(([when, what], i) => <p key={what} className={`nx${i > 1 ? " ahead" : ""}`}><em>{when}</em>· {what}</p>)}</div>])} />
+            <label>Планы дня рядом с горничной</label>
+            <Cards label="Планы дня" value={p.plans} onPick={(plans) => save({ plans })} options={[
+              ["list", "Список", <Perch side={p.side === "none" ? "right" : p.side} size="s" plans />],
+              ["off", "Нет", <Perch side={p.side === "none" ? "right" : p.side} size="s" />],
+            ]} />
             <label>Важные даты — показывать заранее<Segment label="Важные даты" value={p.dateLead} onPick={(dateLead) => save({ dateLead })} options={[["0", "В тот день"], ["1", "1 день"], ["3", "3 дня"], ["7", "Неделю"]]} /></label>
+          </div>
+        </Card>
+
+        <Card title="Вид панели" className="reveal">
+          <div className="form">
+            <label>Цвет</label>
+            <Cards label="Цвет" value={p.accent} onPick={(accent) => save({ accent })}
+              options={ACCENTS.map(([v, name]) => [v, name,
+                <div className={`wm-acc acc-${v}`}><b><em>1/3</em></b><Row t="Хлеб" /><Row t="Вода" did /></div>])} />
+            <label>Размер текста</label>
+            <Cards label="Размер текста" value={p.textSize} onPick={(textSize) => save({ textSize })}
+              options={(["s", "m", "l"] as const).map((v) => [v, { s: "Мельче", m: "Обычный", l: "Крупнее" }[v],
+                <div className={`wm-ts ts-${v}`}><p className="nx"><em>14:30</em>· Созвон</p><Row t="Купить хлеб" /><Row t="Оплатить свет" /></div>])} />
           </div>
         </Card>
 
         <Card title="Задачи" className="reveal">
           <div className="form">
+            <label>Сколько задач видно (панель, вытянутая вниз, покажет больше)</label>
+            <Cards label="Сколько задач" value={p.taskCount} onPick={(taskCount) => save({ taskCount })}
+              options={([4, 6, 10] as const).map((n) => [n, `${n} задач${n === 4 ? "и" : ""}`,
+                <div className="wm-count">{TASKS.slice(0, n).map((t) => <Row key={t} t={t} />)}</div>])} />
             <label>Сделанные задачи</label>
             <div className="done-modes" role="radiogroup" aria-label="Сделанные задачи">
               <button role="radio" aria-checked={p.doneTasks === "keep"} className={`dm${p.doneTasks === "keep" ? " on" : ""}`} onClick={() => save({ doneTasks: "keep" })}>
@@ -111,7 +174,17 @@ export function Widget() {
                 <span>Улетают, счётчик сделанного</span>
               </button>
             </div>
-            <label>Дальние задачи (срок дальше недели)<Segment label="Дальние задачи" value={p.laterTasks} onPick={(laterTasks) => save({ laterTasks })} options={[["hide", "Скрывать до срока"], ["show", "Показывать все"]]} /></label>
+            <label>Дальние задачи (срок дальше недели)</label>
+            <Cards label="Дальние задачи" value={p.laterTasks} onPick={(laterTasks) => save({ laterTasks })} options={[
+              ["hide", "Скрывать до срока", <><b>Задачи</b><Row t="Купить хлеб" /><Row t="Оплатить свет" /></>],
+              ["show", "Показывать все", <><b>Задачи</b><Row t="Купить хлеб" /><Row t="Оплатить свет" /><p><i></i>Сдать отчёт<span className="wm-due">20 нояб</span></p></>],
+            ]} />
+            <label>Отмеченные сегодня привычки</label>
+            <Cards label="Отмеченные привычки" value={p.doneHabits} onPick={(doneHabits) => save({ doneHabits })} options={[
+              ["dim", "Внизу бледным", <><b>Задачи</b><Row t="Зарядка" /><Row t="Купить хлеб" /><Row t="Пить воду" did /></>],
+              ["hide", "Не показывать", <><b>Задачи</b><Row t="Зарядка" /><Row t="Купить хлеб" /></>],
+            ]} />
+            {p.doneHabits === "hide" && <p className="muted small">Снять ошибочную отметку можно на сайте: «Сегодня» → «Каждый день».</p>}
           </div>
         </Card>
 

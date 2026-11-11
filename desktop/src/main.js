@@ -641,6 +641,11 @@ const WIDGET_PREFS = {
   proposalWait: secsOk,
   clashWait: secsOk,
   mute: (v) => typeof v === "boolean",
+  accent: oneOf("violet", "blue", "green", "pink", "amber"),
+  textSize: oneOf("s", "m", "l"),
+  taskCount: oneOf(4, 6, 10),
+  nextCount: oneOf(1, 3, 5),
+  doneHabits: oneOf("dim", "hide"),
   sections: (v) => v && typeof v === "object" && Object.entries(v).every(([k, x]) => ["next", "habits", "tasks", "soon"].includes(k) && typeof x === "boolean"),
 };
 const widgetPrefs = () => Object.fromEntries(Object.keys(WIDGET_PREFS).filter((k) => k in settings.widget).map((k) => [k, settings.widget[k]]));
