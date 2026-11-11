@@ -184,7 +184,7 @@ export async function diaryDigest(store: Store, u: User, from: string, to: strin
     l.push(...activityLines([a]).map((s) => s.replace(/<[^>]+>/g, "")));
     days.set(a.day_key, l);
   }
-  for (const e of (await store.allEvents(u.id)).filter((e) => e.date_iso >= from && e.date_iso <= to)) {
+  for (const e of (await store.allEvents(u.id)).filter((e) => e.date_iso >= from && e.date_iso <= to && e.status !== "purged")) {
     const l = days.get(e.date_iso) ?? [];
     l.push(`План: ${e.time ?? "весь день"} ${e.title} (${e.status})`);
     days.set(e.date_iso, l);
