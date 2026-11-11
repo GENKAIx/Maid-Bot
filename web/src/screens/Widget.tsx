@@ -10,12 +10,19 @@ export interface WidgetPrefs {
   plans?: "list" | "off"; dateLead?: "0" | "1" | "3" | "7"; doneTasks?: "keep" | "hide"; laterTasks?: "hide" | "show";
   proposalWait?: number; clashWait?: number; mute?: boolean; typing?: "sound" | "quiet" | "off"; typeSpeed?: "slow" | "normal" | "fast";
   accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: 4 | 6 | 10; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
+  napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; bedtime?: Bedtime; morning?: 6 | 7 | 8 | 9; napRecap?: boolean; napFold?: boolean;
 }
+type Bedtime = "auto" | "22:00" | "23:00" | "00:00" | "01:00";
+/** Общее программы на ПК (раньше — только в меню значка у часов). */
+export interface General { autostart: boolean; canAutostart: boolean; keys: { quick: string; grab: string }; error?: string }
 type Accent = "violet" | "blue" | "green" | "pink" | "amber";
 interface Bridge {
   widget(): Promise<WidgetPrefs | null>;
   saveWidget(patch: WidgetPrefs): Promise<WidgetPrefs | null>;
   resetWidget(): Promise<void>;
+  // В старых версиях программы этого нет — тогда раздела «Программа» на странице нет.
+  general?(): Promise<General | null>;
+  saveGeneral?(patch: { autostart?: boolean; keys?: Partial<General["keys"]> }): Promise<General | null>;
 }
 declare global {
   interface Window { maidDesktop?: Bridge }
@@ -27,6 +34,7 @@ const DEFAULTS: Required<WidgetPrefs> = {
   show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true },
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
   accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim",
+  napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true,
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
 const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"], ["soon", "Скоро"]];
@@ -52,6 +60,44 @@ function Setting({ title, hint, side, children }: { title: string; hint?: string
 }
 function Toggle({ on, set, label }: { on: boolean; set: (on: boolean) => void; label: string }) {
   return <button role="switch" aria-checked={on} aria-label={label} className={`wp-toggle${on ? " on" : ""}`} onClick={() => set(!on)}><i /></button>;
+}
+
+/** Сочетание клавиш Electron («Control+Alt+Space») — по-человечески: «Ctrl + Alt + Пробел». */
+const KEY_NAMES: Record<string, string> = { Control: "Ctrl", Super: "Win", Space: "Пробел", Up: "↑", Down: "↓", Left: "←", Right: "→", Delete: "Del", Backspace: "⌫" };
+const keyLabel = (k: string) => k.split("+").map((x) => KEY_NAMES[x] ?? x).join(" + ");
+/** Нажатие → строка Electron; одни модификаторы — null (ждём основную клавишу). */
+function keyOf(e: KeyboardEvent): string | null {
+  const c = e.code;
+  const main = /^Key[A-Z]$/.test(c) ? c.slice(3) : /^Digit\d$/.test(c) ? c.slice(5) : /^F\d{1,2}$/.test(c) ? c
+    : ({ Space: "Space", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Home: "Home", End: "End", PageUp: "PageUp",
+      PageDown: "PageDown", Insert: "Insert", Delete: "Delete", Backspace: "Backspace", Tab: "Tab", Enter: "Enter" } as Record<string, string>)[c];
+  if (!main) return null;
+  return [e.ctrlKey && "Control", e.altKey && "Alt", e.shiftKey && "Shift", e.metaKey && "Super", main].filter(Boolean).join("+");
+}
+/** Кнопка с сочетанием: щёлкнули — ждёт нажатия, Esc — отмена. */
+function KeyPicker({ value, onPick, label }: { value: string; onPick: (key: string) => void; label: string }) {
+  const [wait, setWait] = useState(false);
+  useEffect(() => {
+    if (!wait) return;
+    const down = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Escape" && !e.ctrlKey && !e.altKey && !e.shiftKey) return setWait(false);
+      const k = keyOf(e);
+      if (!k) return;
+      setWait(false);
+      if (k !== value) onPick(k);
+    };
+    const off = () => setWait(false);
+    addEventListener("keydown", down, true);
+    addEventListener("blur", off);
+    return () => { removeEventListener("keydown", down, true); removeEventListener("blur", off); };
+  }, [wait, value, onPick]);
+  return (
+    <button className={`wp-key${wait ? " wait" : ""}`} aria-label={`${label}: ${keyLabel(value)}. Изменить`} onClick={() => setWait((w) => !w)} onBlur={() => setWait(false)}>
+      {wait ? "Нажмите сочетание… (Esc — отмена)" : value.split("+").map((x, i) => <kbd key={i}>{KEY_NAMES[x] ?? x}</kbd>)}
+    </button>
+  );
 }
 
 /** Выбор карточками: у каждого варианта — маленькая копия того, как это выглядит в виджете. */
@@ -232,6 +278,7 @@ export function Widget() {
   const [msg, setMsg] = useState("");
   const [ping, setPing] = useState(0); // выбрали что-то про облачко — показать его ещё раз со звуком
   const [ask, setAsk] = useState<"add" | "clash">("add"); // какой пример самонажатия показать
+  const [gen, setGen] = useState<General | null>(null);
 
   useEffect(() => {
     if (!bridge) return;
@@ -240,6 +287,7 @@ export function Widget() {
       setP(all);
       setOpacity(all.opacity);
     });
+    void bridge.general?.().then(setGen).catch(() => null);
   }, [bridge]);
 
   if (!bridge) return <Empty>Виджет — это программа «Горничная» на компьютере. Его настройки — в ней: раздел «Виджет» слева.</Empty>;
@@ -249,6 +297,12 @@ export function Widget() {
     setP((x) => ({ ...x!, ...patch, sections: { ...x!.sections, ...patch.sections } }));
     const r = await bridge!.saveWidget(patch).catch(() => null);
     if (!r) setMsg("Не сохранилось: перезапустите программу «Горничная».");
+  }
+  async function saveGen(patch: { autostart?: boolean; keys?: Partial<General["keys"]> }) {
+    const r = await bridge!.saveGeneral?.(patch).catch(() => null);
+    if (!r) return setMsg("Не сохранилось: перезапустите программу «Горничная».");
+    setGen(r);
+    setMsg(r.error ?? "");
   }
 
   return (
@@ -371,6 +425,34 @@ export function Widget() {
           <Setting title="План на занятое время" hint="Сама жмёт «Оставить» через"
             side={<Segment label="«Оставить» через" value={p.clashWait} onPick={(clashWait) => { void save({ clashWait }); setAsk("clash"); setPing((n) => n + 1); }} options={[[5, "5 с"], [10, "10 с"], [20, "20 с"], [30, "30 с"]]} />} />
         </section>
+
+        <section className="wp-sec reveal">
+          <h3>Сон</h3>
+          <Setting title="Засыпает, если вас нет" hint={p.napAfter ? "Компьютер не трогали — дремлет и молчит, уведомления копит в ящике" : "Не спит, даже если вы ушли"}
+            side={<Segment label="Засыпает через" value={p.napAfter} onPick={(napAfter) => save({ napAfter })} options={[[5, "5 мин"], [15, "15 мин"], [30, "30 мин"], [60, "Час"], [0, "Не засыпать"]]} />} />
+          {p.napAfter !== 0 && <>
+            <Setting title="Ночью засыпает быстрее" hint="После отбоя — уже через 3 минуты"
+              side={<Toggle label="Ночью засыпает быстрее" on={p.napNight} set={(napNight) => save({ napNight })} />} />
+            <Setting title="Отбой" hint={p.bedtime === "auto" ? "Узнаёт сама: когда вечером вы надолго уходите от компьютера" : "С этого часа — ночь: не суетится, без чая и уборки"}
+              side={<Segment label="Отбой" value={p.bedtime} onPick={(bedtime) => save({ bedtime })} options={[["auto", "Сама"], ["22:00", "22:00"], ["23:00", "23:00"], ["00:00", "00:00"], ["01:00", "01:00"]]} />} />
+            <Setting title="Утро" hint="До этого часа ещё ночь"
+              side={<Segment label="Утро" value={p.morning} onPick={(morning) => save({ morning })} options={[[6, "6:00"], [7, "7:00"], [8, "8:00"], [9, "9:00"]]} />} />
+            <Setting title="Сворачивать панель во сне" hint="Засыпая, сворачивает панель в карточку, проснувшись — разворачивает"
+              side={<Toggle label="Сворачивать панель во сне" on={p.napFold} set={(napFold) => save({ napFold })} />} />
+            <Setting title="Рассказывать, что было" hint="Проснувшись, пересказывает, что пришло, пока вас не было"
+              side={<Toggle label="Рассказывать, что было" on={p.napRecap} set={(napRecap) => save({ napRecap })} />} />
+          </>}
+        </section>
+
+        {gen && <section className="wp-sec reveal">
+          <h3>Программа</h3>
+          <Setting title="Запускать с Windows" hint={gen.canAutostart ? "Горничная появляется сама, когда вы включаете компьютер" : "Работает в установленной программе"}
+            side={<Toggle label="Запускать с Windows" on={gen.autostart} set={(autostart) => void saveGen({ autostart })} />} />
+          <Setting title="Быстрая запись" hint="Окошко, чтобы написать горничной из любой программы"
+            side={<KeyPicker label="Быстрая запись" value={gen.keys.quick} onPick={(quick) => void saveGen({ keys: { quick } })} />} />
+          <Setting title="Взять или отпустить виджет" hint="Виджет ловит мышь — его можно двигать и нажимать"
+            side={<KeyPicker label="Взять или отпустить виджет" value={gen.keys.grab} onPick={(grab) => void saveGen({ keys: { grab } })} />} />
+        </section>}
       </div>
     </div>
   );

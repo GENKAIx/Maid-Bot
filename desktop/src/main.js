@@ -648,6 +648,12 @@ const WIDGET_PREFS = {
   taskCount: oneOf(4, 6, 10),
   nextCount: oneOf(1, 3, 5),
   doneHabits: oneOf("dim", "hide"),
+  napAfter: oneOf(0, 5, 15, 30, 60),
+  napNight: (v) => typeof v === "boolean",
+  bedtime: oneOf("auto", "22:00", "23:00", "00:00", "01:00"),
+  morning: oneOf(6, 7, 8, 9),
+  napRecap: (v) => typeof v === "boolean",
+  napFold: (v) => typeof v === "boolean",
   sections: (v) => v && typeof v === "object" && Object.entries(v).every(([k, x]) => ["next", "habits", "tasks", "soon"].includes(k) && typeof x === "boolean"),
 };
 const widgetPrefs = () => Object.fromEntries(Object.keys(WIDGET_PREFS).filter((k) => k in settings.widget).map((k) => [k, settings.widget[k]]));
@@ -665,6 +671,36 @@ ipcMain.handle("app:widget-set", (e, patch) => {
 });
 ipcMain.handle("app:widget-reset", (e) => {
   if (fromApp(e)) resetWidgetPlace();
+});
+// Общее (раньше — только в меню значка у часов): запуск с Windows и горячие клавиши.
+// Клавиша — строка Electron (Ctrl/Alt/Shift/Win + клавиша); занятая другой программой не сохраняется — возвращается ошибка.
+const KEY_OK = /^((Control|Alt|Shift|Super)\+){1,3}([A-Z0-9]|F([1-9]|1[0-9]|2[0-4])|Space|Up|Down|Left|Right|Home|End|PageUp|PageDown|Insert|Delete|Backspace|Tab|Enter)$|^F([1-9]|1[0-9]|2[0-4])$/;
+const general = () => ({ autostart: Boolean(settings.autostart), canAutostart: app.isPackaged, keys: { ...settings.keys } });
+ipcMain.handle("app:general-get", (e) => (fromApp(e) ? general() : null));
+ipcMain.handle("app:general-set", (e, patch) => {
+  if (!fromApp(e) || !patch || typeof patch !== "object") return null;
+  if (typeof patch.autostart === "boolean") {
+    settings.autostart = patch.autostart;
+    applyAutostart();
+  }
+  for (const k of ["quick", "grab"]) {
+    const key = patch.keys?.[k];
+    if (typeof key !== "string" || key === settings.keys[k]) continue;
+    const other = k === "quick" ? settings.keys.grab : settings.keys.quick;
+    if (!KEY_OK.test(key) || !/(Control|Alt|Super)\+|^(Shift\+)?F\d+$/.test(key)) return { ...general(), error: "Такое сочетание не подходит: нужна клавиша с Ctrl, Alt или Win (или F1–F24)." };
+    if (key === other) return { ...general(), error: "Это сочетание уже занято другим действием горничной." };
+    const was = settings.keys[k];
+    settings.keys = { ...settings.keys, [k]: key };
+    registerKeys();
+    if (!globalShortcut.isRegistered(key)) {
+      settings.keys = { ...settings.keys, [k]: was };
+      registerKeys();
+      return { ...general(), error: "Это сочетание уже занято другой программой — выберите другое." };
+    }
+  }
+  saveSettings();
+  refreshTray();
+  return general();
 });
 ipcMain.handle("tracker:now", trackOnce);
 // Сколько секунд человек не трогал мышь и клавиатуру (горничная засыпает, когда его нет; заблокированный экран — тоже нет).

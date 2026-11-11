@@ -52,7 +52,8 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true };
+const BEDTIMES = ["auto", "22:00", "23:00", "00:00", "01:00"]; // настройка «Отбой»
 const MAID_W = { s: 160, m: 196, l: 236 };
 // Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
 const ACCENTS = { violet: ["#b79cff", "#4fd09a"], blue: ["#8ab8ff", "#5ec8f0"], green: ["#7fd9a8", "#4fd09a"], pink: ["#ff9cc8", "#ff7eb3"], amber: ["#ffc46b", "#f2b84b"] };
@@ -250,19 +251,25 @@ function setState(s) {
   settle();
 }
 // --- сон: спит, когда человека нет за ПК, а не по часам ---
-// Засыпает, если ПК не трогали NAP_AFTER (или не ответили на её сообщение NAP_UNHEARD), после обычного отбоя — уже через NAP_NIGHT.
-// Пока спит — молчит: уведомления только в ящик и в список «пока вас не было». Тронули ПК — просыпается, «О, вы вернулись!» и пересказ.
-// Обычный отбой она узнаёт сама: когда вечером человек уходил от ПК больше чем на 1,5 ч (медиана 14 последних ночей, по умолчанию 23:00).
-const NAP_AFTER = 15 * 60;
+// Засыпает, если ПК не трогали cfg.napAfter минут (или не ответили на её сообщение NAP_UNHEARD), после отбоя — уже через NAP_NIGHT
+// (настройка «napNight»). «Не засыпать» (napAfter 0) — не спит совсем. Пока спит — молчит: уведомления только в ящик и в список
+// «пока вас не было». Тронули ПК — просыпается, «О, вы вернулись!» и пересказ (napRecap). napFold — засыпая, сворачивает панель, проснувшись — разворачивает.
+// Отбой — из настройки «bedtime» или «auto»: она узнаёт его сама, когда вечером человек уходил от ПК больше чем на 1,5 ч
+// (медиана 14 последних ночей, по умолчанию 23:00). Утро (cfg.morning) — до этого часа ещё ночь.
 const NAP_UNHEARD = 5 * 60;
 const NAP_NIGHT = 3 * 60;
-const MORNING = 7 * 60;
 let napping = false;
+let napFolded = false; // панель свернула она сама, засыпая
+
 let napSince = 0; // когда человек ушёл (мс)
 let missed = []; // уведомления, пришедшие во сне
 let unheardAt = 0; // её сообщение, на которое ещё не отреагировали
 const nightMin = (t) => { const m = t.getHours() * 60 + t.getMinutes(); return m < 12 * 60 ? m + 24 * 60 : m; }; // после полуночи — «24:30»
 function bedtime() {
+  if (cfg.bedtime !== "auto") {
+    const [h, m] = cfg.bedtime.split(":").map(Number);
+    return (h < 12 ? h + 24 : h) * 60 + m;
+  }
   let list = [];
   try { list = JSON.parse(localStorage.getItem("maid.bedtimes") ?? "[]"); } catch {}
   if (list.length < 3) return 23 * 60;
@@ -280,7 +287,7 @@ function learnBedtime(from, to) {
 }
 function afterBedtime(t = new Date()) {
   const m = nightMin(t);
-  return m >= bedtime() && m < MORNING + 24 * 60;
+  return m >= bedtime() && m < cfg.morning * 60 + 24 * 60;
 }
 const restState = () => (napping ? "sleep" : "idle");
 function fallAsleep(idleSec) {
@@ -289,6 +296,11 @@ function fallAsleep(idleSec) {
   napSince = Date.now() - idleSec * 1000;
   hideBubble();
   setState("sleep");
+  if (cfg.napFold && !collapsed) {
+    napFolded = true;
+    autoOpened = false;
+    foldAnimated(true);
+  }
 }
 function wakeUp() {
   if (!napping) return;
@@ -299,12 +311,14 @@ function wakeUp() {
   missed = [];
   unheardAt = 0;
   setState("idle");
+  if (napFolded && collapsed) foldAnimated(false);
+  napFolded = false;
   // Потягивается: удивилась — и машет.
   react("surprised", 1300);
   setTimeout(() => {
     if (napping) return;
     react("hello", 4500);
-    if (away < 2 * 60_000 && !news.length) return;
+    if (!cfg.napRecap || (away < 2 * 60_000 && !news.length)) return;
     const lines = news.slice(-4).map((n) => `• ${String(n.text).split("\n")[0].replace(/<[^>]+>/g, "")}`);
     const more = news.length > 4 ? `\n…и ещё ${news.length - 4} — в ящике у головы.` : news.length ? "\nВсё это — в ящике у головы." : "";
     say(news.length ? `${line("backNews")}\n${lines.join("\n")}${more}` : line("back"), { ms: news.length ? 20000 : 4000, emotion: "happy", sound: news.length ? "ding" : null });
@@ -316,7 +330,8 @@ async function watchAway() {
   if (typeof idle !== "number") return;
   if (napping) return void (idle < 5 && wakeUp());
   const unheard = unheardAt && idle >= NAP_UNHEARD && idle * 1000 >= Date.now() - unheardAt; // с её сообщения ПК не трогали
-  if (idle >= (afterBedtime() ? NAP_NIGHT : NAP_AFTER) || unheard) fallAsleep(idle);
+  if (!cfg.napAfter) return void (idle < 5 && (unheardAt = 0));
+  if (idle >= (cfg.napNight && afterBedtime() ? NAP_NIGHT : cfg.napAfter * 60) || unheard) fallAsleep(idle);
   if (idle < 5) unheardAt = 0;
 }
 setInterval(() => watchAway(), 3_000);
@@ -1610,7 +1625,7 @@ function setCollapsed(on) {
   syncLift();
   sendFold();
   // Запоминается свёрнутость, выбранная вами: панель, развёрнутая сама ради сообщения (autoOpened), после перезапуска снова свёрнута.
-  if (!autoOpened) saveFold();
+  if (!autoOpened && !napFolded) saveFold();
 }
 function saveFold() {
   try { localStorage.setItem("maid.collapsed", collapsed ? "1" : ""); } catch {}
@@ -1813,7 +1828,9 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: [4, 6, 10].includes(w.taskCount) ? w.taskCount : 6, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: [4, 6, 10].includes(w.taskCount) ? w.taskCount : 6, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim",
+    napAfter: [0, 5, 15, 30, 60].includes(w.napAfter) ? w.napAfter : 15, napNight: w.napNight !== false, bedtime: BEDTIMES.includes(w.bedtime) ? w.bedtime : "auto",
+    morning: [6, 7, 8, 9].includes(w.morning) ? w.morning : 7, napRecap: w.napRecap !== false, napFold: w.napFold !== false }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   // «Звуки выключены» раньше жили в localStorage виджета — переносим в настройки один раз.
   if (w.mute === undefined && localStorage.getItem("maid.mute")) {
     cfg.mute = true;
