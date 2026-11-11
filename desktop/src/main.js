@@ -4,7 +4,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor, nativeTheme } = require("electron");
 const { collectDay, localDay } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
 
@@ -132,7 +132,7 @@ function showMain(settingsOnly = false) {
   }
   if (!mainWin) {
     mainWin = new BrowserWindow({
-      width: 1060, height: 760, minWidth: 640, minHeight: 480, title: "Горничная", icon: icon(), backgroundColor: local ? "#1d1830" : "#f4f3f8",
+      width: 1060, height: 760, minWidth: 640, minHeight: 480, title: "Горничная", icon: icon(), backgroundColor: local ? "#1d1830" : nativeTheme.shouldUseDarkColors ? "#15121f" : "#f4f3f8",
       webPreferences: local ? prefs : { preload: path.join(__dirname, "preload-app.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
     mainWin.isLocal = local;

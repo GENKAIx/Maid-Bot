@@ -175,6 +175,14 @@ ${plainReply(r.text)}`, reply: r });
             ))}
           </div>
         )}
+        {!recording && (
+          <>
+            <input ref={file} type="file" accept="image/*" multiple hidden onChange={(e) => { void attach(e.target.files); e.target.value = ""; }} />
+            <button type="button" className="mic plus ghost" disabled={busy} onClick={() => file.current?.click()} title="Приложить картинку: чек, билет, скриншот (или Ctrl+V)" aria-label="Приложить картинку">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </>
+        )}
         {recording ? (
           <div className="rec-bar" aria-live="polite">
             <button type="button" className="rec-trash ghost" onClick={() => void dropMic()} title="Удалить запись (Esc)" aria-label="Удалить запись">
@@ -201,31 +209,23 @@ ${plainReply(r.text)}`, reply: r });
             }}
           />
         )}
-        {!recording && (
-          <>
-            <input ref={file} type="file" accept="image/*" multiple hidden onChange={(e) => { void attach(e.target.files); e.target.value = ""; }} />
-            <button type="button" className="mic" disabled={busy} onClick={() => file.current?.click()} title="Картинка: чек, билет, скриншот (или Ctrl+V)" aria-label="Приложить картинку">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" /></svg>
-            </button>
-          </>
-        )}
-        {(recording || (!text.trim() && !pictures.length)) && (
-          <button
-            type="button"
-            className={`mic ${recording ? "rec" : ""}`}
-            disabled={busy}
-            onClick={() => void (recording ? stopMic() : startMic())}
-            title={recording ? "Отправить запись (Enter)" : "Сказать голосом"}
-            aria-label={recording ? "Отправить запись" : "Сказать голосом"}
-          >
-            {recording ? (
+        {(() => {
+          const ready = !!text.trim() || pictures.length > 0;
+          // Одна кнопка, как в виджете: пусто — микрофон, есть текст или картинка — отправить, идёт запись — отправить запись.
+          return recording ? (
+            <button type="button" className="mic rec" disabled={busy} onClick={() => void stopMic()} title="Отправить запись (Enter)" aria-label="Отправить запись">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.2 15 12 3.4 13.8z" /></svg>
-            ) : (
+            </button>
+          ) : ready ? (
+            <button type="submit" className="mic send" disabled={busy} title="Записать (Enter)" aria-label="Записать">
+              {busy ? "…" : <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.2 15 12 3.4 13.8z" /></svg>}
+            </button>
+          ) : (
+            <button type="button" className="mic talk" disabled={busy} onClick={() => void startMic()} title="Сказать голосом" aria-label="Сказать голосом">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
-            )}
-          </button>
-        )}
-        <button className="primary" type="submit" disabled={busy || (!text.trim() && !pictures.length)}>{busy ? "…" : "Записать"}</button>
+            </button>
+          );
+        })()}
       </form>
     </div>
   );

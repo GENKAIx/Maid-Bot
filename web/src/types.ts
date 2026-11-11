@@ -45,6 +45,8 @@ export interface HabitToday {
   streak: number;
   done: number;
   planned: number;
+  /** Курс со сроком («пить Аевит месяц»): каждый день срока; null — обычная привычка. */
+  course?: { day: string; s: "done" | "miss" | "today" | "wait" | "rest" }[] | null;
 }
 export interface MetricRow {
   id: number;

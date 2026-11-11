@@ -329,6 +329,16 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/icons") return Object.fromEntries((await store.icons(u.id)).map((i) => [i.name_key, `data:image/png;base64,${i.png}`]));
     if (m === "GET" && p === "/api/activity") return store.activityRange(u.id, q("from") ?? addDays(today, -30), q("to") ?? today);
     if (m === "GET" && p === "/api/events") return store.eventsBetween(u.id, q("from") ?? today, q("to") ?? addDays(today, 30));
+    // Новая задача строкой «+ Новая задача» на «Сегодня»: название как есть, без разбора моделью. Отменяется («↩ Отменить»).
+    if (m === "POST" && p === "/api/tasks") {
+      const b = parseBody(z.object({ title: z.string().trim().min(1).max(200), due_date: Day.nullable().optional() }), await readJson(req));
+      let id = 0;
+      const undo = await pipeline.manual(u, `＋ ${b.title}`, async (log) => {
+        id = await store.addTask({ user_id: u.id, title: b.title, priority: "normal", category: "", due_date: b.due_date ?? null, notes: "", message_id: null });
+        await log("tasks", id, { status: "deleted" });
+      });
+      return { ...(await store.task(id)), undo };
+    }
     const task = p.match(/^\/api\/tasks\/(\d+)$/);
     if (m === "POST" && task) {
       // Разбор хвостов в виджете: failed — «не буду делать», dodged — закрыл крестиком, не ответив (сбежал от задачи);

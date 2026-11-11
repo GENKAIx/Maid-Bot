@@ -15,7 +15,7 @@
       // Тема до загрузки приложения, чтобы тёмная не мигала светлой (то же правило — в src/theme.ts).
       try {
         var t = localStorage.getItem("maid.theme");
-        if (t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches)) document.documentElement.dataset.theme = "dark";
+        if (t === "dark" || (t !== "light" && matchMedia("(prefers-color-scheme: dark)").matches)) document.documentElement.dataset.theme = "dark";
       } catch (e) {}
     </script>
   </head>

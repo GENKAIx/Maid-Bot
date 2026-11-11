@@ -78,11 +78,21 @@ test("хвосты: «не сделано» закрывает задачу, п�
     assert.equal((again.json as { id: number }).id, copy.id);
     assert.equal((await call(`/api/tasks/${other}/copy`, { date: "2026-11-09" }, token)).status, 404);
 
+    // Быстрый ввод на «Сегодня»: задача с названием как есть; «Отменить» её убирает; пустое название — 400.
+    const nt = await call("/api/tasks", { title: "  Купить хлеб ", due_date: "2026-11-09" }, token);
+    const made = nt.json as unknown as { id: number; title: string; due_date: string; status: string; undo: number };
+    assert.equal(made.title, "Купить хлеб");
+    assert.equal(made.due_date, "2026-11-09");
+    assert.ok((await store.openTasks(u.id)).some((t) => t.id === made.id));
+    await call("/api/undo", { messageId: made.undo }, token);
+    assert.ok(!(await store.openTasks(u.id)).some((t) => t.id === made.id), "отмена убрала новую задачу");
+    assert.equal((await call("/api/tasks", { title: "  " }, token)).status, 400);
+
     assert.equal((await call(`/api/tasks/${moved}`, { due_date: "12.11" }, token)).status, 400);
     assert.equal((await call(`/api/tasks/${moved}`, {}, token)).status, 400);
     assert.equal((await call(`/api/tasks/${other}`, { status: "failed" }, token)).status, 404);
     assert.equal((await store.task(other))!.status, "open");
-    assert.equal(changed, 6, "список-виджет в Telegram обновится после каждого изменения");
+    assert.equal(changed, 8, "список-виджет в Telegram обновится после каждого изменения");
   } finally {
     server.close();
   }

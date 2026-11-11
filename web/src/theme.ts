@@ -7,7 +7,7 @@ const media = window.matchMedia("(prefers-color-scheme: dark)");
 
 export const getTheme = (): Theme => {
   const t = localStorage.getItem(KEY);
-  return t === "dark" || t === "system" ? t : "light";
+  return t === "dark" || t === "light" ? t : "system"; // по умолчанию — как в системе
 };
 
 function apply() {
