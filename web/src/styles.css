@@ -583,15 +583,21 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 }
 
 /* Раздел «Виджет» (screens/Widget.tsx): флажки в две колонки, режимы сделанных задач с живыми картинками */
+/* карточки — колонками по высоте, без пустот между рядами */
+.wp .cards { display: block; columns: 280px 3; column-gap: 12px; }
+.wp .cards > .card { break-inside: avoid; margin-bottom: 12px; }
+.wp-sub { margin: 10px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 650; }
 .wp-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; }
 .wp .segment { flex-wrap: wrap; justify-self: start; }
 .wp .segment button { white-space: nowrap; }
-.done-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.done-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.done-modes .dm { min-width: 0; }
 .done-modes .dm { display: grid; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 12.5px; color: var(--muted); text-align: center; }
 .done-modes .dm.on { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 3px var(--accent-soft); font-weight: 600; }
 /* Превью — маленькая копия виджета: всегда тёмная, как сама панель на рабочем столе (--wa — акцент, --wd — цвет галочек). */
-.done-modes.cols-3 { grid-template-columns: repeat(3, 1fr); }
-.done-modes.cols-5 { grid-template-columns: repeat(5, 1fr); }
+.done-modes.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.done-modes.cols-5 { display: flex; flex-wrap: wrap; justify-content: center; }
+.done-modes.cols-5 .dm { flex: 0 0 calc((100% - 16px) / 3); }
 .dm-mini { --wa: #b79cff; --wd: #4fd09a; display: grid; gap: 4px; padding: 7px 8px; border-radius: 7px; background: #1d1830; border: 1px solid rgba(255, 255, 255, .08);
   text-align: left; font-size: 11.5px; font-weight: 400; color: #f1eef8; overflow: hidden; height: 76px; align-content: start; }
 .dm-mini b { font-size: 11px; font-weight: 600; color: #a8a1bd; }
@@ -637,9 +643,9 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 @media (prefers-reduced-motion: reduce) { .dm-mini .go, .dm-mini .go::after { animation: none; } }
 /* «Текст в облачке», «Скорость печати»: варианты строками, под ними живая копия облачка виджета (как desktop/renderer/style.css .bubble) */
 .wp-choices { display: grid; gap: 4px; }
-.wp-choices button { display: grid; grid-template-columns: 16px auto 1fr; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; font-size: 13.5px; color: var(--text); }
+.wp-choices button { display: grid; grid-template-columns: 16px 1fr; align-items: center; gap: 1px 10px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; font-size: 13.5px; color: var(--text); }
 .wp-choices button i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--muted); }
-.wp-choices button span { color: var(--muted); font-size: 12.5px; justify-self: end; text-align: right; }
+.wp-choices button span { grid-column: 2; color: var(--muted); font-size: 12px; }
 .wp-choices button b { font-weight: 500; }
 .wp-choices button.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .wp-choices button.on b { font-weight: 650; }

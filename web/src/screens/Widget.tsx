@@ -171,16 +171,6 @@ export function Widget() {
               <Cards label="Размер" value={p.size} onPick={(size) => save({ size })}
                 options={(["s", "m", "l"] as const).map((v) => [v, { s: "Меньше", m: "Обычная", l: "Больше" }[v], <Perch side={p.side} size={v} />])} />
             </>}
-            <label>Звуки<Segment label="Звуки" value={p.mute ? "off" : "on"} onPick={(v) => save({ mute: v === "off" })} options={[["on", "Включены"], ["off", "Выключены"]]} /></label>
-            <label>Текст в облачке</label>
-            <Choices label="Текст в облачке" value={p.typing} onPick={(typing) => save({ typing })}
-              options={[["sound", "Печатает со звуком", "по буквам, с тихим «бип»"], ["quiet", "Печатает тихо", "по буквам, без звука"], ["off", "Сразу целиком", "весь ответ разом"]]} />
-            {p.typing !== "off" && <>
-              <label>Скорость печати</label>
-              <Choices label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => save({ typeSpeed })}
-                options={[["slow", "Медленно", "22 буквы в секунду"], ["normal", "Обычно", "35 букв в секунду"], ["fast", "Быстро", "60 букв в секунду"]]} />
-            </>}
-            <SayPreview mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} />
           </div>
         </Card>
 
@@ -248,8 +238,20 @@ export function Widget() {
           </div>
         </Card>
 
-        <Card title="Если не ответить" className="reveal">
+
+        <Card title="Облачко" className="reveal">
           <div className="form">
+            <label>Звуки<Segment label="Звуки" value={p.mute ? "off" : "on"} onPick={(v) => save({ mute: v === "off" })} options={[["on", "Включены"], ["off", "Выключены"]]} /></label>
+            <label>Текст в облачке</label>
+            <Choices label="Текст в облачке" value={p.typing} onPick={(typing) => save({ typing })}
+              options={[["sound", "Печатает со звуком", "по буквам, с тихим «бип»"], ["quiet", "Печатает тихо", "по буквам, без звука"], ["off", "Сразу целиком", "весь ответ разом"]]} />
+            {p.typing !== "off" && <>
+              <label>Скорость печати</label>
+              <Choices label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => save({ typeSpeed })}
+                options={[["slow", "Медленно", "22 буквы в секунду"], ["normal", "Обычно", "35 букв в секунду"], ["fast", "Быстро", "60 букв в секунду"]]} />
+            </>}
+            <SayPreview mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} />
+            <h4 className="wp-sub">Если не ответить</h4>
             <label>Вопрос «добавить?» — сама жмёт «Не надо» через
               <Segment label="«Не надо» через" value={p.proposalWait} onPick={(proposalWait) => save({ proposalWait })} options={[[6, "6 с"], [12, "12 с"], [20, "20 с"], [30, "30 с"]]} />
             </label>
