@@ -584,7 +584,7 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 
 /* Раздел «Виджет» (screens/Widget.tsx): флажки в две колонки, режимы сделанных задач с живыми картинками */
 /* одна колонка, как настройки Discord: разделы друг за другом, одна настройка — одна строка */
-.wp-list { max-width: 760px; margin-top: 18px; display: grid; gap: 26px; }
+.wp-list { max-width: 960px; margin-top: 18px; display: grid; gap: 26px; }
 .wp-sec h3 { margin: 0 0 2px; font-size: 13.5px; font-weight: 700; letter-spacing: .02em; color: var(--muted); }
 .wp-set { padding: 14px 0; border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
 .wp-set-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -599,7 +599,11 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .wp-toggle i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
 .wp-toggle.on { background: var(--accent); }
 .wp-toggle.on i { transform: translateX(18px); }
-.wp .done-modes, .wp .done-modes.cols-3, .wp .done-modes.cols-5 { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.wp .done-modes, .wp .done-modes.cols-3, .wp .done-modes.cols-5 { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+/* примеры крупно: вся маленькая копия виджета увеличена целиком, пропорции те же */
+.wp .dm { padding: 8px; gap: 8px; font-size: 14px; border-radius: 12px; }
+.wp .dm-mini { zoom: 1.4; height: 84px; }
+.wp .wm-stage { height: 84px; }
 .wp .done-modes.cols-5 .dm { flex: none; }
 @media (max-width: 560px) { .wp-set-head { flex-wrap: wrap; } }
 .wp-sub { margin: 10px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 650; }
