@@ -18,7 +18,7 @@ import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { habitButtons, planEventReminders, remindText, snooze, type Button, type Send } from "./scheduler.ts";
-import { addDays, dayKey, isDayKey, isTime, zonedToUtc } from "./time.ts";
+import { addDays, dayKey, isDayKey, isEveningTime, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
@@ -268,7 +268,9 @@ export function createApi(deps: ApiDeps) {
       const b = parseBody(z.object({
         name: z.string().trim().max(80).optional(),
         persona: z.string().max(40).optional(),
-        morning_time: Time.optional(), tomorrow_time: Time.optional(), evening_time: Time.optional(),
+        morning_time: Time.optional(), tomorrow_time: Time.optional(),
+        // Итог — за этот день, поэтому до полуночи (12:00–23:59): в 00:15 был бы итог только что наступившего дня.
+        evening_time: z.string().refine(isEveningTime, "вечерний итог — с 12:00 до 23:59").optional(),
         event_lead_min: z.coerce.number().int().min(5).max(24 * 60).optional(),
         // «day,60,5,0» — когда напоминать о планах (remindPlan), «off» — никогда.
         event_reminders: z.string().max(200).regex(/^(off|((day|\d{1,5})(,(day|\d{1,5}))*))$/, "day, минуты через запятую или off").optional(),

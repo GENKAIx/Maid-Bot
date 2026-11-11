@@ -320,6 +320,10 @@ CREATE TABLE IF NOT EXISTS llm_usage (
   PRIMARY KEY (day, kind, model)
 );
 `,
+  // Шаг 12: вечерний итог — только до полуночи (иначе в 00:15 приходил итог только что наступившего дня); ночное время → 23:55.
+  `
+UPDATE users SET evening_time = '23:55' WHERE evening_time < '12:00';
+`,
 ];
 
 /** Строка расхода: день (UTC) × на что × модель. cost — доллары. */

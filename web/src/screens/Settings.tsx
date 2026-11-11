@@ -175,7 +175,8 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
           <div className="form">
             <label>Утренний список {field("morning_time", "time")}</label>
             <label>Что завтра {field("tomorrow_time", "time")}</label>
-            <label>Вечерний итог {field("evening_time", "time")}</label>
+            <label>Вечерний итог {field("evening_time", "time", { min: "12:00", max: "23:59" })}</label>
+            <p className="muted small">Итог — за этот день, поэтому его время — до полуночи, с 12:00 до 23:59 (например 23:55).</p>
           </div>
         </Card>
 

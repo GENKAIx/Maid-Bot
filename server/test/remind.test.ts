@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import * as webpush from "web-push";
 import { createApi } from "../src/api.ts";
@@ -75,7 +78,27 @@ test("remind: смена настройки перекладывает напо�
     assert.deepEqual((await pending(store, id)).map((x) => x[0]), ["14:00", "15:00"]);
 
     assert.equal((await call("/api/settings", { event_reminders: "завтра" }, token)).status, 400);
+
+    // Вечерний итог — только до полуночи: после 00:00 был бы итог только что наступившего дня.
+    assert.equal((await call("/api/settings", { evening_time: "00:15" }, token)).status, 400);
+    assert.equal((await call("/api/settings", { evening_time: "11:59" }, token)).status, 400);
+    assert.equal((await call("/api/settings", { evening_time: "23:55" }, token)).json.evening_time, "23:55");
   } finally {
     server.close();
   }
+});
+
+test("шаг 12 базы: ночное время вечернего итога переводится на 23:55, вечернее не трогается", async () => {
+  const file = join(mkdtempSync(join(tmpdir(), "maid-eve-")), "db.sqlite");
+  let store = await Store.open(file);
+  const a = await store.ensureUser("1", "А", "Europe/Moscow");
+  const b = await store.ensureUser("2", "Б", "Europe/Moscow");
+  await store.updateUser(a.id, { evening_time: "00:15" });
+  await store.updateUser(b.id, { evening_time: "21:30" });
+  await store.kvSet("schema_version", "11"); // как до шага 12
+  await store.close();
+  store = await Store.open(file);
+  assert.equal((await store.user(a.id))!.evening_time, "23:55");
+  assert.equal((await store.user(b.id))!.evening_time, "21:30");
+  await store.close();
 });

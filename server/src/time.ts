@@ -76,6 +76,12 @@ export function normalizeTime(s: unknown): string | null {
   return isTime(t) ? t : null;
 }
 
+/** Вечерний итог присылается в этот же день, до полуночи: с 12:00 до 23:59. */
+export const EVENING_FROM = "12:00";
+export function isEveningTime(t: string): boolean {
+  return isTime(t) && t >= EVENING_FROM;
+}
+
 export function addDays(key: string, days: number): string {
   const [y, m, d] = key.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d + days));
