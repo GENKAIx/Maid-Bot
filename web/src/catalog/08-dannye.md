@@ -27,7 +27,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | `notices` | уведомления для виджета и сайта |
 | `app_icons` | иконки программ трекера |
 | `traits` | дебафы и бафы профиля: вид (`debuff`/`buff`), категория, название, заметка, откуда (`user` — сами, `chat` — сказали горничной, `pattern` — она нашла), статус (`active`, `suggested` — ждёт ответа, `declined` — отказались, больше не предлагать, `removed`), дни-доказательства закономерности |
-| `kv` | мелкие отметки «уже отправлено» (раз в сутки удаляются старше 60 дней — `pruneOnce`), расход токенов `llm:ГГГГ-ММ`, профиль `profile:<id>` (класс, рост, аватар), попытки повтора разбора `retry:<id>` |
+| `kv` | мелкие отметки «уже отправлено» (раз в сутки удаляются старше 60 дней — `pruneOnce`), расход токенов `llm:ГГГГ-ММ`, профиль `profile:<id>` (класс, рост, дата рождения, аватар), попытки повтора разбора `retry:<id>` |
 
 > **Ключи.** Пароли — scrypt, ключи входа в базе только хешем (`auth.ts`). Ключ программы на ПК лежит в её `settings.json`, зашифрованный защитой Windows (`safeStorage`), и в окна не передаётся.
 
@@ -58,7 +58,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | Задачи и даты | `/api/tasks`, `POST /api/tasks/:id` (`status`, в т. ч. `deleted`; `due_date`; `title`), `POST /api/tasks/:id/plan` (задача → план), `POST /api/tasks/:id/copy` (`date`), `/api/dates` |
 | Привычки | `/api/habits`, `/api/habits/:id/mark`, `POST /api/habits/:id` (title, quiet, finish — конец вчера или сегодня, если отмечена; status stopped — удалить; отметки остаются; через журнал отмены) |
 | Числа | `/api/money`, `/api/metrics`, `/api/steps`, `/api/health/topics` |
-| Профиль | `GET/POST /api/profile` (title, height, avatar — data URL), `POST /api/traits` (новый дебаф/баф), `POST /api/traits/:id` (status, title, note; у предложенного `active`/`declined` — ответ на предложение) |
+| Профиль | `GET/POST /api/profile` (title, height, birthday — ГГГГ-ММ-ДД или пусто, avatar — data URL; возраст в характеристиках — полных лет по дате рождения), `POST /api/traits` (новый дебаф/баф), `POST /api/traits/:id` (status, title, note; у предложенного `active`/`declined` — ответ на предложение) |
 | Ввод | `/api/input` (текст и/или `images: [{data, mime}]`, до 6), `/api/voice`, `/api/undo` |
 | Трекер | `/api/activity`, `/api/icons` (чтение и запись) |
 

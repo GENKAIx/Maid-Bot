@@ -316,7 +316,7 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/profile") return profileView(store, u, today);
     if (m === "POST" && p === "/api/profile") {
       const b = parseBody(z.object({
-        title: z.string().trim().max(40).optional(), height: z.number().nullable().optional(), avatar: z.string().max(AVATAR_MAX * 1.4).optional(),
+        title: z.string().trim().max(40).optional(), height: z.number().nullable().optional(), birthday: z.string().max(10).optional(), avatar: z.string().max(AVATAR_MAX * 1.4).optional(),
       }), await readJson(req, 700_000));
       try { await saveProfile(store, u.id, b); } catch (e) { throw new HttpError(400, (e as Error).message); }
       return profileView(store, u, today);

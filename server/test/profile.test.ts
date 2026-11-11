@@ -4,7 +4,7 @@ import { Store } from "../src/db.ts";
 import type { ChatMessage, LlmCall } from "../src/llm.ts";
 import { normalize } from "../src/parse.ts";
 import { Pipeline } from "../src/pipeline.ts";
-import { decideTrait, findPatterns, levelOf, profileView, saveProfile, traitPrompt } from "../src/profile.ts";
+import { ageOn, decideTrait, findPatterns, levelOf, profileView, saveProfile, traitPrompt } from "../src/profile.ts";
 import { addDays, zonedToUtc } from "../src/time.ts";
 
 // Профиль как в RPG: уровень за дела, дебафы из чата и найденные закономерности, которые горничная учитывает в ответах.
@@ -96,4 +96,21 @@ test("закономерность: мало дней со здоровьем �
   for (let i = 0; i < 2; i++) await store.addDiary(u.id, addDays("2026-11-08", -i), "health", "болит голова", null);
   assert.deepEqual(await findPatterns(store, llm, u, "2026-11-08"), []);
   assert.equal(calls.length, 0);
+});
+
+test("возраст: полных лет по дате рождения, проверка даты", async () => {
+  assert.equal(ageOn("2013-05-20", "2026-11-11"), 13);
+  assert.equal(ageOn("2013-11-12", "2026-11-11"), 12);
+  assert.equal(ageOn("2013-11-11", "2026-11-11"), 13);
+  assert.equal(ageOn("", "2026-11-11"), null);
+  assert.equal(ageOn("2030-01-01", "2026-11-11"), null);
+  const store = await Store.open(":memory:");
+  const u = await store.ensureUser("301", "GK", TZ);
+  await assert.rejects(saveProfile(store, u.id, { birthday: "20.05.2013" }), /дата рождения/);
+  await saveProfile(store, u.id, { birthday: "2013-05-20" });
+  const v = await profileView(store, u, "2026-11-11");
+  assert.equal(v.stats[0].key, "age");
+  assert.equal(v.stats[0].value, "13 лет");
+  await saveProfile(store, u.id, { birthday: "" });
+  assert.equal((await profileView(store, u, "2026-11-11")).stats[0].value, "—");
 });

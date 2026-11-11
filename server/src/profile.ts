@@ -12,17 +12,20 @@ export const TRAIT_CATEGORIES: Record<string, string> = {
 };
 export const traitCategory = (c: unknown) => (typeof c === "string" && c in TRAIT_CATEGORIES ? c : "other");
 
-/** Что пользователь заполняет сам: класс («Паладин»), рост в см, аватар (картинка data:… до AVATAR_MAX). */
-export interface ProfileInfo { title: string; height: number | null; avatar: string }
+/** Что пользователь заполняет сам: класс («Паладин»), рост в см, дата рождения (ГГГГ-ММ-ДД — для возраста), аватар (картинка data:… до AVATAR_MAX). */
+export interface ProfileInfo { title: string; height: number | null; birthday: string; avatar: string }
 export const AVATAR_MAX = 400_000;
 const profileKey = (userId: number) => `profile:${userId}`;
 
 export async function profileInfo(store: Store, userId: number): Promise<ProfileInfo> {
   try {
     const v = JSON.parse((await store.kvGet(profileKey(userId))) ?? "{}") as Partial<ProfileInfo>;
-    return { title: typeof v.title === "string" ? v.title : "", height: typeof v.height === "number" ? v.height : null, avatar: typeof v.avatar === "string" ? v.avatar : "" };
+    return {
+      title: typeof v.title === "string" ? v.title : "", height: typeof v.height === "number" ? v.height : null,
+      birthday: typeof v.birthday === "string" ? v.birthday : "", avatar: typeof v.avatar === "string" ? v.avatar : "",
+    };
   } catch {
-    return { title: "", height: null, avatar: "" };
+    return { title: "", height: null, birthday: "", avatar: "" };
   }
 }
 
@@ -33,6 +36,11 @@ export async function saveProfile(store: Store, userId: number, patch: Partial<P
     const h = patch.height === null ? null : Number(patch.height);
     if (h !== null && !(h >= 50 && h <= 260)) throw new Error("рост — от 50 до 260 см");
     cur.height = h === null ? null : Math.round(h);
+  }
+  if (patch.birthday !== undefined) {
+    const b = String(patch.birthday ?? "");
+    if (b && !(/^\d{4}-\d{2}-\d{2}$/.test(b) && !Number.isNaN(Date.parse(`${b}T12:00:00Z`)) && b >= "1900-01-01")) throw new Error("дата рождения — ГГГГ-ММ-ДД");
+    cur.birthday = b;
   }
   if (patch.avatar !== undefined) {
     const a = String(patch.avatar);
@@ -56,6 +64,14 @@ export function levelOf(xp: number): { level: number; into: number; need: number
   return { level, into: left, need: 100 + 25 * (level - 1) };
 }
 
+/** Полных лет на дату today (ГГГГ-ММ-ДД); нет даты или она в будущем — null. */
+export function ageOn(birthday: string, today: string): number | null {
+  if (!birthday || birthday > today) return null;
+  const years = Number(today.slice(0, 4)) - Number(birthday.slice(0, 4));
+  return today.slice(5) >= birthday.slice(5) ? years : years - 1;
+}
+const yearsWord = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? "год" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "года" : "лет");
+
 export interface Stat { key: string; label: string; value: string; hint: string }
 
 const avg = (rows: MetricRow[]) => (rows.length ? rows.reduce((a, r) => a + r.value, 0) / rows.length : null);
@@ -73,7 +89,9 @@ export async function profileView(store: Store, u: User, today: string) {
   const water = avg(await store.metricsRange(u.id, week, today, "water_l"));
   const since = (u as User & { created_at?: string }).created_at;
   const days = since ? Math.max(1, Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(since)) / 86_400_000) + 1) : null;
+  const age = ageOn(info.birthday, today);
   const stats: Stat[] = [
+    { key: "age", label: "Возраст", value: age !== null ? `${age} ${yearsWord(age)}` : "—", hint: info.birthday ? `Дата рождения — ${humanDay(info.birthday)}` : "Укажите дату рождения" },
     { key: "height", label: "Рост", value: info.height ? `${info.height} см` : "—", hint: "Указываете сами" },
     { key: "weight", label: "Вес", value: weight ? `${num(weight.value)} кг` : "—", hint: weight ? `Последняя запись — ${humanDay(weight.day_key)}` : "Скажите горничной «вешу 72 кг»" },
     {
