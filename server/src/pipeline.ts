@@ -297,7 +297,7 @@ export class Pipeline {
       await s.setMessage(message.id, { state: "done", reply: text });
       return { text, emotion, messageId: message.id, undoable: false, drawing };
     };
-    if (!this.draw) return done("Рисовать я пока не умею: на сервере не задан ключ RunPod (RUNPOD_API_KEY).", "awkward");
+    if (!this.draw) return done("Рисовать я пока не умею: на сервере не задан ключ RunPod (RUNPOD_API_KEY) или OpenRouter (OPENROUTER_API_KEY).", "awkward");
     let pic: Picture;
     try {
       pic = await this.draw(d.prompt);

@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import { createApi } from "../src/api.ts";
 import { config } from "../src/config.ts";
-import { callDraw } from "../src/draw.ts";
+import { callDraw, drawReady } from "../src/draw.ts";
 import { hashPassword } from "../src/auth.ts";
 import { Store } from "../src/db.ts";
 import { PgDriver } from "../src/driver.ts";
@@ -62,6 +62,36 @@ test("RunPod: runsync не дождался — спросить статус, �
   } finally {
     globalThis.fetch = was.fetch;
     config.drawing.apiKey = was.key;
+  }
+});
+
+test("OpenRouter: без ключа RunPod рисует через chat/completions, картинка из data:-ссылки; без картинки — ошибка", async () => {
+  const was = { fetch: globalThis.fetch, key: config.drawing.apiKey, or: config.drawing.openrouterKey };
+  let answer: unknown = { choices: [{ message: { content: "", images: [{ type: "image_url", image_url: { url: `data:image/png;base64,${PNG}` } }] } }] };
+  const calls: string[] = [];
+  config.drawing.apiKey = "";
+  config.drawing.openrouterKey = "or-key";
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    calls.push(`${init?.method} ${url}`);
+    assert.equal((init?.headers as Record<string, string>).Authorization, "Bearer or-key");
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.model, "google/gemini-2.5-flash-image");
+    assert.deepEqual(body.modalities, ["image", "text"]);
+    assert.match(body.messages[0].content, /a cat/);
+    return new Response(JSON.stringify(answer), { status: 200, headers: { "Content-Type": "application/json" } });
+  }) as typeof fetch;
+  try {
+    assert.equal(drawReady(), true);
+    assert.deepEqual(await callDraw("a cat"), { mime: "image/png", data: PNG });
+    assert.deepEqual(calls, ["POST https://openrouter.ai/api/v1/chat/completions"]);
+    answer = { choices: [{ message: { content: "I can't draw that" } }] };
+    await assert.rejects(callDraw("a cat"), /can't draw/);
+    config.drawing.openrouterKey = "";
+    assert.equal(drawReady(), false);
+  } finally {
+    globalThis.fetch = was.fetch;
+    config.drawing.apiKey = was.key;
+    config.drawing.openrouterKey = was.or;
   }
 });
 

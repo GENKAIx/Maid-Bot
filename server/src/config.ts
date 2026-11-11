@@ -39,10 +39,14 @@ export const config = {
     apiKey: env("STT_API_KEY", env("LLM_API_KEY")),
     model: "",
   },
-  /** Картинки по просьбе («нарисуй кота»): RunPod, модель Z-Image Turbo ($0,005 за картинку). Пусто — горничная не рисует. */
+  /** Картинки по просьбе («нарисуй кота»): RunPod, модель Z-Image Turbo ($0,005 за картинку); нет ключа RunPod — OpenRouter
+   *  (по умолчанию Gemini 2.5 Flash Image, ~$0,04 за картинку; ключ — OPENROUTER_API_KEY или ключ LLM, если LLM идёт через OpenRouter).
+   *  Нет ни того, ни другого — горничная не рисует. */
   drawing: {
     apiKey: env("RUNPOD_API_KEY"),
     model: env("RUNPOD_DRAW_MODEL", "z-image-turbo"),
+    openrouterKey: env("OPENROUTER_API_KEY"),
+    openrouterModel: env("OPENROUTER_DRAW_MODEL", "google/gemini-2.5-flash-image"),
   },
   port: Number(env("PORT", "3000")),
   /** Postgres (Render). Если задан — главнее файла SQLite. */
@@ -65,5 +69,7 @@ config.stt.model = env(
   "STT_MODEL",
   /openrouter\.ai/.test(config.stt.baseUrl) ? "openai/whisper-large-v3" : /groq\.com/.test(config.stt.baseUrl) ? "whisper-large-v3" : "whisper-1",
 );
+
+if (!config.drawing.openrouterKey && /openrouter\.ai/.test(config.llm.baseUrl)) config.drawing.openrouterKey = config.llm.apiKey;
 
 export type Config = typeof config;
