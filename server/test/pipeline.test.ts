@@ -40,8 +40,8 @@ test("одно сообщение — дневник и план сразу, с 
   assert.equal(evs.length, 1);
   assert.equal(evs[0].time, "15:00");
   const rem = (await store.pendingReminders("event", evs[0].id));
-  assert.equal(rem.length, 1);
-  assert.equal(rem[0].due_at, zonedToUtc("2026-11-09", "14:00", TZ).toISOString());
+  // По умолчанию — за час и в момент начала (настройка «Когда напоминать о событиях»).
+  assert.deepEqual(rem.map((r) => r.due_at).sort(), [zonedToUtc("2026-11-09", "14:00", TZ).toISOString(), zonedToUtc("2026-11-09", "15:00", TZ).toISOString()]);
   assert.ok(r.undoable);
   assert.match(r.text, /Еда/);
   assert.match(r.text, /планов: 1/);
@@ -117,8 +117,7 @@ test("правка по номеру: перенос плана перестав
   assert.equal(ev.date_iso, "2026-11-11");
   assert.equal(ev.time, "16:00");
   const rem = (await store.pendingReminders("event", 1));
-  assert.equal(rem.length, 1);
-  assert.equal(rem[0].due_at, zonedToUtc("2026-11-11", "15:00", TZ).toISOString());
+  assert.deepEqual(rem.map((r) => r.due_at).sort(), [zonedToUtc("2026-11-11", "15:00", TZ).toISOString(), zonedToUtc("2026-11-11", "16:00", TZ).toISOString()]);
 });
 
 test("ошибка модели — сообщение сохраняется, повтор доставки дообрабатывает", async () => {
@@ -160,7 +159,7 @@ test("напоминание за час приходит один раз; ус�
   await sch.tick(zonedToUtc("2026-11-08", "15:01", TZ));
   await sch.tick(zonedToUtc("2026-11-08", "15:02", TZ));
   assert.equal(sent.filter((t) => t.includes("Врач")).length, 1);
-  await sch.tick(zonedToUtc("2026-11-08", "18:30", TZ)); // сервер спал с 15:02 до 18:30
+  await sch.tick(zonedToUtc("2026-11-08", "19:30", TZ)); // сервер спал с 15:02 до 19:30 — опоздали больше чем на час и «за час», и «в момент»
   assert.equal(sent.filter((t) => t.includes("Кино")).length, 0);
 });
 

@@ -37,14 +37,45 @@ export function habitAskTime(u: Pick<User, "evening_time">): string {
 export const habitQuestion = (title: string, streak: number) =>
   `🔁 ${esc(title)} — сегодня сделали?${streak >= 2 ? ` (серия ${streak} 🔥)` : ""}`;
 
-/** Запланировать «за N минут» до плана со временем. */
+/** Самое раннее «за сколько» в своём варианте — неделя. */
+export const REMIND_MAX_MIN = 7 * 24 * 60;
+/** Когда напоминать о плане со временем (настройка «Когда напоминать о событиях», users.event_reminders, через запятую):
+ * «day» — в начале дня (в час утренней сводки), число — за столько минут до начала, 0 — в момент начала, «off» — никогда.
+ * Пусто (старые пользователи) — за event_lead_min и в момент начала. */
+export function remindPlan(u: Pick<User, "event_reminders" | "event_lead_min">): ("day" | number)[] {
+  const raw = (u.event_reminders ?? "").trim() || `${u.event_lead_min},0`;
+  const out: ("day" | number)[] = [];
+  for (const t of raw.split(",").map((x) => x.trim())) {
+    const v = t === "day" ? "day" : /^\d+$/.test(t) && Number(t) <= REMIND_MAX_MIN ? Number(t) : null;
+    if (v !== null && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
+/** Настройка как её хранить: без повторов и непонятного, по порядку — «day», потом от раннего к позднему; ничего — «off». */
+export function remindText(raw: string): string {
+  if (raw.trim() === "off") return "off";
+  const plan = remindPlan({ event_reminders: raw, event_lead_min: 60 });
+  const mins = plan.filter((x): x is number => x !== "day").sort((a, b) => b - a);
+  const out = [...(plan.includes("day") ? ["day"] : []), ...mins.map(String)];
+  return out.length ? out.join(",") : "off";
+}
+/** «Через 5 мин», «Через 1 ч», «Через 2 ч 30 мин», «Через 1 дн.». */
+export function leadText(min: number): string {
+  if (min >= 1440 && min % 1440 === 0) return `${min / 1440} дн.`;
+  if (min < 60) return `${min} мин`;
+  return min % 60 ? `${Math.floor(min / 60)} ч ${min % 60} мин` : `${min / 60} ч`;
+}
+
+/** Запланировать напоминания о плане со временем — по настройке пользователя (remindPlan); уже прошедшие моменты пропускаются. */
 export async function planEventReminders(store: Store, u: User, e: EventRow, now: Date) {
   if (!e.time || e.status !== "active") return;
   const start = zonedToUtc(e.date_iso, e.time, u.tz);
-  const due = new Date(start.getTime() - u.event_lead_min * 60_000);
-  if (due <= now) return;
-  const lead = u.event_lead_min >= 60 && u.event_lead_min % 60 === 0 ? `${u.event_lead_min / 60} ч` : `${u.event_lead_min} мин`;
-  await store.addReminder(u.id, "event", e.id, due, `⏰ Через ${lead}: ${eventLine(e)}`);
+  for (const r of remindPlan(u)) {
+    const due = r === "day" ? zonedToUtc(e.date_iso, u.morning_time, u.tz) : new Date(start.getTime() - r * 60_000);
+    if (due <= now || due > start || (r === "day" && +due === +start)) continue;
+    const text = r === "day" ? `📅 Сегодня: ${eventLine(e)}` : r === 0 ? `⏰ Пора: ${eventLine(e)}` : `⏰ Через ${leadText(r)}: ${eventLine(e)}`;
+    await store.addReminder(u.id, "event", e.id, due, text);
+  }
 }
 
 /** Отложить уведомление: то же самое через N минут (кнопка «Через 30 мин» в push). */

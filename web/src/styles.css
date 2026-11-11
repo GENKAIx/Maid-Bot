@@ -405,6 +405,12 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .segment { display: inline-flex; background: var(--panel-2); border-radius: 10px; padding: 3px; gap: 2px; }
 .segment button { border: none; background: transparent; padding: 5px 12px; border-radius: 8px; font-size: 13px; color: var(--muted); }
 .segment button.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
+.remind-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.remind-opt { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font-size: 13px; }
+.remind-opt.on { background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.remind-opt .ghost { padding: 0 2px; font-size: 12px; color: inherit; }
+.remind-own { gap: 6px; flex-wrap: wrap; align-items: center; }
+.remind-own input { width: 72px; }
 .day-nav .spacer { flex: 1; }
 .totals { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; align-items: center; }
 .total { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; display: grid; min-width: 140px; }

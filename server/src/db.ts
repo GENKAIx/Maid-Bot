@@ -286,6 +286,11 @@ CREATE TABLE IF NOT EXISTS traits (
 );
 CREATE INDEX IF NOT EXISTS traits_user ON traits (user_id, status);
 `,
+  // Шаг 9: когда напоминать о планах — несколько раз (scheduler.ts, remindPlan): «day» — в начале дня, число — за столько минут, 0 — в момент начала.
+  // Пусто — как у старых пользователей: за event_lead_min и в момент начала.
+  `
+ALTER TABLE users ADD COLUMN event_reminders TEXT NOT NULL DEFAULT '';
+`,
 ];
 
 export interface User {
@@ -300,6 +305,7 @@ export interface User {
   tomorrow_time: string;
   evening_time: string;
   event_lead_min: number;
+  event_reminders: string;
   game_alerts: number;
   game_first_min: number;
   game_every_min: number;
@@ -1006,9 +1012,11 @@ export class Store {
   }
 
   // --- напоминания ---
+  /** Отменённое на тот же момент оживает (перепланировали после смены настройки или плана), отправленное остаётся. */
   async addReminder(userId: number, refKind: string, refId: number, dueAt: Date, text: string, buttons = "") {
     await this.run(
-      "INSERT INTO reminders (user_id, ref_kind, ref_id, due_at, text, buttons) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (ref_kind, ref_id, due_at) DO NOTHING",
+      "INSERT INTO reminders (user_id, ref_kind, ref_id, due_at, text, buttons) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (ref_kind, ref_id, due_at) " +
+        "DO UPDATE SET status = 'pending', text = excluded.text, buttons = excluded.buttons WHERE reminders.status = 'cancelled'",
       userId, refKind, refId, dueAt.toISOString(), text, buttons,
     );
   }

@@ -8,11 +8,60 @@ import { getTheme, setTheme, type Theme } from "../theme";
 
 interface Me {
   id: number; login: string | null; name: string; tz: string; persona: string;
-  morning_time: string; tomorrow_time: string; evening_time: string; event_lead_min: number;
+  morning_time: string; tomorrow_time: string; evening_time: string; event_lead_min: number; event_reminders: string;
   game_alerts: number; game_first_min: number; game_every_min: number;
   llm_month?: { calls: number; input: number; output: number };
   sessions: { id: string; label: string; created_at: string; last_seen: string; current?: boolean }[];
 }
+/** Настройка users.event_reminders: «day» — в начале дня, число — за столько минут, 0 — в момент начала; «off» — никогда; пусто — за event_lead_min и в момент. */
+function remindTokens(me: Pick<Me, "event_reminders" | "event_lead_min">): string[] {
+  const raw = me.event_reminders.trim() || `${me.event_lead_min},0`;
+  return raw === "off" ? [] : [...new Set(raw.split(",").map((t) => t.trim()).filter((t) => t === "day" || /^\d+$/.test(t)))];
+}
+const leadName = (min: number) =>
+  min % 1440 === 0 ? `За ${min / 1440} дн.` : min < 60 ? `За ${min} мин` : min % 60 ? `За ${Math.floor(min / 60)} ч ${min % 60} мин` : `За ${min / 60} ч`;
+const REMIND_PRESETS: [string, string][] = [["day", "В начале дня"], ["60", "За час"], ["5", "За 5 минут"], ["0", "В момент события"]];
+
+/** Сколько раз и когда напоминать о плане со временем: готовые варианты и свои. */
+function EventReminders({ me, busy, onSave }: { me: Me; busy: boolean; onSave: (v: string) => void }) {
+  const on = remindTokens(me);
+  const [num, setNum] = useState("30");
+  const [unit, setUnit] = useState<"1" | "60" | "1440">("1");
+  const own = on.filter((t) => !REMIND_PRESETS.some(([k]) => k === t)).map(Number).sort((a, b) => b - a);
+  const put = (list: string[]) => onSave(list.length ? list.join(",") : "off");
+  const flip = (t: string) => put(on.includes(t) ? on.filter((x) => x !== t) : [...on, t]);
+  const mins = Math.round(Number(num) * Number(unit));
+  const okOwn = Number.isFinite(mins) && mins >= 1 && mins <= 7 * 1440 && !on.includes(String(mins));
+  return (
+    <div className="form">
+      <div className="remind-opts" role="group" aria-label="Когда напоминать">
+        {REMIND_PRESETS.map(([t, name]) => (
+          <button key={t} className={`remind-opt${on.includes(t) ? " on" : ""}`} aria-pressed={on.includes(t)} disabled={busy} onClick={() => flip(t)}>
+            {on.includes(t) ? "✓ " : ""}{name}
+          </button>
+        ))}
+        {own.map((m) => (
+          <span key={m} className="remind-opt on">
+            ✓ {leadName(m)}
+            <button className="ghost" aria-label={`Убрать «${leadName(m)}»`} disabled={busy} onClick={() => flip(String(m))}>✕</button>
+          </span>
+        ))}
+      </div>
+      <div className="row remind-own">
+        <span className="muted small">Свой вариант: за</span>
+        <input type="number" min={1} max={unit === "1" ? 10080 : unit === "60" ? 168 : 7} value={num} onChange={(e) => setNum(e.target.value)} aria-label="Сколько" />
+        <select value={unit} onChange={(e) => setUnit(e.target.value as typeof unit)} aria-label="Единица">
+          <option value="1">мин</option><option value="60">ч</option><option value="1440">дн.</option>
+        </select>
+        <button disabled={busy || !okOwn} onClick={() => put([...on, String(mins)])}>Добавить</button>
+      </div>
+      <p className="muted small">
+        {on.length ? `Напомню ${on.length} ${on.length === 1 ? "раз" : on.length < 5 ? "раза" : "раз"}. «В начале дня» — в час утреннего списка (${me.morning_time}). Если момент уже прошёл (план добавлен впритык), это напоминание пропускается.` : "Напоминаний о планах не будет."}
+      </p>
+    </div>
+  );
+}
+
 interface PushInfo { key: string; subs: { endpoint: string; label: string; created_at: string; last_ok: string | null }[] }
 
 export function Settings({ onLogout }: { onLogout: () => void }) {
@@ -127,8 +176,11 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
             <label>Утренний список {field("morning_time", "time")}</label>
             <label>Что завтра {field("tomorrow_time", "time")}</label>
             <label>Вечерний итог {field("evening_time", "time")}</label>
-            <label>Напомнить о плане за, мин {field("event_lead_min", "number", { min: 5, max: 1440, step: 5 })}</label>
           </div>
+        </Card>
+
+        <Card title="Когда напоминать о событиях" className="reveal">
+          <EventReminders me={me} busy={saving} onSave={(event_reminders) => save({ event_reminders })} />
         </Card>
 
         <Card title="Игры" className="reveal">

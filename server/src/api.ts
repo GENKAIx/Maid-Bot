@@ -17,7 +17,7 @@ import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
-import { habitButtons, planEventReminders, snooze, type Button, type Send } from "./scheduler.ts";
+import { habitButtons, planEventReminders, remindText, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
@@ -265,12 +265,25 @@ export function createApi(deps: ApiDeps) {
         persona: z.string().max(40).optional(),
         morning_time: Time.optional(), tomorrow_time: Time.optional(), evening_time: Time.optional(),
         event_lead_min: z.coerce.number().int().min(5).max(24 * 60).optional(),
+        // «day,60,5,0» — когда напоминать о планах (remindPlan), «off» — никогда.
+        event_reminders: z.string().max(200).regex(/^(off|((day|\d{1,5})(,(day|\d{1,5}))*))$/, "day, минуты через запятую или off").optional(),
         game_alerts: z.coerce.number().int().min(0).max(1).optional(),
         game_first_min: z.coerce.number().int().min(15).max(24 * 60).optional(),
         game_every_min: z.coerce.number().int().min(15).max(24 * 60).optional(),
       }), await readJson(req));
+      if (b.event_reminders !== undefined) b.event_reminders = remindText(b.event_reminders);
       await store.updateUser(u.id, b);
-      const { password_hash: _, ...me } = (await store.user(u.id))!;
+      const fresh = (await store.user(u.id))!;
+      // Сменили, когда напоминать, — напоминания о будущих планах перекладываются заново.
+      if (["event_reminders", "event_lead_min", "morning_time"].some((k) => k in b && b[k as keyof typeof b] !== u[k as keyof User])) {
+        const at = new Date(), today = dayKey(at, fresh.tz);
+        for (const e of await store.eventsBetween(u.id, today, addDays(today, 400))) {
+          if (!e.time) continue;
+          await store.cancelReminders("event", e.id);
+          await planEventReminders(store, fresh, e, at);
+        }
+      }
+      const { password_hash: _, ...me } = fresh;
       return me;
     }
     if (m === "GET" && p === "/api/backup") {
