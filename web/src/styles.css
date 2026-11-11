@@ -583,12 +583,27 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 }
 
 /* Раздел «Виджет» (screens/Widget.tsx): флажки в две колонки, режимы сделанных задач с живыми картинками */
-/* карточки — колонками по высоте, без пустот между рядами */
-.wp .cards { display: block; columns: 280px 3; column-gap: 12px; }
-.wp .cards > .card { break-inside: avoid; margin-bottom: 12px; }
+/* одна колонка, как настройки Discord: разделы друг за другом, одна настройка — одна строка */
+.wp-list { max-width: 760px; margin-top: 18px; display: grid; gap: 26px; }
+.wp-sec h3 { margin: 0 0 2px; font-size: 13.5px; font-weight: 700; letter-spacing: .02em; color: var(--muted); }
+.wp-set { padding: 14px 0; border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
+.wp-set-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.wp-set-text { display: grid; gap: 2px; min-width: 0; }
+.wp-set-text b { font-size: 15px; font-weight: 600; }
+.wp-set-text span { font-size: 12.5px; color: var(--muted); }
+.wp-set-head > :not(.wp-set-text) { flex: none; }
+.wp-set-body input[type=range] { width: 100%; }
+.wp-val { font-variant-numeric: tabular-nums; }
+.wp-foot { margin: 10px 0 0; }
+.wp-toggle { width: 42px; height: 24px; padding: 0; border-radius: 12px; border: 0; background: color-mix(in srgb, var(--muted) 45%, transparent); position: relative; transition: background .15s; }
+.wp-toggle i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.wp-toggle.on { background: var(--accent); }
+.wp-toggle.on i { transform: translateX(18px); }
+.wp .done-modes, .wp .done-modes.cols-3, .wp .done-modes.cols-5 { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.wp .done-modes.cols-5 .dm { flex: none; }
+@media (max-width: 560px) { .wp-set-head { flex-wrap: wrap; } }
 .wp-sub { margin: 10px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 650; }
 .wp-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; }
-.wp .segment { flex-wrap: wrap; justify-self: start; }
 .wp .segment button { white-space: nowrap; }
 .done-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .done-modes .dm { min-width: 0; }
