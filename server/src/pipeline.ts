@@ -72,7 +72,7 @@ export async function promptLists(s: Store, userId: number, today: string, text:
 }
 
 /** Сколько дней отменённый или удалённый план виден разбору в «Корзине» (можно вернуть словами). */
-const TRASH_DAYS = 14;
+export const TRASH_DAYS = 14;
 
 /** Через сколько минут после сообщения повторять неудавшийся разбор; после последней попытки — заметкой. */
 export const RETRY_AFTER_MIN = [2, 10, 30];

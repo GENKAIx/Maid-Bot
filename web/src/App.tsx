@@ -11,6 +11,7 @@ import { Plans } from "./screens/Plans";
 import { Settings } from "./screens/Settings";
 import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
+import { Trash } from "./screens/Trash";
 import { desktop, Widget } from "./screens/Widget";
 import { Icon } from "./icons";
 
@@ -28,6 +29,7 @@ const TABS = [
   { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true },
   { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
   { id: "stats", path: "/stats", title: "Статистика", icon: "stats", more: true },
+  { id: "trash", path: "/trash", title: "Корзина", icon: "trash", more: true },
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
   // Только в программе для ПК (сайт открыт в её окне): настройки виджета на рабочем столе.
   ...(desktop() ? [{ id: "widget", path: "/widget", title: "Виджет", icon: "widget", more: true }] : []),
@@ -68,6 +70,7 @@ export function App() {
     : tab === "health" ? <Health version={version} />
     : tab === "money" ? <Money version={version} />
     : tab === "stats" ? <Stats version={version} />
+    : tab === "trash" ? <Trash version={version} onChanged={onChanged} />
     : tab === "settings" ? <Settings onLogout={logout} />
     : tab === "widget" ? <Widget />
     : tab === "catalog" ? <Suspense fallback={null}><Catalog chapter={arg} /></Suspense>

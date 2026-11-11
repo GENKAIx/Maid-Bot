@@ -725,6 +725,14 @@ export class Store {
       userId, from, ...statuses, since,
     );
   }
+  /** Корзина: отменённые и удалённые планы, изменённые не раньше since (ISO), свежие первыми. */
+  trashEvents(userId: number, since: string): Promise<EventRow[]> {
+    return this.all<EventRow>(
+      `SELECT * FROM events WHERE user_id = ? AND status IN ('cancelled', 'deleted') AND updated_at >= ?
+       ORDER BY updated_at DESC, id DESC LIMIT 200`,
+      userId, since,
+    );
+  }
   allEvents(userId: number): Promise<EventRow[]> {
     return this.all<EventRow>("SELECT * FROM events WHERE user_id = ? ORDER BY date_iso, COALESCE(time, '99:99'), id", userId);
   }
@@ -760,6 +768,14 @@ export class Store {
       `SELECT * FROM tasks WHERE user_id = ? AND status = 'open'
        ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END, COALESCE(due_date, '9999'), id`,
       userId,
+    );
+  }
+  /** Корзина: удалённые и отменённые задачи, закрытые не раньше since (ISO), свежие первыми. */
+  trashTasks(userId: number, since: string): Promise<TaskRow[]> {
+    return this.all<TaskRow>(
+      `SELECT * FROM tasks WHERE user_id = ? AND status IN ('deleted', 'cancelled') AND closed_at >= ?
+       ORDER BY closed_at DESC, id DESC LIMIT 200`,
+      userId, since,
     );
   }
   allTasks(userId: number): Promise<TaskRow[]> {

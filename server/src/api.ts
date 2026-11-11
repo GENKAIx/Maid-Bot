@@ -8,7 +8,7 @@ import type { Store, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { habitMonth, habitsOfDay } from "./habits.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
-import { proposalView, type Pipeline } from "./pipeline.ts";
+import { proposalView, TRASH_DAYS, type Pipeline } from "./pipeline.ts";
 import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
@@ -320,6 +320,13 @@ export function createApi(deps: ApiDeps) {
       return { ok: true };
     }
     if (m === "GET" && p === "/api/tasks") return store.openTasks(u.id);
+    // Корзина: удалённые и отменённые задачи и планы за TRASH_DAYS дней. Вернуть — POST /api/tasks/:id {status:"open"}
+    // или POST /api/events/:id {status:"active"} (как «↩ Вернуть» после удаления).
+    if (m === "GET" && p === "/api/trash") {
+      const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
+      return { days: TRASH_DAYS, tasks: await store.trashTasks(u.id, since), events: await store.trashEvents(u.id, since) };
+    }
+
     // ?all=1 — все даты с ближайшим наступлением (в течение года), иначе ближайшие 30 дней.
     if (m === "GET" && p === "/api/dates") {
       const within = q("all") ? 366 : 30;
