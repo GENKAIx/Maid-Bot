@@ -107,7 +107,7 @@ setInterval(tickDayMood, 20_000);
 // Только когда облачко свободно и она не спит и не дуется; свёрнутая панель не разворачивается — облачко над головой (stay).
 const SAID_KEY = "maid.dayEvents";
 const STALE_MS = 3 * 3600_000;
-const taskWord = (n) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "задача" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "задачи" : "задач"}`;
+const tasksCount = (n) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "задача" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "задачи" : "задач"}`;
 let widgetSince = Date.now(); // «давно» не раньше, чем через 3 ч после запуска виджета
 function saidToday(day) {
   try {
@@ -138,7 +138,7 @@ function dayEvent(now = new Date()) {
   if (done.length && now - Math.min(...done) < 10 * 60_000 && !said.includes("firstDone")) return ["firstDone"];
   const last = Math.max(widgetSince, ...done);
   if (h >= 12 && h < 20 && (data.tasks ?? []).length && now - last > STALE_MS && !said.includes("stale")) return ["stale"];
-  if (h >= 21 && dueLeft && !said.includes("eveningLeft")) return ["eveningLeft", { n: taskWord(dueLeft) }];
+  if (h >= 21 && dueLeft && !said.includes("eveningLeft")) return ["eveningLeft", { n: tasksCount(dueLeft) }];
   return null;
 }
 function tickDayEvents() {
