@@ -102,6 +102,52 @@ function tickDayMood() {
 }
 setInterval(tickDayMood, 20_000);
 
+// --- реплики на события дня ---
+// Раз за день на каждое: первая сделанная задача, всё на сегодня сделано, днём давно ни одной галочки, вечером остались дела.
+// Только когда облачко свободно и она не спит и не дуется; свёрнутая панель не разворачивается — облачко над головой (stay).
+const SAID_KEY = "maid.dayEvents";
+const STALE_MS = 3 * 3600_000;
+const taskWord = (n) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "задача" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "задачи" : "задач"}`;
+let widgetSince = Date.now(); // «давно» не раньше, чем через 3 ч после запуска виджета
+function saidToday(day) {
+  try {
+    const v = JSON.parse(localStorage.getItem(SAID_KEY) ?? "null");
+    return v?.day === day ? v.said : [];
+  } catch { return []; }
+}
+function sayOnce(day, key, vars) {
+  const said = saidToday(day);
+  if (said.includes(key)) return false;
+  // «Всё сделано» заодно закрывает «первую»: одна задача на день — одна реплика, а не две подряд.
+  const now = key === "allDone" ? [key, "firstDone"] : [key];
+  try { localStorage.setItem(SAID_KEY, JSON.stringify({ day, said: [...said, ...now] })); } catch {}
+  const p = lineItem(key, vars);
+  say(p.t, { ms: 7000, mood: p.m, stay: collapsed });
+  return true;
+}
+function dayEvent(now = new Date()) {
+  const day = data.day;
+  const h = now.getHours();
+  const done = (data.done_today ?? []).map((t) => new Date(t.done_at).getTime()).filter(Number.isFinite);
+  const habits = (data.habits ?? []).filter((x) => x.course?.find((c) => c.day === day)?.s !== "rest");
+  const habitsLeft = habits.filter((x) => !x.status).length;
+  const dueLeft = (data.tasks ?? []).filter((t) => t.due_date && t.due_date <= day).length;
+  const said = saidToday(day);
+  if (done.length + habits.filter((x) => x.status === "done").length > 0 && !dueLeft && !habitsLeft && !said.includes("allDone")) return ["allDone"];
+  // «Первая» — только если она сделана только что (перезапуск вечером не скажет «первая!»).
+  if (done.length && now - Math.min(...done) < 10 * 60_000 && !said.includes("firstDone")) return ["firstDone"];
+  const last = Math.max(widgetSince, ...done);
+  if (h >= 12 && h < 20 && (data.tasks ?? []).length && now - last > STALE_MS && !said.includes("stale")) return ["stale"];
+  if (h >= 21 && dueLeft && !said.includes("eveningLeft")) return ["eveningLeft", { n: taskWord(dueLeft) }];
+  return null;
+}
+function tickDayEvents() {
+  if (!data || !online || napping || Date.now() < sulkUntil || !$("#bubble").classList.contains("hidden")) return;
+  const ev = dayEvent();
+  if (ev) sayOnce(data.day, ...ev);
+}
+setInterval(tickDayEvents, 30_000);
+
 // --- реакция на дела ---
 // За 10 минут до плана со временем — машет и потом держит часики, пока план не начнётся; есть просроченные задачи —
 // недовольная мордочка вместо обычной (основа, см. baseMood). Сервер свои напоминания и так присылает — тут без слов.
