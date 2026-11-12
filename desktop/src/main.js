@@ -4,7 +4,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor, nativeTheme } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor, nativeTheme, session } = require("electron");
 const { collectDay, localDay } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
 const { createUpdates } = require("./updates.js");
@@ -760,7 +760,12 @@ const updates = createUpdates({
     if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("app:update", s);
     refreshTray();
   },
-  beforeInstall: () => { quitting = true; },
+  // Установщик закрывает программу жёстко: вход сайта (localStorage главного окна) и куки сначала пишутся на диск, иначе после обновления — экран входа.
+  beforeInstall: async () => {
+    quitting = true;
+    session.defaultSession.flushStorageData();
+    await session.defaultSession.cookies.flushStore();
+  },
   log: maidLog,
 });
 ipcMain.handle("app:update-get", (e) => (fromApp(e) ? updates.state() : null));
@@ -802,9 +807,21 @@ ipcMain.on("thinking", (_e, on) => widget?.webContents.send("thinking", on));
 ipcMain.on("reply", (_e, r) => widget?.webContents.send("reply", r));
 ipcMain.on("notify", (_e, title, body) => new Notification({ title, body }).show());
 
-if (!app.requestSingleInstanceLock()) app.quit();
+// Ошибки главного процесса — в журнал: без этого сбой запуска (виджет не появился) не оставлял следа.
+process.on("uncaughtException", (e) => maidLog("ошибка:", e?.stack ?? e));
+process.on("unhandledRejection", (e) => maidLog("ошибка (обещание):", e?.stack ?? e));
+const afterUpdate = process.argv.includes("--updated");
+maidLog("старт процесса", app.getVersion(), afterUpdate ? "после обновления" : "");
+let haveLock = app.requestSingleInstanceLock();
+// После обновления установщик запускает новую копию, пока старая может ещё закрываться: подождать её до 15 с, а не закрыться самой.
+for (const until = Date.now() + 15_000; !haveLock && afterUpdate && Date.now() < until;) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
+  haveLock = app.requestSingleInstanceLock();
+}
+if (!haveLock) { maidLog("уже запущена — эта копия закрывается"); app.quit(); }
 app.on("second-instance", () => showMain());
 app.whenReady().then(() => {
+  if (!haveLock) return;
   app.setAppUserModelId("Горничная");
   loadSettings();
   tray = new Tray(icon().isEmpty() ? nativeImage.createEmpty() : icon().resize({ width: 16, height: 16 }));

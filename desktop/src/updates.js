@@ -36,8 +36,9 @@ function createUpdates({ feed, onState, beforeInstall, log }) {
     updater.on("update-downloaded", () => {
       set({ status: "ready", percent: 100 });
       log("обновление: ставлю", state.next);
-      beforeInstall();
-      setTimeout(() => updater.quitAndInstall(true, true), 400);
+      // beforeInstall может вернуть обещание (сохранить данные окон на диск) — ставим, когда оно выполнено.
+      Promise.resolve().then(beforeInstall).catch((e) => log("обновление: перед установкой", reason(e)))
+        .finally(() => setTimeout(() => updater.quitAndInstall(true, true), 400));
     });
     updater.on("error", (e) => {
       installAfter = false;
