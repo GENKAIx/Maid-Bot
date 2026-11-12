@@ -69,12 +69,22 @@ function dayStrip(from = stripFrom, count = DAYS_AHEAD + 1) {
     const day = dayAfter(data.day, from + i);
     const d = new Date(`${day}T12:00:00Z`);
     const wd = d.toLocaleDateString("ru-RU", { weekday: "short", timeZone: "UTC" });
-    const n = plansOf(day).length + tasksOn(day).length;
+    const np = plansOf(day).length;
+    const nt = tasksOn(day).length;
+    const n = np + nt;
     // Точка — в этот день важная дата (сама дата, не напоминание о ней заранее).
     const big = (data.dates ?? []).filter((x) => x.on === day);
-    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${day < data.day ? " past" : ""}${day === data.day ? " today" : ""}${n ? "" : " empty"}${big.length ? " has-date" : ""}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${n} ${planWord(n)} и задач` : " · планов нет"}${big.map((x) => ` · ${esc(x.title)}`).join("")}">
-      <b>${d.getUTCDate()}</b> ${esc(wd)}<span class="cnt">${n ? `(${n})` : "–"}</span></button>`;
+    return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${day < data.day ? " past" : ""}${day === data.day ? " today" : ""}${n ? "" : " empty"}${big.length ? " has-date" : ""}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${[np && `${np} ${planWord(np)}`, nt && `${nt} ${taskWord(nt)}`].filter(Boolean).join(", ")}` : " · планов нет"}${big.map((x) => ` · ${esc(x.title)}`).join("")}">
+      <b>${d.getUTCDate()}</b> ${esc(wd)}<span class="cnt">${n ? dayLoadBars(np, nt) : "–"}</span></button>`;
   }).join("");
+}
+
+// Загрузка дня полосками под датой: планы — цветом панели, задачи — зелёным; не больше DAY_BARS полосок, задачи хоть одной.
+const DAY_BARS = 6;
+function dayLoadBars(np, nt) {
+  const p = Math.min(np, nt ? DAY_BARS - 1 : DAY_BARS);
+  const t = Math.min(nt, DAY_BARS - p);
+  return `<i class="lp"></i>`.repeat(p) + `<i class="lt"></i>`.repeat(t);
 }
 
 function plansOf(day) {
@@ -316,6 +326,48 @@ function planLabel(e) {
   const when = e.time ? `<b class="pl-when">${timeSpan(e.time, e.end_time)}</b> · ` : ""; // без времени — только название
   return `${when}${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}`;
 }
+// Шкала дня: планы со временем по порядку, между ними свободные окна словами («свободно до 15:00»), сегодня — линия «сейчас»;
+// планы без времени и задачи — отдельно внизу, их можно перетащить на окно (план встанет на его начало). Свободное время считается
+// с DAY_FROM до DAY_TO (ночь не в счёт), окна короче GAP_MIN не показываются.
+const DAY_FROM = 8 * 60;
+const DAY_TO = 23 * 60;
+const GAP_MIN = 30;
+const clockHm = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+const freeWords = (min) => (min >= 60 ? `${Math.floor(min / 60)} ч${min % 60 ? ` ${min % 60} мин` : ""}` : `${min} мин`);
+function planSpan(e) {
+  const start = minutesOf(e.time);
+  if (start === null || start === undefined) return null;
+  const end = minutesOf(e.end_time);
+  return { start, end: end !== null && end > start ? end : start + NO_END_MIN };
+}
+/** Строки шкалы: { e } — план, { gap: [от, до], last } — окно, { now } — линия «сейчас»; free — свободных минут. */
+function dayRows(timed, today, nowMin, past) {
+  const rows = [];
+  let free = 0;
+  let from = past ? DAY_TO : today ? Math.max(DAY_FROM, nowMin) : DAY_FROM;
+  let nowPut = !today;
+  const gap = (to, last) => {
+    to = Math.min(to, DAY_TO);
+    if (to <= from) return;
+    free += to - from;
+    if (to - from >= GAP_MIN) rows.push({ gap: [Math.min(Math.ceil(from / 15) * 15, to), to], last });
+  };
+  for (const e of timed) {
+    const s = planSpan(clockEdits.get(e.id) ?? e);
+    if (!nowPut && s.start > nowMin) {
+      rows.push({ now: true });
+      nowPut = true;
+    }
+    if (!e._st) {
+      gap(s.start, false);
+      from = Math.max(from, s.end);
+    }
+    rows.push({ e });
+  }
+  if (!nowPut) rows.push({ now: true });
+  gap(DAY_TO, true);
+  return { rows, free };
+}
 function drawPlanList(box) {
   const today = clockDay === data.day;
   const d = new Date();
@@ -359,14 +411,20 @@ function drawPlanList(box) {
   const hold = collapsed && foldFly === "fly" ? Math.max(1, foldSlots) : 0;
   const pad = collapsed && foldFly === "land" ? Math.max(0, foldSlots - shown.length - tasks.length) : 0;
   const dayName = today ? "Сегодня" : humanDay(clockDay);
-  const count = [open && `${open} ${planWord(open)}`, tasks.length && `${tasks.length} ${taskWord(tasks.length)}`].filter(Boolean).join(" · ") || "планов нет";
+  let count = [open && `${open} ${planWord(open)}`, tasks.length && `${tasks.length} ${taskWord(tasks.length)}`].filter(Boolean).join(" · ") || "планов нет";
+  const past = clockDay < data.day;
+  const timed = list.filter((e) => planSpan(clockEdits.get(e.id) ?? e));
+  const untimed = list.filter((e) => !timed.includes(e));
+  const { rows, free } = dayRows(timed, today, nowMin, past);
+  // Заголовок — сколько свободно (счёт планов — подсказкой); прошедший день и поздний вечер — по-старому, счётом.
+  if (!past && !(today && nowMin >= DAY_TO)) count = `<span title="${esc(count)}">${free ? `${freeWords(free)} свободно` : "свободного времени нет"}</span>`;
   const taskCard = (t) => {
     const x = taskDone.get(t.id);
     const tools = x ? `<button type="button" class="pl-check on" data-tundo="1" title="Отменить — вернуть в задачи"><i>✓</i><b>×</b></button>`
       : `<button type="button" class="pl-x" data-tdel="1" title="Удалить задачу">×</button>
       <button type="button" class="pl-check" data-tdone="1" title="Сделано"></button>`;
     return `<li class="pl-card pl-task${x ? ` done leaving${x.fly ? " fly" : ""}` : ""}${clockFresh.has(`t${t.id}`) ? " fresh" : ""}${clockDay < data.day ? " late" : ""}" data-task="${t.id}">
-      <span class="pl-text">${esc(t.title)}</span>${tools}</li>`;
+      <span class="pl-text" title="Двойной щелчок — переименовать">${esc(t.title)}</span>${tools}</li>`;
   };
   const card = (e) => {
     const st = e._st ?? "";
@@ -377,8 +435,22 @@ function drawPlanList(box) {
     const now = today && !st && start !== null && start <= nowMin && nowMin < end;
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
       <button type="button" class="pl-check${st === "done" ? " on" : st === "cancelled" ? " on off" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : st === "cancelled" ? "<i>×</i><b>↺</b>" : ""}</button>`;
-    return `<li class="pl-card${st ? ` ${st}` : ""}${e._out ? " out" : ""}${e._mv ? " mv" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockEdits.has(e.id) ? " edit" : clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
-      <span class="pl-text">${planLabel(clockEdits.get(e.id) ?? e)}</span>${tools}</li>`;
+    const at = start !== null ? `<span class="pl-at">${clockHm(start)}</span>` : "";
+    return `<li class="pl-card${st ? ` ${st}` : ""}${at ? " timed" : ""}${e._out ? " out" : ""}${e._mv ? " mv" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockEdits.has(e.id) ? " edit" : clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
+      ${at}<span class="pl-text" title="Двойной щелчок — переименовать">${planLabel(clockEdits.get(e.id) ?? e)}</span>${tools}</li>`;
+  };
+  const gapRow = ({ gap: [from, to], last }) => {
+    const words = !last ? `свободно до ${clockHm(to)}` : timed.some((e) => !e._st) ? "дальше свободно" : today && nowMin > DAY_FROM ? "свободно до конца дня" : "весь день свободен";
+    return `<li class="pl-gap" data-from="${from}" data-to="${to}" title="Щёлкните — план на ${clockHm(from)}"><span>${words}</span><em>${freeWords(to - from)}</em></li>`;
+  };
+  const nowRow = () => `<li class="pl-now" title="Сейчас"><b>${clockHm(nowMin)}</b><span>сейчас</span></li>`;
+  // Весь день — шкалой; под свёрнутой карточкой (перелёт) — как раньше, только карточки.
+  const timeline = () => {
+    const gaps = rows.some((r) => r.gap);
+    const rest = [...tasks.map(taskCard), ...untimed.map(card)];
+    return `<ul class="pl-list pl-tl">${shownPins.map(pinCard).join("")}${rows.map((r) => (r.e ? card(r.e) : r.gap ? gapRow(r) : nowRow())).join("")}`
+      + (past ? "" : `<li class="pl-add-row"><button type="button" class="pl-add" data-add>+ план на ${today ? "сегодня" : "этот день"}</button></li>`)
+      + (rest.length ? `<li class="pl-sect">Без времени${gaps ? " · перетащите на шкалу" : ""}</li>${rest.join("")}` : "") + "</ul>";
   };
   box.innerHTML = `
     ${headHtml(dayName, count)}
@@ -389,6 +461,7 @@ function drawPlanList(box) {
     </div>
     <div class="pl-top"><span>Планы на день</span></div>
     ${hold ? `<ul class="pl-list">${'<li class="pl-card pl-hold"></li>'.repeat(hold)}</ul>`
+    : !(collapsed && foldFly) && (!past || list.length || tasks.length || pins.length) ? timeline()
     : shown.length || shownPins.length || tasks.length || pad ? `<ul class="pl-list">${shownPins.map(pinCard).join("")}${tasks.map(taskCard).join("")}${shown.map(card).join("")}${'<li class="pl-card pl-hold"></li>'.repeat(pad)}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
   // Цвет полоски карточки — через CSSOM: строгая политика окна не пускает атрибуты style в разметке.
   for (const li of box.querySelectorAll(".pl-card[data-c]")) li.style.setProperty("--c", li.dataset.c);
@@ -855,6 +928,9 @@ $("#planClock").addEventListener("click", (e) => {
     drawClock();
     return hideClockLater();
   }
+  const add = e.target.closest("[data-add]");
+  const gap = e.target.closest(".pl-gap");
+  if (add || gap) return openNewPlan(add ?? gap, gap ? { from: Number(gap.dataset.from), to: Number(gap.dataset.to) } : null);
   if (!e.target.closest(".plan-arc, .pl-list, .pl-top, .pl-empty, .pc-strip, .pc-head")) hideClock();
 });
 // Листание дат: колесо над полосой — день вперёд/назад (Shift — неделя), полосу можно тянуть мышью, стрелки — неделя,
@@ -1650,6 +1726,10 @@ function planDragAt(d, x, y, ctrl) {
   const el = document.elementFromPoint(x, y);
   flipWhileDragging(d, el?.closest("#planClock .pc-arrow"));
   const chip = el?.closest("#planClock .day-chip");
+  // Над свободным окном шкалы — поставить на его начало (длина своя или час, не дальше конца окна).
+  const gapEl = el?.closest("#planClock .pl-gap");
+  d.slot = gapEl && d.e.date_iso === clockDay ? { from: Number(gapEl.dataset.from), to: Number(gapEl.dataset.to) } : null;
+  for (const g of document.querySelectorAll("#planClock .pl-gap")) g.classList.toggle("drop", g === gapEl && !!d.slot);
   let day = null;
   let mode = null;
   if (chip && chip.dataset.day !== d.e.date_iso) {
@@ -1681,7 +1761,7 @@ function planDragAt(d, x, y, ctrl) {
   for (const c of document.querySelectorAll("#planClock .day-chip")) c.classList.toggle("drop", c.dataset.day === day);
   for (const h of d.pick?.querySelectorAll("[data-mode]") ?? []) h.classList.toggle("on", h.dataset.mode === mode);
   d.ghost.classList.toggle("copy", mode === "copy");
-  d.ghost.classList.toggle("move", mode === "move");
+  d.ghost.classList.toggle("move", mode === "move" || !!d.slot);
 }
 document.addEventListener("pointermove", (ev) => {
   if (!planDrag) return;
@@ -1717,7 +1797,7 @@ function endPlanDrag(drop) {
   flipWhileDragging(d, null);
   d.li.classList.remove("pl-dragging");
   $("#planClock").classList.remove("dragging-plan");
-  for (const c of document.querySelectorAll("#planClock .day-chip.drop")) c.classList.remove("drop");
+  for (const c of document.querySelectorAll("#planClock .day-chip.drop, #planClock .pl-gap.drop")) c.classList.remove("drop");
   // Щелчок, который браузер пришлёт после отпускания, не должен открыть день или отметить план.
   const eat = (e) => {
     e.stopPropagation();
@@ -1725,6 +1805,11 @@ function endPlanDrag(drop) {
   };
   window.addEventListener("click", eat, { capture: true, once: true });
   setTimeout(() => window.removeEventListener("click", eat, { capture: true }), 0);
+  if (drop && d.slot) {
+    const s = d.e.task ? null : planSpan(d.e);
+    const len = s && minutesOf(d.e.end_time) > s.start ? s.end - s.start : 0;
+    return void retimePlan(d.e, d.slot.from, len ? d.slot.from + len : Math.min(d.slot.from + 60, d.slot.to), null);
+  }
   if (!drop || !d.day) return;
   if (d.e.task) d.mode === "copy" ? copyTask(d.e, d.day) : moveTask(d.e, d.day, d.li);
   else if (d.mode === "copy") copyPlan(d.e, d.day);
@@ -2275,6 +2360,73 @@ function openRename(e, li) {
     else if (ev.key === "Escape") finish(false);
   });
   input.addEventListener("blur", () => finish(true));
+}
+// «+ план на день» и щелчок по свободному окну: окошко поверх панели (как переименование) — что и когда. Время можно не писать;
+// «15», «15:30», «15.30», «15-16», «15:00–16:30». Из окна шкалы время уже стоит (его начало, на час). Enter — записать, Esc — отмена.
+function parseClock(s) {
+  const one = (x) => {
+    const m = x.trim().match(/^(\d{1,2})(?:[:.](\d{2}))?$/) ?? x.trim().match(/^(\d{2})(\d{2})$/);
+    if (!m) return null;
+    const h = Number(m[1]);
+    const min = Number(m[2] ?? 0);
+    return h < 24 && min < 60 ? h * 60 + min : null;
+  };
+  const t = s.trim();
+  if (!t) return {};
+  const [a, b] = t.split(/\s*[-–—]\s*/);
+  const start = one(a);
+  const end = b === undefined ? null : one(b);
+  if (start === null || (b !== undefined && (end === null || end <= start))) return null;
+  return { time: clockHm(start), end_time: end === null ? null : clockHm(end) };
+}
+function openNewPlan(anchor, slot) {
+  closePlanMenu();
+  const day = clockDay;
+  const r = anchor.getBoundingClientRect();
+  const box = document.createElement("div");
+  box.className = "pl-menu pl-rename pl-newplan";
+  box.innerHTML = `<input type="text" class="np-title" maxlength="200" spellcheck="true" placeholder="Что запланировать?">
+    <input type="text" class="np-time" maxlength="13" placeholder="время" title="Можно не писать. «15», «15:30», «15-16»">`;
+  const [title, when] = box.querySelectorAll("input");
+  if (slot) when.value = `${clockHm(slot.from)}–${clockHm(Math.min(slot.from + 60, slot.to))}`;
+  showPlanMenu(box, r.left, r.top);
+  box.style.width = `${Math.max(200, r.width)}px`;
+  title.focus();
+  let done = false;
+  const finish = async (save) => {
+    if (done) return;
+    const name = title.value.trim();
+    const at = parseClock(when.value);
+    if (save && name && !at) {
+      when.classList.add("bad");
+      return when.focus();
+    }
+    done = true;
+    closePlanMenu();
+    if (!save || !name) return;
+    try {
+      const made = await maid.api("POST", "/api/events", { title: name, date: day, ...at });
+      quietPlans.add(made.id); // панель остаётся на этом дне
+      popTone(2);
+      const where = day === data.day ? "сегодня" : humanDay(day);
+      sayUnlessClash(made, day, `Записала «${name}» на ${where}${at.time ? ` в ${at.time}` : ""} ✓`);
+      farPlans.clear();
+      maid.changed();
+    } catch (err) {
+      const msg = String(err?.message ?? err);
+      say(/нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет создавать планы отсюда — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+    }
+  };
+  for (const input of [title, when]) {
+    input.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
+      if (ev.key === "Enter") finish(true);
+      else if (ev.key === "Escape") finish(false);
+      else if (input === when) when.classList.remove("bad");
+    });
+  }
+  // Ушли из окошка совсем (не на второе поле) — записать, если есть название.
+  box.addEventListener("focusout", (ev) => { if (!box.contains(ev.relatedTarget)) setTimeout(() => !box.contains(document.activeElement) && finish(true)); });
 }
 $("#planClock").addEventListener("dblclick", (ev) => {
   const text = ev.target.closest(".pl-text");

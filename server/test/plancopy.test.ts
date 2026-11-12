@@ -29,6 +29,18 @@ test("копия и перенос плана: на новый день с те�
   try {
     const token = (await call("/api/login", { login: "owner", password: "secret-pass-1", label: "test" })).json.token as string;
 
+    // «+ план на день» в виджете: новый план на день со временем; «Отменить» его убирает; ошибки — 400.
+    const np = await call("/api/events", { title: "  Погулять ", date: "2026-11-11", time: "15:00", end_time: "16:00" }, token);
+    assert.equal(np.status, 200);
+    assert.deepEqual([np.json.title, np.json.date_iso, np.json.time, np.json.end_time, np.json.status], ["Погулять", "2026-11-11", "15:00", "16:00", "active"]);
+    const bare = await call("/api/events", { title: "Позвонить", date: "2026-11-11" }, token);
+    assert.equal(bare.json.time, null);
+    await call("/api/undo", { messageId: np.json.undo }, token);
+    assert.equal((await store.event(np.json.id as number))!.status, "deleted", "отмена убрала новый план");
+    assert.equal((await call("/api/events", { title: " " }, token)).status, 400);
+    assert.equal((await call("/api/events", { title: "x", time: "16:00", end_time: "15:00" }, token)).status, 400);
+    assert.equal((await call("/api/events", { title: "x", end_time: "15:00" }, token)).status, 400);
+
     const c = await call(`/api/events/${ev}/copy`, { date: "2026-11-12" }, token);
     assert.equal(c.status, 200);
     assert.equal(c.json.date_iso, "2026-11-12");

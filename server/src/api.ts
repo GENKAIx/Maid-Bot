@@ -456,6 +456,25 @@ export function createApi(deps: ApiDeps) {
       });
       return { ...(await store.task(id)), undo };
     }
+    // Новый план кнопкой «+ план на день» в панели планов виджета: название как есть, день, время (если задали). Отменяется («↩ Отменить»).
+    if (m === "POST" && p === "/api/events") {
+      const Time = z.string().refine(isTime, "время ЧЧ:ММ");
+      const b = parseBody(z.object({
+        title: z.string().trim().min(1).max(200), date: Day.optional(), time: Time.nullable().optional(), end_time: Time.nullable().optional(),
+      }), await readJson(req));
+      if (b.end_time && !b.time) throw new HttpError(400, "end_time — только вместе с time");
+      if (b.time && b.end_time && b.end_time <= b.time) throw new HttpError(400, "конец раньше начала");
+      let id = 0;
+      const undo = await pipeline.manual(u, `＋ ${b.title}`, async (log) => {
+        id = await store.addEvent({
+          user_id: u.id, title: b.title, date_iso: b.date ?? today, time: b.time ?? null, end_time: b.time ? b.end_time ?? null : null,
+          details: "", domain: "life", message_id: null,
+        });
+        await log("events", id, { status: "deleted" });
+        await planEventReminders(store, u, (await store.event(id))!, new Date());
+      });
+      return { ...(await store.event(id))!, undo };
+    }
     const task = p.match(/^\/api\/tasks\/(\d+)$/);
     if (m === "POST" && task) {
       // Разбор хвостов в виджете: failed — «не буду делать», dodged — закрыл крестиком, не ответив (сбежал от задачи);
