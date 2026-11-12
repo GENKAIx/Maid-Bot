@@ -42,6 +42,15 @@
       "shortcutName": "Горничная",
       "artifactName": "Gornichnaya-Setup-${version}.exe"
     },
-    "electronVersion": "45.2.3"
+    "electronVersion": "45.2.3",
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://maid.invalid/desktop/"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }

@@ -7,6 +7,7 @@ const path = require("node:path");
 const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor, nativeTheme } = require("electron");
 const { collectDay, localDay } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
+const { createUpdates } = require("./updates.js");
 
 const DEFAULTS = {
   server: "http://localhost:3000",
@@ -562,6 +563,7 @@ function refreshTray() {
     { type: "separator" },
     { label: "Запускать с Windows", type: "checkbox", checked: Boolean(settings.autostart), enabled: app.isPackaged,
       click: (it) => { settings.autostart = it.checked; saveSettings(); applyAutostart(); } },
+    ...(updates.state().status === "available" ? [{ label: `Обновить до ${updates.state().next}`, click: () => void updates.install() }] : []),
     { label: "Выход", click: () => { quitting = true; app.quit(); } },
   ]));
 }
@@ -751,6 +753,19 @@ ipcMain.handle("app:general-set", (e, patch) => {
   refreshTray();
   return general();
 });
+// Обновление программы: состояние — в главное окно (раздел «Виджет» → «Программа») и в меню значка.
+const updates = createUpdates({
+  feed: () => settings.server.replace(/\/$/, "") + "/desktop/",
+  onState: (s) => {
+    if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("app:update", s);
+    refreshTray();
+  },
+  beforeInstall: () => { quitting = true; },
+  log: maidLog,
+});
+ipcMain.handle("app:update-get", (e) => (fromApp(e) ? updates.state() : null));
+ipcMain.handle("app:update-check", (e) => (fromApp(e) ? updates.check() : null));
+ipcMain.handle("app:update-install", (e) => (fromApp(e) ? updates.install() : null));
 ipcMain.handle("tracker:now", trackOnce);
 // Сколько секунд человек не трогал мышь и клавиатуру (горничная засыпает, когда его нет; заблокированный экран — тоже нет).
 ipcMain.handle("idle", () => (powerMonitor.getSystemIdleState(1) === "locked" ? 86_400 : powerMonitor.getSystemIdleTime()));
@@ -803,6 +818,11 @@ app.whenReady().then(() => {
   if (!token() && !tokenEnc) showMain(true);
   else if (process.argv.includes("--show")) showMain();
   startTracker();
+  // Тихая проверка обновления через минуту после запуска и раз в 6 часов: нашлось — пункт «Обновить до …» в меню значка.
+  if (app.isPackaged) {
+    setTimeout(() => void updates.check(), 60_000);
+    setInterval(() => void updates.check(), 6 * 3600_000);
+  }
   screen.on("display-removed", () => widget?.setBounds(widgetBounds()));
 });
 app.on("window-all-closed", (e) => e.preventDefault?.());

@@ -34,6 +34,8 @@ export interface ApiDeps {
   webhook?: (req: http.IncomingMessage, res: http.ServerResponse) => unknown;
   /** Папка собранного веб-приложения; пусто — не отдавать. */
   webDir?: string;
+  /** Папка обновлений программы для ПК (/desktop/latest.yml, установщик); пусто — не отдавать. */
+  desktopDir?: string;
   push?: Push;
   /** Имя Telegram-бота без @ (ссылка на экране входа); нет бота — undefined. */
   botName?: () => string | undefined;
@@ -143,6 +145,23 @@ async function serveStatic(dir: string, pathname: string, res: http.ServerRespon
   return true;
 }
 
+/** Обновление программы для ПК: только latest.yml и установщики из папки, без подпапок и без index.html.
+ *  Открыто без входа — в установщике нет ничего личного, а программа проверяет обновления до входа. */
+export async function serveDesktop(dir: string, pathname: string, res: http.ServerResponse): Promise<boolean> {
+  const name = pathname.slice("/desktop/".length);
+  if (!dir || !/^(latest\.yml|[\w.-]+\.exe)$/.test(name) || name.startsWith(".")) return false;
+  const file = path.join(dir, name);
+  const st = await fs.promises.stat(file).catch(() => null);
+  if (!st?.isFile()) return false;
+  res.writeHead(200, {
+    "Content-Type": name.endsWith(".yml") ? "text/yaml; charset=utf-8" : "application/octet-stream",
+    "Content-Length": st.size,
+    "Cache-Control": "no-cache",
+  });
+  await new Promise<void>((ok, fail) => fs.createReadStream(file).on("error", fail).on("end", ok).pipe(res));
+  return true;
+}
+
 /** Поиск по дневнику: раздел, подраздел, слова (без учёта регистра, кириллица тоже). */
 export async function searchDiary(store: Store, u: User, q: { section?: string; topic?: string; text?: string; from?: string; to?: string }) {
   let rows = q.from || q.to
@@ -200,6 +219,10 @@ export function createApi(deps: ApiDeps) {
       return undefined;
     }
     if (!p.startsWith("/api/")) {
+      if (p.startsWith("/desktop/")) {
+        if (m === "GET" && (await serveDesktop(deps.desktopDir ?? "", p, res))) return undefined;
+        throw new HttpError(404, "нет такого файла");
+      }
       if (m === "GET" && (await serveStatic(deps.webDir ?? "", p, res))) return undefined;
       throw new HttpError(404, "нет такого адреса");
     }

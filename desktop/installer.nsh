@@ -55,8 +55,11 @@ FunctionEnd
 
 ; Ярлык на столе electron-builder создаёт сам, а при переустановке оставляет как был (keepShortcuts).
 ; Поэтому решаем здесь: галочку сняли — убираем значок, поставили, а значка нет — создаём.
+; Тихая установка (обновление по кнопке, /S): страницы не было — значок на столе не трогаем, как было, так и останется.
 !macro customInstall
-  ${If} $maidDesktopWant == "0"
+  ${If} ${Silent}
+    ; ничего
+  ${ElseIf} $maidDesktopWant == "0"
     WinShell::UninstShortcut "$newDesktopLink"
     Delete "$newDesktopLink"
   ${ElseIfNot} ${FileExists} "$newDesktopLink"

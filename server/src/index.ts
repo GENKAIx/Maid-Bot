@@ -68,7 +68,7 @@ const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => cons
 void pipeline.sweepProposals().catch(() => {});
 
 let botName: string | undefined;
-const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, push, botName: () => botName });
+const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
   if (!tg) return;

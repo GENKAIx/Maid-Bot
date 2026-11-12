@@ -62,6 +62,8 @@ export const config = {
   },
   /** Собранное веб-приложение (npm --workspace web run build); сервер отдаёт его с корня. */
   webDir: fromRoot(env("WEB_DIR", "web/dist")),
+  /** Установщик программы для ПК и latest.yml (tools/release-desktop.py кладёт их сюда); программа обновляется отсюда — /desktop/. */
+  desktopDir: fromRoot(env("DESKTOP_DIR", "data/desktop")),
 };
 
 // Имя модели распознавания у каждого сервиса своё: OpenRouter — «openai/whisper-large-v3», Groq — «whisper-large-v3», OpenAI — «whisper-1».

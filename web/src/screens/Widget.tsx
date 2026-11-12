@@ -24,6 +24,26 @@ interface Bridge {
   // В старых версиях программы этого нет — тогда раздела «Программа» на странице нет.
   general?(): Promise<General | null>;
   saveGeneral?(patch: { autostart?: boolean; keys?: Partial<General["keys"]> }): Promise<General | null>;
+  // Обновление программы (desktop/src/updates.js); в старых версиях нет — строки «Версия программы» тогда нет.
+  update?(): Promise<Upd | null>;
+  checkUpdate?(): Promise<Upd | null>;
+  installUpdate?(): Promise<Upd | null>;
+  onUpdate?(cb: (s: Upd) => void): () => void;
+}
+interface Upd { version: string; status: "idle" | "checking" | "latest" | "available" | "downloading" | "ready" | "error" | "dev"; next?: string; percent?: number; error?: string }
+/** Подсказка под «Версия программы» по состоянию обновления. */
+function updHint(u: Upd): string {
+  const v = `Сейчас ${u.version}`;
+  switch (u.status) {
+    case "checking": return `${v} · проверяем…`;
+    case "latest": return `${v} — это последняя версия`;
+    case "available": return `${v} · есть новая ${u.next}`;
+    case "downloading": return `Скачиваем ${u.next ?? "новую версию"}… ${Math.round(u.percent ?? 0)} %`;
+    case "ready": return "Ставим новую версию — программа перезапустится сама";
+    case "error": return `${v} · ${u.error ?? "не получилось проверить"}`;
+    case "dev": return `${v} · обновляется только установленная программа`;
+    default: return v;
+  }
 }
 declare global {
   interface Window { maidDesktop?: Bridge }
@@ -321,6 +341,7 @@ export function Widget() {
   const [ping, setPing] = useState(0); // выбрали что-то про облачко — показать его ещё раз со звуком
   const [ask, setAsk] = useState<"add" | "clash">("add"); // какой пример самонажатия показать
   const [gen, setGen] = useState<General | null>(null);
+  const [upd, setUpd] = useState<Upd | null>(null);
 
   useEffect(() => {
     if (!bridge) return;
@@ -330,6 +351,12 @@ export function Widget() {
       setOpacity(all.opacity);
     });
     void bridge.general?.().then(setGen).catch(() => null);
+    if (!bridge.update) return;
+    void bridge.update().then((u) => {
+      setUpd(u);
+      if (u && (u.status === "idle" || u.status === "error")) void bridge.checkUpdate?.().catch(() => null);
+    }).catch(() => null);
+    return bridge.onUpdate?.(setUpd);
   }, [bridge]);
 
   if (!bridge) return <Empty>Виджет — это программа «Горничная» на компьютере. Его настройки — в ней: раздел «Виджет» слева.</Empty>;
@@ -496,6 +523,10 @@ export function Widget() {
             side={<KeyPicker label="Быстрая запись" value={gen.keys.quick} onPick={(quick) => void saveGen({ keys: { quick } })} />} />
           <Setting title="Взять или отпустить виджет" hint="Виджет ловит мышь — его можно двигать и нажимать"
             side={<KeyPicker label="Взять или отпустить виджет" value={gen.keys.grab} onPick={(grab) => void saveGen({ keys: { grab } })} />} />
+          {upd && <Setting title="Версия программы" hint={updHint(upd)}
+            side={upd.status === "dev" ? undefined : upd.status === "available"
+              ? <button className="wp-key" onClick={() => void bridge.installUpdate?.()}>Обновить до {upd.next}</button>
+              : <button className="wp-key" disabled={upd.status === "checking" || upd.status === "downloading" || upd.status === "ready"} onClick={() => void bridge.checkUpdate?.()}>Проверить</button>} />}
         </section>}
       </div>
     </div>

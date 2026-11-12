@@ -30,7 +30,7 @@ COPY server server
 COPY --from=check /app/web/dist web/dist
 COPY deploy/entrypoint.sh /usr/local/bin/maid-entrypoint
 RUN chmod +x /usr/local/bin/maid-entrypoint
-ENV DB_FILE=/data/maid.sqlite WEB_DIR=/app/web/dist PORT=3000
+ENV DB_FILE=/data/maid.sqlite WEB_DIR=/app/web/dist DESKTOP_DIR=/data/desktop PORT=3000
 VOLUME /data
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1
