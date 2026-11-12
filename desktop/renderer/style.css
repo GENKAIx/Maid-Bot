@@ -429,12 +429,6 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .pip .spark:nth-child(2n), .check .spark:nth-child(2n), .mark .spark:nth-child(2n) { background: var(--accent); }
 .pip .spark:nth-child(3n), .check .spark:nth-child(3n), .mark .spark:nth-child(3n) { background: var(--warn); }
 @keyframes spark { from { transform: translate(0, 0) scale(1); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(.3); opacity: 0; } }
-.chips { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
-.chip { position: relative; display: flex; align-items: center; gap: 6px; padding: 4px 8px 6px; border-radius: 9px; background: rgba(255,255,255,.05); border: 1px solid transparent; font-size: 12px; text-align: left; overflow: hidden; }
-.chip span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chip b { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
-.chip s { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.08); }
-.chip s::after { content: ""; position: absolute; inset: 0; width: calc(var(--p) * 100%); border-radius: 2px; background: var(--accent-2); }
 .course.finished { border-color: rgba(79, 208, 154, .45); }
 .course.party { animation: party .6s cubic-bezier(.3, 1.6, .4, 1); }
 @keyframes party { 0% { transform: scale(1); } 30% { transform: scale(1.06) rotate(-1.5deg); } 60% { transform: scale(.98) rotate(1deg); } 100% { transform: none; } }

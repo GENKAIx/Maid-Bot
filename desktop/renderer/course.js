@@ -88,13 +88,12 @@ function renderCourses() {
   const prev = lastMarks;
   const now = new Map(list.map((h) => [h.id, h.course.map((x) => x.s).join(",")]));
   const fresh = !box.childElementCount || prev === null;
+  // Плашка всплывает после отметки — показываем ту привычку, которую отметили, и только её.
+  const marked = prev ? list.find((h) => prev.has(h.id) && prev.get(h.id) !== now.get(h.id)) : null;
+  if (marked) shownCourse = marked.id;
 
   const main = list.find((h) => h.id === shownCourse);
   const st = stats(main);
-  const others = list.filter((h) => h !== main).map((h) => {
-    const o = stats(h);
-    return `<button class="chip" data-show="${h.id}" title="${esc(h.title)}"><span>${esc(h.title)}</span><b>${o.done}/${o.total}</b><s style="--p:${o.total ? o.done / o.total : 0}"></s></button>`;
-  });
   const big = main.course.length > 45;
   // Только что закрыли последний день — сначала праздник на пупырках, медалью курс станет потом (celebrate).
   const justFinished = st.finished && !fresh && prev?.has(main.id) && prev.get(main.id).split(",").some((s) => s !== "rest" && s !== "done");
@@ -109,7 +108,6 @@ function renderCourses() {
       </div>
       <div class="pips">${main.course.map((x, i) => dotHtml(main, x, i)).join("")}</div>
       ${st.finished ? `<div class="c-medal"><span class="medal" title="Курс пройден">${st.total}</span><span>Курс пройден<br><small>все ${st.total} ${DAY_WORD(st.total)} отмечены</small></span></div>` : ""}
-      ${others.length ? `<div class="chips">${others.join("")}</div>` : ""}
     </div>`;
   // Анимация: при первом показе — волна появления, потом — только поменявшиеся пупырки.
   const pips = [...box.querySelectorAll(".pip")];
