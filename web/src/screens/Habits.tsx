@@ -73,6 +73,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                     {fire >= 2 && <span className="hg-fire" title={`Серия: ${fire} дн. подряд`}>🔥{fire}</span>}
                     <Chip>{done}/{due}</Chip>
                   </span>
+                  <span className="hg-tools">
                   <button
                     className={`hg-bell ${editing === h.id ? "on" : ""}`}
                     onClick={() => setEditing(editing === h.id ? null : h.id)}
@@ -81,6 +82,10 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                     {h.quiet ? "🔕 без напоминаний" : `🔔 ${shown.join(", ")}`}
                     {!h.quiet && !h.times.length && <i> · общее</i>}
                   </button>
+                  <button className={`hg-bell hg-chart ${stats === h.id ? "on" : ""}`} onClick={() => setStats(stats === h.id ? null : h.id)} title="Статистика привычки: серии, год, дни недели">
+                    📊 {stats === h.id ? "Скрыть" : "Статистика"}
+                  </button>
+                  </span>
                 </span>,
                 ...h.days.map((x) => (
                   <button
@@ -100,7 +105,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
               ];
             })}
           </div>
-          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить. Название — статистика.</p>
+          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить, 📊 — статистика привычки.</p>
         </Card>
       )}
     </div>

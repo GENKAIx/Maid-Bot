@@ -268,6 +268,9 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .hg-name { display: flex; align-items: center; gap: 6px; }
 .hg-fire { font-size: 12px; color: var(--orange); font-weight: 700; white-space: nowrap; }
 .hg-bell { align-self: flex-start; border: none; background: transparent; padding: 1px 6px; margin-left: -6px; border-radius: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.hg-tools { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.hg-tools .hg-bell { min-width: 0; }
+.hg-chart { flex-shrink: 0; margin-left: 0; }
 .hg-bell i { font-style: normal; opacity: .7; }
 .hg-bell:hover, .hg-bell.on { color: var(--accent); background: var(--accent-soft); }
 .hg-times { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); /* видимая ширина карточки — кнопки не уезжают вправо за прокрутку */ display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; margin: 2px 0 6px; background: var(--panel-2); border-radius: 10px; }
