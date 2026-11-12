@@ -321,9 +321,13 @@ const DONE_FADE = 3000;
 const DONE_FLY = 380;
 const DONE_SHUT = 220;
 const doneTimers = new Map(); // id → таймер ухода
-// Текст карточки плана: время (если есть) и название.
+// Текст карточки плана: длительность (если есть конец) и название. Начало написано на шкале слева (.pl-at), второй раз его не пишем.
+// Длительность и начало слева тянутся вверх-вниз — сдвиг по времени (retime).
 function planLabel(e) {
-  const when = e.time ? `<b class="pl-when">${timeSpan(e.time, e.end_time)}</b> · ` : ""; // без времени — только название
+  const start = minutesOf(e.time);
+  const end = minutesOf(e.end_time);
+  const long = start !== null && start !== undefined && end !== null && end !== undefined && end > start;
+  const when = long ? `<b class="pl-when" title="${esc(e.time)}–${esc(e.end_time)}">${freeWords(end - start)}</b> · ` : "";
   return `${when}${esc(e.title)}${e.repeat || e.series ? ` <i class="pl-rep" title="Повторяется">🔁</i>` : ""}`;
 }
 // Шкала дня: планы со временем по порядку, между ними свободные окна словами («свободно до 15:00»), сегодня — линия «сейчас»;
@@ -1880,7 +1884,7 @@ function timeSpan(start, end) {
   return `${esc(start)}${end ? `<span class="pl-dash">–</span>${esc(end)}` : ""}`;
 }
 $("#planClock").addEventListener("pointerdown", (ev) => {
-  const when = ev.target.closest(".pl-when");
+  const when = ev.target.closest(".pl-when, .pl-at");
   const li = when?.closest(".pl-card[data-id]");
   if (ev.button !== 0 || !li || li.matches(".gone, .cancelled, .leaving, .done")) return;
   const e = plansOf(clockDay).find((x) => x.id === Number(li.dataset.id));
@@ -1907,7 +1911,7 @@ document.addEventListener("pointermove", (ev) => {
   }
   if (start === r.now) return;
   r.now = start;
-  r.when.innerHTML = retimeLabel(r, start);
+  r.when.innerHTML = r.when.matches(".pl-at") ? hhmm(start) : retimeLabel(r, start);
   const d = start - r.start;
   const abs = Math.abs(d);
   r.badge.textContent = d ? `${d > 0 ? "+" : "−"}${abs >= 60 ? `${Math.floor(abs / 60)} ч${abs % 60 ? ` ${abs % 60} мин` : ""}` : `${abs} мин`}` : "";

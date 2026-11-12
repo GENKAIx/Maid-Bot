@@ -701,6 +701,7 @@ body.quick { background: transparent; }
 @media (prefers-reduced-motion: reduce) { .pl-card.leaving::after { animation-duration: 0s; } .pl-card.fly { animation: none; opacity: 0; } }
 .pl-x { position: relative; flex: none; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 15px; line-height: 1;
   cursor: pointer; opacity: 0; transition: opacity .15s; }
+.pl-x + .pl-check { margin-left: 8px; } /* «убрать» отдельно от галочки — промахнувшись, план не уберёшь */
 /* «×» рисуется двумя линиями, а не символом: символ у шрифта сидит не по середине */
 .pl-x:not(.back) { font-size: 0; }
 .pl-x:not(.back)::before, .pl-x:not(.back)::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 1.6px; border-radius: 1px; background: currentColor;
@@ -714,7 +715,9 @@ body.quick { background: transparent; }
 /* Шкала плотнее обычного списка: окна и карточки ниже, чтобы на экран влезало больше планов. */
 .pl-tl > .pl-card { min-height: 36px; padding-top: 4px; padding-bottom: 4px; }
 .pl-tl > .pl-gap { padding-top: 2px; padding-bottom: 2px; }
-.pl-tl .pl-add { padding: 6px; } /* справа — место полосе прокрутки, чтобы не лезла на галочки */
+/* «+ план» на шкале — тонкая строка, чтобы под ней влезал раздел «Без времени». Справа у списка — место полосе прокрутки, чтобы не лезла на галочки. */
+.pl-tl .pl-add { padding: 2px 6px; border-radius: 8px; font-size: 11.5px; }
+.pl-tl > .pl-sect { margin-top: 2px; }
 .pl-tl > .pl-card:not(.timed), .pl-tl > .pl-sect, .pl-tl > .pl-add-row { margin-left: -38px; }
 .pl-at { position: absolute; left: -38px; top: 50%; transform: translateY(-50%); width: 32px; text-align: right; font-size: 11.5px; font-weight: 600;
   color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; }
@@ -854,6 +857,10 @@ body.quick { background: transparent; }
 /* Сдвиг по времени: время на карточке тянется вверх-вниз (clock.js). */
 #planClock .pl-card[data-id]:not(.gone, .cancelled, .done) .pl-when { cursor: ns-resize; border-radius: 4px; transition: background .12s; }
 #planClock .pl-card[data-id]:not(.gone, .cancelled, .done) .pl-when:hover { background: color-mix(in srgb, var(--c, #6c5ce7) 20%, transparent); }
+/* Начало на шкале слева тоже тянется — так сдвигают план без конца (у него на карточке нет длительности). */
+#planClock .pl-card[data-id]:not(.gone, .cancelled, .done) .pl-at { pointer-events: auto; cursor: ns-resize; border-radius: 4px; transition: background .12s; }
+#planClock .pl-card[data-id]:not(.gone, .cancelled, .done) .pl-at:hover { color: var(--text, #fff); background: rgba(255, 255, 255, .08); }
+#planClock .pl-card.retime .pl-at { color: var(--c, var(--accent)); }
 #planClock.retiming, #planClock.retiming * { cursor: ns-resize; }
 #planClock .pl-card.retime { background: rgba(255, 255, 255, .1); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c, #6c5ce7) 60%, transparent); }
 #planClock .pl-card.retime .pl-when { background: color-mix(in srgb, var(--c, #6c5ce7) 28%, transparent); }
