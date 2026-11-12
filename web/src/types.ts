@@ -121,3 +121,20 @@ export interface Reply {
   /** План лёг на занятое время: кнопки «Сдвинуть на shiftTo» (если не null) и «Оставить» (POST /api/clash). */
   clash?: { eventId: number; withId: number; shiftTo: string | null };
 }
+
+/** GET /api/habits/:id/stats (server/src/habits.ts, habitStatsOf). */
+export type HabitStatCell = "done" | "miss" | "today" | "wait" | "rest" | "off";
+export interface HabitStats {
+  id: number;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  year: { day: string; s: HabitStatCell }[];
+  streak: number;
+  best: number;
+  rate30: { done: number; planned: number };
+  rate90: { done: number; planned: number };
+  total: { done: number; planned: number };
+  weekdays: { done: number; planned: number }[];
+  months: { month: string; done: number; planned: number }[];
+}

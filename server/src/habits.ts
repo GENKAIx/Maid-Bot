@@ -139,3 +139,81 @@ export function scheduleText(h: Pick<HabitRow, "days" | "start_date" | "end_date
   const days = h.days === "1234567" ? "каждый день" : h.days.split("").map((c) => WEEK[Number(c) - 1]).join(", ");
   return `${days}${h.end_date ? `, до ${h.end_date}` : ""}`;
 }
+
+/** Клетка тепловой карты: done — сделано; miss — запланировано, прошло, не сделано (или «пропуск»); today — сегодня, ещё
+ * не отмечено; wait — впереди; rest — не по расписанию; off — вне срока привычки (до начала или после конца). */
+export type StatCell = "done" | "miss" | "today" | "wait" | "rest" | "off";
+export interface HabitStats {
+  id: number;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  /** Год клетками: с понедельника 52 недели назад по воскресенье этой недели. */
+  year: { day: string; s: StatCell }[];
+  streak: number;
+  best: number;
+  /** Сделано / запланировано (сегодня, ещё не отмеченное, не считается) — за 30 дней, 90 и за всё время. */
+  rate30: { done: number; planned: number };
+  rate90: { done: number; planned: number };
+  total: { done: number; planned: number };
+  /** По дням недели за всё время: 0 — понедельник … 6 — воскресенье. */
+  weekdays: { done: number; planned: number }[];
+  /** Последние 12 месяцев (с этим), ГГГГ-ММ. */
+  months: { month: string; done: number; planned: number }[];
+}
+
+/** Статистика привычки из её отметок. Удалённая или законченная — по своему расписанию, как будто активна. */
+export function habitStatsOf(h: HabitRow, marks: Map<string, MarkRow["status"]>, today: string): HabitStats {
+  const live = { ...h, status: "active" };
+  const cell = (d: string): StatCell => {
+    if (d < h.start_date || (h.end_date && d > h.end_date)) return "off";
+    if (!dueOn(live, d)) return "rest";
+    const m = marks.get(d);
+    if (m === "done") return "done";
+    if (d > today) return "wait";
+    if (m === "skipped" || d < today) return "miss";
+    return "today";
+  };
+  const weekStart = addDays(today, -(isoWeekday(today) - 1));
+  const year: HabitStats["year"] = [];
+  for (let d = addDays(weekStart, -52 * 7); d <= addDays(weekStart, 6); d = addDays(d, 1)) year.push({ day: d, s: cell(d) });
+
+  const weekdays = Array.from({ length: 7 }, () => ({ done: 0, planned: 0 }));
+  const months = new Map<string, { done: number; planned: number }>();
+  const [ty, tm] = today.slice(0, 7).split("-").map(Number);
+  for (let i = 11; i >= 0; i--) months.set(new Date(Date.UTC(ty, tm - 1 - i, 1)).toISOString().slice(0, 7), { done: 0, planned: 0 });
+  const total = { done: 0, planned: 0 };
+  const rate30 = { done: 0, planned: 0 };
+  const rate90 = { done: 0, planned: 0 };
+  let best = 0;
+  let run = 0;
+  const last = h.end_date && h.end_date < today ? h.end_date : today;
+  // Не дальше ~5 лет назад — на случай очень старой даты начала.
+  for (let d = h.start_date < addDays(today, -1830) ? addDays(today, -1830) : h.start_date; d <= last; d = addDays(d, 1)) {
+    const s = cell(d);
+    if (s !== "done" && s !== "miss") continue; // today (ещё не отмечено) — не в счёт
+    const ok = s === "done" ? 1 : 0;
+    run = ok ? run + 1 : 0;
+    best = Math.max(best, run);
+    total.done += ok; total.planned++;
+    const w = weekdays[isoWeekday(d) - 1];
+    w.done += ok; w.planned++;
+    const mo = months.get(d.slice(0, 7));
+    if (mo) { mo.done += ok; mo.planned++; }
+    if (d > addDays(today, -30)) { rate30.done += ok; rate30.planned++; }
+    if (d > addDays(today, -90)) { rate90.done += ok; rate90.planned++; }
+  }
+  const done = new Set([...marks].filter(([, s]) => s === "done").map(([d]) => d));
+  return {
+    id: h.id, title: h.title, start_date: h.start_date, end_date: h.end_date, year,
+    streak: streak(live, done, today), best, rate30, rate90, total, weekdays,
+    months: [...months].map(([month, v]) => ({ month, ...v })),
+  };
+}
+
+export async function habitStats(store: Store, u: User, h: HabitRow, today: string): Promise<HabitStats> {
+  const from = h.start_date < addDays(today, -1830) ? addDays(today, -1830) : h.start_date;
+  const yearFrom = addDays(today, -380);
+  const marks = (await store.marksOf(u.id, from < yearFrom ? from : yearFrom, addDays(today, 7))).filter((m) => m.habit_id === h.id);
+  return habitStatsOf(h, new Map(marks.map((m) => [m.day_key, m.status] as const)), today);
+}

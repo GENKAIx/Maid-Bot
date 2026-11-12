@@ -271,6 +271,29 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .hg-bell i { font-style: normal; opacity: .7; }
 .hg-bell:hover, .hg-bell.on { color: var(--accent); background: var(--accent-soft); }
 .hg-times { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); /* видимая ширина карточки — кнопки не уезжают вправо за прокрутку */ display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; margin: 2px 0 6px; background: var(--panel-2); border-radius: 10px; }
+.hg-open { border: none; background: transparent; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hg-open:hover, .hg-open.on { color: var(--accent); }
+.hg-panel { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); margin: 2px 0 8px; padding: 12px 14px; background: var(--panel-2); border-radius: 12px; }
+.hs { display: flex; flex-direction: column; gap: 14px; }
+.hs-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.hs-figure { display: flex; flex-direction: column; gap: 2px; }
+.hs-figure b { font-size: 22px; line-height: 1.1; }
+.hs-year { overflow-x: auto; }
+.hs-year svg { display: block; }
+.hs-label { font-size: 9px; fill: var(--muted); }
+.hs-c { fill: var(--ring-bg); }
+.hs-c.done { fill: var(--green); }
+.hs-c.miss { fill: color-mix(in srgb, var(--red) 55%, var(--ring-bg)); }
+.hs-c.rest, .hs-c.off, .hs-c.wait { fill: var(--ring-bg); opacity: .45; }
+.hs-c.today { fill: var(--ring-bg); stroke: var(--accent); stroke-width: 1.5; }
+.hs-legend { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.hs-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2.5px; background: var(--ring-bg); }
+.hs-legend i.done { background: var(--green); }
+.hs-legend i.miss { background: color-mix(in srgb, var(--red) 55%, var(--ring-bg)); }
+.hs-legend i.rest { opacity: .45; }
+.hs-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.hs-sub { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.hs-hint { margin: 0; }
 .hg-time { display: inline-flex; align-items: center; gap: 2px; }
 .hg-time input { width: auto; padding: 4px 6px; }
 .hg-time .ghost { padding: 2px 6px; }

@@ -4,8 +4,10 @@ import { Card, Chip, Empty, Spinner } from "../components";
 import { WEEKDAYS, addMonths, monthTitle, todayKey } from "../format";
 import { navigate } from "../router";
 import type { HabitMonth } from "../types";
+import { HabitStatsPanel } from "./HabitStats";
 
-// Привычки: сетка месяца (строка — привычка, столбец — день), отметка щелчком, серии и время напоминаний (🔔 — правка прямо в строке).
+// Привычки: сетка месяца (строка — привычка, столбец — день), отметка щелчком, серии и время напоминаний (🔔 — правка прямо в строке),
+// щелчок по названию — статистика привычки строкой под ней (HabitStats.tsx).
 
 const WEEK_SHORT = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
@@ -15,6 +17,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
   const [data, setData] = useState<HabitMonth | null>(null);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
+  const [stats, setStats] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -66,7 +69,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
               return [
                 <span key={`t${h.id}`} className="hg-title">
                   <span className="hg-name">
-                    <span className="grow">{h.title}</span>
+                    <button className={`hg-open grow ${stats === h.id ? "on" : ""}`} onClick={() => setStats(stats === h.id ? null : h.id)} title="Статистика привычки">{h.title}</button>
                     {fire >= 2 && <span className="hg-fire" title={`Серия: ${fire} дн. подряд`}>🔥{fire}</span>}
                     <Chip>{done}/{due}</Chip>
                   </span>
@@ -93,10 +96,11 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                 ...(editing === h.id
                   ? [<HabitTimes key={`e${h.id}`} id={h.id} times={h.times} quiet={!!h.quiet} ask={ask} onDone={() => { setEditing(null); onChanged(); }} onCancel={() => setEditing(null)} />]
                   : []),
+                ...(stats === h.id ? [<HabitStatsPanel key={`s${h.id}-${version}`} id={h.id} />] : []),
               ];
             })}
           </div>
-          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить.</p>
+          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить. Название — статистика.</p>
         </Card>
       )}
     </div>

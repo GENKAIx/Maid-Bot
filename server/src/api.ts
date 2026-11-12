@@ -6,7 +6,7 @@ import { z } from "zod";
 import { login, LoginGate, tokenHash, userByToken } from "./auth.ts";
 import type { Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
-import { habitMonth, habitsOfDay } from "./habits.ts";
+import { habitMonth, habitsOfDay, habitStats } from "./habits.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import { proposalView, TRASH_DAYS, type Pipeline } from "./pipeline.ts";
 
@@ -577,6 +577,13 @@ export function createApi(deps: ApiDeps) {
       if (!/^\d{4}-\d{2}$/.test(month)) throw new HttpError(400, "month: YYYY-MM");
       // ask — общее время вопросов из настроек: у привычки без своего времени — оно, и «ещё раз» в last, если не отмечена.
       return { month, today: await habitsOfDay(store, u, today), habits: await habitMonth(store, u, month), ask: { first: u.habit_first, last: u.habit_last } };
+    }
+    // Статистика одной привычки: год клетками, серии, процент за 30/90 дней и всё время, по дням недели и месяцам.
+    const stats = p.match(/^\/api\/habits\/(\d+)\/stats$/);
+    if (m === "GET" && stats) {
+      const h = await store.habit(Number(stats[1]));
+      if (!h || h.user_id !== u.id) throw new HttpError(404, "нет привычки");
+      return habitStats(store, u, h, today);
     }
     const mark = p.match(/^\/api\/habits\/(\d+)\/mark$/);
     if (m === "POST" && mark) {
