@@ -699,8 +699,13 @@ body.quick { background: transparent; }
 .pl-check.on:hover i { display: none; }
 .pl-check.on:hover b { display: inline; }
 @media (prefers-reduced-motion: reduce) { .pl-card.leaving::after { animation-duration: 0s; } .pl-card.fly { animation: none; opacity: 0; } }
-.pl-x { flex: none; display: grid; place-items: center; width: 20px; height: 20px; padding: 0 0 3px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 15px; line-height: 1; /* «×» в шрифте сидит низко — снизу 3px поднимают его на середину галочки */
+.pl-x { position: relative; flex: none; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 15px; line-height: 1;
   cursor: pointer; opacity: 0; transition: opacity .15s; }
+/* «×» рисуется двумя линиями, а не символом: символ у шрифта сидит не по середине */
+.pl-x:not(.back) { font-size: 0; }
+.pl-x:not(.back)::before, .pl-x:not(.back)::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 1.6px; border-radius: 1px; background: currentColor;
+  transform: translate(-50%, -50%) rotate(45deg); }
+.pl-x:not(.back)::after { transform: translate(-50%, -50%) rotate(-45deg); }
 .pl-card:hover .pl-x { opacity: 1; }
 .pl-x:hover { color: #ff8f8f; background: rgba(255, 120, 120, .12); }
 .pl-empty { margin: 10px 6px; color: var(--muted); font-size: 12.5px; }
