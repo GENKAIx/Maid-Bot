@@ -675,7 +675,7 @@ body.quick { background: transparent; }
 .pl-card.done .pl-text, .pl-card.cancelled .pl-text, .pl-card.gone .pl-text { text-decoration: line-through; opacity: .5; }
 .pl-card.done, .pl-card.cancelled, .pl-card.gone { background: rgba(255, 255, 255, .03); }
 .pl-card.gone { opacity: .6; }
-.pl-check { flex: none; width: 20px; height: 20px; padding: 0; border: 1.6px solid rgba(255, 255, 255, .55); border-radius: 6px; background: none;
+.pl-check { flex: none; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 1.6px solid rgba(255, 255, 255, .55); border-radius: 6px; background: none;
   color: #fff; font-size: 12px; line-height: 1; cursor: pointer; }
 .pl-check:hover { border-color: #fff; background: rgba(255, 255, 255, .08); }
 .pl-check.on { background: #2f9e6e; border-color: #2f9e6e; }
@@ -699,13 +699,13 @@ body.quick { background: transparent; }
 .pl-check.on:hover i { display: none; }
 .pl-check.on:hover b { display: inline; }
 @media (prefers-reduced-motion: reduce) { .pl-card.leaving::after { animation-duration: 0s; } .pl-card.fly { animation: none; opacity: 0; } }
-.pl-x { flex: none; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 16px; line-height: 1;
+.pl-x { flex: none; display: grid; place-items: center; width: 20px; height: 20px; padding: 0 0 3px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 15px; line-height: 1; /* «×» в шрифте сидит низко — снизу 3px поднимают его на середину галочки */
   cursor: pointer; opacity: 0; transition: opacity .15s; }
 .pl-card:hover .pl-x { opacity: 1; }
 .pl-x:hover { color: #ff8f8f; background: rgba(255, 120, 120, .12); }
 .pl-empty { margin: 10px 6px; color: var(--muted); font-size: 12.5px; }
 /* --- Шкала дня (clock.js, dayRows): слева — время начала, между планами — свободные окна, линия «сейчас», внизу — без времени --- */
-.pl-list.pl-tl { padding-left: 40px; }
+.pl-list.pl-tl { padding-left: 40px; padding-right: 8px; } /* справа — место полосе прокрутки, чтобы не лезла на галочки */
 .pl-tl > .pl-card:not(.timed), .pl-tl > .pl-sect, .pl-tl > .pl-add-row { margin-left: -38px; }
 .pl-at { position: absolute; left: -38px; top: 50%; transform: translateY(-50%); width: 32px; text-align: right; font-size: 11.5px; font-weight: 600;
   color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; }
@@ -715,7 +715,7 @@ body.quick { background: transparent; }
 .pl-card.timed.leaving::after { border-radius: inherit; }
 .pl-card.timed.fly { overflow: hidden; }
 .pl-card.now .pl-at { color: var(--c, var(--accent)); }
-.pl-gap { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 4px 8px; border-radius: 9px; border: 1px dashed transparent;
+.pl-gap { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 4px 7px 4px 13px; /* текст — по тексту карточек, длительность — под галочками */ border-radius: 9px; border: 1px dashed transparent;
   font-size: 11.5px; color: var(--muted); cursor: pointer; }
 .pl-gap em { font-style: normal; opacity: .7; font-variant-numeric: tabular-nums; }
 .pl-gap:hover { border-color: rgba(255, 255, 255, .16); color: var(--text, #fff); }

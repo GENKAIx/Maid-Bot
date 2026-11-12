@@ -440,7 +440,7 @@ function drawPlanList(box) {
       ${at}<span class="pl-text" title="Двойной щелчок — переименовать">${planLabel(clockEdits.get(e.id) ?? e)}</span>${tools}</li>`;
   };
   const gapRow = ({ gap: [from, to], last }) => {
-    const words = !last ? `свободно до ${clockHm(to)}` : timed.some((e) => !e._st) ? "дальше свободно" : today && nowMin > DAY_FROM ? "свободно до конца дня" : "весь день свободен";
+    const words = !last ? `свободно до ${clockHm(to)}` : timed.some((e) => !e._st) ? `свободно до ${clockHm(to)}` : today && nowMin > DAY_FROM ? "свободно до конца дня" : "весь день свободен";
     return `<li class="pl-gap" data-from="${from}" data-to="${to}" title="Щёлкните — план на ${clockHm(from)}"><span>${words}</span><em>${freeWords(to - from)}</em></li>`;
   };
   const nowRow = () => `<li class="pl-now" title="Сейчас"><b>${clockHm(nowMin)}</b><span>сейчас</span></li>`;
