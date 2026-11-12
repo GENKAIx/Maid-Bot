@@ -68,5 +68,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")  # консоль Windows в cp1251 не печатает «→»
     os.chdir(ROOT)
     main()
