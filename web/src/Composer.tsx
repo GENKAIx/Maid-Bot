@@ -8,6 +8,11 @@ import type { Reply } from "./types";
 
 // Строка ввода на каждом экране: пишешь как в чат. Ответ горничной — снизу, с кнопкой «Отменить».
 
+/** Подставить заготовку в строку ввода (кнопки вроде «+ Привычка»): текст, фокус, курсор в конце. */
+export function prefill(text: string) {
+  window.dispatchEvent(new CustomEvent("maid:compose", { detail: text }));
+}
+
 export function Composer({ onChanged }: { onChanged: () => void }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,6 +41,16 @@ export function Composer({ onChanged }: { onChanged: () => void }) {
       show({ text: "Не получилось открыть картинку.", error: true }, 6000);
     }
   }
+
+  useEffect(() => {
+    const put = (e: Event) => {
+      const t = String((e as CustomEvent).detail ?? "");
+      setText(t);
+      window.setTimeout(() => { const a = area.current; if (a) { a.focus(); a.setSelectionRange(t.length, t.length); } });
+    };
+    window.addEventListener("maid:compose", put);
+    return () => window.removeEventListener("maid:compose", put);
+  }, []);
 
   useEffect(() => {
     if (!recording) return;

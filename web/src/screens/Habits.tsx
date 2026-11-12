@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
-import { WEEKDAYS, addMonths, monthTitle, todayKey } from "../format";
+import { WEEKDAYS, addMonths, monthTitle, shortDay, todayKey } from "../format";
+import { prefill } from "../Composer";
 import { navigate } from "../router";
 import type { HabitMonth } from "../types";
 import { HabitStatsPanel } from "./HabitStats";
@@ -10,6 +11,15 @@ import { HabitStatsPanel } from "./HabitStats";
 // щелчок по названию — статистика привычки строкой под ней (HabitStats.tsx).
 
 const WEEK_SHORT = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86400000);
+/** Срок привычки с концом: «день 3 из 7 · до 18 ноя»; ещё не началась — «с …»; закончилась — «закончилась …». Бессрочная — пусто. */
+function spanText(h: { start_date: string; end_date: string | null }, today: string): string {
+  if (!h.end_date) return "";
+  if (today < h.start_date) return `с ${shortDay(h.start_date)} до ${shortDay(h.end_date)}`;
+  if (today > h.end_date) return `закончилась ${shortDay(h.end_date)}`;
+  return `день ${daysBetween(h.start_date, today) + 1} из ${daysBetween(h.start_date, h.end_date) + 1} · до ${shortDay(h.end_date)}`;
+}
+const NEW_HABIT = "каждый день ";
 
 export function Habits({ month, version, onChanged }: { month?: string; version: number; onChanged: () => void }) {
   const today = todayKey();
@@ -36,6 +46,9 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
   if (!data) return <Spinner />;
 
   const days = data.habits[0]?.days.map((d) => d.day) ?? [];
+  const doneToday = data.today.filter((t) => t.status === "done").length;
+  const monthDone = data.habits.reduce((n, h) => n + h.days.filter((x) => x.status === "done").length, 0);
+  const monthDue = data.habits.reduce((n, h) => n + h.days.filter((x) => x.due && x.day <= today).length, 0);
   const go = (m: string) => navigate(m === today.slice(0, 7) ? "/habits" : `/habits/${m}`);
 
   return (
@@ -46,16 +59,22 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
         <button className="ghost" onClick={() => go(addMonths(current, 1))} aria-label="Следующий месяц">›</button>
       </div>
 
+      <div className="hg-sum">
+        {current === today.slice(0, 7) && data.today.length > 0 && <span>Сегодня сделано <b>{doneToday} из {data.today.length}</b></span>}
+        {monthDue > 0 && <span className="muted">за месяц {Math.round((monthDone / monthDue) * 100)} %</span>}
+        <button className="ghost hg-add" onClick={() => prefill(NEW_HABIT)} title="Напишите в строке ввода, что и когда: «каждый день в 8:00 зарядка», «по будням читать 20 минут до конца года»">+ Привычка</button>
+      </div>
+
       {data.habits.length === 0 ? (
         <Card className="reveal"><Empty>Привычек пока нет. Напишите, например: «каждый будний день в 7:30 зарядка до конца года»</Empty></Card>
       ) : (
         <Card className="reveal wide grid-card">
-          <div className="habit-grid" style={{ gridTemplateColumns: `minmax(180px, 2.2fr) repeat(${days.length}, minmax(26px, 1fr))` }}>
+          <div className="habit-grid" style={{ gridTemplateColumns: `minmax(230px, 3fr) repeat(${days.length}, minmax(26px, 1fr))` }}>
             <span />
             {days.map((d) => {
               const wd = WEEK_SHORT[(new Date(d).getDay() + 6) % 7];
               return (
-                <span key={d} className={`hg-day ${d === today ? "today" : ""} ${wd === "сб" || wd === "вс" ? "weekend" : ""}`} title={WEEKDAYS[(new Date(d).getDay() + 6) % 7]}>
+                <span key={d} className={`hg-day ${d === today ? "today hg-now" : ""} ${wd === "сб" || wd === "вс" ? "weekend" : ""}`} title={WEEKDAYS[(new Date(d).getDay() + 6) % 7]}>
                   <i>{wd}</i>{Number(d.slice(-2))}
                 </span>
               );
@@ -66,6 +85,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
               const fire = data.today.find((t) => t.habit.id === h.id)?.streak ?? 0;
               const ask = data.ask ?? { first: "12:00", last: "23:00" };
               const shown = h.times.length ? h.times : [ask.first];
+              const span = spanText(h, today);
               return [
                 <span key={`t${h.id}`} className="hg-title">
                   <span className="hg-name">
@@ -73,14 +93,14 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                     {fire >= 2 && <span className="hg-fire" title={`Серия: ${fire} дн. подряд`}>🔥{fire}</span>}
                     <Chip>{done}/{due}</Chip>
                   </span>
+                  {span && <span className="hg-span muted small">{span}</span>}
                   <span className="hg-tools">
                   <button
                     className={`hg-bell ${editing === h.id ? "on" : ""}`}
                     onClick={() => setEditing(editing === h.id ? null : h.id)}
-                    title={h.quiet ? "Без напоминаний" : `Напомнит в ${shown.join(", ")}${shown.some((t) => t >= ask.last) ? "" : `; не отметите — ещё раз в ${ask.last}`}. Щелчок — изменить`}
+                    title={h.quiet ? "Без напоминаний" : `Напомнит в ${shown.join(", ")}${h.times.length ? "" : " (общее время из «Настроек»)"}${shown.some((t) => t >= ask.last) ? "" : `; не отметите — ещё раз в ${ask.last}`}. Щелчок — изменить`}
                   >
                     {h.quiet ? "🔕 без напоминаний" : `🔔 ${shown.join(", ")}`}
-                    {!h.quiet && !h.times.length && <i> · общее</i>}
                   </button>
                   <button className={`hg-bell hg-chart ${stats === h.id ? "on" : ""}`} onClick={() => setStats(stats === h.id ? null : h.id)} title="Статистика привычки: серии, год, дни недели">
                     📊 {stats === h.id ? "Скрыть" : "Статистика"}
@@ -90,7 +110,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                 ...h.days.map((x) => (
                   <button
                     key={`${h.id}-${x.day}`}
-                    className={`hg-cell ${x.due ? "due" : ""} ${x.status ?? ""} ${x.day === today ? "today" : ""} ${x.day > today ? "future" : ""}`}
+                    className={`hg-cell ${x.due ? "due" : ""} ${x.status ?? ""} ${x.day === today ? "today hg-now" : ""} ${x.day > today ? "future" : ""}`}
                     disabled={x.day > today}
                     onClick={() => mark(h.id, x.day, x.status)}
                     title={`${x.day}${x.status === "done" ? " — сделано" : x.status === "skipped" ? " — пропуск" : x.due ? " — запланировано" : ""}`}

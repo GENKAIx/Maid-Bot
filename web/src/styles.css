@@ -259,7 +259,7 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 
 /* сетка привычек */
 .grid-card { overflow-x: auto; container-type: inline-size; }
-.habit-grid { display: grid; gap: 3px; align-items: center; min-width: 760px; }
+.habit-grid { display: grid; gap: 3px; isolation: isolate; overflow-y: clip; /* полосу «сегодня» обрезает край сетки */ align-items: center; min-width: 760px; }
 .hg-day { text-align: center; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; line-height: 1.1; padding-bottom: 4px; }
 .hg-day i { font-style: normal; font-size: 10px; opacity: .7; }
 .hg-day.weekend { color: var(--accent); }
@@ -301,6 +301,13 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .hg-time input { width: auto; padding: 4px 6px; }
 .hg-time .ghost { padding: 2px 6px; }
 .hg-times-hint { flex-basis: 100%; }
+.hg-sum { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: -4px 0 10px; font-size: 14px; }
+.hg-add { margin-left: auto; color: var(--accent); }
+.hg-span { line-height: 1.2; }
+/* Колонка «сегодня» — полоса на всю высоту сетки: подложка за клетками дня тянется выше и ниже строки (строки бывают в 3 строки текста),
+   соседние подложки сливаются, лишнее обрезает край сетки. */
+.hg-now { position: relative; }
+.hg-now::after { content: ""; position: absolute; top: -60px; bottom: -60px; left: -2px; right: -2px; z-index: -1; background: var(--accent-soft); pointer-events: none; }
 .hg-cell { aspect-ratio: 1; padding: 0; border-radius: 7px; border: none; background: transparent; font-size: 12px; font-weight: 700; color: transparent; }
 .hg-cell.due { background: var(--ring-bg); }
 .hg-cell.due:hover { background: var(--accent-soft); }
