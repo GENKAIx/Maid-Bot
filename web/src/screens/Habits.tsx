@@ -107,16 +107,18 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
 function HabitTimes({ id, times, quiet, ask, onDone, onCancel }: {
   id: number; times: string[]; quiet: boolean; ask: { first: string; last: string }; onDone: () => void; onCancel: () => void;
 }) {
-  const [list, setList] = useState<string[]>(times.length ? times : [ask.first]);
+  const [list, setList] = useState<string[]>(quiet ? [] : times.length ? times : [ask.first]);
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState("");
   const valid = list.filter((t) => /^\d\d:\d\d$/.test(t));
-  async function save(next: string[]) {
+  // Все времена убраны — «Сохранить» выключает напоминания у этой привычки.
+  const off = list.length === 0;
+  async function save(next: string[], general = false) {
     setBusy(true);
     setFail("");
     try {
-      // Привычка была «без напоминаний» — сохранённое время их включает.
-      await post(`/api/habits/${id}`, quiet ? { times: next, quiet: false } : { times: next });
+      // Пустой список крестиками — без напоминаний; время или «Как в настройках» — напоминания снова включены.
+      await post(`/api/habits/${id}`, off && !general ? { times: [], quiet: true } : quiet ? { times: next, quiet: false } : { times: next });
       onDone();
     } catch (e) {
       setFail((e as Error).message);
@@ -125,20 +127,21 @@ function HabitTimes({ id, times, quiet, ask, onDone, onCancel }: {
   }
   return (
     <div className="hg-times" style={{ gridColumn: "1 / -1" }}>
-      <span className="muted small">Напомнить в</span>
+      {!off && <span className="muted small">Напомнить в</span>}
       {list.map((t, i) => (
         <span key={i} className="hg-time">
           <input type="time" value={t} onChange={(e) => setList(list.map((x, j) => (j === i ? e.target.value : x)))} aria-label={`Время ${i + 1}`} />
-          {list.length > 1 && <button className="ghost" onClick={() => setList(list.filter((_, j) => j !== i))} aria-label="Убрать время">×</button>}
+          <button className="ghost" onClick={() => setList(list.filter((_, j) => j !== i))} aria-label="Убрать время" title="Убрать время">×</button>
         </span>
       ))}
-      {list.length < 4 && <button className="ghost" onClick={() => setList([...list, list.at(-1) ?? ask.first])}>+ ещё время</button>}
+      {off && <span className="small">🔕 без напоминаний</span>}
+      {list.length < 4 && <button className="ghost" onClick={() => setList([...list, list.at(-1) ?? ask.first])}>{off ? "+ время" : "+ ещё время"}</button>}
       <span className="grow" />
-      <button className="primary" disabled={busy || !valid.length} onClick={() => save(valid)}>Сохранить</button>
-      {times.length > 0 && <button className="ghost" disabled={busy} onClick={() => save([])} title={`${ask.first} и ${ask.last} — меняется в «Настройках»`}>Как в настройках</button>}
+      <button className="primary" disabled={busy || (!off && !valid.length)} onClick={() => save(valid)}>Сохранить</button>
+      {(times.length > 0 || quiet) && <button className="ghost" disabled={busy} onClick={() => save([], true)} title={`${ask.first} и ${ask.last} — меняется в «Настройках»`}>Как в настройках</button>}
       <button className="ghost" disabled={busy} onClick={onCancel}>Отмена</button>
       <span className="muted small hg-times-hint">
-        {quiet && "Сейчас напоминаний нет — «Сохранить» их включит. "}Не отметите — спросит ещё раз в {ask.last}. Общее время — в «Настройках».{fail && <b style={{ color: "var(--red)" }}> {fail}</b>}
+        {off ? "Горничная не будет спрашивать про эту привычку — отмечайте сами. «+ время» вернёт напоминания." : <>{quiet && "Сейчас напоминаний нет — «Сохранить» их включит. "}Не отметите — спросит ещё раз в {ask.last}. Общее время — в «Настройках».</>}{fail && <b style={{ color: "var(--red)" }}> {fail}</b>}
       </span>
     </div>
   );

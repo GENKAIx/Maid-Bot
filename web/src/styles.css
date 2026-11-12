@@ -258,7 +258,7 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .day-nav .ghost { font-size: 20px; padding: 2px 10px; }
 
 /* сетка привычек */
-.grid-card { overflow-x: auto; }
+.grid-card { overflow-x: auto; container-type: inline-size; }
 .habit-grid { display: grid; gap: 3px; align-items: center; min-width: 760px; }
 .hg-day { text-align: center; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; line-height: 1.1; padding-bottom: 4px; }
 .hg-day i { font-style: normal; font-size: 10px; opacity: .7; }
@@ -270,7 +270,7 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .hg-bell { align-self: flex-start; border: none; background: transparent; padding: 1px 6px; margin-left: -6px; border-radius: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .hg-bell i { font-style: normal; opacity: .7; }
 .hg-bell:hover, .hg-bell.on { color: var(--accent); background: var(--accent-soft); }
-.hg-times { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, calc(100vw - 56px)); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; margin: 2px 0 6px; background: var(--panel-2); border-radius: 10px; }
+.hg-times { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); /* видимая ширина карточки — кнопки не уезжают вправо за прокрутку */ display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; margin: 2px 0 6px; background: var(--panel-2); border-radius: 10px; }
 .hg-time { display: inline-flex; align-items: center; gap: 2px; }
 .hg-time input { width: auto; padding: 4px 6px; }
 .hg-time .ghost { padding: 2px 6px; }
