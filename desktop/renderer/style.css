@@ -632,11 +632,7 @@ body.quick { background: transparent; }
 .day-chip { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 4px 0 3px; border-radius: 9px; border: 1px solid transparent;
   background: rgba(255, 255, 255, .05); font-size: 10.5px; color: var(--muted); line-height: 1.2; cursor: pointer; }
 .day-chip b { font-size: 13px; color: var(--text, #fff); }
-.day-chip .cnt { font-size: 10px; color: var(--accent); display: flex; gap: 2px; justify-content: center; align-items: center; min-height: 12px; }
-/* Загрузка дня полосками (clock.js, dayLoadBars): планы — цветом панели, задачи — зелёным. */
-.day-chip .cnt i { width: 4px; height: 3px; border-radius: 2px; background: var(--accent); }
-.day-chip .cnt i.lt { background: #5fd39b; }
-.day-chip.past .cnt i { opacity: .55; }
+.day-chip .cnt { font-size: 10px; color: var(--accent); }
 .day-chip.empty .cnt { color: var(--muted); opacity: .6; }
 .day-chip:hover { border-color: rgba(255, 255, 255, .18); }
 .day-chip.on { background: rgba(183, 156, 255, .22); border-color: var(--accent); color: var(--text, #fff); }
@@ -704,36 +700,7 @@ body.quick { background: transparent; }
 .pl-card:hover .pl-x { opacity: 1; }
 .pl-x:hover { color: #ff8f8f; background: rgba(255, 120, 120, .12); }
 .pl-empty { margin: 10px 6px; color: var(--muted); font-size: 12.5px; }
-/* --- Шкала дня (clock.js, dayRows): слева — время начала, между планами — свободные окна, линия «сейчас», внизу — без времени --- */
-.pl-list.pl-tl { padding-left: 40px; padding-right: 8px; gap: 4px; }
-/* Шкала плотнее обычного списка: окна и карточки ниже, чтобы на экран влезало больше планов. */
-.pl-tl > .pl-card { min-height: 36px; padding-top: 4px; padding-bottom: 4px; }
-.pl-tl > .pl-gap { padding-top: 2px; padding-bottom: 2px; }
-/* «+ план» на шкале — тонкая строка, чтобы под ней влезал раздел «Без времени». Справа у списка — место полосе прокрутки, чтобы не лезла на галочки. */
-.pl-tl .pl-add { padding: 2px 6px; border-radius: 8px; font-size: 11.5px; }
-.pl-tl > .pl-sect { margin-top: 2px; }
-.pl-tl > .pl-card:not(.timed), .pl-tl > .pl-sect, .pl-tl > .pl-add-row { margin-left: -38px; }
-.pl-at { position: absolute; left: -38px; top: 50%; transform: translateY(-50%); width: 32px; text-align: right; font-size: 11.5px; font-weight: 600;
-  color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; }
-/* Время слева стоит за краем карточки — карточка его не обрезает; цветная полоска скруглена сама. Улетая, обрезает снова. */
-.pl-card.timed { overflow: visible; }
-.pl-card.timed::before { border-radius: 11px 0 0 11px; }
-.pl-card.timed.leaving::after { border-radius: inherit; }
-.pl-card.timed.fly { overflow: hidden; }
-.pl-card.now .pl-at { color: var(--c, var(--accent)); }
-.pl-gap { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 4px 7px 4px 13px; /* текст — по тексту карточек, длительность — под галочками */ border-radius: 9px; border: 1px dashed transparent;
-  font-size: 11.5px; color: var(--muted); cursor: pointer; }
-.pl-gap em { font-style: normal; opacity: .7; font-variant-numeric: tabular-nums; }
-.pl-gap:hover { border-color: rgba(255, 255, 255, .16); color: var(--text, #fff); }
-.pl-gap.drop { border-color: var(--accent); background: rgba(183, 156, 255, .14); color: var(--text, #fff); }
-.pl-now { position: relative; height: 14px; margin: -2px 0; }
-.pl-now::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; border-radius: 1px; background: #ff5d6c; }
-.pl-now::after { content: ""; position: absolute; left: -4px; /* точка на краю карточек, время слева до -8px — не наезжает */ top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ff5d6c; }
-.pl-now b { position: absolute; left: -40px; top: 50%; transform: translateY(-50%); width: 32px; text-align: right; font-size: 11.5px;
-  color: #ff7b88; font-weight: 700; font-variant-numeric: tabular-nums; }
-.pl-now span { position: absolute; right: 0; top: 50%; transform: translateY(-50%); padding: 0 6px; border-radius: 6px; background: #ff5d6c; color: #fff;
-  font-size: 10px; font-weight: 700; line-height: 14px; }
-.pl-add-row { list-style: none; }
+.pl-add-row { list-style: none; margin-top: 2px; }
 .pl-add { width: 100%; padding: 8px; border-radius: 11px; border: 1px dashed rgba(255, 255, 255, .22); background: none; color: var(--muted); font: inherit;
   font-size: 12.5px; cursor: pointer; }
 .pl-add:hover { color: var(--text, #fff); border-color: var(--accent); background: rgba(183, 156, 255, .08); }
@@ -851,10 +818,6 @@ body.quick { background: transparent; }
 /* Сдвиг по времени: время на карточке тянется вверх-вниз (clock.js). */
 #planClock .pl-card[data-id]:not(.gone, .cancelled, .done) .pl-when { cursor: ns-resize; border-radius: 4px; transition: background .12s; }
 #planClock .pl-card[data-id]:not(.gone, .cancelled, .done) .pl-when:hover { background: color-mix(in srgb, var(--c, #6c5ce7) 20%, transparent); }
-/* Начало на шкале слева тоже тянется — так сдвигают план без конца (у него на карточке нет длительности). */
-#planClock .pl-card[data-id]:not(.gone, .cancelled, .done) .pl-at { pointer-events: auto; cursor: ns-resize; border-radius: 4px; transition: background .12s; }
-#planClock .pl-card[data-id]:not(.gone, .cancelled, .done) .pl-at:hover { color: var(--text, #fff); background: rgba(255, 255, 255, .08); }
-#planClock .pl-card.retime .pl-at { color: var(--c, var(--accent)); }
 #planClock.retiming, #planClock.retiming * { cursor: ns-resize; }
 #planClock .pl-card.retime { background: rgba(255, 255, 255, .1); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c, #6c5ce7) 60%, transparent); }
 #planClock .pl-card.retime .pl-when { background: color-mix(in srgb, var(--c, #6c5ce7) 28%, transparent); }
