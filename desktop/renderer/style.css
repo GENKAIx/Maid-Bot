@@ -705,7 +705,11 @@ body.quick { background: transparent; }
 .pl-x:hover { color: #ff8f8f; background: rgba(255, 120, 120, .12); }
 .pl-empty { margin: 10px 6px; color: var(--muted); font-size: 12.5px; }
 /* --- Шкала дня (clock.js, dayRows): слева — время начала, между планами — свободные окна, линия «сейчас», внизу — без времени --- */
-.pl-list.pl-tl { padding-left: 40px; padding-right: 8px; } /* справа — место полосе прокрутки, чтобы не лезла на галочки */
+.pl-list.pl-tl { padding-left: 40px; padding-right: 8px; gap: 4px; }
+/* Шкала плотнее обычного списка: окна и карточки ниже, чтобы на экран влезало больше планов. */
+.pl-tl > .pl-card { min-height: 36px; padding-top: 4px; padding-bottom: 4px; }
+.pl-tl > .pl-gap { padding-top: 2px; padding-bottom: 2px; }
+.pl-tl .pl-add { padding: 6px; } /* справа — место полосе прокрутки, чтобы не лезла на галочки */
 .pl-tl > .pl-card:not(.timed), .pl-tl > .pl-sect, .pl-tl > .pl-add-row { margin-left: -38px; }
 .pl-at { position: absolute; left: -38px; top: 50%; transform: translateY(-50%); width: 32px; text-align: right; font-size: 11.5px; font-weight: 600;
   color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; }
@@ -721,9 +725,9 @@ body.quick { background: transparent; }
 .pl-gap:hover { border-color: rgba(255, 255, 255, .16); color: var(--text, #fff); }
 .pl-gap.drop { border-color: var(--accent); background: rgba(183, 156, 255, .14); color: var(--text, #fff); }
 .pl-now { position: relative; height: 14px; margin: -2px 0; }
-.pl-now::before { content: ""; position: absolute; left: -6px; right: 0; top: 50%; height: 2px; border-radius: 1px; background: #ff5d6c; }
-.pl-now::after { content: ""; position: absolute; left: -9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ff5d6c; }
-.pl-now b { position: absolute; left: -38px; top: 50%; transform: translateY(-50%); width: 32px; text-align: right; font-size: 11.5px;
+.pl-now::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; border-radius: 1px; background: #ff5d6c; }
+.pl-now::after { content: ""; position: absolute; left: -4px; /* точка на краю карточек, время слева до -8px — не наезжает */ top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ff5d6c; }
+.pl-now b { position: absolute; left: -40px; top: 50%; transform: translateY(-50%); width: 32px; text-align: right; font-size: 11.5px;
   color: #ff7b88; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pl-now span { position: absolute; right: 0; top: 50%; transform: translateY(-50%); padding: 0 6px; border-radius: 6px; background: #ff5d6c; color: #fff;
   font-size: 10px; font-weight: 700; line-height: 14px; }
