@@ -4,6 +4,7 @@ import { Card, Empty, Spinner } from "../components";
 import { currentSubscription, isIos, pushSupported, standalone, subscribe, unsubscribe } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { SpendCard } from "./Spend";
+import { UpdateCard } from "./Widget";
 
 // Настройки: тема и уведомления на этом устройстве, время утреннего списка и итога, предупреждения об играх, копия, выход.
 
@@ -135,6 +136,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
       <h2 className="screen-title">Настройки</h2>
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="cards">
+        <UpdateCard />
         <Card title="Вид" className="reveal">
           <div className="segment" role="radiogroup" aria-label="Тема">
             {([["light", "Светлая"], ["dark", "Тёмная"], ["system", "Как в системе"]] as [Theme, string][]).map(([t, name]) => (

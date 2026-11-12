@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Empty, Spinner } from "../components";
+import { Card, Empty, Spinner } from "../components";
 
 // Виджет на рабочем столе: что на панели, горничная, задачи, сроки самонажатия кнопок. Настройки живут в программе на ПК
 // (desktop/src/preload-app.js → main.js «app:widget-*»), сайт их только показывает и меняет; в браузере и на телефоне раздела нет.
@@ -49,6 +49,32 @@ declare global {
   interface Window { maidDesktop?: Bridge }
 }
 export const desktop = () => window.maidDesktop;
+
+/** Обновление программы на ПК — первая карточка «Настроек». В браузере и в старых версиях программы её нет. */
+export function UpdateCard() {
+  const bridge = desktop();
+  const [upd, setUpd] = useState<Upd | null>(null);
+  useEffect(() => {
+    if (!bridge?.update) return;
+    void bridge.update().then((u) => {
+      setUpd(u);
+      if (u && (u.status === "idle" || u.status === "error")) void bridge.checkUpdate?.().catch(() => null);
+    }).catch(() => null);
+    return bridge.onUpdate?.(setUpd);
+  }, [bridge]);
+  if (!bridge || !upd) return null;
+  const busy = upd.status === "checking" || upd.status === "downloading" || upd.status === "ready";
+  return (
+    <Card title="Программа на компьютере" className="reveal">
+      <div className="row">
+        <span className="grow">{updHint(upd)}</span>
+        {upd.status === "dev" ? null : upd.status === "available"
+          ? <button className="primary" onClick={() => void bridge.installUpdate?.()}>Обновить до {upd.next}</button>
+          : <button disabled={busy} onClick={() => void bridge.checkUpdate?.()}>Проверить</button>}
+      </div>
+    </Card>
+  );
+}
 
 // Те же значения по умолчанию, что у виджета (desktop/renderer/widget.js, cfg).
 const DEFAULTS: Required<WidgetPrefs> = {
@@ -341,7 +367,6 @@ export function Widget() {
   const [ping, setPing] = useState(0); // выбрали что-то про облачко — показать его ещё раз со звуком
   const [ask, setAsk] = useState<"add" | "clash">("add"); // какой пример самонажатия показать
   const [gen, setGen] = useState<General | null>(null);
-  const [upd, setUpd] = useState<Upd | null>(null);
 
   useEffect(() => {
     if (!bridge) return;
@@ -351,12 +376,6 @@ export function Widget() {
       setOpacity(all.opacity);
     });
     void bridge.general?.().then(setGen).catch(() => null);
-    if (!bridge.update) return;
-    void bridge.update().then((u) => {
-      setUpd(u);
-      if (u && (u.status === "idle" || u.status === "error")) void bridge.checkUpdate?.().catch(() => null);
-    }).catch(() => null);
-    return bridge.onUpdate?.(setUpd);
   }, [bridge]);
 
   if (!bridge) return <Empty>Виджет — это программа «Горничная» на компьютере. Его настройки — в ней: раздел «Виджет» слева.</Empty>;
@@ -523,10 +542,6 @@ export function Widget() {
             side={<KeyPicker label="Быстрая запись" value={gen.keys.quick} onPick={(quick) => void saveGen({ keys: { quick } })} />} />
           <Setting title="Взять или отпустить виджет" hint="Виджет ловит мышь — его можно двигать и нажимать"
             side={<KeyPicker label="Взять или отпустить виджет" value={gen.keys.grab} onPick={(grab) => void saveGen({ keys: { grab } })} />} />
-          {upd && <Setting title="Версия программы" hint={updHint(upd)}
-            side={upd.status === "dev" ? undefined : upd.status === "available"
-              ? <button className="wp-key" onClick={() => void bridge.installUpdate?.()}>Обновить до {upd.next}</button>
-              : <button className="wp-key" disabled={upd.status === "checking" || upd.status === "downloading" || upd.status === "ready"} onClick={() => void bridge.checkUpdate?.()}>Проверить</button>} />}
         </section>}
       </div>
     </div>
