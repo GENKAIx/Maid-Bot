@@ -65,6 +65,23 @@ test("хвосты: «не сделано» закрывает задачу, п�
     assert.ok(!(await store.openTasks(u.id)).some((t) => t.id === planned), "ставшая планом ушла из задач");
     assert.equal((await call(`/api/tasks/${planned}/plan`, {}, token)).status, 409, "второй раз не превращается");
 
+    // Задача сразу со временем → план с этим временем одним шагом (без промежуточного плана без времени).
+    const timed = await add("Позвонить маме");
+    const tp = (await call(`/api/tasks/${timed}/plan`, { time: "18:30", end_time: "19:00" }, token)).json as { id: number; time: string | null; end_time: string | null };
+    assert.deepEqual([tp.time, tp.end_time], ["18:30", "19:00"]);
+    assert.equal((await store.task(timed))!.status, "planned");
+
+    // Убрать время у плана → он снова задача без времени на тот же день, план уходит не в корзину, а «стал задачей».
+    const back = await call(`/api/events/${tp.id}/task`, {}, token);
+    const bt = back.json as unknown as { id: number; title: string; due_date: string; status: string };
+    assert.equal(back.status, 200);
+    assert.deepEqual([bt.title, bt.due_date, bt.status], ["Позвонить маме", "2026-11-08", "open"]);
+    assert.ok((await store.openTasks(u.id)).some((t) => t.id === bt.id), "стал открытой задачей");
+    assert.equal((await store.event(tp.id))!.status, "tasked");
+    assert.ok(!(await store.eventsBetween(u.id, "2026-11-08", "2026-11-08")).some((e) => e.id === tp.id), "из планов ушёл");
+    assert.ok(!(await store.eventsClosedSince(u.id, "2026-11-01", "2000-01-01")).some((e) => e.id === tp.id), "не в «отменённых»");
+    assert.equal((await call(`/api/events/${tp.id}/task`, {}, token)).status, 409, "второй раз не превращается");
+
     // Копия задачи на другой день; повтор на тот же день не плодит дубль.
     const keep = await add("Полить цветы");
     const cp = await call(`/api/tasks/${keep}/copy`, { date: "2026-11-09" }, token);
@@ -92,7 +109,7 @@ test("хвосты: «не сделано» закрывает задачу, п�
     assert.equal((await call(`/api/tasks/${moved}`, {}, token)).status, 400);
     assert.equal((await call(`/api/tasks/${other}`, { status: "failed" }, token)).status, 404);
     assert.equal((await store.task(other))!.status, "open");
-    assert.equal(changed, 8, "список-виджет в Telegram обновится после каждого изменения");
+    assert.equal(changed, 10, "список-виджет в Telegram обновится после каждого изменения");
   } finally {
     server.close();
   }

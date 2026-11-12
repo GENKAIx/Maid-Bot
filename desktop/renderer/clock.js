@@ -776,7 +776,7 @@ function watchPlans() {
   }
   if (edited.size) clockEdits = edited;
   const gone = [...prev].filter(([id]) => !now.has(id)).map(([, j]) => JSON.parse(j))
-    .filter((e) => e.date_iso >= data.day && !planDone.has(e.id))
+    .filter((e) => e.date_iso >= data.day && !planDone.has(e.id) && !turnedTask.delete(e.id))
     .map((e) => (out.has(e.id) ? { ...e, _out: true } : ok.has(e.id) ? { ...e, _ok: true } : e));
   // Далёкие (их не было в списке) — тоже.
   for (const e of removed) if (!gone.some((g) => g.id === e.id)) gone.push({ ...e, _out: true });
@@ -1891,9 +1891,15 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") endRetime(
 async function retimePlan(e, start, end, r) {
   const body = { time: hhmm(start), end_time: end !== null ? hhmm(Math.min(end, 1439)) : null };
   try {
-    e = await asPlan(e); // задаче задали время — она становится планом
-    quietPlans.add(e.id);
-    await maid.api("POST", `/api/events/${e.id}`, body);
+    if (e.task) {
+      // Задаче задали время — она становится планом сразу с этим временем, одним шагом.
+      const made = await maid.api("POST", `/api/tasks/${e.id}/plan`, { date: e.date_iso, ...body });
+      quietPlans.add(made.id);
+      e = { ...made, time: null }; // для «Поставила», а не «Сдвинула»
+    } else {
+      quietPlans.add(e.id);
+      await maid.api("POST", `/api/events/${e.id}`, body);
+    }
     popTone(2);
     sayUnlessClash({ ...e, ...body }, e.date_iso, `${e.time ? "Сдвинула" : "Поставила"} «${e.title}» на ${body.time}${body.end_time ? `–${body.end_time}` : ""} ✓`);
     farPlans.clear();
@@ -1905,17 +1911,20 @@ async function retimePlan(e, start, end, r) {
   }
 }
 
-// Убрать время: план остаётся на своём дне, без начала и конца.
+// Убрать время: план становится задачей без времени на тот же день (раздел «Без времени»), не уходит в корзину.
+const turnedTask = new Set(); // id планов, ставших задачами здесь, — их уход из планов не показывать как удаление
 async function clearPlanTime(e) {
   try {
-    const r = await maid.api("POST", `/api/events/${e.id}`, { time: null });
+    turnedTask.add(e.id);
+    const r = await maid.api("POST", `/api/events/${e.id}/task`, {});
     popTone(2);
-    say(`Убрала время у «${e.title}» — просто на этот день ✓`, { ms: 5000, undo: r.undo ?? null });
+    say(`Убрала время у «${e.title}» — теперь это задача на этот день ✓`, { ms: 5000, undo: r.undo ?? null });
     farPlans.clear();
     maid.changed();
   } catch (err) {
+    turnedTask.delete(e.id);
     const msg = String(err?.message ?? err);
-    say(/время ЧЧ:ММ|нужно status/.test(msg) ? "Сервер ещё не умеет убирать время — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
+    say(/время ЧЧ:ММ|нужно status|нет такого адреса|404/.test(msg) ? "Сервер ещё не умеет убирать время — его нужно обновить." : `Не вышло: ${msg}`, { emotion: "worried", ms: 6000 });
   }
 }
 
@@ -2119,6 +2128,11 @@ function openTime(e, x, y) {
     keepIn(box);
   };
   const save = () => {
+    // Стёрли время у плана — он становится задачей без времени (как «⌀ Убрать время»).
+    if (!start.value && !e.task && e.time) {
+      closePlanMenu();
+      return clearPlanTime(e);
+    }
     if (!start.value) return fail("Укажите время начала");
     if (end.value && end.value <= start.value) return fail("Конец должен быть позже начала");
     closePlanMenu();

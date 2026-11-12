@@ -443,7 +443,7 @@ export function createApi(deps: ApiDeps) {
         .sort((x, y) => (x.status === "open" ? 0 : 1) - (y.status === "open" ? 0 : 1) || y.id - x.id)
         .slice(0, 60);
       const events = (await store.allEvents(u.id))
-        .filter((e) => e.status !== "purged" && hit(e.title, e.details))
+        .filter((e) => e.status !== "purged" && e.status !== "tasked" && hit(e.title, e.details)) // ставший задачей — ищется задачей
         .map((e) => ({ ...e, bin: binned(e.status, (e as { updated_at?: string }).updated_at ?? null) }))
         .filter((e) => e.bin !== "gone")
         .sort((x, y) => (x.date_iso >= today ? 0 : 1) - (y.date_iso >= today ? 0 : 1)
@@ -516,15 +516,19 @@ export function createApi(deps: ApiDeps) {
     }
 
     // Задача становится планом (ПКМ по задаче в виджете → «Задать время» или «Повторять…»): план с тем же названием на её день
-    // (или date), задача закрывается статусом planned. Ответ — новый план; время и повтор виджет ставит ему следом, как обычному плану.
+    // (или date), задача закрывается статусом planned. Ответ — новый план; time/end_time — сразу со временем (одним шагом),
+    // иначе время и повтор виджет ставит ему следом, как обычному плану.
     const taskPlan = p.match(/^\/api\/tasks\/(\d+)\/plan$/);
     if (m === "POST" && taskPlan) {
-      const { date } = parseBody(z.object({ date: Day.optional() }), await readJson(req));
+      const Time = z.string().refine(isTime, "время ЧЧ:ММ");
+      const { date, time, end_time } = parseBody(z.object({ date: Day.optional(), time: Time.optional(), end_time: Time.nullable().optional() }), await readJson(req));
+      if (end_time && !time) throw new HttpError(400, "end_time — только вместе с time");
+      if (time && end_time && end_time <= time) throw new HttpError(400, "конец раньше начала");
       const t = await store.task(Number(taskPlan[1]));
       if (!t || t.user_id !== u.id) throw new HttpError(404, "нет задачи");
       if (t.status !== "open") throw new HttpError(409, "задача уже закрыта");
       const id = await store.addEvent({
-        user_id: u.id, title: t.title, date_iso: date ?? t.due_date ?? today, time: null, end_time: null, details: t.notes,
+        user_id: u.id, title: t.title, date_iso: date ?? t.due_date ?? today, time: time ?? null, end_time: time ? end_time ?? null : null, details: t.notes,
         domain: "life", message_id: t.message_id,
       });
       await store.updateTask(t.id, { status: "planned" });
@@ -533,6 +537,27 @@ export function createApi(deps: ApiDeps) {
       await planEventReminders(store, u, made, new Date());
       pipeline.changed(u);
       return made;
+    }
+
+    // План становится задачей (у плана убрали время в виджете): открытая задача с тем же названием на его день, план закрывается
+    // статусом tasked — не «отменён» и не в корзине. Ответ — новая задача.
+    const evTask = p.match(/^\/api\/events\/(\d+)\/task$/);
+    if (m === "POST" && evTask) {
+      const e = await store.event(Number(evTask[1]));
+      if (!e || e.user_id !== u.id) throw new HttpError(404, "нет плана");
+      if (e.status !== "active") throw new HttpError(409, "план уже закрыт");
+      let id = 0;
+      // «↩ Вернуть» откатывает: план снова в планах со своим временем, задача — в удалённые.
+      const undo = await pipeline.manual(u, `↪ ${e.title}`, async (log) => {
+        id = await store.addTask({
+          user_id: u.id, title: e.title, priority: "normal", category: "", due_date: e.date_iso, notes: e.details ?? "", message_id: e.message_id,
+        });
+        await log("tasks", id, { status: "deleted" });
+        await log("events", e.id, { status: e.status });
+        await store.updateEvent(e.id, { status: "tasked" });
+        await store.cancelReminders("event", e.id);
+      });
+      return { ...(await store.task(id)), undo };
     }
 
     // Копия задачи на другой день (ПКМ → «Копия на завтра» или перетащили с Ctrl): такая же открытая задача со сроком date.
