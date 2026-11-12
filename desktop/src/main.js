@@ -66,7 +66,11 @@ function maidLog(...a) {
     if ((fs.statSync(logFile(), { throwIfNoEntry: false })?.size ?? 0) > 200_000) fs.rmSync(logFile());
     fs.appendFileSync(logFile(), `${new Date().toISOString()} ${line}
 `);
-  } catch { /* журнал не обязателен */ }
+  } catch (e) {
+    // Основной журнал не пишется — запасной рядом, со своим номером процесса, и почему.
+    try { fs.appendFileSync(logFile().replace(/\.log$/, `-${process.pid}.log`), `${new Date().toISOString()} [${e?.code ?? e}] ${line}
+`); } catch { /* журнал не обязателен */ }
+  }
 }
 function loadSettings() {
   try {
@@ -100,7 +104,10 @@ function saveSettings() {
     out.tokenEnc = tokenEnc; // ещё не расшифрован — оставить как был, иначе вход пропадёт
     delete out.token;
   }
-  fs.writeFileSync(settingsFile(), JSON.stringify(out, null, 2));
+  // Через временный файл: если установщик обновления оборвёт программу на записи, старый файл останется целым.
+  const tmp = settingsFile() + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(out, null, 2));
+  fs.renameSync(tmp, settingsFile());
 }
 // Адрес сервера: только http(s), без пути — иначе null.
 function serverBase(s = settings.server) {
@@ -637,7 +644,7 @@ ipcMain.on("open-section", (_e, p) => {
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
 });
 // Окнам — настройки без ключа.
-const shown = () => { const { token: _t, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
+const shown = () => { const { token: _t, siteTokenEnc: _s, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
 // http:// не на этом компьютере — ключ и дневник идут открытым текстом.
 function insecure(s) {
   try { const u = new URL(String(s)); return u.protocol === "http:" && !/^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(u.hostname); } catch { return false; }
@@ -652,6 +659,7 @@ ipcMain.handle("settings:set", (e, patch) => {
   patch = { ...patch };
   // Адрес и ключ — только из окна настроек; пустой ключ — «оставить прежний».
   if (!isSettingsPage(e.sender)) { delete patch.server; delete patch.token; }
+  delete patch.siteTokenEnc;
   if ("token" in patch && !String(patch.token ?? "").trim()) delete patch.token;
   if ("server" in patch) {
     const b = serverBase(String(patch.server ?? "").trim());
@@ -677,6 +685,32 @@ const fromApp = (e) => {
     return e.sender === mainWin?.webContents && !mainWin.isLocal && new URL(e.senderFrame.url).origin === new URL(settings.server).origin;
   } catch { return false; }
 };
+// Вход сайта в главном окне (localStorage «maid.token») — копия в settings.json, зашифрованная, как ключ виджета.
+// Хранилище окон Chromium после обновления программы иногда открывается пустым — тогда preload-app.js возвращает вход отсюда.
+// Сайт вышел (кнопкой или ключ устарел — 401) — копия стирается.
+ipcMain.on("site-login:get", (e) => {
+  e.returnValue = "";
+  if (!fromApp(e) || !settings.siteTokenEnc) return;
+  try {
+    e.returnValue = siteSeen = safeStorage.decryptString(Buffer.from(settings.siteTokenEnc, "base64"));
+    maidLog("вход сайта возвращён из настроек");
+  } catch (err) {
+    maidLog("вход сайта не расшифровался:", err?.message ?? err);
+  }
+});
+let siteSeen = null; // последний вход, пришедший из окна, — тот же не перешифровываем
+ipcMain.on("site-login:keep", (e, t) => {
+  if (!fromApp(e) || typeof t !== "string" || t.length > 4000 || t === siteSeen) return;
+  siteSeen = t;
+  let enc = "";
+  if (t) {
+    if (!canEncrypt()) return; // без защиты Windows открытым текстом не храним — копия остаётся прежней
+    enc = safeStorage.encryptString(t).toString("base64");
+  }
+  if (!enc && !settings.siteTokenEnc) return;
+  settings.siteTokenEnc = enc;
+  saveSettings();
+});
 const oneOf = (...vs) => (v) => vs.includes(v);
 const secsOk = (v) => Number.isInteger(v) && v >= 3 && v <= 60;
 const WIDGET_PREFS = {
@@ -761,10 +795,15 @@ const updates = createUpdates({
     refreshTray();
   },
   // Установщик закрывает программу жёстко: вход сайта (localStorage главного окна) и куки сначала пишутся на диск, иначе после обновления — экран входа.
+  // Окна закрываем сами: при закрытии окно дописывает своё хранилище, а у установщика — убить процесс.
   beforeInstall: async () => {
     quitting = true;
     session.defaultSession.flushStorageData();
     await session.defaultSession.cookies.flushStore();
+    for (const w of BrowserWindow.getAllWindows()) w.close();
+    await new Promise((r) => setTimeout(r, 1200));
+    session.defaultSession.flushStorageData();
+    maidLog("обновление: окна закрыты, данные записаны");
   },
   log: maidLog,
 });
@@ -819,7 +858,7 @@ for (const until = Date.now() + 15_000; !haveLock && afterUpdate && Date.now() <
   haveLock = app.requestSingleInstanceLock();
 }
 if (!haveLock) { maidLog("уже запущена — эта копия закрывается"); app.quit(); }
-app.on("second-instance", () => showMain());
+app.on("second-instance", (_e, argv) => { maidLog("второй запуск:", argv.slice(1).filter((a) => a.startsWith("--")).join(" ")); showMain(); });
 app.whenReady().then(() => {
   if (!haveLock) return;
   app.setAppUserModelId("Горничная");
