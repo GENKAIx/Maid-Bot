@@ -418,15 +418,15 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
   .w .next .nx-hero.heat { box-shadow: inset 0 0 0 1.5px var(--ember); }
   .w .next .nx-hero.soon, .w .next .nx-hero.live, .stage.folded .mini.live { animation: none; }
 }
-.w .next .nx-rows { display: grid; padding: 0 6px; }
-.w .next .nx-row { position: relative; display: grid; grid-template-columns: 12px 40px 1fr; align-items: center; column-gap: 6px; padding: 3px 0; }
-.w .next .nx-row + .nx-row::before { content: ""; position: absolute; left: 5px; top: -7px; width: 2px; height: 14px; border-radius: 1px;
+.w .next .nx-rows { display: grid; padding-right: 6px; } /* точки — ровно под центрами галочек привычек и задач, текст — с их текстом */
+.w .next .nx-row { position: relative; display: grid; grid-template-columns: 20px 40px 1fr; align-items: center; column-gap: 6px; padding: 3px 0; }
+.w .next .nx-row + .nx-row::before { content: ""; position: absolute; left: 7px; top: -7px; width: 2px; height: 14px; border-radius: 1px;
   background: color-mix(in srgb, var(--accent) 35%, transparent); }
-.w .next .nx-dot { width: 8px; height: 8px; border-radius: 50%; justify-self: center; background: var(--accent); }
+.w .next .nx-dot { width: 8px; height: 8px; margin-left: 4px; border-radius: 50%; justify-self: start; background: var(--accent); }
 .w .next .nx-t { font-weight: 650; font-variant-numeric: tabular-nums; }
 .w .next .nx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255, 255, 255, .82); }
 /* Ближайший план, пока до него больше 3 ч, — первая строка ленты: чуть крупнее и ярче, справа тихое «через 9 ч». */
-.w .next .nx-lead { grid-template-columns: 12px 40px 1fr auto; font-size: 14px; }
+.w .next .nx-lead { grid-template-columns: 20px 40px 1fr auto; font-size: 14px; }
 .w .next .nx-lead .nx-title { color: var(--text); font-weight: 600; }
 .w .next .nx-in { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 /* В сутках пусто — бледная строка «Дальше: …». */
