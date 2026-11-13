@@ -1746,7 +1746,7 @@ function miniPlan() {
     const rel = d <= 0 ? "идёт" : d < 60 ? `через ${d} мин` : `через ${Math.round(d / 60)} ч`;
     // Золотой час: скоро начало (15 мин) или начался, а на «⏰ Пора» ещё не ответили (planHeat); ответили — обычный цвет.
     const lv = planHeat(e)?.level;
-    return { time: e.time, rel, title: e.title, soon: d > 0 ? d <= 15 : !!lv && lv !== "soon" };
+    return { e, time: e.time, rel, title: e.title, soon: d > 0 ? d <= 15 : !!lv && lv !== "soon" };
   }
   return null;
 }
@@ -1782,6 +1782,18 @@ function flipHabits(was) {
     if (Math.abs(dy) > 1) li.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 380, easing: "cubic-bezier(.2, .8, .2, 1)" });
   }
 }
+// Свечение свёрнутой карточки замечено: {"дата:id": 1} в localStorage «maid.miniSeen», только за сегодня.
+let miniSeen = {};
+try { miniSeen = JSON.parse(localStorage.getItem("maid.miniSeen") ?? "{}") ?? {}; } catch {}
+function seeMini() {
+  const plan = data && miniPlan();
+  if (!plan || plan.rel !== "идёт" || miniSeen[ackKey(plan.e)]) return;
+  for (const k of Object.keys(miniSeen)) if (!k.startsWith(`${plan.e.date_iso}:`)) delete miniSeen[k];
+  miniSeen[ackKey(plan.e)] = 1;
+  try { localStorage.setItem("maid.miniSeen", JSON.stringify(miniSeen)); } catch {}
+  $("#mini").classList.remove("live");
+}
+$("#mini").addEventListener("pointerdown", seeMini);
 function renderMini(open, todo, left, done) {
   const plan = miniPlan();
   const late = open.filter(overdue).length;
@@ -1796,7 +1808,8 @@ function renderMini(open, todo, left, done) {
   ].filter(Boolean);
   $("#miniSub").textContent = sub.join(" · ");
   $("#miniSub").classList.toggle("late", late > 0);
-  $("#mini").classList.toggle("live", plan?.rel === "идёт"); // план идёт — обводка со свечением, как у плашки
+  // План идёт — обводка со свечением, пока человек не ткнул в карточку и не развернул панель (или ответил на «⏰ Пора»).
+  $("#mini").classList.toggle("live", plan?.rel === "идёт" && !miniSeen[ackKey(plan.e)] && planAcks[ackKey(plan.e)] !== "ok");
   const total = done + left;
   $("#miniArc").style.strokeDasharray = `${total ? (done / total) * RING : 0} ${RING}`;
   $("#miniCount").textContent = total ? `${done}/${total}` : "✓";
@@ -1805,6 +1818,7 @@ function renderMini(open, todo, left, done) {
 
 function setCollapsed(on) {
   collapsed = on;
+  if (!on && !autoOpened) seeMini(); // развернул сам (не горничная для сообщения) — свечение карточки замечено
   hideClock(); // свёрнутый вид — без панели планов; разворот — выдвижная панель уходит, а не превращается в обычную
   // История чата закрывается со сворачиванием: развернули — снова список задач, а не старая история.
   if (on && !$("#chatHist").classList.contains("hidden")) toggleHistory(false);
