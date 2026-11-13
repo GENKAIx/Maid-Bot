@@ -353,14 +353,27 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w.hist-open .scroll { display: none; }
 .w .scroll.hidden, .w .next.hidden { display: none; }
 .w .clock { font-size: 30px; line-height: 1; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.w .next { background: rgba(183, 156, 255, .1); border-left: 3px solid var(--accent); border-radius: 4px 10px 10px 4px; padding: 8px 10px; }
-.w .next b { color: var(--accent); }
-.w .next .nx + .nx { margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(183, 156, 255, .12); }
-/* Планы на другие дни: день серым, текст бледнее; первый после сегодняшних отделён линией поярче. */
-.w .next .nx.ahead { color: rgba(255, 255, 255, .62); }
-.w .next .nx.ahead b { color: var(--muted); font-weight: 600; }
-.w .next .nx-day { color: var(--muted); font-size: 11.5px; font-weight: 600; margin-bottom: 2px; cursor: pointer; }
-.w .next .nx + .nx-day { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(183, 156, 255, .3); }
+/* Ближайшие планы: сегодняшний ближайший — плашкой, остальные сегодня — лентой с точками цвета плана, другие дни — одной строкой «Дальше». */
+.w .next { display: grid; gap: 6px; }
+.w .next .nx-hero { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
+.w .next .nx-hero:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.w .next .hero-txt { flex: 1; min-width: 0; font-weight: 600; }
+.w .next .hero-txt b { color: var(--accent); }
+.w .next .hero-at { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.w .next .hero-go { flex: none; color: var(--muted); font-size: 18px; line-height: 1; margin-top: -2px; }
+.w .next .nx-rows { display: grid; padding: 0 6px; }
+.w .next .nx-row { position: relative; display: grid; grid-template-columns: 12px 40px 1fr; align-items: center; column-gap: 6px; padding: 3px 0; }
+.w .next .nx-row + .nx-row::before { content: ""; position: absolute; left: 5px; top: -7px; width: 2px; height: 14px; border-radius: 1px;
+  background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.w .next .nx-dot { width: 8px; height: 8px; border-radius: 50%; justify-self: center; background: var(--accent); }
+.w .next .nx-t { font-weight: 650; font-variant-numeric: tabular-nums; }
+.w .next .nx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255, 255, 255, .82); }
+.w .next .nx-ahead { display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 12.5px; color: rgba(255, 255, 255, .6); }
+.w .next .nx-ah-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w .next .nx-label, .w .next .nx-free { color: var(--muted); }
+.w .next .nx-more { flex: none; padding: 0 6px; border-radius: 8px; background: rgba(255, 255, 255, .08); color: var(--muted); font-size: 11.5px; }
+.w .next .nx-free { padding: 0 6px; font-size: 12.5px; }
 .w h4 { margin: 8px 0 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 /* Привычки — сразу под планами, отделены от задач линией. */
 .w .list.habit-list { margin-top: 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); }

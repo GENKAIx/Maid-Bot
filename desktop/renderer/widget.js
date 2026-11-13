@@ -1210,28 +1210,36 @@ function render() {
   }
   $("#day").textContent = humanDay(data.day);
   $("#miniClock").title = miniDay(data.day);
-  // Ближайшие планы, до cfg.nextCount строк: сначала сегодняшние (не начавшиеся больше 30 мин назад), не хватает — из следующих дней,
-  // не дальше недели вперёд (поэтому дня недели хватает: «Завтра», «Послезавтра», «Сб»).
+  // Ближайшие планы. Сегодня — подробно: ближайший (не начавшийся больше 30 мин назад) — выделенной плашкой «Через 44 мин · …»,
+  // остальные сегодняшние — лентой «● 16:00 Название», всего до cfg.nextCount. Другие дни (не дальше недели) — одной бледной
+  // строкой «Дальше: вс 15 11:15 · Поездка… +2», если осталось место. Щелчок по строке — панель планов на её день.
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
   const week = data.upcoming.filter((e) => daysFrom(data.day, e.date_iso) <= 6);
-  const nexts = [...today, ...week].slice(0, cfg.nextCount);
-  $("#next").dataset.day = nexts[0]?.date_iso ?? "";
-  $("#next").innerHTML = nexts.length
-    ? nexts.map((e, i) => {
-      if (e.date_iso === data.day) {
-        const m = minutesUntil(e);
-        const when = m === null ? "Сегодня" : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : e.time;
-        return `<div class="nx" data-day="${esc(e.date_iso)}"><b>${esc(when)}</b> · ${esc(e.title)}</div>`;
-      }
-      // Планы на другие дни — приглушены и под одним заголовком дня («Послезавтра, вс 15»), а не «Послезавтра» в каждой строке.
-      const n = daysFrom(data.day, e.date_iso);
-      const wd = WD_SHORT[wdOf(e.date_iso)];
-      const dd = Number(e.date_iso.slice(8));
-      const head = nexts[i - 1]?.date_iso === e.date_iso ? ""
-        : `<div class="nx-day" data-day="${esc(e.date_iso)}">${n === 1 ? `Завтра, ${wd} ${dd}` : n === 2 ? `Послезавтра, ${wd} ${dd}` : `${wd[0].toUpperCase() + wd.slice(1)} ${dd}`}</div>`;
-      return `${head}<div class="nx ahead" data-day="${esc(e.date_iso)}">${e.time ? `<b>${esc(e.time)}</b> · ` : ""}${esc(e.title)}</div>`;
-    }).join("")
-    : `<span class="muted">Планов нет</span>`;
+  const shownToday = today.slice(0, cfg.nextCount);
+  const ahead = shownToday.length < cfg.nextCount ? week[0] : null;
+  $("#next").dataset.day = (shownToday[0] ?? ahead)?.date_iso ?? "";
+  const inMin = (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч${m % 60 ? ` ${m % 60} мин` : ""}`);
+  let nextHtml = "";
+  if (shownToday.length) {
+    const [h, ...rest] = shownToday;
+    const m = minutesUntil(h);
+    const when = m === null ? "Сегодня" : m <= 0 ? "Идёт" : `Через ${inMin(m)}`;
+    const at = m !== null && m <= 0 ? (h.end_time ? `до ${h.end_time}` : "") : h.time ?? "";
+    nextHtml += `<div class="nx nx-hero" data-day="${esc(h.date_iso)}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
+      + `${at ? `<span class="hero-at">${esc(at)}</span>` : ""}<span class="hero-go">›</span></div>`;
+    if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e) => `<div class="nx nx-row" data-day="${esc(e.date_iso)}">`
+      + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span></div>`).join("")}</div>`;
+  } else if (ahead) nextHtml += `<div class="nx-free">Сегодня свободно</div>`;
+  if (ahead) {
+    const n = daysFrom(data.day, ahead.date_iso);
+    const more = week.filter((e) => e.date_iso === ahead.date_iso).length - 1;
+    const dayWord = n === 1 ? "завтра" : `${WD_SHORT[wdOf(ahead.date_iso)]} ${Number(ahead.date_iso.slice(8))}`;
+    nextHtml += `<div class="nx nx-ahead" data-day="${esc(ahead.date_iso)}" title="${esc(`${ahead.time ? `${ahead.time} ` : ""}${ahead.title}`)}">`
+      + `<span class="nx-ah-txt"><span class="nx-label">Дальше:</span> ${esc(dayWord)}${ahead.time ? ` ${esc(ahead.time)}` : ""} · ${esc(ahead.title)}</span>`
+      + `${more > 0 ? `<span class="nx-more" title="Ещё планов в этот день: ${more}">+${more}</span>` : ""}</div>`;
+  }
+  $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span>`;
+  for (const d of $("#next").querySelectorAll(".nx-dot[data-c]")) d.style.background = d.dataset.c; // style="" запрещает CSP
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
   const pins = datesOf(data.day);
   $("#pins").innerHTML = pins.map((d) => `<div class="pin" data-day="${d.on}">${dateText(d, data.day)}</div>`).join("");
