@@ -354,7 +354,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .scroll.hidden, .w .next.hidden { display: none; }
 .w .clock { font-size: 30px; line-height: 1; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 /* Ближайшие планы: сегодняшний ближайший — плашкой, остальные сегодня — лентой с точками цвета плана, другие дни — одной строкой «Дальше». */
-.w .next { display: grid; gap: 6px; }
+.w .next { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .w .next .nx-hero { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 12px; border-radius: 12px;
   background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
 .w .next .nx-hero:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
