@@ -1195,6 +1195,7 @@ function minutesUntil(e) {
 // «Горение» ближайшего плана: начался, горничная сказала «⏰ Пора», а ответа нет — плашка тлеет (0–5 мин), потом горит (5–15),
 // дальше — ровная оранжевая обводка, без мигания. За 10 мин до начала — один мягкий всплеск. Ответ (👌 Окей в облачке, ✓ или
 // ⏰ «Через 10 мин» на плашке, отметка в панели планов) гасит огонь. Ответы — в localStorage «maid.planAck»: {"дата:id": "ok" | до-когда-отложено}.
+const HERO_FAR = 180; // мин до начала, дальше которых плашка пишет «Сегодня», а не «Через N ч M мин»
 const HEAT_SMOLDER = 5, HEAT_BURN = 15, HEAT_SOON = 10, HEAT_SNOOZE = 10;
 let planAcks = {};
 try { planAcks = JSON.parse(localStorage.getItem("maid.planAck") ?? "{}") ?? {}; } catch {}
@@ -1282,7 +1283,8 @@ function render() {
   if (shownToday.length) {
     const [h, ...rest] = shownToday;
     const m = minutesUntil(h);
-    const when = m === null ? "Сегодня" : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
+    // Дальше HERO_FAR мин — «Сегодня» (час справа): «Через 21 ч 46 мин» читать тяжело и незачем.
+    const when = m === null || m > HERO_FAR ? "Сегодня" : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
     const at = m !== null && m <= 0 ? (h.end_time ? `до ${h.end_time}` : "") : h.time ?? "";
     const heat = planHeat(h);
     const lit = heat && heat.level !== "soon";
