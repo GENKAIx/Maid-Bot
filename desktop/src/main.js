@@ -701,7 +701,8 @@ const fromApp = (e) => {
 // Сайт вышел (кнопкой или ключ устарел — 401) — копия стирается.
 ipcMain.on("site-login:get", (e) => {
   e.returnValue = "";
-  if (!fromApp(e) || !settings.siteTokenEnc) return;
+  if (!fromApp(e)) return maidLog("вход сайта: просьба вернуть не из главного окна");
+  if (!settings.siteTokenEnc) return maidLog("вход сайта: в окне пусто, копии нет — сайт попросит войти");
   try {
     e.returnValue = siteSeen = safeStorage.decryptString(Buffer.from(settings.siteTokenEnc, "base64"));
     maidLog("вход сайта возвращён из настроек");
@@ -711,7 +712,8 @@ ipcMain.on("site-login:get", (e) => {
 });
 let siteSeen = null; // последний вход, пришедший из окна, — тот же не перешифровываем
 ipcMain.on("site-login:keep", (e, t) => {
-  if (!fromApp(e) || typeof t !== "string" || t.length > 4000 || t === siteSeen) return;
+  if (!fromApp(e)) return maidLog("вход сайта: копия пришла не из главного окна");
+  if (typeof t !== "string" || t.length > 4000 || t === siteSeen) return;
   siteSeen = t;
   let enc = "";
   if (t) {
@@ -719,6 +721,8 @@ ipcMain.on("site-login:keep", (e, t) => {
     enc = safeStorage.encryptString(t).toString("base64");
   }
   if (!enc && !settings.siteTokenEnc) return;
+  // Сайт стирает вход, когда вышли кнопкой или сервер ответил «нужен вход» (401) — в журнал, чтобы выход было видно.
+  maidLog(enc ? "вход сайта сохранён" : "сайт вышел — копия входа стёрта");
   settings.siteTokenEnc = enc;
   saveSettings();
 });
