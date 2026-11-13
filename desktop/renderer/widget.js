@@ -1578,9 +1578,16 @@ $("#body").addEventListener("mouseout", (e) => {
 
 let lastJson = "";
 let loadFail = ""; // почему не загрузилось — пишется под «Нет связи с сервером»
+// Запросы идут внахлёст (опрос раз в 5 с, «что-то изменилось», ответ горничной): ответ на более ранний запрос, пришедший
+// позже свежего, отбрасывается — иначе только что добавленная задача пропадала из него, улетала в корзину и возвращалась.
+let loadSeq = 0;
+let loadApplied = 0;
 async function load() {
+  const seq = ++loadSeq;
   try {
     const fresh = await maid.api("GET", "/api/today");
+    if (seq < loadApplied) return;
+    loadApplied = seq;
     loadFail = "";
     const json = JSON.stringify(fresh);
     data = fresh;
@@ -1591,6 +1598,7 @@ async function load() {
     if (json === lastJson) return;
     lastJson = json;
   } catch (err) {
+    if (seq < loadApplied) return; // свежий ответ уже пришёл — сбой старого запроса не в счёт
     // Нет связи — старые данные пока оставить, следующий опрос через 5 с.
     loadFail = String(err?.message ?? "").replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
     if (online) { online = false; settle(); }
