@@ -1280,7 +1280,8 @@ function render() {
   const habitItems = [
     ...todo.map(dayItem),
     ...daily.filter(missedYesterday).map(rescueItem),
-    ...(cfg.doneHabits === "hide" ? [] : daily.filter((h) => h.status).map(dayItem)),
+    // Отмеченные: только что отмеченная здесь — первой среди них, сразу под неотмеченными, чтобы строка сдвигалась как можно меньше.
+    ...(cfg.doneHabits === "hide" ? [] : daily.filter((h) => h.status).sort((a, b) => (habitDoneAt.get(b.id) ?? 0) - (habitDoneAt.get(a.id) ?? 0)).map(dayItem)),
   ];
   const items = [
     ...(sec.tasks ? shownTasks : []).map((t) => {
@@ -1315,11 +1316,13 @@ function render() {
     : tasksLeft > 3 ? ` · ${tasksLeft}` : "";
   const pinned = new Set(datesOf(data.day, true).map(dateKey));
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
+  const habitWas = habitRects();
   $("#body").innerHTML =
     (habitItems.length ? `<ul class="list habit-list">${habitItems.join("")}</ul>` : "") +
     (sec.tasks ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
+  flipHabits(habitWas);
   for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP
   fitHistory(); // планы сверху могли стать выше или ниже
   for (const li of $("#body").querySelectorAll("li.woke")) li.style.setProperty("--wake-delay", `-${Date.now() - wokeAt.get(Number(li.dataset.woke))}ms`);
@@ -1667,6 +1670,25 @@ function miniPlan() {
   return null;
 }
 const RING = 2 * Math.PI * 16.5;
+// Привычки, отмеченные в этом окне, — когда (для порядка отмеченных). Перестройка списка привычек — плавная: строка едет
+// со старого места на новое (FLIP: запомнить места до перерисовки, после — сдвинуть обратно и отпустить).
+const habitDoneAt = new Map();
+function habitRects() {
+  const out = new Map();
+  for (const li of $("#body").querySelectorAll(".habit-list li")) {
+    const id = li.querySelector("[data-habit]")?.dataset.habit;
+    if (id) out.set(id, li.getBoundingClientRect().top);
+  }
+  return out;
+}
+function flipHabits(was) {
+  if (!was.size || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const li of $("#body").querySelectorAll(".habit-list li")) {
+    const top = was.get(li.querySelector("[data-habit]")?.dataset.habit);
+    const dy = top === undefined ? 0 : top - li.getBoundingClientRect().top;
+    if (Math.abs(dy) > 1) li.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 380, easing: "cubic-bezier(.2, .8, .2, 1)" });
+  }
+}
 function renderMini(open, todo, left, done) {
   const plan = miniPlan();
   const late = open.filter(overdue).length;
@@ -2239,7 +2261,7 @@ $("#body").addEventListener("click", async (e) => {
       e.target.classList.add("pressed");
       // Сняли галочку — день снова пустой, а не пропуск: можно сделать позже; крестик ставит полночь, если так и не сделали.
       if (was) { e.target.textContent = ""; popTone(-5, { vol: 0.2, soft: true }); }
-      else { popTone(2); burst(e.target); react("streak", 4000); }
+      else { popTone(2); burst(e.target); react("streak", 4000); habitDoneAt.set(Number(habit), Date.now()); }
       await maid.api("POST", was ? `/api/habits/${habit}/unmark` : `/api/habits/${habit}/mark`, was ? {} : { status: "done" });
       maid.changed();
     }
