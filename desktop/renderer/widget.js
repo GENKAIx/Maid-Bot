@@ -2073,7 +2073,11 @@ $("#maid").addEventListener("contextmenu", (e) => {
 $("#open").onclick = () => maid.openMain();
 $("#release").onclick = () => maid.grab(false);
 // Двойной щелчок по названию открытой задачи — переименовать (то же окошко, что в панели планов, clock.js openRename).
+// Щелчок по названию открытой задачи — панель планов на её день (срок впереди — тот день, без срока или просрочена — сегодня).
+// Ждём чуть дольше двойного щелчка: двойной — переименование, тогда панель не трогаем.
+let taskDayTimer = 0;
 $("#body").addEventListener("dblclick", (e) => {
+  clearTimeout(taskDayTimer);
   const li = e.target.closest("ul.list li");
   const tick = li?.querySelector(".check[data-done]:not(.done)");
   if (!tick || e.target === tick || li.matches(".leaving, .undo-row")) return;
@@ -2191,6 +2195,15 @@ $("#body").addEventListener("click", async (e) => {
     const key = tick.dataset.done ? `t${tick.dataset.done}` : `h${tick.dataset.habit}`;
     if (leavingRows.has(key)) return cancelLeave(key);
     if (cfg.doneTasks === "hide" && !tick.closest("li.did")) return startLeave(key, tick);
+  }
+  const row = !tick && !e.target.dataset?.rescue ? e.target.closest("ul.list li") : null;
+  const rowTick = row && !row.matches(".leaving, .undo-row") ? row.querySelector(".check[data-done]:not(.done)") : null;
+  if (rowTick) {
+    clearTimeout(taskDayTimer);
+    if (e.detail > 1) return;
+    const t = (data?.tasks ?? []).find((x) => x.id === Number(rowTick.dataset.done));
+    if (t) taskDayTimer = setTimeout(() => togglePlansOn(t.due_date && t.due_date > data.day ? t.due_date : data.day), 280);
+    return;
   }
   const id = e.target.dataset?.done;
   const habit = e.target.dataset?.habit;

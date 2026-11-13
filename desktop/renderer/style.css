@@ -507,6 +507,8 @@ body.quick { background: transparent; }
 /* Привычки — круглая отметка (задачи — квадрат), у курса справа полоска и «9/30». */
 .w .list li.habit .mark { border-radius: 50%; }
 .w .list li .t { flex: 1; min-width: 0; }
+/* Название открытой задачи — щелчок открывает панель планов на её день. */
+.w .list li:has(> .check[data-done]:not(.done)) > span:not(.check) { cursor: pointer; }
 .w .list .course-meter { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .w .list .course-meter .cm-bar { width: 48px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; }
 .w .list .course-meter .cm-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent-2); }
