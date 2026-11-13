@@ -1201,7 +1201,7 @@ function minutesUntil(e) {
 // «Горение» ближайшего плана: начался, горничная сказала «⏰ Пора», а ответа нет — плашка тлеет (0–5 мин), потом горит (5–15),
 // дальше — ровная оранжевая обводка, без мигания. За 10 мин до начала — один мягкий всплеск. Ответ (👌 Окей в облачке, ✓ или
 // ⏰ «Через 10 мин» на плашке, отметка в панели планов) гасит огонь. Ответы — в localStorage «maid.planAck»: {"дата:id": "ok" | до-когда-отложено}.
-const HERO_FAR = 180; // мин до начала, дальше которых плашка пишет «Сегодня», а не «Через N ч M мин»
+const HERO_FAR = 180; // мин до начала: ближе — ближайший план выделенной плашкой, дальше — первой строкой ленты
 const NEXT_WINDOW = 24; // ч: столько вперёд смотрит список ближайших планов
 const HEAT_SMOLDER = 5, HEAT_BURN = 15, HEAT_SOON = 10, HEAT_SNOOZE = 10;
 let planAcks = {};
@@ -1278,8 +1278,9 @@ function render() {
   $("#day").textContent = humanDay(data.day);
   $("#miniClock").title = miniDay(data.day);
   // Ближайшие планы — одним списком на сутки вперёд: сегодняшние (не начавшиеся больше 30 мин назад) и планы со временем
-  // из следующих дней в пределах NEXT_WINDOW ч. Ближайший — выделенной плашкой «Через 44 мин · …», остальные — лентой
-  // «● 16:00 Название», без подписи дня. Всего до cfg.nextCount. В сутках пусто — бледная строка
+  // из следующих дней в пределах NEXT_WINDOW ч. Ближайший, если до него не больше HERO_FAR мин или он идёт, — выделенной
+  // плашкой «Через 44 мин · …» / «Сейчас · …» (без часа справа); дальше — первой строкой ленты, чуть крупнее, с тихим
+  // «через 9 ч». Остальные — лентой «● 16:00 Название», без подписи дня. Всего до cfg.nextCount. В сутках пусто — бледная строка
   // «Дальше: вс 15 · 11:15 …» с ближайшим планом недели. Щелчок — панель планов на этот день.
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
   const week = data.upcoming.filter((e) => daysFrom(data.day, e.date_iso) <= 6);
@@ -1288,29 +1289,33 @@ function render() {
   $("#next").dataset.day = (shown[0] ?? week[0])?.date_iso ?? "";
   const inMin = (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч${m % 60 ? ` ${m % 60} мин` : ""}`);
   let nextHtml = "";
+  const inHours = (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч`);
+  const row = (e, lead) => `<div class="nx nx-row${lead ? " nx-lead" : ""}" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
+    + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span>`
+    + `${lead && e.time ? `<span class="nx-in">через ${esc(inHours(minutesUntil(e)))}</span>` : ""}</div>`;
   if (shown.length) {
-    const [h, ...rest] = shown;
-    const m = minutesUntil(h);
-    // Дальше HERO_FAR мин — «Сегодня» / «Завтра» (час справа): «Через 21 ч 46 мин» читать тяжело и незачем.
-    const when = m === null || m > HERO_FAR ? (daysFrom(data.day, h.date_iso) > 0 ? "Завтра" : "Сегодня") : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
-    const at = m !== null && m <= 0 ? (h.end_time ? `до ${h.end_time}` : "") : h.time ?? "";
-    const heat = planHeat(h);
-    const lit = heat && heat.level !== "soon";
-    const was = heatSeen.get(h.id);
-    heatSeen.set(h.id, heat?.level ?? null);
-    // Загорелось на глазах (а не после перезапуска посреди огня) — горничная волнуется.
-    if (heat?.level === "burn" && was === "smolder" && !napping) react("worried", 4000);
-    if (heat?.level === "soon" && was !== "soon") heroFlash.set(h.id, { kind: "soon", at: Date.now() });
-    const flash = heroFlash.get(h.id);
-    const flashing = flash && Date.now() - flash.at < HERO_FLASH ? ` ${flash.kind}` : "";
-    const live = m !== null && m <= 0 && (!h.status || h.status === "active"); // идёт сейчас — золотая обводка
-    nextHtml += `<div class="nx nx-hero${live ? " live" : ""}${lit ? ` heat ${heat.level}` : ""}${flashing}" data-day="${esc(h.date_iso)}" data-id="${h.id}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
-      + `${at && !lit ? `<span class="hero-at">${esc(at)}</span>` : ""}`
-      + (lit
-        ? `<button type="button" class="hero-act" data-act="done" title="Сделано">✓</button><button type="button" class="hero-act" data-act="snooze" title="Напомнить через ${HEAT_SNOOZE} мин">⏰</button>`
-        : `<span class="hero-go">›</span>`) + `</div>`;
-    if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e) => `<div class="nx nx-row" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
-      + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span></div>`).join("")}</div>`;
+    const m = minutesUntil(shown[0]);
+    const hero = m !== null && m <= HERO_FAR ? shown[0] : null;
+    const rest = hero ? shown.slice(1) : shown;
+    if (hero) {
+      const h = hero;
+      const when = m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
+      const heat = planHeat(h);
+      const lit = heat && heat.level !== "soon";
+      const was = heatSeen.get(h.id);
+      heatSeen.set(h.id, heat?.level ?? null);
+      // Загорелось на глазах (а не после перезапуска посреди огня) — горничная волнуется.
+      if (heat?.level === "burn" && was === "smolder" && !napping) react("worried", 4000);
+      if (heat?.level === "soon" && was !== "soon") heroFlash.set(h.id, { kind: "soon", at: Date.now() });
+      const flash = heroFlash.get(h.id);
+      const flashing = flash && Date.now() - flash.at < HERO_FLASH ? ` ${flash.kind}` : "";
+      const live = m <= 0 && (!h.status || h.status === "active"); // идёт сейчас — золотая обводка
+      nextHtml += `<div class="nx nx-hero${live ? " live" : ""}${lit ? ` heat ${heat.level}` : ""}${flashing}" data-day="${esc(h.date_iso)}" data-id="${h.id}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
+        + (lit
+          ? `<button type="button" class="hero-act" data-act="done" title="Сделано">✓</button><button type="button" class="hero-act" data-act="snooze" title="Напомнить через ${HEAT_SNOOZE} мин">⏰</button>`
+          : `<span class="hero-go">›</span>`) + `</div>`;
+    }
+    if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e, i) => row(e, !hero && i === 0)).join("")}</div>`;
   } else if (week[0]) {
     const e = week[0];
     nextHtml += `<div class="nx nx-later" data-day="${esc(e.date_iso)}" data-id="${e.id}">Дальше: ${esc(`${WD_SHORT[wdOf(e.date_iso)]} ${Number(e.date_iso.slice(8))}`)}`

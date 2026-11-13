@@ -365,7 +365,6 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .next .nx-hero:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .w .next .hero-txt { flex: 1; min-width: 0; font-weight: 600; }
 .w .next .hero-txt b { color: var(--accent); }
-.w .next .hero-at { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .w .next .hero-go { flex: none; color: var(--muted); font-size: 18px; line-height: 1; margin-top: -2px; }
 /* «Горение» плашки (widget.js, planHeat): начался без ответа — тлеет (блик медленно ползёт по краю), через 5 мин горит
    (блик ярче и быстрее, искры вверх), после 15 мин — ровная оранжевая обводка. Наведение успокаивает до тления.
@@ -426,6 +425,10 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .next .nx-dot { width: 8px; height: 8px; border-radius: 50%; justify-self: center; background: var(--accent); }
 .w .next .nx-t { font-weight: 650; font-variant-numeric: tabular-nums; }
 .w .next .nx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255, 255, 255, .82); }
+/* Ближайший план, пока до него больше 3 ч, — первая строка ленты: чуть крупнее и ярче, справа тихое «через 9 ч». */
+.w .next .nx-lead { grid-template-columns: 12px 40px 1fr auto; font-size: 14px; }
+.w .next .nx-lead .nx-title { color: var(--text); font-weight: 600; }
+.w .next .nx-in { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 /* В сутках пусто — бледная строка «Дальше: …». */
 .w .next .nx-later { padding: 3px 6px; font-size: 12px; color: var(--muted); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .w .next .nx-later:hover { color: rgba(255, 255, 255, .8); }
