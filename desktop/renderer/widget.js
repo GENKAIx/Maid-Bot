@@ -1202,6 +1202,7 @@ function minutesUntil(e) {
 // дальше — ровная оранжевая обводка, без мигания. За 10 мин до начала — один мягкий всплеск. Ответ (👌 Окей в облачке, ✓ или
 // ⏰ «Через 10 мин» на плашке, отметка в панели планов) гасит огонь. Ответы — в localStorage «maid.planAck»: {"дата:id": "ok" | до-когда-отложено}.
 const HERO_FAR = 180; // мин до начала, дальше которых плашка пишет «Сегодня», а не «Через N ч M мин»
+const NEXT_WINDOW = 24; // ч: столько вперёд смотрит список ближайших планов
 const HEAT_SMOLDER = 5, HEAT_BURN = 15, HEAT_SOON = 10, HEAT_SNOOZE = 10;
 let planAcks = {};
 try { planAcks = JSON.parse(localStorage.getItem("maid.planAck") ?? "{}") ?? {}; } catch {}
@@ -1241,7 +1242,8 @@ function ackStarted(text) {
 // Кнопки горящей плашки: ✓ — план состоялся, ⏰ — напомнить через HEAT_SNOOZE мин (плашка затихает и снова затлеет).
 $("#next").addEventListener("click", async (ev) => {
   const act = ev.target.closest(".hero-act");
-  const e = act && data?.events.find((x) => x.id === Number(act.closest(".nx-hero").dataset.id));
+  const id = act && Number(act.closest(".nx-hero").dataset.id);
+  const e = id && [...data.events, ...data.upcoming].find((x) => x.id === id); // плашка бывает и планом следующего дня
   if (!e) return;
   if (act.dataset.act === "snooze") {
     react("bow", 2000);
@@ -1275,21 +1277,24 @@ function render() {
   }
   $("#day").textContent = humanDay(data.day);
   $("#miniClock").title = miniDay(data.day);
-  // Ближайшие планы. Сегодня — подробно: ближайший (не начавшийся больше 30 мин назад) — выделенной плашкой «Через 44 мин · …»,
-  // остальные сегодняшние — лентой «● 16:00 Название», всего до cfg.nextCount. Ближайший другой день (не дальше недели) — тихой
-  // плашкой дня: сверху «вс 15» и «5 планов», внутри первый план; если осталось место. Щелчок — панель планов на этот день.
+  // Ближайшие планы — одним списком на сутки вперёд: сегодняшние (не начавшиеся больше 30 мин назад) и планы со временем
+  // из следующих дней в пределах NEXT_WINDOW ч. Ближайший — выделенной плашкой «Через 44 мин · …», остальные — лентой
+  // «● 16:00 Название», у планов другого дня справа тихое «завтра». Всего до cfg.nextCount. В сутках пусто — бледная строка
+  // «Дальше: вс 15 · 11:15 …» с ближайшим планом недели. Щелчок — панель планов на этот день.
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
   const week = data.upcoming.filter((e) => daysFrom(data.day, e.date_iso) <= 6);
-  const shownToday = today.slice(0, cfg.nextCount);
-  const ahead = shownToday.length < cfg.nextCount ? week[0] : null;
-  $("#next").dataset.day = (shownToday[0] ?? ahead)?.date_iso ?? "";
+  const nextDays = week.filter((e) => e.time && minutesUntil(e) <= NEXT_WINDOW * 60);
+  const shown = [...today, ...nextDays].slice(0, cfg.nextCount);
+  const dayHint = (e) => { const n = daysFrom(data.day, e.date_iso); return n <= 0 ? "" : n === 1 ? "завтра" : `${WD_SHORT[wdOf(e.date_iso)]} ${Number(e.date_iso.slice(8))}`; };
+  $("#next").dataset.day = (shown[0] ?? week[0])?.date_iso ?? "";
   const inMin = (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч${m % 60 ? ` ${m % 60} мин` : ""}`);
   let nextHtml = "";
-  if (shownToday.length) {
-    const [h, ...rest] = shownToday;
+  if (shown.length) {
+    const [h, ...rest] = shown;
     const m = minutesUntil(h);
-    // Дальше HERO_FAR мин — «Сегодня» (час справа): «Через 21 ч 46 мин» читать тяжело и незачем.
-    const when = m === null || m > HERO_FAR ? "Сегодня" : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
+    // Дальше HERO_FAR мин — «Сегодня» / «Завтра» (час справа): «Через 21 ч 46 мин» читать тяжело и незачем.
+    const hint = dayHint(h);
+    const when = m === null || m > HERO_FAR ? (hint ? hint[0].toUpperCase() + hint.slice(1) : "Сегодня") : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
     const at = m !== null && m <= 0 ? (h.end_time ? `до ${h.end_time}` : "") : h.time ?? "";
     const heat = planHeat(h);
     const lit = heat && heat.level !== "soon";
@@ -1307,15 +1312,12 @@ function render() {
         ? `<button type="button" class="hero-act" data-act="done" title="Сделано">✓</button><button type="button" class="hero-act" data-act="snooze" title="Напомнить через ${HEAT_SNOOZE} мин">⏰</button>`
         : `<span class="hero-go">›</span>`) + `</div>`;
     if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e) => `<div class="nx nx-row" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
-      + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span></div>`).join("")}</div>`;
-  }
-  if (ahead) {
-    const n = daysFrom(data.day, ahead.date_iso);
-    const count = week.filter((e) => e.date_iso === ahead.date_iso).length;
-    const dayWord = n === 1 ? "Завтра" : `${WD_SHORT[wdOf(ahead.date_iso)]} ${Number(ahead.date_iso.slice(8))}`;
-    nextHtml += `<div class="nx nx-ahead" data-day="${esc(ahead.date_iso)}" data-id="${ahead.id}" title="${esc(`${ahead.time ? `${ahead.time} ` : ""}${ahead.title}`)}">`
-      + `<div class="ah-head"><span class="ah-day">${esc(dayWord[0].toUpperCase() + dayWord.slice(1))}</span>${count > 1 ? `<span class="ah-count"> · ${count} ${plural(count, "план", "плана", "планов")}</span>` : ""}</div>`
-      + `<div class="ah-plan">${ahead.time ? `<b class="nx-t">${esc(ahead.time)}</b>` : ""}<span class="nx-title">${esc(ahead.title)}</span></div></div>`;
+      + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span>`
+      + `${dayHint(e) ? `<span class="nx-day">${esc(dayHint(e))}</span>` : ""}</div>`).join("")}</div>`;
+  } else if (week[0]) {
+    const e = week[0];
+    nextHtml += `<div class="nx nx-later" data-day="${esc(e.date_iso)}" data-id="${e.id}">Дальше: ${esc(`${WD_SHORT[wdOf(e.date_iso)]} ${Number(e.date_iso.slice(8))}`)}`
+      + ` · ${e.time ? `${esc(e.time)} ` : ""}${esc(e.title)}</div>`;
   }
   $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span>`;
   for (const d of $("#next").querySelectorAll(".nx-dot[data-c]")) d.style.background = d.dataset.c; // style="" запрещает CSP
