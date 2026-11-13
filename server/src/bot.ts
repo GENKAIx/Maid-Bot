@@ -9,7 +9,7 @@ import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
 import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, memoryText, plansText, tasksText, todayText } from "./report.ts";
 import type { Scheduler, Send } from "./scheduler.ts";
-import { userDay } from "./time.ts";
+import { dayKey } from "./time.ts";
 import { decideTrait } from "./profile.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "./llm.ts";
@@ -145,7 +145,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (!u.chat_id || !fs.existsSync(CHEER_STICKER)) return;
     const st = JSON.parse(await widgetState(store, u)) as { a: [string, string, number][]; m?: number };
     if (!st.a.length || st.m || st.a.some((x) => !(x[2] & 1))) return;
-    const today = userDay(new Date(), u.tz);
+    const today = dayKey(new Date(), u.tz);
     if ((await store.kvGet(`cheer:${u.id}`)) === today) return;
     await store.kvSet(`cheer:${u.id}`, today);
     const id = await store.kvGet("sticker:done");
@@ -175,7 +175,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   const view = (fn: (u: User, today: string) => Promise<string>) => async (ctx: Context) => {
     const u = await userOf(ctx);
     if (!u) return;
-    await ctx.reply(await fn(u, userDay(new Date(), u.tz)), { parse_mode: "HTML" });
+    await ctx.reply(await fn(u, dayKey(new Date(), u.tz)), { parse_mode: "HTML" });
   };
   bot.command("today", view((u, d) => todayText(store, u, d)));
   bot.command("plans", view((u, d) => plansText(store, u, d)));
@@ -186,7 +186,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   bot.command("habits", async (ctx) => {
     const u = await userOf(ctx);
     if (!u) return;
-    const today = userDay(new Date(), u.tz);
+    const today = dayKey(new Date(), u.tz);
     const list = await habitsOfDay(store, u, today);
     if (!list.length) return ctx.reply("На сегодня привычек нет. Напишите, например: «каждый день в 8 утра зарядка, 30 дней».");
     const kb = new InlineKeyboard();
@@ -198,7 +198,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const u = await userOf(ctx);
     const s = scheduler();
     if (!u || !s) return;
-    await ctx.reply(await s.eveningText(u, userDay(new Date(), u.tz)), { parse_mode: "HTML" });
+    await ctx.reply(await s.eveningText(u, dayKey(new Date(), u.tz)), { parse_mode: "HTML" });
   });
 
   bot.command("undo", async (ctx) => {

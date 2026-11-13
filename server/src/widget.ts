@@ -1,7 +1,7 @@
 import type { Store, User } from "./db.ts";
 import { habitsOfDay } from "./habits.ts";
 import type { Pipeline } from "./pipeline.ts";
-import { userDay } from "./time.ts";
+import { dayKey } from "./time.ts";
 
 // Виджет Telegram (Bot API 10.4) «Список на сегодня»: привычки и задачи с галочками прямо в сообщении.
 // Код виджета не меняется после отправки — меняется только состояние (chat_data, до 1024 байт), его пишет бот.
@@ -22,7 +22,7 @@ const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1).trimEnd(
 
 /** Состояние на сегодня: открытые привычки и задачи, потом сделанное за день. Влезает в 1024 байта. */
 export async function widgetState(store: Store, u: User, now = new Date()): Promise<string> {
-  const today = userDay(now, u.tz);
+  const today = dayKey(now, u.tz);
   const habits = await habitsOfDay(store, u, today);
   const all = await store.allTasks(u.id);
   const open: WidgetItem[] = [
@@ -31,7 +31,7 @@ export async function widgetState(store: Store, u: User, now = new Date()): Prom
   ];
   const done: WidgetItem[] = [
     ...habits.filter((d) => d.status === "done").map((d): WidgetItem => [`h${d.habit.id}`, d.habit.title, 1]),
-    ...all.filter((t) => t.status === "done" && t.done_at && userDay(new Date(t.done_at), u.tz) === today)
+    ...all.filter((t) => t.status === "done" && t.done_at && dayKey(new Date(t.done_at), u.tz) === today)
       .map((t): WidgetItem => [`t${t.id}`, t.title, 1 | (t.priority === "high" ? 2 : 0)]),
   ];
   return fitState(open, done, now.getTime());
@@ -57,7 +57,7 @@ export async function widgetQuery(store: Store, pipeline: Pipeline, u: User, dat
   if (m) {
     const [, act, kind, raw] = m;
     const id = Number(raw);
-    const today = userDay(now, u.tz);
+    const today = dayKey(now, u.tz);
     if (kind === "t") {
       const t = await store.task(id);
       if (t && t.user_id === u.id && t.status !== "deleted") {

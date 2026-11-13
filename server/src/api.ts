@@ -18,7 +18,7 @@ import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { habitButtons, planEventReminders, remindText, snooze, type Button, type Send } from "./scheduler.ts";
-import { addDays, dayKey, isDayKey, isEveningTime, isTime, userDay, zonedToUtc } from "./time.ts";
+import { addDays, dayKey, isDayKey, isEveningTime, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
@@ -92,7 +92,7 @@ export async function dayJson(store: Store, u: User, day: string) {
 const FAR_FRESH_MS = 15 * 60_000;
 
 export async function todayJson(store: Store, u: User, now = new Date()) {
-  const today = userDay(now, u.tz);
+  const today = dayKey(now, u.tz);
   return {
     ...(await dayJson(store, u, today)),
     persona: u.persona,
@@ -266,9 +266,7 @@ export function createApi(deps: ApiDeps) {
       await store.dropSession(tokenHash(token));
       return { ok: true };
     }
-    // today — календарь (даты планов, списки событий); myDay — день человека с DAY_START_HOUR (привычки, деньги, показатели, вид дня).
     const today = dayKey(new Date(), u.tz);
-    const myDay = userDay(new Date(), u.tz);
     if (m === "GET" && p === "/api/me") {
       const { password_hash: _, ...me } = u;
       const mine = tokenHash(token).slice(0, 16);
@@ -351,7 +349,7 @@ export function createApi(deps: ApiDeps) {
     if (m === "POST" && p === "/api/push/test") {
       if (!deps.push?.ready) throw new HttpError(404, "push выключен");
       const sent = await deps.push.send(u, "🔔 Проверка уведомлений\nЕсли вы это видите — всё работает.", "happy",
-        (await store.habitsOn(u.id, myDay)).slice(0, 1).map((h) => habitButtons(h.id, myDay)[0]));
+        (await store.habitsOn(u.id, today)).slice(0, 1).map((h) => habitButtons(h.id, today)[0]));
       return { sent };
     }
     // Лента уведомлений для горничной на ПК: ?after=<id> — только новые; пусто — последние.
@@ -411,7 +409,7 @@ export function createApi(deps: ApiDeps) {
       return { text: "", profile: await profileView(store, u, today), trait: traitView({ ...t, ...b } as typeof t) };
     }
     if (m === "GET" && p === "/api/day") {
-      const day = q("day") ?? myDay;
+      const day = q("day") ?? today;
       if (!isDayKey(day)) throw new HttpError(400, "day: YYYY-MM-DD");
       return dayJson(store, u, day);
     }
@@ -642,24 +640,24 @@ export function createApi(deps: ApiDeps) {
 
     // Привычки: сетка месяца и отметка.
     if (m === "GET" && p === "/api/habits") {
-      const month = q("month") ?? myDay.slice(0, 7);
+      const month = q("month") ?? today.slice(0, 7);
       if (!/^\d{4}-\d{2}$/.test(month)) throw new HttpError(400, "month: YYYY-MM");
       // ask — общее время вопросов из настроек: у привычки без своего времени — оно, и «ещё раз» в last, если не отмечена.
-      return { month, today: await habitsOfDay(store, u, myDay), habits: await habitMonth(store, u, month), ask: { first: u.habit_first, last: u.habit_last } };
+      return { month, today: await habitsOfDay(store, u, today), habits: await habitMonth(store, u, month), ask: { first: u.habit_first, last: u.habit_last } };
     }
     // Статистика одной привычки: год клетками, серии, процент за 30/90 дней и всё время, по дням недели и месяцам.
     const stats = p.match(/^\/api\/habits\/(\d+)\/stats$/);
     if (m === "GET" && stats) {
       const h = await store.habit(Number(stats[1]));
       if (!h || h.user_id !== u.id) throw new HttpError(404, "нет привычки");
-      return habitStats(store, u, h, myDay);
+      return habitStats(store, u, h, today);
     }
     const mark = p.match(/^\/api\/habits\/(\d+)\/mark$/);
     if (m === "POST" && mark) {
       // later — «Ещё нет»: отметки нет, вопрос придёт снова (pipeline.habitLater).
       const b = parseBody(z.object({ status: z.enum(["done", "skipped", "later"]).default("done"), day: Day.optional() }), await readJson(req));
-      if (b.status === "later") return { text: await pipeline.habitLater(u, Number(mark[1]), b.day ?? myDay) };
-      return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? myDay, b.status, "web") };
+      if (b.status === "later") return { text: await pipeline.habitLater(u, Number(mark[1]), b.day ?? today) };
+      return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.status, "web") };
     }
 
     // Снять отметку дня («Сегодня» на сайте: галочку поставили по ошибке). Отменяется («↩ Отменить» вернёт отметку).
@@ -668,7 +666,7 @@ export function createApi(deps: ApiDeps) {
       const b = parseBody(z.object({ day: Day.optional() }), await readJson(req));
       const h = await store.habit(Number(unmark[1]));
       if (!h || h.user_id !== u.id) throw new HttpError(404, "нет привычки");
-      const day = b.day ?? myDay;
+      const day = b.day ?? today;
       const was = (await store.marksOf(u.id, day, day)).find((x) => x.habit_id === h.id);
       if (!was) return { undo: null };
       const undo = await pipeline.manual(u, `↩ ${h.title}: отметка снята`, async (log) => {
@@ -691,12 +689,12 @@ export function createApi(deps: ApiDeps) {
       const h = await store.habit(Number(habitEdit[1]));
       if (!h || h.user_id !== u.id) throw new HttpError(404, "нет привычки");
       if (!b.title && b.quiet === undefined && !b.times && !b.finish && !b.status) throw new HttpError(400, "нужно title, quiet, times, finish или status");
-      const marked = (await store.marksOf(u.id, myDay, myDay)).some((x) => x.habit_id === h.id);
+      const marked = (await store.marksOf(u.id, today, today)).some((x) => x.habit_id === h.id);
       const patch = {
         ...(b.title ? { title: b.title } : {}),
         ...(b.quiet !== undefined ? { quiet: b.quiet ? 1 : 0 } : {}),
         ...(b.times ? { times: JSON.stringify([...new Set(b.times)].sort()) } : {}),
-        ...(b.finish ? { end_date: marked ? myDay : addDays(myDay, -1) } : {}),
+        ...(b.finish ? { end_date: marked ? today : addDays(today, -1) } : {}),
         ...(b.status ? { status: b.status } : {}),
       };
       const what = b.status === "stopped" ? "🗑" : b.finish ? "⏸" : b.times && !b.title ? "🔔" : "✎";
@@ -709,20 +707,20 @@ export function createApi(deps: ApiDeps) {
 
     // Деньги и показатели за период.
     if (m === "GET" && p === "/api/money") {
-      const rows = await store.moneyRange(u.id, q("from") ?? addDays(myDay, -30), q("to") ?? myDay);
+      const rows = await store.moneyRange(u.id, q("from") ?? addDays(today, -30), q("to") ?? today);
       return { rows, totals: moneyTotals(rows) };
     }
     if (m === "GET" && p === "/api/metrics") {
       return {
         known: METRICS,
         keys: await store.metricKeys(u.id),
-        rows: await store.metricsRange(u.id, q("from") ?? addDays(myDay, -30), q("to") ?? myDay, q("key")),
+        rows: await store.metricsRange(u.id, q("from") ?? addDays(today, -30), q("to") ?? today, q("key")),
       };
     }
     // Шаги с айфона (Быстрые команды): {steps, day?}. Одно значение на день — повтор заменяет.
     if (m === "POST" && p === "/api/steps") {
       const b = parseBody(z.object({ steps: z.coerce.number().int().min(0).max(200_000), day: Day.optional() }), await readJson(req));
-      const day = b.day ?? myDay;
+      const day = b.day ?? today;
       await store.setDayMetric({ user_id: u.id, day_key: day, key: "steps", label: "Шаги", value: b.steps, unit: "", source: "iphone" });
       return { day, steps: b.steps };
     }

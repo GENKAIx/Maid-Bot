@@ -217,8 +217,6 @@ export interface Parsed {
 
 export interface ParseContext {
   today: string;
-  /** День человека (userDay): ночью до DAY_START_HOUR — ещё вчера; к нему — записи, отметки и показатели без явной даты. */
-  day?: string;
   now: string; // ЧЧ:ММ
   tz: string;
   events: EventRow[];
@@ -245,8 +243,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
   return `Ты разбираешь сообщения пользователя для его личного дневника-помощника.
 Сегодня ${ctx.today} (${weekdayLong(ctx.today)}), сейчас ${ctx.now}, часовой пояс ${ctx.tz}.
 Вчера = ${addDays(ctx.today, -1)}, завтра = ${addDays(ctx.today, 1)}, послезавтра = ${addDays(ctx.today, 2)}.
-${ctx.day && ctx.day !== ctx.today ? `Сейчас ночь, человек ещё не спал: его день — ${ctx.day}. Записи дневника, отметки привычек и показатели без явной даты оставляй без даты (null) — они пойдут в ${ctx.day}. Даты планов и задач — по календарю.
-` : ""}
+
 Ответь ОДНИМ JSON-объектом:
 {
  "date_iso": "YYYY-MM-DD — день, к которому относится запись дневника (по умолчанию сегодня)",
@@ -368,7 +365,7 @@ export function timeInTitle(title: string): { title: string; time: string } | nu
 }
 
 /** Проверить и привести ответ модели. Неверные даты и время отбрасываются, а не угадываются. */
-export function normalize(raw: unknown, ctx: { today: string; day?: string; now: string; text: string }): Parsed {
+export function normalize(raw: unknown, ctx: { today: string; now: string; text: string }): Parsed {
   const r = ParseSchema.parse(raw ?? {});
   const dropped: string[] = [];
   const day = (s: string | null | undefined, field: string, opts: { future?: boolean; past?: boolean } = {}) => {
@@ -383,7 +380,7 @@ export function normalize(raw: unknown, ctx: { today: string; day?: string; now:
     }
     return s;
   };
-  const dayKey = day(r.date_iso, "date_iso", { future: false }) ?? ctx.day ?? ctx.today;
+  const dayKey = day(r.date_iso, "date_iso", { future: false }) ?? ctx.today;
 
   const diary: Parsed["diary"] = [];
   for (const d of r.diary) {
@@ -509,7 +506,7 @@ export function normalize(raw: unknown, ctx: { today: string; day?: string; now:
   const marks: Parsed["marks"] = r.habit_marks.map((m) => ({
     habitId: m.habit_id,
     status: m.status,
-    dayKey: day(m.day_iso, "habit_marks.day_iso", { future: false }) ?? ctx.day ?? ctx.today,
+    dayKey: day(m.day_iso, "habit_marks.day_iso", { future: false }) ?? ctx.today,
   }));
 
   const money: Parsed["money"] = [];

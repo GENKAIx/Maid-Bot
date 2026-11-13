@@ -374,11 +374,11 @@ test("/api/today: far_fresh — далёкие планы, записанные 
 
 test("/api/today: gone_fresh — планы, отменённые или удалённые недавно", async () => {
   const { todayJson } = await import("../src/api.ts");
-  const { addDays, userDay } = await import("../src/time.ts");
+  const { addDays, dayKey } = await import("../src/time.ts");
   const store = await Store.open(":memory:");
   const u = await store.ensureUser("902", "Т", "Europe/Moscow");
   const now = new Date();
-  const today = userDay(now, u.tz); // «сегодня» виджета — день человека (ночью до 04:00 — ещё вчера)
+  const today = dayKey(now, u.tz);
   const ev = (title: string, date: string) => store.addEvent({ user_id: u.id, title, date_iso: date, time: null, end_time: null, details: "", domain: "", message_id: null });
   const cancelled = await ev("Отменили", addDays(today, 3));
   const deleted = await ev("Удалили", addDays(today, 40));

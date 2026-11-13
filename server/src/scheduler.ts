@@ -9,7 +9,7 @@ import {
 import { escapesText } from "./escapes.ts";
 import { findPatterns, patternText, traitButtons } from "./profile.ts";
 import { extendSeries } from "./repeat.ts";
-import { addDays, dayKey, durationHuman, humanDay, timeOf, userDay, zonedToUtc } from "./time.ts";
+import { addDays, dayKey, durationHuman, humanDay, timeOf, zonedToUtc } from "./time.ts";
 
 /** Слова горничной в вечернем итоге — не длиннее (знаков); длиннее в полтора раза — обрезаем по слову. */
 export const EVENING_MAX = 300;
@@ -169,9 +169,9 @@ export class Scheduler {
     return m >= 0 && m <= late;
   }
 
-  /** Привычки: спросить в своё время (или в habit_first), ещё раз в habit_last, пока не отмечена; в начале нового дня (DAY_START_HOUR) — минус (daily). */
+  /** Привычки: спросить в своё время (или в habit_first), ещё раз в habit_last, пока не отмечена; в полночь — минус (daily). */
   private async habits(u: User, now: Date) {
-    const today = userDay(now, u.tz);
+    const today = dayKey(now, u.tz);
     for (const d of await habitsOfDay(this.store, u, today)) {
       if (d.status || d.habit.quiet) continue;
       for (const t of habitAskTimes(u, d.times)) {
@@ -182,7 +182,7 @@ export class Scheduler {
   }
 
   private async daily(u: User, now: Date) {
-    const today = userDay(now, u.tz);
+    const today = dayKey(now, u.tz);
     const s = this.store;
     if (this.due(u, u.morning_time, now) && (await s.once(`morning:${u.id}:${today}`))) {
       await this.safeSend(u, `☀️ Доброе утро.\n\n${await todayText(s, u, today)}`, "happy");
@@ -238,7 +238,7 @@ export class Scheduler {
     }
     const activity = await s.activityOf(u.id, today);
     const act = activityLines(activity).map((l) => l.replace(/<[^>]+>/g, ""));
-    const done = (await s.allTasks(u.id)).filter((t) => t.done_at && userDay(new Date(t.done_at), u.tz) === today);
+    const done = (await s.allTasks(u.id)).filter((t) => t.done_at && dayKey(new Date(t.done_at), u.tz) === today);
     const plans = (await s.allEvents(u.id)).filter((e) => e.date_iso === today && e.status !== "deleted" && e.status !== "purged");
     const habits = await habitsOfDay(s, u, today);
     const metrics = metricLine(await s.metricsRange(u.id, today, today));

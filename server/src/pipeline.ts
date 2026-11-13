@@ -6,7 +6,7 @@ import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Sect
 import { scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
 import { changesList, esc, metricLine, moneyLine, upcomingDates } from "./report.ts";
-import { addDays, DAY_START_HOUR, dayKey, humanDay, timeOf, userDay } from "./time.ts";
+import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
 import { planEventReminders } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
 import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from "./clash.ts";
@@ -177,13 +177,12 @@ export class Pipeline {
     const s = this.store;
     const at = inc.at ?? new Date();
     const u = inc.user;
-    const today = dayKey(at, u.tz); // календарь: даты планов, «сегодня/завтра» в разборе
-    const day = userDay(at, u.tz); // день человека: записи, отметки привычек, показатели (ночь до DAY_START_HOUR — вчера)
+    const today = dayKey(at, u.tz);
     const p = persona(u.persona);
     const pending = inc.chatOnly ? undefined : await s.pendingClarify(u.id);
     const pics = inc.images?.length ? inc.images : undefined;
     const { message, created } = await s.saveMessage({
-      userId: u.id, source: inc.source, sourceId: inc.sourceId, text: pics ? pictureText(inc.text, pics.length) : inc.text, dayKey: day,
+      userId: u.id, source: inc.source, sourceId: inc.sourceId, text: pics ? pictureText(inc.text, pics.length) : inc.text, dayKey: today,
       replyTo: pics ? undefined : pending?.id, at,
     });
     if (!created && message.state === "done") {
@@ -201,7 +200,6 @@ export class Pipeline {
       : pics ? `${inc.text.trim()}\n${pictureNote(pics.length)}`.trim() : inc.text;
     const ctx = {
       today,
-      day,
       now: timeOf(at, u.tz),
       tz: u.tz,
       ...(await promptLists(s, u.id, today, text)),
@@ -228,7 +226,7 @@ export class Pipeline {
         raw = await this.llm([...ask, { role: "assistant", content: raw }, { role: "user", content: "Ответь одним JSON-объектом по схеме из инструкции, без текста вокруг." }], { json: true, kind: "parse" });
         json = extractJson(raw);
       }
-      parsed = normalize(json, { today, day, now: ctx.now, text: inc.text });
+      parsed = normalize(json, { today, now: ctx.now, text: inc.text });
     } catch (e) {
       await s.setMessage(message.id, { state: "failed", reply: String(e) });
       console.error("[parse]", e);
@@ -665,7 +663,7 @@ export class Pipeline {
     const s = this.store;
     const at = new Date();
     const { message } = await s.saveMessage({
-      userId: u.id, source, sourceId: `edit:${at.getTime()}:${Math.random().toString(36).slice(2, 8)}`, text, dayKey: userDay(at, u.tz), at,
+      userId: u.id, source, sourceId: `edit:${at.getTime()}:${Math.random().toString(36).slice(2, 8)}`, text, dayKey: dayKey(at, u.tz), at,
     });
     await s.transaction(() => fn((tbl, id, before) => s.logAction(u.id, message.id, "edit", tbl, id, before)));
     await s.setMessage(message.id, { state: "done", reply: text });
@@ -696,12 +694,12 @@ export class Pipeline {
     return text;
   }
 
-  /** «Ещё нет» у вопроса про привычку: отметки нет; второй вопрос придёт в habit_last (планировщик), не отметят до начала нового дня (DAY_START_HOUR) — минус. */
+  /** «Ещё нет» у вопроса про привычку: отметки нет; второй вопрос придёт в habit_last (планировщик), не отметят до полуночи — минус. */
   async habitLater(u: User, habitId: number, day: string, at = new Date()): Promise<string> {
     const h = await this.store.habit(habitId);
     if (!h || h.user_id !== u.id) return "Нет такой привычки.";
-    const again = day === userDay(at, u.tz) && timeOf(at, u.tz) < u.habit_last;
-    return `⏳ ${esc(h.title)} — хорошо, ${again ? `спрошу ещё раз в ${u.habit_last}` : "подожду"}. Не отметите до ${String(DAY_START_HOUR).padStart(2, "0")}:00 — поставлю минус.`;
+    const again = day === dayKey(at, u.tz) && timeOf(at, u.tz) < u.habit_last;
+    return `⏳ ${esc(h.title)} — хорошо, ${again ? `спрошу ещё раз в ${u.habit_last}` : "подожду"}. Не отметите до 00:00 — поставлю минус.`;
   }
 
   /** «Это просто заметка»: отменить разбор и записать текст целиком в заметки. */

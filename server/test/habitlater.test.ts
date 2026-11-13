@@ -34,7 +34,7 @@ test("«Ещё нет»: отметки нет, спрашивает ещё ра
   assert.equal(sent.length, 1);
   const text = await pipe.habitLater(u, hid, "2026-11-12", new Date("2026-11-12T06:06:00Z"));
   assert.match(text, /спрошу ещё раз в 23:00/);
-  assert.match(text, /до 04:00 — поставлю минус/); // день человека кончается в DAY_START_HOUR
+  assert.match(text, /до 00:00 — поставлю минус/);
   assert.equal((await store.marksOf(u.id, "2026-11-12", "2026-11-12")).length, 0);
   await sch.tick(new Date("2026-11-12T19:59:00Z")); // 22:59
   assert.equal(sent.length, 1);
@@ -47,16 +47,14 @@ test("«Ещё нет»: отметки нет, спрашивает ещё ра
 
 test("не ответил до конца дня — минус; вчера всё ещё можно спасти", async () => {
   const { store, u, hid, sch, pipe } = await setup();
-  await sch.tick(new Date("2026-11-12T21:05:00Z")); // 00:05 МСК 13-го — для человека ещё 12-е: минуса нет
-  assert.equal((await store.marksOf(u.id, "2026-11-12", "2026-11-12")).length, 0);
-  await sch.tick(new Date("2026-11-13T01:05:00Z")); // 04:05 МСК — новый день, за 12-е минус
+  await sch.tick(new Date("2026-11-12T21:05:00Z")); // 00:05 МСК 13-го
   const marks = await store.marksOf(u.id, "2026-11-12", "2026-11-12");
   assert.deepEqual(marks.map((m) => [m.habit_id, m.status]), [[hid, "skipped"]]);
   const [d] = await habitsOfDay(store, u, "2026-11-13");
   assert.equal(d.yesterday, "none"); // минус сам — «вчера — спасти серию» остаётся
   // Отвеченное «Да» минусом не перезаписывается.
   await pipe.markHabit(u, hid, "2026-11-13", "done", "web");
-  await sch.tick(new Date("2026-11-14T01:05:00Z"));
+  await sch.tick(new Date("2026-11-13T21:05:00Z"));
   assert.equal((await store.marksOf(u.id, "2026-11-13", "2026-11-13"))[0].status, "done");
   // Своё «Нет» — уже не «спасти».
   await pipe.markHabit(u, hid, "2026-11-14", "skipped", "web");
