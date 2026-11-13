@@ -165,7 +165,7 @@ function arcSvg(x, mode, nowMin, { gone = false } = {}) {
 function drawClock() {
   const box = $("#planClock");
   if (!box || !data || !clockDay) return;
-  // Под свёрнутой карточкой — всегда список: полоса дат и «Планы на день», без циферблата.
+  // Под свёрнутой карточкой — всегда список: полоса дат и планы дня, без циферблата.
   const asList = cfg.clock === "list" || collapsed;
   box.classList.toggle("as-list", asList);
   if (asList) { drawPlanList(box); return keepBin(box); }
@@ -390,7 +390,7 @@ function drawPlanList(box) {
     return `<li class="pl-card${st ? ` ${st}` : ""}${e._out ? " out" : ""}${e._mv ? " mv" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockEdits.has(e.id) ? " edit" : clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
       <span class="pl-text" title="Двойной щелчок — переименовать">${planLabel(clockEdits.get(e.id) ?? e)}</span>${tools}</li>`;
   };
-  // Сначала планы со временем по порядку, потом отдельно — без времени и задачи; внизу одна кнопка «+ добавить план».
+  // Сначала планы со временем по порядку, потом отдельно — без времени и задачи; внизу одна кнопка «+» (добавить план).
   // Под свёрнутой карточкой (перелёт) — как раньше, только карточки.
   const fullList = () => {
     const timed = list.filter((e) => (clockEdits.get(e.id) ?? e).time), untimed = list.filter((e) => !timed.includes(e));
@@ -398,7 +398,7 @@ function drawPlanList(box) {
     return `<ul class="pl-list">${shownPins.map(pinCard).join("")}${timed.map(card).join("")}`
       + (!timed.length && !rest.length && !shownPins.length ? `<li class="pl-empty">Свободный день.</li>` : "")
       + (rest.length ? `<li class="pl-sect">Без времени</li>${rest.join("")}` : "")
-      + (past ? "" : `<li class="pl-add-row"><button type="button" class="pl-add" data-add>+ добавить план</button></li>`) + "</ul>";
+      + (past ? "" : `<li class="pl-add-row"><button type="button" class="pl-add" data-add title="Добавить план" aria-label="Добавить план">+</button></li>`) + "</ul>";
   };
   box.innerHTML = `
     ${headHtml(dayName, count)}
@@ -407,7 +407,6 @@ function drawPlanList(box) {
       <div class="pc-days">${dayStrip()}</div>
       <button type="button" class="pc-arrow" data-shift="1" title="Неделя вперёд">›</button>
     </div>
-    <div class="pl-top"><span>Планы на день</span></div>
     ${hold ? `<ul class="pl-list">${'<li class="pl-card pl-hold"></li>'.repeat(hold)}</ul>`
     : !(collapsed && foldFly) && (!past || list.length || tasks.length || pins.length) ? fullList()
     : shown.length || shownPins.length || tasks.length || pad ? `<ul class="pl-list">${shownPins.map(pinCard).join("")}${tasks.map(taskCard).join("")}${shown.map(card).join("")}${'<li class="pl-card pl-hold"></li>'.repeat(pad)}</ul>` : `<p class="pl-empty">Свободный день.</p>`}`;
@@ -879,7 +878,7 @@ $("#planClock").addEventListener("click", (e) => {
   const add = e.target.closest("[data-add]");
   const gap = e.target.closest(".pl-gap");
   if (add || gap) return openNewPlan(add ?? gap, gap ? { from: Number(gap.dataset.from), to: Number(gap.dataset.to) } : null);
-  if (!e.target.closest(".plan-arc, .pl-list, .pl-top, .pl-empty, .pc-strip, .pc-head")) hideClock();
+  if (!e.target.closest(".plan-arc, .pl-list, .pl-empty, .pc-strip, .pc-head")) hideClock();
 });
 // Листание дат: колесо над полосой — день вперёд/назад (Shift — неделя), полосу можно тянуть мышью, стрелки — неделя,
 // «Сегодня» — назад к сегодня, щелчок по дате в заголовке — календарь месяца. Можно и в прошлое: посмотреть, что было.
@@ -1634,7 +1633,7 @@ function togglePlansOn(day) {
   showClock(day);
   loadFar();
 }
-$("#next").addEventListener("click", (ev) => togglePlansOn(ev.target.closest(".nx")?.dataset.day || $("#next").dataset.day || data?.day));
+$("#next").addEventListener("click", (ev) => togglePlansOn(ev.target.closest(".nx, .nx-day")?.dataset.day || $("#next").dataset.day || data?.day));
 $("#pins").addEventListener("click", (ev) => {
   const pin = ev.target.closest(".pin");
   if (pin) togglePlansOn(pin.dataset.day || data?.day);

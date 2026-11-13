@@ -1217,14 +1217,19 @@ function render() {
   const nexts = [...today, ...week].slice(0, cfg.nextCount);
   $("#next").dataset.day = nexts[0]?.date_iso ?? "";
   $("#next").innerHTML = nexts.length
-    ? nexts.map((e) => {
-      const m = e.date_iso === data.day ? minutesUntil(e) : null;
+    ? nexts.map((e, i) => {
+      if (e.date_iso === data.day) {
+        const m = minutesUntil(e);
+        const when = m === null ? "Сегодня" : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : e.time;
+        return `<div class="nx" data-day="${esc(e.date_iso)}"><b>${esc(when)}</b> · ${esc(e.title)}</div>`;
+      }
+      // Планы на другие дни — приглушены и под одним заголовком дня («Послезавтра, вс 15»), а не «Послезавтра» в каждой строке.
       const n = daysFrom(data.day, e.date_iso);
       const wd = WD_SHORT[wdOf(e.date_iso)];
-      const when = e.date_iso !== data.day ? `${n === 1 ? "Завтра" : n === 2 ? "Послезавтра" : wd[0].toUpperCase() + wd.slice(1)}${e.time ? `, ${e.time}` : ""}`
-        : m === null ? "Сегодня" : m <= 0 ? "сейчас" : m < 60 ? `через ${m} мин` : e.time;
-      // Сегодняшние — яркие, планы на другие дни — приглушены (день серым, текст бледнее), чтобы сразу видеть, что сегодня.
-      return `<div class="nx${e.date_iso === data.day ? "" : " ahead"}" data-day="${esc(e.date_iso)}"><b>${esc(when)}</b> · ${esc(e.title)}</div>`;
+      const dd = Number(e.date_iso.slice(8));
+      const head = nexts[i - 1]?.date_iso === e.date_iso ? ""
+        : `<div class="nx-day" data-day="${esc(e.date_iso)}">${n === 1 ? `Завтра, ${wd} ${dd}` : n === 2 ? `Послезавтра, ${wd} ${dd}` : `${wd[0].toUpperCase() + wd.slice(1)} ${dd}`}</div>`;
+      return `${head}<div class="nx ahead" data-day="${esc(e.date_iso)}">${e.time ? `<b>${esc(e.time)}</b> · ` : ""}${esc(e.title)}</div>`;
     }).join("")
     : `<span class="muted">Планов нет</span>`;
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
