@@ -126,6 +126,8 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .mini-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .mini-sub { min-height: 15px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-sub.late { color: #f0a46b; }
+/* Второй строке нечего сказать (планов нет, просрочки нет) — её нет, «Задачи · 7» встаёт по центру рядом с часами. */
+.mini-sub:empty { display: none; }
 /* Кольцо «сделано из всего»: дуга растёт по часовой от верха. Это же кнопка «развернуть». */
 .mini .mini-open { position: relative; width: 42px; height: 42px; border-radius: 50%; background: none; flex: none; }
 .mini .mini-open:hover { background: rgba(255, 255, 255, .06); }
