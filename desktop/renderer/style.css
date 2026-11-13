@@ -434,7 +434,6 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .next .ah-day { font-weight: 650; }
 .w .next .ah-plan { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; }
 .w .next .ah-plan .nx-t { flex: none; color: rgba(255, 255, 255, .7); }
-.w .next .nx-free { font-size: 12.5px; color: var(--muted); } /* по левому краю, как часы, «Задачи» и галочки */
 .w h4 { margin: 8px 0 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 /* Привычки — сразу под планами, отделены от задач линией. */
 .w .list.habit-list { margin-top: 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
