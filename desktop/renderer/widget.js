@@ -1270,6 +1270,7 @@ function render() {
     || wokeFresh(b) - wokeFresh(a) || Boolean(b.due_date) - Boolean(a.due_date)
     || (a.due_date && b.due_date ? a.due_date.localeCompare(b.due_date) : 0) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
   // Сколько задач — настройка «Сколько задач» (cfg.taskCount); вытянутая панель (уголок справа внизу) показывает больше: +1 на каждые 26 px прибавки к высоте.
+  noteArrivals(allTasks);
   const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, cfg.taskCount + Math.floor(Math.max(0, innerHeight - 760) / 26));
   shownTaskIds = new Set(sec.tasks ? shownTasks.map((t) => t.id) : []);
   const todo = daily.filter((h) => !h.status);
@@ -1292,7 +1293,7 @@ function render() {
         ? `<li class="${rowLeaving(go)}" data-key="t${t.id}"><span class="check done" data-done="${t.id}" title="Отменить">${UNDO_MARK}</span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span></li>`
         : wokeFresh(t)
           ? `<li class="woke" data-woke="${t.id}"><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span><span class="wake-tag">⏰ ${esc(dueWhen(t.due_date))}</span></li>`
-          : `<li><span class="check" data-done="${t.id}"></span><span class="t${t.priority === "high" ? " high" : ""}">${esc(t.title)}</span>${dueTag(t)}</li>`;
+          : `<li${arriving(t) ? ` class="arrive" data-arrive="${t.id}"` : ""}><span class="check" data-done="${t.id}"></span><span class="t${t.priority === "high" ? " high" : ""}">${esc(t.title)}</span>${dueTag(t)}</li>`;
     }),
     // Сделанное: в режиме «прятать» — только пока открыт счётчик.
     ...(hiding && !showingDone() ? [] : [
@@ -1325,6 +1326,7 @@ function render() {
   flipHabits(habitWas);
   for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP
   fitHistory(); // планы сверху могли стать выше или ниже
+  for (const li of $("#body").querySelectorAll("li.arrive")) li.style.setProperty("--arrive-delay", `-${Date.now() - taskArriveAt.get(Number(li.dataset.arrive))}ms`);
   for (const li of $("#body").querySelectorAll("li.woke")) li.style.setProperty("--wake-delay", `-${Date.now() - wokeAt.get(Number(li.dataset.woke))}ms`);
   for (const li of $("#body").querySelectorAll("li.leaving")) {
     const x = leavingRows.get(li.dataset.key);
@@ -1670,6 +1672,18 @@ function miniPlan() {
   return null;
 }
 const RING = 2 * Math.PI * 16.5;
+// Новая задача (её не было при прошлой перерисовке — записали в чате, в Telegram, с телефона) въезжает в список с бликом цвета
+// виджета, ARRIVE_SHOW мс. Первая загрузка — без анимации: всё «новое». --arrive-delay — сколько уже прошло, чтобы перерисовка не начинала заново.
+const ARRIVE_SHOW = 1600;
+const taskArriveAt = new Map();
+let knownTasks = null;
+function noteArrivals(all) {
+  const ids = new Set(all.map((t) => t.id));
+  if (knownTasks) for (const id of ids) if (!knownTasks.has(id)) taskArriveAt.set(id, Date.now());
+  knownTasks = ids;
+  for (const [id, at] of taskArriveAt) if (Date.now() - at > ARRIVE_SHOW) taskArriveAt.delete(id);
+}
+const arriving = (t) => taskArriveAt.has(t.id) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Привычки, отмеченные в этом окне, — когда (для порядка отмеченных). Перестройка списка привычек — плавная: строка едет
 // со старого места на новое (FLIP: запомнить места до перерисовки, после — сдвинуть обратно и отпустить).
 const habitDoneAt = new Map();

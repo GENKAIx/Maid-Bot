@@ -71,6 +71,17 @@ main { display: flex; flex-direction: column; min-width: 0; }
 @keyframes wakeCheck { 0% { box-shadow: 0 0 0 0 rgba(255, 215, 106, .9); border-color: #ffd76a; } 60% { box-shadow: 0 0 0 9px rgba(255, 215, 106, 0); border-color: #ffd76a; } 100% { box-shadow: none; } }
 @keyframes wakeTag { 0% { opacity: 0; transform: translateX(-8px); } 10% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .w .list li.woke, .w .list li.woke::before, .w .list li.woke .check { animation-duration: 0s; } }
+/* Новая задача: въезжает слева, по строке проходит блик цвета виджета, от галочки — кольцо; всё вместе ARRIVE_SHOW (1,6 с). */
+.w .list li.arrive { position: relative; animation: arriveIn .55s cubic-bezier(.2, .9, .3, 1.25) both; animation-delay: var(--arrive-delay, 0ms); }
+.w .list li.arrive::before { content: ""; position: absolute; inset: -2px -6px; border-radius: 6px; pointer-events: none;
+  background: linear-gradient(90deg, transparent 20%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 80%) 0 0 / 250% 100%;
+  animation: arriveGlow 1.6s ease-out both; animation-delay: var(--arrive-delay, 0ms); }
+.w .list li.arrive > * { position: relative; }
+.w .list li.arrive .check { animation: arriveCheck 1s ease-out both; animation-delay: calc(var(--arrive-delay, 0ms) + 300ms); }
+@keyframes arriveIn { from { opacity: 0; transform: translateX(-18px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes arriveGlow { 0% { opacity: 0; background-position: 100% 0; } 15% { opacity: 1; } 60% { background-position: 0 0; opacity: .8; } 100% { opacity: 0; background-position: 0 0; } }
+@keyframes arriveCheck { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 90%, transparent); border-color: var(--accent); }
+  70% { box-shadow: 0 0 0 8px transparent; border-color: var(--accent); } 100% { box-shadow: none; } }
 /* Отмеченное — зачёркнуто название; счёт курса («12/30») — нет, иначе кажется, что он отменён. */
 .w .list li.did > span:last-child:not(.course-meter), .w .list li.did > .t { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .35); }
 .list .check:hover { border-color: var(--accent-2); background: #8fd3c133; }
