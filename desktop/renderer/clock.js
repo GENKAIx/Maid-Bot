@@ -1650,6 +1650,7 @@ function spotCard(sel) {
 }
 $("#next").addEventListener("click", (ev) => {
   const nx = ev.target.closest(".nx");
+  if (ev.target.closest(".hero-act")) return; // кнопки горящей плашки — свои (widget.js)
   togglePlansOn(nx?.dataset.day || $("#next").dataset.day || data?.day, nx?.dataset.id ? `[data-id="${nx.dataset.id}"]` : null);
 });
 $("#pins").addEventListener("click", (ev) => {

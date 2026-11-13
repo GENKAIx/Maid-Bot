@@ -365,6 +365,55 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .next .hero-txt b { color: var(--accent); }
 .w .next .hero-at { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .w .next .hero-go { flex: none; color: var(--muted); font-size: 18px; line-height: 1; margin-top: -2px; }
+/* «Горение» плашки (widget.js, planHeat): начался без ответа — тлеет (блик медленно ползёт по краю), через 5 мин горит
+   (блик ярче и быстрее, искры вверх), после 15 мин — ровная оранжевая обводка. Наведение успокаивает до тления.
+   Фаза блика (--heat-phase) — от часов: перерисовка плашки его не дёргает. */
+@property --heat-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.w .next .nx-hero { position: relative; isolation: isolate; }
+.w .next .nx-hero.heat { --ember: #ff9a4d; background: color-mix(in srgb, var(--ember) 14%, color-mix(in srgb, var(--accent) 10%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ember) 45%, transparent); }
+.w .next .nx-hero.heat .hero-txt b { color: var(--ember); }
+.w .next .nx-hero.heat::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--heat-a), transparent 0 58%, color-mix(in srgb, var(--ember) 60%, transparent) 74%, #ffd27a 84%, transparent 94%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: heatRun 6s linear infinite; animation-delay: var(--heat-phase, 0ms); opacity: .8; }
+.w .next .nx-hero.burn { background: color-mix(in srgb, var(--ember) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ember) 65%, transparent), 0 0 14px -4px color-mix(in srgb, var(--ember) 70%, transparent); }
+.w .next .nx-hero.burn::before { animation-duration: 3s; opacity: 1; padding: 2px; }
+/* Искры: три точки поднимаются над верхним краем и гаснут, каждая со своим сдвигом. */
+.w .next .nx-hero.burn::after { content: ""; position: absolute; left: 18%; right: 18%; top: -2px; height: 14px; pointer-events: none;
+  background: radial-gradient(circle 2.2px at 12% 100%, #ffd27a 99%, transparent), radial-gradient(circle 1.8px at 55% 70%, #ffb05c 99%, transparent),
+    radial-gradient(circle 2px at 88% 85%, #ffd27a 99%, transparent);
+  animation: heatSparks 1.8s ease-out infinite; animation-delay: var(--heat-phase, 0ms); }
+.w .next .nx-hero.burn:hover { background: color-mix(in srgb, var(--ember) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ember) 50%, transparent); }
+.w .next .nx-hero.burn:hover::before { animation-duration: 6s; opacity: .8; padding: 1.5px; }
+.w .next .nx-hero.burn:hover::after { display: none; }
+.w .next .nx-hero.settled { box-shadow: inset 0 0 0 1.5px var(--ember); }
+.w .next .nx-hero.settled::before { display: none; }
+.w .next .hero-act { flex: none; width: 26px; height: 24px; padding: 0; border: 0; border-radius: 8px; font: inherit; font-size: 13px; line-height: 24px; cursor: pointer;
+  color: inherit; background: color-mix(in srgb, var(--ember) 20%, transparent); transition: background .15s, transform .15s; }
+.w .next .hero-act:hover { background: color-mix(in srgb, var(--ember) 38%, transparent); transform: scale(1.06); }
+.w .next .hero-act:focus-visible { outline: 2px solid var(--ember); outline-offset: 1px; }
+.w .next .hero-act[data-act="done"] { color: #ffd9b8; font-weight: 800; }
+/* Разовые вспышки (--flash-at — сколько уже прошло): «скоро» — мягкий всплеск фона, погасили — дымок вверх. */
+.w .next .nx-hero.soon { animation: heroSoon 1.2s ease-out 1 both; animation-delay: var(--flash-at, 0ms); }
+.w .next .nx-hero.soon .hero-txt b { color: color-mix(in srgb, var(--accent) 70%, #fff); }
+.w .next .nx-hero.puff::after { content: ""; position: absolute; right: 8px; top: 50%; width: 46px; height: 30px; margin-top: -15px; pointer-events: none;
+  border-radius: 50%; background: radial-gradient(closest-side, rgba(220, 210, 230, .55), transparent);
+  animation: heroPuff 1.1s ease-out 1 both; animation-delay: var(--flash-at, 0ms); }
+@keyframes heatRun { to { --heat-a: 360deg; } }
+@keyframes heatSparks { 0% { transform: translateY(6px); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-9px); opacity: 0; } }
+@keyframes heroSoon { 0% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  45% { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); } 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); } }
+@keyframes heroPuff { 0% { transform: translateY(4px) scale(.5); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-22px) scale(1.5); opacity: 0; } }
+/* Свёрнутая карточка тлеет вместе с плашкой: тёплая обводка медленно дышит. */
+.stage.folded .mini.heat { border-color: #ff9a4d; animation: miniHeat 3.2s ease-in-out infinite; }
+@keyframes miniHeat { 50% { box-shadow: 0 0 16px -4px rgba(255, 154, 77, .65); } }
+@media (prefers-reduced-motion: reduce) {
+  .w .next .nx-hero.heat::before, .w .next .nx-hero.burn::after, .w .next .nx-hero.puff::after { display: none; }
+  .w .next .nx-hero.heat { box-shadow: inset 0 0 0 1.5px var(--ember); }
+  .w .next .nx-hero.soon, .stage.folded .mini.heat { animation: none; }
+}
 .w .next .nx-rows { display: grid; padding: 0 6px; }
 .w .next .nx-row { position: relative; display: grid; grid-template-columns: 12px 40px 1fr; align-items: center; column-gap: 6px; padding: 3px 0; }
 .w .next .nx-row + .nx-row::before { content: ""; position: absolute; left: 5px; top: -7px; width: 2px; height: 14px; border-radius: 1px;

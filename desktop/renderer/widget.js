@@ -1192,6 +1192,65 @@ function minutesUntil(e) {
   return h * 60 + m - (now.getHours() * 60 + now.getMinutes());
 }
 
+// «Горение» ближайшего плана: начался, горничная сказала «⏰ Пора», а ответа нет — плашка тлеет (0–5 мин), потом горит (5–15),
+// дальше — ровная оранжевая обводка, без мигания. За 10 мин до начала — один мягкий всплеск. Ответ (👌 Окей в облачке, ✓ или
+// ⏰ «Через 10 мин» на плашке, отметка в панели планов) гасит огонь. Ответы — в localStorage «maid.planAck»: {"дата:id": "ok" | до-когда-отложено}.
+const HEAT_SMOLDER = 5, HEAT_BURN = 15, HEAT_SOON = 10, HEAT_SNOOZE = 10;
+let planAcks = {};
+try { planAcks = JSON.parse(localStorage.getItem("maid.planAck") ?? "{}") ?? {}; } catch {}
+const ackKey = (e) => `${e.date_iso}:${e.id}`;
+function ackPlan(e, until = "ok") {
+  for (const k of Object.keys(planAcks)) if (!k.startsWith(`${e.date_iso}:`)) delete planAcks[k]; // вчерашнее не копить
+  planAcks[ackKey(e)] = until;
+  try { localStorage.setItem("maid.planAck", JSON.stringify(planAcks)); } catch {}
+}
+// null — спокойно; "soon" — скоро начало; "smolder" | "burn" | "settled" — начался без ответа.
+function planHeat(e) {
+  if (!e?.time || (e.status && e.status !== "active")) return null;
+  const m = minutesUntil(e);
+  if (m > HEAT_SOON) return null;
+  if (m > 0) return { level: "soon" };
+  const ack = planAcks[ackKey(e)];
+  if (ack === "ok" || (typeof ack === "number" && Date.now() < ack)) return null;
+  const [h, mm] = e.time.split(":").map(Number);
+  const late = (Date.now() - Math.max(new Date().setHours(h, mm, 0, 0), typeof ack === "number" ? ack : 0)) / 60000;
+  return { level: late < HEAT_SMOLDER ? "smolder" : late < HEAT_BURN ? "burn" : "settled" };
+}
+const heatSeen = new Map(); // id → последний показанный уровень: тревога горничной — по разу
+// Разовые вспышки плашки — по часам, чтобы перерисовка (раз в 5 с) не обрывала их: всплеск «скоро» и дымок погашенного огня.
+const HERO_FLASH = 1400;
+const heroFlash = new Map(); // id → { kind: "soon" | "puff", at }
+function quench(e, until) {
+  const lv = planHeat(e)?.level;
+  if (lv && lv !== "soon") heroFlash.set(e.id, { kind: "puff", at: Date.now() });
+  ackPlan(e, until);
+  render();
+}
+// Облачко «⏰ Пора: Спортзал» → «Окей»: ответ на начавшиеся планы, чьё название в тексте (не нашлось — на последний начавшийся).
+function ackStarted(text) {
+  const started = (data?.events ?? []).filter((e) => e.time && minutesUntil(e) <= 0);
+  const hit = started.filter((e) => text.includes(e.title));
+  for (const e of hit.length ? hit : started.slice(-1)) quench(e);
+}
+// Кнопки горящей плашки: ✓ — план состоялся, ⏰ — напомнить через HEAT_SNOOZE мин (плашка затихает и снова затлеет).
+$("#next").addEventListener("click", async (ev) => {
+  const act = ev.target.closest(".hero-act");
+  const e = act && data?.events.find((x) => x.id === Number(act.closest(".nx-hero").dataset.id));
+  if (!e) return;
+  if (act.dataset.act === "snooze") {
+    react("bow", 2000);
+    return quench(e, Date.now() + HEAT_SNOOZE * 60000);
+  }
+  quench(e);
+  try {
+    await maid.api("POST", `/api/events/${e.id}`, { status: "done" });
+    react("happy", 1800);
+    load();
+  } catch (err) {
+    say(`Не вышло: ${String(err?.message ?? err)}`, { emotion: "worried", ms: 6000 });
+  }
+});
+
 function render() {
   // Строка улетает или список смыкается — не пересобирать его посреди анимации (иначе строка прыгает назад), дорисовать после.
   if (Date.now() < animUntil) {
@@ -1225,8 +1284,20 @@ function render() {
     const m = minutesUntil(h);
     const when = m === null ? "Сегодня" : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
     const at = m !== null && m <= 0 ? (h.end_time ? `до ${h.end_time}` : "") : h.time ?? "";
-    nextHtml += `<div class="nx nx-hero" data-day="${esc(h.date_iso)}" data-id="${h.id}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
-      + `${at ? `<span class="hero-at">${esc(at)}</span>` : ""}<span class="hero-go">›</span></div>`;
+    const heat = planHeat(h);
+    const lit = heat && heat.level !== "soon";
+    const was = heatSeen.get(h.id);
+    heatSeen.set(h.id, heat?.level ?? null);
+    // Загорелось на глазах (а не после перезапуска посреди огня) — горничная волнуется.
+    if (heat?.level === "burn" && was === "smolder" && !napping) react("worried", 4000);
+    if (heat?.level === "soon" && was !== "soon") heroFlash.set(h.id, { kind: "soon", at: Date.now() });
+    const flash = heroFlash.get(h.id);
+    const flashing = flash && Date.now() - flash.at < HERO_FLASH ? ` ${flash.kind}` : "";
+    nextHtml += `<div class="nx nx-hero${lit ? ` heat ${heat.level}` : ""}${flashing}" data-day="${esc(h.date_iso)}" data-id="${h.id}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
+      + `${at && !lit ? `<span class="hero-at">${esc(at)}</span>` : ""}`
+      + (lit
+        ? `<button type="button" class="hero-act" data-act="done" title="Сделано">✓</button><button type="button" class="hero-act" data-act="snooze" title="Напомнить через ${HEAT_SNOOZE} мин">⏰</button>`
+        : `<span class="hero-go">›</span>`) + `</div>`;
     if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e) => `<div class="nx nx-row" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
       + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span></div>`).join("")}</div>`;
   } else if (ahead) nextHtml += `<div class="nx-free">Сегодня свободно</div>`;
@@ -1240,6 +1311,11 @@ function render() {
   }
   $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span>`;
   for (const d of $("#next").querySelectorAll(".nx-dot[data-c]")) d.style.background = d.dataset.c; // style="" запрещает CSP
+  // Блик бежит по краю без рывков при перерисовке: фаза анимации — от часов, а не от момента сборки плашки.
+  const heroEl = $("#next").querySelector(".nx-hero");
+  heroEl?.style.setProperty("--heat-phase", `-${Date.now() % 12000}ms`);
+  const fl = heroEl && heroFlash.get(Number(heroEl.dataset.id));
+  if (fl) heroEl.style.setProperty("--flash-at", `-${Date.now() - fl.at}ms`);
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
   const pins = datesOf(data.day);
   $("#pins").innerHTML = pins.map((d) => `<div class="pin" data-day="${d.on}">${dateText(d, data.day)}</div>`).join("");
@@ -1621,7 +1697,7 @@ async function load() {
 // горничная звонит в колокольчик (настроение «remind»). Остальным — кнопки с сервера.
 function startButtons(n) {
   if (n.buttons?.length || !/^⏰ Пора:/.test(n.text)) return n.buttons ?? [];
-  return [{ text: "👌 Окей", run: () => react("bow", 2500) }];
+  return [{ text: "👌 Окей", run: () => { react("bow", 2500); ackStarted(n.text); } }];
 }
 
 // Лента уведомлений: что ушло в Telegram — показать и здесь, с кнопками.
@@ -1667,7 +1743,8 @@ function miniPlan() {
     if (end <= cur) continue;
     const d = start - cur;
     const rel = d <= 0 ? "идёт" : d < 60 ? `через ${d} мин` : `через ${Math.round(d / 60)} ч`;
-    return { time: e.time, rel, title: e.title, soon: d <= 15 };
+    const lv = planHeat(e)?.level;
+    return { time: e.time, rel, title: e.title, soon: d <= 15, heat: !!lv && lv !== "soon" };
   }
   return null;
 }
@@ -1717,6 +1794,7 @@ function renderMini(open, todo, left, done) {
   ].filter(Boolean);
   $("#miniSub").textContent = sub.join(" · ");
   $("#miniSub").classList.toggle("late", late > 0);
+  $("#mini").classList.toggle("heat", !!plan?.heat); // свёрнутая карточка тлеет вместе с плашкой
   const total = done + left;
   $("#miniArc").style.strokeDasharray = `${total ? (done / total) * RING : 0} ${RING}`;
   $("#miniCount").textContent = total ? `${done}/${total}` : "✓";
