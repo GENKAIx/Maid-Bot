@@ -1195,6 +1195,7 @@ function minutesUntil(e) {
 // «Горение» ближайшего плана: начался, горничная сказала «⏰ Пора», а ответа нет — плашка тлеет (0–5 мин), потом горит (5–15),
 // дальше — ровная оранжевая обводка, без мигания. За 10 мин до начала — один мягкий всплеск. Ответ (👌 Окей в облачке, ✓ или
 // ⏰ «Через 10 мин» на плашке, отметка в панели планов) гасит огонь. Ответы — в localStorage «maid.planAck»: {"дата:id": "ok" | до-когда-отложено}.
+const FREE_DAY_UNTIL = 18; // час, после которого «Сегодня свободно» уже не пишем
 const HEAT_SMOLDER = 5, HEAT_BURN = 15, HEAT_SOON = 10, HEAT_SNOOZE = 10;
 let planAcks = {};
 try { planAcks = JSON.parse(localStorage.getItem("maid.planAck") ?? "{}") ?? {}; } catch {}
@@ -1301,7 +1302,8 @@ function render() {
         : `<span class="hero-go">›</span>`) + `</div>`;
     if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e) => `<div class="nx nx-row" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
       + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span></div>`).join("")}</div>`;
-  } else if (ahead) nextHtml += `<div class="nx-free">Сегодня свободно</div>`;
+  // «Сегодня свободно» — только если сегодня планов не было вовсе и день ещё в разгаре (до FREE_DAY_UNTIL); вечером — одна плашка дня.
+  } else if (ahead && !data.events.length && now.getHours() < FREE_DAY_UNTIL) nextHtml += `<div class="nx-free">Сегодня свободно</div>`;
   if (ahead) {
     const n = daysFrom(data.day, ahead.date_iso);
     const count = week.filter((e) => e.date_iso === ahead.date_iso).length;
@@ -1329,7 +1331,7 @@ function render() {
     // Курс — полоска и «9/30» справа; у обычной привычки — серия 🔥 после названия.
     const sub = i >= 0
       ? `<span class="course-meter" title="День ${i + 1} из ${h.course.length}"><span class="cm-bar"><i data-w="${Math.round(((i + 1) / h.course.length) * 100)}"></i></span>${i + 1}/${h.course.length}</span>`
-      : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
+      : h.streak >= 2 ? ` <span class="muted streak">🔥${h.streak}</span>` : "";
     const go = leavingRows.get(`h${h.id}`);
     if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
     const name = i >= 0 ? `<span class="t">${esc(h.title)}</span>${sub}` : `<span class="t">${esc(h.title)}${sub}</span>`;
