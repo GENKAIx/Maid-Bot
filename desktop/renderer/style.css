@@ -406,13 +406,10 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 @keyframes heroSoon { 0% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
   45% { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); } 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); } }
 @keyframes heroPuff { 0% { transform: translateY(4px) scale(.5); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-22px) scale(1.5); opacity: 0; } }
-/* Свёрнутая карточка тлеет вместе с плашкой: тёплая обводка медленно дышит. */
-.stage.folded .mini.heat { border-color: #ff9a4d; animation: miniHeat 3.2s ease-in-out infinite; }
-@keyframes miniHeat { 50% { box-shadow: 0 0 16px -4px rgba(255, 154, 77, .65); } }
 @media (prefers-reduced-motion: reduce) {
   .w .next .nx-hero.heat::before, .w .next .nx-hero.burn::after, .w .next .nx-hero.puff::after { display: none; }
   .w .next .nx-hero.heat { box-shadow: inset 0 0 0 1.5px var(--ember); }
-  .w .next .nx-hero.soon, .stage.folded .mini.heat { animation: none; }
+  .w .next .nx-hero.soon { animation: none; }
 }
 .w .next .nx-rows { display: grid; padding: 0 6px; }
 .w .next .nx-row { position: relative; display: grid; grid-template-columns: 12px 40px 1fr; align-items: center; column-gap: 6px; padding: 3px 0; }

@@ -1743,8 +1743,9 @@ function miniPlan() {
     if (end <= cur) continue;
     const d = start - cur;
     const rel = d <= 0 ? "идёт" : d < 60 ? `через ${d} мин` : `через ${Math.round(d / 60)} ч`;
+    // Золотой час: скоро начало (15 мин) или начался, а на «⏰ Пора» ещё не ответили (planHeat); ответили — обычный цвет.
     const lv = planHeat(e)?.level;
-    return { time: e.time, rel, title: e.title, soon: d <= 15, heat: !!lv && lv !== "soon" };
+    return { time: e.time, rel, title: e.title, soon: d > 0 ? d <= 15 : !!lv && lv !== "soon" };
   }
   return null;
 }
@@ -1794,7 +1795,6 @@ function renderMini(open, todo, left, done) {
   ].filter(Boolean);
   $("#miniSub").textContent = sub.join(" · ");
   $("#miniSub").classList.toggle("late", late > 0);
-  $("#mini").classList.toggle("heat", !!plan?.heat); // свёрнутая карточка тлеет вместе с плашкой
   const total = done + left;
   $("#miniArc").style.strokeDasharray = `${total ? (done / total) * RING : 0} ${RING}`;
   $("#miniCount").textContent = total ? `${done}/${total}` : "✓";
