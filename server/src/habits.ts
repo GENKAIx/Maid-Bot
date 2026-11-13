@@ -76,11 +76,11 @@ function yesterdayOf(h: HabitRow, own: MarkRow[], day: string): HabitDay["yester
   const y = addDays(day, -1);
   if (y < h.start_date || !dueOn({ ...h, status: "active" }, y)) return null;
   const m = own.find((x) => x.day_key === y);
-  // Минус, поставленный сам в полночь (без сообщения, autoMinus), — как «не отмечено»: вчера ещё можно спасти.
+  // Минус, поставленный сам в начале нового дня (DAY_START_HOUR) (без сообщения, autoMinus), — как «не отмечено»: вчера ещё можно спасти.
   return !m || isAutoMinus(m) ? "none" : m.status;
 }
 
-/** Минус за день без ответа ставит планировщик в полночь — отметка без сообщения. */
+/** Минус за день без ответа ставит планировщик в начале нового дня (DAY_START_HOUR) — отметка без сообщения. */
 export const isAutoMinus = (m: Pick<MarkRow, "status" | "message_id">) => m.status === "skipped" && m.message_id === null;
 
 

@@ -1185,11 +1185,17 @@ function refoldLater() {
 $("#w").addEventListener("pointerdown", () => { if (autoOpened) { autoOpened = false; saveFold(); } });
 
 // --- панель ---
+// Минут до начала плана — с его датой: ночью «сегодня» (день с 04:00, сервер) — ещё вчера, и вчерашний план в 23:00 уже прошёл.
+function planStart(e) {
+  const [y, mo, d] = e.date_iso.split("-").map(Number);
+  const [h, m] = e.time.split(":").map(Number);
+  return new Date(y, mo - 1, d, h, m);
+}
 function minutesUntil(e) {
   if (!e.time) return null;
-  const [h, m] = e.time.split(":").map(Number);
   const now = new Date();
-  return h * 60 + m - (now.getHours() * 60 + now.getMinutes());
+  now.setSeconds(0, 0);
+  return Math.round((planStart(e) - now) / 60000);
 }
 
 // «Горение» ближайшего плана: начался, горничная сказала «⏰ Пора», а ответа нет — плашка тлеет (0–5 мин), потом горит (5–15),
@@ -1213,8 +1219,7 @@ function planHeat(e) {
   if (m > 0) return { level: "soon" };
   const ack = planAcks[ackKey(e)];
   if (ack === "ok" || (typeof ack === "number" && Date.now() < ack)) return null;
-  const [h, mm] = e.time.split(":").map(Number);
-  const late = (Date.now() - Math.max(new Date().setHours(h, mm, 0, 0), typeof ack === "number" ? ack : 0)) / 60000;
+  const late = (Date.now() - Math.max(planStart(e).getTime(), typeof ack === "number" ? ack : 0)) / 60000;
   return { level: late < HEAT_SMOLDER ? "smolder" : late < HEAT_BURN ? "burn" : "settled" };
 }
 const heatSeen = new Map(); // id → последний показанный уровень: тревога горничной — по разу
@@ -1735,16 +1740,13 @@ function miniDay(day) {
 }
 // Справа от точек — ближайший план сегодня («в 19:00 · Спортзал», «через 25 мин · …», «идёт · …»); планов больше нет — счёт задач.
 function miniPlan() {
-  const now = new Date();
-  const cur = now.getHours() * 60 + now.getMinutes();
   for (const e of data.events ?? []) {
     if (!e.time || (e.status && e.status !== "active")) continue;
+    const d = minutesUntil(e);
     const [h, m] = e.time.split(":").map(Number);
-    const start = h * 60 + m;
     const [eh, em] = (e.end_time ?? "").split(":").map(Number);
-    const end = e.end_time ? eh * 60 + em : start + 30;
-    if (end <= cur) continue;
-    const d = start - cur;
+    const long = e.end_time ? eh * 60 + em - (h * 60 + m) : 30; // сколько идёт (без конца — 30 мин)
+    if (d + long <= 0) continue;
     const rel = d <= 0 ? "идёт" : d < 60 ? `через ${d} мин` : `через ${Math.round(d / 60)} ч`;
     // Золотой час: скоро начало (15 мин) или начался, а на «⏰ Пора» ещё не ответили (planHeat); ответили — обычный цвет.
     const lv = planHeat(e)?.level;

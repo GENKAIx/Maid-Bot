@@ -51,6 +51,15 @@ export function dayKey(at: Date, tz: string): string {
   return `${p.y}-${pad(p.m)}-${pad(p.d)}`;
 }
 
+/** Час, с которого начинается день человека: ночь до него — ещё вчерашний день (лёг в час ночи — отметки и записи за вчера). */
+export const DAY_START_HOUR = 4;
+
+/** День человека (не календарный): привычки, отметки, дневник, деньги и показатели, сделанное за день, итог дня, «сегодня»
+ * в виджете. Даты планов, напоминания и разбор слов «сегодня/завтра» — по календарю (dayKey). */
+export function userDay(at: Date, tz: string): string {
+  return dayKey(new Date(at.getTime() - DAY_START_HOUR * 3_600_000), tz);
+}
+
 export function timeOf(at: Date, tz: string): string {
   const p = localParts(at, tz);
   return `${pad(p.hh)}:${pad(p.mm)}`;
