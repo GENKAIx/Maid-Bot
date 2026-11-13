@@ -1185,7 +1185,7 @@ function refoldLater() {
 $("#w").addEventListener("pointerdown", () => { if (autoOpened) { autoOpened = false; saveFold(); } });
 
 // --- панель ---
-// Минут до начала плана — с его датой: ночью «сегодня» (день с 04:00, сервер) — ещё вчера, и вчерашний план в 23:00 уже прошёл.
+// Минут до начала плана — с его датой: в списке ближайших планов есть и планы следующего дня.
 function planStart(e) {
   const [y, mo, d] = e.date_iso.split("-").map(Number);
   const [h, m] = e.time.split(":").map(Number);
@@ -1279,13 +1279,12 @@ function render() {
   $("#miniClock").title = miniDay(data.day);
   // Ближайшие планы — одним списком на сутки вперёд: сегодняшние (не начавшиеся больше 30 мин назад) и планы со временем
   // из следующих дней в пределах NEXT_WINDOW ч. Ближайший — выделенной плашкой «Через 44 мин · …», остальные — лентой
-  // «● 16:00 Название», у планов другого дня справа тихое «завтра». Всего до cfg.nextCount. В сутках пусто — бледная строка
+  // «● 16:00 Название», без подписи дня. Всего до cfg.nextCount. В сутках пусто — бледная строка
   // «Дальше: вс 15 · 11:15 …» с ближайшим планом недели. Щелчок — панель планов на этот день.
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
   const week = data.upcoming.filter((e) => daysFrom(data.day, e.date_iso) <= 6);
   const nextDays = week.filter((e) => e.time && minutesUntil(e) <= NEXT_WINDOW * 60);
   const shown = [...today, ...nextDays].slice(0, cfg.nextCount);
-  const dayHint = (e) => { const n = daysFrom(data.day, e.date_iso); return n <= 0 ? "" : n === 1 ? "завтра" : `${WD_SHORT[wdOf(e.date_iso)]} ${Number(e.date_iso.slice(8))}`; };
   $("#next").dataset.day = (shown[0] ?? week[0])?.date_iso ?? "";
   const inMin = (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч${m % 60 ? ` ${m % 60} мин` : ""}`);
   let nextHtml = "";
@@ -1293,8 +1292,7 @@ function render() {
     const [h, ...rest] = shown;
     const m = minutesUntil(h);
     // Дальше HERO_FAR мин — «Сегодня» / «Завтра» (час справа): «Через 21 ч 46 мин» читать тяжело и незачем.
-    const hint = dayHint(h);
-    const when = m === null || m > HERO_FAR ? (hint ? hint[0].toUpperCase() + hint.slice(1) : "Сегодня") : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
+    const when = m === null || m > HERO_FAR ? (daysFrom(data.day, h.date_iso) > 0 ? "Завтра" : "Сегодня") : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
     const at = m !== null && m <= 0 ? (h.end_time ? `до ${h.end_time}` : "") : h.time ?? "";
     const heat = planHeat(h);
     const lit = heat && heat.level !== "soon";
@@ -1312,8 +1310,7 @@ function render() {
         ? `<button type="button" class="hero-act" data-act="done" title="Сделано">✓</button><button type="button" class="hero-act" data-act="snooze" title="Напомнить через ${HEAT_SNOOZE} мин">⏰</button>`
         : `<span class="hero-go">›</span>`) + `</div>`;
     if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e) => `<div class="nx nx-row" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
-      + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span>`
-      + `${dayHint(e) ? `<span class="nx-day">${esc(dayHint(e))}</span>` : ""}</div>`).join("")}</div>`;
+      + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span></div>`).join("")}</div>`;
   } else if (week[0]) {
     const e = week[0];
     nextHtml += `<div class="nx nx-later" data-day="${esc(e.date_iso)}" data-id="${e.id}">Дальше: ${esc(`${WD_SHORT[wdOf(e.date_iso)]} ${Number(e.date_iso.slice(8))}`)}`

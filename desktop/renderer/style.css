@@ -420,14 +420,13 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
   .w .next .nx-hero.soon, .w .next .nx-hero.live, .stage.folded .mini.live { animation: none; }
 }
 .w .next .nx-rows { display: grid; padding: 0 6px; }
-.w .next .nx-row { position: relative; display: grid; grid-template-columns: 12px 40px 1fr auto; align-items: center; column-gap: 6px; padding: 3px 0; }
+.w .next .nx-row { position: relative; display: grid; grid-template-columns: 12px 40px 1fr; align-items: center; column-gap: 6px; padding: 3px 0; }
 .w .next .nx-row + .nx-row::before { content: ""; position: absolute; left: 5px; top: -7px; width: 2px; height: 14px; border-radius: 1px;
   background: color-mix(in srgb, var(--accent) 35%, transparent); }
 .w .next .nx-dot { width: 8px; height: 8px; border-radius: 50%; justify-self: center; background: var(--accent); }
 .w .next .nx-t { font-weight: 650; font-variant-numeric: tabular-nums; }
 .w .next .nx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255, 255, 255, .82); }
-/* План другого дня в ленте — тихое «завтра» справа; в сутках пусто — бледная строка «Дальше: …». */
-.w .next .nx-day { font-size: 11px; color: var(--muted); }
+/* В сутках пусто — бледная строка «Дальше: …». */
 .w .next .nx-later { padding: 3px 6px; font-size: 12px; color: var(--muted); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .w .next .nx-later:hover { color: rgba(255, 255, 255, .8); }
 .w h4 { margin: 8px 0 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
