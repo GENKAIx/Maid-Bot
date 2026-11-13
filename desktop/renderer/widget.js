@@ -1796,6 +1796,7 @@ function renderMini(open, todo, left, done) {
   ].filter(Boolean);
   $("#miniSub").textContent = sub.join(" · ");
   $("#miniSub").classList.toggle("late", late > 0);
+  $("#mini").classList.toggle("live", plan?.rel === "идёт"); // план идёт — обводка со свечением, как у плашки
   const total = done + left;
   $("#miniArc").style.strokeDasharray = `${total ? (done / total) * RING : 0} ${RING}`;
   $("#miniCount").textContent = total ? `${done}/${total}` : "✓";

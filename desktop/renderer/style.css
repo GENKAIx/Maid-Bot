@@ -368,8 +368,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 /* «Горение» плашки (widget.js, planHeat): начался без ответа — тлеет (блик медленно ползёт по краю), через 5 мин горит
    (блик ярче и быстрее, искры вверх), после 15 мин — ровная оранжевая обводка. Наведение успокаивает до тления.
    Фаза блика (--heat-phase) — от часов: перерисовка плашки его не дёргает. */
-/* Идёт сейчас (и на «⏰ Пора» уже ответили) — ровная золотая обводка, пока план не кончился. */
-.w .next .nx-hero.live:not(.heat) { box-shadow: inset 0 0 0 1.5px #f4c55c; }
+/* Идёт сейчас (и на «⏰ Пора» уже ответили) — тёплая обводка с медленно дышащим свечением, пока план не кончился;
+   так же — свёрнутая карточка (#mini.live). */
+.w .next .nx-hero.live:not(.heat) { box-shadow: inset 0 0 0 1px #ff9a4d; animation: liveGlow 3.2s ease-in-out infinite; }
+.stage.folded .mini.live { border-color: #ff9a4d; animation: liveGlowMini 3.2s ease-in-out infinite; }
+@keyframes liveGlow { 50% { box-shadow: inset 0 0 0 1px #ff9a4d, 0 0 16px -4px rgba(255, 154, 77, .65); } }
+@keyframes liveGlowMini { 50% { box-shadow: 0 0 16px -4px rgba(255, 154, 77, .65); } }
 @property --heat-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 .w .next .nx-hero { position: relative; isolation: isolate; }
 .w .next .nx-hero.heat { --ember: #ff9a4d; background: color-mix(in srgb, var(--ember) 14%, color-mix(in srgb, var(--accent) 10%, transparent));
@@ -411,7 +415,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 @media (prefers-reduced-motion: reduce) {
   .w .next .nx-hero.heat::before, .w .next .nx-hero.burn::after, .w .next .nx-hero.puff::after { display: none; }
   .w .next .nx-hero.heat { box-shadow: inset 0 0 0 1.5px var(--ember); }
-  .w .next .nx-hero.soon { animation: none; }
+  .w .next .nx-hero.soon, .w .next .nx-hero.live, .stage.folded .mini.live { animation: none; }
 }
 .w .next .nx-rows { display: grid; padding: 0 6px; }
 .w .next .nx-row { position: relative; display: grid; grid-template-columns: 12px 40px 1fr; align-items: center; column-gap: 6px; padding: 3px 0; }
