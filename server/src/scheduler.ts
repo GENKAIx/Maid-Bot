@@ -3,12 +3,30 @@ import { habitLine, habitsOfDay } from "./habits.ts";
 import type { LlmCall } from "./llm.ts";
 import { persona, type Emotion } from "./personas.ts";
 import {
-  activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, plansText, sectionName, todayText, upcomingDates,
+  activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, moneyTotals, plansText, sectionName, todayText,
+  upcomingDates,
 } from "./report.ts";
 import { escapesText } from "./escapes.ts";
 import { findPatterns, patternText, traitButtons } from "./profile.ts";
 import { extendSeries } from "./repeat.ts";
-import { addDays, dayKey, humanDay, timeOf, zonedToUtc } from "./time.ts";
+import { addDays, dayKey, durationHuman, humanDay, timeOf, zonedToUtc } from "./time.ts";
+
+/** Слова горничной в вечернем итоге — не длиннее (знаков); длиннее в полтора раза — обрезаем по слову. */
+export const EVENING_MAX = 300;
+
+const plural = (n: number, one: string, few: string, many: string) =>
+  n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
+
+/** Цифры дня одной строкой — только то, что было: «✔ 3 задачи · привычки 3/3 · 🎮 2 ч · 📝 4 записи · −1 200 RUB». */
+export function dayNumbers(d: { tasks: number; habitsDone: number; habits: number; gameSec: number; notes: number; spent: string[] }): string {
+  return [
+    d.tasks ? `✔ ${d.tasks} ${plural(d.tasks, "задача", "задачи", "задач")}` : "",
+    d.habits ? `привычки ${d.habitsDone}/${d.habits}` : "",
+    d.gameSec >= 60 ? `🎮 ${durationHuman(d.gameSec)}` : "",
+    d.notes ? `📝 ${d.notes} ${plural(d.notes, "запись", "записи", "записей")}` : "",
+    ...d.spent.map((x) => `💸 ${x}`),
+  ].filter(Boolean).join(" · ");
+}
 
 // Напоминания и итоги. Всё состояние — в базе (reminders, kv), поэтому перезапуск ничего не теряет,
 // а повторный запуск не шлёт то же самое дважды.
@@ -208,51 +226,66 @@ export class Scheduler {
     }
   }
 
-  /** Вечерний итог: сводка фактами + несколько строк в голосе горничной. */
+  /** Вечерний итог — коротко: строка цифр дня («✔ 3 задачи · привычки 3/3 · 🎮 2 ч») и 2–3 предложения горничной — одна
+   * неочевидная связь (по записям за неделю) и один маленький совет на завтра. Сами записи дня не пересказываем: они в «Дневнике». */
   async eveningText(u: User, today: string): Promise<string> {
     const s = this.store;
     const diary = diaryBySection(await s.diaryOf(u.id, today));
     const facts: string[] = [];
     for (const [sec, lines] of diary) {
       if (sec === "summary" || sec === "tags") continue;
-      facts.push(`${sectionName(sec)}: ${lines.join("; ")}`);
+      facts.push(`${sectionName(sec)}: ${lines.join(" / ")}`);
     }
-    const act = activityLines(await s.activityOf(u.id, today)).map((l) => l.replace(/<[^>]+>/g, ""));
+    const activity = await s.activityOf(u.id, today);
+    const act = activityLines(activity).map((l) => l.replace(/<[^>]+>/g, ""));
     const done = (await s.allTasks(u.id)).filter((t) => t.done_at && dayKey(new Date(t.done_at), u.tz) === today);
     const plans = (await s.allEvents(u.id)).filter((e) => e.date_iso === today && e.status !== "deleted" && e.status !== "purged");
     const habits = await habitsOfDay(s, u, today);
     const metrics = metricLine(await s.metricsRange(u.id, today, today));
     const money = await s.moneyRange(u.id, today, today);
-    const head = [
-      `<b>Итог дня, ${humanDay(today)}</b>`,
-      ...facts.map((f) => "• " + esc(f)),
-      ...act,
-      metrics ? `📊 ${metrics}` : "",
-      ...money.map((m) => "💰 " + moneyLine(m)),
-      ...habits.map(habitLine),
-      done.length ? `✔ сделано задач: ${done.length}` : "",
-      plans.length ? `📅 планов было: ${plans.length}` : "",
+    const head = `<b>Итог дня, ${humanDay(today)}</b>`;
+    const numbers = dayNumbers({
+      tasks: done.length,
+      habitsDone: habits.filter((h) => h.status === "done").length,
+      habits: habits.length,
+      gameSec: activity.reduce((sum, a) => sum + a.games.reduce((g, x) => g + x.sec, 0), 0),
+      notes: [...diary].filter(([sec]) => sec !== "summary" && sec !== "tags").reduce((n, [, l]) => n + l.length, 0),
+      spent: moneyTotals(money).filter((t) => t.expense > 0).map((t) => `−${t.expense.toLocaleString("ru-RU")} ${t.currency}`),
+    });
+    const short = `${head}\n${numbers ? esc(numbers) : "Сегодня записей нет."}`;
+    if (!this.llm) return short;
+    // Горничной — всё подробно (за сегодня и записи за прошлые 6 дней, чтобы видеть повторы), человеку — только её вывод.
+    const todayFacts = [
+      ...facts, ...act, metrics ? `Показатели: ${metrics.replace(/<[^>]+>/g, "")}` : "",
+      ...money.map((m) => "Деньги: " + moneyLine(m).replace(/<[^>]+>/g, "")),
+      ...habits.map((h) => habitLine(h).replace(/<[^>]+>/g, "")),
+      `Сделано задач: ${done.length}`, plans.length ? `Планов было: ${plans.length}` : "",
     ].filter(Boolean);
-    if (head.length === 1) head.push("Сегодня записей нет.");
-    if (!this.llm) return head.join("\n");
-    const summaries = diary.get("summary")?.join("\n") ?? "";
+    const week = (await s.diaryRange(u.id, addDays(today, -6), addDays(today, -1)))
+      .filter((r) => r.section !== "tags" && r.section !== "summary").slice(-80)
+      .map((r) => `${r.day_key} ${sectionName(r.section)}: ${r.text}`);
     try {
       const words = await this.llm([
         {
           role: "system",
-          content: `${persona(u.persona).voice}\nНапиши 3–6 коротких строк вечернего итога дня для хозяина: что было хорошо, ` +
-            `что тревожит (сон, еда, игры, несделанное), один совет на завтра. Только по фактам ниже, без выдумок, без заголовков.`,
+          content: `${persona(u.persona).voice}\nВечерний итог дня для хозяина — 2–3 коротких предложения, не длиннее ${EVENING_MAX} знаков, ` +
+            `без заголовков, списков и эмодзи в начале строк. НЕ пересказывай, что было за день: цифры он уже видит. ` +
+            `Найди одну неочевидную связь по записям за неделю (что повторяется, что идёт после чего: еда и самочувствие, игры и сон, ` +
+            `дела и настроение) и дай один конкретный маленький совет на завтра с учётом завтрашних планов. Только по фактам ниже, ` +
+            `без выдумок; связи нет — один точный совет. О здоровье — без диагнозов: «заметь и проверь», при повторах несколько дней — к врачу.`,
         },
         {
           role: "user",
-          content: `${head.join("\n").replace(/<[^>]+>/g, "")}\n\nЗаписи дня:\n${summaries || "нет"}\n\nЗавтра:\n${
-            (await plansText(s, u, addDays(today, 1), 0)).replace(/<[^>]+>/g, "")}`,
+          content: `Сегодня, ${today}:\n${todayFacts.join("\n") || "записей нет"}\n\nПрошлые 6 дней:\n${week.join("\n") || "записей нет"}` +
+            `\n\nЗавтра:\n${(await plansText(s, u, addDays(today, 1), 0)).replace(/<[^>]+>/g, "")}`,
         },
       ], { temperature: 0.6, kind: "summary" });
-      return `${head.join("\n")}\n\n${esc(words.trim())}`;
+      const text = words.trim().replace(/\s*\n+\s*/g, " ");
+      const cut = text.length > EVENING_MAX * 1.5 ? `${text.slice(0, EVENING_MAX * 1.5).replace(/\s+\S*$/, "")}…` : text;
+      return cut ? `${short}\n\n${esc(cut)}` : short;
     } catch (e) {
       console.error("[evening]", e);
-      return head.join("\n");
+      return short;
     }
   }
 
