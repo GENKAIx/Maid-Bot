@@ -17,19 +17,24 @@ function Sticker({ emoji, style, data }: { emoji: string; style?: CSSProperties;
     : <span className="sticker" style={style} data-emoji={data}>{emoji}</span>;
 }
 
-// Наклейки вразброс: у каждого дня свой разброс (от даты — не прыгает при обновлении). Первая — крупнее.
+// Наклейки вразброс: у каждого дня свой разброс (от даты — не прыгает при обновлении). Первая — крупнее, чем больше — тем мельче.
 // Места [x, y, размер] в % клетки разнесены так, что наклейки не наезжают друг на друга и на число дня.
 const SPOTS: [number, number, number][][] = [
   [[52, 56, 62]],
   [[34, 64, 46], [72, 36, 38]],
   [[32, 68, 42], [72, 34, 34], [74, 76, 30]],
+  [[28, 70, 36], [70, 30, 32], [72, 72, 32], [42, 42, 26]],
+  [[26, 72, 32], [66, 26, 28], [74, 58, 26], [52, 78, 26], [40, 44, 24]],
+  [[24, 74, 28], [56, 26, 24], [82, 30, 22], [78, 64, 24], [52, 80, 22], [44, 50, 22]],
 ];
+/** Больше наклеек в клетке не помещается — остальные видны в подсказке, в дне и в счёте месяца. */
+const CELL_MAX = SPOTS.length;
 function scatter(day: string, n: number) {
   let h = 2166136261;
   for (const c of day) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
   const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296;
   const flip = n > 1 && rnd() < 0.5; // крупная то слева, то справа
-  return SPOTS[Math.min(n, 3) - 1].map(([x, y, s]) => ({
+  return SPOTS[Math.min(n, CELL_MAX) - 1].map(([x, y, s]) => ({
     x: (flip ? 100 - x : x) + (rnd() - 0.5) * 6,
     y: (flip && y < 50 ? y + 4 : y) + (rnd() - 0.5) * 6, // слева сверху — число дня
     s: s * (0.94 + rnd() * 0.1),
@@ -93,7 +98,9 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
       get<DiaryRow[]>(`/api/diary?from=${from}&to=${to}`),
       get<ActivityRow[]>(`/api/activity?from=${from}&to=${to}`).catch(() => []),
       get<{ rows: MetricRow[] }>(`/api/metrics?from=${from}&to=${to}`).then((m) => m.rows).catch(() => []),
-    ]).then(([d, a, m]) => alive && setEmojis(dayEmojis(d, a, m, 99))) // все — для итога дня; календарь берёт первые 3.catch(() => alive && setEmojis(new Map()));
+    ])// Все — для итога дня и счёта месяца; календарь показывает первые CELL_MAX.
+      .then(([d, a, m]) => alive && setEmojis(dayEmojis(d, a, m, 99)))
+      .catch(() => alive && setEmojis(new Map()));
     return () => { alive = false; };
   }, [month, version]);
   useEffect(() => {
@@ -106,9 +113,12 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
   const grid = useMemo(() => monthGrid(month), [month]);
   const top = useMemo(() => {
     const c = new Map<string, number>();
-    for (const [d, list] of emojis) if (d.startsWith(month)) for (const e of list.slice(0, 3)) c.set(e.emoji, (c.get(e.emoji) ?? 0) + 1);
-    return [...c.entries()].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    for (const [d, list] of emojis) if (d.startsWith(month)) for (const e of list) c.set(e.emoji, (c.get(e.emoji) ?? 0) + 1);
+    return [...c.entries()].sort((a, b) => b[1] - a[1]);
   }, [emojis, month]);
+  // Выбранный внизу значок: дни с ним подсвечены, остальные приглушены; щелчок ещё раз — снять.
+  const [only, setOnly] = useState<string | null>(null);
+  const onlyDays = only ? (top.find(([e]) => e === only)?.[1] ?? 0) : 0;
   const go = (d: string) => navigate(`/diary/${d}`);
   // Открытое пояснение эмодзи: день и эмодзи; на другом дне закрыто.
   const [pick, setPick] = useState<{ day: string; emoji: string } | null>(null);
@@ -133,17 +143,20 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
             <b>{monthTitle(month)}</b>
             <button className="ghost" onClick={() => setMonth(addMonths(month, 1))} aria-label="Следующий месяц">›</button>
           </div>
-          <div className="cal-grid">
+          <div className={`cal-grid ${only ? "filtering" : ""}`}>
             {WEEKDAYS.map((w) => <span key={w} className="cal-wd">{w}</span>)}
             {grid.map((k, i) => {
               if (!k) return <span key={`e${i}`} />;
-              const em = (emojis.get(k) ?? []).slice(0, 3);
+              const all = emojis.get(k) ?? [];
+              const match = only !== null && all.some((e) => e.emoji === only);
+              // У подсвеченного дня выбранный значок — первым (крупным), даже если он не в первых CELL_MAX.
+              const em = (match ? [...all.filter((e) => e.emoji === only), ...all.filter((e) => e.emoji !== only)] : all).slice(0, CELL_MAX);
               const n = days.get(k) ?? 0;
-              const tip = em.length ? em.map((e) => `${e.emoji} ${e.what}`).join("\n") : n ? `записей: ${n}` : "";
+              const tip = all.length ? all.map((e) => `${e.emoji} ${e.what}`).join("\n") : n ? `записей: ${n}` : "";
               return (
                 <button
                   key={k}
-                  className={`cal-day ${k === current ? "on" : ""} ${k === today ? "today" : ""} ${k > today ? "future" : ""} ${em.length ? "has" : ""}`}
+                  className={`cal-day ${k === current ? "on" : ""} ${k === today ? "today" : ""} ${k > today ? "future" : ""} ${em.length ? "has" : ""} ${match ? "match" : ""}`}
                   onClick={(ev) => {
                     // Щелчок по наклейке — открыть, почему она здесь.
                     const hit = (ev.target as HTMLElement).closest<HTMLElement>("[data-emoji]")?.dataset.emoji;
@@ -156,7 +169,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
                   {em.length > 0 ? (
                     <span className="cal-stickers">
                       {scatter(k, em.length).map((p, j) => (
-                        <Sticker key={em[j].emoji} emoji={em[j].emoji} data={em[j].emoji} style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.s}%`, rotate: `${p.r}deg`, zIndex: 3 - j }} />
+                        <Sticker key={em[j].emoji} emoji={em[j].emoji} data={em[j].emoji} style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.s * (match && j === 0 ? 1.3 : 1)}%`, rotate: `${p.r}deg`, zIndex: CELL_MAX - j, fontSize: `${p.s * 0.7}cqw` }} />
                       ))}
                     </span>
                   ) : n > 0 && <i className="dot" style={{ opacity: Math.min(1, 0.35 + n / 6) }} />}
@@ -165,8 +178,19 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
             })}
           </div>
           <div className="cal-foot muted small">
-            {top.length > 0 && <span className="cal-top" title="Чаще всего в этом месяце">{top.map(([e, c]) => <span key={e}><Sticker emoji={e} /><small>{c}</small></span>)}</span>}
-            <span>Дней с записями: {days.size}</span>
+            {top.length > 0 && (
+              <span className="cal-top">
+                {top.map(([e, c]) => (
+                  <button key={e} className={`ghost ${e === only ? "on" : ""}`} aria-pressed={e === only}
+                    title={`${e}: дней в этом месяце — ${c}. Щелчок — показать эти дни`} onClick={() => setOnly(e === only ? null : e)}>
+                    <Sticker emoji={e} /><small>{c}</small>
+                  </button>
+                ))}
+              </span>
+            )}
+            {only
+              ? <span className="cal-only">Дней с <Sticker emoji={only} />: {onlyDays} <button className="ghost" onClick={() => setOnly(null)} aria-label="Показать все дни">✕</button></span>
+              : <span>Дней с записями: {days.size}</span>}
           </div>
         </aside>
 

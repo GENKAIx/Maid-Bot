@@ -238,7 +238,7 @@ button.link.forever:hover { color: var(--bad-ink); text-decoration: none; }
 .cal-num { position: absolute; top: 5px; left: 7px; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; }
 .cal-day.has .cal-num { font-size: 11px; }
 .cal-day:not(.has) .cal-num { position: static; font-size: 14px; color: var(--text); }
-.cal-stickers { position: absolute; inset: 0; pointer-events: none; }
+.cal-stickers { position: absolute; inset: 0; pointer-events: none; container-type: size; }
 .cal-stickers .sticker { pointer-events: auto; cursor: help; }
 .cal-stickers .sticker { position: absolute; height: auto; aspect-ratio: 1; translate: -50% -50%; filter: drop-shadow(0 2px 2px rgb(0 0 0 / .14)); transition: transform .2s ease; display: flex; align-items: center; justify-content: center; font-size: 26px; line-height: 1; }
 .cal-day:hover .cal-stickers .sticker { transform: scale(1.08) rotate(-4deg); }
@@ -262,8 +262,15 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .ds-why ul { margin: 6px 0 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; }
 .ds-why mark { background: color-mix(in srgb, var(--accent) 30%, transparent); color: inherit; border-radius: 4px; padding: 0 2px; }
 .cal-foot { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-.cal-top { display: flex; gap: 10px; font-size: 18px; align-items: center; }
+.cal-top { display: flex; flex-wrap: wrap; gap: 2px; font-size: 18px; align-items: center; }
+.cal-top button { padding: 3px 6px; border-radius: 10px; border: 1px solid transparent; font-size: inherit; }
+.cal-top button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .cal-top small { font-size: 11px; color: var(--muted); margin-left: 1px; vertical-align: sub; }
+.cal-only { display: inline-flex; align-items: center; gap: 5px; }
+.cal-only button { padding: 2px 7px; }
+/* Выбран значок внизу: дни с ним — с золотой рамкой, остальные приглушены. */
+.cal-grid.filtering .cal-day:not(.match) { opacity: .28; }
+.cal-day.match { border-color: var(--orange); box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 30%, transparent); }
 .day-nav { display: flex; align-items: center; gap: 8px; }
 .day-nav .ghost { font-size: 20px; padding: 2px 10px; }
 
@@ -417,7 +424,6 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
   .cards { grid-template-columns: 1fr; }
   .diary-layout { grid-template-columns: 1fr; }
   .calendar { position: static; }
-  .cal-stickers .sticker { font-size: 16px; }
   .cal-day.has .cal-num { font-size: 10px; top: 3px; left: 4px; }
   .rings { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 12px 6px; justify-items: center; padding: 14px 10px; }
   .rings .ring { width: 64px !important; }
