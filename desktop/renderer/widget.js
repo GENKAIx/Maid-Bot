@@ -1225,16 +1225,16 @@ function render() {
     const m = minutesUntil(h);
     const when = m === null ? "Сегодня" : m <= 0 ? "Идёт" : `Через ${inMin(m)}`;
     const at = m !== null && m <= 0 ? (h.end_time ? `до ${h.end_time}` : "") : h.time ?? "";
-    nextHtml += `<div class="nx nx-hero" data-day="${esc(h.date_iso)}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
+    nextHtml += `<div class="nx nx-hero" data-day="${esc(h.date_iso)}" data-id="${h.id}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
       + `${at ? `<span class="hero-at">${esc(at)}</span>` : ""}<span class="hero-go">›</span></div>`;
-    if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e) => `<div class="nx nx-row" data-day="${esc(e.date_iso)}">`
+    if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e) => `<div class="nx nx-row" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
       + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span></div>`).join("")}</div>`;
   } else if (ahead) nextHtml += `<div class="nx-free">Сегодня свободно</div>`;
   if (ahead) {
     const n = daysFrom(data.day, ahead.date_iso);
     const more = week.filter((e) => e.date_iso === ahead.date_iso).length - 1;
     const dayWord = n === 1 ? "завтра" : `${WD_SHORT[wdOf(ahead.date_iso)]} ${Number(ahead.date_iso.slice(8))}`;
-    nextHtml += `<div class="nx nx-ahead" data-day="${esc(ahead.date_iso)}" title="${esc(`${ahead.time ? `${ahead.time} ` : ""}${ahead.title}`)}">`
+    nextHtml += `<div class="nx nx-ahead" data-day="${esc(ahead.date_iso)}" data-id="${ahead.id}" title="${esc(`${ahead.time ? `${ahead.time} ` : ""}${ahead.title}`)}">`
       + `<span class="nx-ah-txt"><span class="nx-label">Дальше:</span> ${esc(dayWord)}${ahead.time ? ` ${esc(ahead.time)}` : ""} · ${esc(ahead.title)}</span>`
       + `${more > 0 ? `<span class="nx-more" title="Ещё планов в этот день: ${more}">+${more}</span>` : ""}</div>`;
   }
@@ -2202,7 +2202,7 @@ $("#body").addEventListener("click", async (e) => {
     clearTimeout(taskDayTimer);
     if (e.detail > 1) return;
     const t = (data?.tasks ?? []).find((x) => x.id === Number(rowTick.dataset.done));
-    if (t) taskDayTimer = setTimeout(() => togglePlansOn(t.due_date && t.due_date > data.day ? t.due_date : data.day), 280);
+    if (t) taskDayTimer = setTimeout(() => togglePlansOn(t.due_date && t.due_date > data.day ? t.due_date : data.day, `[data-task="${t.id}"]`), 280);
     return;
   }
   const id = e.target.dataset?.done;

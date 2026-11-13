@@ -1628,15 +1628,30 @@ $("#planClock").addEventListener("wheel", () => { if ($("#planClock").classList.
 
 // Посмотреть планы — щелчок по строке «ближайший план»: ещё раз — спрятать.
 // Щелчок по ближайшему плану или важной дате — панель планов на их день (ещё раз на тот же день — спрятать).
-function togglePlansOn(day) {
+// spot — селектор карточки, по которой открыли (план или задача): она вспыхивает, чтобы её сразу найти глазами.
+function togglePlansOn(day, spot) {
   if (!$("#planClock").classList.contains("hidden") && clockDay === day) return hideClock();
   // Полоса дней — та неделя, где этот день.
   const n = data ? daysFrom(data.day, day) : 0;
   if (n < stripFrom || n > stripFrom + DAYS_AHEAD) stripFrom = Math.floor(n / (DAYS_AHEAD + 1)) * (DAYS_AHEAD + 1);
   showClock(day);
   loadFar();
+  if (spot) setTimeout(() => spotCard(spot), 220); // после того как панель раскрылась — иначе вспышку не успеть заметить
 }
-$("#next").addEventListener("click", (ev) => togglePlansOn(ev.target.closest(".nx")?.dataset.day || $("#next").dataset.day || data?.day));
+/** Карточка в панели планов вспыхивает: обводка её цветом и проблеск поперёк; не видна в списке — прокрутить к ней. */
+function spotCard(sel) {
+  const li = $("#planClock").querySelector(`.pl-card${sel}`);
+  if (!li) return;
+  li.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  li.classList.remove("spot");
+  void li.offsetWidth; // перезапуск анимации, если щёлкнули ещё раз
+  li.classList.add("spot");
+  setTimeout(() => li.classList.remove("spot"), 1600);
+}
+$("#next").addEventListener("click", (ev) => {
+  const nx = ev.target.closest(".nx");
+  togglePlansOn(nx?.dataset.day || $("#next").dataset.day || data?.day, nx?.dataset.id ? `[data-id="${nx.dataset.id}"]` : null);
+});
 $("#pins").addEventListener("click", (ev) => {
   const pin = ev.target.closest(".pin");
   if (pin) togglePlansOn(pin.dataset.day || data?.day);

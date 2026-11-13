@@ -1082,3 +1082,16 @@ body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .
 .w .scroll.more-above.more-below { -webkit-mask-image: linear-gradient(transparent, #000 18px, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(transparent, #000 18px, #000 calc(100% - 26px), transparent); }
 .w .scroll.more-above:not(.more-below) { -webkit-mask-image: linear-gradient(transparent, #000 18px); mask-image: linear-gradient(transparent, #000 18px); }
 .qrow img.hidden { display: none; }
+
+/* Карточка, по которой открыли панель планов (план из блока «Дальше» или задача из списка): обводка её цветом и проблеск поперёк. */
+#planClock .pl-card.spot { animation: plSpot 1.5s ease-out, plSweep .9s ease-out .12s both;
+  background-image: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .2) 50%, transparent 65%); background-size: 260% 100%; background-repeat: no-repeat; }
+@keyframes plSpot {
+  0% { box-shadow: 0 0 0 0 transparent; }
+  25% { box-shadow: 0 0 0 2px var(--c, var(--accent)), 0 0 18px color-mix(in srgb, var(--c, var(--accent)) 55%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes plSweep { from { background-position: 120% 0; } to { background-position: -20% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  #planClock .pl-card.spot { animation: none; background-image: none; box-shadow: 0 0 0 2px var(--c, var(--accent)); }
+}
