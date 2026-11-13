@@ -1360,7 +1360,7 @@ function render() {
   const hiding = cfg.doneTasks === "hide";
   // Вчерашний пропуск, который ещё можно спасти задним числом (fun.js).
   const rescueItem = (h) => `<li class="rescue"><span class="mark" data-rescue="${h.id}" title="Отметить вчерашний день"></span><span>${esc(h.title)} <span class="muted">· вчера — спасти серию</span></span></li>`;
-  // Привычки и курсы — своим списком сразу под планами (отмеченные — бледным внизу или не видны, cfg.doneHabits); задачи — ниже, под «Задачи».
+  // Привычки и курсы — своим списком под заголовком «Привычки · отмечено/всего» сразу под планами (отмеченные — бледным внизу или не видны, cfg.doneHabits); задачи — ниже, под «Задачи».
   const habitItems = [
     ...todo.map(dayItem),
     ...daily.filter(missedYesterday).map(rescueItem),
@@ -1402,7 +1402,7 @@ function render() {
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   const habitWas = habitRects();
   $("#body").innerHTML =
-    (habitItems.length ? `<ul class="list habit-list">${habitItems.join("")}</ul>` : "") +
+    (habitItems.length ? `<h4>Привычки · ${daily.filter((h) => h.status).length}/${daily.length}</h4><ul class="list habit-list">${habitItems.join("")}</ul>` : "") +
     (sec.tasks ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");

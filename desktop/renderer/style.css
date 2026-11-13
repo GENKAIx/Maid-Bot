@@ -431,7 +431,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .next .nx-later:hover { color: rgba(255, 255, 255, .8); }
 .w h4 { margin: 8px 0 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 /* Привычки — сразу под планами, отделены от задач линией. */
-.w .list.habit-list { margin-top: 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.w .list.habit-list { padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
 .w .list { gap: 3px; font-size: 13px; }
 .w .scroll { flex: 1; overflow: auto; min-height: 0; padding-right: 6px; } /* отступ — чтобы полоса прокрутки не лезла на сроки задач */
 /* Уголок для вытягивания панели вниз (окно растёт в main.js, высота панели следует за окном). */
