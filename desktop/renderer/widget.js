@@ -1235,10 +1235,9 @@ function render() {
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
   const pins = datesOf(data.day);
   $("#pins").innerHTML = pins.map((d) => `<div class="pin" data-day="${d.on}">${dateText(d, data.day)}</div>`).join("");
-  // Один список «Задачи» вместо отдельных разделов. Порядок:
-  //   1) ежедневное на сегодня, ещё не отмеченное (привычки и курсы — «Пить Аевит · день 9 из 30»);
-  //   2) задачи: сначала важные, потом обычные, потом «когда-нибудь»;
-  //   3) ежедневное, уже отмеченное сегодня, — внизу бледным (щелчок — передумать).
+  // Под планами два списка:
+  //   1) ежедневное (привычки и курсы — «Пить Аевит» с полоской 9/30): сначала не отмеченное, отмеченное — бледным внизу (щелчок — передумать);
+  //   2) «Задачи»: просроченные, со сроком, без срока; внутри — по важности.
   const daily = (sec.habits ? data.habits ?? [] : []).filter((h) => h.course?.find((x) => x.day === data.day)?.s !== "rest");
   const dayItem = (h) => {
     const i = h.course?.length ? h.course.findIndex((x) => x.day === data.day) : -1;
@@ -1269,9 +1268,13 @@ function render() {
   const hiding = cfg.doneTasks === "hide";
   // Вчерашний пропуск, который ещё можно спасти задним числом (fun.js).
   const rescueItem = (h) => `<li class="rescue"><span class="mark" data-rescue="${h.id}" title="Отметить вчерашний день"></span><span>${esc(h.title)} <span class="muted">· вчера — спасти серию</span></span></li>`;
-  const items = [
+  // Привычки и курсы — своим списком сразу под планами (отмеченные — бледным внизу или не видны, cfg.doneHabits); задачи — ниже, под «Задачи».
+  const habitItems = [
     ...todo.map(dayItem),
     ...daily.filter(missedYesterday).map(rescueItem),
+    ...(cfg.doneHabits === "hide" ? [] : daily.filter((h) => h.status).map(dayItem)),
+  ];
+  const items = [
     ...(sec.tasks ? shownTasks : []).map((t) => {
       if (binTasks.has(t.id)) return `<li class="bin-out" data-bin="${t.id}"><span class="check"></span><span class="t${t.priority === "high" ? " high" : ""}">${esc(t.title)}</span></li>`;
       const go = leavingRows.get(`t${t.id}`);
@@ -1284,8 +1287,6 @@ function render() {
     }),
     // Сделанное: в режиме «прятать» — только пока открыт счётчик.
     ...(hiding && !showingDone() ? [] : [
-      // Отмеченные сегодня привычки: «бледным внизу» или не показывать (cfg.doneHabits).
-      ...(cfg.doneHabits === "hide" ? [] : daily.filter((h) => h.status).map(dayItem)),
       ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done" data-reopen="${t.id}" title="Снять галочку"><i>✓</i><b>↶</b></span><span>${esc(t.title)}</span></li>`),
     ]),
   ];
@@ -1298,13 +1299,17 @@ function render() {
   lastLeft = left;
   renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left, doneCount, daily.filter((h) => !h.status && !leavingRows.has(`h${h.id}`)));
   const bump = Date.now() - bumpAt < 600 ? " bump" : "";
-  const counter = hiding && doneCount
-    ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}${allDone ? " all" : ""}${bump}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${doneCount}/${doneCount + left}</button>`
-    : left > 3 ? ` · ${left}` : "";
+  // Счёт у заголовка — только задачи: привычки стоят отдельно и в нём не участвуют.
+  const tasksLeft = sec.tasks ? awake.filter((t) => !doneNow.has(t.id)).length - gone : 0;
+  const tasksDone = sec.tasks ? recentDone().length + gone : 0;
+  const counter = hiding && tasksDone
+    ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}${allDone ? " all" : ""}${bump}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${tasksDone}/${tasksDone + tasksLeft}</button>`
+    : tasksLeft > 3 ? ` · ${tasksLeft}` : "";
   const pinned = new Set(datesOf(data.day, true).map(dateKey));
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   $("#body").innerHTML =
-    (sec.tasks || daily.length ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
+    (habitItems.length ? `<ul class="list habit-list">${habitItems.join("")}</ul>` : "") +
+    (sec.tasks ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
   for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP

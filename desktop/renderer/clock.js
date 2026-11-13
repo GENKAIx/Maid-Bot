@@ -12,6 +12,9 @@ const LANES = { "24": [{ r: 106, w: 20 }, { r: 127, w: 15 }], "12": [{ r: 106, w
 const CLOCK_SHOWN = 12_000;
 const NO_END_MIN = 60; // план без времени конца — дуга на час
 const ARC_COLORS = ["#6fb6ff", "#ffa25c", "#7fe0b0", "#ff7fa6", "#ffd45c", "#b59bff", "#5fd6e0", "#f08a6e"];
+// Полоска плана без времени — спокойная, одна на всех: цвет у плана — это его дуга на циферблате, а у этих дуги нет.
+// Зелёная полоска — задача (.pl-task), красная — просроченная задача.
+const UNTIMED_COLOR = "#8f86a8";
 
 let clockDay = null; // какой день показан (YYYY-MM-DD)
 let clockHideTimer = 0;
@@ -387,7 +390,7 @@ function drawPlanList(box) {
     const now = today && !st && start !== null && start <= nowMin && nowMin < end;
     const tools = st === "gone" ? "" : `${st ? "" : `<button type="button" class="pl-x" data-act="cancelled" title="Убрать из планов">×</button>`}
       <button type="button" class="pl-check${st === "done" ? " on" : st === "cancelled" ? " on off" : ""}" data-act="${st ? "active" : "done"}" title="${st ? "Отменить — вернуть в планы" : "Состоялось"}">${st === "done" ? "<i>✓</i><b>×</b>" : st === "cancelled" ? "<i>×</i><b>↺</b>" : ""}</button>`;
-    return `<li class="pl-card${st ? ` ${st}` : ""}${e._out ? " out" : ""}${e._mv ? " mv" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockEdits.has(e.id) ? " edit" : clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${colorOf(e)}">
+    return `<li class="pl-card${st ? ` ${st}` : ""}${e._out ? " out" : ""}${e._mv ? " mv" : ""}${past ? " past" : ""}${now ? " now" : ""}${clockEdits.has(e.id) ? " edit" : clockFresh.has(e.id) ? " fresh" : ""}${leaving(e.id)}" data-id="${e.id}" data-c="${(clockEdits.get(e.id) ?? e).time ? colorOf(e) : UNTIMED_COLOR}">
       <span class="pl-text" title="Двойной щелчок — переименовать">${planLabel(clockEdits.get(e.id) ?? e)}</span>${tools}</li>`;
   };
   // Сначала планы со временем по порядку, потом отдельно — без времени и задачи; внизу одна кнопка «+» (добавить план).
@@ -398,7 +401,7 @@ function drawPlanList(box) {
     return `<ul class="pl-list">${shownPins.map(pinCard).join("")}${timed.map(card).join("")}`
       + (!timed.length && !rest.length && !shownPins.length ? `<li class="pl-empty">Свободный день.</li>` : "")
       + (rest.length ? `<li class="pl-sect">Без времени</li>${rest.join("")}` : "")
-      + (past ? "" : `<li class="pl-add-row"><button type="button" class="pl-add" data-add title="Добавить план" aria-label="Добавить план">+</button></li>`) + "</ul>";
+      + (past ? "" : `<li class="pl-add-row"><button type="button" class="pl-add" data-add title="Добавить план" aria-label="Добавить план"></button></li>`) + "</ul>";
   };
   box.innerHTML = `
     ${headHtml(dayName, count)}
