@@ -77,6 +77,27 @@ function DayStickers({ list, picked, onPick }: { list: DayEmoji[]; picked: strin
   );
 }
 
+/** Выбран значок внизу календаря: дни месяца с ним и записи, из-за которых он там. Щелчок по дню — открыть день. */
+function OnlyDays({ emoji, days, onOpen, onClose }: { emoji: string; days: [string, DayEmoji][]; onOpen: (d: string) => void; onClose: () => void }) {
+  return (
+    <Card className="reveal wide only-days">
+      <div className="od-head">
+        <b className="grow">Дни с <Sticker emoji={emoji} /> в этом месяце: {days.length}</b>
+        <button className="ghost" onClick={onClose} aria-label="Закрыть">✕</button>
+      </div>
+      <ul className="od-list">
+        {days.map(([d, e]) => (
+          <li key={d}>
+            <button className="link od-day" onClick={() => onOpen(d)}>{humanDay(d)}</button>
+            <span className="muted small"> · {e.what}</span>
+            <ul>{e.why.map((w, i) => <li key={i}><WhyLine why={w} /></li>)}</ul>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 export function Diary({ day, version, onChanged }: { day?: string; version: number; onChanged: () => void }) {
   const today = todayKey();
   const current = day ?? today;
@@ -119,6 +140,15 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
   // Выбранный внизу значок: дни с ним подсвечены, остальные приглушены; щелчок ещё раз — снять.
   const [only, setOnly] = useState<string | null>(null);
   const onlyDays = only ? (top.find(([e]) => e === only)?.[1] ?? 0) : 0;
+  const onlyList = useMemo(() => {
+    if (!only) return [];
+    const out: [string, DayEmoji][] = [];
+    for (const [d, list] of emojis) {
+      const e = d.startsWith(month) ? list.find((x) => x.emoji === only) : undefined;
+      if (e) out.push([d, e]);
+    }
+    return out.sort((a, b) => a[0].localeCompare(b[0]));
+  }, [emojis, month, only]);
   const go = (d: string) => navigate(`/diary/${d}`);
   // Открытое пояснение эмодзи: день и эмодзи; на другом дне закрыто.
   const [pick, setPick] = useState<{ day: string; emoji: string } | null>(null);
@@ -161,6 +191,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
                     // Щелчок по наклейке — открыть, почему она здесь.
                     const hit = (ev.target as HTMLElement).closest<HTMLElement>("[data-emoji]")?.dataset.emoji;
                     setPick(hit ? { day: k, emoji: hit } : null);
+                    setOnly(null);
                     go(k);
                   }}
                   title={tip || undefined}
@@ -195,16 +226,17 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
         </aside>
 
         <div className="diary-day">
-          <div className="day-nav">
+          {!only && <div className="day-nav">
             <button className="ghost" onClick={() => go(addDays(current, -1))} aria-label="Вчера">‹</button>
             <h2 className="screen-title">{humanDay(current, current.slice(0, 4) !== today.slice(0, 4))}</h2>
             <button className="ghost" onClick={() => go(addDays(current, 1))} aria-label="Завтра">›</button>
             {current !== today && <button className="link" onClick={() => go(today)}>сегодня</button>}
-          </div>
+          </div>}
 
-          {error && <Empty>Нет связи: {error}</Empty>}
-          {!data && !error && <Spinner />}
-          {data && (
+          {only && <OnlyDays emoji={only} days={onlyList} onClose={() => setOnly(null)} onOpen={(d) => { setOnly(null); go(d); }} />}
+          {!only && error && <Empty>Нет связи: {error}</Empty>}
+          {!only && !data && !error && <Spinner />}
+          {!only && data && (
             <div className="cards" key={current}>
               <Card className="reveal wide">
                 {(emojis.get(current)?.length ?? 0) > 0 && <DayStickers list={emojis.get(current)!} picked={picked} onPick={(e) => setPick(e ? { day: current, emoji: e } : null)} />}
