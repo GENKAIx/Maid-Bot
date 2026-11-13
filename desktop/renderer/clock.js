@@ -2348,9 +2348,17 @@ function openNewPlan(anchor, slot) {
   const box = document.createElement("div");
   box.className = "pl-menu pl-rename pl-newplan";
   box.innerHTML = `<input type="text" class="np-title" maxlength="200" spellcheck="true" placeholder="Что запланировать?">
-    <input type="text" class="np-time" maxlength="13" placeholder="время" title="Можно не писать. «15», «15:30», «15-16»">`;
+    <button type="button" class="np-time-add" title="Добавить время — можно и без него">+ время</button>
+    <input type="text" class="np-time" maxlength="13" placeholder="15:30" title="«15», «15:30», «15-16»" hidden>`;
   const [title, when] = box.querySelectorAll("input");
-  if (slot) when.value = `${clockHm(slot.from)}–${clockHm(Math.min(slot.from + 60, slot.to))}`;
+  // Время не обязательно: сначала плюсик, поле — по щелчку (или сразу, если план ставят в свободное окно).
+  const addTime = box.querySelector(".np-time-add");
+  const showTime = () => { addTime.hidden = true; when.hidden = false; };
+  addTime.addEventListener("click", () => { showTime(); when.focus(); });
+  if (slot) {
+    when.value = `${clockHm(slot.from)}–${clockHm(Math.min(slot.from + 60, slot.to))}`;
+    showTime();
+  }
   showPlanMenu(box, r.left, r.top);
   box.style.width = `${Math.max(200, r.width)}px`;
   title.focus();

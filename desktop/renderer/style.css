@@ -709,6 +709,10 @@ body.quick { background: transparent; }
 .pl-newplan .np-title { flex: 1; min-width: 0; }
 .pl-newplan .np-time { flex: none; width: 82px; }
 .pl-newplan .np-time.bad { outline: 1px solid #ff5d6c; }
+.pl-newplan [hidden] { display: none; }
+.pl-newplan .np-time-add { flex: none; width: 82px; padding: 6px 8px; border: 1px dashed rgba(255, 255, 255, .32); border-radius: 8px; background: none;
+  color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.pl-newplan .np-time-add:hover, .pl-newplan .np-time-add:focus-visible { color: #f1edff; border-color: #6c5ce7; outline: none; }
 
 /* Важные даты: над ближайшим планом и наверху списка планов */
 .w .pins { display: grid; gap: 6px; }
