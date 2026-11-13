@@ -476,6 +476,9 @@ function createWidget() {
   widget.on("focus", () => flog("win-focus"));
   widget.on("blur", () => flog("win-blur"));
   widget.on("closed", () => (widget = null));
+  // Страница виджета упала или зависла — окно оставалось пустым и прозрачным, будто виджет пропал. Загружаем заново.
+  widget.webContents.on("render-process-gone", (_e, d) => { if (d.reason !== "clean-exit" && widget && !widget.isDestroyed()) widget.reload(); });
+  widget.on("unresponsive", () => { if (widget && !widget.isDestroyed()) widget.webContents.forcefullyCrashRenderer(); });
 }
 
 /** Взять виджет: можно таскать и кликать. Отпустить: клики идут сквозь него в окна под ним,
@@ -534,7 +537,15 @@ function setGrab(on) {
 function toggleWidget(show = !widget) {
   settings.widget.show = show;
   saveSettings();
-  if (show) createWidget();
+  if (show && widget && !widget.isDestroyed()) {
+    // Окно есть, но не видно (свернулось, спряталось, ушло за край) — вернуть на экран и наверх.
+    if (widget.isMinimized()) widget.restore();
+    const b = widget.getBounds();
+    if (!screen.getAllDisplays().some((d) => { const a = d.workArea; return b.x < a.x + a.width && b.x + b.width > a.x && b.y < a.y + a.height && b.y + b.height > a.y; })) widget.setBounds(widgetBounds());
+    widget.showInactive();
+    widget.setAlwaysOnTop(true, "screen-saver");
+    widget.moveTop();
+  } else if (show) createWidget();
   else widget?.close();
   refreshTray();
 }

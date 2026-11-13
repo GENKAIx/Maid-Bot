@@ -401,8 +401,10 @@ export function Widget() {
       <div className="wp-list">
         <section className="wp-sec reveal">
           <h3>Окно</h3>
-          <Setting title="Поверх всех окон" hint="Виджет не прячется за другими программами"
-            side={<Toggle label="Поверх всех окон" on={p.show} set={(show) => save({ show })} />} />
+          <Setting title="Виджет на рабочем столе" hint={p.show !== false ? "Включён. Пропал с экрана — «Показать снова»" : "Выключен — панели с горничной на экране нет"}
+            side={<Toggle label="Виджет на рабочем столе" on={p.show !== false} set={(show) => save({ show })} />} />
+          {p.show !== false && <Setting title="Не видно виджета" hint="Вернуть его на экран поверх окон"
+            side={<button onClick={() => { void save({ show: true }); setMsg("Виджет снова на экране."); }}>Показать снова</button>} />}
           <Setting title="Непрозрачность панели" hint="Насколько сквозь панель видно рабочий стол" side={<b className="wp-val">{Math.round(opacity * 100)}%</b>}>
             <input type="range" min={0.4} max={1} step={0.02} value={opacity} aria-label="Непрозрачность панели" onChange={(e) => setOpacity(Number(e.target.value))}
               onPointerUp={() => save({ opacity })} onKeyUp={() => save({ opacity })} />
