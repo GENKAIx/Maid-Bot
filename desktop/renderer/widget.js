@@ -1305,7 +1305,7 @@ function render() {
   const allDone = hiding && !left && doneCount > 0;
   if (allDone && lastLeft > 0) { react("excited", 5000); allDoneAt = Date.now(); }
   lastLeft = left;
-  renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left, doneCount, daily.filter((h) => !h.status && !leavingRows.has(`h${h.id}`)));
+  renderMini(tasks.filter((t) => !doneNow.has(t.id)), todo, left, doneCount);
   const bump = Date.now() - bumpAt < 600 ? " bump" : "";
   // Счёт у заголовка — только задачи: привычки стоят отдельно и в нём не участвуют.
   const tasksLeft = sec.tasks ? awake.filter((t) => !doneNow.has(t.id)).length - gone : 0;
@@ -1659,14 +1659,7 @@ function miniPlan() {
   return null;
 }
 const RING = 2 * Math.PI * 16.5;
-let miniHabits = [];
-function renderMini(open, todo, left, done, habits = []) {
-  // Неотмеченные сегодня привычки — точка с числом на кольце; щелчок — отметить.
-  miniHabits = habits;
-  const hb = $("#miniHabit");
-  hb.classList.toggle("hidden", !habits.length);
-  hb.textContent = habits.length > 1 ? String(habits.length) : "";
-  hb.title = habits.length === 1 ? `«${habits[0].title}» — отметить сделанным` : `Привычки на сегодня: ${habits.map((h) => h.title).join(", ")}`;
+function renderMini(open, todo, left, done) {
   const plan = miniPlan();
   const late = open.filter(overdue).length;
   $("#miniTasks").innerHTML = plan
@@ -2053,30 +2046,6 @@ $("#planClock").addEventListener("click", (e) => {
   hideClock();
   foldAnimated(false);
 }, true);
-// Точка привычек на кольце: одна — сразу отмечается, несколько — меню со списком и «Все сразу».
-$("#miniHabit").onclick = (e) => {
-  e.stopPropagation();
-  if (miniHabits.length === 1) return markHabitDay(miniHabits[0], "done");
-  closePlanMenu();
-  const menu = document.createElement("div");
-  menu.className = "pl-menu";
-  menu.innerHTML = miniHabits.map((h, i) => `<button type="button" data-i="${i}">✓ ${esc(h.title)}</button>`).join("")
-    + `<hr><button type="button" data-all>✓ Все сразу</button>`;
-  const r = e.currentTarget.getBoundingClientRect();
-  showPlanMenu(menu, r.right - 200, r.top - 8 - (miniHabits.length + 1) * 30);
-  const list = miniHabits;
-  menu.addEventListener("click", async (ev) => {
-    const b = ev.target.closest("button");
-    if (!b) return;
-    closePlanMenu();
-    if (b.dataset.all === undefined) return markHabitDay(list[Number(b.dataset.i)], "done");
-    for (const h of list) await maid.api("POST", `/api/habits/${h.id}/mark`, { status: "done" }).catch(() => {});
-    popTone(3);
-    react("streak", 4000);
-    maid.changed();
-    load();
-  });
-};
 $("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button, form")) return; autoOpened = false; foldAnimated(false); });
 // Строка ввода свёрнутой панели: Enter — в ту же очередь, что чат панели; ответ — облачком над головой, панель остаётся свёрнутой.
 $("#miniAsk").onsubmit = (e) => {
