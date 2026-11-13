@@ -1331,7 +1331,7 @@ function render() {
     // Курс — полоска и «9/30» справа; у обычной привычки — серия 🔥 после названия.
     const sub = i >= 0
       ? `<span class="course-meter" title="День ${i + 1} из ${h.course.length}"><span class="cm-bar"><i data-w="${Math.round(((i + 1) / h.course.length) * 100)}"></i></span>${i + 1}/${h.course.length}</span>`
-      : h.streak >= 2 ? ` <span class="muted streak">🔥${h.streak}</span>` : "";
+      : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
     const go = leavingRows.get(`h${h.id}`);
     if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
     const name = i >= 0 ? `<span class="t">${esc(h.title)}</span>${sub}` : `<span class="t">${esc(h.title)}${sub}</span>`;

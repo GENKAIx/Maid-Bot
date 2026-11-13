@@ -55,7 +55,7 @@ main { display: flex; flex-direction: column; min-width: 0; }
 .list li { display: flex; gap: 10px; align-items: baseline; }
 .list .time { color: var(--accent); min-width: 50px; font-variant-numeric: tabular-nums; }
 .list .check { cursor: pointer; width: 16px; height: 16px; border: 1.5px solid var(--muted); border-radius: 4px; flex: none; transform: translateY(2px); }
-.w .list li.did { opacity: .5; }
+.w .list li.did:not(.habit) { opacity: .5; }
 /* Проснувшаяся задача: всплывает снизу, по строке проходит золотой блик, от галочки расходится кольцо,
    справа «⏰ через 7 дней» — всё вместе WAKE_SHOW (6 с); --wake-delay — сколько уже прошло, чтобы перерисовка не начинала заново. */
 .w .list li.woke { position: relative; animation: wakeIn .7s cubic-bezier(.2, .9, .3, 1.3) both; animation-delay: var(--wake-delay, 0ms); }
@@ -83,9 +83,7 @@ main { display: flex; flex-direction: column; min-width: 0; }
 @keyframes arriveCheck { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 90%, transparent); border-color: var(--accent); }
   70% { box-shadow: 0 0 0 8px transparent; border-color: var(--accent); } 100% { box-shadow: none; } }
 /* Отмеченное — зачёркнуто название; счёт курса («12/30») — нет, иначе кажется, что он отменён. */
-.w .list li.did > span:last-child:not(.course-meter), .w .list li.did > .t { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .35); }
-/* Серия «🔥2» у отмеченной привычки не зачёркивается: это награда, а не часть названия (inline-block не наследует черту). */
-.w .list li .streak { display: inline-block; }
+.w .list li.did:not(.habit) > span:last-child, .w .list li.did:not(.habit) > .t { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .35); }
 .list .check:hover { border-color: var(--accent-2); background: #8fd3c133; }
 .high { color: var(--warn); }
 .empty { color: var(--muted); }
@@ -577,10 +575,14 @@ body.quick { background: transparent; }
 /* Вчерашний пропуск, который можно спасти: пунктир и золото. */
 /* Привычки — круглая отметка (задачи — квадрат), у курса справа полоска и «9/30». */
 .w .list li.habit .mark { border-radius: 50%; }
+/* Отмеченная привычка не зачёркивается и не бледнеет вся: завтра она вернётся. Тише только название; галочка, серия и полоска — в полную яркость. */
+.w .list li.habit.did .t { opacity: .75; }
 .w .list li .t { flex: 1; min-width: 0; }
 /* Название открытой задачи — щелчок открывает панель планов на её день. */
 .w .list li:has(> .check[data-done]:not(.done)) > span:not(.check) { cursor: pointer; }
-.w .list .course-meter { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Полоска и «9/30» — ровной колонкой у всех привычек: полоска одной длины, счёт в колонке под «30/30», прижат вправо. */
+.w .list .course-meter { display: grid; grid-template-columns: 48px 32px; align-items: center; column-gap: 6px; margin-left: auto; font-size: 11px;
+  color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
 .w .list .course-meter .cm-bar { width: 48px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; }
 .w .list .course-meter .cm-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent-2); }
 /* Срок задачи справа: просроченное — красным, сегодня — светлее. */
@@ -853,7 +855,7 @@ body.quick { background: transparent; }
 /* Сделанная задача: при наведении галочка становится «↶» — щелчок снимает её. */
 .w .list li.did .check i, .w .list li.did .check b { font-style: normal; }
 .w .list li.did .check b { display: none; }
-.w .list li.did:hover { opacity: .8; }
+.w .list li.did:not(.habit):hover { opacity: .8; }
 .w .list li.did .check:hover { background: var(--muted); border-color: var(--muted); color: var(--ink); cursor: pointer; }
 .w .list li.did .check:hover i { display: none; }
 .w .list li.did .check:hover b { display: inline; }
