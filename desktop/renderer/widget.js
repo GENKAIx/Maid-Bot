@@ -1223,7 +1223,7 @@ function render() {
   if (shownToday.length) {
     const [h, ...rest] = shownToday;
     const m = minutesUntil(h);
-    const when = m === null ? "Сегодня" : m <= 0 ? "Идёт" : `Через ${inMin(m)}`;
+    const when = m === null ? "Сегодня" : m <= 0 ? "Сейчас" : `Через ${inMin(m)}`;
     const at = m !== null && m <= 0 ? (h.end_time ? `до ${h.end_time}` : "") : h.time ?? "";
     nextHtml += `<div class="nx nx-hero" data-day="${esc(h.date_iso)}" data-id="${h.id}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
       + `${at ? `<span class="hero-at">${esc(at)}</span>` : ""}<span class="hero-go">›</span></div>`;
