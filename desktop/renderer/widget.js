@@ -1307,7 +1307,7 @@ function render() {
     const count = week.filter((e) => e.date_iso === ahead.date_iso).length;
     const dayWord = n === 1 ? "Завтра" : `${WD_SHORT[wdOf(ahead.date_iso)]} ${Number(ahead.date_iso.slice(8))}`;
     nextHtml += `<div class="nx nx-ahead" data-day="${esc(ahead.date_iso)}" data-id="${ahead.id}" title="${esc(`${ahead.time ? `${ahead.time} ` : ""}${ahead.title}`)}">`
-      + `<div class="ah-head"><span class="ah-day">${esc(dayWord[0].toUpperCase() + dayWord.slice(1))}</span>${count > 1 ? `<span class="ah-count">${count} ${plural(count, "план", "плана", "планов")}</span>` : ""}</div>`
+      + `<div class="ah-head"><span class="ah-day">${esc(dayWord[0].toUpperCase() + dayWord.slice(1))}</span>${count > 1 ? `<span class="ah-count"> · ${count} ${plural(count, "план", "плана", "планов")}</span>` : ""}</div>`
       + `<div class="ah-plan">${ahead.time ? `<b class="nx-t">${esc(ahead.time)}</b>` : ""}<span class="nx-title">${esc(ahead.title)}</span></div></div>`;
   }
   $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span>`;
