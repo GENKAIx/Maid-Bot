@@ -1293,7 +1293,8 @@ function render() {
     if (heat?.level === "soon" && was !== "soon") heroFlash.set(h.id, { kind: "soon", at: Date.now() });
     const flash = heroFlash.get(h.id);
     const flashing = flash && Date.now() - flash.at < HERO_FLASH ? ` ${flash.kind}` : "";
-    nextHtml += `<div class="nx nx-hero${lit ? ` heat ${heat.level}` : ""}${flashing}" data-day="${esc(h.date_iso)}" data-id="${h.id}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
+    const live = m !== null && m <= 0 && (!h.status || h.status === "active"); // идёт сейчас — золотая обводка
+    nextHtml += `<div class="nx nx-hero${live ? " live" : ""}${lit ? ` heat ${heat.level}` : ""}${flashing}" data-day="${esc(h.date_iso)}" data-id="${h.id}"><span class="hero-txt"><b>${esc(when)}</b> · ${esc(h.title)}</span>`
       + `${at && !lit ? `<span class="hero-at">${esc(at)}</span>` : ""}`
       + (lit
         ? `<button type="button" class="hero-act" data-act="done" title="Сделано">✓</button><button type="button" class="hero-act" data-act="snooze" title="Напомнить через ${HEAT_SNOOZE} мин">⏰</button>`

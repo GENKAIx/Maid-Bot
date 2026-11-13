@@ -368,6 +368,8 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 /* «Горение» плашки (widget.js, planHeat): начался без ответа — тлеет (блик медленно ползёт по краю), через 5 мин горит
    (блик ярче и быстрее, искры вверх), после 15 мин — ровная оранжевая обводка. Наведение успокаивает до тления.
    Фаза блика (--heat-phase) — от часов: перерисовка плашки его не дёргает. */
+/* Идёт сейчас (и на «⏰ Пора» уже ответили) — ровная золотая обводка, пока план не кончился. */
+.w .next .nx-hero.live:not(.heat) { box-shadow: inset 0 0 0 1.5px #f4c55c; }
 @property --heat-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 .w .next .nx-hero { position: relative; isolation: isolate; }
 .w .next .nx-hero.heat { --ember: #ff9a4d; background: color-mix(in srgb, var(--ember) 14%, color-mix(in srgb, var(--accent) 10%, transparent));
