@@ -426,11 +426,15 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w .next .nx-dot { width: 8px; height: 8px; border-radius: 50%; justify-self: center; background: var(--accent); }
 .w .next .nx-t { font-weight: 650; font-variant-numeric: tabular-nums; }
 .w .next .nx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255, 255, 255, .82); }
-.w .next .nx-ahead { display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 12.5px; color: rgba(255, 255, 255, .6); }
-.w .next .nx-ah-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.w .next .nx-label, .w .next .nx-free { color: var(--muted); }
-.w .next .nx-more { flex: none; padding: 0 6px; border-radius: 8px; background: rgba(255, 255, 255, .08); color: var(--muted); font-size: 11.5px; }
-.w .next .nx-free { padding: 0 6px; font-size: 12.5px; }
+/* Плашка другого дня: как плашка сегодняшнего, но тише — без цвета, тонкая рамка; сверху день и сколько в нём планов, внутри первый. */
+.w .next .nx-ahead { display: grid; gap: 3px; padding: 7px 10px 8px 12px; border-radius: 12px; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); transition: background .15s, box-shadow .15s; }
+.w .next .nx-ahead:hover { background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); }
+.w .next .ah-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--muted); }
+.w .next .ah-day { font-weight: 650; }
+.w .next .ah-plan { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; }
+.w .next .ah-plan .nx-t { flex: none; color: rgba(255, 255, 255, .7); }
+.w .next .nx-free { padding: 0 6px; font-size: 12.5px; color: var(--muted); }
 .w h4 { margin: 8px 0 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 /* Привычки — сразу под планами, отделены от задач линией. */
 .w .list.habit-list { margin-top: 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); }

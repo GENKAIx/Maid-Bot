@@ -1270,8 +1270,8 @@ function render() {
   $("#day").textContent = humanDay(data.day);
   $("#miniClock").title = miniDay(data.day);
   // Ближайшие планы. Сегодня — подробно: ближайший (не начавшийся больше 30 мин назад) — выделенной плашкой «Через 44 мин · …»,
-  // остальные сегодняшние — лентой «● 16:00 Название», всего до cfg.nextCount. Другие дни (не дальше недели) — одной бледной
-  // строкой «Дальше: вс 15 11:15 · Поездка… +2», если осталось место. Щелчок по строке — панель планов на её день.
+  // остальные сегодняшние — лентой «● 16:00 Название», всего до cfg.nextCount. Ближайший другой день (не дальше недели) — тихой
+  // плашкой дня: сверху «вс 15» и «5 планов», внутри первый план; если осталось место. Щелчок — панель планов на этот день.
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
   const week = data.upcoming.filter((e) => daysFrom(data.day, e.date_iso) <= 6);
   const shownToday = today.slice(0, cfg.nextCount);
@@ -1304,11 +1304,11 @@ function render() {
   } else if (ahead) nextHtml += `<div class="nx-free">Сегодня свободно</div>`;
   if (ahead) {
     const n = daysFrom(data.day, ahead.date_iso);
-    const more = week.filter((e) => e.date_iso === ahead.date_iso).length - 1;
-    const dayWord = n === 1 ? "завтра" : `${WD_SHORT[wdOf(ahead.date_iso)]} ${Number(ahead.date_iso.slice(8))}`;
+    const count = week.filter((e) => e.date_iso === ahead.date_iso).length;
+    const dayWord = n === 1 ? "Завтра" : `${WD_SHORT[wdOf(ahead.date_iso)]} ${Number(ahead.date_iso.slice(8))}`;
     nextHtml += `<div class="nx nx-ahead" data-day="${esc(ahead.date_iso)}" data-id="${ahead.id}" title="${esc(`${ahead.time ? `${ahead.time} ` : ""}${ahead.title}`)}">`
-      + `<span class="nx-ah-txt"><span class="nx-label">Дальше:</span> ${esc(dayWord)}${ahead.time ? ` ${esc(ahead.time)}` : ""} · ${esc(ahead.title)}</span>`
-      + `${more > 0 ? `<span class="nx-more" title="Ещё планов в этот день: ${more}">+${more}</span>` : ""}</div>`;
+      + `<div class="ah-head"><span class="ah-day">${esc(dayWord[0].toUpperCase() + dayWord.slice(1))}</span>${count > 1 ? `<span class="ah-count">${count} ${plural(count, "план", "плана", "планов")}</span>` : ""}</div>`
+      + `<div class="ah-plan">${ahead.time ? `<b class="nx-t">${esc(ahead.time)}</b>` : ""}<span class="nx-title">${esc(ahead.title)}</span></div></div>`;
   }
   $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span>`;
   for (const d of $("#next").querySelectorAll(".nx-dot[data-c]")) d.style.background = d.dataset.c; // style="" запрещает CSP
