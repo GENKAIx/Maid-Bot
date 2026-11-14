@@ -602,17 +602,6 @@ body.quick { background: transparent; }
   color: var(--muted); background: rgba(255, 255, 255, .07); }
 .w .list .due.today { color: var(--text, #e8e4f4); background: rgba(255, 255, 255, .12); }
 .w .list .due.over { color: #ff9a9a; background: rgba(255, 90, 90, .18); }
-.w .list li.rescue .mark { border-style: dashed; border-color: #ffd76a; }
-.w .list li.rescue .mark:hover { background: rgba(255, 215, 106, .18); }
-.w .list li.rescue .mark.done { background: #ffd76a; border-style: solid; border-color: #ffd76a; color: var(--ink); }
-.crack { position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); overflow: visible; pointer-events: none; }
-.crack polyline { fill: none; stroke: #2a1530; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24;
-  animation: crack 1.4s ease forwards; }
-@keyframes crack { 0% { stroke-dashoffset: 24; } 25% { stroke-dashoffset: 0; stroke: #2a1530; stroke-width: 1.8; } 55% { stroke: #ffd76a; stroke-width: 2.6; }
-  80% { opacity: 1; } 100% { stroke-dashoffset: 0; stroke: #ffd76a; opacity: 0; } }
-.pip.glued, .w .mark.glued { animation: glued .9s ease both; }
-@keyframes glued { 0% { transform: none; } 14% { transform: rotate(-14deg) scale(.9); } 28% { transform: rotate(10deg) scale(.92); } 45% { transform: scale(.68); }
-  70% { transform: scale(1.25); } 100% { transform: none; } }
 
 /* Финиш курса: волна по пупыркам, потом курс — медаль. */
 .pip.wave { animation: pipWave .5s cubic-bezier(.3, 1.6, .4, 1) both; }
@@ -653,7 +642,7 @@ body.quick { background: transparent; }
 @media (prefers-reduced-motion: reduce) {
   .mem-flash.on { animation: memFlashSoft .6s ease-out both; }
   .veil.on { animation: none; }
-  .maid .face.boop, .maid .face.huff, .pip.wave, .pip.glued, .w .mark.glued, .course.as-medal .c-medal { animation: none; }
+  .maid .face.boop, .maid .face.huff, .pip.wave, .course.as-medal .c-medal { animation: none; }
 }
 
 /* --- часы планов (clock.js): слева от панели, низом вровень с ней --- */

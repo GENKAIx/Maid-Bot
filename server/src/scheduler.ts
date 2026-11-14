@@ -231,7 +231,7 @@ export class Scheduler {
         if (text) await this.safeSend(u, text, "worried");
       }
     }
-    // Привычки вчерашнего дня, на которые так и не ответили, — минус (без сообщения: «спасти серию» ещё может его исправить).
+    // Привычки вчерашнего дня, на которые так и не ответили, — минус (без сообщения: попросив горничную, его ещё можно исправить задним числом).
     if (await s.once(`habitMinus:${u.id}:${today}`)) {
       const y = addDays(today, -1);
       for (const d of await habitsOfDay(s, u, y)) if (!d.status) await s.markHabit(d.habit.id, y, "skipped", null);

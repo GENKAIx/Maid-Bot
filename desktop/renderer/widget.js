@@ -1424,12 +1424,9 @@ function render() {
   shownTaskIds = new Set(sec.tasks ? shownTasks.map((t) => t.id) : []);
   const todo = daily.filter((h) => !h.status);
   const hiding = cfg.doneTasks === "hide";
-  // Вчерашний пропуск, который ещё можно спасти задним числом (fun.js).
-  const rescueItem = (h) => `<li class="rescue"><span class="mark" data-rescue="${h.id}" title="Отметить вчерашний день"></span><span>${esc(h.title)} <span class="muted">· вчера — спасти серию</span></span></li>`;
   // Привычки и курсы — своим списком под заголовком «Привычки · отмечено/всего» сразу под планами (отмеченные — бледным внизу или не видны, cfg.doneHabits); задачи — ниже, под «Задачи».
   const habitItems = [
     ...todo.map(dayItem),
-    ...daily.filter(missedYesterday).map(rescueItem),
     // Отмеченные: только что отмеченная здесь — первой среди них, сразу под неотмеченными, чтобы строка сдвигалась как можно меньше.
     ...(cfg.doneHabits === "hide" ? [] : daily.filter((h) => h.status).sort((a, b) => (habitDoneAt.get(b.id) ?? 0) - (habitDoneAt.get(a.id) ?? 0)).map(dayItem)),
   ];
@@ -2435,7 +2432,7 @@ $("#body").addEventListener("click", async (e) => {
     if (leavingRows.has(key)) return cancelLeave(key);
     if (cfg.doneTasks === "hide" && !tick.closest("li.did")) return startLeave(key, tick);
   }
-  const row = !tick && !e.target.dataset?.rescue ? e.target.closest("ul.list li") : null;
+  const row = !tick ? e.target.closest("ul.list li") : null;
   const rowTick = row && !row.matches(".leaving, .undo-row") ? row.querySelector(".check[data-done]:not(.done)") : null;
   if (rowTick) {
     clearTimeout(taskDayTimer);
@@ -2446,10 +2443,8 @@ $("#body").addEventListener("click", async (e) => {
   }
   const id = e.target.dataset?.done;
   const habit = e.target.dataset?.habit;
-  const save = e.target.dataset?.rescue;
   try {
-    if (save) await rescue(e.target, save);
-    else if (id) {
+    if (id) {
       // Галочка задачи: пупырка вдавливается с брызгами, строка съезжает вниз к сделанному, потом сервер.
       e.target.classList.add("done", "pressed");
       e.target.textContent = "✓";

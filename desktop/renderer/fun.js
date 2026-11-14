@@ -163,58 +163,6 @@ function tickDue() {
 }
 setInterval(tickDue, 15_000);
 
-// --- спасённый пропуск ---
-// Вчерашний день по расписанию без отметки — в списке строкой «вчера — спасти серию». Отметка задним числом:
-// пупырка «склеивается» с трещинкой, серия не рвётся.
-const rescued = new Set(); // «id:день» — чтобы плашка курса склеила пупырку, а не просто вдавила
-function dayBefore(day) {
-  const d = new Date(`${day}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
-function missedYesterday(h) {
-  if (h.yesterday !== undefined) return h.yesterday === "none";
-  // Сервер ещё без поля «yesterday» — по дням курса.
-  const y = dayBefore(data.day);
-  return h.course?.find((x) => x.day === y)?.s === "miss";
-}
-function crack(el) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "crack");
-  svg.setAttribute("viewBox", "0 0 16 16");
-  svg.innerHTML = `<polyline points="3,1.5 7,6 5,8.5 10,11.5 13.5,15" />`;
-  el.appendChild(svg);
-  setTimeout(() => svg.remove(), 1500);
-}
-function glue(el) {
-  el.classList.remove("pressed", "glued");
-  void el.offsetWidth;
-  el.classList.add("glued");
-  crack(el);
-  popTone(-7, { vol: 0.2, soft: true });
-  setTimeout(() => popTone(5, { vol: 0.24 }), 380);
-  setTimeout(() => popTone(9, { vol: 0.24 }), 470);
-  setTimeout(() => burst(el), 420);
-}
-async function rescue(el, id) {
-  const h = data.habits.find((x) => x.id === Number(id));
-  if (!h) return;
-  const day = dayBefore(data.day);
-  rescued.add(`${h.id}:${day}`);
-  el.classList.add("done");
-  el.textContent = "✓";
-  glue(el);
-  react("proud", 4500);
-  holdRender = Date.now() + 950; // строка доиграет склейку, потом список и плашка обновятся
-  await maid.api("POST", `/api/habits/${h.id}/mark`, { status: "done", day });
-  await load();
-  const now = data?.habits?.find((x) => x.id === h.id);
-  setTimeout(() => {
-    say(`${line("spared", { title: h.title })}${now?.streak >= 2 ? `, серия цела 🔥${now.streak}` : ""}`, { ms: 5000, mood: "proud" });
-  }, 700);
-  maid.changed();
-}
-
 // --- выполненная задача съезжает вниз ---
 // Сделанные сегодня задачи (сервер их уже не отдаёт): id → { title, until } — внизу списка зачёркнутыми / под счётчиком.
 // Живут до конца дня и переживают перезапуск виджета (localStorage).

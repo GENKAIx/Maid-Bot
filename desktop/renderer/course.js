@@ -120,11 +120,7 @@ function renderCourses() {
     main.course.forEach((x, i) => {
       if (was[i] === x.s) return;
       const p = pips[i];
-      if (x.s === "done" && was[i] === "miss" && rescued.has(`${main.id}:${x.day}`)) {
-        // Вчерашний пропуск отметили задним числом — пупырка склеивается с трещинкой.
-        setTimeout(() => glue(p), n * 110);
-        n++;
-      } else if (x.s === "done") {
+      if (x.s === "done") {
         if (!pendingPopped.has(`${main.id}:${x.day}`)) {
           setTimeout(() => popTone(n * 2), n * 110);
           burst(p, n * 110);
