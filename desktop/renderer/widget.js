@@ -582,17 +582,31 @@ function runType(tw, emotion) {
     b.querySelectorAll(".card, .prop-list").forEach((el) => (el.style.animationDelay = "0ms"));
     finish();
   };
+  run.skip = skip;
   b.addEventListener("click", skip, true);
+  // Длинный текст выше облачка: печать уходит под край — облачко листается за ней, пока его не листнули рукой
+  // так, что последняя буква ушла под край (листнули вниз — снова листается и держит её у нижнего края).
+  const box = b.querySelector(".bubble-text");
+  let follow = true, want = 0;
   // Обычный таймер, а не кадры отрисовки: печать идёт и когда окно не перерисовывается.
   const tick = () => {
     if (typing !== run) return;
     if (b.classList.contains("hidden")) return;
+    if (box && Math.abs(box.scrollTop - want) >= 2) {
+      want = box.scrollTop;
+      const last = tw.chars[run.i - 1];
+      follow = !last || last.getBoundingClientRect().bottom <= box.getBoundingClientRect().bottom + 4;
+    }
     const t = performance.now() - run.t0;
     let shown = false;
     while (run.i < tw.chars.length && tw.at[run.i] <= t) {
       const sp = tw.chars[run.i++];
       sp.classList.add("on");
       if (/\S/.test(sp.textContent)) shown = true;
+    }
+    if (shown && follow && box) {
+      const last = tw.chars[run.i - 1].getBoundingClientRect(), r = box.getBoundingClientRect();
+      if (last.bottom > r.bottom || last.top < r.top) { box.scrollTop += last.bottom - r.bottom; want = box.scrollTop; }
     }
     if (shown && run.n++ % 3 === 0) typeBlip(pitch);
     if (run.i >= tw.chars.length) finish();
@@ -604,6 +618,8 @@ function stopType() {
   typeTimers = [];
   if (!typing) return;
   clearInterval(typing.timer);
+  // Перехватчик щелчков снимается вместе с печатью: иначе после нового say() он съедал нажатия на кнопки.
+  $("#bubble").removeEventListener("click", typing.skip, true);
   typing = null;
   $("#bubble").classList.remove("typing");
 }
