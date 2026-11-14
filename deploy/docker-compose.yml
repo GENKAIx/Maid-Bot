@@ -19,6 +19,9 @@ services:
     build: ./maid
     restart: unless-stopped
     env_file: ./maid/.env
+    environment:
+      # Адрес горничной — тот же домен, что у Caddy: ссылки в приглашениях (установщик), дни дневника в ответах, webhook бота.
+      - PUBLIC_URL=https://${MAID_DOMAIN}
     volumes:
       - maid_data:/data
     networks: [web]
