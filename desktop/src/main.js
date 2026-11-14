@@ -122,7 +122,7 @@ const isSettingsPage = (wc) => {
 };
 
 async function api(method, p, body) {
-  if (!token()) throw new Error(tokenEnc ? "Ключ ещё не расшифровался (защита Windows) — пробую снова." : "Нет ключа: напишите боту /token и вставьте его в настройках.");
+  if (!token()) throw new Error(tokenEnc ? "Ключ ещё не расшифровался (защита Windows) — пробую снова." : "Вход не выполнен: откройте настройки программы и войдите логином и паролем.");
   // Только пути /api/… и только на сервер из настроек: окно не может увести ключ на чужой адрес.
   const base = serverBase();
   if (!base) throw new Error("Неверный адрес сервера в настройках.");
@@ -695,19 +695,57 @@ ipcMain.on("widget-ready", (e) => {
   e.sender.send("down", Boolean(settings.widget.down));
   e.sender.send("down-shown");
 });
+/** Вход логином и паролем на сервере: ключ для программы (POST /api/login, как вход сайта). Ошибки — понятными словами. */
+async function loginOnServer(base, login, password, label) {
+  let res;
+  try {
+    res = await fetch(new URL("/api/login", base), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ login, password, label }), signal: AbortSignal.timeout(30_000),
+    });
+  } catch (e) {
+    maidLog("вход: нет связи с сервером:", e?.cause?.code ?? e?.cause?.message ?? e?.name ?? e?.message ?? e);
+    throw new Error(e?.name === "TimeoutError" ? "Сервер не ответил. Проверьте адрес сервера и интернет." : "Нет связи с сервером. Проверьте адрес сервера и интернет.");
+  }
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) throw new Error("Неверный логин или пароль.");
+  if (!res.ok || typeof data.token !== "string") {
+    maidLog("вход: сервер ответил", res.status);
+    throw new Error(data.error ? `Сервер: ${data.error}` : `Сервер ответил ошибкой ${res.status}. Проверьте адрес сервера.`);
+  }
+  return data.token;
+}
+// Вход в программу — только из окна настроек: адрес, логин и пароль. Ключ — программе, второй — входу сайта в главном окне
+// (копия входа, как site-login:keep), чтобы сайт не спрашивал пароль ещё раз. Пароль не хранится.
+ipcMain.handle("settings:login", async (e, form) => {
+  if (!isSettingsPage(e.sender)) throw new Error("неверный запрос");
+  const base = serverBase(String(form?.server ?? "").trim());
+  if (!base) throw new Error("Адрес сервера: нужен вида https://example.com");
+  const login = String(form?.login ?? "").trim();
+  const password = String(form?.password ?? "");
+  if (!login || !password) throw new Error("Впишите логин и пароль.");
+  const key = await loginOnServer(base, login, password, "Программа на ПК");
+  const site = await loginOnServer(base, login, password, "Программа на ПК: сайт").catch(() => "");
+  settings.server = base;
+  settings.token = key;
+  tokenEnc = "";
+  if (site && canEncrypt()) {
+    settings.siteTokenEnc = safeStorage.encryptString(site).toString("base64");
+    siteSeen = null;
+  }
+  saveSettings();
+  refreshTray();
+  maidLog("вход в программу выполнен");
+  broadcast("changed", null);
+  return shown();
+});
 ipcMain.handle("settings:set", (e, patch) => {
   patch = { ...patch };
-  // Адрес и ключ — только из окна настроек; пустой ключ — «оставить прежний».
-  if (!isSettingsPage(e.sender)) { delete patch.server; delete patch.token; }
+  // Адрес сервера и ключ меняет только вход (settings:login).
+  delete patch.server;
+  delete patch.token;
   delete patch.siteTokenEnc;
-  if ("token" in patch && !String(patch.token ?? "").trim()) delete patch.token;
-  if ("server" in patch) {
-    const b = serverBase(String(patch.server ?? "").trim());
-    if (!b) throw new Error("Адрес сервера: нужен вида https://example.com");
-    patch.server = b;
-  }
-  if (patch.token) tokenEnc = ""; // новый ключ — старый зашифрованный больше не нужен
-  settings = { ...settings, ...patch, widget: { ...settings.widget, ...patch.widget }, tracker: { ...settings.tracker, ...patch.tracker }, keys: { ...settings.keys, ...patch.keys } };
+  settings ={ ...settings, ...patch, widget: { ...settings.widget, ...patch.widget }, tracker: { ...settings.tracker, ...patch.tracker }, keys: { ...settings.keys, ...patch.keys } };
   saveSettings();
   registerKeys();
   applyAutostart();

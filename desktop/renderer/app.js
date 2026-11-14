@@ -1,7 +1,7 @@
 // Главное окно: сегодня, планы, задачи, даты, настройки и поле ввода (как сообщение боту).
 
 // Главное окно теперь показывает веб-приложение с сервера; эта страница открывается для настроек
-// (из трея или пока нет ключа) и как запасной вид, если сервер недоступен.
+// (из трея или пока не выполнен вход) и как запасной вид, если сервер недоступен.
 let tab = new URLSearchParams(location.search).get("tab") === "settings" ? "settings" : "today";
 let today = null;
 
@@ -66,9 +66,15 @@ async function renderSettings() {
   content.innerHTML = `
     <h2>Настройки</h2>
     <div class="form">
-      <label>Адрес сервера<input id="server" value="${esc(s.server)}" /></label>
-      ${s.insecure ? `<p class="small high">Адрес без https: ключ и записи идут по сети открытым текстом. Укажите адрес https://…</p>` : ""}
-      <label>Ключ (команда /token в боте)<input id="token" type="password" autocomplete="off" placeholder="${s.hasToken ? "ключ задан — оставьте пустым, чтобы не менять" : "вставьте ключ"}" /></label>
+      ${s.hasToken ? `<div class="row"><span class="muted">Вход выполнен: ${esc(s.server)}</span><button id="relogin">Войти под другим логином</button></div>` : ""}
+      <div class="form login-box${s.hasToken ? " closed" : ""}" id="loginBox">
+        <p class="muted small">Адрес сервера, логин и пароль прислал бот в приглашении.</p>
+        <label>Адрес сервера<input id="server" value="${esc(s.server)}" placeholder="https://…" /></label>
+        ${s.insecure ? `<p class="small high">Адрес без https: пароль и записи идут по сети открытым текстом. Укажите адрес https://…</p>` : ""}
+        <label>Логин<input id="login" autocomplete="username" /></label>
+        <label>Пароль<input id="password" type="password" autocomplete="current-password" /></label>
+        <div class="row"><button class="primary" id="doLogin">Войти</button></div>
+      </div>
       <label class="row"><input type="checkbox" id="wshow" style="width:auto" ${s.widget.show ? "checked" : ""}/> Виджет поверх всех окон</label>
       <label>Прозрачность виджета <input id="wop" type="range" min="0.4" max="1" step="0.02" value="${s.widget.opacity}" /></label>
       <label class="row"><input type="checkbox" id="auto" style="width:auto" ${s.autostart ? "checked" : ""}/> Запускать вместе с Windows</label>
@@ -79,27 +85,29 @@ async function renderSettings() {
       <p class="small muted">Трекер: ${st.error ? `<span class="high">${esc(st.error)}</span>` : st.last ? `отправлено ${new Date(st.last).toLocaleTimeString("ru-RU")}` : "ещё не отправлял"}</p>
       <div class="row"><button class="primary" id="save">Сохранить</button><button id="tnow">Отправить ПК сейчас</button></div>
     </div>`;
-  // Сохранить, проверить ключ на сервере и, если всё верно, открыть свой аккаунт (сайт) в этом окне.
+  const plain = (e) => String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+  if ($("#relogin")) $("#relogin").onclick = () => { $("#loginBox").classList.remove("closed"); $("#login").focus(); };
+  // Вход: адрес, логин и пароль — программа получает ключ сама и открывает свой аккаунт (сайт) в этом окне.
+  const doLogin = async () => {
+    toast("Вхожу…");
+    try {
+      await maid.login({ server: $("#server").value.trim(), login: $("#login").value.trim(), password: $("#password").value });
+    } catch (e) { return toast(esc(plain(e))); }
+    today = null;
+    toast("Вход выполнен ✓");
+    maid.openMain();
+  };
+  $("#doLogin").onclick = doLogin;
+  $("#password").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+  if (!s.hasToken) $(s.server ? "#login" : "#server").focus();
   $("#save").onclick = async () => {
-    let saved;
-    try { saved = await maid.saveSettings({
-      server: $("#server").value.trim(),
-      token: $("#token").value.trim(),
+    try { await maid.saveSettings({
       widget: { show: $("#wshow").checked, opacity: Number($("#wop").value) },
       tracker: { enabled: $("#track").checked, games: $("#games").value.split("\n").map((x) => x.trim()).filter(Boolean) },
       keys: { quick: $("#kq").value.trim(), grab: $("#kg").value.trim() },
       autostart: $("#auto").checked,
-    }); } catch (e) { return toast(esc(String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""))); }
-    today = null;
-    if (!saved.server || !saved.hasToken) return toast("Сохранено. Чтобы войти, нужны адрес сервера и ключ.");
-    if (saved.insecure) toast("Внимание: адрес без https — ключ идёт открытым текстом.");
-    toast("Сохранено. Проверяю ключ…");
-    try {
-      await maid.api("GET", "/api/today");
-      maid.openMain();
-    } catch (e) {
-      toast(`Сохранено, но войти не вышло: ${esc(e.message)}`);
-    }
+    }); } catch (e) { return toast(esc(plain(e))); }
+    toast("Сохранено ✓");
   };
   $("#tnow").onclick = async () => {
     await maid.trackNow();

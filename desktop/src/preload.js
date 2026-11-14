@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("maid", {
   api: (method, path, body) => ipcRenderer.invoke("api", method, path, body),
   settings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
+  /** Вход логином и паролем (только окно настроек): { server, login, password }. */
+  login: (form) => ipcRenderer.invoke("settings:login", form),
   trackNow: () => ipcRenderer.invoke("tracker:now"),
   idle: () => ipcRenderer.invoke("idle"),
   changed: () => ipcRenderer.send("changed"),
