@@ -63,11 +63,14 @@ function render() {
 async function renderSettings() {
   const s = await maid.settings();
   const st = s.tracker.state ?? {};
+  // Сервер не принял ключ (loginStale, main.js) — вход не считается выполненным: форма входа открыта сразу.
+  const logged = s.hasToken && !s.loginStale;
   content.innerHTML = `
     <h2>Настройки</h2>
     <div class="form">
-      ${s.hasToken ? `<div class="row"><span class="muted">Вход выполнен: ${esc(s.server)}</span><button id="relogin">Войти под другим логином</button></div>` : ""}
-      <div class="form login-box${s.hasToken ? " closed" : ""}" id="loginBox">
+      ${logged ? `<div class="row"><span class="muted">Вход выполнен: ${esc(s.server)}</span><button id="relogin">Войти под другим логином</button></div>` : ""}
+      <div class="form login-box${logged ? " closed" : ""}" id="loginBox">
+        ${s.loginStale ? `<p class="high">Вход устарел: сервер больше не принимает его. Войдите снова.</p>` : ""}
         <p class="muted small">Адрес сервера, логин и пароль прислал бот в приглашении.</p>
         <label>Адрес сервера<input id="server" value="${esc(s.server)}" placeholder="https://…" /></label>
         ${s.insecure ? `<p class="small high">Адрес без https: пароль и записи идут по сети открытым текстом. Укажите адрес https://…</p>` : ""}
@@ -99,7 +102,7 @@ async function renderSettings() {
   };
   $("#doLogin").onclick = doLogin;
   $("#password").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-  if (!s.hasToken) $(s.server ? "#login" : "#server").focus();
+  if (!logged) $(s.server ? "#login" : "#server").focus();
   $("#save").onclick = async () => {
     try { await maid.saveSettings({
       widget: { show: $("#wshow").checked, opacity: Number($("#wop").value) },

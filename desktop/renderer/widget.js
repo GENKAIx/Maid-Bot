@@ -1269,6 +1269,14 @@ function render() {
   const now = new Date();
   const sec = cfg.sections;
   $("#clock").textContent = $("#miniClock").textContent = now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  if (/^вход устарел/.test(loadFail)) {
+    // Сервер не принял ключ (main.js, 401): связь есть, нужен вход заново — кнопка открывает настройки с формой входа.
+    $("#next").innerHTML = `<div class="relogin"><span>Вход устарел — войдите снова</span><button type="button" id="reloginBtn">Войти</button></div>`;
+    $("#reloginBtn").onclick = () => maid.openSettings();
+    $("#body").innerHTML = "";
+    renderCourses();
+    return;
+  }
   if (!data) {
     $("#next").innerHTML = `<span class="muted">Нет связи с сервером${loadFail && !/^нет связи с сервером$/i.test(loadFail) ? `<br><small>${esc(loadFail)}</small>` : ""}</span>`;
     $("#body").innerHTML = "";
@@ -1695,7 +1703,8 @@ async function load() {
     // Нет связи — старые данные пока оставить, следующий опрос через 5 с.
     loadFail = String(err?.message ?? "").replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
     if (online) { online = false; settle(); }
-    if (!data) render(); // «Нет связи» и почему
+    // Вход устарел — вместо списка «Войти» (данные остаются: по ним работают часы и полоса дней).
+    if (!data || /^вход устарел/.test(loadFail)) { lastJson = ""; render(); } // «Нет связи» и почему
     return;
   }
   noteGoneTasks();

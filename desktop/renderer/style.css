@@ -241,6 +241,10 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .chat .ob-acts button { width: auto; height: 26px; padding: 0 11px; border-radius: 13px; font-size: 12px; font-weight: 600; }
 .chat .ob-acts .ob-retry { background: var(--warn); color: #3a2410; }
 .chat .ob-acts .ob-retry:hover { background: #ffc68f; }
+/* Вход устарел (сервер не принял ключ): надпись и «Войти» вместо «Нет связи с сервером». */
+.relogin { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.relogin button { width: auto; height: 26px; padding: 0 12px; border-radius: 13px; font-size: 12px; font-weight: 600; background: var(--accent); color: #fff; }
+.relogin button:hover { filter: brightness(1.1); }
 .chat .ob-acts .ob-later { background: rgba(255, 255, 255, .1); color: var(--text); }
 .chat .ob-acts .ob-later:hover { background: rgba(255, 255, 255, .18); }
 @keyframes obSpin { to { transform: rotate(360deg); } }

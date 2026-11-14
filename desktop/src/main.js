@@ -153,9 +153,20 @@ async function api(method, p, body) {
     }
   }
   const data = await res.json().catch(() => ({}));
+  // Сервер не принял ключ (вышли на сайте, устройство удалено, аккаунта нет): это не обрыв связи — нужен вход заново.
+  // Раньше виджет писал «Нет связи с сервером», хотя связь была.
+  if (res.status === 401) {
+    if (!loginStale) maidLog("сервер не принял ключ (401) — нужен вход заново");
+    loginStale = true;
+    throw new Error(LOGIN_STALE);
+  }
+  loginStale = false;
   if (!res.ok) throw new Error(data.error ?? `сервер ${res.status}`);
   return data;
 }
+/** Сервер ответил 401 на ключ программы: виджет просит войти, настройки открывают форму входа. */
+let loginStale = false;
+const LOGIN_STALE = "вход устарел — войдите снова";
 
 let mainWin = null;
 let widget = null;
@@ -684,7 +695,7 @@ ipcMain.on("open-section", (_e, p) => {
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
 });
 // Окнам — настройки без ключа.
-const shown = () => { const { token: _t, siteTokenEnc: _s, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
+const shown = () => { const { token: _t, siteTokenEnc: _s, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), loginStale, insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
 // http:// не на этом компьютере — ключ и дневник идут открытым текстом.
 function insecure(s) {
   try { const u = new URL(String(s)); return u.protocol === "http:" && !/^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(u.hostname); } catch { return false; }
@@ -729,6 +740,7 @@ ipcMain.handle("settings:login", async (e, form) => {
   settings.server = base;
   settings.token = key;
   tokenEnc = "";
+  loginStale = false;
   if (site && canEncrypt()) {
     settings.siteTokenEnc = safeStorage.encryptString(site).toString("base64");
     siteSeen = null;
@@ -902,6 +914,8 @@ global.maidDebug = () => ({
 });
 ipcMain.on("changed", () => broadcast("changed", null));
 ipcMain.on("open-main", () => showMain());
+// Виджет: «Вход устарел» → «Войти» — окно настроек с формой входа.
+ipcMain.on("open-settings", () => showMain(true));
 ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
 ipcMain.on("hover", () => {});
