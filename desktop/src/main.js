@@ -205,7 +205,7 @@ const page = (name) => path.join(__dirname, "..", "renderer", name);
 const prefs = { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true };
 
 // Главное окно — веб-приложение с сервера (то же, что на телефоне). Страница с сервера — со своим маленьким preload
-// (preload-app.js: только настройки виджета, раздел «Виджет»): ключ десктопа ей не нужен, вход там свой (логин и пароль).
+// (preload-app.js: настройки виджета, раздел «Виджет», и один вход с программой — site-login:*).
 // Сервер не отвечает — локальная страница настроек.
 function showMain(settingsOnly = false) {
   const local = settingsOnly || !settings.server;
@@ -805,9 +805,12 @@ const fromApp = (e) => {
 // Окно открылось — preload-app.js берёт ключ программы (site-login:get) и кладёт сайту. Вошли на сайте — его вход становится
 // ключом программы (site-login:keep). Вышли на сайте (кнопкой или сервер ответил 401 — сайт стёр вход) — программа тоже выходит,
 // виджет показывает свою форму входа. Раньше у сайта был свой, второй вход: «Выйти» на сайте виджет не трогало.
+// returnValue присваивать один раз: ответ уходит окну при первом присваивании (в 0.1.34 сначала ставился "" — сайт ключ не получал).
 ipcMain.on("site-login:get", (e) => {
-  e.returnValue = "";
-  if (!fromApp(e)) return maidLog("вход сайта: просьба не из главного окна");
+  if (!fromApp(e)) {
+    e.returnValue = "";
+    return maidLog("вход сайта: просьба не из главного окна");
+  }
   e.returnValue = token() || "";
 });
 ipcMain.on("site-login:keep", (e, t) => {

@@ -18,7 +18,13 @@ const box = new Function(
   { on: (name, fn) => (handlers[name] = fn) }, (e) => e.sender === app, () => settings.token, settings,
   (...a) => log.push(a.join(" ")), () => st.saved++, () => {}, (ch) => ch === "changed" && st.changed++,
 );
-const get = (sender) => { const e = { sender }; handlers["site-login:get"](e); return e.returnValue; };
+// Как в Electron: ответ окну уходит при первом присваивании returnValue, дальше присваивания не доходят.
+const get = (sender) => {
+  let sent;
+  const e = { sender, set returnValue(v) { if (sent === undefined) sent = v; } };
+  handlers["site-login:get"](e);
+  return sent;
+};
 const keep = (sender, t) => handlers["site-login:keep"]({ sender }, t);
 
 try {
