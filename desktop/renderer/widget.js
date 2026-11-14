@@ -1474,6 +1474,7 @@ function render() {
   for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP
   fitHistory(); // планы сверху могли стать выше или ниже
   for (const li of $("#body").querySelectorAll("li.arrive")) li.style.setProperty("--arrive-delay", `-${Date.now() - taskArriveAt.get(Number(li.dataset.arrive))}ms`);
+  scrollToArrival();
   for (const li of $("#body").querySelectorAll("li.woke")) li.style.setProperty("--wake-delay", `-${Date.now() - wokeAt.get(Number(li.dataset.woke))}ms`);
   for (const li of $("#body").querySelectorAll("li.leaving")) {
     const x = leavingRows.get(li.dataset.key);
@@ -1859,9 +1860,19 @@ function noteArrivals(all) {
   const ids = new Set(all.map((t) => t.id));
   if (knownTasks) for (const id of ids) if (!knownTasks.has(id)) taskArriveAt.set(id, Date.now());
   knownTasks = ids;
-  for (const [id, at] of taskArriveAt) if (Date.now() - at > ARRIVE_SHOW) taskArriveAt.delete(id);
+  for (const [id, at] of taskArriveAt) if (Date.now() - at > ARRIVE_SHOW) { taskArriveAt.delete(id); arriveScrolled.delete(String(id)); }
 }
 const arriving = (t) => taskArriveAt.has(t.id) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Задач больше, чем помещается, — новая встаёт за краем списка, и въезд играл невидимым: список докручивается к ней один раз
+// (перерисовки во время въезда прокрутку не дёргают; уже видна — «nearest» не двигает).
+const arriveScrolled = new Set();
+function scrollToArrival() {
+  for (const li of $("#body").querySelectorAll("li.arrive")) {
+    if (arriveScrolled.has(li.dataset.arrive)) continue;
+    arriveScrolled.add(li.dataset.arrive);
+    li.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
 // Привычки, отмеченные в этом окне, — когда (для порядка отмеченных). Перестройка списка привычек — плавная: строка едет
 // со старого места на новое (FLIP: запомнить места до перерисовки, после — сдвинуть обратно и отпустить).
 const habitDoneAt = new Map();
