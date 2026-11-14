@@ -185,6 +185,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
    Заходит в облачко на 1 px: при дробной ширине облачка между ними иначе видна щель. */
 .bubble::after { content: ""; position: absolute; right: -7px; bottom: min(22px, calc(50% - 8px)); border: 8px solid transparent; border-left: 8px solid var(--tail, rgba(255,255,255,.97)); border-right: 0; }
 .bubble.hidden { opacity: 0; pointer-events: none; }
+.bubble { translate: 0 var(--drop, 0px); } /* у верха экрана облачко опускается, чтобы не уйти за край (widget.js, fitBubble) */
 .bubble.angry { background: #fde6ea; --tail: #fde6ea; }
 .bubble.happy, .bubble.proud { background: #e9f8ef; --tail: #e9f8ef; }
 .bubble-text { max-height: 220px; overflow: auto; white-space: pre-wrap; }

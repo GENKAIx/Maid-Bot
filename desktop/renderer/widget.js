@@ -496,6 +496,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   });
   b.className = `bubble ${emotion}`;
   placeBubble();
+  fitBubble();
   if (tw) runType(tw, emotion);
   // Кнопка с самонажатием (auto: секунды) — облачко держит она, своего таймера нет.
   const autoBtn = acts.querySelector("button.auto");
@@ -1957,6 +1958,22 @@ function placeBubble() {
   const need = Math.max(b.offsetHeight, 120) + ($("#maid").offsetHeight || 0) * 0.6 + 20;
   st.classList.toggle("bubble-up", top >= need);
 }
+// Окно у верха экрана: прозрачный верх окна разрешено уводить за край (main.js, widgetBounds), а с ним уходил и верх высокого
+// облачка. Тогда облачко опускается ровно на ушедшее (может накрыть верх панели) и возвращается, когда окно ниже.
+// Окно двигает main.js, событий о сдвиге здесь нет — проверка раз в 250 мс, пока облачко видно, и при смене его размера.
+function fitBubble() {
+  const b = $("#bubble");
+  const was = parseFloat(b.style.getPropertyValue("--drop")) || 0;
+  if (b.classList.contains("hidden")) {
+    if (was) b.style.setProperty("--drop", "0px");
+    return;
+  }
+  const top = screenY + b.getBoundingClientRect().top - was - (screen.availTop ?? 0);
+  const drop = Math.max(0, Math.ceil(4 - top));
+  if (drop !== was) b.style.setProperty("--drop", `${drop}px`);
+}
+setInterval(fitBubble, 250);
+new ResizeObserver(fitBubble).observe($("#bubble"));
 // Сколько горничная выглядывает над карточкой (или над панелью): main не пускает её голову за верх экрана.
 function sendFold() {
   const m = $("#maid");
