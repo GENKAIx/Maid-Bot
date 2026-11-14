@@ -477,8 +477,14 @@ function createWidget() {
   widget.on("blur", () => flog("win-blur"));
   widget.on("closed", () => (widget = null));
   // Страница виджета упала или зависла — окно оставалось пустым и прозрачным, будто виджет пропал. Загружаем заново.
-  widget.webContents.on("render-process-gone", (_e, d) => { if (d.reason !== "clean-exit" && widget && !widget.isDestroyed()) widget.reload(); });
-  widget.on("unresponsive", () => { if (widget && !widget.isDestroyed()) widget.webContents.forcefullyCrashRenderer(); });
+  widget.webContents.on("render-process-gone", (_e, d) => {
+    maidLog("страница виджета упала:", d.reason, d.exitCode);
+    if (d.reason !== "clean-exit" && widget && !widget.isDestroyed()) widget.reload();
+  });
+  widget.on("unresponsive", () => {
+    maidLog("страница виджета зависла");
+    if (widget && !widget.isDestroyed()) widget.webContents.forcefullyCrashRenderer();
+  });
 }
 
 /** Взять виджет: можно таскать и кликать. Отпустить: клики идут сквозь него в окна под ним,
@@ -534,18 +540,41 @@ function setGrab(on) {
   widget.webContents.send("grab", on);
 }
 
+/** Окно есть, но не видно (свернулось, спряталось, ушло за край, оказалось под другими окнами) — вернуть на экран и наверх. */
+function reviveWidget(why) {
+  if (!widget || widget.isDestroyed()) return;
+  if (widget.isMinimized()) widget.restore();
+  const b = widget.getBounds();
+  if (!screen.getAllDisplays().some((d) => { const a = d.workArea; return b.x < a.x + a.width && b.x + b.width > a.x && b.y < a.y + a.height && b.y + b.height > a.y; })) {
+    maidLog("виджет за экраном — возвращаю:", why);
+    widget.setBounds(widgetBounds());
+  }
+  widget.showInactive();
+  widget.setAlwaysOnTop(true, "screen-saver");
+  widget.moveTop();
+}
+
+// Виджет пропадал целиком, пока программа работала: после сна ПК, смены экранов или сбоя видеочасти окно оставалось пустым
+// и прозрачным, уходило за край или под другие окна. Что случилось — в журнал; окно — обратно.
+function watchWidget() {
+  app.on("child-process-gone", (_e, d) => {
+    maidLog("сбой процесса:", d.type, d.reason, d.exitCode);
+    // Видеочасть упала — прозрачное окно больше не рисуется; страница виджета загружается заново.
+    if (d.type === "GPU" && d.reason !== "clean-exit" && widget && !widget.isDestroyed()) widget.reload();
+  });
+  powerMonitor.on("suspend", () => maidLog("сон ПК"));
+  // После пробуждения экраны подключаются не сразу — вернуть окно чуть погодя.
+  powerMonitor.on("resume", () => { maidLog("пробуждение ПК"); setTimeout(() => reviveWidget("пробуждение ПК"), 3000); });
+  screen.on("display-added", () => { maidLog("экран подключён"); reviveWidget("экран подключён"); });
+  screen.on("display-removed", () => { maidLog("экран отключён"); widget?.setBounds(widgetBounds()); });
+  screen.on("display-metrics-changed", (_e, _d, changed) => { maidLog("экран изменился:", changed.join(",")); reviveWidget("экран изменился"); });
+}
+
 function toggleWidget(show = !widget) {
   settings.widget.show = show;
   saveSettings();
-  if (show && widget && !widget.isDestroyed()) {
-    // Окно есть, но не видно (свернулось, спряталось, ушло за край) — вернуть на экран и наверх.
-    if (widget.isMinimized()) widget.restore();
-    const b = widget.getBounds();
-    if (!screen.getAllDisplays().some((d) => { const a = d.workArea; return b.x < a.x + a.width && b.x + b.width > a.x && b.y < a.y + a.height && b.y + b.height > a.y; })) widget.setBounds(widgetBounds());
-    widget.showInactive();
-    widget.setAlwaysOnTop(true, "screen-saver");
-    widget.moveTop();
-  } else if (show) createWidget();
+  if (show && widget && !widget.isDestroyed()) reviveWidget("из меню");
+  else if (show) createWidget();
   else widget?.close();
   refreshTray();
 }
@@ -894,7 +923,7 @@ app.whenReady().then(() => {
     setTimeout(() => void updates.check(), 60_000);
     setInterval(() => void updates.check(), 6 * 3600_000);
   }
-  screen.on("display-removed", () => widget?.setBounds(widgetBounds()));
+  watchWidget();
 });
 app.on("window-all-closed", (e) => e.preventDefault?.());
 app.on("will-quit", () => globalShortcut.unregisterAll());
