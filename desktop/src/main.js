@@ -5,7 +5,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor, nativeTheme, session } = require("electron");
-const { collectDay, localDay } = require("./activity.js");
+const { createTracker, localDay, STEP_MS } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
 const { createUpdates } = require("./updates.js");
 
@@ -607,7 +607,7 @@ function watchWidget() {
     // Видеочасть упала — прозрачное окно больше не рисуется; страница виджета загружается заново.
     if (d.type === "GPU" && d.reason !== "clean-exit" && widget && !widget.isDestroyed()) widget.reload();
   });
-  powerMonitor.on("suspend", () => maidLog("сон ПК"));
+  powerMonitor.on("suspend", () => { maidLog("сон ПК"); counter?.save(); });
   // После пробуждения экраны подключаются не сразу — вернуть окно чуть погодя.
   powerMonitor.on("resume", () => { maidLog("пробуждение ПК"); setTimeout(() => reviveWidget("пробуждение ПК"), 3000); });
   screen.on("display-added", () => { maidLog("экран подключён"); reviveWidget("экран подключён"); });
@@ -676,6 +676,10 @@ function registerKeys() {
 // --- трекер ---
 let trackerTimer = null;
 let trackerState = { last: null, error: null };
+// Свой учёт времени (activity.js): замер раз в 5 с, день — в userData/activity, на сервер — раз в 10 мин (trackOnce).
+let counter = null;
+let tickTimer = null;
+let saveTimer = null;
 async function trackOnce() {
   if (!settings.tracker.enabled || !token()) return;
   const days = [localDay()];
@@ -685,21 +689,22 @@ async function trackOnce() {
   try {
     const names = [];
     for (const d of days) {
-      const day = await collectDay(d, settings.tracker.games);
+      const day = counter.summary(d, settings.tracker.games);
       await api("POST", "/api/activity", day);
       for (const x of [...day.apps, ...day.games]) names.push(x.name);
     }
     trackerState = { last: new Date().toISOString(), error: null };
-    sendIcons(names).catch((e) => console.warn("[icons]", e.message));
+    sendIcons(names, days).catch((e) => console.warn("[icons]", e.message));
   } catch (e) {
     trackerState = { last: trackerState.last, error: e.message };
   }
   broadcast("tracker", trackerState);
 }
 // Значки программ из статистики — один раз на программу (settings.tracker.iconsSent).
-async function sendIcons(names) {
+async function sendIcons(names, days) {
   const sent = new Set(settings.tracker.iconsSent ?? []);
-  const icons = await newIcons(names, sent);
+  const paths = new Map(days.flatMap((d) => [...counter.paths(d)]));
+  const icons = await newIcons(names, sent, paths);
   if (!icons.length) return;
   await api("POST", "/api/icons", { icons });
   for (const i of icons) sent.add(iconKey(i.name));
@@ -708,6 +713,18 @@ async function sendIcons(names) {
 }
 function startTracker() {
   clearInterval(trackerTimer);
+  clearInterval(tickTimer);
+  clearInterval(saveTimer);
+  counter?.save();
+  // Выключен «Отправлять время за ПК» — и не считаем: ничего не пишется даже на диск.
+  if (!settings.tracker.enabled) return;
+  counter ??= createTracker({
+    dir: path.join(app.getPath("userData"), "activity"),
+    idle: () => ({ sec: powerMonitor.getSystemIdleTime(), locked: powerMonitor.getSystemIdleState(1) === "locked" }),
+    log: maidLog,
+  });
+  tickTimer = setInterval(() => counter.tick(), STEP_MS);
+  saveTimer = setInterval(() => counter.save(), 60_000);
   trackerTimer = setInterval(trackOnce, 10 * 60_000);
   setTimeout(trackOnce, 15_000);
 }
@@ -1012,4 +1029,7 @@ app.whenReady().then(() => {
   watchWidget();
 });
 app.on("window-all-closed", (e) => e.preventDefault?.());
-app.on("will-quit", () => globalShortcut.unregisterAll());
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
+  counter?.save();
+});

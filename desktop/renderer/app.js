@@ -81,7 +81,7 @@ async function renderSettings() {
       <label class="row"><input type="checkbox" id="wshow" style="width:auto" ${s.widget.show ? "checked" : ""}/> Виджет поверх всех окон</label>
       <label>Прозрачность виджета <input id="wop" type="range" min="0.4" max="1" step="0.02" value="${s.widget.opacity}" /></label>
       <label class="row"><input type="checkbox" id="auto" style="width:auto" ${s.autostart ? "checked" : ""}/> Запускать вместе с Windows</label>
-      <label class="row"><input type="checkbox" id="track" style="width:auto" ${s.tracker.enabled ? "checked" : ""}/> Отправлять время за ПК (нужен ActivityWatch)</label>
+      <label class="row"><input type="checkbox" id="track" style="width:auto" ${s.tracker.enabled ? "checked" : ""}/> Считать и отправлять время за ПК</label>
       <label>Игры — имена программ, по одной в строке<textarea id="games" rows="5">${esc(s.tracker.games.join("\n"))}</textarea></label>
       <label>Быстрая запись<input id="kq" value="${esc(s.keys.quick)}" /></label>
       <label>Взять/отпустить виджет<input id="kg" value="${esc(s.keys.grab)}" /></label>

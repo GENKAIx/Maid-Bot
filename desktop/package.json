@@ -33,7 +33,9 @@
     "nsis": {
       "oneClick": false,
       "include": "installer.nsh",
-      "installerLanguages": ["ru_RU"],
+      "installerLanguages": [
+        "ru_RU"
+      ],
       "language": "1049",
       "perMachine": false,
       "runAfterFinish": true,
@@ -51,6 +53,7 @@
     ]
   },
   "dependencies": {
-    "electron-updater": "^6.8.11"
+    "electron-updater": "^6.8.11",
+    "koffi": "3.3.8"
   }
 }

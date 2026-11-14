@@ -3,7 +3,7 @@ import type { Store, User } from "./db.ts";
 import type { Send } from "./scheduler.ts";
 import { durationHuman, isDayKey } from "./time.ts";
 
-// Активность с трекера ПК (десктоп читает ActivityWatch). Игры в дневник пишет только он.
+// Активность с трекера ПК (десктоп считает сам — desktop/src/activity.js). Игры в дневник пишет только он.
 // Шаги сюда больше не идут: они — показатель дня (POST /api/steps с айфона).
 
 const Item = z.object({ name: z.string().min(1).max(120), sec: z.number().int().min(0).max(86400) });

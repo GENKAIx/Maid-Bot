@@ -21,9 +21,10 @@ const widget = {
   moveTop: () => calls.push("moveTop"), reload: () => calls.push("reload"),
 };
 const timers = [];
-const api = new Function("app", "powerMonitor", "screen", "widget", "maidLog", "widgetBounds", "setTimeout",
+const saves = [];
+const api = new Function("app", "powerMonitor", "screen", "widget", "maidLog", "widgetBounds", "setTimeout", "counter",
   code + "; return { reviveWidget, watchWidget };");
-const A = api(app, powerMonitor, screen, widget, (...a) => log.push(a.join(" ")), () => ({ x: 1490, y: 280, width: 420, height: 760 }), (f) => timers.push(f));
+const A = api(app, powerMonitor, screen, widget, (...a) => log.push(a.join(" ")), () => ({ x: 1490, y: 280, width: 420, height: 760 }), (f) => timers.push(f), { save: () => saves.push(1) });
 A.watchWidget();
 const reset = () => { log.length = 0; calls.length = 0; };
 
@@ -44,6 +45,7 @@ reset();
 powerMonitor.emit("suspend");
 powerMonitor.emit("resume");
 check(log.includes("сон ПК") && log.includes("пробуждение ПК"), "сон/пробуждение: нет записей");
+check(saves.length === 1, "сон ПК: день трекера не записан на диск");
 check(!calls.includes("show") && timers.length === 1, "пробуждение: окно надо вернуть отложенно");
 timers.shift()();
 check(calls.includes("show") && calls.includes("top:true:screen-saver") && calls.includes("moveTop"), "пробуждение: окно не поднято наверх");
