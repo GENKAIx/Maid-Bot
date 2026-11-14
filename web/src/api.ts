@@ -2,7 +2,14 @@
 
 const KEY = "maid.token";
 
-export const getToken = () => localStorage.getItem(KEY) ?? "";
+// Ключ сервера — только латиница, цифры и знаки. Испорченный (например, из старой программы на ПК) fetch не отправит —
+// вместо «Нет связи: … non ISO-8859-1 code point» стираем его, и сайт показывает вход.
+const keyOk = (t: string) => /^[\x21-\x7e]{1,4000}$/.test(t);
+export const getToken = () => {
+  const t = localStorage.getItem(KEY) ?? "";
+  if (t && !keyOk(t)) localStorage.removeItem(KEY);
+  return keyOk(t) ? t : "";
+};
 export const setToken = (t: string) => (t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY));
 
 export class ApiError extends Error {

@@ -53,8 +53,17 @@ function token() {
       maidLog("ключ не расшифровался:", e?.message ?? e);
     }
   }
+  // Ключ сервера — только латиница, цифры и знаки (base64url). Другое (до 0.1.30 в поле «Ключ» вписывали что угодно, например
+  // пароль по-русски) fetch не отправит: виджет писал «нет связи», а сайт в окне — «non ISO-8859-1 code point». Такой ключ — не вход.
+  if (settings.token && !keyOk(settings.token)) {
+    maidLog("ключ программы испорчен (не латиница) — нужен вход заново");
+    settings.token = "";
+    loginStale = true;
+    saveSettings();
+  }
   return settings.token;
 }
+const keyOk = (t) => typeof t === "string" && /^[\x21-\x7e]{1,4000}$/.test(t);
 // Журнал программы для разбора сбоев: userData/maid.log, без ключа и содержимого; больше 200 КБ — начинается заново.
 const logFile = () => path.join(app.getPath("userData"), "maid.log");
 const logged = new Map(); // одна и та же строка — не чаще раза в минуту
@@ -815,7 +824,7 @@ ipcMain.on("site-login:get", (e) => {
 });
 ipcMain.on("site-login:keep", (e, t) => {
   if (!fromApp(e)) return maidLog("вход сайта: пришёл не из главного окна");
-  if (typeof t !== "string" || t.length > 4000) return;
+  if (typeof t !== "string" || (t && !keyOk(t))) return;
   if (t) {
     if (t === settings.token) return;
     settings.token = t;

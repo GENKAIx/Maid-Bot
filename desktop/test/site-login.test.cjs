@@ -3,7 +3,7 @@
 const fs = require("fs");
 const src = fs.readFileSync(process.argv[2] ?? require("path").join(__dirname, "../src/main.js"), "utf8");
 const cut = (from, to) => src.slice(src.indexOf(from), src.indexOf(to, src.indexOf(from)));
-const code = cut('ipcMain.on("site-login:get"', "const oneOf");
+const code = cut("const keyOk", ";") + ";" + cut('ipcMain.on("site-login:get"', "const oneOf");
 
 let bad = 0, n = 0;
 const check = (ok, m) => { n++; if (!ok) { bad++; console.log("FAIL", m); } };
@@ -39,6 +39,8 @@ try {
   check(settings.token === "tok-site", "чужое окно смогло выйти из программы");
   keep(app, "x".repeat(5000));
   check(settings.token === "tok-site", "слишком длинный ключ принят");
+  keep(app, "пароль");
+  check(settings.token === "tok-site", "ключ не латиницей принят");
   keep(app, "");
   check(settings.token === "" && box.stale && st.changed === 2, "выход на сайте: программа не вышла или виджет не узнал");
   check(log.some((l) => l.includes("вышли на сайте — программа тоже вышла")), "выход: нет записи в журнале");
