@@ -80,6 +80,12 @@ export const TRASH_DAYS = 14;
 
 /** Через сколько минут после сообщения повторять неудавшийся разбор; после последней попытки — заметкой. */
 export const RETRY_AFTER_MIN = [2, 10, 30];
+/** Как вести разговор (/ask и сообщения, где с горничной разговаривают, — talk в разборе). */
+export const TALK_RULES =
+  "Это разговор: ничего не записывай, записи делает разбор. Поддерживай разговор как живой собеседник — отвечай по существу, " +
+  "делись своим мнением и впечатлением, можешь задать встречный вопрос по теме разговора. Не сворачивай на дела, задачи и планы, " +
+  "если собеседник сам о них не говорит. 1–4 предложения, без списков.";
+
 /** Признак неудачи разговора (/ask) в reply — такие не повторяются разбором. */
 const CHAT_FAILED = "chat:";
 
@@ -260,7 +266,9 @@ export class Pipeline {
     const { lines, changes, touched } = await s.transaction(() => this.apply(u, target, parsed, at));
     if (original) await s.setMessage(message.id, { state: "done", reply: "(уточнение)" });
 
-    const head = parsed.reply ? esc(parsed.reply) : pick(p.saved, message.id);
+    // С горничной разговаривают — ответ разговором (как /ask), записанное — строками под ним; не вышло — короткая реплика.
+    const talk = parsed.talk ? await this.talkText(u, message, at).catch((e) => void console.error("[talk]", e)) : undefined;
+    const head = talk || (parsed.reply ? esc(parsed.reply) : pick(p.saved, message.id));
     const body = lines.length ? "\n" + lines.join("\n") : "";
     // Спорное (распорядок, «надо бы когда-нибудь») не записано — спросить кнопками.
     const sug = parsed.suggest;
@@ -744,18 +752,24 @@ export class Pipeline {
     }
   }
 
-  private async chat(u: User, msg: Message, at: Date, images?: Picture[]): Promise<Reply> {
+  /** Ответ разговором: голос характера, что знает о собеседнике, последние сообщения (/ask и сообщения с talk). */
+  private async talkText(u: User, msg: Message, at: Date, images?: Picture[]): Promise<string> {
     const p = persona(u.persona);
     const today = dayKey(at, u.tz);
     const traits = traitPrompt(await this.store.traitsOf(u.id));
     const mem = (await this.store.activeMemory(u.id)).slice(-PROMPT_CAP.memory).map((m) => `${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n");
+    const out = await this.llm([
+      { role: "system", content: `${p.voice}\n${TALK_RULES}\nСегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}${traits ? "\n\n" + traits : ""}` },
+      ...(await this.history(u.id, msg.id)),
+      { role: "user", content: images ? `${msg.text}\n(Приложено изображений: ${images.length}.)` : msg.text, images },
+    ], { temperature: 0.7, kind: "chat" });
+    return esc(out.trim());
+  }
+
+  private async chat(u: User, msg: Message, at: Date, images?: Picture[]): Promise<Reply> {
+    const p = persona(u.persona);
     try {
-      const out = await this.llm([
-        { role: "system", content: `${p.voice}\nЭто просто разговор, ничего не записывай. Сегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}${traits ? "\n\n" + traits : ""}` },
-        ...(await this.history(u.id, msg.id)),
-        { role: "user", content: images ? `${msg.text}\n(Приложено изображений: ${images.length}.)` : msg.text, images },
-      ], { temperature: 0.7, kind: "chat" });
-      const text = esc(out.trim());
+      const text = await this.talkText(u, msg, at, images);
       await this.store.setMessage(msg.id, { state: "done", reply: text });
       return { text, emotion: "neutral", messageId: msg.id, undoable: false };
     } catch (e) {

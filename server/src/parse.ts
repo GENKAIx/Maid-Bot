@@ -175,6 +175,7 @@ export const ParseSchema = z.object({
     .optional()
     .catch(null),
   emotion: z.enum(EMOTIONS).catch("neutral"),
+  talk: z.boolean().catch(false),
   reply: optStr,
 });
 export type RawParse = z.infer<typeof ParseSchema>;
@@ -210,6 +211,8 @@ export interface Parsed {
   /** Просьба нарисовать картинку: prompt — описание для модели картинок по-английски, title — коротко по-русски. */
   draw: { prompt: string; title: string } | null;
   emotion: (typeof EMOTIONS)[number];
+  /** С горничной разговаривают (вопрос ей, новость или переживание, совет, шутка) — ответ ведёт разговор (pipeline talkText), а не reply. */
+  talk: boolean;
   reply: string | null;
   /** Что код отбросил и почему — в журнал. */
   dropped: string[];
@@ -269,6 +272,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "clarify": "один короткий вопрос, если без него нельзя записать правильно, иначе null",
  "draw": {"prompt": "подробное описание картинки по-английски для генератора", "title": "коротко по-русски, что рисуем"} или null — только если просят нарисовать/сгенерировать/создать картинку,
  "emotion": "${EMOTIONS.join("|")}",
+ "talk": true, если пользователь хочет поговорить с тобой, иначе false,
  "reply": "короткая живая реплика на сообщение (1 предложение) или null"
 }
 
@@ -318,7 +322,11 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 - Вопрос о прошлом («что я ел в понедельник?») — question + lookup, остальное пустое.
   «Когда болело сердце?» — question + search ["сердц", "кардиолог"], lookup null (искать за всё время).
   «Сколько потратил на еду в октябре?» — question + lookup на октябрь, search пустой (суммы код посчитает сам).
-- Только поболтать (без фактов) — всё пустое, кроме reply и emotion.
+- Только поболтать (без фактов) — всё пустое, кроме talk, reply и emotion.
+- talk true — с тобой разговаривают: вопрос лично тебе («как дела?», «а ты что думаешь?»), делятся новостью или переживанием
+  и ждут реакции («представляешь, меня повысили!», «что-то грустно»), просят совета, шутят, просто болтают. Факты из такого
+  сообщения записывай как обычно. talk false — обычная запись («съел кашу», «встреча завтра в 15», «купил лампочку»):
+  отчёт без обращения к тебе — это не разговор. Вопрос о своих записях — question, не talk.
 - emotion awkward — пользователь сболтнул лишнее: чересчур личное или стыдное признание, грубость сгоряча, то, о чём лучше
   было промолчать, или сам просит забыть сказанное («забудь», «я этого не говорил»). Горничная делает вид, что ничего не слышала.
   Пошлое и флирт — teasing, не awkward. Запись при этом делается как обычно.
@@ -566,6 +574,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     clarify,
     draw: r.draw?.prompt.trim() ? { prompt: r.draw.prompt.trim().slice(0, 1500), title: (r.draw.title ?? "").trim().slice(0, 80) } : null,
     emotion: r.emotion,
+    talk: r.talk,
     reply: r.reply ?? null,
     dropped,
   };
