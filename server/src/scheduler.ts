@@ -13,6 +13,13 @@ import { addDays, dayKey, durationHuman, humanDay, timeOf, zonedToUtc } from "./
 
 /** Слова горничной в вечернем итоге — не длиннее (знаков); длиннее в полтора раза — обрезаем по слову. */
 export const EVENING_MAX = 300;
+/** Ответ ИИ оборвался на полуслове («…если продержится, покажит») — оставить только законченные предложения. */
+export function wholeSentences(text: string): string {
+  if (/[.!?…][»")]*$/.test(text)) return text;
+  const ends = [...text.matchAll(/[.!?…][»")]*(?=\s)/g)];
+  const last = ends.at(-1);
+  return last ? text.slice(0, last.index + last[0].length) : "";
+}
 
 const plural = (n: number, one: string, few: string, many: string) =>
   n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
@@ -284,7 +291,7 @@ export class Scheduler {
         },
       ], { temperature: 0.6, kind: "summary" });
       const text = words.trim().replace(/\s*\n+\s*/g, " ");
-      const cut = text.length > EVENING_MAX * 1.5 ? `${text.slice(0, EVENING_MAX * 1.5).replace(/\s+\S*$/, "")}…` : text;
+      const cut = text.length > EVENING_MAX * 1.5 ? `${text.slice(0, EVENING_MAX * 1.5).replace(/\s+\S*$/, "")}…` : wholeSentences(text);
       return cut ? `${short}\n\n${esc(cut)}` : short;
     } catch (e) {
       console.error("[evening]", e);

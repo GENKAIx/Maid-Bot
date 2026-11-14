@@ -71,3 +71,16 @@ test("итог дня: строка цифр — только то, что бы�
     "✔ 3 задачи · привычки 3/3 · 🎮 1 ч 30 мин · 📝 1 запись · 💸 −1 200 RUB",
   );
 });
+
+test("итог дня: ответ ИИ оборван на полуслове — остаются законченные предложения, без начатого ничего", async () => {
+  const { store, u } = await setup();
+  const torn = "Уборка и нос снова вместе. Завтра наденьте маску. Если заложенность продержится, покажит";
+  const words = (await new Scheduler(store, async () => torn, async () => {}).eveningText(u, DAY)).split("\n\n")[1];
+  assert.equal(words, "Уборка и нос снова вместе. Завтра наденьте маску.");
+  const none = await new Scheduler(store, async () => "Уборка и нос снова вместе и завтра", async () => {}).eveningText(u, DAY);
+  assert.equal(none.split("\n").length, 2, "начатое предложение без конца показано");
+  const done = (await new Scheduler(store, async () => "Хороший день! Так держать…", async () => {}).eveningText(u, DAY)).split("\n\n")[1];
+  assert.equal(done, "Хороший день! Так держать…");
+  const quote = (await new Scheduler(store, async () => "Ты сказал «устал».", async () => {}).eveningText(u, DAY)).split("\n\n")[1];
+  assert.equal(quote, "Ты сказал «устал».");
+});
