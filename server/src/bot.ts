@@ -3,6 +3,7 @@ import path from "node:path";
 import { Bot, InlineKeyboard, InputFile, type Context } from "grammy";
 import { config, ROOT } from "./config.ts";
 import { issueToken } from "./auth.ts";
+import { accountsText } from "./accounts.ts";
 import { createInvite, INVITE_DAYS, installerUrl, isMember, redeemInvite } from "./invite.ts";
 import type { Store, User } from "./db.ts";
 import { habitLine, habitsOfDay } from "./habits.ts";
@@ -13,7 +14,7 @@ import type { Scheduler, Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
 import { decideTrait } from "./profile.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
-import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "./llm.ts";
+import { asUser, IMAGE_MAX_BYTES, IMAGE_TYPES } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
@@ -122,6 +123,12 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     }
     await next();
   });
+  // Всё, что дальше делается по сообщению, — для этого человека: расход ИИ на его счёт (llm.ts, asUser).
+  bot.use(async (ctx, next) => {
+    const chat = String(ctx.chat?.id ?? "");
+    const u = chat ? await store.userByChat(chat) : undefined;
+    return u ? asUser(u.id, next) : next();
+  });
 
   // Виджет «Список на сегодня» (Bot API 10.4). grammy этих методов и обновлений ещё не знает — вызываем напрямую.
   type WidgetQueryUpdate = { id: string; from: { id: number }; chat?: { id: number }; message_id?: number; data: string; type?: { type: string } };
@@ -196,6 +203,12 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const u = await userOf(ctx);
     if (!u) return;
     await ctx.reply(HELP);
+  });
+  // Владелец: кто есть, кто когда писал и сколько ушло на ИИ (accounts.ts).
+  bot.command("accounts", async (ctx) => {
+    const u = owner(ctx) ? await userOf(ctx) : null;
+    if (!u) return;
+    await ctx.reply(await accountsText(store, config.allowedChatIds, u.tz), { parse_mode: "HTML" });
   });
   // Владелец: ссылка-приглашение для друга (одноразовая, на INVITE_DAYS дней).
   bot.command("invite", async (ctx) => {

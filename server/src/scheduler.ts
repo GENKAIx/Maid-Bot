@@ -1,6 +1,6 @@
 import type { EventRow, Store, User } from "./db.ts";
 import { habitLine, habitsOfDay } from "./habits.ts";
-import type { LlmCall } from "./llm.ts";
+import { asUser, type LlmCall } from "./llm.ts";
 import { persona, type Emotion } from "./personas.ts";
 import {
   activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, moneyTotals, plansText, sectionName, todayText,
@@ -148,11 +148,14 @@ export class Scheduler {
         await this.store.markReminder(r.id, late ? "cancelled" : "sent");
       }
       for (const u of await this.store.users()) {
-        await this.daily(u, now);
-        await this.habits(u, now);
-        if (this.backup && this.due(u, "03:30", now, 300) && (await this.store.once(`backup:${u.id}:${dayKey(now, u.tz)}`))) {
-          await this.backup(u).catch((e) => console.error("[backup]", u.id, e));
-        }
+        // Утро, итог дня и прочее — для этого человека: расход ИИ на его счёт.
+        await asUser(u.id, async () => {
+          await this.daily(u, now);
+          await this.habits(u, now);
+          if (this.backup && this.due(u, "03:30", now, 300) && (await this.store.once(`backup:${u.id}:${dayKey(now, u.tz)}`))) {
+            await this.backup(u).catch((e) => console.error("[backup]", u.id, e));
+          }
+        });
       }
       await this.extra?.(now).catch((e) => console.error("[tick]", e));
       // Раз в сутки — убрать отметки «уже отправлено» старше 60 дней.

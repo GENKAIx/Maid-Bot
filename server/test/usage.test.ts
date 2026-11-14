@@ -87,7 +87,7 @@ test("модель через OpenRouter: просит цену, сообщае�
       async (b) => { await callLlm([{ role: "user", content: "привет" }], { kind: "chat" }); sent = b; },
     );
     assert.deepEqual(sent[0].usage, { include: true });
-    assert.deepEqual(got, [{ kind: "chat", model: "x/model", input: 120, output: 30, cost: 0.00042 }]);
+    assert.deepEqual(got, [{ kind: "chat", model: "x/model", input: 120, output: 30, cost: 0.00042, userId: 0 }]);
     // Не OpenRouter: лишнего поля нет, цены нет, назначение по умолчанию — «другое».
     Object.assign(config.llm, { baseUrl: "https://api.openai.com/v1" });
     const got2 = await withFetch(
@@ -95,7 +95,7 @@ test("модель через OpenRouter: просит цену, сообщае�
       async (b) => { await callLlm([{ role: "user", content: "привет" }]); sent = b; },
     );
     assert.equal(sent[0].usage, undefined);
-    assert.deepEqual(got2, [{ kind: "other", model: "x/model", input: 5, output: 1, cost: null }]);
+    assert.deepEqual(got2, [{ kind: "other", model: "x/model", input: 5, output: 1, cost: null, userId: 0 }]);
   } finally {
     Object.assign(config.llm, saved);
   }
@@ -117,8 +117,8 @@ test("картинка OpenRouter и голосовое тоже считают�
       },
     );
     assert.deepEqual(got, [
-      { kind: "draw", model: "google/img", input: 20, output: 1290, cost: 0.0387 },
-      { kind: "voice", model: "openai/whisper-large-v3", input: 40, output: 0, cost: 0.0003 },
+      { kind: "draw", model: "google/img", input: 20, output: 1290, cost: 0.0387, userId: 0 },
+      { kind: "voice", model: "openai/whisper-large-v3", input: 40, output: 0, cost: 0.0003, userId: 0 },
     ]);
   } finally {
     Object.assign(config.drawing, savedD);

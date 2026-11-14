@@ -1,7 +1,7 @@
 import type { MarkRow, Message, ProposalRow, Store, Table, User } from "./db.ts";
 import type { LlmCall, Picture } from "./llm.ts";
 import type { DrawCall } from "./draw.ts";
-import { extractJson } from "./llm.ts";
+import { asUser, extractJson } from "./llm.ts";
 import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
 import { scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
@@ -794,7 +794,7 @@ export class Pipeline {
         await send(u, "Картинку так и не разобрала — пришлите её ещё раз, пожалуйста.", "worried");
         continue;
       }
-      const r = await this.retry(u, msg.id, now).catch(() => null);
+      const r = await asUser(u.id, () => this.retry(u, msg.id, now)).catch(() => null);
       if (r && !r.failed) {
         await send(u, `Разобрала «${esc(short)}»:
 ${r.text}`, r.emotion);

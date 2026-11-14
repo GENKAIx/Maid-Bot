@@ -20,7 +20,7 @@ import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCat
 import { habitButtons, planEventReminders, remindText, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
-import { IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
+import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -261,6 +261,7 @@ export function createApi(deps: ApiDeps) {
     const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
     const u = await userByToken(store, token);
     if (!u) throw new HttpError(401, "нужен вход (логин и пароль) или ключ");
+    enterUser(u.id); // расход ИИ в этом запросе — на счёт этого человека
 
     if (m === "POST" && p === "/api/logout") {
       await store.dropSession(tokenHash(token));

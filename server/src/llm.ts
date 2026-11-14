@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { config } from "./config.ts";
 
 // OpenAI-совместимый чат (OpenAI, OpenRouter, локальный). В тестах подменяется функцией.
@@ -45,12 +46,18 @@ export const MAX_TOKENS_TEXT = 800;
 export const USAGE_KINDS = ["parse", "answer", "chat", "summary", "patterns", "draw", "voice", "other"] as const;
 export type UsageKind = (typeof USAGE_KINDS)[number];
 /** Расход одного запроса: токены и деньги (cost — доллары, null — провайдер цену не сообщил). index.ts складывает по дням (таблица llm_usage). */
-export interface LlmUsage { kind: UsageKind; model: string; input: number; output: number; cost: number | null }
+/** userId — чей запрос (учёт по людям, /accounts); 0 — ничей или не известно. */
+export interface LlmUsage { kind: UsageKind; model: string; input: number; output: number; cost: number | null; userId?: number }
 let usageSink: ((u: LlmUsage) => void) | null = null;
 export const onLlmUsage = (fn: ((u: LlmUsage) => void) | null) => void (usageSink = fn);
+// Чей сейчас запрос: бот, API и фоновые задачи оборачивают работу для человека в asUser — расход идёт на его счёт.
+const usageUser = new AsyncLocalStorage<number>();
+export const asUser = <T>(userId: number, fn: () => T): T => usageUser.run(userId, fn);
+/** API: всё дальше в этом запросе — для этого человека (обернуть остаток обработчика в asUser нельзя — он длинный). */
+export const enterUser = (userId: number) => usageUser.enterWith(userId);
 /** Сообщить о расходе (модель, рисование, голос); ошибка учёта ответу не мешает. */
 export function reportUsage(u: LlmUsage) {
-  try { usageSink?.(u); } catch { /* учёт не мешает ответу */ }
+  try { usageSink?.({ ...u, userId: u.userId ?? usageUser.getStore() ?? 0 }); } catch { /* учёт не мешает ответу */ }
 }
 /** OpenRouter присылает цену запроса в usage.cost (доллары), если попросить usage: { include: true }. */
 export const isOpenRouter = (url: string) => /openrouter\.ai/.test(url);

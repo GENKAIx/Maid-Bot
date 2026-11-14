@@ -329,7 +329,31 @@ UPDATE users SET evening_time = '23:55' WHERE evening_time < '12:00';
 ALTER TABLE users ADD COLUMN habit_first TEXT NOT NULL DEFAULT '12:00';
 ALTER TABLE users ADD COLUMN habit_last TEXT NOT NULL DEFAULT '23:00';
 `,
+  // Шаг 14: расход по людям — user_id в ключе строки (0 — ничей или записан до учёта по людям).
+  `
+CREATE TABLE llm_usage_by_user (
+  day TEXT NOT NULL,
+  user_id INTEGER NOT NULL DEFAULT 0,
+  kind TEXT NOT NULL,
+  model TEXT NOT NULL,
+  calls INTEGER NOT NULL DEFAULT 0,
+  input INTEGER NOT NULL DEFAULT 0,
+  output INTEGER NOT NULL DEFAULT 0,
+  micro_usd INTEGER NOT NULL DEFAULT 0,
+  priced INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, user_id, kind, model)
+);
+INSERT INTO llm_usage_by_user (day, user_id, kind, model, calls, input, output, micro_usd, priced)
+  SELECT day, 0, kind, model, calls, input, output, micro_usd, priced FROM llm_usage;
+DROP TABLE llm_usage;
+ALTER TABLE llm_usage_by_user RENAME TO llm_usage;
+`,
 ];
+
+/** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
+export interface AccountRow {
+  id: number; name: string; login: string | null; chat_id: string | null; created_at: string; last_at: string | null; recent: number; month: number; total: number;
+}
 
 /** Строка расхода: день (UTC) × на что × модель. cost — доллары. */
 export interface UsageRow { day: string; kind: string; model: string; calls: number; input: number; output: number; cost: number; priced: number }
@@ -1216,24 +1240,48 @@ export class Store {
     return { calls: old.calls + n(r?.calls), input: old.input + n(r?.input), output: old.output + n(r?.output), cost: n(r?.micro) / 1e6, priced: n(r?.priced) };
   }
   /** Один запрос к модели (или картинка, или голосовое) — в строку своего дня, назначения и модели. cost — доллары или null. */
-  async addUsage(at: Date, x: { kind: string; model: string; input: number; output: number; cost: number | null }) {
+  async addUsage(at: Date, x: { kind: string; model: string; input: number; output: number; cost: number | null; userId?: number }) {
     const micro = x.cost == null ? 0 : Math.round(x.cost * 1e6);
     await this.run(
-      `INSERT INTO llm_usage (day, kind, model, calls, input, output, micro_usd, priced) VALUES (?, ?, ?, 1, ?, ?, ?, ?)
-       ON CONFLICT (day, kind, model) DO UPDATE SET calls = llm_usage.calls + 1, input = llm_usage.input + excluded.input,
+      `INSERT INTO llm_usage (day, user_id, kind, model, calls, input, output, micro_usd, priced) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
+       ON CONFLICT (day, user_id, kind, model) DO UPDATE SET calls = llm_usage.calls + 1, input = llm_usage.input + excluded.input,
        output = llm_usage.output + excluded.output, micro_usd = llm_usage.micro_usd + excluded.micro_usd, priced = llm_usage.priced + excluded.priced`,
-      at.toISOString().slice(0, 10), x.kind, x.model.slice(0, 120), Math.max(0, Math.round(x.input)), Math.max(0, Math.round(x.output)), micro, x.cost == null ? 0 : 1,
+      at.toISOString().slice(0, 10), x.userId ?? 0, x.kind, x.model.slice(0, 120), Math.max(0, Math.round(x.input)), Math.max(0, Math.round(x.output)), micro,
+      x.cost == null ? 0 : 1,
     );
   }
-  /** Расход по дням с from по to (ГГГГ-ММ-ДД, включительно), по дням и назначениям. */
+  /** Расход по дням с from по to (ГГГГ-ММ-ДД, включительно), по дням и назначениям — все люди вместе. */
   async usageDays(from: string, to: string): Promise<UsageRow[]> {
     const rows = await this.all<Record<string, unknown>>(
-      "SELECT day, kind, model, calls, input, output, micro_usd, priced FROM llm_usage WHERE day >= ? AND day <= ? ORDER BY day, kind, model", from, to,
+      `SELECT day, kind, model, SUM(calls) AS calls, SUM(input) AS input, SUM(output) AS output, SUM(micro_usd) AS micro_usd, SUM(priced) AS priced
+       FROM llm_usage WHERE day >= ? AND day <= ? GROUP BY day, kind, model ORDER BY day, kind, model`, from, to,
     );
     return rows.map((r) => ({
       day: String(r.day), kind: String(r.kind), model: String(r.model), calls: Number(r.calls), input: Number(r.input),
       output: Number(r.output), cost: Number(r.micro_usd) / 1e6, priced: Number(r.priced),
     }));
+  }
+  /** Аккаунты для владельца (/accounts): кто когда писал, сколько сообщений с since (ISO), расход за месяц (ГГГГ-ММ) и всего.
+   *  Строка с id 0 — расход ничей или записанный до учёта по людям. */
+  async accounts(month: string, since: string): Promise<AccountRow[]> {
+    const users = await this.all<Record<string, unknown>>(
+      `SELECT u.id, u.name, u.login, u.chat_id, u.created_at,
+         (SELECT MAX(received_at) FROM messages m WHERE m.user_id = u.id) AS last_at,
+         (SELECT COUNT(*) FROM messages m WHERE m.user_id = u.id AND m.received_at >= ?) AS recent
+       FROM users u ORDER BY u.id`, since,
+    );
+    const spent = await this.all<Record<string, unknown>>(
+      "SELECT user_id, SUM(micro_usd) AS total, SUM(CASE WHEN day LIKE ? THEN micro_usd ELSE 0 END) AS month FROM llm_usage GROUP BY user_id", `${month}-%`,
+    );
+    const cost = new Map(spent.map((r) => [Number(r.user_id), { month: Number(r.month ?? 0) / 1e6, total: Number(r.total ?? 0) / 1e6 }]));
+    const rows: AccountRow[] = users.map((u) => ({
+      id: Number(u.id), name: String(u.name ?? ""), login: u.login == null ? null : String(u.login), chat_id: u.chat_id == null ? null : String(u.chat_id),
+      created_at: String(u.created_at ?? ""), last_at: u.last_at == null ? null : String(u.last_at), recent: Number(u.recent ?? 0),
+      month: cost.get(Number(u.id))?.month ?? 0, total: cost.get(Number(u.id))?.total ?? 0,
+    }));
+    const nobody = cost.get(0);
+    if (nobody && nobody.total > 0) rows.push({ id: 0, name: "", login: null, chat_id: null, created_at: "", last_at: null, recent: 0, ...nobody });
+    return rows;
   }
   async kvGet(key: string): Promise<string | undefined> {
     return (await this.get<{ value: string }>("SELECT value FROM kv WHERE key = ?", key))?.value;
