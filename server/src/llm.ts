@@ -66,10 +66,29 @@ export const usageCost = (u: { cost?: unknown } | undefined) => price(u?.cost);
 
 export const llmReady = () => Boolean(config.llm.apiKey);
 
+/** Дешёвая модель OpenRouter: владелец включает её командой /model (bot.ts, выбор в kv model:lite); основная — LLM_MODEL. */
+export const LITE_MODEL = "anthropic/claude-haiku-5.5";
+let liteOn = false;
+export const setLiteModel = (on: boolean) => void (liteOn = on);
+/** Какая модель отвечает сейчас: дешёвая — только через OpenRouter (идентификатор его). */
+export const activeModel = () => (liteOn && isOpenRouter(config.llm.baseUrl) ? LITE_MODEL : config.llm.model);
+
+/** Дешёвая модель не ответила — тот же запрос основной, чтобы бот не замолкал. */
 export const callLlm: LlmCall = async (messages, opts = {}) => {
   if (!config.llm.apiKey) throw new Error("LLM_API_KEY не задан");
+  const model = activeModel();
+  if (model === config.llm.model) return callModel(model, messages, opts);
+  try {
+    return await callModel(model, messages, opts);
+  } catch (e) {
+    console.warn(`[llm] ${model} не ответила, отвечает ${config.llm.model}:`, (e as Error).message);
+    return callModel(config.llm.model, messages, opts);
+  }
+};
+
+async function callModel(model: string, messages: ChatMessage[], opts: Parameters<LlmCall>[1] = {}): Promise<string> {
   const body: Record<string, unknown> = {
-    model: config.llm.model,
+    model,
     messages: messages.map(wire),
     temperature: opts.temperature ?? 0.2,
     max_tokens: opts.maxTokens ?? (opts.json ? MAX_TOKENS_JSON : MAX_TOKENS_TEXT),
@@ -89,7 +108,7 @@ export const callLlm: LlmCall = async (messages, opts = {}) => {
       if (!res.ok) throw Object.assign(new Error(`LLM ${res.status}: ${await res.text()}`), { fatal: true });
       const data = (await res.json()) as { model?: string; choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number } };
       if (data.usage) {
-        reportUsage({ kind: opts.kind ?? "other", model: config.llm.model, input: data.usage.prompt_tokens ?? 0, output: data.usage.completion_tokens ?? 0, cost: usageCost(data.usage) });
+        reportUsage({ kind: opts.kind ?? "other", model, input: data.usage.prompt_tokens ?? 0, output: data.usage.completion_tokens ?? 0, cost: usageCost(data.usage) });
       }
       const text = data.choices?.[0]?.message?.content;
       if (!text) throw new Error("LLM вернул пустой ответ");
@@ -101,7 +120,7 @@ export const callLlm: LlmCall = async (messages, opts = {}) => {
     }
   }
   throw lastErr;
-};
+}
 
 /** Вытащить JSON-объект из ответа модели (бывает обёрнут в ```json). */
 export function extractJson(text: string): unknown {

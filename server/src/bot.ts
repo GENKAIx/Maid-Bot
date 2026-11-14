@@ -14,7 +14,7 @@ import type { Scheduler, Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
 import { decideTrait } from "./profile.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
-import { asUser, IMAGE_MAX_BYTES, IMAGE_TYPES } from "./llm.ts";
+import { activeModel, asUser, IMAGE_MAX_BYTES, IMAGE_TYPES, isOpenRouter, LITE_MODEL, setLiteModel } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
@@ -219,6 +219,29 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
         "По ссылке друг получит логин и пароль для сайта и программы на ПК и ссылку на установщик.",
       { link_preview_options: { is_disabled: true } },
     );
+  });
+  // Владелец: какая модель отвечает — основная (LLM_MODEL) или дешёвая (LITE_MODEL); выбор в kv model:lite, index.ts читает его при запуске.
+  const modelMenu = () => {
+    const lite = activeModel() === LITE_MODEL;
+    return {
+      text: `Модель сейчас: <code>${esc(activeModel())}</code>` +
+        (isOpenRouter(config.llm.baseUrl) ? "" : "\nДешёвая модель работает только через OpenRouter."),
+      kb: new InlineKeyboard().text(`${lite ? "" : "● "}Основная`, "model:main").text(`${lite ? "● " : ""}Haiku 5.5 (дешёвая)`, "model:lite"),
+    };
+  };
+  bot.command("model", async (ctx) => {
+    if (!owner(ctx)) return;
+    const m = modelMenu();
+    await ctx.reply(m.text, { parse_mode: "HTML", reply_markup: m.kb });
+  });
+  bot.callbackQuery(/^model:(main|lite)$/, async (ctx) => {
+    if (!owner(ctx)) return ctx.answerCallbackQuery();
+    const lite = ctx.match[1] === "lite";
+    setLiteModel(lite);
+    await store.kvSet("model:lite", lite ? "1" : "0");
+    const m = modelMenu();
+    await ctx.answerCallbackQuery({ text: lite ? "Отвечает Haiku 5.5" : "Отвечает основная модель" });
+    await ctx.editMessageText(m.text, { parse_mode: "HTML", reply_markup: m.kb }).catch(() => {});
   });
   bot.command("chatid", (ctx) => ctx.reply(`chat id: <code>${ctx.chat.id}</code>`, { parse_mode: "HTML" }));
 

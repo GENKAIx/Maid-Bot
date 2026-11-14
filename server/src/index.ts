@@ -4,7 +4,7 @@ import { createApi } from "./api.ts";
 import { createBot } from "./bot.ts";
 import { config } from "./config.ts";
 import { Store } from "./db.ts";
-import { callLlm, llmReady, onLlmUsage } from "./llm.ts";
+import { callLlm, llmReady, onLlmUsage, setLiteModel } from "./llm.ts";
 import { backupName, exportJson } from "./backup.ts";
 import type { User } from "./db.ts";
 import { Pipeline } from "./pipeline.ts";
@@ -23,6 +23,9 @@ const pipeline = new Pipeline(store, callLlm, config.publicUrl);
 if (drawReady()) pipeline.draw = callDraw;
 // Расход модели, рисования и голоса — по дням и назначениям (таблица llm_usage), на сайте — «Настройки» → «Расход».
 onLlmUsage((x) => void store.addUsage(new Date(), x).catch((e) => console.error("[usage]", e)));
+
+// Дешёвая модель вместо основной — если владелец выбрал её командой /model.
+setLiteModel((await store.kvGet("model:lite")) === "1");
 
 if (!llmReady()) console.warn("[start] LLM_API_KEY не задан — разбор сообщений не работает");
 
