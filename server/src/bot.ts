@@ -3,11 +3,12 @@ import path from "node:path";
 import { Bot, InlineKeyboard, InputFile, type Context } from "grammy";
 import { config, ROOT } from "./config.ts";
 import { issueToken } from "./auth.ts";
+import { createInvite, INVITE_DAYS, installerUrl, isMember, redeemInvite } from "./invite.ts";
 import type { Store, User } from "./db.ts";
 import { habitLine, habitsOfDay } from "./habits.ts";
 import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
 import { PERSONAS, type Emotion } from "./personas.ts";
-import { datesText, memoryText, plansText, tasksText, todayText } from "./report.ts";
+import { datesText, esc, memoryText, plansText, tasksText, todayText } from "./report.ts";
 import type { Scheduler, Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
 import { decideTrait } from "./profile.ts";
@@ -25,10 +26,12 @@ export function emotionImage(personaId: string, emotion: Emotion): string | null
 export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Scheduler | null) {
   const bot = new Bot(config.telegramToken);
 
-  const allowed = (chatId: string) => config.allowedChatIds.includes(chatId);
+  // Свои — владелец (ALLOWED_CHAT_IDS) и друзья, принявшие приглашение (invite.ts).
+  const allowed = (chatId: string) => isMember(store, chatId, config.allowedChatIds);
+  const owner = (ctx: Context) => config.allowedChatIds.includes(String(ctx.chat?.id ?? ""));
   const userOf = async (ctx: Context): Promise<User | null> => {
     const chat = String(ctx.chat?.id ?? "");
-    if (!chat || !allowed(chat)) return null;
+    if (!chat || !(await allowed(chat))) return null;
     return store.ensureUser(chat, ctx.from?.first_name ?? "", config.defaultTimezone);
   };
 
@@ -80,11 +83,41 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
       .catch((e) => console.warn("[bot] вопрос не поправить:", e.message));
   };
 
-  // Чужим — только chat id, чтобы владелец мог себя добавить.
+  const HELP =
+    "Я ваша горничная. Пишите как есть — что было за день, что запланировано, что не забыть. " +
+    "Я сама разложу: дневник, планы, задачи, важные даты.\n\n" +
+    "/list — список на сегодня с галочками\n/today — сегодня\n/plans — планы\n/tasks — задачи\n/dates — важные даты\n/memory — что я помню\n" +
+    "/ask текст — просто поговорить\n/undo — отменить последнее\n/summary — итог дня\n/persona — характер\n" +
+    "/habits — привычки на сегодня\n/token — ключ для приложения на ПК";
+
+  // Друг по приглашению: учётная запись, логин и пароль, адрес сервера и установщик; владельцу — что пришёл новый.
+  async function acceptInvite(ctx: Context, chat: string, code: string) {
+    const name = ctx.from?.first_name ?? "";
+    const got = await redeemInvite(store, code, { id: chat, name, username: ctx.from?.username }, config.defaultTimezone);
+    if (!got) return void (await ctx.reply("Приглашение не подошло: оно уже использовано или устарело. Попросите новое."));
+    const setup = installerUrl(config.desktopDir, config.publicUrl);
+    await ctx.reply(
+      `Добро пожаловать${name ? `, ${esc(name)}` : ""}! ✨\n\n` +
+        (setup ? `<b>Программа для ПК:</b> <a href="${esc(setup)}">скачать установщик</a>\n` : "") +
+        "При первом запуске впишите адрес сервера, потом войдите логином и паролем — так же и на сайте.\n\n" +
+        `Адрес сервера: <code>${esc(config.publicUrl)}</code>\nЛогин: <code>${esc(got.login)}</code>\nПароль: <code>${esc(got.password)}</code>\n` +
+        "Пароль никому не показывайте.",
+      { parse_mode: "HTML", link_preview_options: { is_disabled: true } },
+    );
+    await ctx.reply(HELP);
+    const who = `${name || "Без имени"}${ctx.from?.username ? ` (@${ctx.from.username})` : ""}`;
+    for (const o of config.allowedChatIds) {
+      await bot.api.sendMessage(o, `Новый друг по приглашению: ${who}, логин ${got.login}.`).catch(() => {});
+    }
+  }
+
+  // Чужим — только chat id, чтобы владелец мог себя добавить, и вход по приглашению: /start <код>.
   bot.use(async (ctx, next) => {
     const chat = String(ctx.chat?.id ?? "");
-    if (chat && !allowed(chat)) {
-      if (ctx.message?.text?.startsWith("/chatid")) await ctx.reply(`chat id: <code>${chat}</code>`, { parse_mode: "HTML" });
+    if (chat && !(await allowed(chat))) {
+      const invite = /^\/start\s+(\S+)/.exec(ctx.message?.text ?? "")?.[1];
+      if (invite) await acceptInvite(ctx, chat, invite);
+      else if (ctx.message?.text?.startsWith("/chatid")) await ctx.reply(`chat id: <code>${chat}</code>`, { parse_mode: "HTML" });
       return;
     }
     await next();
@@ -97,7 +130,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const q = (ctx.update as { widget_query?: WidgetQueryUpdate }).widget_query;
     if (!q) return next();
     const chat = String(q.chat?.id ?? q.from.id);
-    if (!allowed(chat) || q.type?.type !== "data") return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
+    if (!(await allowed(chat)) || q.type?.type !== "data") return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
     const u = await store.ensureUser(chat, "", config.defaultTimezone);
     const state = await widgetQuery(store, pipeline, u, q.data);
     await raw.answerWidgetQuery({ widget_query_id: q.id, data: state });
@@ -162,12 +195,16 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   bot.command("start", async (ctx) => {
     const u = await userOf(ctx);
     if (!u) return;
+    await ctx.reply(HELP);
+  });
+  // Владелец: ссылка-приглашение для друга (одноразовая, на INVITE_DAYS дней).
+  bot.command("invite", async (ctx) => {
+    if (!owner(ctx)) return;
+    const code = await createInvite(store);
     await ctx.reply(
-      "Я ваша горничная. Пишите как есть — что было за день, что запланировано, что не забыть. " +
-        "Я сама разложу: дневник, планы, задачи, важные даты.\n\n" +
-        "/list — список на сегодня с галочками\n/today — сегодня\n/plans — планы\n/tasks — задачи\n/dates — важные даты\n/memory — что я помню\n" +
-        "/ask текст — просто поговорить\n/undo — отменить последнее\n/summary — итог дня\n/persona — характер\n" +
-        "/habits — привычки на сегодня\n/token — ключ для приложения на ПК",
+      `Приглашение для друга — одноразовое, на ${INVITE_DAYS} дней:\nhttps://t.me/${ctx.me.username}?start=${code}\n\n` +
+        "По ссылке друг получит логин и пароль для сайта и программы на ПК и ссылку на установщик.",
+      { link_preview_options: { is_disabled: true } },
     );
   });
   bot.command("chatid", (ctx) => ctx.reply(`chat id: <code>${ctx.chat.id}</code>`, { parse_mode: "HTML" }));

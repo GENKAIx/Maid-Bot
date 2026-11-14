@@ -17,7 +17,7 @@ npm run server
 | В `.env` | Зачем |
 |---|---|
 | `TELEGRAM_BOT_TOKEN` | бот (новый, от @BotFather; старого бота не трогаем) |
-| `ALLOWED_CHAT_IDS` | кому можно писать боту; свой id — команда `/chatid` |
+| `ALLOWED_CHAT_IDS` | владельцы: кому можно писать боту и звать друзей командой `/invite`; свой id — команда `/chatid` |
 | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | разбор сообщений (OpenAI или OpenRouter) |
 | `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL` | распознавание голосовых; пусто — как у LLM; модель по адресу: OpenRouter `openai/whisper-large-v3`, Groq `whisper-large-v3`, иначе `whisper-1` |
 | `PUBLIC_URL` | пусто — бот опрашивает Telegram сам (удобно на своём ПК); адрес — webhook |
