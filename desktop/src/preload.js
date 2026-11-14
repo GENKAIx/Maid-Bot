@@ -5,14 +5,12 @@ contextBridge.exposeInMainWorld("maid", {
   api: (method, path, body) => ipcRenderer.invoke("api", method, path, body),
   settings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
-  /** Вход логином и паролем (только окно настроек): { server, login, password }. */
+  /** Вход логином и паролем: окно настроек — { server, login, password }, виджет — { login, password } (адрес из настроек). */
   login: (form) => ipcRenderer.invoke("settings:login", form),
   trackNow: () => ipcRenderer.invoke("tracker:now"),
   idle: () => ipcRenderer.invoke("idle"),
   changed: () => ipcRenderer.send("changed"),
   openMain: () => ipcRenderer.send("open-main"),
-  /** Окно настроек программы (там вход логином и паролем). */
-  openSettings: () => ipcRenderer.send("open-settings"),
   /** Открыть день дневника в веб-приложении (браузер). */
   openDay: (day) => ipcRenderer.send("open-day", day),
   /** Открыть раздел приложения в главном окне: "/money", "/diary/2026-11-09"… */

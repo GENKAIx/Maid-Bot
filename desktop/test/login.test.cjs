@@ -1,15 +1,27 @@
 // Проверка входа программы логином и паролем (main.js: loginOnServer) на настоящем маленьком http-сервере — без Electron:
-// верный пароль — ключ; неверный — «Неверный логин или пароль»; нет сервера — «Нет связи с сервером» и код в журнале.
+// верный пароль — ключ; неверный — «Неверный логин или пароль»; нет сервера — «Нет связи с сервером» и код в журнале;
+// settings:login — из окна настроек и из виджета (адрес — из настроек), из других окон — нет.
 const fs = require("fs");
 const http = require("http");
 const src = fs.readFileSync(process.argv[2] ?? require("path").join(__dirname, "../src/main.js"), "utf8");
 const cut = (from, to) => src.slice(src.indexOf(from), src.indexOf(to, src.indexOf(from)));
-const code = cut("/** Вход логином и паролем на сервере", "// Вход в программу — только из окна настроек");
+const code = cut("/** Вход логином и паролем на сервере", 'ipcMain.handle("settings:set"');
 
 let bad = 0, n = 0;
 const check = (ok, m) => { n++; if (!ok) { bad++; console.log("FAIL", m); } };
 const log = [];
-const loginOnServer = new Function("maidLog", code + "; return loginOnServer;")((...a) => log.push(a.join(" ")));
+// Вход из окна (settings:login): окно настроек и виджет — можно, другие окна — нет; виджету адрес — из настроек.
+const handlers = {};
+const settingsPage = { id: "settings" }, widgetWc = { id: "widget" }, stranger = { id: "site" };
+const st = { settings: { server: "", token: "" }, saved: 0 };
+const { loginOnServer } = new Function(
+  "maidLog", "ipcMain", "isSettingsPage", "widget", "settings", "serverBase", "canEncrypt", "safeStorage", "saveSettings", "refreshTray", "broadcast", "shown",
+  code + "; return { loginOnServer };",
+)(
+  (...a) => log.push(a.join(" ")), { handle: (name, fn) => (handlers[name] = fn) }, (wc) => wc === settingsPage, { webContents: widgetWc }, st.settings,
+  (s) => { try { const u = new URL(String(s)); return /^https?:$/.test(u.protocol) ? u.origin : null; } catch { return null; } },
+  () => false, null, () => st.saved++, () => {}, () => {}, () => ({ ok: true }),
+);
 
 const bodies = [];
 const server = http.createServer((req, res) => {
@@ -48,6 +60,19 @@ server.listen(0, "127.0.0.1", async () => {
     check(/Нет связи с сервером. Проверьте адрес сервера и интернет/.test(e), `нет сервера: ${e}`);
     check(log.some((l) => l.includes("ECONNREFUSED")), `нет сервера: в журнале нет кода (${log})`);
     check(!log.some((l) => l.includes("secret")), "пароль попал в журнал");
+
+    // settings:login: из чужого окна — отказ; из окна настроек — адрес из формы; из виджета — адрес из настроек, а не из формы.
+    const login = handlers["settings:login"];
+    check(/неверный запрос/.test(await errOf(login({ sender: stranger }, { server: base, login: "vasya", password: "secret" }))), "чужое окно: вход не запрещён");
+    check(st.settings.token === "", "чужое окно: ключ записан");
+    await login({ sender: settingsPage }, { server: base, login: "vasya", password: "secret" });
+    check(st.settings.server === base && st.settings.token === "tok-Программа на ПК", "окно настроек: ключ или адрес не записаны");
+    st.settings.token = "";
+    bodies.length = 0;
+    await login({ sender: widgetWc }, { server: closed, login: "vasya", password: "secret" });
+    check(st.settings.token === "tok-Программа на ПК" && st.settings.server === base, "виджет: вход не прошёл или адрес взят из формы");
+    check(bodies.length === 2, `виджет: запросов на сервер ${bodies.length}, нужно 2 (программа и сайт)`);
+    check(/Неверный логин или пароль/.test(await errOf(login({ sender: widgetWc }, { login: "vasya", password: "nope" }))), "виджет: неверный пароль — не та ошибка");
   } finally {
     server.close();
     console.log(`${n - bad}/${n}`);

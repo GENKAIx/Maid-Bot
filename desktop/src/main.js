@@ -726,11 +726,13 @@ async function loginOnServer(base, login, password, label) {
   }
   return data.token;
 }
-// Вход в программу — только из окна настроек: адрес, логин и пароль. Ключ — программе, второй — входу сайта в главном окне
-// (копия входа, как site-login:keep), чтобы сайт не спрашивал пароль ещё раз. Пароль не хранится.
+// Вход в программу — из окна настроек (адрес, логин и пароль) или из виджета, когда вход устарел (логин и пароль; адрес — из настроек).
+// Ключ — программе, второй — входу сайта в главном окне (копия входа, как site-login:keep), чтобы сайт не спрашивал пароль ещё раз.
+// Пароль не хранится.
 ipcMain.handle("settings:login", async (e, form) => {
-  if (!isSettingsPage(e.sender)) throw new Error("неверный запрос");
-  const base = serverBase(String(form?.server ?? "").trim());
+  const fromWidget = Boolean(widget && e.sender === widget.webContents);
+  if (!isSettingsPage(e.sender) && !fromWidget) throw new Error("неверный запрос");
+  const base = serverBase(String((fromWidget ? settings.server : form?.server) ?? "").trim());
   if (!base) throw new Error("Адрес сервера: нужен вида https://example.com");
   const login = String(form?.login ?? "").trim();
   const password = String(form?.password ?? "");
@@ -914,8 +916,6 @@ global.maidDebug = () => ({
 });
 ipcMain.on("changed", () => broadcast("changed", null));
 ipcMain.on("open-main", () => showMain());
-// Виджет: «Вход устарел» → «Войти» — окно настроек с формой входа.
-ipcMain.on("open-settings", () => showMain(true));
 ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
 ipcMain.on("hover", () => {});

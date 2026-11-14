@@ -1270,9 +1270,12 @@ function render() {
   const sec = cfg.sections;
   $("#clock").textContent = $("#miniClock").textContent = now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
   if (/^вход устарел/.test(loadFail)) {
-    // Сервер не принял ключ (main.js, 401): связь есть, нужен вход заново — кнопка открывает настройки с формой входа.
-    $("#next").innerHTML = `<div class="relogin"><span>Вход устарел — войдите снова</span><button type="button" id="reloginBtn">Войти</button></div>`;
-    $("#reloginBtn").onclick = () => maid.openSettings();
+    // Сервер не принял ключ (main.js, 401): связь есть, нужен вход заново — логин и пароль прямо здесь.
+    // Опрос перерисовывает каждые 5 с — форму, которая уже стоит, не трогать, иначе пропадёт набранное.
+    if (!$("#reloginForm")) {
+      $("#next").innerHTML = reloginHtml;
+      bindRelogin();
+    }
     $("#body").innerHTML = "";
     renderCourses();
     return;
@@ -1679,6 +1682,37 @@ $("#body").addEventListener("mouseout", (e) => {
 
 let lastJson = "";
 let loadFail = ""; // почему не загрузилось — пишется под «Нет связи с сервером»
+// Вход устарел: логин и пароль в самом виджете (main.js settings:login — адрес сервера берётся из настроек).
+const reloginHtml = `<form class="relogin" id="reloginForm" autocomplete="off">
+  <div class="relogin-msg">Вход устарел — войдите снова</div>
+  <input id="rlLogin" placeholder="Логин" autocomplete="username" spellcheck="false" />
+  <input id="rlPass" type="password" placeholder="Пароль" autocomplete="current-password" />
+  <div class="relogin-row"><span class="relogin-err" id="rlErr" role="alert"></span><button type="submit" id="rlGo">Войти</button></div>
+</form>`;
+function bindRelogin() {
+  const form = $("#reloginForm");
+  // Окно «сквозное»: щелчок по форме — окну нужна клавиатура (как строке чата), ушли из формы — отдаёт.
+  form.addEventListener("mousedown", () => maid.focusInput(true));
+  form.addEventListener("focusout", (e) => { if (!form.contains(e.relatedTarget) && !grabbed) maid.focusInput(false); });
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const login = $("#rlLogin").value.trim(), password = $("#rlPass").value;
+    if (!login || !password) return void ($("#rlErr").textContent = "Впишите логин и пароль");
+    $("#rlGo").disabled = true;
+    $("#rlErr").textContent = "Вхожу…";
+    try {
+      await maid.login({ login, password });
+    } catch (err) {
+      $("#rlErr").textContent = String(err?.message ?? err).replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
+      $("#rlGo").disabled = false;
+      return;
+    }
+    maid.focusInput(false);
+    loadFail = "";
+    $("#next").innerHTML = "";
+    await load();
+  };
+}
 // Запросы идут внахлёст (опрос раз в 5 с, «что-то изменилось», ответ горничной): ответ на более ранний запрос, пришедший
 // позже свежего, отбрасывается — иначе только что добавленная задача пропадала из него, улетала в корзину и возвращалась.
 let loadSeq = 0;

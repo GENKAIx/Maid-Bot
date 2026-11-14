@@ -241,10 +241,15 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .chat .ob-acts button { width: auto; height: 26px; padding: 0 11px; border-radius: 13px; font-size: 12px; font-weight: 600; }
 .chat .ob-acts .ob-retry { background: var(--warn); color: #3a2410; }
 .chat .ob-acts .ob-retry:hover { background: #ffc68f; }
-/* Вход устарел (сервер не принял ключ): надпись и «Войти» вместо «Нет связи с сервером». */
-.relogin { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.relogin button { width: auto; height: 26px; padding: 0 12px; border-radius: 13px; font-size: 12px; font-weight: 600; background: var(--accent); color: #fff; }
+/* Вход устарел (сервер не принял ключ): логин и пароль прямо в виджете вместо «Нет связи с сервером». */
+.relogin { display: grid; gap: 7px; }
+.relogin .relogin-msg { font-weight: 600; }
+.relogin input { height: 30px; padding: 0 10px; border-radius: 8px; font-size: 13px; }
+.relogin .relogin-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.relogin .relogin-err { font-size: 12px; color: #ff9aa6; }
+.relogin button { width: auto; height: 28px; padding: 0 14px; border-radius: 14px; font-size: 12px; font-weight: 600; background: var(--accent); color: #fff; border: 0; }
 .relogin button:hover { filter: brightness(1.1); }
+.relogin button:disabled { opacity: .6; }
 .chat .ob-acts .ob-later { background: rgba(255, 255, 255, .1); color: var(--text); }
 .chat .ob-acts .ob-later:hover { background: rgba(255, 255, 255, .18); }
 @keyframes obSpin { to { transform: rotate(360deg); } }
