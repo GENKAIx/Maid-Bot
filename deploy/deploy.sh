@@ -16,5 +16,7 @@ for i in $(seq 1 40); do
   sleep 3
 done
 docker image prune -f >/dev/null
+# Кэш сборки копится с каждой выкладкой (было 14 ГБ) — держать не больше 2 ГБ: хватает, чтобы сборка оставалась быстрой.
+docker builder prune -f --max-used-space 2GB >/dev/null
 docker compose ps
 [ "$st" = healthy ] || { echo "Новый контейнер не ответил на /healthz. Логи: docker compose logs maid --tail 60" >&2; exit 1; }
