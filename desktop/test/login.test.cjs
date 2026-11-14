@@ -17,12 +17,12 @@ const handlers = {};
 const settingsPage = { id: "settings" }, widgetWc = { id: "widget" }, stranger = { id: "site" };
 const st = { settings: { server: "", token: "" }, saved: 0 };
 const { loginOnServer } = new Function(
-  "maidLog", "ipcMain", "isSettingsPage", "widget", "settings", "serverBase", "canEncrypt", "safeStorage", "saveSettings", "refreshTray", "broadcast", "shown",
+  "maidLog", "ipcMain", "isSettingsPage", "widget", "settings", "serverBase", "canEncrypt", "safeStorage", "saveSettings", "refreshTray", "broadcast", "shown", "mainWin",
   code + "; return { loginOnServer };",
 )(
   (...a) => log.push(a.join(" ")), { handle: (name, fn) => (handlers[name] = fn) }, (wc) => wc === settingsPage, { webContents: widgetWc }, st.settings,
   (s) => { try { const u = new URL(String(s)); return /^https?:$/.test(u.protocol) ? u.origin : null; } catch { return null; } },
-  () => false, null, () => st.saved++, () => {}, () => {}, () => ({ ok: true }),
+  () => false, null, () => st.saved++, () => {}, () => {}, () => ({ ok: true }), null,
 );
 
 const bodies = [];
@@ -73,7 +73,7 @@ server.listen(0, "127.0.0.1", async () => {
     bodies.length = 0;
     await login({ sender: widgetWc }, { server: closed, login: "vasya", password: "secret" });
     check(st.settings.token === "tok-Программа на ПК" && st.settings.server === base, "виджет: вход не прошёл или адрес взят из формы");
-    check(bodies.length === 2, `виджет: запросов на сервер ${bodies.length}, нужно 2 (программа и сайт)`);
+    check(bodies.length === 1, `виджет: запросов на сервер ${bodies.length}, нужен 1 (один вход на программу)`);
     check(/Неверный логин или пароль/.test(await errOf(login({ sender: widgetWc }, { login: "vasya", password: "nope" }))), "виджет: неверный пароль — не та ошибка");
 
     // Переадресация (как Caddy: http://IP → 308 → https://домен). fetch подменён: настоящий https в тесте не поднять.
@@ -89,6 +89,8 @@ server.listen(0, "127.0.0.1", async () => {
       await login({ sender: settingsPage }, { server: "http://10.0.0.1", login: "vasya", password: "secret" });
       check(st.settings.server === "http://10.0.0.1", `переадресация на http: адрес сменился на ${st.settings.server}`);
     } finally { globalThis.fetch = realFetch; }
+  } catch (e) {
+    check(false, `тест оборвался: ${e?.stack ?? e}`);
   } finally {
     server.close();
     console.log(`${n - bad}/${n}`);

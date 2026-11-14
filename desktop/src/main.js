@@ -86,6 +86,7 @@ function loadSettings() {
       token();
     }
     delete settings.tokenEnc;
+    delete settings.siteTokenEnc; // до 0.1.34 у сайта был свой вход — теперь один ключ на программу
     if (s.token && canEncrypt()) saveSettings();
   } catch (e) {
     if (fs.existsSync(settingsFile())) maidLog("настройки не прочитались:", e?.message ?? e);
@@ -133,7 +134,12 @@ function movedTo(base, res) {
 }
 
 async function api(method, p, body, moved = false) {
-  if (!token()) throw new Error(tokenEnc ? "Ключ ещё не расшифровался (защита Windows) — пробую снова." : "Вход не выполнен: откройте настройки программы и войдите логином и паролем.");
+  if (!token()) {
+    if (tokenEnc) throw new Error("Ключ ещё не расшифровался (защита Windows) — пробую снова.");
+    // Входа нет (вышли на сайте или ещё не входили) — виджет показывает свою форму входа, как при устаревшем.
+    loginStale = true;
+    throw new Error(LOGIN_STALE);
+  }
   // Только пути /api/… и только на сервер из настроек: окно не может увести ключ на чужой адрес.
   const base = serverBase();
   if (!base) throw new Error("Неверный адрес сервера в настройках.");
@@ -714,7 +720,7 @@ ipcMain.on("open-section", (_e, p) => {
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
 });
 // Окнам — настройки без ключа.
-const shown = () => { const { token: _t, siteTokenEnc: _s, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), loginStale, insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
+const shown = () => { const { token: _t, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), loginStale, insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
 // http:// не на этом компьютере — ключ и дневник идут открытым текстом.
 function insecure(s) {
   try { const u = new URL(String(s)); return u.protocol === "http:" && !/^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(u.hostname); } catch { return false; }
@@ -747,8 +753,7 @@ async function loginOnServer(base, login, password, label) {
   return { token: data.token, origin: movedTo(base, res) ?? base };
 }
 // Вход в программу — из окна настроек (адрес, логин и пароль) или из виджета, когда вход устарел (логин и пароль; адрес — из настроек).
-// Ключ — программе, второй — входу сайта в главном окне (копия входа, как site-login:keep), чтобы сайт не спрашивал пароль ещё раз.
-// Пароль не хранится.
+// Один ключ на всю программу: открытый сайт в главном окне получает его сразу (site-login:get — при следующем открытии). Пароль не хранится.
 ipcMain.handle("settings:login", async (e, form) => {
   const fromWidget = Boolean(widget && e.sender === widget.webContents);
   if (!isSettingsPage(e.sender) && !fromWidget) throw new Error("неверный запрос");
@@ -759,18 +764,17 @@ ipcMain.handle("settings:login", async (e, form) => {
   if (!login || !password) throw new Error("Впишите логин и пароль.");
   const { token: key, origin } = await loginOnServer(base, login, password, "Программа на ПК");
   if (origin !== base) maidLog("вход: сервер на другом адресе:", base, "→", origin);
-  const site = (await loginOnServer(origin, login, password, "Программа на ПК: сайт").catch(() => null))?.token ?? "";
   settings.server = origin;
   settings.token = key;
   tokenEnc = "";
   loginStale = false;
-  if (site && canEncrypt()) {
-    settings.siteTokenEnc = safeStorage.encryptString(site).toString("base64");
-    siteSeen = null;
-  }
   saveSettings();
   refreshTray();
   maidLog("вход в программу выполнен");
+  // Сайт в главном окне — с тем же входом сразу (иначе он остался бы на странице входа).
+  if (mainWin && !mainWin.isDestroyed() && !mainWin.isLocal) {
+    mainWin.webContents.executeJavaScript(`localStorage.setItem("maid.token", ${JSON.stringify(key)}); location.reload();`).catch(() => {});
+  }
   broadcast("changed", null);
   return shown();
 });
@@ -779,7 +783,6 @@ ipcMain.handle("settings:set", (e, patch) => {
   // Адрес сервера и ключ меняет только вход (settings:login).
   delete patch.server;
   delete patch.token;
-  delete patch.siteTokenEnc;
   settings ={ ...settings, ...patch, widget: { ...settings.widget, ...patch.widget }, tracker: { ...settings.tracker, ...patch.tracker }, keys: { ...settings.keys, ...patch.keys } };
   saveSettings();
   registerKeys();
@@ -798,35 +801,33 @@ const fromApp = (e) => {
     return e.sender === mainWin?.webContents && !mainWin.isLocal && new URL(e.senderFrame.url).origin === new URL(settings.server).origin;
   } catch { return false; }
 };
-// Вход сайта в главном окне (localStorage «maid.token») — копия в settings.json, зашифрованная, как ключ виджета.
-// Хранилище окон Chromium после обновления программы иногда открывается пустым — тогда preload-app.js возвращает вход отсюда.
-// Сайт вышел (кнопкой или ключ устарел — 401) — копия стирается.
+// Один вход на программу: сайт в главном окне (localStorage «maid.token») и виджет ходят с одним ключом — settings.token.
+// Окно открылось — preload-app.js берёт ключ программы (site-login:get) и кладёт сайту. Вошли на сайте — его вход становится
+// ключом программы (site-login:keep). Вышли на сайте (кнопкой или сервер ответил 401 — сайт стёр вход) — программа тоже выходит,
+// виджет показывает свою форму входа. Раньше у сайта был свой, второй вход: «Выйти» на сайте виджет не трогало.
 ipcMain.on("site-login:get", (e) => {
   e.returnValue = "";
-  if (!fromApp(e)) return maidLog("вход сайта: просьба вернуть не из главного окна");
-  if (!settings.siteTokenEnc) return maidLog("вход сайта: в окне пусто, копии нет — сайт попросит войти");
-  try {
-    e.returnValue = siteSeen = safeStorage.decryptString(Buffer.from(settings.siteTokenEnc, "base64"));
-    maidLog("вход сайта возвращён из настроек");
-  } catch (err) {
-    maidLog("вход сайта не расшифровался:", err?.message ?? err);
-  }
+  if (!fromApp(e)) return maidLog("вход сайта: просьба не из главного окна");
+  e.returnValue = token() || "";
 });
-let siteSeen = null; // последний вход, пришедший из окна, — тот же не перешифровываем
 ipcMain.on("site-login:keep", (e, t) => {
-  if (!fromApp(e)) return maidLog("вход сайта: копия пришла не из главного окна");
-  if (typeof t !== "string" || t.length > 4000 || t === siteSeen) return;
-  siteSeen = t;
-  let enc = "";
+  if (!fromApp(e)) return maidLog("вход сайта: пришёл не из главного окна");
+  if (typeof t !== "string" || t.length > 4000) return;
   if (t) {
-    if (!canEncrypt()) return; // без защиты Windows открытым текстом не храним — копия остаётся прежней
-    enc = safeStorage.encryptString(t).toString("base64");
+    if (t === settings.token) return;
+    settings.token = t;
+    loginStale = false;
+    maidLog("вошли на сайте — это и вход программы");
+  } else {
+    if (!settings.token && !tokenEnc) return;
+    settings.token = "";
+    loginStale = true;
+    maidLog("вышли на сайте — программа тоже вышла");
   }
-  if (!enc && !settings.siteTokenEnc) return;
-  // Сайт стирает вход, когда вышли кнопкой или сервер ответил «нужен вход» (401) — в журнал, чтобы выход было видно.
-  maidLog(enc ? "вход сайта сохранён" : "сайт вышел — копия входа стёрта");
-  settings.siteTokenEnc = enc;
+  tokenEnc = "";
   saveSettings();
+  refreshTray();
+  broadcast("changed", null);
 });
 const oneOf = (...vs) => (v) => vs.includes(v);
 const secsOk = (v) => Number.isInteger(v) && v >= 3 && v <= 60;

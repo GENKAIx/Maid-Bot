@@ -63,6 +63,8 @@ server.listen(0, "127.0.0.1", async () => {
       await errOf(A.api("GET", "/api/today"));
       check(seen.length === 2, `переадресация по кругу: запросов ${seen.length}`);
     } finally { globalThis.fetch = realFetch; }
+  } catch (e) {
+    check(false, `тест оборвался: ${e?.stack ?? e}`);
   } finally {
     server.close();
     console.log(`${n - bad}/${n}`);

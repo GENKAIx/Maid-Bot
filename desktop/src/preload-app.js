@@ -2,17 +2,16 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 // Главное окно — сайт с сервера. Ему доступны только настройки виджета на этом ПК и общее — запуск с Windows, горячие клавиши (раздел «Виджет»): ни ключа, ни api, ни Node.
 // main.js проверяет, что вызов пришёл из главного окна со страницы сервера из настроек.
-// Вход сайта (localStorage «maid.token», web/src/api.ts) держим и в настройках программы: после обновления хранилище окна
-// бывает пустым — тогда вход возвращается до того, как сайт его прочитает (preload выполняется раньше скриптов страницы).
-// Дальше раз в 1,5 с сверяем: вошли — копия обновится, вышли или ключ устарел (сайт стёр его) — копия сотрётся.
+// Один вход на программу (main.js, site-login:*): сайт (localStorage «maid.token», web/src/api.ts) и виджет — с одним ключом.
+// Окно открылось — вход программы главнее: он кладётся сайту до того, как сайт его прочитает (preload выполняется раньше скриптов
+// страницы). У программы входа нет, а у сайта есть — он и становится входом программы. Дальше раз в 1,5 с сверяем:
+// вошли на сайте — это вход программы, вышли (кнопкой или ключ устарел — сайт стёр его) — программа тоже выходит.
 try {
   const KEY = "maid.token";
+  const mine = ipcRenderer.sendSync("site-login:get");
   let last = localStorage.getItem(KEY) ?? "";
-  if (!last) {
-    const saved = ipcRenderer.sendSync("site-login:get");
-    if (saved) { localStorage.setItem(KEY, saved); last = saved; }
-  }
-  if (last) ipcRenderer.send("site-login:keep", last); // пусто — копию не трогаем: защита Windows могла ещё не ответить
+  if (mine && mine !== last) { localStorage.setItem(KEY, mine); last = mine; }
+  else if (!mine && last) ipcRenderer.send("site-login:keep", last);
   setInterval(() => {
     const now = localStorage.getItem(KEY) ?? "";
     if (now !== last) ipcRenderer.send("site-login:keep", (last = now));
