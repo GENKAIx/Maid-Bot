@@ -481,6 +481,13 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
           const r = await maid.api("POST", `/api/traits/${m[1]}`, { status: m[2] === "yes" ? "active" : "declined" });
           say(r.text || "Готово", { ms: 5000 });
           maid.changed();
+        } else if ((m = x.data.match(/^rate:(\d{4}-\d{2}-\d{2}):(\d+)$/))) {
+          // Оценка дня под вечерним итогом: хороший день — радуется, плохой — сочувствует.
+          const v = Number(m[2]);
+          react(v >= 7 ? "happy" : v <= 3 ? "sad" : "bow", 3500);
+          const r = await maid.api("POST", "/api/rate", { day: m[1], value: v });
+          say(r.text, { ms: 5000 });
+          maid.changed();
         } else hideBubble();
       } catch (e) {
         say(e.message, { ms: 6000 });

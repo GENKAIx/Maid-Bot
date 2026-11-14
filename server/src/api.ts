@@ -17,7 +17,7 @@ import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
-import { habitButtons, planEventReminders, remindText, snooze, type Button, type Send } from "./scheduler.ts";
+import { DAY_RATES, habitButtons, planEventReminders, RATE, rateDay, remindText, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
@@ -211,6 +211,8 @@ export function createApi(deps: ApiDeps) {
     if (habit) return pipeline.markHabit(u, Number(habit[1]), habit[2], habit[3] as "done" | "skipped", "push");
     const trait = data.match(/^trait:(\d+):(yes|no)$/);
     if (trait) return decideTrait(store, u, Number(trait[1]), trait[2] === "yes");
+    const rate = data.match(RATE);
+    if (rate) return rateDay(store, u, rate[1], Number(rate[2]));
     if (data === "snooze") {
       const buttons: Button[] = all.filter((d) => d !== "snooze").map((d) => {
         const h = d.match(HABIT);
@@ -393,6 +395,14 @@ export function createApi(deps: ApiDeps) {
         await saveProfile(store, u.id, { avatar: s.avatar, steam: s.steam });
       } catch (e) { throw new HttpError(400, (e as Error).message); }
       return profileView(store, u, today);
+    }
+    // Оценка дня — смайлик под вечерним итогом в виджете.
+    if (m === "POST" && p === "/api/rate") {
+      const b = parseBody(z.object({
+        day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        value: z.number().int().refine((v) => DAY_RATES.some(([, x]) => x === v)),
+      }), await readJson(req));
+      return { text: await rateDay(store, u, b.day, b.value) };
     }
     if (m === "POST" && p === "/api/traits") {
       const b = parseBody(z.object({

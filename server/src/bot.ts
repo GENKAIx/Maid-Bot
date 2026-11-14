@@ -10,7 +10,7 @@ import { habitLine, habitsOfDay } from "./habits.ts";
 import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
 import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, esc, memoryText, plansText, tasksText, todayText } from "./report.ts";
-import type { Scheduler, Send } from "./scheduler.ts";
+import { RATE, rateDay, type Scheduler, type Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
 import { decideTrait } from "./profile.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
@@ -322,6 +322,14 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const text = await decideTrait(store, u, Number(ctx.match[1]), ctx.match[2] === "yes");
     await ctx.answerCallbackQuery({ text: text.replace(/<[^>]+>/g, "").slice(0, 190) });
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  });
+
+  // Оценка дня под вечерним итогом: повторное нажатие заменяет оценку, поэтому кнопки остаются.
+  bot.callbackQuery(RATE, async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return ctx.answerCallbackQuery();
+    const text = await rateDay(store, u, ctx.match[1], Number(ctx.match[2])).catch(() => "Не поняла оценку.");
+    await ctx.answerCallbackQuery({ text });
   });
 
   // Вопрос «добавить?»: t:N — галочка пункта, r — с напоминанием, a — в список, n — не надо.

@@ -7,6 +7,7 @@ import {
   upcomingDates,
 } from "./report.ts";
 import { escapesText } from "./escapes.ts";
+import { METRICS } from "./parse.ts";
 import { findPatterns, patternText, traitButtons } from "./profile.ts";
 import { extendSeries } from "./repeat.ts";
 import { addDays, dayKey, durationHuman, humanDay, timeOf, zonedToUtc } from "./time.ts";
@@ -51,6 +52,19 @@ export const habitButtons = (habitId: number, day: string): Button[] => [
   { text: "⏳ Ещё нет", data: `habit:${habitId}:${day}:later` },
   { text: "✖ Нет", data: `habit:${habitId}:${day}:skipped` },
 ];
+
+/** Оценка дня под вечерним итогом: смайлик → показатель «Оценка дня» (rating_day, /10), одна на день. */
+export const DAY_RATES: [string, number][] = [["😞", 3], ["😐", 5], ["🙂", 7], ["😄", 9]];
+export const RATE = /^rate:(\d{4}-\d{2}-\d{2}):(\d+)$/;
+export const rateButtons = (day: string): Button[] => DAY_RATES.map(([text, v]) => ({ text, data: `rate:${day}:${v}` }));
+/** Записать оценку (повторное нажатие заменяет прежнюю). */
+export async function rateDay(store: Store, u: User, day: string, value: number): Promise<string> {
+  const face = DAY_RATES.find(([, v]) => v === value)?.[0];
+  if (!face) throw new Error(`нет такой оценки: ${value}`);
+  const { label, unit } = METRICS.rating_day;
+  await store.setDayMetric({ user_id: u.id, day_key: day, key: "rating_day", label, value, unit, source: "evening" });
+  return `Записала: день на ${face} ${value}/10.`;
+}
 
 /** Когда спросить про привычку: в её время (или habit_first, 12:00), и ещё раз в habit_last (23:00), если тот позже. */
 export function habitAskTimes(u: Pick<User, "habit_first" | "habit_last">, own: string[]): string[] {
@@ -210,7 +224,7 @@ export class Scheduler {
       }
     }
     if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
-      await this.safeSend(u, await this.eveningText(u, today), "proud");
+      await this.safeSend(u, await this.eveningText(u, today), "proud", rateButtons(today));
       // В воскресенье вечером — мягко о задачах, от которых сбежали за неделю.
       if (new Date(`${today}T12:00:00Z`).getUTCDay() === 0 && (await s.once(`escapes:${u.id}:${today}`))) {
         const text = escapesText(await s.allTasks(u.id), today, u.tz);
@@ -273,7 +287,8 @@ export class Scheduler {
     ].filter(Boolean);
     const week = (await s.diaryRange(u.id, addDays(today, -6), addDays(today, -1)))
       .filter((r) => r.section !== "tags" && r.section !== "summary").slice(-80)
-      .map((r) => `${r.day_key} ${sectionName(r.section)}: ${r.text}`);
+      .map((r) => `${r.day_key} ${sectionName(r.section)}: ${r.text}`)
+      .concat((await s.metricsRange(u.id, addDays(today, -6), addDays(today, -1), "rating_day")).map((m) => `${m.day_key} ${m.label}: ${m.value}${m.unit}`));
     try {
       const words = await this.llm([
         {
