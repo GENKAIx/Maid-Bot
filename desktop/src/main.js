@@ -96,6 +96,12 @@ function loadSettings() {
     }
     delete settings.tokenEnc;
     delete settings.siteTokenEnc; // до 0.1.34 у сайта был свой вход — теперь один ключ на программу
+    // До 0.1.38 программам из Store и без своего значка уходил серый «программа» — разослать значки заново (icons.js).
+    if ((settings.tracker.iconsVer ?? 1) < 2) {
+      settings.tracker.iconsSent = [];
+      settings.tracker.iconsVer = 2;
+      saveSettings();
+    }
     if (s.token && canEncrypt()) saveSettings();
   } catch (e) {
     if (fs.existsSync(settingsFile())) maidLog("настройки не прочитались:", e?.message ?? e);

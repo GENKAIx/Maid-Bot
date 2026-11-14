@@ -818,7 +818,11 @@ export function createApi(deps: ApiDeps) {
     }
     if (m === "POST" && p === "/api/icons") {
       const b = parseBody(IconsInput, await readJson(req));
-      for (const i of b.icons) if (iconKey(i.name)) await store.setIcon(u.id, iconKey(i.name), i.png);
+      for (const i of b.icons) {
+        if (!iconKey(i.name)) continue;
+        if (i.png) await store.setIcon(u.id, iconKey(i.name), i.png);
+        else await store.dropIcon(u.id, iconKey(i.name));
+      }
       return { saved: b.icons.length };
     }
     if (m === "POST" && p === "/api/activity") {

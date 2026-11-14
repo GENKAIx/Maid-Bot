@@ -22,7 +22,8 @@ export function iconKey(name: string) {
   return name.toLowerCase().replace(/\.exe$/, "").replace(/[^\p{L}\p{N}]+/gu, "");
 }
 export const IconsInput = z.object({
-  icons: z.array(z.object({ name: z.string().min(1).max(120), png: z.string().regex(/^[A-Za-z0-9+/=]+$/).max(24_000) })).max(60),
+  // png "" — своего значка у программы нет (у программы на ПК до 0.1.38 туда попадал серый стандартный): прежний стирается.
+  icons: z.array(z.object({ name: z.string().min(1).max(120), png: z.string().regex(/^[A-Za-z0-9+/=]*$/).max(24_000) })).max(60),
 });
 
 const GAME_LINES = {

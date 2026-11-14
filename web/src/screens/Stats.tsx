@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { get } from "../api";
+import { iconKey, prettyName, sumByApp } from "../appnames";
 import { Bars, NestedBars, Segment } from "../charts";
 import { Card, Empty, Spinner } from "../components";
 import { addDays, dur, humanDay, metricText, monthTitle, shortDay, todayKey } from "../format";
@@ -109,10 +110,8 @@ export function Stats({ version }: { version: number }) {
   const h = (v: number) => `${v.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} ч`;
   const n = (v: number) => Math.round(v).toLocaleString("ru-RU");
 
-  const topGames = new Map<string, number>();
-  for (const a of activity) for (const g of a.games) topGames.set(g.name, (topGames.get(g.name) ?? 0) + g.sec);
-  const topApps = new Map<string, number>();
-  for (const a of activity) for (const g of a.apps) topApps.set(g.name, (topApps.get(g.name) ?? 0) + g.sec);
+  const topGames = sumByApp(activity.flatMap((a) => a.games));
+  const topApps = sumByApp(activity.flatMap((a) => a.apps));
 
   const sd = sleepDays(sleepNotes, metrics);
   const allDays = bs.flatMap((b) => b.days);
@@ -213,10 +212,6 @@ function OtherMetrics({ metrics, bs }: { metrics: MetricRow[]; bs: Bucket[] }) {
 }
 
 const PALETTE = ["#6b3fd4", "#3d8fe0", "#e0566a", "#2fa86e", "#e98a2e", "#8a6f3b", "#c04fb0", "#4b9a9a"];
-/** Тот же ключ, что на сервере (server/src/activity.ts iconKey). */
-const iconKey = (name: string) => name.toLowerCase().replace(/\.exe$/, "").replace(/[^\p{L}\p{N}]+/gu, "");
-const prettyName = (name: string) => name.replace(/\.exe$/i, "");
-
 function AppIcon({ name, icons }: { name: string; icons: Record<string, string> }) {
   const key = iconKey(name);
   const src = icons[key];

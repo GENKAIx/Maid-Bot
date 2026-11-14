@@ -1217,6 +1217,9 @@ export class Store {
   }
 
   // --- иконки программ ---
+  async dropIcon(userId: number, nameKey: string) {
+    await this.run("DELETE FROM app_icons WHERE user_id = ? AND name_key = ?", userId, nameKey);
+  }
   async setIcon(userId: number, nameKey: string, png: string) {
     await this.run(
       `INSERT INTO app_icons (user_id, name_key, png, updated_at) VALUES (?, ?, ?, ?)

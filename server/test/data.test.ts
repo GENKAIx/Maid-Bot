@@ -207,6 +207,11 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       assert.equal(icons.counterstrike2, "data:image/png;base64,AAAA");
       assert.equal(icons.chrome, "data:image/png;base64,CCCC");
       assert.equal((await call("/api/icons", { icons: [{ name: "x", png: "<script>" }] }, token)).status, 400);
+      // Пустой png — своего значка нет: прежний (серый стандартный) стирается, на сайте — буква.
+      await call("/api/icons", { icons: [{ name: "chrome.exe", png: "" }] }, token);
+      const left = (await call("/api/icons", undefined, token)).json;
+      assert.equal(left.chrome, undefined);
+      assert.equal(left.counterstrike2, "data:image/png;base64,AAAA");
       assert.deepEqual(act.map((a: any) => [a.day_key, a.active_sec]), [["2026-11-02", 3600]]);
       await store.addDate({ user_id: u.id, title: "ДР Васи", date_iso: "1990-03-15", type: "birthday", person: "Вася", notes: "", yearly: 1, message_id: null });
       assert.equal((await call("/api/dates?all=1", undefined, token)).json.length, 1);

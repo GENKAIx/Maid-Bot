@@ -9,7 +9,7 @@ const { createTracker, foreground, localDay } = require("../src/activity.js");
 let bad = 0, n = 0;
 const check = (ok, m) => { n++; if (!ok) { bad++; console.log("FAIL", m); } };
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "maid-act-"));
-const st = { t: new Date(2026, 10, 14, 10, 0, 0).getTime(), idle: 0, locked: false, app: { name: "chrome", path: "C:\chrome.exe" } };
+const st = { t: new Date(2026, 10, 14, 10, 0, 0).getTime(), idle: 0, locked: false, app: { name: "chrome", path: "C:\\chrome.exe" } };
 const make = () => createTracker({ dir, now: () => st.t, idle: () => ({ sec: st.idle, locked: st.locked }), fg: () => st.app });
 // n замеров по 5 с; idleGrows — простой растёт вместе со временем
 const run = (tr, steps, { idleGrows = false } = {}) => { for (let i = 0; i < steps; i++) { st.t += 5000; if (idleGrows) st.idle += 5; tr.tick(); } };
@@ -54,11 +54,11 @@ try {
   check(sec(s, "chrome") === 255 && s.afk_sec === 655, "сон ПК посчитан");
 
   // Игра по списку, значок — путь к exe.
-  st.app = { name: "dota2", path: "D:\dota2.exe" };
+  st.app = { name: "dota2", path: "D:\\dota2.exe" };
   run(tr, 24);
   s = tr.summary(day(), ["dota2.exe"]);
   check(s.games.length === 1 && s.games[0].name === "dota2" && s.games[0].sec === 120 && !s.apps.some((x) => x.name === "dota2"), "игра не в играх");
-  check(tr.paths(day()).get("dota2") === "D:\dota2.exe", "путь к exe игры не запомнен");
+  check(tr.paths(day()).get("dota2") === "D:\\dota2.exe", "путь к exe игры не запомнен");
   check(s.active_sec === 375, `active_sec ${s.active_sec} вместо 375`);
 
   // Меньше минуты — не идёт; окна нет — «?».
@@ -79,7 +79,7 @@ try {
   const yesterday = day();
   st.t = new Date(2026, 10, 15, 0, 0, 2).getTime() - 5000;
   tr.tick();
-  st.app = { name: "chrome", path: "C:\chrome.exe" };
+  st.app = { name: "chrome", path: "C:\\chrome.exe" };
   run(tr, 15);
   check(sec(tr.summary(day()), "chrome") === 75, `новый день: chrome ${sec(tr.summary(day()), "chrome")} вместо 75`);
   check(sec(tr.summary(yesterday), "chrome") === 255, "вчерашний день после полуночи не читается");
