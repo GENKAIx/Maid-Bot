@@ -152,7 +152,14 @@ export async function serveDesktop(dir: string, pathname: string, res: http.Serv
   if (!dir || !/^(latest\.yml|[\w.-]+\.exe)$/.test(name) || name.startsWith(".")) return false;
   const file = path.join(dir, name);
   const st = await fs.promises.stat(file).catch(() => null);
-  if (!st?.isFile()) return false;
+  if (!st?.isFile()) {
+    // Постоянная ссылка «Gornichnaya-Setup.exe» и ссылки на старые версии (при выпуске старый установщик удаляется) —
+    // переадресация на нынешний установщик из latest.yml, а не «нет такого файла».
+    const now = /^Gornichnaya-Setup(-[\w.-]+)?\.exe$/.test(name) ? await latestExe(dir) : null;
+    if (!now || now === name) return false;
+    res.writeHead(302, { Location: `/desktop/${encodeURIComponent(now)}`, "Cache-Control": "no-cache" }).end();
+    return true;
+  }
   res.writeHead(200, {
     "Content-Type": name.endsWith(".yml") ? "text/yaml; charset=utf-8" : "application/octet-stream",
     "Content-Length": st.size,
@@ -160,6 +167,15 @@ export async function serveDesktop(dir: string, pathname: string, res: http.Serv
   });
   await new Promise<void>((ok, fail) => fs.createReadStream(file).on("error", fail).on("end", ok).pipe(res));
   return true;
+}
+
+/** Нынешний установщик программы: имя из latest.yml (path:), если такой файл есть в папке; иначе null. */
+async function latestExe(dir: string): Promise<string | null> {
+  const yml = await fs.promises.readFile(path.join(dir, "latest.yml"), "utf8").catch(() => "");
+  const name = /^path:\s*(\S+)\s*$/m.exec(yml)?.[1] ?? "";
+  if (!/^[\w.-]+\.exe$/.test(name)) return null;
+  const st = await fs.promises.stat(path.join(dir, name)).catch(() => null);
+  return st?.isFile() ? name : null;
 }
 
 /** Поиск по дневнику: раздел, подраздел, слова (без учёта регистра, кириллица тоже). */
