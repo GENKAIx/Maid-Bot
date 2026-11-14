@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { iconKey as siteKey, sumByApp } from "../../web/src/appnames.ts";
-import { iconKey } from "../src/activity.ts";
+import { iconKey as siteKey, sumByApp } from "../src/appnames.ts";
+import { iconKey } from "../../server/src/activity.ts";
 
 // Статистика на сайте (web/src/appnames.ts): одна программа под разными именами — одна строка, ключ — как у значков на сервере.
 
