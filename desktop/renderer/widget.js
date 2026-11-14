@@ -81,8 +81,8 @@ const KIND = {
 };
 
 // Куда ведёт карточка записи из облачка: раздел приложения (веб-приложение в главном окне).
-function sectionOf(c) {
-  if (c.kind === "diary") return /^Здоровье/.test(c.title) ? "/health" : `/diary/${data?.day ?? ""}`.replace(/\/$/, "");
+function sectionOf(c, day = data?.day) {
+  if (c.kind === "diary") return /^Здоровье/.test(c.title) ? "/health" : `/diary/${day ?? ""}`.replace(/\/$/, "");
   return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits", trait: "/profile" }[c.kind] ?? "/";
 }
 
@@ -879,16 +879,36 @@ const HIST_MAX = 40;
 let chatLog = (() => { try { return JSON.parse(localStorage.getItem(HIST_KEY)) ?? []; } catch { return []; } })();
 function remember(me, r) {
   if (!r?.text) return;
-  chatLog = [...chatLog, { at: Date.now(), me: String(me ?? "").slice(0, 400), reply: String(r.text).slice(0, 2000), undo: r.undoable ? r.messageId : null, pic: r.drawing?.id ?? null }].slice(-HIST_MAX);
+  // changes — что записалось (кнопки разделов под ответом), day — день, в дневник которого вела запись.
+  const changes = (r.changes ?? []).slice(0, 12).map((c) => ({ kind: c.kind, title: String(c.title ?? "").slice(0, 80) }));
+  chatLog = [...chatLog, { at: Date.now(), me: String(me ?? "").slice(0, 400), reply: String(r.text).slice(0, 2000), undo: r.undoable ? r.messageId : null, pic: r.drawing?.id ?? null, changes, day: data?.day ?? "" }].slice(-HIST_MAX);
   try { localStorage.setItem(HIST_KEY, JSON.stringify(chatLog)); } catch {}
   if (!$("#chatHist").classList.contains("hidden")) drawHistory();
 }
 const clockOf = (t) => new Date(t).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+// Ответ горничной в переписке. Что записалось — кнопками разделов (как карточки облачка), строки «📓 …» из текста тогда не
+// повторяются (вопросы «Добавить?», «⚠ Сдвинуть?» остаются). «Отменить» — отдельной строкой под сообщением.
+// У ответов до 0.1.39 changes нет — текст целиком, как был.
+function herHtml(h, i) {
+  const ch = h.changes?.length ? h.changes : null;
+  const [first, ...rest] = String(h.reply).split("\n");
+  const text = ch ? [first, ...rest.filter((l) => l.startsWith("⚠ ") || /\?\s*$/.test(l))].join("\n") : h.reply;
+  const chips = ch
+    ? `<div class="h-chips">${ch.map((c, j) => {
+      const [icon, name] = KIND[c.kind] ?? ["•", c.kind];
+      return `<button type="button" class="h-chip" data-h="${i}" data-c="${j}" title="${esc(name)} — открыть в приложении">${icon} ${esc(c.title)}</button>`;
+    }).join("")}</div>`
+    : "";
+  const undo = h.undo
+    ? `<div class="h-acts">${h.undone ? `<span class="h-undone">отменено</span>` : `<button type="button" class="h-undo" data-h="${i}">↩ Отменить</button>`}</div>`
+    : "";
+  return `<div class="hm her">${tgHtml(text)}${h.pic ? `<img class="h-drawing" data-drawing="${Number(h.pic)}" alt="Картинка">` : ""}${chips}<i>${clockOf(h.at)}</i></div>${undo}`;
+}
 function drawHistory() {
   const box = $("#chatHist");
   box.innerHTML = chatLog.length
     ? chatLog.map((h, i) => (h.me ? `<div class="hm me">${esc(h.me)}<i>${clockOf(h.at)}</i></div>` : "")
-      + `<div class="hm her">${tgHtml(h.reply)}${h.pic ? `<img class="h-drawing" data-drawing="${Number(h.pic)}" alt="Картинка">` : ""}${h.undo ? (h.undone ? ` <span class="h-undone">отменено</span>` : ` <button type="button" class="h-undo" data-h="${i}">Отменить</button>`) : ""}<i>${clockOf(h.at)}</i></div>`).join("")
+      + herHtml(h, i)).join("")
     : `<div class="h-empty">Здесь будут последние ответы горничной.</div>`;
   box.scrollTop = box.scrollHeight;
   fillDrawings(box);
@@ -967,6 +987,13 @@ $("#chatHist").addEventListener("contextmenu", (e) => {
   });
 });
 $("#chatHist").addEventListener("click", async (e) => {
+  const chip = e.target.closest(".h-chip");
+  if (chip) {
+    const h = chatLog[Number(chip.dataset.h)];
+    const c = h?.changes?.[Number(chip.dataset.c)];
+    if (c) maid.openSection(sectionOf(c, h.day || undefined));
+    return;
+  }
   const b = e.target.closest(".h-undo");
   if (!b) return;
   const h = chatLog[Number(b.dataset.h)];

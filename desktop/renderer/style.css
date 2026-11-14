@@ -267,6 +267,11 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .chat button.h-undo { width: auto; height: auto; padding: 0; background: none; color: var(--accent); font-weight: 600; font-size: 12px; }
 .chat button.h-undo:hover { background: none; text-decoration: underline; }
 .chat .h-undone { color: var(--muted); font-size: 11.5px; }
+/* Что записалось — кнопками разделов в ответе; «Отменить» — строкой под сообщением (widget.js herHtml). */
+.chat .h-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; white-space: normal; }
+.chat button.h-chip { width: auto; height: auto; padding: 2px 8px; border-radius: 999px; background: rgba(183, 156, 255, .16); color: var(--text); font-size: 11.5px; font-weight: 500; line-height: 1.5; }
+.chat button.h-chip:hover { background: rgba(183, 156, 255, .3); }
+.chat .h-acts { align-self: flex-start; margin: -2px 0 0 8px; }
 .chat .h-empty { color: var(--muted); font-size: 12.5px; text-align: center; padding: 10px 0; }
 .chat button.hist-btn.on { background: rgba(183, 156, 255, .22); color: var(--accent); }
 .chat button.hist-btn:hover { transform: none; }

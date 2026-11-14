@@ -42,6 +42,21 @@ test("с горничной разговаривают — ответ разго
   const sys = String(calls[1].messages[0].content);
   assert.ok(sys.includes(TALK_RULES) && sys.includes(persona(u.persona).voice), "в разговоре нет правил разговора или голоса характера");
   assert.equal(calls[1].messages.at(-1)?.content, "Представляешь, меня повысили до тимлида!");
+  // Разговор знает, что из сообщения уже записано (раньше отвечал «записывать не стану», а запись была).
+  assert.match(sys, /Из этого сообщения ты уже записала[^]*не говори, что не записала/);
+  assert.match(sys, /📓/);
+});
+
+test("ответ разговором — одним абзацем: строки записанного под ним не путаются с текстом", async () => {
+  const { u, pipe } = await setup({ diary: [{ section: "notes", text: "x" }], summary: "[14:30] x", talk: true }, "Первая мысль.\n\nВторая мысль.");
+  const r = await pipe.handle({ user: u, ...msg("слушай, а ты что думаешь?", "5") });
+  assert.equal(r.text.split("\n")[0], "Первая мысль. Вторая мысль.");
+});
+
+test("без записанного — в разговоре нет строки «уже записала»", async () => {
+  const { calls, u, pipe } = await setup({ summary: "", talk: true, reply: "Привет!" });
+  await pipe.handle({ user: u, ...msg("как дела?", "6") });
+  assert.ok(!String(calls[1].messages[0].content).includes("уже записала"));
 });
 
 test("обычная запись — одна короткая реплика, без второго запроса", async () => {
@@ -69,4 +84,5 @@ test("промпт разбора: talk описан, болтовня — talk"
   assert.match(p, /"talk": true, если пользователь хочет поговорить с тобой/);
   assert.match(p, /talk true — с тобой разговаривают/);
   assert.match(p, /Только поболтать \(без фактов\) — всё пустое, кроме talk, reply и emotion/);
+  assert.match(p, /Просьба записать, напомнить, добавить, перенести[^]*тоже talk false/);
 });

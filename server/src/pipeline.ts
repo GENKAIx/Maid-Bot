@@ -267,7 +267,10 @@ export class Pipeline {
     if (original) await s.setMessage(message.id, { state: "done", reply: "(уточнение)" });
 
     // С горничной разговаривают — ответ разговором (как /ask), записанное — строками под ним; не вышло — короткая реплика.
-    const talk = parsed.talk ? await this.talkText(u, message, at).catch((e) => void console.error("[talk]", e)) : undefined;
+    // Разговор знает, что из сообщения уже записано, — иначе отвечал «записывать не стану», а запись была.
+    const talk = parsed.talk
+      ? await this.talkText(u, message, at, undefined, lines.map((l) => l.replace(/<[^>]+>/g, ""))).catch((e) => void console.error("[talk]", e))
+      : undefined;
     const head = talk || (parsed.reply ? esc(parsed.reply) : pick(p.saved, message.id));
     const body = lines.length ? "\n" + lines.join("\n") : "";
     // Спорное (распорядок, «надо бы когда-нибудь») не записано — спросить кнопками.
@@ -752,18 +755,20 @@ export class Pipeline {
     }
   }
 
-  /** Ответ разговором: голос характера, что знает о собеседнике, последние сообщения (/ask и сообщения с talk). */
-  private async talkText(u: User, msg: Message, at: Date, images?: Picture[]): Promise<string> {
+  /** Ответ разговором: голос характера, что знает о собеседнике, последние сообщения (/ask и сообщения с talk).
+   *  saved — что из этого сообщения уже записал разбор (строки ответа); ответ — одним абзацем: под ним строки записанного. */
+  private async talkText(u: User, msg: Message, at: Date, images?: Picture[], saved: string[] = []): Promise<string> {
     const p = persona(u.persona);
     const today = dayKey(at, u.tz);
     const traits = traitPrompt(await this.store.traitsOf(u.id));
     const mem = (await this.store.activeMemory(u.id)).slice(-PROMPT_CAP.memory).map((m) => `${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n");
     const out = await this.llm([
-      { role: "system", content: `${p.voice}\n${TALK_RULES}\nСегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}${traits ? "\n\n" + traits : ""}` },
+      { role: "system", content: `${p.voice}\n${TALK_RULES}\nСегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}${traits ? "\n\n" + traits : ""}`
+        + (saved.length ? `\n\nИз этого сообщения ты уже записала (это видно под твоим ответом, не пересказывай и не говори, что не записала):\n${saved.join("\n")}` : "") },
       ...(await this.history(u.id, msg.id)),
       { role: "user", content: images ? `${msg.text}\n(Приложено изображений: ${images.length}.)` : msg.text, images },
     ], { temperature: 0.7, kind: "chat" });
-    return esc(out.trim());
+    return esc(out.trim().replace(/\s*\n\s*/g, " "));
   }
 
   private async chat(u: User, msg: Message, at: Date, images?: Picture[]): Promise<Reply> {
