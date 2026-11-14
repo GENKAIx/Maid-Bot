@@ -1,11 +1,13 @@
 // Проверка входа программы логином и паролем (main.js: loginOnServer) на настоящем маленьком http-сервере — без Electron:
 // верный пароль — ключ; неверный — «Неверный логин или пароль»; нет сервера — «Нет связи с сервером» и код в журнале;
-// settings:login — из окна настроек и из виджета (адрес — из настроек), из других окон — нет.
+// settings:login — из окна настроек и из виджета (адрес — из настроек), из других окон — нет;
+// сервер перенаправил на https-адрес (http://IP → https://домен) — сохраняется он, на http — нет.
 const fs = require("fs");
 const http = require("http");
 const src = fs.readFileSync(process.argv[2] ?? require("path").join(__dirname, "../src/main.js"), "utf8");
 const cut = (from, to) => src.slice(src.indexOf(from), src.indexOf(to, src.indexOf(from)));
-const code = cut("/** Вход логином и паролем на сервере", 'ipcMain.handle("settings:set"');
+const code = cut("/** Сервер перенаправил запрос на другой адрес https", "async function api(") +
+  cut("/** Вход логином и паролем на сервере", 'ipcMain.handle("settings:set"');
 
 let bad = 0, n = 0;
 const check = (ok, m) => { n++; if (!ok) { bad++; console.log("FAIL", m); } };
@@ -44,7 +46,7 @@ server.listen(0, "127.0.0.1", async () => {
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     const t = await loginOnServer(base, "vasya", "secret", "Программа на ПК");
-    check(t === "tok-Программа на ПК", `верный пароль: ключ ${t}`);
+    check(t.token === "tok-Программа на ПК" && t.origin === base, `верный пароль: ключ ${JSON.stringify(t)}`);
     check(bodies[0].path === "/api/login" && bodies[0].label === "Программа на ПК", "запрос не на /api/login или без подписи");
     check(/Неверный логин или пароль/.test(await errOf(loginOnServer(base, "vasya", "wrong", "x"))), "неверный пароль: не та ошибка");
     check(/Сервер: слишком много/.test(await errOf(loginOnServer(base, "many", "x", "x"))), "429: нет текста сервера");
@@ -73,6 +75,20 @@ server.listen(0, "127.0.0.1", async () => {
     check(st.settings.token === "tok-Программа на ПК" && st.settings.server === base, "виджет: вход не прошёл или адрес взят из формы");
     check(bodies.length === 2, `виджет: запросов на сервер ${bodies.length}, нужно 2 (программа и сайт)`);
     check(/Неверный логин или пароль/.test(await errOf(login({ sender: widgetWc }, { login: "vasya", password: "nope" }))), "виджет: неверный пароль — не та ошибка");
+
+    // Переадресация (как Caddy: http://IP → 308 → https://домен). fetch подменён: настоящий https в тесте не поднять.
+    const realFetch = globalThis.fetch;
+    const answer = (url) => ({ redirected: true, url, status: 200, ok: true, json: async () => ({ token: "tok-moved" }) });
+    try {
+      globalThis.fetch = async () => answer("https://maid.example/api/login");
+      bodies.length = 0;
+      await login({ sender: settingsPage }, { server: "http://10.0.0.1", login: "vasya", password: "secret" });
+      check(st.settings.server === "https://maid.example" && st.settings.token === "tok-moved", `https-переадресация: сохранён ${st.settings.server}`);
+      check(log.some((l) => l.includes("сервер на другом адресе: http://10.0.0.1 → https://maid.example")), "https-переадресация: нет записи в журнале");
+      globalThis.fetch = async () => answer("http://other.example/api/login");
+      await login({ sender: settingsPage }, { server: "http://10.0.0.1", login: "vasya", password: "secret" });
+      check(st.settings.server === "http://10.0.0.1", `переадресация на http: адрес сменился на ${st.settings.server}`);
+    } finally { globalThis.fetch = realFetch; }
   } finally {
     server.close();
     console.log(`${n - bad}/${n}`);

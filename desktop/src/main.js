@@ -121,7 +121,18 @@ const isSettingsPage = (wc) => {
   try { return wc === mainWin?.webContents && new URL(wc.getURL()).protocol === "file:"; } catch { return false; }
 };
 
-async function api(method, p, body) {
+/** Сервер перенаправил запрос на другой адрес https (http://IP → https://домен): новый адрес — иначе null.
+ * При переходе на другой адрес fetch выбрасывает ключ из запроса, и сервер отвечал 401 — вход «устаревал» сразу после входа.
+ * На http ключ не переносим: там он идёт открытым текстом. */
+function movedTo(base, res) {
+  if (!res.redirected || !res.url) return null;
+  try {
+    const u = new URL(res.url);
+    return u.protocol === "https:" && u.origin !== base ? u.origin : null;
+  } catch { return null; }
+}
+
+async function api(method, p, body, moved = false) {
   if (!token()) throw new Error(tokenEnc ? "Ключ ещё не расшифровался (защита Windows) — пробую снова." : "Вход не выполнен: откройте настройки программы и войдите логином и паролем.");
   // Только пути /api/… и только на сервер из настроек: окно не может увести ключ на чужой адрес.
   const base = serverBase();
@@ -151,6 +162,14 @@ async function api(method, p, body) {
       }
       await new Promise((r) => setTimeout(r, 700 * (i + 1)));
     }
+  }
+  // Сервер переехал на https-адрес: запомнить его и повторить запрос уже с ключом (один раз).
+  const to = movedTo(base, res);
+  if (to && !moved) {
+    maidLog("сервер переехал:", base, "→", to);
+    settings.server = to;
+    saveSettings();
+    return api(method, p, body, true);
   }
   const data = await res.json().catch(() => ({}));
   // Сервер не принял ключ (вышли на сайте, устройство удалено, аккаунта нет): это не обрыв связи — нужен вход заново.
@@ -724,7 +743,8 @@ async function loginOnServer(base, login, password, label) {
     maidLog("вход: сервер ответил", res.status);
     throw new Error(data.error ? `Сервер: ${data.error}` : `Сервер ответил ошибкой ${res.status}. Проверьте адрес сервера.`);
   }
-  return data.token;
+  // Адрес, на котором сервер в итоге ответил (вписали http://IP — сохраняется https-адрес, куда он перенаправил).
+  return { token: data.token, origin: movedTo(base, res) ?? base };
 }
 // Вход в программу — из окна настроек (адрес, логин и пароль) или из виджета, когда вход устарел (логин и пароль; адрес — из настроек).
 // Ключ — программе, второй — входу сайта в главном окне (копия входа, как site-login:keep), чтобы сайт не спрашивал пароль ещё раз.
@@ -737,9 +757,10 @@ ipcMain.handle("settings:login", async (e, form) => {
   const login = String(form?.login ?? "").trim();
   const password = String(form?.password ?? "");
   if (!login || !password) throw new Error("Впишите логин и пароль.");
-  const key = await loginOnServer(base, login, password, "Программа на ПК");
-  const site = await loginOnServer(base, login, password, "Программа на ПК: сайт").catch(() => "");
-  settings.server = base;
+  const { token: key, origin } = await loginOnServer(base, login, password, "Программа на ПК");
+  if (origin !== base) maidLog("вход: сервер на другом адресе:", base, "→", origin);
+  const site = (await loginOnServer(origin, login, password, "Программа на ПК: сайт").catch(() => null))?.token ?? "";
+  settings.server = origin;
   settings.token = key;
   tokenEnc = "";
   loginStale = false;
