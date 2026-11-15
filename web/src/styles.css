@@ -532,8 +532,26 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .pc-stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .pc-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; align-self: center; }
 .pc-pct { color: var(--muted); font-size: 13px; }
-.day-share { grid-column: 1 / -1; display: flex; height: 8px; border-radius: 99px; background: var(--ring-bg); overflow: hidden; }
-.day-share i { display: block; height: 100%; animation: growX .6s ease both; transform-origin: left; }
+/* Круг суток (charts.tsx, DayPie): слева круг, рядом подписи, справа «Сегодня». */
+.pc-summary { grid-template-columns: auto 1fr auto; align-items: center; }
+.pc-legend { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pc-dot-off { background: var(--ring-bg); box-shadow: inset 0 0 0 1px var(--line); }
+.day-pie { display: block; flex: none; }
+.day-pie .pie-arc { animation: pieIn .6s ease both; }
+.day-pie .pie-big { font-size: 4.6px; font-weight: 700; fill: var(--text); font-variant-numeric: tabular-nums; }
+.day-pie .pie-small { font-size: 3.4px; fill: var(--muted); }
+@keyframes pieIn { from { opacity: 0; } }
+/* Выбор дня: щелчок по дате открывает календарь (поле даты прозрачно поверх заголовка). */
+.date-pick { position: relative; cursor: pointer; border-radius: 8px; padding: 0 4px; }
+.date-pick:hover .screen-title { color: var(--accent-ink); }
+.date-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.date-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Один день: число вместо столбика. */
+.day-value { display: flex; flex-direction: column; gap: 6px; padding: 6px 0 2px; }
+.day-value b { font-size: 28px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.day-goal { display: block; height: 8px; border-radius: 99px; background: var(--ring-bg); overflow: hidden; }
+.day-goal i { display: block; height: 100%; border-radius: 99px; animation: growX .6s ease both; transform-origin: left; }
+@media (prefers-reduced-motion: reduce) { .day-pie .pie-arc { animation: none; } }
 .app-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin-top: 14px; }
 .apps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 .apps li { display: grid; grid-template-columns: 22px minmax(0, 130px) 1fr auto; gap: 9px; align-items: center; font-size: 13.5px; }
@@ -579,7 +597,10 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
   .week-day .week-head { margin: 0; min-width: 52px; }
   .week-event { white-space: normal; }
   .shares li { grid-template-columns: 80px 1fr auto; }
-  .pc-summary, .app-cols { grid-template-columns: 1fr; }
+  .app-cols { grid-template-columns: 1fr; }
+  .pc-summary { grid-template-columns: auto 1fr; } /* круг и подписи рядом, «Сегодня» — строкой ниже */
+  .pc-summary .pc-today { grid-column: 1 / -1; }
+  .day-pie { width: 112px; height: 112px; }
   .pc-today { padding-left: 0; border-left: 0; }
   .sleep-row { grid-template-columns: 48px 1fr 40px; gap: 6px; }
   .sleep-legend { margin-left: 54px; }

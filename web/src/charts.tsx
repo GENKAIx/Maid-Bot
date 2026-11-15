@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DAY_SEC, dayParts } from "./pcday";
 
 // Графики без библиотек: столбики по дням/неделям/месяцам, подпись при наведении.
 
@@ -79,6 +80,27 @@ export function NestedBars({ bars, back, front, format, tip, height = 160, goal 
         ))}
       </div>
     </div>
+  );
+}
+
+/** Круг суток: целый круг — 24 ч; красное — игры, серое — остальное время за ПК, пустое — не за компьютером.
+ *  Отсчёт от верха по часовой. В центре — время за ПК и доля суток. */
+export function DayPie({ pc, games, format, size = 132 }: { pc: number; games: number; format: (v: number) => string; size?: number }) {
+  const p = dayParts(pc, games);
+  const r = 15.9155; // длина окружности 100: доли — прямо проценты
+  const pct = (v: number) => (v / DAY_SEC) * 100;
+  const arc = (from: number, len: number, color: string) =>
+    len > 0 && <circle className="pie-arc" cx="21" cy="21" r={r} fill="none" stroke={color} strokeWidth="6"
+      strokeDasharray={`${pct(len)} ${100 - pct(len)}`} strokeDashoffset={25 - pct(from)} />;
+  return (
+    <svg className="day-pie" width={size} height={size} viewBox="0 0 42 42" role="img"
+      aria-label={`За компьютером ${format(p.pc)} из 24 часов, из них игры ${format(p.games)}`}>
+      <circle cx="21" cy="21" r={r} fill="none" stroke="var(--ring-bg)" strokeWidth="6" />
+      {arc(0, p.games, "var(--red)")}
+      {arc(p.games, p.pcRest, "var(--grey)")}
+      <text x="21" y="20.5" textAnchor="middle" className="pie-big">{format(p.pc)}</text>
+      <text x="21" y="26" textAnchor="middle" className="pie-small">{Math.round(pct(p.pc))}% суток</text>
+    </svg>
   );
 }
 

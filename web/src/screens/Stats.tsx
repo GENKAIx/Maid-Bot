@@ -1,21 +1,15 @@
 import { useEffect, useState } from "react";
 import { get } from "../api";
 import { appsWithoutGames, iconKey, prettyName, sumByApp } from "../appnames";
-import { Bars, NestedBars, Segment } from "../charts";
+import { Bars, DayPie, NestedBars, Segment } from "../charts";
 import { Card, Empty, Spinner } from "../components";
 import { addDays, dur, humanDay, metricText, monthTitle, shortDay, todayKey } from "../format";
+import { STAT_RANGES as RANGES, type Range } from "../pcday";
 import { SleepTimeline, sleepAverages, sleepDays } from "../sleep";
 import type { ActivityRow, DiaryRow, MetricRow } from "../types";
 
-// Статистика: компьютер, игры, шаги, сон, спорт — по дням (неделя, месяц), по неделям (3 месяца), по месяцам (год).
-
-type Range = "week" | "month" | "quarter" | "year";
-const RANGES: { id: Range; title: string; days: number; group: "day" | "week" | "month" }[] = [
-  { id: "week", title: "Неделя", days: 7, group: "day" },
-  { id: "month", title: "Месяц", days: 30, group: "day" },
-  { id: "quarter", title: "3 месяца", days: 91, group: "week" },
-  { id: "year", title: "Год", days: 365, group: "month" },
-];
+// Статистика: компьютер, игры, шаги, сон, спорт — за один день (по умолчанию сегодня, любой день — из календаря у даты),
+// по дням (неделя, месяц), по неделям (3 месяца), по месяцам (год).
 
 interface Bucket { key: string; label: string; title: string; days: string[] }
 
@@ -40,7 +34,7 @@ function buckets(from: string, to: string, group: "day" | "week" | "month"): Buc
 
 export function Stats({ version }: { version: number }) {
   const today = todayKey();
-  const [range, setRange] = useState<Range>("month");
+  const [range, setRange] = useState<Range>(RANGES[0].id);
   const [end, setEnd] = useState(today);
   const [activity, setActivity] = useState<ActivityRow[] | null>(null);
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
@@ -51,6 +45,7 @@ export function Stats({ version }: { version: number }) {
 
   const r = RANGES.find((x) => x.id === range)!;
   const from = addDays(end, -(r.days - 1));
+  const oneDay = range === "day";
 
   useEffect(() => {
     let alive = true;
@@ -94,6 +89,7 @@ export function Stats({ version }: { version: number }) {
   const pcDays = bs.flatMap((b) => b.days).filter((d) => pcSec(d) > 0 || gamesSec(d) > 0);
   const pcAvg = pcDays.length ? pcDays.reduce((s, d) => s + pcSec(d), 0) / pcDays.length : 0;
   const gameAvg = pcDays.length ? pcDays.reduce((s, d) => s + gamesSec(d), 0) / pcDays.length : 0;
+  const pcShown = Math.min(86400, Math.max(pcAvg, gameAvg)); // за ПК не меньше игр (дни прежнего трекера) и не больше суток
   const pct = (v: number, of: number) => `${Math.round((v / of) * 100)}%`;
   const todayPc = todayRows.reduce((s, a) => s + a.active_sec, 0);
   const todayGames = todayRows.reduce((s, a) => s + a.games.reduce((x, g) => x + g.sec, 0), 0);
@@ -105,8 +101,11 @@ export function Stats({ version }: { version: number }) {
   const perDay = r.group !== "day" ? " в среднем за день" : "";
   const sumText = (b: { value: number }[], f: (v: number) => string) => {
     const vals = b.filter((x) => x.value > 0).map((x) => x.value);
-    return vals.length ? `среднее ${f(avg(vals))}` : "";
+    return vals.length && !oneDay ? `среднее ${f(avg(vals))}` : "";
   };
+  // Один день — одно крупное число вместо одного столбика.
+  const chart = (bars: { label: string; title?: string; value: number }[], color: string, format: (v: number) => string, goal?: number) =>
+    oneDay ? <DayValue value={bars[0]?.value ?? 0} format={format} goal={goal} color={color} /> : <Bars bars={bars} color={color} format={format} goal={goal} />;
   const h = (v: number) => `${v.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} ч`;
   const n = (v: number) => Math.round(v).toLocaleString("ru-RU");
 
@@ -124,42 +123,54 @@ export function Stats({ version }: { version: number }) {
     <div className="screen">
       <div className="day-nav">
         <button className="ghost" onClick={() => setEnd(addDays(end, -r.days))} aria-label="Назад">‹</button>
-        <h2 className="screen-title">{shortDay(from)} – {shortDay(end)}</h2>
+        {oneDay ? (
+          <label className="date-pick" title="Выбрать день">
+            <h2 className="screen-title">{end === today ? "Сегодня" : humanDay(end, end.slice(0, 4) !== today.slice(0, 4))}</h2>
+            <input type="date" value={end} max={today} aria-label="Выбрать день"
+              onClick={(e) => { try { e.currentTarget.showPicker(); } catch { /* старый браузер — календарь откроется своим способом */ } }}
+              onChange={(e) => e.target.value && setEnd(e.target.value > today ? today : e.target.value)} />
+          </label>
+        ) : <h2 className="screen-title">{shortDay(from)} – {shortDay(end)}</h2>}
         <button className="ghost" onClick={() => setEnd(addDays(end, r.days))} disabled={end >= today} aria-label="Вперёд">›</button>
-        {end !== today && <button className="link" onClick={() => setEnd(today)}>до сегодня</button>}
+        {end !== today && <button className="link" onClick={() => setEnd(today)}>{oneDay ? "к сегодня" : "до сегодня"}</button>}
         <span className="spacer" />
         <Segment value={range} options={RANGES.map((x) => ({ id: x.id, title: x.title }))} onChange={(v) => { setRange(v); setEnd(today); }} />
       </div>
 
       <div className="cards">
-        <Card title="Компьютер и игры" className="reveal wide" action={pcDays.length > 0 && <span className="muted small">{pcDays.length} дн. с данными</span>}>
+        <Card title="Компьютер и игры" className="reveal wide" action={pcDays.length > 0 && !oneDay && <span className="muted small">{pcDays.length} дн. с данными</span>}>
           {pcDays.length > 0 ? (
             <>
-              <div className="pc-summary">
-                <div className="pc-stat">
-                  <span className="pc-dot" style={{ background: "var(--grey)" }} />
-                  <span><b>{dur(pcAvg)}</b> в день за компьютером</span>
-                  <span className="pc-pct">{pct(pcAvg, 86400)} суток</span>
+              <div className={`pc-summary${oneDay ? " one-day" : ""}`}>
+                <DayPie pc={pcShown} games={gameAvg} format={dur} />
+                <div className="pc-legend">
+                  <div className="pc-stat">
+                    <span className="pc-dot" style={{ background: "var(--grey)" }} />
+                    <span><b>{dur(pcShown)}</b> {oneDay ? "за компьютером" : "в день за компьютером"}</span>
+                    <span className="pc-pct">{pct(pcShown, 86400)} суток</span>
+                  </div>
+                  <div className="pc-stat">
+                    <span className="pc-dot" style={{ background: "var(--red)" }} />
+                    <span>из них <b>{dur(gameAvg)}</b> в играх</span>
+                    <span className="pc-pct">{pcShown ? pct(gameAvg, pcShown) : "0%"} времени за ПК · {pct(gameAvg, 86400)} суток</span>
+                  </div>
+                  <div className="pc-stat">
+                    <span className="pc-dot pc-dot-off" />
+                    <span><b>{dur(Math.max(0, 86400 - pcShown))}</b> не за компьютером</span>
+                  </div>
                 </div>
-                <div className="pc-stat">
-                  <span className="pc-dot" style={{ background: "var(--red)" }} />
-                  <span><b>{dur(gameAvg)}</b> в играх</span>
-                  <span className="pc-pct">{pct(gameAvg, 86400)} суток · {pcAvg ? pct(gameAvg, Math.max(pcAvg, gameAvg)) : "0%"} времени за ПК</span>
-                </div>
-                <div className="pc-stat pc-today">
-                  <span className="pc-today-label">Сегодня</span>
-                  <span><b>{dur(todayPc)}</b> за ПК</span>
-                  <span className="pc-pct">{todayGames ? <>игры <span className="pc-today-games">{dur(todayGames)}</span></> : "без игр"}</span>
-                </div>
-                <div className="day-share" title="Доля суток: игры, остальное время за компьютером, вне компьютера">
-                  <i style={{ width: `${(gameAvg / 86400) * 100}%`, background: "var(--red)" }} />
-                  <i style={{ width: `${(Math.max(0, pcAvg - gameAvg) / 86400) * 100}%`, background: "var(--grey)" }} />
-                </div>
+                {!oneDay && (
+                  <div className="pc-stat pc-today">
+                    <span className="pc-today-label">Сегодня</span>
+                    <span><b>{dur(todayPc)}</b> за ПК</span>
+                    <span className="pc-pct">{todayGames ? <>игры <span className="pc-today-games">{dur(todayGames)}</span></> : "без игр"}</span>
+                  </div>
+                )}
               </div>
-              <NestedBars
+              {!oneDay && <NestedBars
                 bars={pcBars} back="var(--grey)" front="var(--red)" format={dur} tip={(x) => `за ПК ${dur(Math.max(x.back, x.front))} · ${pct(Math.max(x.back, x.front), 86400)} суток
 игры ${dur(x.front)} · ${x.back || x.front ? pct(x.front, Math.max(x.back, x.front)) : "0%"} от ПК`}
-              />
+              />}
               <div className="app-cols">
                 <AppList title="Программы" items={topApps} icons={icons} color="var(--grey)" days={pcDays.length} />
                 <AppList title="Игры" items={topGames} icons={icons} color="var(--red)" days={pcDays.length} empty="Игр не было" />
@@ -171,19 +182,19 @@ export function Stats({ version }: { version: number }) {
           {sleepRows.some((d) => d.hours) ? <SleepTimeline days={sleepRows} /> : <Empty>Сон не записан — скажите боту «лёг в 1:30, встал в 9:00»</Empty>}
         </Card>
         <Card title={`Шаги${perDay}`} className="reveal" action={<span className="muted small">{sumText(steps, n)}</span>}>
-          {has(steps) ? <Bars bars={steps} color="var(--green)" format={n} goal={10000} /> : <Empty>Шагов нет — подключите Быструю команду на айфоне</Empty>}
+          {has(steps) ? chart(steps, "var(--green)", n, 10000) : <Empty>Шагов нет — подключите Быструю команду на айфоне</Empty>}
         </Card>
         <Card title={`Спорт${perDay}`} className="reveal" action={<span className="muted small">{sumText(sport, (v) => `${n(v)} мин`)}</span>}>
-          {has(sport) ? <Bars bars={sport} color="var(--orange)" format={(v) => `${n(v)} мин`} goal={30} /> : <Empty>Спорта не записано</Empty>}
+          {has(sport) ? chart(sport, "var(--orange)", (v) => `${n(v)} мин`, 30) : <Empty>Спорта не записано</Empty>}
         </Card>
         {has(weight) && (
           <Card title="Вес" className="reveal" action={<span className="muted small">{sumText(weight, (v) => `${v.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг`)}</span>}>
-            <Bars bars={weight} color="var(--accent)" format={(v) => `${v.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг`} />
+            {chart(weight, "var(--accent)", (v) => `${v.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг`)}
           </Card>
         )}
         {metrics.some((m) => !["steps", "sleep_hours", "sport_min", "weight"].includes(m.key)) && (
           <Card title="Другие показатели" className="reveal wide">
-            <OtherMetrics metrics={metrics.filter((m) => !["steps", "sleep_hours", "sport_min", "weight"].includes(m.key))} bs={bs} />
+            <OtherMetrics metrics={metrics.filter((m) => !["steps", "sleep_hours", "sport_min", "weight"].includes(m.key))} bs={bs} oneDay={oneDay} />
           </Card>
         )}
       </div>
@@ -191,7 +202,22 @@ export function Stats({ version }: { version: number }) {
   );
 }
 
-function OtherMetrics({ metrics, bs }: { metrics: MetricRow[]; bs: Bucket[] }) {
+/** Значение за один день: крупное число; у шагов и спорта — полоска до цели. */
+function DayValue({ value, format, goal, color }: { value: number; format: (v: number) => string; goal?: number; color: string }) {
+  return (
+    <div className="day-value">
+      <b>{format(value)}</b>
+      {goal !== undefined && (
+        <>
+          <span className="day-goal"><i style={{ width: `${Math.min(100, (value / goal) * 100)}%`, background: color }} /></span>
+          <span className="muted small">{value >= goal ? "цель выполнена" : `цель ${format(goal)}`}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function OtherMetrics({ metrics, bs, oneDay }: { metrics: MetricRow[]; bs: Bucket[]; oneDay: boolean }) {
   const keys = [...new Map(metrics.map((m) => [m.key, m])).values()];
   return (
     <div className="metric-grid">
@@ -203,7 +229,9 @@ function OtherMetrics({ metrics, bs }: { metrics: MetricRow[]; bs: Bucket[] }) {
         return (
           <div key={k.key}>
             <h4 className="sub">{k.label} <span className="muted">{k.unit}</span></h4>
-            <Bars bars={bars} height={80} format={(v) => metricText({ value: Math.round(v * 10) / 10, unit: k.unit })} />
+            {oneDay
+              ? <div className="day-value"><b>{bars[0]?.value ? metricText({ value: Math.round(bars[0].value * 10) / 10, unit: k.unit }) : "—"}</b></div>
+              : <Bars bars={bars} height={80} format={(v) => metricText({ value: Math.round(v * 10) / 10, unit: k.unit })} />}
           </div>
         );
       })}
