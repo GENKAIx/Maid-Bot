@@ -3,10 +3,11 @@ import { habitLine, habitsOfDay } from "./habits.ts";
 import { asUser, type LlmCall } from "./llm.ts";
 import { persona, type Emotion } from "./personas.ts";
 import {
-  activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, moneyTotals, plansText, sectionName, todayText,
+  activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, moneyTotals, plansText, sectionName,
   upcomingDates,
 } from "./report.ts";
 import { escapesText } from "./escapes.ts";
+import { morningText } from "./morning.ts";
 import { METRICS } from "./parse.ts";
 import { findPatterns, patternText, traitButtons } from "./profile.ts";
 import { extendSeries } from "./repeat.ts";
@@ -209,7 +210,7 @@ export class Scheduler {
     const today = dayKey(now, u.tz);
     const s = this.store;
     if (this.due(u, u.morning_time, now) && (await s.once(`morning:${u.id}:${today}`))) {
-      await this.safeSend(u, `☀️ Доброе утро.\n\n${await todayText(s, u, today)}`, "happy");
+      await this.safeSend(u, await morningText(s, this.llm, u, today), "happy");
       for (const d of upcomingDates(await s.activeDates(u.id), today, 7)) {
         if ([7, 1, 0].includes(d.inDays) && (await s.once(`date:${d.row.id}:${d.on}:${d.inDays}`))) {
           await this.safeSend(u, `🎂 ${dateLine(d)}`, d.inDays === 0 ? "happy" : "neutral");
