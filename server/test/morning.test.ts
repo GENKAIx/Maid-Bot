@@ -8,7 +8,8 @@ import { Scheduler } from "../src/scheduler.ts";
 import { zonedToUtc } from "../src/time.ts";
 
 // Утро (15.11.2026): дата и строка про день от модели, все планы на сегодня, задачи только на сегодня (и просроченные),
-// мысль стоиков из своего списка. Привычки, «Скоро», дневник и прочее — в полной сводке «сегодня», не утром.
+// напутствие горничной её словами по мысли стоиков дня — без цитаты и подписи. Привычки, «Скоро», дневник и прочее — в полной
+// сводке «сегодня», не утром.
 
 const DAY = "2026-11-15";
 const TZ = "Europe/Moscow";
@@ -34,23 +35,25 @@ async function morning(llm: LlmCall | null) {
 
 test("утро: дата, строка про день, планы, задачи на сегодня, мысль стоиков — по порядку", async () => {
   let asked: ChatMessage[] = [];
-  const [text] = await morning(async (m) => ((asked = m), "Сегодня День философии — самое время подумать.\n"));
+  const [text] = await morning(async (m) => ((asked = m), JSON.stringify({ fact: "Сегодня День философии — самое время подумать.\n", wish: "Не трать силы на пробки — едь спокойно, хозяин." })));
   assert.ok(text, "утро не пришло");
   const at = (s: string) => text.indexOf(s);
-  for (const s of ["15 ноября", "День философии", "Планы", "Поездка к родителям", "Купить воды", "Задачи", "Задача на сегодня", "Старая задача", "—"])
+  for (const s of ["15 ноября", "День философии", "Планы", "Поездка к родителям", "Купить воды", "Задачи", "Задача на сегодня", "Старая задача"])
     assert.ok(at(s) >= 0, `в утре нет «${s}»:\n${text}`);
   assert.ok(at("15 ноября") < at("День философии") && at("День философии") < at("Планы") && at("Планы") < at("Задачи"), text);
-  const quote = stoicOfDay(DAY);
-  assert.ok(text.endsWith(`— ${quote.who}`) && at(quote.text) > at("Задачи"), `мысль стоиков не в конце:\n${text}`);
+  assert.ok(text.endsWith("💭 Не трать силы на пробки — едь спокойно, хозяин."), `напутствие горничной не в конце:\n${text}`);
+  for (const who of ["Марк Аврелий", "Сенека", "Эпиктет"]) assert.ok(!text.includes(who), `в утре подпись философа:\n${text}`);
   for (const s of ["Кино завтра", "Задача на среду", "Задача без срока", "Привычки", "Скоро"]) assert.ok(at(s) < 0, `в утре лишнее «${s}»:\n${text}`);
   assert.match(String(asked[0]?.content), /15 ноября/);
   assert.match(String(asked[0]?.content), /уверен/);
+  assert.match(String(asked[0]?.content), /Не цитируй, не называй/);
+  assert.ok(String(asked[1]?.content).includes(stoicOfDay(DAY).text) && String(asked[1]?.content).includes("Поездка к родителям"), "модели не дали мысль дня и планы");
 });
 
-test("утро без модели или при её ошибке — приходит без строки про день", async () => {
-  for (const llm of [null, (async () => { throw new Error("сеть"); }) as LlmCall]) {
+test("утро без модели, при её ошибке или не-JSON — без строки про день, напутствие — мысль дня без подписи", async () => {
+  for (const llm of [null, (async () => { throw new Error("сеть"); }) as LlmCall, (async () => "не json") as LlmCall]) {
     const [text] = await morning(llm);
-    assert.ok(text?.includes("Поездка к родителям") && text.includes(`— ${stoicOfDay(DAY).who}`), text);
+    assert.ok(text?.includes("Поездка к родителям") && text.endsWith(`💭 ${stoicOfDay(DAY).text}`), text);
   }
 });
 

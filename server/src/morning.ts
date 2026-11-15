@@ -4,10 +4,12 @@ import { persona } from "./personas.ts";
 import { esc, eventLine, taskLine } from "./report.ts";
 import { humanDay } from "./time.ts";
 
-// Утреннее сообщение (с 15.11.2026): дата и строка про день (модель), все планы на сегодня, задачи только на сегодня
-// и просроченные, мысль стоиков. Полная сводка дня — по команде «сегодня» (report.ts, todayText).
+// Утреннее сообщение (с 15.11.2026): дата и строка про день, все планы на сегодня, задачи только на сегодня и просроченные,
+// напутствие горничной. Строку и напутствие пишет модель одним запросом; напутствие — её словами по мысли стоиков дня
+// (без цитаты и подписи). Полная сводка дня — по команде «сегодня» (report.ts, todayText).
 
-/** Мысли стоиков — своими словами по смыслу (не чужие переводы). Каждый день следующая: 61 штука — повтор через два месяца. */
+/** Мысли стоиков — своими словами по смыслу (не чужие переводы); основа напутствия. Каждый день следующая: 61 штука — повтор
+ *  через два месяца. Модель не ответила — уходит сама мысль, без подписи. */
 export const STOIC: { text: string; who: "Марк Аврелий" | "Сенека" | "Эпиктет" }[] = [
   { who: "Марк Аврелий", text: "Утром скажи себе: сегодня встречу и грубых, и неблагодарных. Они не могут мне навредить, если я сам не позволю." },
   { who: "Марк Аврелий", text: "Не трать остаток жизни на мысли о других, если это не ради общего блага." },
@@ -78,40 +80,47 @@ export function stoicOfDay(day: string) {
   return STOIC[((n % STOIC.length) + STOIC.length) % STOIC.length];
 }
 
-const FACT_MAX = 220;
+const LINE_MAX = 240;
+const oneLine = (v: unknown) => {
+  const line = typeof v === "string" ? v.trim().replace(/\s*\n+\s*/g, " ") : "";
+  return line.length > LINE_MAX ? `${line.slice(0, LINE_MAX).replace(/\s+\S*$/, "")}…` : line;
+};
 
-/** Одно забавное предложение про сегодняшний день от модели; нет модели, ошибка или пусто — null (утро уходит без него). */
-async function dayFact(llm: LlmCall | null, u: User, today: string): Promise<string | null> {
-  if (!llm) return null;
+/** Строка про день и напутствие от модели одним запросом (JSON). Нет модели, ошибка, не JSON — пустые строки: утро уходит
+ *  без строки про день, напутствие — сама мысль дня. */
+async function dayWords(llm: LlmCall | null, u: User, today: string, thought: string, plans: string[]): Promise<{ fact: string; wish: string }> {
+  if (!llm) return { fact: "", wish: "" };
   try {
     const text = await llm([
       {
         role: "system",
-        content: `${persona(u.persona).voice}\nОдно короткое забавное предложение про сегодняшний день (${humanDay(today)}, ${today}) для утреннего ` +
-          `сообщения хозяину, не длиннее ${FACT_MAX} знаков: праздник этого дня (можно неофициальный и смешной), событие, случившееся в этот ` +
-          `день в истории, или интересный факт. Пиши только то, в чём уверена. Не уверена — скажи что-нибудь про время года или день недели. ` +
-          `Без приветствия, без кавычек, без эмодзи в начале.`,
+        content: `${persona(u.persona).voice}\nУтреннее сообщение хозяину на ${humanDay(today)} (${today}). Ответь JSON {"fact": "...", "wish": "..."}.\n` +
+          `fact — одно короткое забавное предложение про этот день, не длиннее ${LINE_MAX} знаков: праздник этого дня (можно неофициальный и ` +
+          `смешной), событие, случившееся в этот день в истории, или интересный факт. Пиши только то, в чём уверена. Не уверена — скажи ` +
+          `что-нибудь про время года или день недели.\n` +
+          `wish — напутствие на день от тебя хозяину, 1–2 предложения, не длиннее ${LINE_MAX} знаков, твоими словами и твоим голосом. Основа — ` +
+          `мысль ниже (идея стоиков): перескажи её по-своему, как совет на сегодня, можно с привязкой к его планам. Не цитируй, не называй ` +
+          `философов и стоицизм.\nБез приветствия, без кавычек вокруг текста, без эмодзи в начале.`,
       },
-      { role: "user", content: `Что интересного в ${humanDay(today)}?` },
-    ], { temperature: 0.8, maxTokens: 200, kind: "summary" });
-    const line = text.trim().replace(/\s*\n+\s*/g, " ");
-    if (!line) return null;
-    return line.length > FACT_MAX ? `${line.slice(0, FACT_MAX).replace(/\s+\S*$/, "")}…` : line;
+      { role: "user", content: `Мысль дня: ${thought}\nПланы на сегодня: ${plans.join("; ") || "нет"}` },
+    ], { json: true, temperature: 0.8, maxTokens: 400, kind: "summary" });
+    const o = JSON.parse(text) as { fact?: unknown; wish?: unknown };
+    return { fact: oneLine(o.fact), wish: oneLine(o.wish) };
   } catch (e) {
     console.error("[morning]", e);
-    return null;
+    return { fact: "", wish: "" };
   }
 }
 
 export async function morningText(store: Store, llm: LlmCall | null, u: User, today: string): Promise<string> {
   const parts = [`☀️ Доброе утро.\n\n<b>${humanDay(today)}</b>`];
-  const fact = await dayFact(llm, u, today);
-  if (fact) parts.push(esc(fact));
   const evs = await store.eventsBetween(u.id, today, today);
+  const thought = stoicOfDay(today).text;
+  const words = await dayWords(llm, u, today, thought, evs.map((e) => `${e.time ?? "весь день"} ${e.title}`));
+  if (words.fact) parts.push(esc(words.fact));
   parts.push(evs.length ? `\n<b>Планы</b>\n${evs.map((e) => "• " + eventLine(e)).join("\n")}` : "\nПланов на сегодня нет.");
   const tasks = (await store.openTasks(u.id)).filter((t) => t.due_date && t.due_date <= today);
   if (tasks.length) parts.push(`\n<b>Задачи</b>\n${tasks.map((t) => "• " + taskLine(t, today)).join("\n")}`);
-  const q = stoicOfDay(today);
-  parts.push(`\n💭 <i>${esc(q.text)}</i>\n— ${q.who}`);
+  parts.push(`\n💭 ${esc(words.wish || thought)}`);
   return parts.join("\n");
 }
