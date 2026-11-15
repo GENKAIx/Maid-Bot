@@ -1174,3 +1174,25 @@ body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .
 @media (prefers-reduced-motion: reduce) {
   #planClock .pl-card.spot { animation: none; background-image: none; box-shadow: 0 0 0 2px var(--c, var(--accent)); }
 }
+
+/* Пустой виджет: «+ План» в «Дальше», панель по содержимому (.bare — widget.js, render). */
+.w .next:has(.next-add) { display: flex; align-items: center; justify-content: space-between; }
+.next-add { margin-left: 8px; padding: 2px 9px; font-size: 12px; border-radius: 8px; background: rgba(183, 156, 255, .14); border: 1px dashed rgba(183, 156, 255, .5); color: var(--accent); cursor: pointer; }
+.next-add:hover { background: rgba(183, 156, 255, .24); border-style: solid; }
+.w.bare { flex-basis: auto; }
+.w.bare .scroll { flex: none; }
+
+/* Экскурсия (tour.js): кольцо вокруг подсвеченного, остальное в панели притушено, точки шагов и форма знакомства в облачке. */
+.stage.tour-dim .w *:not(.tour-path):not(.tour-on):not(.tour-on *) { filter: brightness(.42) saturate(.6); transition: filter .25s; }
+.tour-ring { position: fixed; z-index: 50; pointer-events: none; border-radius: 12px; border: 2px solid var(--accent);
+  box-shadow: 0 0 0 4px rgba(183, 156, 255, .25), 0 0 18px rgba(183, 156, 255, .55); animation: tourPulse 1.4s ease-in-out infinite; }
+@keyframes tourPulse { 50% { box-shadow: 0 0 0 8px rgba(183, 156, 255, .08), 0 0 26px rgba(183, 156, 255, .7); } }
+.tour-dots { display: flex; gap: 4px; justify-content: center; margin-top: 2px; }
+.tour-dots i { width: 6px; height: 6px; border-radius: 50%; background: #d8d2e6; }
+.tour-dots i.on { background: #6b3fd4; width: 14px; border-radius: 3px; }
+.tour-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tour-form label { display: grid; gap: 2px; font-size: 11px; color: #6d6680; }
+.tour-form label.wide { grid-column: 1 / -1; }
+.tour-form input, .tour-form textarea { font: inherit; font-size: 12px; color: var(--ink); background: #fff; border: 1px solid #d8d2e6; border-radius: 7px; padding: 4px 7px; resize: none; }
+.tour-form input:focus, .tour-form textarea:focus { outline: 2px solid #b79cff; outline-offset: 0; }
+@media (prefers-reduced-motion: reduce) { .tour-ring { animation: none; } }

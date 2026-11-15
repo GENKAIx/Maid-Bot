@@ -670,6 +670,7 @@ function refreshTray() {
     { label: `Быстрая запись (${settings.keys.quick.replace("Control", "Ctrl")})`, click: showQuick },
     { label: widget ? "Скрыть виджет" : "Показать виджет", click: () => toggleWidget() },
     { label: `Взять/отпустить виджет (${settings.keys.grab.replace("Control", "Ctrl")})`, enabled: Boolean(widget), click: () => setGrab(!grabbed) },
+    { label: "Экскурсия", enabled: Boolean(widget), click: () => widget?.webContents.send("tour") },
     { type: "separator" },
     { label: "Запускать с Windows", type: "checkbox", checked: Boolean(settings.autostart), enabled: app.isPackaged,
       click: (it) => { settings.autostart = it.checked; saveSettings(); applyAutostart(); } },

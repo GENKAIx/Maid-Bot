@@ -1629,6 +1629,14 @@ $("#planClock").addEventListener("wheel", () => { if ($("#planClock").classList.
 // Посмотреть планы — щелчок по строке «ближайший план»: ещё раз — спрятать.
 // Щелчок по ближайшему плану или важной дате — панель планов на их день (ещё раз на тот же день — спрятать).
 // spot — селектор карточки, по которой открыли (план или задача): она вспыхивает, чтобы её сразу найти глазами.
+// «+ План» в пустом «Дальше»: панель дня на сегодня и сразу форма нового плана (как «+» в самой панели).
+function addPlanToday() {
+  if ($("#planClock").classList.contains("hidden") || clockDay !== data?.day) togglePlansOn(data?.day);
+  setTimeout(() => {
+    const add = $("#planClock .pl-add");
+    if (add) openNewPlan(add, null);
+  }, 260);
+}
 function togglePlansOn(day, spot) {
   if (!$("#planClock").classList.contains("hidden") && clockDay === day) return hideClock();
   // Полоса дней — та неделя, где этот день.
@@ -1651,6 +1659,7 @@ function spotCard(sel) {
 $("#next").addEventListener("click", (ev) => {
   const nx = ev.target.closest(".nx");
   if (ev.target.closest(".hero-act")) return; // кнопки горящей плашки — свои (widget.js)
+  if (ev.target.closest("[data-addplan]")) return addPlanToday();
   togglePlansOn(nx?.dataset.day || $("#next").dataset.day || data?.day, nx?.dataset.id ? `[data-id="${nx.dataset.id}"]` : null);
 });
 $("#pins").addEventListener("click", (ev) => {

@@ -19,7 +19,7 @@ function tailWhen(due) {
 function askTail() {
   // Облачко с вопросом закрыли или сменили другим сообщением — спросить снова, когда оно освободится.
   if (tailShown && !$("#bubbleActions [data-tail]")) tailShown = null;
-  if (tailShown || !online || !data || !$("#bubble").classList.contains("hidden") || document.activeElement === $("#chatInput")) return;
+  if (touring || tailShown || !online || !data || !$("#bubble").classList.contains("hidden") || document.activeElement === $("#chatInput")) return;
   const list = tailsOf();
   const t = list[0];
   if (!t) return;

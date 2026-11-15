@@ -5,6 +5,8 @@
 let data = null;
 let grabbed = false;
 let collapsed = false;
+/** Идёт экскурсия (tour.js): облачко — её, прочие реплики молчат. */
+let touring = false;
 let lastNotice = 0;
 let state = "idle"; // idle | think | sleep
 // Настройки виджета (main.js → settings.widget): что показывать на панели и где стоит горничная.
@@ -371,9 +373,10 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false, drawing = null } = {}) {
-  // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices).
-  if (napping) return;
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false, drawing = null, tour = false } = {}) {
+  // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices). Идёт экскурсия — говорит
+  // только она (tour); уведомления при этом всё равно ложатся в ящик.
+  if (napping || (touring && !tour)) return;
   const b = $("#bubble");
   delete b.dataset.quip;
   stopProposal();
@@ -1395,7 +1398,8 @@ function render() {
     nextHtml += `<div class="nx nx-later" data-day="${esc(e.date_iso)}" data-id="${e.id}">Дальше: ${esc(`${WD_SHORT[wdOf(e.date_iso)]} ${Number(e.date_iso.slice(8))}`)}`
       + ` · ${e.time ? `${esc(e.time)} ` : ""}${esc(e.title)}</div>`;
   }
-  $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span>`;
+  // Планов нет — «+ План»: панель дня на сегодня с формой нового плана (clock.js, addPlanToday).
+  $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span><button type="button" class="next-add" data-addplan title="Добавить план на сегодня">+ План</button>`;
   for (const d of $("#next").querySelectorAll(".nx-dot[data-c]")) d.style.background = d.dataset.c; // style="" запрещает CSP
   // Блик бежит по краю без рывков при перерисовке: фаза анимации — от часов, а не от момента сборки плашки.
   const heroEl = $("#next").querySelector(".nx-hero");
@@ -1476,8 +1480,10 @@ function render() {
   const habitWas = habitRects();
   $("#body").innerHTML =
     (habitItems.length ? `<h4>Привычки · ${daily.filter((h) => h.status).length}/${daily.length}</h4><ul class="list habit-list">${habitItems.join("")}</ul>` : "") +
-    (sec.tasks ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Нет</p>`}` : "") +
+    (sec.tasks ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Пока пусто</p>`}` : "") +
     (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
+  // Совсем пусто (ни планов, ни привычек, ни задач, ни дат) — панель низкая, по содержимому, а не на полэкрана.
+  $("#w").classList.toggle("bare", !nextHtml && !habitItems.length && !items.length && !allDone && !soon.length && !$("#pins").childElementCount);
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
   flipHabits(habitWas);
   for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP
