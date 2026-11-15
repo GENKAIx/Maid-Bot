@@ -4,7 +4,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { createTracker, foreground, localDay } = require("../src/activity.js");
+const { addMissingGames, createTracker, foreground, localDay } = require("../src/activity.js");
 
 let bad = 0, n = 0;
 const check = (ok, m) => { n++; if (!ok) { bad++; console.log("FAIL", m); } };
@@ -100,6 +100,14 @@ try {
   check(false, `тест оборвался: ${e?.stack ?? e}`);
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
+}
+// 15.11.2026: Hearthstone и Deadlock не были в списке игр — новый трекер писал их в программы. Сохранённый список дополняется
+// (без повторов, без учёта регистра и .exe), а потом не трогается.
+{
+  const was = ["dota2.exe", "hearthstone"];
+  const now = typeof addMissingGames === "function" ? addMissingGames(was) : was;
+  check(now.some((g) => /^deadlock(\.exe)?$/i.test(g)) && now.filter((g) => /^hearthstone/i.test(g)).length === 1, `список игр не дополнен: ${now}`);
+  check(was.length === 2 && now[0] === "dota2.exe", "сохранённый список испорчен");
 }
 console.log(`${n - bad}/${n}`);
 process.exit(bad ? 1 : 0);

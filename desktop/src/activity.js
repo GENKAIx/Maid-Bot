@@ -18,6 +18,14 @@ function localDay(t = new Date()) {
   return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}`;
 }
 
+/** Игры, добавленные в список по умолчанию в 0.1.44: дописываются и в уже сохранённый список (main.js, gamesVer), если их там нет. */
+const MORE_GAMES = ["Hearthstone.exe", "deadlock.exe"];
+const gameKey = (g) => g.toLowerCase().trim().replace(/\.exe$/, "");
+function addMissingGames(list) {
+  const have = new Set(list.map(gameKey));
+  return [...list, ...MORE_GAMES.filter((g) => !have.has(gameKey(g)))];
+}
+
 function isGame(app, games) {
   const a = app.toLowerCase();
   return games.some((g) => g && a === g.toLowerCase().trim());
@@ -184,4 +192,4 @@ function createTracker({ dir, idle, fg = foreground, now = Date.now, log = () =>
   return { tick, save, summary, paths };
 }
 
-module.exports = { createTracker, foreground, localDay, STEP_MS };
+module.exports = { addMissingGames, createTracker, foreground, localDay, MORE_GAMES, STEP_MS };

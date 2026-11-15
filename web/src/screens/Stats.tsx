@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { get } from "../api";
-import { iconKey, prettyName, sumByApp } from "../appnames";
+import { appsWithoutGames, iconKey, prettyName, sumByApp } from "../appnames";
 import { Bars, NestedBars, Segment } from "../charts";
 import { Card, Empty, Spinner } from "../components";
 import { addDays, dur, humanDay, metricText, monthTitle, shortDay, todayKey } from "../format";
@@ -111,7 +111,7 @@ export function Stats({ version }: { version: number }) {
   const n = (v: number) => Math.round(v).toLocaleString("ru-RU");
 
   const topGames = sumByApp(activity.flatMap((a) => a.games));
-  const topApps = sumByApp(activity.flatMap((a) => a.apps));
+  const topApps = sumByApp(appsWithoutGames(activity));
 
   const sd = sleepDays(sleepNotes, metrics);
   const allDays = bs.flatMap((b) => b.days);

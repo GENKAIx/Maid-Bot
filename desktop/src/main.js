@@ -5,7 +5,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor, nativeTheme, session } = require("electron");
-const { createTracker, localDay, STEP_MS } = require("./activity.js");
+const { addMissingGames, createTracker, localDay, MORE_GAMES, STEP_MS } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
 const { createUpdates } = require("./updates.js");
 
@@ -13,7 +13,7 @@ const DEFAULTS = {
   server: "http://localhost:3000",
   token: "",
   widget: { show: true, x: null, y: null, display: null, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true } },
-  tracker: { enabled: true, games: ["dota2.exe", "cs2.exe", "VALORANT-Win64-Shipping.exe", "League of Legends.exe", "GenshinImpact.exe", "Minecraft.Windows.exe"] },
+  tracker: { enabled: true, games: ["dota2.exe", "cs2.exe", "VALORANT-Win64-Shipping.exe", "League of Legends.exe", "GenshinImpact.exe", "Minecraft.Windows.exe", ...MORE_GAMES] },
   keys: { quick: "Alt+Shift+Space", grab: "Alt+Shift+M" },
   autostart: true,
 };
@@ -100,6 +100,12 @@ function loadSettings() {
     if ((settings.tracker.iconsVer ?? 1) < 2) {
       settings.tracker.iconsSent = [];
       settings.tracker.iconsVer = 2;
+      saveSettings();
+    }
+    // До 0.1.44 Hearthstone и Deadlock в списке игр не было — новый трекер писал их в программы. Дописать один раз.
+    if ((settings.tracker.gamesVer ?? 1) < 2) {
+      settings.tracker.games = addMissingGames(settings.tracker.games ?? []);
+      settings.tracker.gamesVer = 2;
       saveSettings();
     }
     if (s.token && canEncrypt()) saveSettings();
