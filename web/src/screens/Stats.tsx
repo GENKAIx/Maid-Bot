@@ -143,22 +143,10 @@ export function Stats({ version }: { version: number }) {
             <>
               <div className={`pc-summary${oneDay ? " one-day" : ""}`}>
                 <DayPie pc={pcShown} games={gameAvg} format={dur} />
-                <div className="pc-legend">
-                  <div className="pc-stat">
-                    <span className="pc-dot" style={{ background: "var(--grey)" }} />
-                    <span><b>{dur(pcShown)}</b> {oneDay ? "за компьютером" : "в день за компьютером"}</span>
-                    <span className="pc-pct">{pct(pcShown, 86400)} суток</span>
-                  </div>
-                  <div className="pc-stat">
-                    <span className="pc-dot" style={{ background: "var(--red)" }} />
-                    <span>из них <b>{dur(gameAvg)}</b> в играх</span>
-                    <span className="pc-pct">{pcShown ? pct(gameAvg, pcShown) : "0%"} времени за ПК · {pct(gameAvg, 86400)} суток</span>
-                  </div>
-                  <div className="pc-stat">
-                    <span className="pc-dot pc-dot-off" />
-                    <span><b>{dur(Math.max(0, 86400 - pcShown))}</b> не за компьютером</span>
-                  </div>
-                </div>
+                <ul className="pc-legend">
+                  <li><span className="pc-dot" style={{ background: "var(--grey)" }} /><b>{dur(pcShown)}</b> за ПК{oneDay ? "" : " в день"}</li>
+                  <li><span className="pc-dot" style={{ background: "var(--red)" }} /><b>{dur(gameAvg)}</b> в играх</li>
+                </ul>
                 {!oneDay && (
                   <div className="pc-stat pc-today">
                     <span className="pc-today-label">Сегодня</span>

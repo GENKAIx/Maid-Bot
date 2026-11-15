@@ -84,8 +84,8 @@ export function NestedBars({ bars, back, front, format, tip, height = 160, goal 
 }
 
 /** Круг суток: целый круг — 24 ч; красное — игры, серое — остальное время за ПК, пустое — не за компьютером.
- *  Отсчёт от верха по часовой. В центре — время за ПК и доля суток. */
-export function DayPie({ pc, games, format, size = 132 }: { pc: number; games: number; format: (v: number) => string; size?: number }) {
+ *  Отсчёт от верха по часовой; текста внутри нет — числа в подписях рядом. */
+export function DayPie({ pc, games, format, size = 84 }: { pc: number; games: number; format: (v: number) => string; size?: number }) {
   const p = dayParts(pc, games);
   const r = 15.9155; // длина окружности 100: доли — прямо проценты
   const pct = (v: number) => (v / DAY_SEC) * 100;
@@ -98,8 +98,6 @@ export function DayPie({ pc, games, format, size = 132 }: { pc: number; games: n
       <circle cx="21" cy="21" r={r} fill="none" stroke="var(--ring-bg)" strokeWidth="6" />
       {arc(0, p.games, "var(--red)")}
       {arc(p.games, p.pcRest, "var(--grey)")}
-      <text x="21" y="20.5" textAnchor="middle" className="pie-big">{format(p.pc)}</text>
-      <text x="21" y="26" textAnchor="middle" className="pie-small">{Math.round(pct(p.pc))}% суток</text>
     </svg>
   );
 }
