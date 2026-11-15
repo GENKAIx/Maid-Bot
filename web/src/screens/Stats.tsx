@@ -40,7 +40,6 @@ export function Stats({ version }: { version: number }) {
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
   const [sleepNotes, setSleepNotes] = useState<DiaryRow[]>([]);
   const [icons, setIcons] = useState<Record<string, string>>({});
-  const [todayRows, setTodayRows] = useState<ActivityRow[]>([]);
   const [error, setError] = useState("");
 
   const r = RANGES.find((x) => x.id === range)!;
@@ -60,10 +59,6 @@ export function Stats({ version }: { version: number }) {
     }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
   }, [from, end, version]);
-  // Сегодняшний день — отдельно: графа «Сегодня» видна, даже когда листаете прошлые периоды.
-  useEffect(() => {
-    get<ActivityRow[]>(`/api/activity?from=${today}&to=${today}`).then(setTodayRows).catch(() => setTodayRows([]));
-  }, [today, version]);
   useEffect(() => {
     get<Record<string, string>>("/api/icons").then(setIcons).catch(() => setIcons({}));
   }, [version]);
@@ -91,8 +86,6 @@ export function Stats({ version }: { version: number }) {
   const gameAvg = pcDays.length ? pcDays.reduce((s, d) => s + gamesSec(d), 0) / pcDays.length : 0;
   const pcShown = Math.min(86400, Math.max(pcAvg, gameAvg)); // за ПК не меньше игр (дни прежнего трекера) и не больше суток
   const pct = (v: number, of: number) => `${Math.round((v / of) * 100)}%`;
-  const todayPc = todayRows.reduce((s, a) => s + a.active_sec, 0);
-  const todayGames = todayRows.reduce((s, a) => s + a.games.reduce((x, g) => x + g.sec, 0), 0);
   const metric = (key: string, how: "sum" | "avg") => byDay((d) => metrics.find((m) => m.key === key && m.day_key === d)?.value ?? null, how);
   const steps = metric("steps", r.group === "day" ? "sum" : "avg");
   const sport = metric("sport_min", r.group === "day" ? "sum" : "avg");
@@ -141,19 +134,12 @@ export function Stats({ version }: { version: number }) {
         <Card title="Компьютер и игры" className="reveal wide" action={pcDays.length > 0 && !oneDay && <span className="muted small">{pcDays.length} дн. с данными</span>}>
           {pcDays.length > 0 ? (
             <>
-              <div className={`pc-summary${oneDay ? " one-day" : ""}`}>
+              <div className="pc-summary">
                 <DayPie pc={pcShown} games={gameAvg} format={dur} />
                 <ul className="pc-legend">
                   <li><span className="pc-dot" style={{ background: "var(--grey)" }} /><b>{dur(pcShown)}</b> за ПК{oneDay ? "" : " в день"}</li>
                   <li><span className="pc-dot" style={{ background: "var(--red)" }} /><b>{dur(gameAvg)}</b> в играх</li>
                 </ul>
-                {!oneDay && (
-                  <div className="pc-stat pc-today">
-                    <span className="pc-today-label">Сегодня</span>
-                    <span><b>{dur(todayPc)}</b> за ПК</span>
-                    <span className="pc-pct">{todayGames ? <>игры <span className="pc-today-games">{dur(todayGames)}</span></> : "без игр"}</span>
-                  </div>
-                )}
               </div>
               {!oneDay && <NestedBars
                 bars={pcBars} back="var(--grey)" front="var(--red)" format={dur} tip={(x) => `за ПК ${dur(Math.max(x.back, x.front))} · ${pct(Math.max(x.back, x.front), 86400)} суток
