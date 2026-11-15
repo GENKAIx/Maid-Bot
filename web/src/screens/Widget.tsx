@@ -9,7 +9,7 @@ export interface WidgetPrefs {
   sections?: { next?: boolean; habits?: boolean; tasks?: boolean; soon?: boolean };
   plans?: "list" | "off"; dateLead?: "0" | "1" | "3" | "7"; doneTasks?: "keep" | "hide"; laterTasks?: "hide" | "show";
   proposalWait?: number; clashWait?: number; mute?: boolean; typing?: "sound" | "quiet" | "off"; typeSpeed?: "slow" | "normal" | "fast";
-  accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: 4 | 6 | 10; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
+  accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: number; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
   napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; bedtime?: Bedtime; morning?: 6 | 7 | 8 | 9; napRecap?: boolean; napFold?: boolean; popSound?: Pop;
 }
 type Pop = "bubble" | "chime" | "off";
@@ -80,7 +80,7 @@ export function UpdateCard() {
 const DEFAULTS: Required<WidgetPrefs> = {
   show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true },
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
-  accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim",
+  accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim",
   napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble",
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
@@ -107,6 +107,20 @@ function Setting({ title, hint, side, children }: { title: string; hint?: string
 }
 function Toggle({ on, set, label }: { on: boolean; set: (on: boolean) => void; label: string }) {
   return <button role="switch" aria-checked={on} aria-label={label} className={`wp-toggle${on ? " on" : ""}`} onClick={() => set(!on)}><i /></button>;
+}
+
+/** Число задач в списке виджета: сохраняется по Enter или уходу с поля; не число от 1 до 500 — возвращается прежнее. */
+function TaskCount({ value, onSave }: { value: number; onSave: (n: number) => void }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  const commit = () => {
+    const n = Number(text);
+    if (Number.isInteger(n) && n >= 1 && n <= 500) { if (n !== value) onSave(n); } else setText(String(value));
+  };
+  return (
+    <input className="wp-num" type="number" min={1} max={500} step={1} inputMode="numeric" value={text} aria-label="Сколько задач видно"
+      onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+  );
 }
 
 /** Сочетание клавиш Electron («Control+Alt+Space») — по-человечески: «Ctrl + Alt + Пробел». */
@@ -161,7 +175,6 @@ function Cards<T extends string | number>({ value, options, onPick, label }: { v
   );
 }
 const Row = ({ t, did }: { t: string; did?: boolean }) => (did ? <p className="did"><i>✓</i><s>{t}</s></p> : <p><i></i>{t}</p>);
-const TASKS = ["Купить хлеб", "Позвонить маме", "Оплатить свет", "Полить цветы", "Разобрать почту", "Записаться к врачу", "Купить лампочку", "Вынести мусор", "Почистить кофеварку", "Ответить Лёше"];
 const PLANS: [string, string][] = [["10:00", "Врач"], ["14:30", "Созвон"], ["Завтра", "Спорт"], ["Сб", "Дача"], ["Вс", "Кино"]];
 
 /** Горничная над панелью: где стоит и какого размера. */
@@ -461,11 +474,8 @@ export function Widget() {
 
         <section className="wp-sec reveal">
           <h3>Задачи</h3>
-          <Setting title="Сколько задач видно" hint="Панель, вытянутая вниз, покажет больше">
-            <Cards label="Сколько задач" value={p.taskCount} onPick={(taskCount) => save({ taskCount })}
-              options={([4, 6, 10] as const).map((n) => [n, `${n} задач${n === 4 ? "и" : ""}`,
-                <div className="wm-count">{TASKS.slice(0, n).map((t) => <Row key={t} t={t} />)}</div>])} />
-          </Setting>
+          <Setting title="Сколько задач видно" hint="От 1 до 500. Больше — кнопка «Ещё» в конце списка"
+            side={<TaskCount value={p.taskCount ?? 100} onSave={(taskCount) => save({ taskCount })} />} />
           <Setting title="Сделанные задачи">
             <Cards label="Сделанные задачи" value={p.doneTasks} onPick={(doneTasks) => save({ doneTasks })} options={[
               ["keep", "Остаются зачёркнутыми", <><b>Задачи</b><p><i></i>Купить хлеб</p><p className="did"><i>✓</i><s>Пить Аевит</s></p></>],

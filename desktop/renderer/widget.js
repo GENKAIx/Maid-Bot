@@ -29,6 +29,18 @@ function dueWhen(day) {
 // Просроченное — красным (и такие задачи стоят в списке первыми).
 const MONTH_SHORT = ["янв", "февр", "марта", "апр", "мая", "июня", "июля", "авг", "сент", "окт", "нояб", "дек"];
 const overdue = (t) => Boolean(t.due_date) && daysFrom(data.day, t.due_date) < 0;
+// Порядок задач: просроченные (самые старые сверху), только что проснувшиеся, со сроком сегодня — дальше новые сверху (id растёт
+// с записью): записанное в чате или Telegram сразу видно, а не уходит в конец под обрезку «Сколько задач».
+function taskOrder(a, b) {
+  return overdue(b) - overdue(a) || (overdue(a) ? a.due_date.localeCompare(b.due_date) : 0)
+    || wokeFresh(b) - wokeFresh(a)
+    || (b.due_date === data.day) - (a.due_date === data.day)
+    || b.id - a.id;
+}
+// Сколько задач в списке — настройка «Сколько задач видно» (cfg.taskCount, по умолчанию 100); больше — кнопка «Ещё» в конце
+// списка, каждое нажатие показывает ещё TASKS_STEP (до перезапуска виджета).
+const TASKS_STEP = 100;
+let tasksMore = 0;
 function dueTag(t) {
   if (!t.due_date) return "";
   const n = daysFrom(data.day, t.due_date);
@@ -52,7 +64,7 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 6, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble" };
 const BEDTIMES = ["auto", "22:00", "23:00", "00:00", "01:00"]; // настройка «Отбой»
 const MAID_W = { s: 160, m: 196, l: 236 };
 // Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
@@ -1409,19 +1421,15 @@ function render() {
     if (go) return `<li class="habit ${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span>${name}</li>`;
     return `<li class="habit${h.status ? " did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}</li>`;
   };
-  const RANK = { high: 0, normal: 1, low: 2 };
   const allTasks = taskRows();
   const later = allTasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
   const awake = allTasks.filter((t) => !asleep(t));
   noteWakes(awake, later);
-  // Просроченные — первыми (самые старые сверху), потом только что проснувшиеся, чтобы их было видно, потом со сроком (ближний
-  // выше), потом без срока; внутри — по важности.
-  const tasks = [...awake].sort((a, b) => overdue(b) - overdue(a) || (overdue(a) ? a.due_date.localeCompare(b.due_date) : 0)
-    || wokeFresh(b) - wokeFresh(a) || Boolean(b.due_date) - Boolean(a.due_date)
-    || (a.due_date && b.due_date ? a.due_date.localeCompare(b.due_date) : 0) || (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1));
-  // Сколько задач — настройка «Сколько задач» (cfg.taskCount); вытянутая панель (уголок справа внизу) показывает больше: +1 на каждые 26 px прибавки к высоте.
+  const tasks = [...awake].sort(taskOrder);
   noteArrivals(allTasks);
-  const shownTasks = tasks.filter((t) => !doneNow.has(t.id)).slice(0, cfg.taskCount + Math.floor(Math.max(0, innerHeight - 760) / 26));
+  const openTasks = tasks.filter((t) => !doneNow.has(t.id));
+  const shownTasks = openTasks.slice(0, cfg.taskCount + tasksMore);
+  const moreTasks = sec.tasks ? openTasks.length - shownTasks.length : 0;
   shownTaskIds = new Set(sec.tasks ? shownTasks.map((t) => t.id) : []);
   const todo = daily.filter((h) => !h.status);
   const hiding = cfg.doneTasks === "hide";
@@ -1442,6 +1450,7 @@ function render() {
           ? `<li class="woke" data-woke="${t.id}"><span class="check" data-done="${t.id}"></span><span class="${t.priority === "high" ? "high" : ""}">${esc(t.title)}</span><span class="wake-tag">⏰ ${esc(dueWhen(t.due_date))}</span></li>`
           : `<li${arriving(t) ? ` class="arrive" data-arrive="${t.id}"` : ""}><span class="check" data-done="${t.id}"></span><span class="t${t.priority === "high" ? " high" : ""}">${esc(t.title)}</span>${dueTag(t)}</li>`;
     }),
+    ...(moreTasks > 0 ? [`<li class="more-tasks"><button type="button" id="moreTasks">Ещё ${Math.min(TASKS_STEP, moreTasks)}</button></li>`] : []),
     // Сделанное: в режиме «прятать» — только пока открыт счётчик.
     ...(hiding && !showingDone() ? [] : [
       ...(sec.tasks ? recentDone() : []).map((t) => `<li class="did"><span class="check done" data-reopen="${t.id}" title="Снять галочку"><i>✓</i><b>↶</b></span><span>${esc(t.title)}</span></li>`),
@@ -2162,7 +2171,7 @@ function applyCfg() {
 async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
-  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: [4, 6, 10].includes(w.taskCount) ? w.taskCount : 6, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim",
+  cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: Number.isInteger(w.taskCount) && w.taskCount >= 1 && w.taskCount <= 500 ? w.taskCount : 100, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim",
     napAfter: [0, 5, 15, 30, 60].includes(w.napAfter) ? w.napAfter : 15, napNight: w.napNight !== false, bedtime: BEDTIMES.includes(w.bedtime) ? w.bedtime : "auto",
     morning: [6, 7, 8, 9].includes(w.morning) ? w.morning : 7, napRecap: w.napRecap !== false, napFold: w.napFold !== false,
     popSound: ["chime", "off"].includes(w.popSound) ? w.popSound : "bubble" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
@@ -2450,6 +2459,7 @@ async function undoHabit(h, undo) {
 }
 $("#body").addEventListener("click", async (e) => {
   if (e.target.closest("#doneCount")) return toggleShowDone();
+  if (e.target.closest("#moreTasks")) { tasksMore += TASKS_STEP; return render(); }
   const back = e.target.closest("[data-undo]");
   if (back) return undoGone(back.dataset.undo);
   const reopen = e.target.closest("[data-reopen]");

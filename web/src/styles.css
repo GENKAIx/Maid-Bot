@@ -737,8 +737,8 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .wm-ts { display: grid; gap: 3px; }
 .wm-ts.ts-s { zoom: .9; } .wm-ts.ts-l { zoom: 1.1; }
 /* сколько задач — строки мельче, чтобы влезли все */
-.wm-count { display: grid; gap: 1px; font-size: 7px; line-height: 1.1; }
-.wm-count i { width: 6px; height: 6px; border-radius: 2px; }
+.wp-num { width: 84px; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; text-align: right; }
+.wp-num:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* горничная над панелью */
 .wm-stage { position: relative; height: 76px; margin: -7px -8px; }
 /* панель — одна строка: время и задача рядом, длинное обрезается, а не уходит на вторую строку */

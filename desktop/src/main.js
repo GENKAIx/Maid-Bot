@@ -102,6 +102,12 @@ function loadSettings() {
       settings.tracker.iconsVer = 2;
       saveSettings();
     }
+    // До 0.1.45 «Сколько задач видно» выбиралось из 4 / 6 / 10 — теперь числом, по умолчанию 100: прежний выбор сбросить один раз.
+    if ((settings.widget.taskCountVer ?? 1) < 2) {
+      if ([4, 6, 10].includes(settings.widget.taskCount)) delete settings.widget.taskCount;
+      settings.widget.taskCountVer = 2;
+      saveSettings();
+    }
     // До 0.1.44 Hearthstone и Deadlock в списке игр не было — новый трекер писал их в программы. Дописать один раз.
     if ((settings.tracker.gamesVer ?? 1) < 2) {
       settings.tracker.games = addMissingGames(settings.tracker.games ?? []);
@@ -888,7 +894,7 @@ const WIDGET_PREFS = {
   typeSpeed: oneOf("slow", "normal", "fast"),
   accent: oneOf("violet", "blue", "green", "pink", "amber"),
   textSize: oneOf("s", "m", "l"),
-  taskCount: oneOf(4, 6, 10),
+  taskCount: (v) => Number.isInteger(v) && v >= 1 && v <= 500,
   nextCount: oneOf(1, 3, 5),
   doneHabits: oneOf("dim", "hide"),
   napAfter: oneOf(0, 5, 15, 30, 60),
