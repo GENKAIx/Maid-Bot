@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { DayPie } from "../charts";
 import { prefill } from "../Composer";
-import { demoLength, FEATURES, frameAt, type Demo, type Feature, type Frame } from "../features";
+import { demoLength, FEATURES, frameAt, type Demo, type Feature, type Frame, type Row } from "../features";
+import { dur } from "../format";
 
 // Раздел «Возможности»: фичи сверху вниз. У каждой — название, зачем она, живой пример «с горничной» (копия виджета) и, где есть,
-// «вручную» (копия панели дня), кнопка «▶ Показать» и «Попробовать в чате» (подставляет образец в строку ввода — отправляет человек).
+// второй (копия панели дня, чат Telegram, поиск, круг статистики), кнопка «▶ Показать» и «Попробовать в чате» (подставляет образец
+// в строку ввода — отправляет человек).
 // Сценарии примеров — features.ts.
 
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -38,6 +41,16 @@ function usePlay(length: number, box: React.RefObject<HTMLElement | null>) {
 /** Текст печатается по букве: сколько мс прошло с его появления → сколько букв видно. */
 const typed = (s: string | undefined, age: number | undefined, msPerChar: number) => (s ?? "").slice(0, Math.floor((age ?? 1e9) / msPerChar));
 
+function RowLine({ r }: { r: Row }) {
+  const mark = r.habit ? "fx-habit" : r.task ? "fx-check" : "fx-dot";
+  return (
+    <li className={[r.fresh && "fresh", r.done && "done", r.late && "late"].filter(Boolean).join(" ")}>
+      <i className={`${mark}${r.done ? " on" : ""}`} />
+      {r.time && <em>{r.time}</em>}<span>{r.title}</span>{r.note && <small>{r.note}</small>}
+    </li>
+  );
+}
+
 function WidgetDemo({ f, age }: { f: Frame; age: ReturnType<typeof frameAt>["age"] }) {
   const bubble = f.bubble === "…" ? "…" : typed(f.bubble, age.bubble, 22);
   return (
@@ -61,12 +74,7 @@ function WidgetDemo({ f, age }: { f: Frame; age: ReturnType<typeof frameAt>["age
       <div className="fx-panel">
         <div className="fx-clock"><b>12:40</b><span>16 ноября, пн</span></div>
         <ul className="fx-rows">
-          {(f.rows ?? []).map((r) => (
-            <li key={r.title} className={r.fresh ? "fresh" : ""}>
-              {r.task ? <i className="fx-check" /> : <i className="fx-dot" />}
-              {r.time && <em>{r.time}</em>}<span>{r.title}</span>
-            </li>
-          ))}
+          {(f.rows ?? []).map((r) => <RowLine key={r.title} r={r} />)}
         </ul>
         <div className={`fx-input${f.mic ? " rec" : ""}`}>
           {f.mic ? <span className="fx-wave">{Array.from({ length: 14 }, (_, i) => <i key={i} style={{ animationDelay: `${(i % 5) * 90}ms` }} />)}</span>
@@ -112,9 +120,81 @@ function PanelDemo({ f, age }: { f: Frame; age: ReturnType<typeof frameAt>["age"
   );
 }
 
+function ChatDemo({ f }: { f: Frame }) {
+  const msgs = f.msgs ?? [];
+  return (
+    <div className="fx-stage fx-tg">
+      <div className="fx-tg-head"><img src="/maid/idle.webp" alt="" /><b>Горничная</b><small>бот</small></div>
+      <div className="fx-tg-msgs">
+        {msgs.map((m, i) => (
+          <div key={`${i}${m.text}`} className={`fx-msg${m.me ? " me" : ""}`}>
+            <p>{m.text}<small>{m.time}</small></p>
+            {m.buttons && (
+              <div className="fx-tg-buttons">
+                {m.buttons.map((b, j) => <span key={b} className={i === msgs.length - 1 && f.pressed === j ? "pressed" : ""}>{b}</span>)}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Слово запроса в найденном — подсвечено (без учёта регистра). */
+function highlight(s: string, q: string) {
+  const i = q ? s.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  return i < 0 ? s : <>{s.slice(0, i)}<mark>{s.slice(i, i + q.length)}</mark>{s.slice(i + q.length)}</>;
+}
+
+function SearchDemo({ f, age }: { f: Frame; age: ReturnType<typeof frameAt>["age"] }) {
+  const q = typed(f.query, age.query, 140);
+  return (
+    <div className="fx-stage">
+      <div className="fx-day">
+        <div className="fx-search">⌕ <span>{q || <span className="fx-ph">Поиск по задачам и планам</span>}<b className="fx-caret" /></span><kbd>Ctrl K</kbd></div>
+        <ul className="fx-hits">
+          {(f.hits ?? []).map((h) => <li key={h.title} className="fresh"><b>{highlight(h.title, f.query ?? "")}</b><small>{h.sub}</small></li>)}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function StatsDemo({ f, age }: { f: Frame; age: ReturnType<typeof frameAt>["age"] }) {
+  // Числа нарастают за 1,2 с после шага — как будто день набирается.
+  const k = Math.min(1, (age.pc ?? 1e9) / 1200);
+  const apps = f.apps ?? [];
+  const top = Math.max(1, ...apps.map((a) => a.sec));
+  return (
+    <div className="fx-stage">
+      <div className="fx-day fx-stats">
+        <div className="pc-summary">
+          <DayPie pc={(f.pc ?? 0) * k} games={(f.games ?? 0) * k} format={dur} size={96} />
+          <ul className="pc-legend">
+            <li><b>{dur(Math.round((f.pc ?? 0) * k))}</b> за ПК</li>
+            <li><b>{dur(Math.round((f.games ?? 0) * k))}</b> в играх</li>
+          </ul>
+        </div>
+        <ul className="fx-apps">
+          {apps.map((a) => (
+            <li key={a.label}><span>{a.label}</span><i style={{ width: `${(a.sec / top) * 100 * k}%` }} className={a.game ? "game" : ""} /><small>{dur(Math.round(a.sec * k))}</small></li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function Demo({ d, t }: { d: Demo; t: number | null }) {
   const { frame, age } = frameAt(d, t ?? demoLength(d));
-  return d.kind === "widget" ? <WidgetDemo f={frame} age={age} /> : <PanelDemo f={frame} age={age} />;
+  switch (d.kind) {
+    case "widget": return <WidgetDemo f={frame} age={age} />;
+    case "panel": return <PanelDemo f={frame} age={age} />;
+    case "chat": return <ChatDemo f={frame} />;
+    case "search": return <SearchDemo f={frame} age={age} />;
+    case "stats": return <StatsDemo f={frame} age={age} />;
+  }
 }
 
 function FeatureCard({ f }: { f: Feature }) {
@@ -132,12 +212,12 @@ function FeatureCard({ f }: { f: Feature }) {
       </header>
       <div className={`fx-demos${f.manual ? " two" : ""}`}>
         <figure>
-          <figcaption>{f.manual ? "С горничной" : "Как это выглядит"}</figcaption>
+          <figcaption>{f.aiTitle ?? (f.manual ? "С горничной" : "Как это выглядит")}</figcaption>
           <Demo d={f.ai} t={t} />
         </figure>
         {f.manual && (
           <figure>
-            <figcaption>Вручную <span>{f.manualText}</span></figcaption>
+            <figcaption>{f.manualTitle ?? "Вручную"} <span>{f.manualText}</span></figcaption>
             <Demo d={f.manual} t={t} />
           </figure>
         )}

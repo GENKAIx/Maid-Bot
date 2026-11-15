@@ -1017,3 +1017,42 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 @media (prefers-reduced-motion: reduce) {
   .fx-rows li.fresh, .fx-cards li.fresh, .fx-bubble, .fx-wave i, .fx-input.rec .fx-mic, .fx-caret { animation: none; }
 }
+
+/* «Возможности», второй выпуск: строки виджета (привычка, сделано, просрочено, подпись справа), чат Telegram, поиск, круг дня. */
+.fx-rows small { margin-left: auto; color: var(--w-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.fx-rows li.done span { text-decoration: line-through; color: var(--w-muted); }
+.fx-rows li.late span, .fx-rows li.late small { color: #ff8a9a; }
+.fx-habit { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--w-muted); flex: none; }
+.fx-habit.on, .fx-check.on { background: #5fcf8f; border-color: #5fcf8f; }
+.fx-tg { --tg-bg: #0e1621; display: flex; flex-direction: column; padding: 0; background: var(--tg-bg); }
+.fx-tg-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #17212b; }
+.fx-tg-head img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; object-position: top; background: #2b2340; }
+.fx-tg-head small { color: #6c7883; }
+.fx-tg-msgs { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; padding: 10px; overflow: hidden; }
+.fx-msg { align-self: flex-start; max-width: 86%; animation: fxPop .25s ease both; }
+.fx-msg.me { align-self: flex-end; }
+.fx-msg p { margin: 0; background: #182533; border-radius: 12px 12px 12px 4px; padding: 6px 9px; white-space: pre-line; line-height: 1.35; font-size: 12px; }
+.fx-msg.me p { background: #2b5278; border-radius: 12px 12px 4px 12px; }
+.fx-msg p small { float: right; margin: 6px 0 -2px 10px; font-size: 10px; color: #7d8b99; }
+.fx-tg-buttons { display: grid; grid-auto-flow: column; gap: 3px; margin-top: 3px; }
+.fx-tg-buttons span { text-align: center; background: rgba(43, 82, 120, .55); border-radius: 7px; padding: 4px 0; }
+.fx-tg-buttons span.pressed { background: #4a8bc9; transform: scale(.95); transition: .15s; }
+.fx-search { display: flex; align-items: center; gap: 8px; background: var(--w-card); border: 1px solid var(--w-accent); border-radius: 10px; padding: 8px 10px; }
+.fx-search > span { flex: 1; }
+.fx-search kbd { font: inherit; font-size: 10px; color: var(--w-muted); border: 1px solid var(--w-line); border-radius: 5px; padding: 1px 5px; }
+.fx-hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.fx-hits li { display: grid; gap: 2px; background: var(--w-card); border-radius: 8px; padding: 7px 9px; }
+.fx-hits li.fresh { animation: fxArrive .5s cubic-bezier(.2, .9, .3, 1.25) both; }
+.fx-hits li:nth-child(2) { animation-delay: .12s; }
+.fx-hits small { color: var(--w-muted); font-size: 11px; }
+.fx-hits mark { background: rgba(166, 136, 245, .4); color: inherit; border-radius: 3px; padding: 0 1px; }
+.fx-stats { --ring-bg: #2c2640; --red: #e0566a; --grey: #8d86a3; --text: var(--w-text); --muted: var(--w-muted); justify-content: center; gap: 14px; }
+.fx-stats .pc-summary { margin: 0; }
+.fx-apps { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.fx-apps li { display: grid; grid-template-columns: 62px 1fr 64px; align-items: center; gap: 8px; font-size: 12px; }
+.fx-apps i { height: 8px; border-radius: 4px; background: var(--grey); }
+.fx-apps i.game { background: var(--red); }
+.fx-apps small { color: var(--w-muted); text-align: right; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  .fx-msg, .fx-hits li.fresh { animation: none; }
+}

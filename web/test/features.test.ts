@@ -6,13 +6,14 @@ import { demoLength, FEATURES, frameAt } from "../src/features.ts";
 // Раздел «Возможности» (web/src/features.ts, screens/Features.tsx): фичи по порядку, у каждой — название, зачем она и живой
 // пример; кадр примера собирается по шагам сценария.
 
-test("возможности: первые фичи по порядку, у каждой название, описание и пример", () => {
-  assert.deepEqual(FEATURES.slice(0, 3).map((f) => f.id), ["words", "voice", "days"]);
+test("возможности: фичи по порядку, у каждой название, описание и пример", () => {
+  assert.deepEqual(FEATURES.map((f) => f.id), ["words", "voice", "days", "remind", "tasks", "habits", "digest", "diary", "pc", "dates", "maid", "telegram"]);
   assert.equal(new Set(FEATURES.map((f) => f.id)).size, FEATURES.length);
   for (const f of FEATURES) {
     assert.ok(f.title && f.text.length > 40, `${f.id}: нет названия или описания`);
     assert.ok(f.ai.steps.length > 0, `${f.id}: пустой пример`);
-    if (f.manual) assert.ok(f.manualText, `${f.id}: у ручного пути нет подписи`);
+    if (f.manual) assert.ok(f.manualText || f.manualTitle, `${f.id}: у второго примера нет подписи`);
+    if (f.sample) assert.ok(f.sample.length < 60, `${f.id}: образец длинный для строки ввода`);
     for (const d of [f.ai, f.manual].filter(Boolean)) {
       const ats = d!.steps.map((s) => s.at);
       assert.deepEqual(ats, [...ats].sort((a, b) => a - b), `${f.id}: шаги не по времени`);
