@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { DayPie } from "../charts";
-import { prefill } from "../Composer";
 import { demoLength, FEATURES, frameAt, type Demo, type Feature, type Frame, type Row } from "../features";
 import { dur } from "../format";
 
 // Раздел «Возможности»: фичи сверху вниз. У каждой — название, зачем она, живой пример «с горничной» (копия виджета) и, где есть,
-// второй (копия панели дня, чат Telegram, поиск, круг статистики), кнопка «▶ Показать» и «Попробовать в чате» (подставляет образец
-// в строку ввода — отправляет человек).
+// второй (копия панели дня, чат Telegram, поиск, круг статистики) и кнопка «▶ Показать».
 // Сценарии примеров — features.ts.
 
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -44,7 +42,7 @@ const typed = (s: string | undefined, age: number | undefined, msPerChar: number
 function RowLine({ r }: { r: Row }) {
   const mark = r.habit ? "fx-habit" : r.task ? "fx-check" : "fx-dot";
   return (
-    <li className={[r.fresh && "fresh", r.done && "done", r.late && "late"].filter(Boolean).join(" ")}>
+    <li className={[r.fresh && "fresh", r.done && "done", r.late && "late", r.habit && "habit"].filter(Boolean).join(" ")}>
       <i className={`${mark}${r.done ? " on" : ""}`} />
       {r.time && <em>{r.time}</em>}<span>{r.title}</span>{r.note && <small>{r.note}</small>}
     </li>
@@ -222,9 +220,6 @@ function FeatureCard({ f }: { f: Feature }) {
           </figure>
         )}
       </div>
-      {f.sample && (
-        <button className="fx-try" onClick={() => prefill(f.sample!)}>Попробовать в чате: «{f.sample}»</button>
-      )}
     </section>
   );
 }
@@ -233,7 +228,7 @@ export function Features() {
   return (
     <div className="screen fx">
       <h2 className="screen-title">Возможности</h2>
-      <p className="muted fx-lead">Что умеет горничная — с живыми примерами. «Показать» проигрывает пример ещё раз; «Попробовать» подставит образец в строку внизу, отправите сами.</p>
+      <p className="muted fx-lead">Что умеет горничная — с живыми примерами. «Показать» проигрывает пример ещё раз.</p>
       {FEATURES.map((f) => <FeatureCard key={f.id} f={f} />)}
     </div>
   );

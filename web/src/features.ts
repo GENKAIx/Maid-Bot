@@ -46,7 +46,7 @@ export interface Step { at: number; set: Partial<Frame> }
 export interface Demo { kind: "widget" | "panel" | "chat" | "search" | "stats"; start: Frame; steps: Step[] }
 /** manual — второй пример; manualTitle — его подпись (по умолчанию «Вручную»), aiTitle — подпись первого (с вторым — «С горничной»). */
 export interface Feature {
-  id: string; title: string; text: string; ai: Demo; manual?: Demo; manualText?: string; sample?: string;
+  id: string; title: string; text: string; ai: Demo; manual?: Demo; manualText?: string;
   aiTitle?: string; manualTitle?: string;
 }
 
@@ -81,7 +81,6 @@ export const FEATURES: Feature[] = [
     title: "Записать словами",
     text: "Пишешь как другу — горничная сама понимает, что это: план со временем, задача или запись в дневник, и раскладывает по местам. " +
       "Дату и время понимает по-человечески: «завтра в 3», «в пятницу вечером», «через неделю».",
-    sample: "завтра в 15 врач",
     ai: {
       kind: "widget",
       start: { maid: "idle", input: "", rows: [{ time: "10:00", title: "Созвон" }] },
@@ -128,7 +127,6 @@ export const FEATURES: Feature[] = [
     title: "Планы по дням",
     text: "Панель дня показывает неделю: сколько планов в каждый день и что именно. Перенести план — сказать горничной «перенеси…» или " +
       "перетащить карточку на другой день. Если новый план ложится на занятое время, горничная предложит сдвинуть его.",
-    sample: "перенеси врача на четверг",
     ai: {
       kind: "widget",
       start: { maid: "idle", input: "", rows: [{ time: "10:00", title: "Созвон" }, { time: "Пн 15:00", title: "Врач" }] },
@@ -162,7 +160,6 @@ export const FEATURES: Feature[] = [
     title: "Напоминания",
     text: "О плане со временем горничная напомнит сама — когда удобно: в начале дня, за час, за 5 минут, в момент начала или за своё " +
       "время («Настройки» → «Когда напоминать»). Напоминание приходит в виджет, в Telegram и push на телефон.",
-    sample: "напомни через 20 минут выключить духовку",
     ai: {
       kind: "widget",
       start: { maid: "idle", input: "", rows: [CALL] },
@@ -191,7 +188,6 @@ export const FEATURES: Feature[] = [
     title: "Задачи и хвосты",
     text: "Дела со сроком и без. Просроченное горничная не забывает: спрашивает по одной — «Сделано», «Перенести» или «Не буду». " +
       "В воскресенье покажет, от каких задач увиливали всю неделю.",
-    sample: "до пятницы сдать отчёт",
     ai: {
       kind: "widget",
       start: { maid: "idle", input: "", rows: [CALL, { title: "Оплатить интернет", task: true, late: true, note: "пт" }] },
@@ -212,7 +208,6 @@ export const FEATURES: Feature[] = [
     title: "Привычки и курсы",
     text: "Привычка — то, что делаешь регулярно; курс — то же на N дней (витамины, таблетки, челлендж). Горничная заводит их, " +
       "когда ты сам хочешь («хочу…», «буду…»), спрашивает в своё время с кнопками «Да», «Ещё нет», «Нет» и считает серии.",
-    sample: "хочу 30 дней пить витамин D",
     ai: {
       kind: "widget",
       start: { maid: "idle", input: "", rows: [{ title: "Зарядка", habit: true, done: true, note: "🔥 5" }] },
@@ -253,7 +248,6 @@ export const FEATURES: Feature[] = [
     title: "Дневник и поиск",
     text: "Всё, что рассказал о дне — сон, еда, спорт, здоровье, настроение, — горничная раскладывает по разделам дневника. В календаре " +
       "у каждого дня свои значки. Поиск (Ctrl+K) находит задачи и планы по любому слову, даже удалённые за последние 14 дней.",
-    sample: "спал 6 часов, на обед борщ",
     ai: {
       kind: "widget",
       start: { maid: "idle", input: "", rows: [CALL] },
@@ -301,7 +295,6 @@ export const FEATURES: Feature[] = [
     title: "Важные даты",
     text: "Дни рождения, годовщины, праздники и дедлайны. Горничная запоминает их по одной фразе, повторяет каждый год и за месяц " +
       "показывает на «Сегодня» — со сколькими днями до и сколько исполнится.",
-    sample: "у мамы день рождения 12 марта",
     ai: {
       kind: "widget",
       start: { maid: "idle", input: "", rows: [CALL] },

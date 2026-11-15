@@ -943,14 +943,12 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .fx-head p { margin: 0; color: var(--muted); max-width: 64ch; line-height: 1.5; }
 .fx-play { flex: none; border: 0; border-radius: 10px; padding: 8px 14px; background: var(--accent-fill); color: var(--on-ink); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .fx-play:disabled { opacity: .6; cursor: default; }
-.fx-play:focus-visible, .fx-try:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fx-play:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .fx-demos { display: grid; grid-template-columns: minmax(0, 340px); gap: 16px; margin-top: 14px; }
 .fx-demos.two { grid-template-columns: repeat(2, minmax(0, 340px)); }
 .fx-demos figure { margin: 0; }
 .fx-demos figcaption { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .fx-demos figcaption span { color: var(--muted); font-weight: 400; }
-.fx-try { margin-top: 12px; border: 1px dashed var(--hover-line); background: transparent; color: var(--accent-ink); border-radius: 10px; padding: 7px 12px; font: inherit; font-size: 14px; cursor: pointer; }
-.fx-try:hover { border-style: solid; }
 
 .fx-stage { --w-bg: #1d1830; --w-card: #2a2340; --w-line: #3a3254; --w-text: #ece9f5; --w-muted: #9f98b5; --w-accent: #a688f5;
   position: relative; height: 300px; border-radius: 14px; background: #0f0d16; padding: 10px; overflow: hidden; color: var(--w-text); font-size: 13px; }
@@ -1020,7 +1018,7 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 
 /* «Возможности», второй выпуск: строки виджета (привычка, сделано, просрочено, подпись справа), чат Telegram, поиск, круг дня. */
 .fx-rows small { margin-left: auto; color: var(--w-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.fx-rows li.done span { text-decoration: line-through; color: var(--w-muted); }
+.fx-rows li.done:not(.habit) span { text-decoration: line-through; color: var(--w-muted); }
 .fx-rows li.late span, .fx-rows li.late small { color: #ff8a9a; }
 .fx-habit { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--w-muted); flex: none; }
 .fx-habit.on, .fx-check.on { background: #5fcf8f; border-color: #5fcf8f; }

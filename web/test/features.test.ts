@@ -13,7 +13,6 @@ test("возможности: фичи по порядку, у каждой на
     assert.ok(f.title && f.text.length > 40, `${f.id}: нет названия или описания`);
     assert.ok(f.ai.steps.length > 0, `${f.id}: пустой пример`);
     if (f.manual) assert.ok(f.manualText || f.manualTitle, `${f.id}: у второго примера нет подписи`);
-    if (f.sample) assert.ok(f.sample.length < 60, `${f.id}: образец длинный для строки ввода`);
     for (const d of [f.ai, f.manual].filter(Boolean)) {
       const ats = d!.steps.map((s) => s.at);
       assert.deepEqual(ats, [...ats].sort((a, b) => a - b), `${f.id}: шаги не по времени`);
@@ -45,4 +44,17 @@ test("раздел в меню и на своём адресе", () => {
   const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
   assert.match(app, /\{ id: "features", path: "\/features", title: "Возможности"/);
   assert.match(app, /tab === "features" \? <Features/);
+});
+
+test("отмеченная привычка не зачёркивается — как в виджете (зачёркнута только сделанная задача)", () => {
+  const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  const rules = css.split("}").filter((r) => r.includes(".fx-rows") && r.includes("line-through"));
+  assert.ok(rules.length, "нет правила зачёркивания задач");
+  for (const r of rules) assert.match(r, /li\.done:not\(\.habit\)/, `зачёркивает и привычки: ${r.trim()}`);
+});
+
+test("в примерах нет кнопки «Попробовать в чате»", () => {
+  const tsx = readFileSync(new URL("../src/screens/Features.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(tsx, /Попробовать|prefill/);
+  assert.ok(FEATURES.every((f) => !("sample" in f)), "у фич остался образец для чата");
 });
