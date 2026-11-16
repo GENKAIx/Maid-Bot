@@ -1068,8 +1068,7 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .alb-show img { flex: none; object-fit: contain; object-position: bottom; }
 .alb-show > div { min-width: 0; }
 .alb-show h3 { margin: 0 0 4px; font-size: 19px; letter-spacing: -.01em; }
-.alb-show p { margin: 0; max-width: 52ch; line-height: 1.5; }
-.alb-show small { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.alb-show small { display: block; color: var(--muted); font-size: 13px; }
 .alb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .alb-card { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); font: inherit; color: var(--text); font-size: 12.5px; line-height: 1.2; cursor: pointer; min-width: 0; }
 .alb-card img { object-fit: contain; object-position: bottom; max-width: 100%; }

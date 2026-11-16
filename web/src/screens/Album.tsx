@@ -4,8 +4,8 @@ import { ALBUM_CARDS, albumCount } from "../album";
 import { Empty, Spinner } from "../components";
 import { humanDay, todayKey } from "../format";
 
-// Альбом реакций: 27 анимаций горничной. Те, что уже показал виджет на ПК, открыты; остальные — силуэты: щелчок по силуэту
-// показывает подсказку, как увидеть. Отметки шлёт виджет (desktop/renderer/album.js → /api/album), сайт только читает.
+// Альбом реакций: 27 анимаций горничной. Те, что уже показал виджет на ПК, открыты и подписаны; остальные — силуэты «?»
+// без подсказок. Отметки шлёт виджет (desktop/renderer/album.js → /api/album), сайт только читает.
 
 type Album = { seen: Record<string, string>; total: number };
 
@@ -25,7 +25,7 @@ export function Album({ version }: { version: number }) {
 
   const open = albumCount(album.seen);
   const all = ALBUM_CARDS.length;
-  // Пока ничего не выбрано — показываем последнюю открытую, а в пустом альбоме — первую карточку с подсказкой.
+  // Пока ничего не выбрано — показываем последнюю открытую, а в пустом альбоме — первый силуэт.
   const last = ALBUM_CARDS.filter((c) => album.seen[c.id]).sort((a, b) => album.seen[b.id].localeCompare(album.seen[a.id]))[0];
   const card = ALBUM_CARDS.find((c) => c.id === picked) ?? last ?? ALBUM_CARDS[0];
   const seenAt = album.seen[card.id];
@@ -47,10 +47,7 @@ export function Album({ version }: { version: number }) {
         <img key={card.id} src={`/maid/${card.id}.webp`} alt="" width={150} height={160} />
         <div>
           <h3>{seenAt ? card.name : "Ещё не открыта"}</h3>
-          <p>{seenAt ? card.about : card.hint}</p>
-          {seenAt
-            ? <small>Впервые — {humanDay(todayKey(new Date(seenAt)))}</small>
-            : <small>Это подсказка. Сделайте так в программе на ПК — карточка откроется сама.</small>}
+          {seenAt && <small>Впервые — {humanDay(todayKey(new Date(seenAt)))}</small>}
         </div>
       </section>
 
@@ -59,7 +56,7 @@ export function Album({ version }: { version: number }) {
           const seen = Boolean(album.seen[c.id]);
           return (
             <button key={c.id} className={`alb-card ${seen ? "" : "lock"} ${c.id === card.id ? "on" : ""}`} onClick={() => setPicked(c.id)}
-              aria-label={seen ? c.name : "Не открыта — показать подсказку"}>
+              aria-label={seen ? c.name : "Не открыта"}>
               <img src={`/maid/${c.id}.webp`} alt="" width={84} height={90} loading="lazy" />
               <span>{seen ? c.name : "?"}</span>
             </button>

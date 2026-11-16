@@ -3,17 +3,18 @@ import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { ALBUM_CARDS, albumCount } from "../src/album.ts";
 
-// Альбом реакций (web/src/album.ts, screens/Album.tsx): 27 карточек, у каждой имя, подсказка, подпись и картинка;
+// Альбом реакций (web/src/album.ts, screens/Album.tsx): 27 карточек, у каждой короткое имя и картинка, подсказок нет;
 // имена — те же, что шлёт виджет и принимает сервер.
 
-test("альбом: 27 карточек с подсказкой и картинкой, список совпадает с сервером", () => {
+test("альбом: 27 карточек с именем и картинкой, без подсказок, список совпадает с сервером", () => {
   assert.equal(ALBUM_CARDS.length, 27);
   assert.equal(new Set(ALBUM_CARDS.map((c) => c.id)).size, 27);
   const server = readFileSync(new URL("../../server/src/album.ts", import.meta.url), "utf8");
   const ids = [...server.match(/export const ALBUM = \[([^\]]+)\]/)![1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
   assert.deepEqual(ALBUM_CARDS.map((c) => c.id), ids);
   for (const c of ALBUM_CARDS) {
-    assert.ok(c.name && c.hint.length > 10 && c.about.length > 10, `${c.id}: нет имени, подсказки или подписи`);
+    assert.ok(c.name && c.name.length <= 16, `${c.id}: нет имени или оно длинное`);
+    assert.deepEqual(Object.keys(c), ["id", "name"], `${c.id}: в карточке лишнее (подсказок быть не должно)`);
     assert.ok(existsSync(new URL(`../public/maid/${c.id}.webp`, import.meta.url)), `${c.id}: нет картинки`);
   }
 });
