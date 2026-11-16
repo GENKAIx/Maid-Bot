@@ -1415,15 +1415,18 @@ function render() {
   const daily = (sec.habits ? data.habits ?? [] : []).filter((h) => h.course?.find((x) => x.day === data.day)?.s !== "rest");
   const dayItem = (h) => {
     const i = h.course?.length ? h.course.findIndex((x) => x.day === data.day) : -1;
-    // Курс — полоска и «9/30» справа; у обычной привычки — серия 🔥 после названия.
-    const sub = i >= 0
-      ? `<span class="course-meter" title="День ${i + 1} из ${h.course.length}"><span class="cm-bar"><i data-w="${Math.round(((i + 1) / h.course.length) * 100)}"></i></span>${i + 1}/${h.course.length}</span>`
+    // Курс — полоска и «сделано/всего» справа (stats из course.js; номер дня — в подсказке: «1/10» в первый день читалось как
+    // «уже сделано»); у обычной привычки — серия 🔥 после названия.
+    const st = i >= 0 ? stats(h) : null;
+    const sub = st
+      ? `<span class="course-meter" title="Сделано ${st.done} из ${st.total} · день ${i + 1} из ${h.course.length}"><span class="cm-bar"><i data-w="${Math.round((st.done / Math.max(1, st.total)) * 100)}"></i></span>${st.done}/${st.total}</span>`
       : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
     const go = leavingRows.get(`h${h.id}`);
     if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
     const name = i >= 0 ? `<span class="t">${esc(h.title)}</span>${sub}` : `<span class="t">${esc(h.title)}${sub}</span>`;
     if (go) return `<li class="habit ${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span>${name}</li>`;
-    return `<li class="habit${h.status ? " did" : ""}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}</li>`;
+    const fresh = habitArriving(h) ? ` arrive" data-arrive="h${h.id}` : "";
+    return `<li class="habit${h.status ? " did" : ""}${fresh}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}</li>`;
   };
   const allTasks = taskRows();
   const later = allTasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -1431,6 +1434,7 @@ function render() {
   noteWakes(awake, later);
   const tasks = [...awake].sort(taskOrder);
   noteArrivals(allTasks);
+  noteHabitArrivals(data.habits ?? []);
   const openTasks = tasks.filter((t) => !doneNow.has(t.id));
   const shownTasks = openTasks.slice(0, cfg.taskCount + tasksMore);
   const moreTasks = sec.tasks ? openTasks.length - shownTasks.length : 0;
@@ -1488,7 +1492,11 @@ function render() {
   flipHabits(habitWas);
   for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP
   fitHistory(); // планы сверху могли стать выше или ниже
-  for (const li of $("#body").querySelectorAll("li.arrive")) li.style.setProperty("--arrive-delay", `-${Date.now() - taskArriveAt.get(Number(li.dataset.arrive))}ms`);
+  for (const li of $("#body").querySelectorAll("li.arrive")) {
+    const key = li.dataset.arrive;
+    const at = key.startsWith("h") ? habitArriveAt.get(Number(key.slice(1))) : taskArriveAt.get(Number(key));
+    li.style.setProperty("--arrive-delay", `-${Date.now() - at}ms`);
+  }
   scrollToArrival();
   for (const li of $("#body").querySelectorAll("li.woke")) li.style.setProperty("--wake-delay", `-${Date.now() - wokeAt.get(Number(li.dataset.woke))}ms`);
   for (const li of $("#body").querySelectorAll("li.leaving")) {
@@ -1878,6 +1886,16 @@ function noteArrivals(all) {
   for (const [id, at] of taskArriveAt) if (Date.now() - at > ARRIVE_SHOW) { taskArriveAt.delete(id); arriveScrolled.delete(String(id)); }
 }
 const arriving = (t) => taskArriveAt.has(t.id) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Новая привычка или курс (завели в чате, в Telegram) — так же въезжает в список «Привычки»; ключ строки — «h<id>».
+const habitArriveAt = new Map();
+let knownHabits = null;
+function noteHabitArrivals(all) {
+  const ids = new Set(all.map((h) => h.id));
+  if (knownHabits) for (const id of ids) if (!knownHabits.has(id)) habitArriveAt.set(id, Date.now());
+  knownHabits = ids;
+  for (const [id, at] of habitArriveAt) if (Date.now() - at > ARRIVE_SHOW) { habitArriveAt.delete(id); arriveScrolled.delete(`h${id}`); }
+}
+const habitArriving = (h) => habitArriveAt.has(h.id) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Задач больше, чем помещается, — новая встаёт за краем списка, и въезд играл невидимым: список докручивается к ней один раз
 // (перерисовки во время въезда прокрутку не дёргают; уже видна — «nearest» не двигает).
 const arriveScrolled = new Set();

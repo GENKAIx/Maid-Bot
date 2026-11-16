@@ -81,7 +81,7 @@ main { display: flex; flex-direction: column; min-width: 0; }
   background: linear-gradient(90deg, transparent 20%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 80%) 0 0 / 250% 100%;
   animation: arriveGlow 1.6s ease-out both; animation-delay: var(--arrive-delay, 0ms); }
 .w .list li.arrive > * { position: relative; }
-.w .list li.arrive .check { animation: arriveCheck 1s ease-out both; animation-delay: calc(var(--arrive-delay, 0ms) + 300ms); }
+.w .list li.arrive .check, .w .list li.arrive .mark { animation: arriveCheck 1s ease-out both; animation-delay: calc(var(--arrive-delay, 0ms) + 300ms); }
 @keyframes arriveIn { from { opacity: 0; transform: translateX(-18px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes arriveGlow { 0% { opacity: 0; background-position: 100% 0; } 15% { opacity: 1; } 60% { background-position: 0 0; opacity: .8; } 100% { opacity: 0; background-position: 0 0; } }
 @keyframes arriveCheck { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 90%, transparent); border-color: var(--accent); }
