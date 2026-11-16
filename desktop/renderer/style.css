@@ -190,6 +190,10 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble::after { content: ""; position: absolute; right: -7px; bottom: min(22px, calc(50% - 8px)); border: 8px solid transparent; border-left: 8px solid var(--tail, rgba(255,255,255,.97)); border-right: 0; }
 .bubble.hidden { opacity: 0; pointer-events: none; }
 .bubble { translate: 0 var(--drop, 0px); } /* у верха экрана облачко опускается, чтобы не уйти за край (widget.js, fitBubble) */
+/* Выше верха окна облачку некуда: потолок высоты (--room, fitBubble) — текст и карточки сжимаются и листаются, кнопки на месте. */
+.bubble { display: flex; flex-direction: column; max-height: var(--room, none); box-sizing: border-box; }
+.bubble > .bubble-text, .bubble > .bubble-cards { flex: 0 1 auto; min-height: 0; }
+.bubble > .bubble-actions { flex: none; }
 .bubble.angry { background: #fde6ea; --tail: #fde6ea; }
 .bubble.happy, .bubble.proud { background: #e9f8ef; --tail: #e9f8ef; }
 .bubble-text { max-height: 220px; overflow: auto; white-space: pre-wrap; }

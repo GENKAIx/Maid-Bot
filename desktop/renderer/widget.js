@@ -2100,6 +2100,8 @@ function placeBubble() {
 // Окно у верха экрана: прозрачный верх окна разрешено уводить за край (main.js, widgetBounds), а с ним уходил и верх высокого
 // облачка. Тогда облачко опускается ровно на ушедшее (может накрыть верх панели) и возвращается, когда окно ниже.
 // Окно двигает main.js, событий о сдвиге здесь нет — проверка раз в 250 мс, пока облачко видно, и при смене его размера.
+// Свёрнутый виджет с выдвинутыми «Планами на день»: облачко поднимается выше верха окна (окно на экране целиком) — тогда оно
+// укорачивается сверху (--room, текст и карточки листаются), низ на месте.
 function fitBubble() {
   const b = $("#bubble");
   const was = parseFloat(b.style.getPropertyValue("--drop")) || 0;
@@ -2107,9 +2109,12 @@ function fitBubble() {
     if (was) b.style.setProperty("--drop", "0px");
     return;
   }
-  const top = screenY + b.getBoundingClientRect().top - was - (screen.availTop ?? 0);
+  const r = b.getBoundingClientRect();
+  const top = screenY + r.top - was - (screen.availTop ?? 0);
   const drop = Math.max(0, Math.ceil(4 - top));
   if (drop !== was) b.style.setProperty("--drop", `${drop}px`);
+  const room = `${Math.max(120, Math.floor(r.bottom - was + drop - 4))}px`;
+  if (b.style.getPropertyValue("--room") !== room) b.style.setProperty("--room", room);
 }
 setInterval(fitBubble, 250);
 new ResizeObserver(fitBubble).observe($("#bubble"));

@@ -12,13 +12,19 @@ const src = fs.readFileSync(path.join(__dirname, "..", "renderer", "widget.js"),
 const m = src.match(/\nfunction fitBubble\(\) \{[^]*?\n\}\r?\n/);
 check(Boolean(m), "в widget.js нет fitBubble");
 
-// Облачко: в окне его верх на 40 px, высота 300; сдвиг --drop опускает его (как CSS translate).
+// Облачко: низ закреплён (в окне на 340 px), высота 300; сдвиг --drop опускает его (как CSS translate),
+// --room — потолок высоты (max-height): облачко укорачивается сверху.
 const props = new Map();
 const classes = new Set();
+let base = 340, tall = 300;
 const bubble = {
   classList: { contains: (c) => classes.has(c) },
   style: { getPropertyValue: (k) => props.get(k) ?? "", setProperty: (k, v) => props.set(k, v) },
-  getBoundingClientRect: () => ({ top: 40 + (parseFloat(props.get("--drop")) || 0) }),
+  getBoundingClientRect: () => {
+    const bottom = base + (parseFloat(props.get("--drop")) || 0);
+    const room = parseFloat(props.get("--room"));
+    return { bottom, top: bottom - Math.min(tall, Number.isFinite(room) ? room : Infinity) };
+  },
 };
 const ctx = { $: () => bubble, screenY: 500, screen: { availTop: 0 }, Math, parseFloat };
 vm.createContext(ctx);
@@ -43,6 +49,18 @@ try {
   ctx.screenY = 500; // окно отпустили ниже — облачко на своём месте
   ctx.fitBubble();
   check(drop() === 0, `облачко не вернулось: ${drop()}`);
+
+  // 16.11.2026: свёрнутый виджет внизу экрана, под карточкой выдвинуты «Планы на день» — облачко поднялось выше верха окна
+  // (верх в окне на −120) и срезалось. Окно на экране целиком: облачко укорачивается (текст листается), верх — в окне.
+  ctx.screenY = 300;
+  base = 180; // низ облачка в окне: высота 300 — верх на −120
+  ctx.fitBubble();
+  const r = bubble.getBoundingClientRect();
+  check(r.top >= 0 && r.top <= 8, `облачко за верхом окна: верх в окне на ${r.top}`);
+  check(drop() === 0, `облачко сдвинулось вниз, а не укоротилось: ${drop()}`);
+  base = 340; // планы спрятали — облачко снова во весь рост
+  ctx.fitBubble();
+  check(bubble.getBoundingClientRect().top === 40, `облачко не выросло обратно: верх на ${bubble.getBoundingClientRect().top}`);
 
   classes.add("hidden");
   ctx.screenY = -300;
