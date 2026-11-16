@@ -21,14 +21,17 @@ async function setup() {
   return { store, u };
 }
 
-test("итог дня: цифры строкой, записи дня не перечисляются, без ИИ — только цифры", async () => {
+test("итог дня: цифры по пунктам, записи дня не перечисляются, без ИИ — только цифры", async () => {
   const { store, u } = await setup();
   const text = await new Scheduler(store, null, async () => {}).eveningText(u, DAY);
   assert.match(text, /^<b>Итог дня, /);
   assert.match(text, /🎮 2 ч/);
   assert.match(text, /📝 3 записи/);
   assert.doesNotMatch(text, /пельмени|семечки|Чешутся/);
-  assert.equal(text.split("\n").length, 2);
+  // Заголовок и по строке на каждую цифру: игры и записи — отдельными пунктами, а не через « · ».
+  const [head, ...items] = text.split("\n");
+  assert.match(head, /Итог дня/);
+  assert.deepEqual(items, ["🎮 2 ч", "📝 3 записи"]);
 });
 
 test("итог дня: горничная видит факты дня и прошлые 6 дней, человеку — её 2–3 предложения одной строкой", async () => {
@@ -44,10 +47,12 @@ test("итог дня: горничная видит факты дня и про
   assert.match(ask, /Чешется шея после острого/); // и записи за неделю
   assert.doesNotMatch(ask, /старше недели/);
   assert.match(ask, /НЕ пересказывай/);
-  const [head, numbers, blank, words, ...rest] = text.split("\n");
+  const [top, tail, ...more] = text.split("\n\n");
+  const [head, ...numbers] = top.split("\n");
+  const [words, ...rest] = tail.split("\n");
+  assert.equal(more.length, 0);
   assert.match(head, /Итог дня/);
-  assert.match(numbers, /🎮/);
-  assert.equal(blank, "");
+  assert.ok(numbers.includes("🎮 2 ч"), numbers.join(" | "));
   assert.equal(words, "Руки чешутся второй раз за неделю после острого. Завтра без острого и запиши, как будет.");
   assert.equal(rest.length, 0);
   assert.doesNotMatch(text, /пельмени/);
@@ -61,14 +66,15 @@ test("итог дня: слишком длинный ответ обрезает
   assert.ok(words.length <= EVENING_MAX * 1.5 + 1, String(words.length));
   assert.match(words, /слово…$/);
   const failed = await new Scheduler(store, async () => { throw new Error("нет связи"); }, async () => {}).eveningText(u, DAY);
-  assert.equal(failed.split("\n").length, 2);
+  assert.doesNotMatch(failed, /\n\n/); // без слов горничной — только заголовок и пункты
+  assert.match(failed, /\n🎮 2 ч/);
 });
 
-test("итог дня: строка цифр — только то, что было", () => {
+test("итог дня: пункты цифр — только то, что было, каждый своей строкой", () => {
   assert.equal(dayNumbers({ tasks: 0, habitsDone: 0, habits: 0, gameSec: 30, notes: 0, spent: [] }), "");
   assert.equal(
     dayNumbers({ tasks: 3, habitsDone: 3, habits: 3, gameSec: 5400, notes: 1, spent: ["−1 200 RUB"] }),
-    "✔ 3 задачи · привычки 3/3 · 🎮 1 ч 30 мин · 📝 1 запись · 💸 −1 200 RUB",
+    "✔ 3 задачи\n🔁 привычки 3/3\n🎮 1 ч 30 мин\n📝 1 запись\n💸 −1 200 RUB",
   );
 });
 

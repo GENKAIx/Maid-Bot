@@ -27,15 +27,15 @@ export function wholeSentences(text: string): string {
 const plural = (n: number, one: string, few: string, many: string) =>
   n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
 
-/** Цифры дня одной строкой — только то, что было: «✔ 3 задачи · привычки 3/3 · 🎮 2 ч · 📝 4 записи · −1 200 RUB». */
+/** Цифры дня по пунктам, каждый своей строкой — только то, что было: «✔ 3 задачи», «🔁 привычки 3/3», «🎮 2 ч», «📝 4 записи», «💸 −1 200 RUB». */
 export function dayNumbers(d: { tasks: number; habitsDone: number; habits: number; gameSec: number; notes: number; spent: string[] }): string {
   return [
     d.tasks ? `✔ ${d.tasks} ${plural(d.tasks, "задача", "задачи", "задач")}` : "",
-    d.habits ? `привычки ${d.habitsDone}/${d.habits}` : "",
+    d.habits ? `🔁 привычки ${d.habitsDone}/${d.habits}` : "",
     d.gameSec >= 60 ? `🎮 ${durationHuman(d.gameSec)}` : "",
     d.notes ? `📝 ${d.notes} ${plural(d.notes, "запись", "записи", "записей")}` : "",
     ...d.spent.map((x) => `💸 ${x}`),
-  ].filter(Boolean).join(" · ");
+  ].filter(Boolean).join("\n");
 }
 
 // Напоминания и итоги. Всё состояние — в базе (reminders, kv), поэтому перезапуск ничего не теряет,
@@ -254,7 +254,7 @@ export class Scheduler {
     }
   }
 
-  /** Вечерний итог — коротко: строка цифр дня («✔ 3 задачи · привычки 3/3 · 🎮 2 ч») и 2–3 предложения горничной — одна
+  /** Вечерний итог — коротко: цифры дня по пунктам («✔ 3 задачи», «🔁 привычки 3/3», «🎮 2 ч») и 2–3 предложения горничной — одна
    * неочевидная связь (по записям за неделю) и один маленький совет на завтра. Сами записи дня не пересказываем: они в «Дневнике». */
   async eveningText(u: User, today: string): Promise<string> {
     const s = this.store;
