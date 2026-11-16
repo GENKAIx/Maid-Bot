@@ -783,10 +783,10 @@ body.quick { background: transparent; }
   cursor: pointer; opacity: 0; transition: opacity .15s; }
 .pl-x + .pl-check { margin-left: 8px; } /* «убрать» отдельно от галочки — промахнувшись, план не уберёшь */
 /* «×» рисуется двумя линиями, а не символом: символ у шрифта сидит не по середине */
-.pl-x:not(.back) { font-size: 0; }
-.pl-x:not(.back)::before, .pl-x:not(.back)::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 1.6px; border-radius: 1px; background: currentColor;
+.pl-x { font-size: 0; }
+.pl-x::before, .pl-x::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 1.6px; border-radius: 1px; background: currentColor;
   transform: translate(-50%, -50%) rotate(45deg); }
-.pl-x:not(.back)::after { transform: translate(-50%, -50%) rotate(-45deg); }
+.pl-x::after { transform: translate(-50%, -50%) rotate(-45deg); }
 .pl-card:hover .pl-x { opacity: 1; }
 .pl-x:hover { color: #ff8f8f; background: rgba(255, 120, 120, .12); }
 .pl-empty { margin: 10px 6px; color: var(--muted); font-size: 12.5px; }
@@ -815,8 +815,10 @@ body.quick { background: transparent; }
 .w .pin { background: rgba(255, 196, 92, .1); border-left: 3px solid #ffc45c; border-radius: 4px 10px 10px 4px; padding: 7px 10px; }
 .w .pin .pl-when { color: #ffc45c; }
 .pl-card.pl-date { --c: #ffc45c; background: rgba(255, 196, 92, .09); }
-.pl-card.pl-date.cancelled { background: rgba(255, 255, 255, .03); }
-.pl-x.back { opacity: 1; font-size: 14px; }
+/* Только что убранная дата (clock.js, toggleDate): строка «Убрала · … Вернуть», DATE_UNDO мс. */
+.pl-card.pl-date.undo { background: rgba(255, 255, 255, .03); color: var(--muted); font-size: 12px; overflow: hidden; }
+.pl-undo { flex: none; padding: 2px 9px; font-size: 12px; border-radius: 8px; border: 1px solid rgba(255, 196, 92, .5); background: rgba(255, 196, 92, .12); color: #ffc45c; cursor: pointer; }
+.pl-undo:hover { background: rgba(255, 196, 92, .24); }
 /* День с важной датой — золотая рамка вокруг дня; выбранный — та же рамка на сиреневом фоне (фон чуть гуще обычного выбранного). */
 .day-chip.has-date { border-color: #ffc45c; }
 .day-chip.has-date.on { border-color: #ffc45c; background: rgba(183, 156, 255, .3); }

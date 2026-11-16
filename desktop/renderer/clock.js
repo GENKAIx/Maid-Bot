@@ -273,10 +273,12 @@ const planWord = (n) => (n % 10 === 1 && n % 100 !== 11 ? "план" : n % 10 >=
 
 // --- важные даты (дни рождения, годовщины…) наверху планов ---
 // Дата висит в планах своего дня и cfg.dateLead дней до него. × убирает её до следующего раза (в этом году — только этот),
-// убранное хранится здесь, на компьютере: на сервере дата остаётся (она каждый год).
+// убранное хранится здесь, на компьютере: на сервере дата остаётся (она каждый год). Убранная карточка улетает, на её месте
+// DATE_UNDO мс строка «Убрала · ДР мамы» с «Вернуть», потом строка смыкается.
 const DATE_ICON = { birthday: "🎂", anniversary: "💍", holiday: "🎉", deadline: "⏳", other: "📌" };
 const hiddenDates = new Set(JSON.parse(localStorage.getItem("maid.datesHidden") || "[]"));
-const datesHiddenNow = new Set(); // убранные, пока панель открыта: остаются зачёркнутыми, щелчок — вернуть
+const DATE_UNDO = 5000; // мс: столько на месте убранной даты висит «Вернуть»
+const dateUndo = new Map(); // ключ даты → таймер: только что убранные — строкой «Убрала · … Вернуть»
 const dateKey = (d) => `${d.id}:${d.on}`;
 function daysFrom(a, b) {
   return Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
@@ -299,13 +301,36 @@ function dateText(d, day) {
   return `<b class="pl-when">${DATE_ICON[d.type] ?? DATE_ICON.other} ${when}</b> · ${esc(d.title)}${d.age ? ` · ${d.age} ${yearsWord(d.age)}` : ""}`;
 }
 function toggleDate(key) {
-  if (hiddenDates.has(key)) { hiddenDates.delete(key); datesHiddenNow.delete(key); }
-  else { hiddenDates.add(key); datesHiddenNow.add(key); }
+  if (hiddenDates.has(key)) {
+    hiddenDates.delete(key);
+    clearTimeout(dateUndo.get(key));
+    dateUndo.delete(key);
+    return saveHiddenDates();
+  }
+  const hide = () => {
+    hiddenDates.add(key);
+    dateUndo.set(key, setTimeout(() => dropDateUndo(key), DATE_UNDO));
+    saveHiddenDates();
+  };
+  const li = document.querySelector(`#planClock .pl-date[data-date="${CSS.escape(key)}"]`);
+  if (!li || matchMedia("(prefers-reduced-motion: reduce)").matches) return hide();
+  li.style.pointerEvents = "none";
+  li.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(40px)" }], { duration: 300, easing: "ease-in", fill: "forwards" }).finished.then(hide, hide);
+}
+function saveHiddenDates() {
   // Старые годы не копить: оставить только даты, которые ещё впереди.
   const keep = [...hiddenDates].filter((k) => k.split(":")[1] >= data.day);
   localStorage.setItem("maid.datesHidden", JSON.stringify(keep));
   drawClock();
   render();
+}
+// Время «Вернуть» вышло — строка смыкается (высота и промежуток сетки до нуля), дата остаётся убранной.
+function dropDateUndo(key) {
+  const done = () => { dateUndo.delete(key); drawClock(); };
+  const li = document.querySelector(`#planClock .pl-date.undo[data-date="${CSS.escape(key)}"]`);
+  if (!li || matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
+  li.animate([{ height: `${li.offsetHeight}px`, opacity: 1 }, { height: "0px", opacity: 0, paddingTop: "0px", paddingBottom: "0px", marginTop: "-7px" }],
+    { duration: DONE_SHUT, easing: "ease-in", fill: "forwards" }).finished.then(done, done);
 }
 
 // --- список планов дня ---
@@ -340,12 +365,16 @@ function drawPlanList(box) {
   ].filter((e) => !ids.has(e.id) && ids.add(e.id))
     .sort((a, b) => (minutesOf((clockEdits.get(a.id) ?? a).time) ?? 1441) - (minutesOf((clockEdits.get(b.id) ?? b).time) ?? 1441)); // правленый — на старом месте
   clockColors = new Map(layout(list, "24").map((x, i) => [x.e.id, ARC_COLORS[i % ARC_COLORS.length]]));
-  const pins = datesOf(clockDay, true).filter((d) => !hiddenDates.has(dateKey(d)) || datesHiddenNow.has(dateKey(d)));
+  const pins = datesOf(clockDay, true).filter((d) => !hiddenDates.has(dateKey(d)) || dateUndo.has(dateKey(d)));
   const pinCard = (d) => {
-    const off = hiddenDates.has(dateKey(d));
-    return `<li class="pl-card pl-date${off ? " cancelled" : ""}" data-date="${esc(dateKey(d))}">
+    const key = esc(dateKey(d));
+    if (dateUndo.has(dateKey(d))) {
+      return `<li class="pl-card pl-date undo" data-date="${key}"><span class="pl-text">Убрала · ${esc(d.title)}</span>`
+        + `<button type="button" class="pl-undo" data-dact="1">Вернуть</button></li>`;
+    }
+    return `<li class="pl-card pl-date" data-date="${key}">
       <span class="pl-text">${dateText(d, clockDay)}</span>
-      <button type="button" class="pl-x${off ? " back" : ""}" data-dact="1" title="${off ? "Вернуть" : "Убрать — больше не показывать до этой даты"}">${off ? "↺" : "×"}</button></li>`;
+      <button type="button" class="pl-x" data-dact="1" title="Убрать — больше не показывать до этой даты">×</button></li>`;
   };
   const open = list.filter((e) => !e._st).length;
   const tIds = new Set();
@@ -698,7 +727,8 @@ function hideClock() {
   planDone.clear();
   for (const t of doneTimers.values()) clearTimeout(t);
   doneTimers.clear();
-  datesHiddenNow.clear();
+  for (const t of dateUndo.values()) clearTimeout(t);
+  dateUndo.clear();
   stripFrom = 0;
   clockFresh = new Set();
   clockGone = [];
