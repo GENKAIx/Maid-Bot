@@ -827,24 +827,31 @@ body.quick { background: transparent; }
 .day-chip.has-date { border-color: #ffc45c; }
 .day-chip.has-date.on { border-color: #ffc45c; background: rgba(183, 156, 255, .3); }
 
-/* Непрочитанные напоминания (inbox.js): стайка значков слева от горничной, прямо над панелью */
-/* Прямоугольник над панелью: от её левого края до горничной, внутри него inbox.js раскладывает значки. */
-.inbox { position: absolute; z-index: 4; left: calc(100% - 330px); right: calc(var(--maid-w, 196px) + 10px); bottom: calc(var(--peek, 26px) + 6px); height: 176px; pointer-events: none; }
-.stage.side-left .inbox { left: calc(100% - 330px + var(--maid-w, 196px) + 10px); right: 10px; }
+/* Оповещения (inbox.js): до четырёх значков в ряд над левым краем панели — будильник, важное, даты, письма. */
+.inbox { position: absolute; z-index: 4; left: calc(100% - 330px + 14px); bottom: calc(var(--peek, 26px) + 8px); display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
+/* Горничная слева — справа от неё до края панели узко: ряд прижат к правому краю, значки мельче. */
+.stage.side-left .inbox { left: auto; right: 12px; gap: 4px; }
+.stage.side-left .ib { width: 28px; height: 28px; }
 .inbox.hidden { display: none; }
 .inbox.away .ib { opacity: 0; pointer-events: none; }
-/* Значок — сама картинка эмодзи (assets/inbox), без кружка; у каждого свой размер, наклон и покачивание (inbox.js). */
-.ib { position: absolute; left: var(--x); top: var(--y); width: var(--s, 44px); height: var(--s, 44px); padding: 0; border: 0;
-  background: none; cursor: pointer; pointer-events: auto; transition: opacity .2s, scale .15s; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .45));
-  rotate: var(--r, 0deg); animation: ibFloat var(--t, 3.2s) ease-in-out var(--d, 0s) infinite; }
+/* Значок — сама картинка эмодзи (assets/inbox), без кружка; число — сколько в разделе, если больше одного. */
+.ib { position: relative; flex: none; width: 40px; height: 40px; padding: 0; border: 0; background: none; cursor: pointer; pointer-events: auto;
+  transition: opacity .2s, scale .15s; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .45)); }
 .ib img { display: block; width: 100%; height: 100%; pointer-events: none; }
 .ib:hover { scale: 1.15; }
-.ib .ib-n { position: absolute; right: -4px; bottom: -2px; min-width: 20px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px;
-  background: #e0566a; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; pointer-events: none; }
-.ib.new { animation: ibWiggle .7s ease 3, ibFloat var(--t, 3.2s) ease-in-out 2.1s infinite; }
-@keyframes ibFloat { 0%, 100% { transform: translate(0, 0); } 40% { transform: translate(var(--ax, 2px), var(--ay, -5px)); } 70% { transform: translate(calc(var(--ax, 2px) * -.6), -2px); } }
+.ib .ib-n { position: absolute; right: -5px; bottom: -3px; min-width: 18px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 9px;
+  background: #e0566a; color: #fff; font-size: 11px; font-weight: 700; line-height: 17px; text-align: center; pointer-events: none; }
+.ib .ib-n[hidden] { display: none; }
+.ib.new { animation: ibWiggle .7s ease 3; }
 @keyframes ibWiggle { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-16deg); } 40% { transform: rotate(13deg); } 60% { transform: rotate(-8deg); } 80% { transform: rotate(4deg); } }
-@media (prefers-reduced-motion: reduce) { .ib, .ib.new { animation: none; } }
+/* Список оповещений раздела в облачке (inbox.js, openList): строка — название и время, щелчок открывает. */
+.ib-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.ib-list button { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; text-align: left; padding: 7px 12px; border-radius: 10px;
+  border: 1px solid #e4e1ec; background: #f0eef5; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; transition: transform .12s, border-color .12s; }
+.ib-list button:hover { transform: translateX(2px); border-color: #b9b1cf; }
+.ib-list b { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ib-list small { flex: none; font-size: 11px; color: #8a849c; }
+@media (prefers-reduced-motion: reduce) { .ib.new { animation: none; } }
 
 /* Сделанные задачи, режим «прятать»: строка заливается слева направо, улетает вправо, список смыкается. */
 .w .list li.leaving { position: relative; }

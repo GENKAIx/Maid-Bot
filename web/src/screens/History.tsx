@@ -13,8 +13,9 @@ const PAGE = 50;
 /** Письмо длиннее — свёрнуто до «Показать целиком» (утренний список, итог дня). */
 const LONG = 320;
 
-export function History({ version }: { version: number }) {
-  const [filter, setFilter] = useState("all");
+/** start — отбор из адреса (/history/daily): так виджет открывает «Прочитать все письма». */
+export function History({ version, filter: start }: { version: number; filter?: string }) {
+  const [filter, setFilter] = useState(HISTORY_FILTERS.some((f) => f.id === start) ? start! : "all");
   const [page, setPage] = useState<Page | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);

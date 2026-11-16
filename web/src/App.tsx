@@ -99,7 +99,7 @@ export function App() {
     : tab === "trash" ? <Trash version={version} onChanged={onChanged} />
     : tab === "settings" ? <Settings onLogout={logout} />
     : tab === "widget" ? <Widget />
-    : tab === "history" ? <History version={version} />
+    : tab === "history" ? <History filter={arg} version={version} />
     : tab === "album" ? <Album version={version} />
     : tab === "features" ? <Features />
     : tab === "catalog" ? <Suspense fallback={null}><Catalog chapter={arg} /></Suspense>

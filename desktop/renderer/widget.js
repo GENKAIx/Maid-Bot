@@ -2416,10 +2416,10 @@ function reportRegions() {
 }
 setInterval(reportRegions, 300);
 let clickTimer = 0;
-// Значки непрочитанного (inbox.js) — щелчок по значку открывает его напоминание.
+// Значки оповещений (inbox.js) — щелчок по значку открывает его раздел: одно оповещение, список или последнее письмо.
 $("#inbox").addEventListener("click", (e) => {
   const ib = e.target.closest(".ib");
-  if (ib) openInbox(ib.dataset.id);
+  if (ib) openGroup(ib.dataset.group);
 });
 drawInbox();
 // Щелчок по горничной — тычок (fun.js), двойной по свёрнутой — развернуть панель (свернуть — кнопкой #foldBtn). Тычок ждёт, не будет ли второго щелчка.
