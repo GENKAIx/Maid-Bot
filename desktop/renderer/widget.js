@@ -1399,8 +1399,11 @@ function render() {
       + ` · ${e.time ? `${esc(e.time)} ` : ""}${esc(e.title)}</div>`;
   }
   // Планов нет — «+ План»: панель дня на сегодня с формой нового плана (clock.js, addPlanToday).
+  const nextKey = (el) => el.dataset.id;
+  const nextWas = snapRows($("#next"), ".nx[data-id]", nextKey, "next");
   $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span><button type="button" class="next-add" data-addplan title="Добавить план на сегодня">+ План</button>`;
   for (const d of $("#next").querySelectorAll(".nx-dot[data-c]")) d.style.background = d.dataset.c; // style="" запрещает CSP
+  settleRows($("#next"), ".nx[data-id]", nextKey, nextWas, { name: "next" });
   // Блик бежит по краю без рывков при перерисовке: фаза анимации — от часов, а не от момента сборки плашки.
   const heroEl = $("#next").querySelector(".nx-hero");
   heroEl?.style.setProperty("--heat-phase", `-${Date.now() % 12000}ms`);
@@ -1408,7 +1411,10 @@ function render() {
   if (fl) heroEl.style.setProperty("--flash-at", `-${Date.now() - fl.at}ms`);
   // Важные даты — над ближайшим планом (за cfg.dateLead дней; убрать — в списке планов).
   const pins = datesOf(data.day);
+  const pinKey = (el) => `${el.dataset.day}:${el.textContent}`;
+  const pinsWas = snapRows($("#pins"), ".pin", pinKey, "pins");
   $("#pins").innerHTML = pins.map((d) => `<div class="pin" data-day="${d.on}">${dateText(d, data.day)}</div>`).join("");
+  settleRows($("#pins"), ".pin", pinKey, pinsWas, { name: "pins", flip: false, pop: true });
   // Под планами два списка:
   //   1) ежедневное (привычки и курсы — «Пить Аевит» с полоской 9/30): сначала не отмеченное, отмеченное — бледным внизу (щелчок — передумать);
   //   2) «Задачи»: просроченные, со сроком, без срока; внутри — по важности.
@@ -1434,7 +1440,7 @@ function render() {
   noteWakes(awake, later);
   const tasks = [...awake].sort(taskOrder);
   noteArrivals(allTasks);
-  noteHabitArrivals(data.habits ?? []);
+  const habitsGone = noteHabitArrivals(data.habits ?? []);
   const openTasks = tasks.filter((t) => !doneNow.has(t.id));
   const shownTasks = openTasks.slice(0, cfg.taskCount + tasksMore);
   const moreTasks = sec.tasks ? openTasks.length - shownTasks.length : 0;
@@ -1482,6 +1488,8 @@ function render() {
   const pinned = new Set(datesOf(data.day, true).map(dateKey));
   const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   const habitWas = habitRects();
+  const habitKey = (li) => li.querySelector("[data-habit]")?.dataset.habit;
+  const habitSnap = snapRows($("#body"), ".habit-list li", habitKey, "habits");
   $("#body").innerHTML =
     (habitItems.length ? `<h4>Привычки · ${daily.filter((h) => h.status).length}/${daily.length}</h4><ul class="list habit-list">${habitItems.join("")}</ul>` : "") +
     (sec.tasks ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Пока пусто</p>`}` : "") +
@@ -1490,6 +1498,7 @@ function render() {
   $("#w").classList.toggle("bare", !nextHtml && !habitItems.length && !items.length && !allDone && !soon.length && !$("#pins").childElementCount);
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
   flipHabits(habitWas);
+  settleRows($("#body"), ".habit-list li", habitKey, habitSnap, { name: "habits", flip: false, arrive: false, gone: habitsGone });
   for (const x of $("#body").querySelectorAll(".cm-bar i")) x.style.width = `${x.dataset.w}%`; // style="" в разметке запрещает CSP
   fitHistory(); // планы сверху могли стать выше или ниже
   for (const li of $("#body").querySelectorAll("li.arrive")) {
@@ -1889,11 +1898,14 @@ const arriving = (t) => taskArriveAt.has(t.id) && !matchMedia("(prefers-reduced-
 // Новая привычка или курс (завели в чате, в Telegram) — так же въезжает в список «Привычки»; ключ строки — «h<id>».
 const habitArriveAt = new Map();
 let knownHabits = null;
+/** Учесть новые привычки (въезд) и вернуть удалённые с прошлой перерисовки — ключи строк ("12") для settleRows. */
 function noteHabitArrivals(all) {
   const ids = new Set(all.map((h) => h.id));
+  const gone = new Set(knownHabits ? [...knownHabits].filter((id) => !ids.has(id)).map(String) : []);
   if (knownHabits) for (const id of ids) if (!knownHabits.has(id)) habitArriveAt.set(id, Date.now());
   knownHabits = ids;
   for (const [id, at] of habitArriveAt) if (Date.now() - at > ARRIVE_SHOW) { habitArriveAt.delete(id); arriveScrolled.delete(`h${id}`); }
+  return gone;
 }
 const habitArriving = (h) => habitArriveAt.has(h.id) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Задач больше, чем помещается, — новая встаёт за краем списка, и въезд играл невидимым: список докручивается к ней один раз
@@ -1905,6 +1917,67 @@ function scrollToArrival() {
     arriveScrolled.add(li.dataset.arrive);
     li.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
+}
+// --- Строки, что появились или ушли на глазах: блок планов под часами, важные даты над ним, удалённая привычка ---
+// Перед перерисовкой — снимок (ключ → место и сама строка), после — новые въезжают с бликом, оставшиеся доезжают со старого
+// места, ушедшие гаснут на старом месте (их копия — внутри блока, position: absolute). Первая отрисовка и спрятанная панель —
+// без анимации: снимок null. Въезд держится ROW_IN мс и при перерисовке продолжается, а не начинается заново (rowInAt).
+const ROW_IN = 1600;
+const rowInAt = new Map(); // "имя:ключ" → когда появилась
+const rowsSeen = new Set(); // блоки, которые уже рисовались видимыми
+/** Что появилось, что осталось, что ушло; only — уходят только эти ключи (у привычек — удалённые, а не спрятанные отмеченные). */
+function rowChanges(was, now, only = null) {
+  const added = new Set([...now].filter((k) => !was.has(k)));
+  const kept = new Set([...now].filter((k) => was.has(k)));
+  const gone = new Set([...was].filter((k) => !now.has(k) && (!only || only.has(k))));
+  return { added, kept, gone };
+}
+// Панель видна (не свёрнута и не спрятана): пустой блок сам может быть скрыт (:empty), а первая строка в нём — уже на глазах.
+const panelShown = (box) => box.closest(".w")?.offsetParent != null;
+function snapRows(box, sel, keyOf, name) {
+  if (!rowsSeen.has(name) || !panelShown(box)) return null;
+  const out = new Map();
+  for (const el of box.querySelectorAll(sel)) {
+    const k = keyOf(el);
+    if (k) out.set(k, { r: el.getBoundingClientRect(), el, tag: el.parentElement.tagName, cls: el.parentElement.className });
+  }
+  return out;
+}
+function settleRows(box, sel, keyOf, was, { name, flip = true, arrive = true, gone = null, pop = false } = {}) {
+  if (panelShown(box)) rowsSeen.add(name);
+  const els = new Map([...box.querySelectorAll(sel)].map((el) => [keyOf(el), el]).filter(([k]) => k));
+  const now = Date.now();
+  for (const [k, at] of rowInAt) if (now - at > ROW_IN) rowInAt.delete(k);
+  if (!was || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const ch = rowChanges(new Set(was.keys()), new Set(els.keys()), gone);
+  if (arrive) for (const k of ch.added) rowInAt.set(`${name}:${k}`, now);
+  for (const [k, el] of els) {
+    const since = rowInAt.get(`${name}:${k}`);
+    if (since !== undefined) { rowIn(el, now - since, pop); continue; }
+    const dy = flip && was.has(k) ? was.get(k).r.top - el.getBoundingClientRect().top : 0;
+    if (Math.abs(dy) > 1) el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 380, easing: "cubic-bezier(.2, .8, .2, 1)" });
+  }
+  for (const k of ch.gone) ghostRow(box, was.get(k));
+}
+function rowIn(el, t, pop) {
+  const a = el.animate(pop
+    ? [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "scale(1.08)", offset: 0.6 }, { opacity: 1, transform: "none" }]
+    : [{ opacity: 0, transform: "translateX(-16px) scale(.97)" }, { opacity: 1, transform: "none" }],
+  { duration: 550, easing: pop ? "ease-out" : "cubic-bezier(.2, .9, .3, 1.25)" });
+  const g = el.animate([{ filter: "brightness(1.8)" }, { filter: "none" }], { duration: ROW_IN, easing: "ease-out" });
+  a.currentTime = g.currentTime = t;
+}
+// Ушедшая строка: она сама (уже вне списка) в обёртке с классом прежнего родителя — чтобы стили остались — на старом месте.
+function ghostRow(box, old) {
+  const wrap = document.createElement(old.tag);
+  wrap.className = `${old.cls} row-ghost`;
+  const b = box.getBoundingClientRect();
+  Object.assign(wrap.style, { position: "absolute", left: `${old.r.left - b.left + box.scrollLeft}px`, top: `${old.r.top - b.top + box.scrollTop}px`,
+    width: `${old.r.width}px`, margin: "0", padding: "0", pointerEvents: "none", zIndex: "3" });
+  wrap.appendChild(old.el);
+  box.appendChild(wrap);
+  const done = () => wrap.remove();
+  wrap.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(18px)" }], { duration: 520, delay: 120, easing: "ease-in", fill: "forwards" }).finished.then(done, done);
 }
 // Привычки, отмеченные в этом окне, — когда (для порядка отмеченных). Перестройка списка привычек — плавная: строка едет
 // со старого места на новое (FLIP: запомнить места до перерисовки, после — сдвинуть обратно и отпустить).
