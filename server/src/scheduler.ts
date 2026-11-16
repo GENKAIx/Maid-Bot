@@ -227,7 +227,8 @@ export class Scheduler {
       }
     }
     if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
-      await this.safeSend(u, await this.eveningText(u, today), "proud", rateButtons(today), "evening");
+      // Под итогом — вопрос голосом характера и оценка дня от 1 до 10.
+      await this.safeSend(u, `${await this.eveningText(u, today)}\n\n${persona(u.persona).rate}`, "proud", rateButtons(today), "evening");
       // В воскресенье вечером — мягко о задачах, от которых сбежали за неделю.
       if (new Date(`${today}T12:00:00Z`).getUTCDay() === 0 && (await s.once(`escapes:${u.id}:${today}`))) {
         const text = escapesText(await s.allTasks(u.id), today, u.tz);

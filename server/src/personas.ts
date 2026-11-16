@@ -12,6 +12,8 @@ export interface Persona {
   undone: string;
   clarify: string;
   failed: string;
+  /** Вопрос под вечерним итогом, перед оценкой дня (звёзды в виджете, числа в Telegram). */
+  rate: string;
 }
 
 export const PERSONAS: Record<string, Persona> = {
@@ -25,6 +27,7 @@ export const PERSONAS: Record<string, Persona> = {
     undone: "Убрала, как будто и не было.",
     clarify: "Уточните, пожалуйста:",
     failed: "Не получилось записать. Попробую ещё раз чуть позже — сообщение я сохранила.",
+    rate: "На сколько оцениваете этот день?",
   },
   kind: {
     id: "kind",
@@ -36,6 +39,7 @@ export const PERSONAS: Record<string, Persona> = {
     undone: "Хорошо, убрала.",
     clarify: "Подскажи, пожалуйста:",
     failed: "Ой, не вышло записать. Сообщение у меня — попробую ещё раз.",
+    rate: "А на сколько оценишь этот день?",
   },
   sassy: {
     id: "sassy",
@@ -47,6 +51,7 @@ export const PERSONAS: Record<string, Persona> = {
     undone: "Ладно, стёрла. Передумывать — твоё любимое.",
     clarify: "Так, а поконкретнее?",
     failed: "Сервис капризничает. Сообщение не потеряла, дожму позже.",
+    rate: "Ну и на сколько тянет этот день?",
   },
   chill: {
     id: "chill",
@@ -57,6 +62,7 @@ export const PERSONAS: Record<string, Persona> = {
     undone: "Окей, убрала.",
     clarify: "Слушай, уточни:",
     failed: "Чё-то не записалось. Сообщение у меня, попробую ещё.",
+    rate: "На сколько оценишь этот день?",
   },
 };
 

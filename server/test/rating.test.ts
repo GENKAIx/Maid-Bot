@@ -48,6 +48,7 @@ test("оценка дня: вечерний итог уходит с кнопк�
   const ev = sent.find((x) => /Итог дня/.test(x.text));
   assert.ok(ev, "итога нет");
   assert.deepEqual(ev.buttons?.map((x) => x.data), rateButtons(DAY).map((x) => x.data));
+  assert.match(ev.text, /\n\nНа сколько оцениваете этот день\?$/); // вопрос перед звёздами, голосом характера (строгая — на «вы»)
   assert.match(seen.map((m) => m.content).join("\n"), /2026-11-12 Оценка дня: 3\/10/);
 });
 
