@@ -66,7 +66,7 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble" };
 const BEDTIMES = ["auto", "22:00", "23:00", "00:00", "01:00"]; // настройка «Отбой»
 const MAID_W = { s: 160, m: 196, l: 236 };
 // Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
@@ -1269,6 +1269,14 @@ function minutesUntil(e) {
 // ⏰ «Через 10 мин» на плашке, отметка в панели планов) гасит огонь. Ответы — в localStorage «maid.planAck»: {"дата:id": "ok" | до-когда-отложено}.
 const HERO_FAR = 180; // мин до начала: ближе — ближайший план выделенной плашкой, дальше — первой строкой ленты
 const NEXT_WINDOW = 24; // ч: столько вперёд смотрит список ближайших планов
+const NEXT_DATES = 2; // важных дат в ленте «Дальше» — сверх cfg.nextCount
+/** Важные даты для ленты «Дальше»: впереди до 7 дней, позже срока плашки над планами (lead — cfg.dateLead), не убранные; ближайшие первыми. */
+function feedDates(all, day, lead, hidden) {
+  return all.filter((d) => {
+    const n = daysFrom(day, d.on);
+    return n > lead && n <= 7 && !hidden.has(dateKey(d));
+  }).sort((a, b) => a.on.localeCompare(b.on)).slice(0, NEXT_DATES);
+}
 const HEAT_SMOLDER = 5, HEAT_BURN = 15, HEAT_SOON = 10, HEAT_SNOOZE = 10;
 let planAcks = {};
 try { planAcks = JSON.parse(localStorage.getItem("maid.planAck") ?? "{}") ?? {}; } catch {}
@@ -1358,7 +1366,9 @@ function render() {
   // из следующих дней в пределах NEXT_WINDOW ч. Ближайший, если до него не больше HERO_FAR мин или он идёт, — выделенной
   // плашкой «Через 44 мин · …» / «Сейчас · …» (без часа справа); дальше — первой строкой ленты, чуть крупнее, с тихим
   // «через 9 ч». Остальные — лентой «● 16:00 Название», без подписи дня. Всего до cfg.nextCount. В сутках пусто — бледная строка
-  // «Дальше: вс 15 · 11:15 …» с ближайшим планом недели. Щелчок — панель планов на этот день.
+  // «Дальше: вс 15 · 11:15 …» с ближайшим планом недели. Щелчок — панель планов на этот день. Под планами — важные даты
+  // недели (feedDates), строками той же ленты сверх cfg.nextCount: золотая точка, «ср 18», значок и название; в свой срок
+  // (cfg.dateLead) дата уходит из ленты в плашку над планами.
   const today = data.events.filter((e) => (minutesUntil(e) ?? 1) > -30);
   const week = data.upcoming.filter((e) => daysFrom(data.day, e.date_iso) <= 6);
   const nextDays = week.filter((e) => e.time && minutesUntil(e) <= NEXT_WINDOW * 60);
@@ -1366,6 +1376,7 @@ function render() {
   $("#next").dataset.day = (shown[0] ?? week[0])?.date_iso ?? "";
   const inMin = (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч${m % 60 ? ` ${m % 60} мин` : ""}`);
   let nextHtml = "";
+  let rows = [];
   const inHours = (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч`);
   const row = (e, lead) => `<div class="nx nx-row${lead ? " nx-lead" : ""}" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
     + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span>`
@@ -1392,16 +1403,21 @@ function render() {
           ? `<button type="button" class="hero-act" data-act="done" title="Сделано">✓</button><button type="button" class="hero-act" data-act="snooze" title="Напомнить через ${HEAT_SNOOZE} мин">⏰</button>`
           : `<span class="hero-go">›</span>`) + `</div>`;
     }
-    if (rest.length) nextHtml += `<div class="nx-rows">${rest.map((e, i) => row(e, !hero && i === 0)).join("")}</div>`;
+    rows = rest.map((e, i) => row(e, !hero && i === 0));
   } else if (week[0]) {
     const e = week[0];
     nextHtml += `<div class="nx nx-later" data-day="${esc(e.date_iso)}" data-id="${e.id}">Дальше: ${esc(`${WD_SHORT[wdOf(e.date_iso)]} ${Number(e.date_iso.slice(8))}`)}`
       + ` · ${e.time ? `${esc(e.time)} ` : ""}${esc(e.title)}</div>`;
   }
   // Планов нет — «+ План»: панель дня на сегодня с формой нового плана (clock.js, addPlanToday).
+  if (!nextHtml && !rows.length) nextHtml = `<div class="nx-none"><span class="muted">Планов нет</span><button type="button" class="next-add" data-addplan title="Добавить план на сегодня">+ План</button></div>`;
+  const dates = feedDates(data.dates ?? [], data.day, Number(cfg.dateLead ?? 1), hiddenDates);
+  rows.push(...dates.map((d) => `<div class="nx nx-row nx-date" data-day="${esc(d.on)}" data-id="d${esc(dateKey(d))}" data-date="${esc(dateKey(d))}">`
+    + `<i class="nx-dot"></i><b class="nx-t">${esc(`${WD_SHORT[wdOf(d.on)]} ${Number(d.on.slice(8))}`)}</b><span class="nx-title">${DATE_ICON[d.type] ?? DATE_ICON.other} ${esc(d.title)}</span></div>`));
+  if (rows.length) nextHtml += `<div class="nx-rows">${rows.join("")}</div>`;
   const nextKey = (el) => el.dataset.id;
   const nextWas = snapRows($("#next"), ".nx[data-id]", nextKey, "next");
-  $("#next").innerHTML = nextHtml || `<span class="muted">Планов нет</span><button type="button" class="next-add" data-addplan title="Добавить план на сегодня">+ План</button>`;
+  $("#next").innerHTML = nextHtml;
   for (const d of $("#next").querySelectorAll(".nx-dot[data-c]")) d.style.background = d.dataset.c; // style="" запрещает CSP
   settleRows($("#next"), ".nx[data-id]", nextKey, nextWas, { name: "next" });
   // Блик бежит по краю без рывков при перерисовке: фаза анимации — от часов, а не от момента сборки плашки.
@@ -1485,17 +1501,14 @@ function render() {
   const counter = hiding && tasksDone
     ? ` <button type="button" class="done-count${showingDone() ? " on" : ""}${allDone ? " all" : ""}${bump}" id="doneCount" title="${showingDone() ? "Спрятать сделанное" : "Показать сделанное"}">${tasksDone}/${tasksDone + tasksLeft}</button>`
     : tasksLeft > 3 ? ` · ${tasksLeft}` : "";
-  const pinned = new Set(datesOf(data.day, true).map(dateKey));
-  const soon = (sec.soon ? data.dates : []).filter((d) => d.inDays <= 7 && !pinned.has(dateKey(d))).map((d) => `<li><span class="time">${dateWhen(d)}</span><span>${esc(d.title)}</span></li>`);
   const habitWas = habitRects();
   const habitKey = (li) => li.querySelector("[data-habit]")?.dataset.habit;
   const habitSnap = snapRows($("#body"), ".habit-list li", habitKey, "habits");
   $("#body").innerHTML =
     (habitItems.length ? `<h4>Привычки · ${daily.filter((h) => h.status).length}/${daily.length}</h4><ul class="list habit-list">${habitItems.join("")}</ul>` : "") +
-    (sec.tasks ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Пока пусто</p>`}` : "") +
-    (soon.length ? `<h4>Скоро</h4><ul class="list">${soon.join("")}</ul>` : "");
+    (sec.tasks ? `<h4>Задачи${counter}</h4>${items.length ? `<ul class="list">${items.join("")}</ul>` : ""}${allDone && !showingDone() ? `<p class="all-done${Date.now() - allDoneAt < 400 ? " fresh" : ""}">Всё на сегодня ✨</p>` : items.length ? "" : `<p class="empty small">Пока пусто</p>`}` : "");
   // Совсем пусто (ни планов, ни привычек, ни задач, ни дат) — панель низкая, по содержимому, а не на полэкрана.
-  $("#w").classList.toggle("bare", !nextHtml && !habitItems.length && !items.length && !allDone && !soon.length && !$("#pins").childElementCount);
+  $("#w").classList.toggle("bare", !shown.length && !week[0] && !dates.length && !habitItems.length && !items.length && !allDone && !$("#pins").childElementCount);
   if (hiding && Date.now() - peekAt < 300) for (const li of $("#body").querySelectorAll("li.did")) li.classList.add("shown-done");
   flipHabits(habitWas);
   settleRows($("#body"), ".habit-list li", habitKey, habitSnap, { name: "habits", flip: false, arrive: false, gone: habitsGone });

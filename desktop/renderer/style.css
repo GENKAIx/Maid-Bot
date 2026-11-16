@@ -1177,7 +1177,10 @@ body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .
 }
 
 /* Пустой виджет: «+ План» в «Дальше», панель по содержимому (.bare — widget.js, render). */
-.w .next:has(.next-add) { display: flex; align-items: center; justify-content: space-between; }
+.w .next .nx-none { display: flex; align-items: center; justify-content: space-between; }
+/* Важная дата в ленте «Дальше» (widget.js, feedDates): золотая точка, название чуть теплее. */
+.w .next .nx-date .nx-dot { background: #ffc45c; }
+.w .next .nx-date .nx-t { color: #ffc45c; font-weight: 600; }
 .next-add { margin-left: 8px; padding: 2px 9px; font-size: 12px; border-radius: 8px; background: rgba(183, 156, 255, .14); border: 1px dashed rgba(183, 156, 255, .5); color: var(--accent); cursor: pointer; }
 .next-add:hover { background: rgba(183, 156, 255, .24); border-style: solid; }
 .w.bare { flex-basis: auto; }

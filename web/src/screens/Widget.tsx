@@ -6,7 +6,7 @@ import { Card, Empty, Spinner } from "../components";
 
 export interface WidgetPrefs {
   show?: boolean; opacity?: number; side?: "left" | "right" | "none"; size?: "s" | "m" | "l";
-  sections?: { next?: boolean; habits?: boolean; tasks?: boolean; soon?: boolean };
+  sections?: { next?: boolean; habits?: boolean; tasks?: boolean };
   plans?: "list" | "off"; dateLead?: "0" | "1" | "3" | "7"; doneTasks?: "keep" | "hide"; laterTasks?: "hide" | "show";
   proposalWait?: number; clashWait?: number; mute?: boolean; typing?: "sound" | "quiet" | "off"; typeSpeed?: "slow" | "normal" | "fast";
   accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: number; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
@@ -78,13 +78,13 @@ export function UpdateCard() {
 
 // Те же значения по умолчанию, что у виджета (desktop/renderer/widget.js, cfg).
 const DEFAULTS: Required<WidgetPrefs> = {
-  show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true },
+  show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true },
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
   accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim",
   napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble",
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
-const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"], ["soon", "Скоро"]];
+const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"]];
 
 function Segment<T extends string | number>({ value, options, onPick, label }: { value: T; options: [T, string][]; onPick: (v: T) => void; label: string }) {
   return (

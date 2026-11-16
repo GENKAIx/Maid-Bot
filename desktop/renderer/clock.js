@@ -1660,7 +1660,9 @@ $("#next").addEventListener("click", (ev) => {
   const nx = ev.target.closest(".nx");
   if (ev.target.closest(".hero-act")) return; // кнопки горящей плашки — свои (widget.js)
   if (ev.target.closest("[data-addplan]")) return addPlanToday();
-  togglePlansOn(nx?.dataset.day || $("#next").dataset.day || data?.day, nx?.dataset.id ? `[data-id="${nx.dataset.id}"]` : null);
+  // Строка важной даты — вспыхивает её карточка в панели дня (pl-date, data-date), а не план с таким id.
+  const spot = nx?.dataset.date ? `[data-date="${nx.dataset.date}"]` : nx?.dataset.id ? `[data-id="${nx.dataset.id}"]` : null;
+  togglePlansOn(nx?.dataset.day || $("#next").dataset.day || data?.day, spot);
 });
 $("#pins").addEventListener("click", (ev) => {
   const pin = ev.target.closest(".pin");

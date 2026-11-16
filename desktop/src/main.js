@@ -12,7 +12,7 @@ const { createUpdates } = require("./updates.js");
 const DEFAULTS = {
   server: "http://localhost:3000",
   token: "",
-  widget: { show: true, x: null, y: null, display: null, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true, soon: true } },
+  widget: { show: true, x: null, y: null, display: null, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true } },
   tracker: { enabled: true, games: ["dota2.exe", "cs2.exe", "VALORANT-Win64-Shipping.exe", "League of Legends.exe", "GenshinImpact.exe", "Minecraft.Windows.exe", ...MORE_GAMES] },
   keys: { quick: "Alt+Shift+Space", grab: "Alt+Shift+M" },
   autostart: true,
@@ -905,7 +905,7 @@ const WIDGET_PREFS = {
   napRecap: (v) => typeof v === "boolean",
   napFold: (v) => typeof v === "boolean",
   popSound: oneOf("bubble", "chime", "off"),
-  sections: (v) => v && typeof v === "object" && Object.entries(v).every(([k, x]) => ["next", "habits", "tasks", "soon"].includes(k) && typeof x === "boolean"),
+  sections: (v) => v && typeof v === "object" && Object.entries(v).every(([k, x]) => ["next", "habits", "tasks"].includes(k) && typeof x === "boolean"),
 };
 const widgetPrefs = () => Object.fromEntries(Object.keys(WIDGET_PREFS).filter((k) => k in settings.widget).map((k) => [k, settings.widget[k]]));
 ipcMain.handle("app:widget-get", (e) => (fromApp(e) ? widgetPrefs() : null));
