@@ -817,9 +817,9 @@ body.quick { background: transparent; }
 .pl-card.pl-date { --c: #ffc45c; background: rgba(255, 196, 92, .09); }
 .pl-card.pl-date.cancelled { background: rgba(255, 255, 255, .03); }
 .pl-x.back { opacity: 1; font-size: 14px; }
-/* День с важной датой — золотая рамка вокруг дня; выбранный — та же рамка и сиреневое кольцо снаружи. */
+/* День с важной датой — золотая рамка вокруг дня; выбранный — та же рамка на сиреневом фоне (фон чуть гуще обычного выбранного). */
 .day-chip.has-date { border-color: #ffc45c; }
-.day-chip.has-date.on { border-color: #ffc45c; box-shadow: 0 0 0 2px var(--accent); }
+.day-chip.has-date.on { border-color: #ffc45c; background: rgba(183, 156, 255, .3); }
 
 /* Непрочитанные напоминания (inbox.js): стайка значков слева от горничной, прямо над панелью */
 /* Прямоугольник над панелью: от её левого края до горничной, внутри него inbox.js раскладывает значки. */
