@@ -1984,11 +1984,11 @@ function rowIn(el, t, pop) {
 function ghostRow(box, old) {
   const wrap = document.createElement(old.tag);
   wrap.className = `${old.cls} row-ghost`;
+  wrap.appendChild(old.el);
+  box.appendChild(wrap); // до замера: ушла последняя строка — пустой блок спрятан (:empty) и меряется как 0,0
   const b = box.getBoundingClientRect();
   Object.assign(wrap.style, { position: "absolute", left: `${old.r.left - b.left + box.scrollLeft}px`, top: `${old.r.top - b.top + box.scrollTop}px`,
     width: `${old.r.width}px`, margin: "0", padding: "0", pointerEvents: "none", zIndex: "3" });
-  wrap.appendChild(old.el);
-  box.appendChild(wrap);
   const done = () => wrap.remove();
   wrap.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(18px)" }], { duration: 520, delay: 120, easing: "ease-in", fill: "forwards" }).finished.then(done, done);
 }

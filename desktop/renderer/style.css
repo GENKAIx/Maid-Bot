@@ -1204,5 +1204,5 @@ body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .
 @media (prefers-reduced-motion: reduce) { .tour-ring { animation: none; } }
 
 /* Ушедшая строка (widget.js, ghostRow): копия гаснет на старом месте внутри блока; у привычки — ещё и зачёркнута. */
-.w .next, .w .scroll { position: relative; }
+.w .next, .w .pins, .w .scroll { position: relative; }
 .row-ghost.habit-list .t { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .45); }

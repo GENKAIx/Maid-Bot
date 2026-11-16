@@ -42,7 +42,12 @@ check(/settleRows\(\$\("#body"\)[^;]*gone: habitsGone/.test(render), "удалё
 check(/return gone;/.test(widget.match(/\nfunction noteHabitArrivals\([^]*?\n\}\r?\n/)?.[0] ?? ""), "noteHabitArrivals не отдаёт удалённые привычки");
 
 // Копия ушедшей строки встаёт внутрь блока (absolute) — блоку нужно position: relative.
-check(/\.w \.next,\s*\.w \.scroll\s*\{\s*position:\s*relative;?\s*\}/.test(css), "у блоков нет position: relative для копий ушедших строк");
+// 16.11.2026: у плашек дат над планами (#pins) его не было — копия убранной даты гасла за краем панели, внизу справа.
+check(/\.w \.next,\s*\.w \.pins,\s*\.w \.scroll\s*\{\s*position:\s*relative;?\s*\}/.test(css), "у блоков нет position: relative для копий ушедших строк (планы, даты, список)");
+
+// Ушла последняя плашка — блок пустой (:empty → display: none) и меряется как 0,0: копию вставлять до замера блока.
+const ghost = widget.match(/\nfunction ghostRow\([^]*?\n\}\r?\n/)?.[0] ?? "";
+check(ghost.indexOf("box.appendChild(wrap)") >= 0 && ghost.indexOf("box.appendChild(wrap)") < ghost.indexOf("box.getBoundingClientRect()"), "копия ушедшей строки меряет пустой (спрятанный) блок");
 
 console.log(`${n - bad}/${n}`);
 process.exit(bad ? 1 : 0);
