@@ -1,8 +1,9 @@
-// Оповещения у горничной: непрочитанное собрано в четыре значка в ряд над левым краем панели (assets/inbox, эмодзи Noto).
+// Оповещения у горничной: непрочитанное собрано в значки в ряд над левым краем панели (assets/inbox, эмодзи Noto).
 //   ⏰ alarm — напоминания о планах, вопросы про привычки и просроченные задачи (хвосты);
 //   ⚠ warn  — важное: замечание про игры, наблюдения («сбежавшие задачи», закономерность), сбои разбора;
 //   🎂 date  — дни рождения и другие важные даты;
-//   💌 mail  — письма: утро, «что завтра», итог дня.
+//   💌 mail  — письма: утро, «что завтра», итог дня;
+//   ⚙ update — вышла новая версия программы (не письмо: состояние обновления присылает главный процесс, updates.js).
 // Значка нет, пока в разделе пусто; больше одного — число на значке. Щелчок: одно оповещение — горничная говорит его с
 // кнопками; несколько — список в облачке, щелчок по строке открывает её. У писем иначе: сразу последнее письмо, «ещё N не
 // прочитано» и кнопка «Прочитать все письма» — она открывает «Историю» в полной версии и гасит значок.
@@ -16,6 +17,7 @@ const IB_GROUPS = [
   { id: "warn", title: "Важное" },
   { id: "date", title: "Важные даты" },
   { id: "mail", title: "Письма" },
+  { id: "update", title: "Обновление" },
 ];
 // Вид письма с сервера (server/src/notices.ts, NOTICE_KINDS) → раздел.
 const IB_KIND = { plan: "alarm", habit: "alarm", game: "warn", note: "warn", other: "warn", date: "date", morning: "mail", tomorrow: "mail", evening: "mail" };
@@ -51,8 +53,27 @@ function tailWhen(due) {
 
 /** Что лежит в разделе, свежее сверху: письма с сервера, у будильника в конце — хвосты (старый срок выше). */
 function groupItems(id) {
+  if (id === "update") return ibUpdate ? [{ key: "u", update: ibUpdate }] : [];
   const notes = inbox.filter((n) => noticeGroup(n) === id).reverse().map((n) => ({ key: `n${n.id}`, notice: n }));
   return id === "alarm" ? [...notes, ...tailsOf().map((t) => ({ key: `t${t.id}`, tail: t }))] : notes;
+}
+
+// Новая версия программы: значок-шестерёнка висит, пока её не поставили («available» — есть, «downloading» / «ready» — ставится).
+let ibUpdate = null;
+function inboxUpdate(s) {
+  const had = Boolean(ibUpdate);
+  ibUpdate = s && ["available", "downloading", "ready"].includes(s.status) && s.next ? s : null;
+  drawInbox(ibUpdate && !had ? "update" : "");
+}
+function openUpdate(u) {
+  if (u.status !== "available") return say(`Скачиваю версию ${u.next}${u.percent ? ` — ${u.percent} %` : ""}. Программа перезапустится сама.`, { ms: 8000 });
+  say(`Вышла новая версия программы — ${u.next} (у вас ${u.version}). Обновить сейчас? Программа скачает её и перезапустится сама.`, {
+    ms: 0,
+    buttons: [
+      { text: "⚙ Обновить", run: () => { maid.installUpdate(); say(`Скачиваю версию ${u.next}. Программа перезапустится сама.`, { ms: 8000 }); } },
+      { text: "Позже", run: () => {} },
+    ],
+  });
 }
 
 function saveInbox() {
@@ -143,6 +164,7 @@ function openList(g, items) {
 function openItem(it) {
   if (!it) return;
   if (it.tail) askTail(it.tail);
+  else if (it.update) openUpdate(it.update);
   else openNotice(it.notice);
 }
 // Письма: последнее — сразу, с числом непрочитанных; «Прочитать все письма» — в «Историю» полной версии (отбор «Утро и вечер»).

@@ -775,6 +775,7 @@ ipcMain.on("widget-ready", (e) => {
   e.sender.send("opacity", settings.widget.opacity);
   e.sender.send("down", Boolean(settings.widget.down));
   e.sender.send("down-shown");
+  e.sender.send("update", updates.state());
 });
 /** Вход логином и паролем на сервере: ключ для программы (POST /api/login, как вход сайта). Ошибки — понятными словами. */
 async function loginOnServer(base, login, password, label) {
@@ -958,6 +959,7 @@ const updates = createUpdates({
   feed: () => settings.server.replace(/\/$/, "") + "/desktop/",
   onState: (s) => {
     if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("app:update", s);
+    widget?.webContents.send("update", s); // значок-шестерёнка «вышла новая версия» (renderer/inbox.js)
     refreshTray();
   },
   // Установщик закрывает программу жёстко: вход сайта (localStorage главного окна) и куки сначала пишутся на диск, иначе после обновления — экран входа.
@@ -976,6 +978,8 @@ const updates = createUpdates({
 ipcMain.handle("app:update-get", (e) => (fromApp(e) ? updates.state() : null));
 ipcMain.handle("app:update-check", (e) => (fromApp(e) ? updates.check() : null));
 ipcMain.handle("app:update-install", (e) => (fromApp(e) ? updates.install() : null));
+// «Обновить» в облачке виджета — то же, что кнопка в полной версии.
+ipcMain.on("update-install", (e) => { if (widget && e.sender === widget.webContents) void updates.install(); });
 ipcMain.handle("tracker:now", trackOnce);
 // Сколько секунд человек не трогал мышь и клавиатуру (горничная засыпает, когда его нет; заблокированный экран — тоже нет).
 ipcMain.handle("idle", () => (powerMonitor.getSystemIdleState(1) === "locked" ? 86_400 : powerMonitor.getSystemIdleTime()));

@@ -13,7 +13,7 @@ const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
 const inboxSrc = read("renderer/inbox.js"), tails = read("renderer/tails.js"), widget = read("renderer/widget.js"), css = read("renderer/style.css");
 
 // Картинки разделов есть, старых (россыпь, «+N») нет.
-for (const f of ["alarm", "warn", "date", "mail"]) check(fs.existsSync(path.join(root, "assets", "inbox", `${f}.png`)), `нет значка ${f}.png`);
+for (const f of ["alarm", "warn", "date", "mail", "update"]) check(fs.existsSync(path.join(root, "assets", "inbox", `${f}.png`)), `нет значка ${f}.png`);
 for (const f of ["many", "pill", "plan"]) check(!fs.existsSync(path.join(root, "assets", "inbox", `${f}.png`)), `остался старый значок ${f}.png`);
 check(!/ibLayout|ibRand|IB_SHOWN/.test(inboxSrc), "в inbox.js осталась россыпь значков");
 const inboxCss = css.match(/\.inbox \{([^}]*)\}/)?.[1] ?? "";
@@ -44,15 +44,15 @@ const ctx = vm.createContext({
   say: (text, o) => said.push({ text, o }),
   startButtons: (x) => x.buttons ?? [],
   askTail: (t) => asked.push(t.id),
-  maid: { openSection: (p) => opened.push(p) },
+  maid: { openSection: (p) => opened.push(p), installUpdate: () => opened.push("install") },
   esc: (s) => String(s), humanDay: (d) => d, placeBubble() {}, fitBubble() {},
   Date, JSON, Math, Set, Number, String, console,
 });
-vm.runInContext(inboxSrc + "\n;globalThis.t = { noticeGroup, groupItems, inboxAdd, inboxRead, openGroup, openItem, tailsOf, IB_GROUPS, IB_KIND };", ctx);
+vm.runInContext(inboxSrc + "\n;globalThis.t = { noticeGroup, groupItems, inboxAdd, inboxRead, inboxUpdate, openGroup, openItem, tailsOf, IB_GROUPS, IB_KIND };", ctx);
 const t = ctx.t;
 
 check(kinds.every((k) => t.IB_KIND[k]), `вид письма без раздела: ${kinds.filter((k) => !t.IB_KIND[k])}`);
-check(t.IB_GROUPS.map((g) => g.id).join() === "alarm,warn,date,mail", "порядок значков не «будильник, важное, даты, письма»");
+check(t.IB_GROUPS.map((g) => g.id).join() === "alarm,warn,date,mail,update", "порядок значков не «будильник, важное, даты, письма, обновление»");
 check(t.noticeGroup({ kind: "habit", text: "x" }) === "alarm" && t.noticeGroup({ kind: "game", text: "x" }) === "warn"
   && t.noticeGroup({ kind: "evening", text: "x" }) === "mail" && t.noticeGroup({ kind: "date", text: "x" }) === "date", "раздел по виду письма неверный");
 // Письма без вида (лежат в ящике со старой версии программы).
@@ -108,6 +108,30 @@ check(/\.bubble-actions:has\(\.rate-star:hover\) \.rate-star img \{ filter: none
   "звёзды не зажигаются до той, на которую навели");
 const server = read("../server/src/scheduler.ts");
 check(/export const RATE_MAX = 10;/.test(server) && !/DAY_RATES/.test(server), "на сервере оценка дня не от 1 до 10");
+
+// Обновление программы (18.11.2026): вышла новая версия — значок-шестерёнка и облачко «Обновить».
+const main = read("src/main.js"), preload = read("src/preload.js");
+check(/widget\?\.webContents\.send\("update", s\)/.test(main) && /e\.sender\.send\("update", updates\.state\(\)\)/.test(main), "главный процесс не сообщает виджету об обновлении");
+check(/ipcMain\.on\("update-install", \(e\) => \{ if \(widget && e\.sender === widget\.webContents\)/.test(main), "виджет не может запустить обновление (или может кто угодно)");
+check(/installUpdate: \(\) => ipcRenderer\.send\("update-install"\)/.test(preload) && /"tour", "update"\]/.test(preload), "в окне виджета нет installUpdate или события update");
+check(/maid\.on\("update", inboxUpdate\)/.test(widget), "виджет не слушает событие update");
+t.inboxUpdate({ status: "latest", version: "0.1.54" });
+check(t.groupItems("update").length === 0, "значок обновления есть, хотя версия последняя");
+t.inboxUpdate({ status: "available", version: "0.1.54", next: "0.1.55" });
+check(t.groupItems("update").length === 1, "новая версия вышла, а значка обновления нет");
+t.openGroup("update");
+const upd = said.at(-1);
+check(/0\.1\.55/.test(upd.text) && /0\.1\.54/.test(upd.text), "в облачке обновления нет номеров версий");
+check(upd.o.buttons.map((b) => b.text).join("|") === "⚙ Обновить|Позже", `кнопки обновления: ${upd.o.buttons.map((b) => b.text)}`);
+upd.o.buttons[1].run();
+check(opened.at(-1) !== "install" && t.groupItems("update").length === 1, "«Позже» запустило обновление или убрало значок");
+upd.o.buttons[0].run();
+check(opened.at(-1) === "install", "«Обновить» не запускает обновление");
+t.inboxUpdate({ status: "downloading", version: "0.1.54", next: "0.1.55", percent: 40 });
+t.openGroup("update");
+check(/Скачиваю версию 0\.1\.55 — 40 %/.test(said.at(-1).text) && !said.at(-1).o.buttons, "во время скачивания снова предлагает обновить");
+t.inboxUpdate({ status: "error", version: "0.1.54", next: "0.1.55", error: "нет связи" });
+check(t.groupItems("update").length === 0, "значок обновления висит после ошибки проверки");
 
 console.log(`${n - bad}/${n}`);
 process.exit(bad ? 1 : 0);

@@ -42,7 +42,9 @@ contextBridge.exposeInMainWorld("maid", {
   memFlashPrep: () => ipcRenderer.send("mem-flash-prep"),
   /** Окно применило режим «вниз» (и спрятано) — main может сдвинуть его. */
   downReady: () => ipcRenderer.send("down-ready"),
+  /** Скачать и поставить новую версию программы (значок-шестерёнка в виджете); состояние приходит событием "update". */
+  installUpdate: () => ipcRenderer.send("update-install"),
   on: (channel, fn) => {
-    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity", "down", "down-shown", "prefs", "tour"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
+    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity", "down", "down-shown", "prefs", "tour", "update"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },
 });

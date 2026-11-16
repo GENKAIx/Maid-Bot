@@ -2403,6 +2403,8 @@ maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => { wakeUp(); setState(on ? "think" : restState()); });
 maid.on("reply", (r) => wakeUp() || remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)] }));
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
+// Состояние обновления программы — значок-шестерёнка, когда вышла новая версия (inbox.js).
+maid.on("update", inboxUpdate);
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
