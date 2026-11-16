@@ -318,6 +318,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions button { background: #f0eef5; color: var(--ink); border-color: #e4e1ec; padding: 4px 10px; font-size: 12px; }
 .bubble-actions button:hover { border-color: #c9c2da; }
 .bubble-actions button.ghost { margin-left: auto; background: transparent; border-color: transparent; }
+/* Оценка дня — ряд из десяти звёзд (widget.js, say): серые, под курсором зажигаются все до той, на которую навели. */
+.bubble-actions button.rate-star { padding: 0; margin-right: -7px; width: 21px; height: 22px; border: 0; background: none; display: grid; place-items: center; }
+.bubble-actions button.rate-star img { width: 20px; height: 20px; display: block; filter: grayscale(1) opacity(.45); transition: filter .12s, scale .12s; pointer-events: none; }
+.bubble-actions:has(.rate-star:hover) .rate-star img { filter: none; }
+.bubble-actions .rate-star:hover ~ .rate-star img { filter: grayscale(1) opacity(.45); }
+.bubble-actions .rate-star:hover img { scale: 1.2; }
 /* Время жизни облачка: кольцо вокруг ✕ тает к нулю (widget.js startLife), под курсором — стоит и ярче; в конце облачко бледнеет. */
 .bubble-actions button.life { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
 .bubble-actions button.life svg { width: 24px; height: 24px; display: block; overflow: visible; }

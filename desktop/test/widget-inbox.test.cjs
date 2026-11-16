@@ -101,5 +101,13 @@ t.inboxRead(1);
 t.openGroup("alarm");
 check(said.at(-1).text === "Напоминания · 2", "после прочтения письма под будильником остались не только хвосты");
 
+// Оценка дня — ряд из десяти звёзд, а не кнопки с числами (17.11.2026: было четыре смайлика).
+check(fs.existsSync(path.join(root, "assets", "star.png")), "нет картинки звезды");
+check(/\/\^rate:\/\.test\(x\.data \?\? ""\) \? `<button class="rate-star"/.test(widget), "кнопки оценки дня рисуются не звёздами");
+check(/\.bubble-actions:has\(\.rate-star:hover\) \.rate-star img \{ filter: none; \}/.test(css) && /\.rate-star:hover ~ \.rate-star img/.test(css),
+  "звёзды не зажигаются до той, на которую навели");
+const server = read("../server/src/scheduler.ts");
+check(/export const RATE_MAX = 10;/.test(server) && !/DAY_RATES/.test(server), "на сервере оценка дня не от 1 до 10");
+
 console.log(`${n - bad}/${n}`);
 process.exit(bad ? 1 : 0);

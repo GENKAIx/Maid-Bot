@@ -19,7 +19,7 @@ import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
-import { DAY_RATES, habitButtons, planEventReminders, RATE, rateDay, remindText, snooze, type Button, type Send } from "./scheduler.ts";
+import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
@@ -410,11 +410,11 @@ export function createApi(deps: ApiDeps) {
       const b = parseBody(z.object({ moods: z.array(z.enum(ALBUM)).min(1).max(ALBUM.length) }), await readJson(req));
       return albumSee(store, u.id, b.moods);
     }
-    // Оценка дня — смайлик под вечерним итогом в виджете.
+    // Оценка дня — звезда (от 1 до 10) под вечерним итогом в виджете.
     if (m === "POST" && p === "/api/rate") {
       const b = parseBody(z.object({
         day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        value: z.number().int().refine((v) => DAY_RATES.some(([, x]) => x === v)),
+        value: z.number().int().min(1).max(RATE_MAX),
       }), await readJson(req));
       return { text: await rateDay(store, u, b.day, b.value) };
     }

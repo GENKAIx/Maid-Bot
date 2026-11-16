@@ -68,7 +68,9 @@ export class Push {
     const nl = plain.indexOf("\n");
     const title = (nl > 0 ? plain.slice(0, nl) : plain).slice(0, 80) || "Горничная";
     const body = (nl > 0 ? plain.slice(nl + 1).trim() : "").slice(0, 600);
-    const all = buttons.length ? [...buttons, { text: `⏰ Через ${SNOOZE_MIN} мин`, data: "snooze" }] : [];
+    // Оценка дня — десять кнопок с числами: в уведомление помещаются три, поэтому там их нет вовсе (оценить — в приложении).
+    const rate = buttons.some((b) => b.data.startsWith("rate:"));
+    const all = buttons.length && !rate ? [...buttons, { text: `⏰ Через ${SNOOZE_MIN} мин`, data: "snooze" }] : [];
     return {
       title, body, tag: `maid-${Date.now()}`, url: "/",
       actions: all.slice(0, 3).map((b, i) => ({ action: String(i), title: b.text })),

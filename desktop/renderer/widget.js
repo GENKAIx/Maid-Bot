@@ -450,7 +450,10 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       + `<button class="prop-yes" data-p="add">✅ ${esc(proposal.add)}</button>`
       + `<button class="prop-no" data-p="decline" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">Не надо</span></button>`
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
-    : buttons.map((x, i) => (x.auto ? `<button class="auto" data-i="${i}" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">${esc(x.text)}</span></button>` : `<button data-i="${i}">${esc(x.text)}</button>`)).join("")
+    : buttons.map((x, i) => (x.auto ? `<button class="auto" data-i="${i}" title="Пока курсор на облачке — ждёт"><span class="fill"></span><span class="lbl">${esc(x.text)}</span></button>`
+      // Оценка дня (rate:день:N) — не кнопки с числами, а ряд из десяти звёзд: наведение зажигает звёзды до курсора.
+      : /^rate:/.test(x.data ?? "") ? `<button class="rate-star" data-i="${i}" title="${esc(x.text)} из 10" aria-label="Оценить день на ${esc(x.text)} из 10"><img src="../assets/star.png" alt="" draggable="false" /></button>`
+      : `<button data-i="${i}">${esc(x.text)}</button>`)).join("")
       + (undo ? `<button data-i="undo">↩ Отменить</button>` : "")
       + (!weighty ? "" : `<button class="ghost life" data-i="close" title="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="life-ring" cx="12" cy="12" r="10"/><path class="x" d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg></button>`);
   // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
@@ -498,7 +501,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
           say(r.text || "Готово", { ms: 5000 });
           maid.changed();
         } else if ((m = x.data.match(/^rate:(\d{4}-\d{2}-\d{2}):(\d+)$/))) {
-          // Оценка дня под вечерним итогом: хороший день — радуется, плохой — сочувствует.
+          // Оценка дня под вечерним итогом (звёзды, 1–10): хороший день — радуется, плохой — сочувствует.
           const v = Number(m[2]);
           react(v >= 7 ? "happy" : v <= 3 ? "sad" : "bow", 3500);
           const r = await maid.api("POST", "/api/rate", { day: m[1], value: v });

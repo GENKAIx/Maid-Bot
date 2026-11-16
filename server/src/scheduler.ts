@@ -56,17 +56,17 @@ export const habitButtons = (habitId: number, day: string): Button[] => [
   { text: "✖ Нет", data: `habit:${habitId}:${day}:skipped` },
 ];
 
-/** Оценка дня под вечерним итогом: смайлик → показатель «Оценка дня» (rating_day, /10), одна на день. */
-export const DAY_RATES: [string, number][] = [["😞", 3], ["😐", 5], ["🙂", 7], ["😄", 9]];
+/** Оценка дня под вечерним итогом: от 1 до 10 → показатель «Оценка дня» (rating_day, /10), одна на день.
+ *  В виджете это ряд из десяти звёзд, в Telegram — кнопки с числами в два ряда. */
+export const RATE_MAX = 10;
 export const RATE = /^rate:(\d{4}-\d{2}-\d{2}):(\d+)$/;
-export const rateButtons = (day: string): Button[] => DAY_RATES.map(([text, v]) => ({ text, data: `rate:${day}:${v}` }));
+export const rateButtons = (day: string): Button[] => Array.from({ length: RATE_MAX }, (_, i) => ({ text: String(i + 1), data: `rate:${day}:${i + 1}` }));
 /** Записать оценку (повторное нажатие заменяет прежнюю). */
 export async function rateDay(store: Store, u: User, day: string, value: number): Promise<string> {
-  const face = DAY_RATES.find(([, v]) => v === value)?.[0];
-  if (!face) throw new Error(`нет такой оценки: ${value}`);
+  if (!Number.isInteger(value) || value < 1 || value > RATE_MAX) throw new Error(`нет такой оценки: ${value}`);
   const { label, unit } = METRICS.rating_day;
   await store.setDayMetric({ user_id: u.id, day_key: day, key: "rating_day", label, value, unit, source: "evening" });
-  return `Записала: день на ${face} ${value}/10.`;
+  return `Записала: день на ⭐ ${value}/10.`;
 }
 
 /** Когда спросить про привычку: в её время (или habit_first, 12:00), и ещё раз в habit_last (23:00), если тот позже. */
