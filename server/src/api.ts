@@ -6,6 +6,7 @@ import { z } from "zod";
 import { login, LoginGate, tokenHash, userByToken } from "./auth.ts";
 import type { Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
+import { ALBUM, albumOf, albumSee } from "./album.ts";
 import { habitMonth, habitsOfDay, habitStats } from "./habits.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import { proposalView, TRASH_DAYS, type Pipeline } from "./pipeline.ts";
@@ -395,6 +396,12 @@ export function createApi(deps: ApiDeps) {
         await saveProfile(store, u.id, { avatar: s.avatar, steam: s.steam });
       } catch (e) { throw new HttpError(400, (e as Error).message); }
       return profileView(store, u, today);
+    }
+    // Альбом реакций: что из анимаций горничной уже видели (виджет шлёт имя при первом показе, сайт рисует альбом).
+    if (m === "GET" && p === "/api/album") return { seen: await albumOf(store, u.id), total: ALBUM.length };
+    if (m === "POST" && p === "/api/album") {
+      const b = parseBody(z.object({ moods: z.array(z.enum(ALBUM)).min(1).max(ALBUM.length) }), await readJson(req));
+      return albumSee(store, u.id, b.moods);
     }
     // Оценка дня — смайлик под вечерним итогом в виджете.
     if (m === "POST" && p === "/api/rate") {

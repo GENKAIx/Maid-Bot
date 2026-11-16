@@ -2,6 +2,7 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "reac
 import { getToken, post, setToken, whenUnauthorized } from "./api";
 import { Composer } from "./Composer";
 import { navigate, parsePath, usePath } from "./router";
+import { Album } from "./screens/Album";
 import { Diary } from "./screens/Diary";
 import { Habits } from "./screens/Habits";
 import { Health } from "./screens/Health";
@@ -39,6 +40,7 @@ const TABS: { id: string; path: string; title: string; icon: string; more?: bool
   { id: "trash", path: "/trash", title: "Корзина", icon: "trash", more: true },
   // Только в программе для ПК (сайт открыт в её окне): настройки виджета на рабочем столе.
   ...(desktop() ? [{ id: "widget", path: "/widget", title: "Виджет", icon: "widget", more: true }] : []),
+  { id: "album", path: "/album", title: "Альбом", icon: "album", more: true },
   { id: "features", path: "/features", title: "Возможности", icon: "features", more: true },
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
   { id: "catalog", path: "/catalog", title: "Каталог", icon: "catalog", more: true },
@@ -95,6 +97,7 @@ export function App() {
     : tab === "trash" ? <Trash version={version} onChanged={onChanged} />
     : tab === "settings" ? <Settings onLogout={logout} />
     : tab === "widget" ? <Widget />
+    : tab === "album" ? <Album version={version} />
     : tab === "features" ? <Features />
     : tab === "catalog" ? <Suspense fallback={null}><Catalog chapter={arg} /></Suspense>
     : <Today version={version} onChanged={onChanged} />;

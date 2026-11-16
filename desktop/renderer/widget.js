@@ -126,6 +126,7 @@ function baseMood() {
 }
 function showMood(n) {
   if (!MOODS.includes(n)) return;
+  albumSee(n); // показана впервые — карточка в альбоме (album.js)
   if (n === "forget") return forgetFlash();
   if (n === mood) return;
   mood = n;
@@ -1127,12 +1128,20 @@ function failedButtons(r) {
 }
 // Сказал то, чего лучше было не говорить (сервер пометил ответ эмоцией awkward), или сам просит забыть — «стирает память».
 const UNSAY = /(?<![а-яё])((?<!не )забудь|я этого не говорил|я ничего не говорил|(ты|вы) (этого|ничего) не слышал|сделай(те)? вид,? что|этого разговора не было|проехали|зря (я )?(это )?(сказал|написал|ляпнул)|ляпнул[аи]? лишн|сболтнул|не стоило (мне )?(это(го)? )?говорить|никому не (говори|рассказывай))/i;
+const EGG_PRAISE = /(?<![а-яё])((ты|вы) (у меня )?(такая )?(молодец|умница|умничка|лучшая|чудо|прелесть)|хорошая работа|отличная работа)/i;
+const EGG_NIGHT = /(?<![а-яё])(спокойной ночи|доброй ночи|сладких снов|я спать)(?![а-яё])/i;
+const EGG_TEA = /(?<![а-яё])(ча[йю]\s*\?|по чаю|попь[её]м чаю|выпьем чаю|чайку)/i;
 function heardMood(text, r) {
   if (r?.emotion === "awkward") return "forget";
   if (!text) return null;
   if (UNSAY.test(text)) return "forget";
   if (LEWD.test(text)) return "smug";
-  if (/спасиб|благодар/i.test(text) && !r.changes?.length) return "smitten";
+  if (r.changes?.length) return null;
+  if (/спасиб|благодар/i.test(text)) return "smitten";
+  // Слова-пасхалки: каждая показывает свою анимацию (и открывает её карточку в альбоме).
+  if (EGG_PRAISE.test(text)) return "smitten";
+  if (EGG_NIGHT.test(text)) return "sleep";
+  if (EGG_TEA.test(text)) return "tea";
   return null;
 }
 
@@ -2411,8 +2420,16 @@ drawInbox();
 // Щелчок по горничной — тычок (fun.js), двойной по свёрнутой — развернуть панель (свернуть — кнопкой #foldBtn). Тычок ждёт, не будет ли второго щелчка.
 $("#maid").addEventListener("click", () => {
   clearTimeout(clickTimer);
+  if (Date.now() - pettedAt < 400) return; // отпустили после «погладить» — это не тычок
   clickTimer = setTimeout(poke, 230);
 });
+// Зажали левую кнопку на горничной на секунду и не потащили окно — погладили (album.js).
+$("#maid").addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return;
+  clearTimeout(petTimer);
+  petTimer = setTimeout(() => { if (!dragMoved) pet(); }, PET_HOLD);
+});
+for (const ev of ["pointerup", "pointercancel"]) $("#maid").addEventListener(ev, () => clearTimeout(petTimer));
 $("#maid").addEventListener("dblclick", () => {
   clearTimeout(clickTimer);
   if (!collapsed) return;
