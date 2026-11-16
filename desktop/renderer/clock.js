@@ -75,7 +75,7 @@ function dayStrip(from = stripFrom, count = DAYS_AHEAD + 1) {
     const np = plansOf(day).length;
     const nt = tasksOn(day).length;
     const n = np + nt;
-    // Точка — в этот день важная дата (сама дата, не напоминание о ней заранее).
+    // Золотая рамка — в этот день важная дата (сама дата, не напоминание о ней заранее).
     const big = (data.dates ?? []).filter((x) => x.on === day);
     return `<button type="button" class="day-chip${day === clockDay ? " on" : ""}${day < data.day ? " past" : ""}${day === data.day ? " today" : ""}${n ? "" : " empty"}${big.length ? " has-date" : ""}" data-day="${day}" title="${esc(humanDay(day))}${n ? ` · ${[np && `${np} ${planWord(np)}`, nt && `${nt} ${taskWord(nt)}`].filter(Boolean).join(", ")}` : " · планов нет"}${big.map((x) => ` · ${esc(x.title)}`).join("")}">
       <b>${d.getUTCDate()}</b> ${esc(wd)}<span class="cnt">${n ? `(${n})` : "–"}</span></button>`;
