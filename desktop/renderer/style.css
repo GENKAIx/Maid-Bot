@@ -324,6 +324,14 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions:has(.rate-star:hover) .rate-star img { filter: none; }
 .bubble-actions .rate-star:hover ~ .rate-star img { filter: grayscale(1) opacity(.45); }
 .bubble-actions .rate-star:hover img { scale: 1.2; }
+/* Оценку поставили (rate.js): ряд больше не слушает курсор, горят только зажжённые по одной звёзды. */
+.bubble-actions.rated .rate-star { pointer-events: none; }
+.bubble-actions.rated .rate-star img { filter: grayscale(1) opacity(.45); scale: 1; }
+.bubble-actions.rated .rate-star.on img { filter: none; animation: ratePop .28s cubic-bezier(.3, 1.8, .5, 1); }
+@keyframes ratePop { from { scale: .4; } 60% { scale: 1.45; } to { scale: 1; } }
+/* Летящая звезда — копия поверх окна: осыпается, летит к горничной или падает звездопадом. */
+.rate-fly { position: fixed; z-index: 50; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .35)); }
+@media (prefers-reduced-motion: reduce) { .bubble-actions.rated .rate-star.on img { animation: none; } }
 /* Время жизни облачка: кольцо вокруг ✕ тает к нулю (widget.js startLife), под курсором — стоит и ярче; в конце облачко бледнеет. */
 .bubble-actions button.life { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
 .bubble-actions button.life svg { width: 24px; height: 24px; display: block; overflow: visible; }

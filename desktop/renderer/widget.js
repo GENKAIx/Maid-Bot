@@ -501,11 +501,12 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
           say(r.text || "Готово", { ms: 5000 });
           maid.changed();
         } else if ((m = x.data.match(/^rate:(\d{4}-\d{2}-\d{2}):(\d+)$/))) {
-          // Оценка дня под вечерним итогом (звёзды, 1–10): хороший день — радуется, плохой — сочувствует.
-          const v = Number(m[2]);
-          react(v >= 7 ? "happy" : v <= 3 ? "sad" : "bow", 3500);
-          const r = await maid.api("POST", "/api/rate", { day: m[1], value: v });
-          say(r.text, { ms: 5000 });
+          // Оценка дня под вечерним итогом (звёзды, 1–10): звёзды зажигаются по одной и по ступени оценки осыпаются,
+          // подпрыгивают или летят к горничной (rate.js); ответ сервера — когда анимация закончилась.
+          const shown = rateShow(Number(m[2]));
+          const r = await maid.api("POST", "/api/rate", { day: m[1], value: Number(m[2]) });
+          await shown;
+          say(r.text, { ms: 5000, mood: rateMood(Number(m[2])) });
           maid.changed();
         } else hideBubble();
       } catch (e) {
