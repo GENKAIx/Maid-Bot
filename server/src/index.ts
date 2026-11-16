@@ -7,6 +7,7 @@ import { Store } from "./db.ts";
 import { callLlm, llmReady, onLlmUsage, setLiteModel } from "./llm.ts";
 import { backupName, exportJson } from "./backup.ts";
 import type { User } from "./db.ts";
+import { NOTICES_KEEP } from "./notices.ts";
 import { Pipeline } from "./pipeline.ts";
 import { callDraw, drawReady } from "./draw.ts";
 import { WIDGET_UPDATES } from "./widget.ts";
@@ -41,9 +42,9 @@ if (tg) {
 } else console.warn("[start] TELEGRAM_BOT_TOKEN не задан — бот выключен");
 
 // Уведомление уходит всюду, где пользователь есть: в Telegram и на все push-подписки браузеров.
-const send: Send = async (u, text, emotion, buttons) => {
-  await store.addNotice(u.id, text, emotion, buttons?.length ? JSON.stringify(buttons) : "");
-  await store.pruneNotices(u.id);
+const send: Send = async (u, text, emotion, buttons, kind) => {
+  await store.addNotice(u.id, text, emotion, buttons?.length ? JSON.stringify(buttons) : "", kind ?? "");
+  await store.pruneNotices(u.id, NOTICES_KEEP);
   const jobs: Promise<unknown>[] = [push.send(u, text, emotion, buttons)];
   if (tg && u.chat_id) jobs.push(tg.send(u, text, emotion, buttons));
   await Promise.all(jobs);

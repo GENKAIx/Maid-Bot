@@ -6,6 +6,7 @@ import { Album } from "./screens/Album";
 import { Diary } from "./screens/Diary";
 import { Habits } from "./screens/Habits";
 import { Health } from "./screens/Health";
+import { History } from "./screens/History";
 import { Login } from "./screens/Login";
 import { Money } from "./screens/Money";
 import { Plans } from "./screens/Plans";
@@ -40,6 +41,7 @@ const TABS: { id: string; path: string; title: string; icon: string; more?: bool
   { id: "trash", path: "/trash", title: "Корзина", icon: "trash", more: true },
   // Только в программе для ПК (сайт открыт в её окне): настройки виджета на рабочем столе.
   ...(desktop() ? [{ id: "widget", path: "/widget", title: "Виджет", icon: "widget", more: true }] : []),
+  { id: "history", path: "/history", title: "История", icon: "history", more: true },
   { id: "album", path: "/album", title: "Альбом", icon: "album", more: true },
   { id: "features", path: "/features", title: "Возможности", icon: "features", more: true },
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
@@ -97,6 +99,7 @@ export function App() {
     : tab === "trash" ? <Trash version={version} onChanged={onChanged} />
     : tab === "settings" ? <Settings onLogout={logout} />
     : tab === "widget" ? <Widget />
+    : tab === "history" ? <History version={version} />
     : tab === "album" ? <Album version={version} />
     : tab === "features" ? <Features />
     : tab === "catalog" ? <Suspense fallback={null}><Catalog chapter={arg} /></Suspense>

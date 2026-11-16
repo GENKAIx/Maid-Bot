@@ -8,6 +8,7 @@ import type { Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { ALBUM, albumOf, albumSee } from "./album.ts";
 import { habitMonth, habitsOfDay, habitStats } from "./habits.ts";
+import { historyOf, NOTICE_KINDS } from "./notices.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import { proposalView, TRASH_DAYS, type Pipeline } from "./pipeline.ts";
 
@@ -377,6 +378,12 @@ export function createApi(deps: ApiDeps) {
       const after = Number(q("after") ?? 0);
       const rows = await store.noticesAfter(u.id, Number.isFinite(after) ? after : 0, after ? 20 : 1);
       return rows.map((r) => ({ ...r, buttons: r.buttons ? (JSON.parse(r.buttons) as Button[]) : [] }));
+    }
+    // История писем горничной: ?kinds=morning,plan — только этих видов, ?before=<id> — старше этого письма.
+    if (m === "GET" && p === "/api/history") {
+      const kinds = (q("kinds") ?? "").split(",").filter((k): k is (typeof NOTICE_KINDS)[number] => (NOTICE_KINDS as readonly string[]).includes(k));
+      const before = Number(q("before") ?? 0), limit = Number(q("limit") ?? 50);
+      return historyOf(store, u.id, { kinds, before: Number.isFinite(before) ? before : 0, limit: Number.isFinite(limit) ? limit : 50 });
     }
     if (m === "GET" && p === "/api/today") return todayJson(store, u);
     // Профиль как в RPG: уровень за дела, характеристики, дебафы и бафы, найденные закономерности.

@@ -348,6 +348,10 @@ INSERT INTO llm_usage_by_user (day, user_id, kind, model, calls, input, output, 
 DROP TABLE llm_usage;
 ALTER TABLE llm_usage_by_user RENAME TO llm_usage;
 `,
+  // Шаг 15: вид письма (утро, план, привычка… — notices.ts) — для «Истории» на сайте; у старых писем пусто.
+  `
+ALTER TABLE notices ADD COLUMN kind TEXT NOT NULL DEFAULT '';
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -560,6 +564,8 @@ export interface NoticeRow {
   emotion: string;
   buttons: string;
   at: string;
+  /** Вид письма (NOTICE_KINDS в notices.ts); пусто — записано до появления видов. */
+  kind: string;
 }
 export interface PushSub {
   endpoint: string;
@@ -1144,13 +1150,17 @@ export class Store {
   }
 
   // --- лента уведомлений ---
-  addNotice(userId: number, text: string, emotion: string, buttons = ""): Promise<number> {
-    return this.insert("INSERT INTO notices (user_id, text, emotion, buttons, at) VALUES (?, ?, ?, ?, ?)", userId, text, emotion, buttons, now());
+  addNotice(userId: number, text: string, emotion: string, buttons = "", kind = ""): Promise<number> {
+    return this.insert("INSERT INTO notices (user_id, text, emotion, buttons, at, kind) VALUES (?, ?, ?, ?, ?, ?)", userId, text, emotion, buttons, now(), kind);
+  }
+  /** Последние письма человека, от свежих к старым — для «Истории» (notices.ts). */
+  noticesAll(userId: number, limit: number): Promise<NoticeRow[]> {
+    return this.all<NoticeRow>("SELECT * FROM notices WHERE user_id = ? ORDER BY id DESC LIMIT ?", userId, limit);
   }
   noticesAfter(userId: number, afterId: number, limit = 20): Promise<NoticeRow[]> {
     return this.all<NoticeRow>("SELECT * FROM notices WHERE user_id = ? AND id > ? ORDER BY id DESC LIMIT ?", userId, afterId, limit);
   }
-  async pruneNotices(userId: number, keep = 200) {
+  async pruneNotices(userId: number, keep: number) {
     await this.run(
       "DELETE FROM notices WHERE user_id = ? AND id < (SELECT COALESCE(MIN(id), 0) FROM (SELECT id FROM notices WHERE user_id = ? ORDER BY id DESC LIMIT ?) t)",
       userId, userId, keep,

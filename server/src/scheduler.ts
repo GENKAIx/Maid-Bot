@@ -8,6 +8,7 @@ import {
 } from "./report.ts";
 import { escapesText } from "./escapes.ts";
 import { morningText } from "./morning.ts";
+import { reminderKind, type NoticeKind } from "./notices.ts";
 import { METRICS } from "./parse.ts";
 import { findPatterns, patternText, traitButtons } from "./profile.ts";
 import { extendSeries } from "./repeat.ts";
@@ -45,7 +46,8 @@ export interface Button {
   text: string;
   data: string;
 }
-export type Send = (u: User, text: string, emotion: Emotion, buttons?: Button[]) => Promise<void>;
+/** kind — вид письма для «Истории» (notices.ts); без него письмо попадёт в «Прочее». */
+export type Send = (u: User, text: string, emotion: Emotion, buttons?: Button[], kind?: NoticeKind) => Promise<void>;
 
 /** Кнопки «да / нет» для привычки на день: «нет» — пропуск (в курсе — крестик за день). */
 export const habitButtons = (habitId: number, day: string): Button[] => [
@@ -166,7 +168,7 @@ export class Scheduler {
         } catch {
           buttons = undefined;
         }
-        if (!late) await this.safeSend(u, r.text, "neutral", buttons);
+        if (!late) await this.safeSend(u, r.text, "neutral", buttons, reminderKind(buttons));
         await this.store.markReminder(r.id, late ? "cancelled" : "sent");
       }
       for (const u of await this.store.users()) {
@@ -201,7 +203,7 @@ export class Scheduler {
       if (d.status || d.habit.quiet) continue;
       for (const t of habitAskTimes(u, d.times)) {
         if (!this.due(u, t, now, HABIT_LATE_MIN) || !(await this.store.once(`habit:${d.habit.id}:${today}:${t}`))) continue;
-        await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today));
+        await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today), "habit");
       }
     }
   }
@@ -210,10 +212,10 @@ export class Scheduler {
     const today = dayKey(now, u.tz);
     const s = this.store;
     if (this.due(u, u.morning_time, now) && (await s.once(`morning:${u.id}:${today}`))) {
-      await this.safeSend(u, await morningText(s, this.llm, u, today), "happy");
+      await this.safeSend(u, await morningText(s, this.llm, u, today), "happy", undefined, "morning");
       for (const d of upcomingDates(await s.activeDates(u.id), today, 7)) {
         if ([7, 1, 0].includes(d.inDays) && (await s.once(`date:${d.row.id}:${d.on}:${d.inDays}`))) {
-          await this.safeSend(u, `🎂 ${dateLine(d)}`, d.inDays === 0 ? "happy" : "neutral");
+          await this.safeSend(u, `🎂 ${dateLine(d)}`, d.inDays === 0 ? "happy" : "neutral", undefined, "date");
         }
       }
     }
@@ -221,15 +223,15 @@ export class Scheduler {
       const tomorrow = addDays(today, 1);
       const evs = await s.eventsBetween(u.id, tomorrow, tomorrow);
       if (evs.length) {
-        await this.safeSend(u, `🌙 Завтра, ${humanDay(tomorrow)}:\n${evs.map((e) => "• " + eventLine(e)).join("\n")}`, "neutral");
+        await this.safeSend(u, `🌙 Завтра, ${humanDay(tomorrow)}:\n${evs.map((e) => "• " + eventLine(e)).join("\n")}`, "neutral", undefined, "tomorrow");
       }
     }
     if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
-      await this.safeSend(u, await this.eveningText(u, today), "proud", rateButtons(today));
+      await this.safeSend(u, await this.eveningText(u, today), "proud", rateButtons(today), "evening");
       // В воскресенье вечером — мягко о задачах, от которых сбежали за неделю.
       if (new Date(`${today}T12:00:00Z`).getUTCDay() === 0 && (await s.once(`escapes:${u.id}:${today}`))) {
         const text = escapesText(await s.allTasks(u.id), today, u.tz);
-        if (text) await this.safeSend(u, text, "worried");
+        if (text) await this.safeSend(u, text, "worried", undefined, "note");
       }
     }
     // Привычки вчерашнего дня, на которые так и не ответили, — минус (без сообщения: попросив горничную, его ещё можно исправить задним числом).
@@ -240,7 +242,7 @@ export class Scheduler {
     // Закономерности в самочувствии: раз в день днём — предложить дебаф (добавится, только если человек согласится).
     if (this.llm && this.due(u, "13:00", now) && (await s.once(`patterns:${u.id}:${today}`))) {
       try {
-        for (const t of await findPatterns(s, this.llm, u, today)) await this.safeSend(u, patternText(t, esc), "worried", traitButtons(t.id));
+        for (const t of await findPatterns(s, this.llm, u, today)) await this.safeSend(u, patternText(t, esc), "worried", traitButtons(t.id), "note");
       } catch (err) { console.error("[patterns]", u.id, err); }
     }
     // Повторяющиеся планы: раз в день разложить серии дальше.
@@ -315,9 +317,9 @@ export class Scheduler {
     }
   }
 
-  private async safeSend(u: User, text: string, emotion: Emotion, buttons?: Button[]) {
+  private async safeSend(u: User, text: string, emotion: Emotion, buttons?: Button[], kind?: NoticeKind) {
     try {
-      await this.send(u, text, emotion, buttons);
+      await this.send(u, text, emotion, buttons, kind);
     } catch (e) {
       console.error("[send]", u.id, e);
     }

@@ -1085,3 +1085,25 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
   .alb-grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
   .alb-card img { width: 64px; height: 68px; }
 }
+
+/* --- История писем горничной (screens/History.tsx): отбор по виду сверху, ниже лента по дням --- */
+.hist { display: grid; gap: 14px; max-width: 760px; }
+.hist-lead { margin: 4px 0 0; color: var(--muted); }
+.hist-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.hist-day h3 { margin: 6px 0 8px; font-size: 14px; font-weight: 650; color: var(--muted); }
+.hist-day h3::first-letter { text-transform: uppercase; }
+.hist-day ul { list-style: none; margin: 0; padding: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
+.hist-item { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 10px; padding: 12px 16px; }
+.hist-item + .hist-item { border-top: 1px solid var(--line); }
+.hist-item time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+.hist-item p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.hist-item .link { margin-top: 4px; }
+.hist-kind { display: inline-block; padding: 1px 9px; border-radius: 99px; background: var(--panel-2); color: var(--muted); font-size: 12px; font-weight: 600; }
+.hist-kind.k-plan { background: var(--accent-soft); color: var(--accent-ink); }
+.hist-kind.k-habit { background: var(--good-bg); color: var(--good-ink); }
+.hist-kind.k-date, .hist-kind.k-morning, .hist-kind.k-tomorrow, .hist-kind.k-evening { background: var(--fire-bg); color: var(--fire-ink); }
+.hist-kind.k-game, .hist-kind.k-note { background: var(--bad-bg); color: var(--bad-ink); }
+.hist-more { justify-self: start; }
+@media (max-width: 640px) {
+  .hist-item { grid-template-columns: 40px minmax(0, 1fr); padding: 10px 12px; }
+}

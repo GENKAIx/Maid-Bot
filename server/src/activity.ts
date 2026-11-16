@@ -56,6 +56,6 @@ export async function recordActivity(store: Store, u: User, input: ActivityInput
   const gameSec = (await store.activityOf(u.id, input.day)).reduce((s, a) => s + a.games.reduce((x, g) => x + g.sec, 0), 0);
   let newest = 0;
   for (const t of gameThresholds(u, Math.floor(gameSec / 60))) if (await store.once(`game:${u.id}:${input.day}:${t}`)) newest = t;
-  if (newest) await send(u, (GAME_LINES[u.persona] ?? GAME_LINES.strict)(durationHuman(newest * 60)), "stern");
+  if (newest) await send(u, (GAME_LINES[u.persona] ?? GAME_LINES.strict)(durationHuman(newest * 60)), "stern", undefined, "game");
   return { alerted: newest };
 }
