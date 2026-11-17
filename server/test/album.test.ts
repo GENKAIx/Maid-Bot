@@ -15,10 +15,10 @@ async function setup() {
   return { store, u };
 }
 
-test("альбом: 27 анимаций, увиденное открывается один раз и хранит дату первого показа", async () => {
+test("альбом: 41 анимация, увиденное открывается один раз и хранит дату первого показа", async () => {
   const { store, u } = await setup();
-  assert.equal(ALBUM.length, 27);
-  assert.equal(new Set(ALBUM).size, 27);
+  assert.equal(ALBUM.length, 41);
+  assert.equal(new Set(ALBUM).size, 41);
   assert.deepEqual(await albumOf(store, u.id), {});
   const first = await albumSee(store, u.id, ["tea", "forget"], new Date("2026-11-16T10:00:00Z"));
   assert.deepEqual(first.fresh, ["tea", "forget"]);
@@ -53,7 +53,7 @@ test("альбом: ручки /api/album", async () => {
   try {
     const { json: { token } } = await call("POST", "/api/login", { login: "owner", password: "secret-pass-1" });
     const empty = await call("GET", "/api/album", undefined, token);
-    assert.deepEqual(empty.json, { seen: {}, total: 27 });
+    assert.deepEqual(empty.json, { seen: {}, total: 41 });
     const r = await call("POST", "/api/album", { moods: ["idle", "hello"] }, token);
     assert.equal(r.status, 200);
     assert.deepEqual(r.json.fresh, ["idle", "hello"]);

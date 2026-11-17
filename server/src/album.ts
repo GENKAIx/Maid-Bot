@@ -7,7 +7,8 @@ import type { Store } from "./db.ts";
 /** Все анимации горничной (тот же список, что MOODS в desktop/renderer/widget.js), в порядке альбома. */
 export const ALBUM = ["idle", "think", "sleep", "offline", "remind", "angry", "clean", "hello", "happy", "proud", "write", "done",
   "streak", "sad", "worried", "surprised", "neutral", "listen", "tea", "bow", "excited", "smitten", "giggle", "gasp", "smug",
-  "refuse", "forget"] as const;
+  "refuse", "forget", "think2", "analysis", "list", "present", "letter", "salute", "thumbsup", "wrench", "deadpan", "facepalm", "pout",
+  "shy", "shh", "bedtime"] as const;
 
 const albumKey = (userId: number) => `album:${userId}`;
 

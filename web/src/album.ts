@@ -35,6 +35,20 @@ export const ALBUM_CARDS: AlbumCard[] = [
   { id: "smug", name: "Довольна собой" },
   { id: "refuse", name: "Отказ" },
   { id: "forget", name: "Стирает память" },
+  { id: "think2", name: "Задумалась" },
+  { id: "analysis", name: "Изучает отчёт" },
+  { id: "list", name: "Свиток" },
+  { id: "present", name: "«Вот!»" },
+  { id: "letter", name: "Письмо" },
+  { id: "salute", name: "«Есть!»" },
+  { id: "thumbsup", name: "Палец вверх" },
+  { id: "wrench", name: "Починила" },
+  { id: "deadpan", name: "«Ну да…»" },
+  { id: "facepalm", name: "Рука на лице" },
+  { id: "pout", name: "Дуется" },
+  { id: "shy", name: "Засмущалась" },
+  { id: "shh", name: "«Тсс»" },
+  { id: "bedtime", name: "«Марш спать»" },
 ];
 
 /** Сколько открыто из всего альбома. */

@@ -29,7 +29,7 @@ function poke() {
   const now = Date.now();
   if (now < sulkUntil) {
     boop("huff");
-    quip(line("sulk"), "refuse", 1800);
+    quip(line("sulk"), "pout", 1800);
     return;
   }
   pokes = now - lastPoke < 4000 ? pokes + 1 : 1;
@@ -50,6 +50,12 @@ function poke() {
   if (pokes >= 7) {
     popTone(-4, { vol: 0.18, soft: true });
     quip(line(`annoyed${pokes}`), "worried");
+    return;
+  }
+  // 4–6-й тычок подряд — через раз смотрит пустым взглядом: «вы закончили?».
+  if (pokes >= 4 && Math.random() < 0.5) {
+    popTone(-2, { vol: 0.18, soft: true });
+    quip(line("pokeMore"), "deadpan", 2600);
     return;
   }
   const p = lineItem("poke");

@@ -3,12 +3,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { ALBUM_CARDS, albumCount } from "../src/album.ts";
 
-// Альбом реакций (web/src/album.ts, screens/Album.tsx): 27 карточек, у каждой короткое имя и картинка, подсказок нет;
+// Альбом реакций (web/src/album.ts, screens/Album.tsx): 41 карточка, у каждой короткое имя и картинка, подсказок нет;
 // имена — те же, что шлёт виджет и принимает сервер.
 
-test("альбом: 27 карточек с именем и картинкой, без подсказок, список совпадает с сервером", () => {
-  assert.equal(ALBUM_CARDS.length, 27);
-  assert.equal(new Set(ALBUM_CARDS.map((c) => c.id)).size, 27);
+test("альбом: 41 карточка с именем и картинкой, без подсказок, список совпадает с сервером", () => {
+  assert.equal(ALBUM_CARDS.length, 41);
+  assert.equal(new Set(ALBUM_CARDS.map((c) => c.id)).size, 41);
   const server = readFileSync(new URL("../../server/src/album.ts", import.meta.url), "utf8");
   const ids = [...server.match(/export const ALBUM = \[([^\]]+)\]/)![1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
   assert.deepEqual(ALBUM_CARDS.map((c) => c.id), ids);

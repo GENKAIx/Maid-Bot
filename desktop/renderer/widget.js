@@ -100,22 +100,26 @@ function sectionOf(c, day = data?.day) {
   return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits", trait: "/profile" }[c.kind] ?? "/";
 }
 
-// --- горничная: 27 анимаций (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации», «…/Маскот/mascot2» и «…/Маскот/3/forget») ---
+// --- горничная: 41 анимация (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации», «…/Маскот/mascot2», «…/Маскот/3/forget»
+// и «…/Маскот/4/ХОРОШИЕ») ---
 // Основа — ждёт / думает / спит / нет связи; на события она на несколько секунд реагирует (react), потом возвращается к основе.
 const MOODS = ["idle", "think", "sleep", "happy", "proud", "angry", "sad", "worried", "surprised", "neutral",
   "hello", "listen", "write", "done", "remind", "clean", "tea", "streak", "offline", "bow",
-  "smitten", "giggle", "refuse", "smug", "gasp", "excited", "forget"];
+  "smitten", "giggle", "refuse", "smug", "gasp", "excited", "forget",
+  "think2", "analysis", "list", "present", "letter", "salute", "thumbsup", "wrench", "deadpan", "facepalm", "pout", "shy", "shh", "bedtime"];
 for (const n of MOODS) new Image().src = `../assets/maid/${n}.webp`;
 // Эмоция ответа сервера → анимация.
 const EMOTION_MOOD = { neutral: "neutral", happy: "happy", proud: "proud", angry: "angry", sad: "sad", worried: "worried",
-  surprised: "surprised", thinking: "think", sleepy: "sleep", stern: "refuse", teasing: "smug", awkward: "forget" };
+  surprised: "surprised", thinking: "think", sleepy: "sleep", stern: "refuse", teasing: "smug", awkward: "forget", deadpan: "deadpan" };
 let mood = "";
 let moodUntil = 0;
 let moodTimer = 0;
 let moodOfBubble = false; // реакция держится, пока висит облачко, с которым пришла (say → hideBubble)
 let online = true;
+// «Думает» — две версии: какая из них, решается каждый раз, когда она начинает думать (setState).
+let thinkPick = "think";
 function baseMood() {
-  if (state === "think") return "think";
+  if (state === "think") return thinkPick;
   if (!online) return "offline";
   // Есть просроченные задачи — недовольна, но сон важнее (fun.js, dueMood).
   const due = typeof dueMood !== "undefined" ? dueMood : "";
@@ -262,7 +266,7 @@ function settle() {
 function setState(s) {
   state = s;
   // Думает — сразу, поверх любой реакции.
-  if (s === "think") { clearTimeout(moodTimer); moodUntil = 0; }
+  if (s === "think") { clearTimeout(moodTimer); moodUntil = 0; thinkPick = Math.random() < 0.5 ? "think" : "think2"; }
   settle();
 }
 // --- сон: спит, когда человека нет за ПК, а не по часам ---
@@ -336,7 +340,7 @@ function wakeUp() {
     if (!cfg.napRecap || (away < 2 * 60_000 && !news.length)) return;
     const lines = news.slice(-4).map((n) => `• ${String(n.text).split("\n")[0].replace(/<[^>]+>/g, "")}`);
     const more = news.length > 4 ? `\n…и ещё ${news.length - 4} — в ящике у головы.` : news.length ? "\nВсё это — в ящике у головы." : "";
-    say(news.length ? `${line("backNews")}\n${lines.join("\n")}${more}` : line("back"), { ms: news.length ? 20000 : 4000, emotion: "happy", sound: news.length ? "ding" : null });
+    say(news.length ? `${line("backNews")}\n${lines.join("\n")}${more}` : line("back"), { ms: news.length ? 20000 : 4000, emotion: "happy", sound: news.length ? "ding" : null, mood: news.length ? "letter" : null });
   }, 1300);
 }
 async function watchAway() {
@@ -358,8 +362,10 @@ setInterval(() => {
   if (state === "think") return;
   const want = restState();
   if (want !== state) setState(want);
-  // После отбоя — не суетится: без чая, уборки и радостей.
-  else if (afterBedtime()) return;
+  // После отбоя — не суетится: без чая, уборки и радостей; изредка показывает на подушку — «марш спать».
+  else if (afterBedtime()) {
+    if (state === "idle" && online && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.05) react("bedtime", 6000, true);
+  }
   // Изредка, пока ничего не происходит, — занимается своим: чай (утром чаще), уборка, поклон. Всё это — молча: событий нет.
   else if (state === "idle" && online && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.1) {
     const h = new Date().getHours();
@@ -529,7 +535,10 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   // Реакция горничной: записала что-то — пишет, отметила — галочка, иначе по эмоции ответа.
   if (text !== "…") {
     const marked = changes.some((c) => c.kind === "mark" || c.kind === "habit");
-    const pick = as ?? (marked ? "done" : changes.length ? "write" : EMOTION_MOOD[emotion] ?? "neutral");
+    // Записала только планы — «Есть!»; спокойный ответ списком (три строки с точками и больше) — читает свиток.
+    const calm = EMOTION_MOOD[emotion] ?? "neutral";
+    const pick = as ?? (marked ? "done" : changes.length ? (changes.every((c) => c.kind === "event") ? "salute" : "write")
+      : calm === "neutral" && listy(text) ? "list" : calm);
     // Эмоция держится, пока висит облачко (уходит в hideBubble); «стираю память» — свой один показ.
     react(pick, pick === "forget" ? 0 : 30 * 60_000);
     moodOfBubble = pick !== "forget";
@@ -1135,18 +1144,23 @@ function failedButtons(r) {
 // Сказал то, чего лучше было не говорить (сервер пометил ответ эмоцией awkward), или сам просит забыть — «стирает память».
 const UNSAY = /(?<![а-яё])((?<!не )забудь|я этого не говорил|я ничего не говорил|(ты|вы) (этого|ничего) не слышал|сделай(те)? вид,? что|этого разговора не было|проехали|зря (я )?(это )?(сказал|написал|ляпнул)|ляпнул[аи]? лишн|сболтнул|не стоило (мне )?(это(го)? )?говорить|никому не (говори|рассказывай))/i;
 const EGG_PRAISE = /(?<![а-яё])((ты|вы) (у меня )?(такая )?(молодец|умница|умничка|лучшая|чудо|прелесть)|хорошая работа|отличная работа)/i;
+// «Это секрет», «только между нами» — «тсс, это наш секрет»; сильнее записи, как пошлое.
+const EGG_SECRET = /(?<![а-яё])(никому не (говори|рассказывай)|(это|наш|мой|большой) секрет(?!ар)|по секрету|между нами|наша (маленькая )?тайна)/i;
 const EGG_NIGHT = /(?<![а-яё])(спокойной ночи|доброй ночи|сладких снов|я спать)(?![а-яё])/i;
 const EGG_TEA = /(?<![а-яё])(ча[йю]\s*\?|по чаю|попь[её]м чаю|выпьем чаю|чайку)/i;
 function heardMood(text, r) {
   if (r?.emotion === "awkward") return "forget";
+  // Снова те же грабли, о которых она предупреждала (эмоция сервера deadpan) — пустой взгляд; сильнее записи.
+  if (r?.emotion === "deadpan") return "deadpan";
   if (!text) return null;
   if (UNSAY.test(text)) return "forget";
   if (LEWD.test(text)) return "smug";
+  if (EGG_SECRET.test(text)) return "shh";
   if (r.changes?.length) return null;
   if (/спасиб|благодар/i.test(text)) return "smitten";
   // Слова-пасхалки: каждая показывает свою анимацию (и открывает её карточку в альбоме).
-  if (EGG_PRAISE.test(text)) return "smitten";
-  if (EGG_NIGHT.test(text)) return "sleep";
+  if (EGG_PRAISE.test(text)) return "shy";
+  if (EGG_NIGHT.test(text)) return "bedtime";
   if (EGG_TEA.test(text)) return "tea";
   return null;
 }
@@ -1699,10 +1713,12 @@ function toggleShowDone() {
   if (showDoneUntil) showDoneTimer = setTimeout(render, DONE_PEEK + 30);
   render();
 }
+// Отмечена задача: чаще галочка, иногда — палец вверх.
+const doneMood = () => (Math.random() < 0.35 ? "thumbsup" : "done");
 function startLeave(key, mark) {
   popTone(4);
   burst(mark);
-  react("done", 4000);
+  react(doneMood(), 4000);
   leavingRows.set(key, { at: Date.now(), pausedAt: 0, armed: false, fly: false, title: mark.nextElementSibling?.textContent ?? "" });
   render();
   rowCountdown(key);
@@ -1865,7 +1881,7 @@ async function load() {
     data = fresh;
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
-    if (!online) { online = true; settle(); }
+    if (!online) { online = true; settle(); if (!napping) react("wrench", 4000); } // связь вернулась — «починила»
     // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.
     if (json === lastJson) return;
     lastJson = json;
@@ -1885,11 +1901,16 @@ async function load() {
   tickDue(); // недовольство просрочкой — сразу по свежим данным
 }
 
+// Ответ списком: три и больше строк, начинающихся с точки, тире или номера.
+const listy = (text) => (String(text).match(/^\s*(?:[•\-–—]|\d+[.)])\s/gm) ?? []).length >= 3;
+// Вид письма с сервера → анимация: утренний план и «завтра» — свиток, вечерний итог — отчёт.
+const NOTICE_MOOD = { morning: "list", tomorrow: "list", evening: "analysis" };
+
 // Напоминание «⏰ Пора: …» (план начинается) — своя кнопка «Окей»: облачко висит, пока не ответят, и всё это время
 // горничная звонит в колокольчик (настроение «remind»). Остальным — кнопки с сервера.
 function startButtons(n) {
   if (n.buttons?.length || !/^⏰ Пора:/.test(n.text)) return n.buttons ?? [];
-  return [{ text: "👌 Окей", run: () => { react("bow", 2500); ackStarted(n.text); } }];
+  return [{ text: "👌 Окей", run: () => { react("salute", 2500); ackStarted(n.text); } }];
 }
 
 // Лента уведомлений: что ушло в Telegram — показать и здесь, с кнопками.
@@ -1910,7 +1931,7 @@ async function pollNotices() {
       if (napping) { missed.push(n); continue; }
       unheardAt = Date.now();
       const buttons = startButtons(n);
-      say(n.text, { buttons, emotion, ms: buttons.length ? 0 : 20000, sound: "hey", mood: buttons.length ? "remind" : /🎮/.test(n.text) ? "refuse" : null, notice: n.id });
+      say(n.text, { buttons, emotion, ms: buttons.length ? 0 : 20000, sound: "hey", mood: NOTICE_MOOD[n.kind] ?? (buttons.length ? "remind" : /🎮/.test(n.text) ? "refuse" : null), notice: n.id });
     }
   } catch {
     /* нет связи — молчим */
@@ -2436,7 +2457,7 @@ maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // Состояние обновления программы — значок-шестерёнка, когда вышла новая версия (inbox.js).
 maid.on("update", inboxUpdate);
 // Программа обновилась (main.js, updatedFrom): сказать об этом один раз, когда виджет огляделся.
-maid.on("updated", (u) => setTimeout(() => say(line("updated", { v: u.to }), { ms: 8000, mood: "excited", emotion: "happy" }), 2500));
+maid.on("updated", (u) => setTimeout(() => say(line("updated", { v: u.to }), { ms: 8000, mood: "wrench", emotion: "happy" }), 2500));
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
@@ -2658,7 +2679,7 @@ $("#body").addEventListener("click", async (e) => {
       e.target.textContent = "✓";
       popTone(4);
       burst(e.target);
-      react("done", 4000);
+      react(doneMood(), 4000);
       const li = e.target.closest("li");
       // Название — из данных, не из строки: последним в строке бывает метка срока («сегодня», «завтра»).
       keepDone(Number(id), data.tasks.find((t) => t.id === Number(id))?.title ?? li.querySelector(".check + span").textContent);

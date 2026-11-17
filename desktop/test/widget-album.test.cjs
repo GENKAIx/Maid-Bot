@@ -19,7 +19,7 @@ check(/function showMood\(n\) \{\s*if \(!MOODS\.includes\(n\)\) return;\s*albumS
 const moods = eval(widget.match(/const MOODS = (\[[^\]]+\])/)[1]);
 const server = fs.readFileSync(path.join(__dirname, "..", "..", "server", "src", "album.ts"), "utf8");
 const serverMoods = eval(server.match(/export const ALBUM = (\[[^\]]+\])/)[1]);
-check(moods.length === 27 && [...moods].sort().join() === [...serverMoods].sort().join(), "MOODS виджета и ALBUM сервера разошлись");
+check(moods.length === 41 && [...moods].sort().join() === [...serverMoods].sort().join(), "MOODS виджета и ALBUM сервера разошлись");
 
 // albumSee / albumFlush: одно имя — один раз, несколько подряд — одним запросом, сбой — повтор, после успеха не шлёт снова.
 const calls = [];
@@ -49,11 +49,14 @@ vm.runInContext(album + "\n;globalThis.t = { albumSee, albumFlush };", ctx);
   const src = widget.match(/const LEWD = [^\n]+/)[0] + "\n" + widget.match(/const UNSAY = [^\n]+/)[0] + "\n" + widget.match(/const EGG_PRAISE[\s\S]*?\nfunction heardMood[\s\S]*?\n\}/)[0];
   const heard = vm.runInNewContext(src + "\n;heardMood");
   const none = { changes: [] };
-  for (const [text, want] of [["чай?", "tea"], ["Может, чаю?", "tea"], ["попьём чаю", "tea"], ["спокойной ночи", "sleep"], ["Доброй ночи!", "sleep"],
-    ["ты молодец", "smitten"], ["Вы умница", "smitten"], ["спасибо", "smitten"], ["купить чай", null], ["случай?", null], ["забудь", "forget"]]) {
+  for (const [text, want] of [["чай?", "tea"], ["Может, чаю?", "tea"], ["попьём чаю", "tea"], ["спокойной ночи", "bedtime"], ["Доброй ночи!", "bedtime"],
+    ["ты молодец", "shy"], ["Вы умница", "shy"], ["только между нами", "shh"], ["это наш секрет", "shh"], ["секретарь звонил", null], ["спасибо", "smitten"], ["купить чай", null], ["случай?", null], ["забудь", "forget"]]) {
     check(heard(text, none) === want, `«${text}» → ${heard(text, none)}, ждали ${want}`);
   }
   check(heard("чай?", { changes: [{ kind: "task" }] }) === null, "пасхалка перебивает реакцию на запись");
+  // 17.11.2026: «снова те же грабли» (эмоция сервера deadpan) и «это секрет» сильнее записи.
+  check(heard("опять съел острое, болит живот", { emotion: "deadpan", changes: [{ kind: "diary" }] }) === "deadpan", "эмоция deadpan не даёт пустой взгляд поверх записи");
+  check(heard("это наш секрет", { changes: [{ kind: "diary" }] }) === "shh", "«это секрет» не даёт «тсс» поверх записи");
 
   // Погладить: зажатие на горничной, перетаскивание и щелчок после него — не считаются.
   check(/petTimer = setTimeout\(\(\) => \{ if \(!dragMoved\) pet\(\); \}, PET_HOLD\)/.test(widget), "зажатие на горничной не гладит (или гладит при перетаскивании)");
