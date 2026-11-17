@@ -627,7 +627,8 @@ function watchWidget() {
   });
   powerMonitor.on("suspend", () => { maidLog("сон ПК"); counter?.save(); });
   // После пробуждения экраны подключаются не сразу — вернуть окно чуть погодя.
-  powerMonitor.on("resume", () => { maidLog("пробуждение ПК"); setTimeout(() => reviveWidget("пробуждение ПК"), 3000); });
+  // Проснулся — и обновление проверить снова через минуту (сеть успевает подняться): проверка во сне падает.
+  powerMonitor.on("resume", () => { maidLog("пробуждение ПК"); setTimeout(() => reviveWidget("пробуждение ПК"), 3000); if (app.isPackaged) setTimeout(() => void updates.check(), 60_000); });
   screen.on("display-added", () => { maidLog("экран подключён"); reviveWidget("экран подключён"); });
   screen.on("display-removed", () => { maidLog("экран отключён"); widget?.setBounds(widgetBounds()); });
   screen.on("display-metrics-changed", (_e, _d, changed) => { maidLog("экран изменился:", changed.join(",")); reviveWidget("экран изменился"); });

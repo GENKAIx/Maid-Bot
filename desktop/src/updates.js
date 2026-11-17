@@ -8,6 +8,9 @@ function createUpdates({ feed, onState, beforeInstall, log }) {
   let state = { version: app.getVersion(), status: app.isPackaged ? "idle" : "dev" };
   let updater = null;
   let installAfter = false; // нажали «Обновить», пока шла проверка, — сразу качать
+  // Проверка упала (нет сети, ПК только проснулся) — ещё раз через 15 минут, а не через 6 часов: иначе значок новой версии не появлялся.
+  const RETRY_MS = 15 * 60_000;
+  let retry = null;
 
   const set = (patch) => {
     state = { ...state, ...patch };
@@ -49,6 +52,8 @@ function createUpdates({ feed, onState, beforeInstall, log }) {
 
   async function check() {
     if (state.status === "dev" || ["checking", "downloading", "ready"].includes(state.status)) return state;
+    clearTimeout(retry);
+    retry = null;
     set({ status: "checking", error: "" });
     try {
       const u = load();
@@ -57,6 +62,7 @@ function createUpdates({ feed, onState, beforeInstall, log }) {
     } catch (e) {
       installAfter = false;
       set({ status: "error", error: reason(e) });
+      retry = setTimeout(() => void check(), RETRY_MS);
     }
     return state;
   }
