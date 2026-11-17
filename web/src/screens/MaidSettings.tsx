@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import { Card, Empty, Spinner } from "../components";
 
-// Страница «Горничная»: как и когда она с вами общается — характер, время сообщений, напоминания о планах, игры.
+// Страница «Персонализация»: как и когда горничная с вами общается — характер, время сообщений, напоминания о планах, игры.
 // Техническое (тема, push, расход модели, вход) — в «Настройках». Кто она — карточка RINA в server/src/personas.ts.
 
 interface Me {
@@ -97,7 +97,7 @@ export function MaidSettings() {
 
   return (
     <div className="screen">
-      <h2 className="screen-title">Горничная</h2>
+      <h2 className="screen-title">Персонализация</h2>
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="cards">
         <Card title="Характер" className="reveal">

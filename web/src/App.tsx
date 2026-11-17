@@ -28,13 +28,14 @@ const Catalog = lazy(() => import("./screens/Catalog").then((m) => ({ default: m
 // version растёт после каждой записи — экраны перечитывают данные.
 
 // Порядок — от частого к редкому: каждый день, учёт, служебное. group — разделитель перед группой в меню.
-// Профиль — на ПК сразу под логотипом, на телефоне — первым в «Ещё».
+// Профиль и «Персонализация» — на ПК сразу под логотипом, на телефоне — первыми в «Ещё».
 const TABS: { id: string; path: string; title: string; icon: string; more?: boolean; group?: "track" | "tools" }[] = [
   { id: "today", path: "/", title: "Сегодня", icon: "today" },
   { id: "plans", path: "/plans", title: "Планы", icon: "plans" },
   { id: "habits", path: "/habits", title: "Привычки", icon: "habits" },
   { id: "diary", path: "/diary", title: "Дневник", icon: "diary" },
   { id: "profile", path: "/profile", title: "Профиль", icon: "profile", more: true },
+  { id: "maid", path: "/maid", title: "Персонализация", icon: "maid", more: true },
   { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true, group: "track" },
   { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
   { id: "stats", path: "/stats", title: "Статистика", icon: "stats", more: true },
@@ -45,10 +46,11 @@ const TABS: { id: string; path: string; title: string; icon: string; more?: bool
   { id: "history", path: "/history", title: "История", icon: "history", more: true },
   { id: "album", path: "/album", title: "Альбом", icon: "album", more: true },
   { id: "features", path: "/features", title: "Возможности", icon: "features", more: true },
-  { id: "maid", path: "/maid", title: "Горничная", icon: "maid", more: true },
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
   { id: "catalog", path: "/catalog", title: "Каталог", icon: "catalog", more: true },
 ];
+/** Пункты над главными экранами на ПК (на телефоне — первыми в «Ещё»). */
+const NAV_TOP = new Set(["profile", "maid"]);
 
 export function App() {
   const [authed, setAuthed] = useState(Boolean(getToken()));
@@ -121,9 +123,9 @@ export function App() {
     <div className="app">
       <nav className="nav">
         <div className="brand"><img src="/icon.svg" alt="" width={28} height={28} /><span>Горничная</span></div>
-        <div className="nav-more-group nav-profile">{TABS.filter((t) => t.id === "profile").map(item)}</div>
+        <div className="nav-more-group nav-profile">{TABS.filter((t) => NAV_TOP.has(t.id)).map(item)}</div>
         {TABS.filter((t) => !t.more).map(item)}
-        <div className="nav-more-group">{TABS.filter((t) => t.more && t.id !== "profile").map(grouped)}</div>
+        <div className="nav-more-group">{TABS.filter((t) => t.more && !NAV_TOP.has(t.id)).map(grouped)}</div>
         <button className={`nav-item nav-more ${more || inMore ? "on" : ""}`} onClick={() => setMore(!more)}>
           <span className="nav-icon"><Icon name="more" /></span><span>Ещё</span>
         </button>
