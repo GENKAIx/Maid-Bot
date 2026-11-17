@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld("maid", {
   grab: (on) => ipcRenderer.send("grab", on),
   /** Курсор над горничной или облачком: окну нужна мышь, даже если оно «отпущено». */
   hover: (on) => ipcRenderer.send("hover", on),
-  alive: (drawn) => ipcRenderer.send("alive", drawn), // сторож виджета (main.js, patrolWidget)
+  alive: (drawn, hidden) => ipcRenderer.send("alive", drawn, hidden), // сторож виджета (main.js, patrolWidget)
   /** Горничная думает (запрос ушёл) / ответила — показать состояние и облачко. */
   thinking: (on) => ipcRenderer.send("thinking", on),
   reply: (r) => ipcRenderer.send("reply", r),

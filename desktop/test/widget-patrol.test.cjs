@@ -3,6 +3,10 @@
 // смотрит, что окно видно, не свёрнуто, на экране, поверх окон, а страница жива (виджет отзывается раз в 20 с) и фигурка
 // нарисована. Что-то не так — запись в журнал один раз (с программой на переднем плане) и окно обратно; страница молчит
 // дольше 3 минут — перезагрузка. В журнале теперь видно, отчего пропал виджет.
+// 17.11.2026, второй случай: окно видно и поверх всех, а страница считала себя скрытой (document.hidden — Chromium решил, что
+// прозрачное окно перекрыто) и не рисовалась. Подсчёт перекрытия выключен (CalculateNativeWinOcclusion), виджет не притормаживает
+// в фоне (backgroundThrottling), а страница сообщает сторожу, что считает себя скрытой, — сразу (visibilitychange) и раз в 20 с;
+// сторож показывает окно заново (так виджет и вернулся).
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -33,6 +37,7 @@ const ctx = {
   Date: { now: () => 1_000_000 },
   widgetAlive: 1_000_000 - 20_000,
   widgetDrawn: true,
+  widgetHidden: false,
   widgetIssue: "",
 };
 vm.createContext(ctx);
@@ -46,6 +51,8 @@ try {
   check(ctx.trouble({ ...ok, silent: 200_000 }, displays).includes("страница молчит"), "молчащая страница не замечена");
   check(ctx.trouble({ ...ok, silent: 120_000 }, displays).length === 0, "окно под игрой (таймеры реже) — уже «молчит»");
   check(ctx.trouble({ ...ok, drawn: false }, displays).includes("фигурка не нарисована"), "пустое окно без фигурки не замечено");
+  check(ctx.trouble({ ...ok, pageHidden: true }, displays).includes("страница считает себя скрытой"), "окно видно, а страница скрыта — не замечено");
+  check(!ctx.trouble({ ...ok, visible: false, pageHidden: true }, displays).includes("страница считает себя скрытой"), "окно спрятано — скрытая страница не отдельная беда");
 
   const reset = () => { log.length = 0; calls.length = 0; };
   // Всё хорошо — тишина.
@@ -76,6 +83,14 @@ try {
   ctx.widgetDrawn = false;
   ctx.patrol();
   check(/фигурка не нарисована/.test(log[0] ?? "") && !calls.length, "фигурка не нарисована: нет записи или лишнее действие");
+  // Страница считает себя скрытой при видимом окне — запись и окно показывается заново.
+  reset();
+  ctx.widgetIssue = "";
+  ctx.widgetDrawn = true;
+  ctx.widgetHidden = true;
+  ctx.patrol();
+  check(/страница считает себя скрытой/.test(log[0] ?? "") && calls.includes("revive:сторож"), `скрытая страница: нет записи или окно не показано: ${log} ${calls}`);
+  ctx.widgetHidden = false;
   // Виджет выключен в меню — сторож молчит.
   reset();
   ctx.widgetIssue = "";
@@ -88,7 +103,10 @@ try {
 }
 check(/setInterval\(patrolWidget, 15_000\)/.test(main), "сторож не запускается");
 check(/ipcMain\.on\("alive"/.test(main), "main не слушает отклик виджета");
-check(/alive: \(drawn\) => ipcRenderer\.send\("alive", drawn\)/.test(preload), "виджет не может отозваться (preload)");
-check(/maid\.alive\(/.test(widgetJs), "виджет не отзывается");
+check(/alive: \(drawn, hidden\) => ipcRenderer\.send\("alive", drawn, hidden\)/.test(preload), "виджет не может отозваться (preload)");
+check(/maid\.alive\(/.test(widgetJs) && /document\.hidden/.test(widgetJs), "виджет не отзывается или не говорит, что скрыт");
+check(/addEventListener\("visibilitychange"/.test(widgetJs), "виджет не сообщает сразу, что его скрыли");
+check(/appendSwitch\("disable-features", "CalculateNativeWinOcclusion"\)/.test(main), "подсчёт перекрытия окон не выключен");
+check(/backgroundThrottling: false/.test(main.match(/widget = new BrowserWindow\(\{[^]*?\}\);/)?.[0] ?? ""), "виджет притормаживает в фоне");
 console.log(`${n - bad}/${n}`);
 process.exit(bad ? 1 : 0);

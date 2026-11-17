@@ -526,7 +526,7 @@ function createWidget() {
   widget = new BrowserWindow({
     ...widgetBounds(),
     frame: false, transparent: true, resizable: false, skipTaskbar: true,
-    alwaysOnTop: true, hasShadow: false, show: false, webPreferences: prefs,
+    alwaysOnTop: true, hasShadow: false, show: false, webPreferences: { ...prefs, backgroundThrottling: false }, // не засыпать в фоне
   });
   // Выше полноэкранных окон и игр в оконном режиме.
   widget.setAlwaysOnTop(true, "screen-saver");
@@ -608,6 +608,7 @@ function setGrab(on) {
 // с программой на переднем плане, и окно обратно; страница молчит дольше 3 минут — перезагрузка. Проверка — test/widget-patrol.test.cjs.
 let widgetAlive = Date.now();
 let widgetDrawn = true;
+let widgetHidden = false; // страница считает себя скрытой (document.hidden), хотя окно видно — не рисуется
 let widgetIssue = ""; // о чём уже записано — не повторять каждые 15 с
 /** Что не так с виджетом; пусто — всё хорошо. silent — мс с последнего отклика страницы (под игрой таймеры реже — порог 3 минуты). */
 function widgetTrouble(w, displays) {
@@ -619,13 +620,14 @@ function widgetTrouble(w, displays) {
   if (!w.top) out.push("не поверх окон");
   if (w.silent > 180_000) out.push("страница молчит");
   if (w.drawn === false) out.push("фигурка не нарисована");
+  if (w.visible && w.pageHidden) out.push("страница считает себя скрытой");
   return out;
 }
 function patrolWidget() {
   if (!settings.widget.show || !widget || widget.isDestroyed()) return;
   const why = widgetTrouble({
     visible: widget.isVisible(), minimized: widget.isMinimized(), top: widget.isAlwaysOnTop(), bounds: widget.getBounds(),
-    silent: Date.now() - widgetAlive, drawn: widgetDrawn,
+    silent: Date.now() - widgetAlive, drawn: widgetDrawn, pageHidden: widgetHidden,
   }, screen.getAllDisplays());
   const issue = why.join(", ");
   if (issue !== widgetIssue) {
@@ -639,7 +641,12 @@ function patrolWidget() {
     widget.reload();
   } else if (why.some((x) => x !== "фигурка не нарисована")) reviveWidget("сторож");
 }
-ipcMain.on("alive", (_e, drawn) => { widgetAlive = Date.now(); widgetDrawn = drawn !== false; });
+ipcMain.on("alive", (_e, drawn, hidden) => {
+  widgetAlive = Date.now();
+  widgetDrawn = drawn !== false;
+  widgetHidden = hidden === true;
+  if (widgetHidden) patrolWidget(); // скрыли — показать сразу, не ждать 15 с
+});
 
 /** Окно есть, но не видно (свернулось, спряталось, ушло за край, оказалось под другими окнами) — вернуть на экран и наверх. */
 function reviveWidget(why) {
@@ -1076,6 +1083,9 @@ function updatedFrom(last, now, flag) {
 }
 let updatedNote = null; // «обновилась» — виджету один раз (widget-ready)
 maidLog("старт процесса", app.getVersion(), afterUpdate ? "после обновления" : "");
+// Chromium на Windows считает, какие окна перекрыты, и перестаёт их рисовать. Прозрачное окно виджета поверх всех он иногда
+// ошибочно считал перекрытым: окно на месте, а страница скрыта (document.hidden) — виджет пропадал «сам» (17.11.2026).
+app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 let haveLock = app.requestSingleInstanceLock();
 // После обновления установщик запускает новую копию, пока старая может ещё закрываться: подождать её до 15 с, а не закрыться самой.
 for (const until = Date.now() + 15_000; !haveLock && afterUpdate && Date.now() < until;) {
