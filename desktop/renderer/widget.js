@@ -2482,11 +2482,15 @@ $("#inbox").addEventListener("click", (e) => {
 });
 drawInbox();
 // Щелчок по горничной — тычок (fun.js), двойной по свёрнутой — развернуть панель (свернуть — кнопкой #foldBtn). Тычок ждёт, не будет ли второго щелчка.
-$("#maid").addEventListener("click", () => {
+// Висит облачко с ответом или сообщением — щелчок закрывает его (облачко самого тычка — dataset.quip — тычет дальше).
+function maidClick() {
   clearTimeout(clickTimer);
   if (Date.now() - pettedAt < 400) return; // отпустили после «погладить» — это не тычок
+  const b = $("#bubble");
+  if (!b.classList.contains("hidden") && !b.dataset.quip) return void hideBubble();
   clickTimer = setTimeout(poke, 230);
-});
+}
+$("#maid").addEventListener("click", maidClick);
 // Зажали левую кнопку на горничной на секунду и не потащили окно — погладили (album.js).
 $("#maid").addEventListener("pointerdown", (e) => {
   if (e.button !== 0) return;
