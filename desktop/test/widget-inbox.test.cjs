@@ -109,6 +109,13 @@ check(/\.bubble-actions:has\(\.rate-star:hover\) \.rate-star img \{ filter: none
 const server = read("../server/src/scheduler.ts");
 check(/export const RATE_MAX = 10;/.test(server) && !/DAY_RATES/.test(server), "на сервере оценка дня не от 1 до 10");
 
+// 18.11.2026: при наведении на строку списка внизу облачка появлялась полоса прокрутки и всё съезжало — строка сдвигалась
+// вправо на 2 px и вылезала за область карточек, а та прокручивается. Строка не должна двигаться, а область — прокручиваться вбок.
+const rowHover = css.match(/\.ib-list button:hover \{([^}]*)\}/)?.[1] ?? "";
+check(rowHover && !/transform|translate/.test(rowHover), "строка списка оповещений сдвигается при наведении");
+const cardsBox = css.split(/\r?\n/).find((line) => line.startsWith(".bubble-cards {")) ?? "";
+check(/overflow-x:\s*hidden/.test(cardsBox), "область карточек облачка прокручивается вбок");
+
 // Обновление программы (18.11.2026): вышла новая версия — значок-шестерёнка и облачко «Обновить».
 const main = read("src/main.js"), preload = read("src/preload.js");
 check(/widget\?\.webContents\.send\("update", s\)/.test(main) && /e\.sender\.send\("update", updates\.state\(\)\)/.test(main), "главный процесс не сообщает виджету об обновлении");
