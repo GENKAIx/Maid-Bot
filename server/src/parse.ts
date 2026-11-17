@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { DateRow, EventRow, HabitRow, MemoryRow, TaskRow } from "./db.ts";
+import { timesOf } from "./habits.ts";
 import { EMOTIONS } from "./personas.ts";
 import { addDays, isDayKey, normalizeTime, weekdayLong } from "./time.ts";
 
@@ -122,12 +123,14 @@ const Trait = z.object({
   note: optStr,
 });
 const Edit = z.object({
-  action: z.enum(["cancel", "done", "move", "reopen", "rename"]),
+  action: z.enum(["cancel", "done", "move", "reopen", "rename", "remind"]),
   kind: z.enum(["event", "task", "date", "memory", "habit"]),
   id: z.number().int(),
   new_title: optStr,
   new_date: optStr,
   new_time: optStr,
+  // remind (только привычка): время напоминаний; пусто — без напоминаний.
+  new_times: z.array(z.string()).optional().catch(undefined),
 });
 
 const arr = <T extends z.ZodTypeAny>(t: T) =>
@@ -204,7 +207,7 @@ export interface Parsed {
   };
   marks: { habitId: number; status: "done" | "skipped"; dayKey: string; amount: number | null; unit: string }[];
   money: { kind: "income" | "expense"; amount: number; currency: string; category: string; note: string; dayKey: string }[];
-  edits: { action: "cancel" | "done" | "move" | "reopen" | "rename"; kind: "event" | "task" | "date" | "memory" | "habit"; id: number; newDate: string | null; newTime: string | null; newTitle?: string }[];
+  edits: { action: "cancel" | "done" | "move" | "reopen" | "rename" | "remind"; kind: "event" | "task" | "date" | "memory" | "habit"; id: number; newDate: string | null; newTime: string | null; newTitle?: string; newTimes?: string[] }[];
   question: string | null;
   lookup: { from: string; to: string } | null;
   /** Корни слов для поиска по всем записям («сердц», «голов»). */
@@ -244,7 +247,12 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
   const dts = ctx.dates.map((d) => `#${d.id} ${d.date_iso.slice(5)} — ${d.title}`).join("\n") || "нет";
   const mem = ctx.memory.map((m) => `#${m.id} [${m.kind}] ${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n") || "нет";
   const bin = (ctx.trash ?? []).map((e) => `#${e.id} ${e.date_iso}${e.time ? " " + e.time : ""} — ${e.title} (${e.status === "deleted" ? "удалено" : "отменено"})`).join("\n") || "пусто";
-  const hab = ctx.habits.map((h) => `#${h.id} ${h.title} (дни ${h.days}${h.end_date ? ", до " + h.end_date : ""})`).join("\n") || "нет";
+  // Время напоминаний — чтобы «напоминай как в названии» или «перенеси напоминание на 9» было с чем сравнить.
+  const remindOf = (h: HabitRow) => {
+    const t = timesOf(h);
+    return h.quiet ? "без напоминаний" : t.length ? `напоминания ${t.join(", ")}` : "напоминания — общее время";
+  };
+  const hab = ctx.habits.map((h) => `#${h.id} ${h.title} (дни ${h.days}${h.end_date ? ", до " + h.end_date : ""}; ${remindOf(h)})`).join("\n") || "нет";
   return `Ты разбираешь сообщения пользователя для его личного дневника-помощника.
 Сегодня ${ctx.today} (${weekdayLong(ctx.today)}), сейчас ${ctx.now}, часовой пояс ${ctx.tz}.
 Вчера = ${addDays(ctx.today, -1)}, завтра = ${addDays(ctx.today, 1)}, послезавтра = ${addDays(ctx.today, 2)}.
@@ -267,7 +275,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "dates": [{"title": "...", "date_iso": "YYYY-MM-DD", "type": "birthday|anniversary|holiday|deadline|other", "person": "", "yearly": true}],
  "memory": [{"kind": "fact|preference|person|goal", "subject": "о ком/о чём", "text": "...", "replaces": null}],
  "traits": [{"kind": "debuff|buff", "category": "allergy|food|med|condition|body|habit|other", "title": "коротко: «Аллергия на арахис»", "note": "подробности, если названы"}],
- "edits": [{"action": "cancel|done|move|reopen|rename", "kind": "event|task|date|memory|habit", "id": 12, "new_date": null, "new_time": null, "new_title": null}],
+ "edits": [{"action": "cancel|done|move|reopen|rename|remind", "kind": "event|task|date|memory|habit", "id": 12, "new_date": null, "new_time": null, "new_title": null, "new_times": null}],
  "question": "если пользователь спрашивает о своих данных — вопрос, иначе null",
  "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни нужны для ответа (null — за всё время),
  "search": ["корни слов для поиска по записям, напр. сердц, кардиолог"] — только если вопрос про конкретную вещь,
@@ -295,7 +303,9 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 - summary: начинается с [${ctx.now}], близко к словам пользователя, без фраз вроде «записано», «пользователь сообщил».
 - «Вчера я …» — day_iso вчерашнего дня. Записи о сне после полуночи относятся к ночи, которая началась вчера.
 - edits: только по номерам из списков ниже. «Встречу с Петей перенесли на пятницу» — move с new_date.
-  «Сделал лампочку» — done для задачи. «Переименуй "врач" в "стоматолог"» — rename с new_title (только план или задача). Если номер неясен — clarify.
+  «Сделал лампочку» — done для задачи. «Переименуй "врач" в "стоматолог"» — rename с new_title (план, задача или привычка). Если номер неясен — clarify.
+  Время напоминаний привычки («напоминай про зарядку в 9», «напоминай как в названии», «не напоминай про чай») — remind kind=habit
+  с new_times: ["09:00"] (до 4 времён; [] — без напоминаний). Нынешнее время — в списке привычек; время из названия — как написано.
   «Верни/восстанови … (из корзины)», «отмени удаление» — reopen kind=event с номером из «Корзины»; несколько похожих — ближайший по дате.
 - Время «в 7» без утра/вечера, где оба варианта правдоподобны — clarify. «Завтра в 7 утра» — 07:00.
 - dates.yearly = true только для повторяющихся каждый год (дни рождения, годовщины, праздники).
@@ -466,12 +476,21 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
       continue;
     }
     const newTitle = (e.new_title ?? "").trim().slice(0, 200);
-    if (e.action === "rename" && (!newTitle || (e.kind !== "event" && e.kind !== "task"))) {
+    if (e.action === "rename" && (!newTitle || (e.kind !== "event" && e.kind !== "task" && e.kind !== "habit"))) {
       dropped.push(`edits: переименование #${e.id} без названия`);
       clarify ??= "Как назвать?";
       continue;
     }
-    edits.push({ action: e.action, kind: e.kind, id: e.id, newDate, newTime, ...(e.action === "rename" ? { newTitle } : {}) });
+    let newTimes: string[] | undefined;
+    if (e.action === "remind") {
+      newTimes = [...new Set((e.new_times ?? []).map((t) => normalizeTime(t)).filter((t): t is string => Boolean(t)))].sort().slice(0, 4);
+      if (e.kind !== "habit" || (e.new_times?.length && !newTimes.length)) {
+        dropped.push(`edits: напоминание #${e.id} без времени`);
+        clarify ??= "Во сколько напоминать?";
+        continue;
+      }
+    }
+    edits.push({ action: e.action, kind: e.kind, id: e.id, newDate, newTime, ...(e.action === "rename" ? { newTitle } : {}), ...(newTimes ? { newTimes } : {}) });
   }
 
   const metrics: Parsed["metrics"] = [];

@@ -606,6 +606,19 @@ export class Pipeline {
         await s.updateHabit(h.id, { status: e.action === "cancel" ? "stopped" : "active" });
         await log("status", "habits", h.id, { status: h.status });
         editLines.push(e.action === "cancel" ? `✖ привычка остановлена: ${esc(h.title)}` : `↺ привычка снова идёт: ${esc(h.title)}`);
+      } else if (e.kind === "habit" && (e.action === "rename" || e.action === "remind")) {
+        // Как правка мышью (POST /api/habits/:id): журнал помнит название, время и «без напоминаний» — «Отменить» вернёт всё.
+        const h = await s.habit(e.id);
+        if (!h || h.user_id !== u.id) continue;
+        await log("update", "habits", h.id, { status: h.status, title: h.title, times: h.times, quiet: h.quiet ?? 0 });
+        if (e.action === "rename") {
+          await s.updateHabit(h.id, { title: e.newTitle! });
+          editLines.push(`✎ переименовано: ${esc(h.title)} → ${esc(e.newTitle!)}`);
+        } else {
+          const times = e.newTimes ?? [];
+          await s.updateHabit(h.id, times.length ? { times: JSON.stringify(times), quiet: 0 } : { times: "[]", quiet: 1 });
+          editLines.push(times.length ? `🔔 ${esc(h.title)}: напомню в ${times.join(", ")}` : `🔕 ${esc(h.title)}: без напоминаний`);
+        }
       }
     }
 
