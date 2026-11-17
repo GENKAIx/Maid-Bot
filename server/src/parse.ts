@@ -78,6 +78,8 @@ const HabitMark = z.object({
   habit_id: z.number().int(),
   status: z.enum(["done", "skipped"]).catch("done"),
   day_iso: optStr,
+  amount: z.number().positive().max(1e6).nullable().optional().catch(null),
+  unit: optStr.catch(null),
 });
 const Money = z.object({
   kind: z.enum(["income", "expense"]),
@@ -200,7 +202,7 @@ export interface Parsed {
     tasks: { title: string; priority: "high" | "normal" | "low"; due: string | null; category: string }[];
     remind: { label: string; time: string } | null;
   };
-  marks: { habitId: number; status: "done" | "skipped"; dayKey: string }[];
+  marks: { habitId: number; status: "done" | "skipped"; dayKey: string; amount: number | null; unit: string }[];
   money: { kind: "income" | "expense"; amount: number; currency: string; category: string; note: string; dayKey: string }[];
   edits: { action: "cancel" | "done" | "move" | "reopen" | "rename"; kind: "event" | "task" | "date" | "memory" | "habit"; id: number; newDate: string | null; newTime: string | null; newTitle?: string }[];
   question: string | null;
@@ -256,7 +258,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "suggest_habits": [то же, что habits] — регулярные дела из рассказа о распорядке: не заводить, а спросить,
  "suggest_tasks": [то же, что tasks] — дела из размышлений «надо бы как-нибудь…»: не записывать, а спросить,
  "suggest_remind": {"label": "текст кнопки по смыслу, до 28 символов", "time": "ЧЧ:ММ"} или null,
- "habit_marks": [{"habit_id": 3, "status": "done|skipped", "day_iso": null}],
+ "habit_marks": [{"habit_id": 3, "status": "done|skipped", "day_iso": null, "amount": null, "unit": ""}],
  "money": [{"kind": "income|expense", "amount": 450, "currency": "RUB|USD|EUR…", "category": "${MONEY_CATEGORIES.join("|")}", "note": "на что / от кого", "day_iso": null}],
  "tags": ["короткие теги"],
  "summary": "[ЧЧ:ММ] почти дословная очищенная выжимка сообщения",
@@ -310,6 +312,8 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
   Размышления без решения («надо бы как-нибудь…», «хорошо бы когда-то…», «может, стоит…») — suggest_tasks.
   Одно и то же не клади и в habits/tasks, и в suggest_*.
 - «Выпил таблетку», «сделал зарядку» про привычку из списка — habit_marks с её номером (не задача и не дневник).
+  Назвал, сколько сделал («прочитал 35 страниц», «пробежал 5 км», «ещё 20 страниц») — amount числом этого сообщения
+  (не сумма за день — сложит сервер) и unit коротко по-русски («стр.», «км», «мин», «раз»); числа нет — amount null.
   «Бросаю привычку X» — edits kind=habit action=cancel.
 - Деньги: «потратил 450 на такси», «пришло 30к за заказ» — money; сумма числом (30к = 30000), валюта по умолчанию RUB.
   Долги: дал в долг — expense с category «долг», вернули — income с «долг»; кто должен — ещё и memory.
@@ -518,6 +522,8 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     habitId: m.habit_id,
     status: m.status,
     dayKey: day(m.day_iso, "habit_marks.day_iso", { future: false }) ?? ctx.today,
+    amount: m.status === "done" && m.amount ? m.amount : null,
+    unit: m.status === "done" && m.amount ? (m.unit ?? "").slice(0, 12) : "",
   }));
 
   const money: Parsed["money"] = [];

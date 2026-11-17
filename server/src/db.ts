@@ -352,6 +352,11 @@ ALTER TABLE llm_usage_by_user RENAME TO llm_usage;
   `
 ALTER TABLE notices ADD COLUMN kind TEXT NOT NULL DEFAULT '';
 `,
+  // Шаг 16: сколько сделано по привычке за день — только если человек сам написал («прочитал 35 страниц»); иначе NULL.
+  `
+ALTER TABLE habit_marks ADD COLUMN amount {real};
+ALTER TABLE habit_marks ADD COLUMN unit TEXT NOT NULL DEFAULT '';
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -534,6 +539,10 @@ export interface MarkRow {
   status: "done" | "skipped";
   at: string;
   message_id: number | null;
+  /** Сколько сделано за день (35 страниц) — только из слов человека; null — просто отметка. */
+  amount: number | null;
+  /** «стр.», «км», «мин»; пусто, если числа нет. */
+  unit: string;
 }
 export interface MoneyRow {
   id: number;
@@ -1054,13 +1063,18 @@ export class Store {
   activeHabits(userId: number): Promise<HabitRow[]> {
     return this.all<HabitRow>("SELECT * FROM habits WHERE user_id = ? AND status = 'active' ORDER BY id", userId);
   }
-  /** Отметить день; вернуть номер отметки и что было до неё (для отмены). */
-  async markHabit(habitId: number, day: string, status: MarkRow["status"], messageId: number | null) {
+  /** Отметить день; вернуть номер отметки и что было до неё (для отмены). add — сколько сделано (из слов человека):
+   *  прибавляется к числу дня в той же единице; без add число дня остаётся как было. */
+  async markHabit(habitId: number, day: string, status: MarkRow["status"], messageId: number | null, add?: { amount: number; unit: string }) {
     const before = await this.get<MarkRow>("SELECT * FROM habit_marks WHERE habit_id = ? AND day_key = ?", habitId, day);
+    const same = before?.amount != null && before.unit === add?.unit;
+    const amount = add ? (same ? Number(before!.amount) : 0) + add.amount : before?.amount ?? null;
+    const unit = add ? add.unit : before?.unit ?? "";
     const id = await this.insert(
-      `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT (habit_id, day_key) DO UPDATE SET status = excluded.status, at = excluded.at, message_id = excluded.message_id`,
-      habitId, day, status, now(), messageId,
+      `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id, amount, unit) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (habit_id, day_key) DO UPDATE SET status = excluded.status, at = excluded.at, message_id = excluded.message_id,
+         amount = excluded.amount, unit = excluded.unit`,
+      habitId, day, status, now(), messageId, amount, unit,
     );
     return { id, before };
   }
@@ -1068,9 +1082,10 @@ export class Store {
     if (!before) await this.run("DELETE FROM habit_marks WHERE id = ?", id);
     // Строки может уже не быть (отметку сняли) — тогда вставляется заново с прежними значениями.
     else await this.run(
-      `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT (habit_id, day_key) DO UPDATE SET status = excluded.status, at = excluded.at, message_id = excluded.message_id`,
-      before.habit_id, before.day_key, before.status, before.at, before.message_id,
+      `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id, amount, unit) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (habit_id, day_key) DO UPDATE SET status = excluded.status, at = excluded.at, message_id = excluded.message_id,
+         amount = excluded.amount, unit = excluded.unit`,
+      before.habit_id, before.day_key, before.status, before.at, before.message_id, before.amount ?? null, before.unit ?? "",
     );
   }
   /** Снять отметку дня (галочку поставили по ошибке). */

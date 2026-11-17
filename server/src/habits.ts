@@ -119,9 +119,10 @@ export async function habitMonth(store: Store, u: User, month: string) {
   const habits = await store.activeHabits(u.id);
   const marks = await store.marksOf(u.id, from, to);
   return habits.map((h) => {
-    const days: { day: string; due: boolean; status: string | null }[] = [];
+    const days: { day: string; due: boolean; status: string | null; amount: number | null; unit: string }[] = [];
     for (let d = from; d <= to; d = addDays(d, 1)) {
-      days.push({ day: d, due: dueOn(h, d), status: marks.find((m) => m.habit_id === h.id && m.day_key === d)?.status ?? null });
+      const m = marks.find((x) => x.habit_id === h.id && x.day_key === d);
+      days.push({ day: d, due: dueOn(h, d), status: m?.status ?? null, amount: m?.amount == null ? null : Number(m.amount), unit: m?.unit ?? "" });
     }
     return { ...h, times: timesOf(h), days };
   });
@@ -160,10 +161,13 @@ export interface HabitStats {
   weekdays: { done: number; planned: number }[];
   /** Последние 12 месяцев (с этим), ГГГГ-ММ. */
   months: { month: string; done: number; planned: number }[];
+  /** Сколько сделано — если человек хоть раз называл число («прочитал 35 страниц»); суммы в единице последнего числа.
+   *  week — с понедельника, month — с 1-го, best — лучший день, days — последние 30 дней (null — числа нет). */
+  amount: { unit: string; week: number; month: number; total: number; best: { day: string; value: number }; days: { day: string; value: number | null }[] } | null;
 }
 
 /** Статистика привычки из её отметок. Удалённая или законченная — по своему расписанию, как будто активна. */
-export function habitStatsOf(h: HabitRow, marks: Map<string, MarkRow["status"]>, today: string): HabitStats {
+export function habitStatsOf(h: HabitRow, marks: Map<string, MarkRow["status"]>, today: string, amounts = new Map<string, { amount: number; unit: string }>()): HabitStats {
   const live = { ...h, status: "active" };
   const cell = (d: string): StatCell => {
     if (d < h.start_date || (h.end_date && d > h.end_date)) return "off";
@@ -208,12 +212,27 @@ export function habitStatsOf(h: HabitRow, marks: Map<string, MarkRow["status"]>,
     id: h.id, title: h.title, start_date: h.start_date, end_date: h.end_date, year,
     streak: streak(live, done, today), best, rate30, rate90, total, weekdays,
     months: [...months].map(([month, v]) => ({ month, ...v })),
+    amount: amountStats(amounts, today),
   };
+}
+
+function amountStats(amounts: Map<string, { amount: number; unit: string }>, today: string): HabitStats["amount"] {
+  const all = [...amounts].filter(([d]) => d <= today).sort(([a], [b]) => a.localeCompare(b));
+  if (!all.length) return null;
+  const unit = all.at(-1)![1].unit;
+  const mine = new Map(all.filter(([, v]) => v.unit === unit).map(([d, v]) => [d, v.amount] as const));
+  const sum = (from: string) => [...mine].filter(([d]) => d >= from).reduce((a, [, v]) => a + v, 0);
+  let best = { day: "", value: 0 };
+  for (const [day, value] of mine) if (value > best.value) best = { day, value };
+  const days: { day: string; value: number | null }[] = [];
+  for (let d = addDays(today, -29); d <= today; d = addDays(d, 1)) days.push({ day: d, value: mine.get(d) ?? null });
+  return { unit, week: sum(addDays(today, -(isoWeekday(today) - 1))), month: sum(`${today.slice(0, 7)}-01`), total: sum(""), best, days };
 }
 
 export async function habitStats(store: Store, u: User, h: HabitRow, today: string): Promise<HabitStats> {
   const from = h.start_date < addDays(today, -1830) ? addDays(today, -1830) : h.start_date;
   const yearFrom = addDays(today, -380);
   const marks = (await store.marksOf(u.id, from < yearFrom ? from : yearFrom, addDays(today, 7))).filter((m) => m.habit_id === h.id);
-  return habitStatsOf(h, new Map(marks.map((m) => [m.day_key, m.status] as const)), today);
+  const amounts = new Map(marks.filter((m) => m.amount != null).map((m) => [m.day_key, { amount: Number(m.amount), unit: m.unit ?? "" }] as const));
+  return habitStatsOf(h, new Map(marks.map((m) => [m.day_key, m.status] as const)), today, amounts);
 }

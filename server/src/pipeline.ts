@@ -544,10 +544,11 @@ export class Pipeline {
     for (const m of r.marks) {
       const h = await s.habit(m.habitId);
       if (!h || h.user_id !== u.id) continue;
-      const { id, before } = await s.markHabit(h.id, m.dayKey, m.status, msg.id);
+      const { id, before } = await s.markHabit(h.id, m.dayKey, m.status, msg.id, m.amount ? { amount: m.amount, unit: m.unit } : undefined);
       await log("mark", "habit_marks", id, before ?? null);
-      markLines.push(`${m.status === "done" ? "✅" : "➖"} ${esc(h.title)}`);
-      changes.push({ kind: "mark", title: h.title, detail: m.status === "done" ? "отмечено ✅" : "пропуск ➖" });
+      const much = m.amount ? ` · ${m.amount}${m.unit ? " " + m.unit : ""}` : "";
+      markLines.push(`${m.status === "done" ? "✅" : "➖"} ${esc(h.title)}${esc(much)}`);
+      changes.push({ kind: "mark", title: h.title, detail: (m.status === "done" ? "отмечено ✅" : "пропуск ➖") + much });
     }
 
     for (const e of r.edits) {
