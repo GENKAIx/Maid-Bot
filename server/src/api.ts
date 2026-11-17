@@ -3,6 +3,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { z } from "zod";
+import { PERSONAS } from "./personas.ts";
 import { login, LoginGate, tokenHash, userByToken } from "./auth.ts";
 import type { Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
@@ -288,6 +289,10 @@ export function createApi(deps: ApiDeps) {
       return { ok: true };
     }
     const today = dayKey(new Date(), u.tz);
+    // Характеры горничной для страницы «Горничная» на сайте: название и примеры фраз (сам промпт — нет).
+    if (m === "GET" && p === "/api/personas") {
+      return Object.values(PERSONAS).map((x) => ({ id: x.id, name: x.name, samples: [...x.saved.slice(0, 2), x.rate] }));
+    }
     if (m === "GET" && p === "/api/me") {
       const { password_hash: _, ...me } = u;
       const mine = tokenHash(token).slice(0, 16);
@@ -312,7 +317,7 @@ export function createApi(deps: ApiDeps) {
       const Time = z.string().refine(isTime, "время ЧЧ:ММ");
       const b = parseBody(z.object({
         name: z.string().trim().max(80).optional(),
-        persona: z.string().max(40).optional(),
+        persona: z.string().refine((x) => x in PERSONAS, "нет такого характера").optional(),
         morning_time: Time.optional(), tomorrow_time: Time.optional(),
         // Итог — за этот день, поэтому до полуночи (12:00–23:59): в 00:15 был бы итог только что наступившего дня.
         evening_time: z.string().refine(isEveningTime, "вечерний итог — с 12:00 до 23:59").optional(),

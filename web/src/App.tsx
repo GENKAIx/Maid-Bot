@@ -11,6 +11,7 @@ import { Login } from "./screens/Login";
 import { Money } from "./screens/Money";
 import { Plans } from "./screens/Plans";
 import { Profile } from "./screens/Profile";
+import { MaidSettings } from "./screens/MaidSettings";
 import { Settings } from "./screens/Settings";
 import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
@@ -44,6 +45,7 @@ const TABS: { id: string; path: string; title: string; icon: string; more?: bool
   { id: "history", path: "/history", title: "История", icon: "history", more: true },
   { id: "album", path: "/album", title: "Альбом", icon: "album", more: true },
   { id: "features", path: "/features", title: "Возможности", icon: "features", more: true },
+  { id: "maid", path: "/maid", title: "Горничная", icon: "maid", more: true },
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
   { id: "catalog", path: "/catalog", title: "Каталог", icon: "catalog", more: true },
 ];
@@ -97,6 +99,7 @@ export function App() {
     : tab === "stats" ? <Stats version={version} />
     : tab === "search" ? <Search query={arg} version={version} />
     : tab === "trash" ? <Trash version={version} onChanged={onChanged} />
+    : tab === "maid" ? <MaidSettings />
     : tab === "settings" ? <Settings onLogout={logout} />
     : tab === "widget" ? <Widget />
     : tab === "history" ? <History filter={arg} version={version} />

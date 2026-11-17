@@ -52,7 +52,7 @@ lead: Таблицы базы и адреса сервера — что где �
 |---|---|
 | Служебные | `/healthz`, `/webhook` (Telegram) |
 | Вход | `/api/login`, `/api/logout`, `/api/me`, `/api/public` |
-| Настройки | `/api/settings`, `/api/backup` |
+| Настройки | `/api/settings` (характер — только из `PERSONAS`, иначе 400), `/api/personas`, `/api/backup` |
 | Push | `/api/push/key`, `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/test`, `/api/push/act` |
 | День | `/api/today`, `/api/day`, `/api/notices` |
 | Дневник | `/api/diary`, `/api/diary/days`, `DELETE /api/diary/:id` |
