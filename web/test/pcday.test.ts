@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { dayParts, STAT_RANGES } from "../src/pcday.ts";
+import { dayParts, STAT_DEFAULT, STAT_RANGES } from "../src/pcday.ts";
 
 // Статистика (web/src/screens/Stats.tsx): вид «День» и круг суток «за ПК / из них игры / не за ПК».
 
-test("статистика открывается на одном дне, стрелки листают по дню", () => {
+// 17.11.2026: по умолчанию — месяц (просьба владельца), а не один день.
+test("статистика открывается на месяце; периоды по порядку", () => {
+  assert.equal(STAT_DEFAULT, "month");
+  assert.equal(STAT_RANGES.find((r) => r.id === STAT_DEFAULT)?.days, 30);
   assert.equal(STAT_RANGES[0].id, "day");
-  assert.equal(STAT_RANGES[0].days, 1);
   assert.deepEqual(STAT_RANGES.map((r) => r.title), ["День", "Неделя", "Месяц", "3 месяца", "Год"]);
 });
 

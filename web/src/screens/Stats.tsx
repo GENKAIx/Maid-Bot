@@ -5,7 +5,7 @@ import { Bars, DayPie, NestedBars, Segment } from "../charts";
 import { Card, Empty, Spinner } from "../components";
 import { dayFacts, STAT_TABS, type StatTab } from "../dayrate";
 import { addDays, dur, humanDay, metricText, monthTitle, shortDay, todayKey } from "../format";
-import { STAT_RANGES as RANGES, type Range } from "../pcday";
+import { STAT_DEFAULT, STAT_RANGES as RANGES, type Range } from "../pcday";
 import { SleepTimeline, sleepAverages, sleepDays } from "../sleep";
 import type { ActivityRow, DiaryRow, MetricRow } from "../types";
 import { DayRatings } from "./DayRatings";
@@ -45,7 +45,7 @@ function buckets(from: string, to: string, group: "day" | "week" | "month"): Buc
 
 export function Stats({ version }: { version: number }) {
   const today = todayKey();
-  const [range, setRange] = useState<Range>(RANGES[0].id);
+  const [range, setRange] = useState<Range>(STAT_DEFAULT);
   const [end, setEnd] = useState(today);
   const [activity, setActivity] = useState<ActivityRow[] | null>(null);
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
