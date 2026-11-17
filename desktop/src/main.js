@@ -5,7 +5,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeImage, Notification, shell, safeStorage, powerMonitor, nativeTheme, session } = require("electron");
-const { addMissingGames, createTracker, localDay, MORE_GAMES, STEP_MS } = require("./activity.js");
+const { addMissingGames, createTracker, foreground, localDay, MORE_GAMES, STEP_MS } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
 const { createUpdates } = require("./updates.js");
 
@@ -603,6 +603,44 @@ function setGrab(on) {
   widget.webContents.send("grab", on);
 }
 
+// Сторож виджета: виджет иногда пропадал «сам», а в журнале — ничего. Раз в 15 с (setInterval при запуске) проверяет окно и
+// страницу (виджет отзывается раз в 20 с: «alive», жива ли страница и нарисована ли фигурка). Беда — запись в журнал один раз,
+// с программой на переднем плане, и окно обратно; страница молчит дольше 3 минут — перезагрузка. Проверка — test/widget-patrol.test.cjs.
+let widgetAlive = Date.now();
+let widgetDrawn = true;
+let widgetIssue = ""; // о чём уже записано — не повторять каждые 15 с
+/** Что не так с виджетом; пусто — всё хорошо. silent — мс с последнего отклика страницы (под игрой таймеры реже — порог 3 минуты). */
+function widgetTrouble(w, displays) {
+  const out = [];
+  if (!w.visible) out.push("окно спрятано");
+  if (w.minimized) out.push("окно свёрнуто");
+  const b = w.bounds;
+  if (!displays.some((d) => { const a = d.workArea; return b.x < a.x + a.width && b.x + b.width > a.x && b.y < a.y + a.height && b.y + b.height > a.y; })) out.push("окно за экраном");
+  if (!w.top) out.push("не поверх окон");
+  if (w.silent > 180_000) out.push("страница молчит");
+  if (w.drawn === false) out.push("фигурка не нарисована");
+  return out;
+}
+function patrolWidget() {
+  if (!settings.widget.show || !widget || widget.isDestroyed()) return;
+  const why = widgetTrouble({
+    visible: widget.isVisible(), minimized: widget.isMinimized(), top: widget.isAlwaysOnTop(), bounds: widget.getBounds(),
+    silent: Date.now() - widgetAlive, drawn: widgetDrawn,
+  }, screen.getAllDisplays());
+  const issue = why.join(", ");
+  if (issue !== widgetIssue) {
+    let fg = "";
+    try { fg = foreground()?.name ?? ""; } catch { /* не Windows или koffi не загрузился */ }
+    maidLog(issue ? `виджет пропал: ${issue}` : `виджет снова виден (было: ${widgetIssue})`, fg && `· впереди ${fg}`);
+    widgetIssue = issue;
+  }
+  if (why.includes("страница молчит")) {
+    widgetAlive = Date.now();
+    widget.reload();
+  } else if (why.some((x) => x !== "фигурка не нарисована")) reviveWidget("сторож");
+}
+ipcMain.on("alive", (_e, drawn) => { widgetAlive = Date.now(); widgetDrawn = drawn !== false; });
+
 /** Окно есть, но не видно (свернулось, спряталось, ушло за край, оказалось под другими окнами) — вернуть на экран и наверх. */
 function reviveWidget(why) {
   if (!widget || widget.isDestroyed()) return;
@@ -1072,6 +1110,7 @@ app.whenReady().then(() => {
     setInterval(() => void updates.check(), 6 * 3600_000);
   }
   watchWidget();
+  setInterval(patrolWidget, 15_000);
 });
 app.on("window-all-closed", (e) => e.preventDefault?.());
 app.on("will-quit", () => {

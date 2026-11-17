@@ -49,6 +49,7 @@
     hideQuick: () => send("quick-hide"),
     grab: (on) => send("grab", on),
     hover: (on) => send("hover", on),
+    alive: (drawn) => send("alive", drawn),
     thinking: (on) => send("thinking", on),
     reply: (r) => send("reply", r),
     widgetReady: () => send("widget-ready"),

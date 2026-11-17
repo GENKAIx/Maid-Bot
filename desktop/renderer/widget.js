@@ -2711,6 +2711,11 @@ setInterval(pollNotices, 5_000);
 loadCfg().then(load);
 pollNotices();
 maid.widgetReady();
+// Отклик сторожу (main.js, patrolWidget): страница жива и фигурка нарисована — иначе запись в журнал, а молчит — перезагрузка.
+setInterval(() => {
+  const r = $("#maid").getBoundingClientRect(); // «без горничной» в настройках (.no-maid) — фигурки и не должно быть
+  maid.alive(cfg.side === "none" || (r.width > 0 && r.height > 0 && getComputedStyle($("#maid")).visibility !== "hidden"));
+}, 20_000);
 
 // --- уголок: вытянуть панель вниз (окно растит main.js, панель — 100vh − 380 px), высота запоминается ---
 {
