@@ -777,6 +777,10 @@ ipcMain.on("widget-ready", (e) => {
   e.sender.send("down", Boolean(settings.widget.down));
   e.sender.send("down-shown");
   e.sender.send("update", updates.state());
+  if (updatedNote !== null) {
+    e.sender.send("updated", { from: updatedNote, to: app.getVersion() });
+    updatedNote = null;
+  }
 });
 /** Вход логином и паролем на сервере: ключ для программы (POST /api/login, как вход сайта). Ошибки — понятными словами. */
 async function loginOnServer(base, login, password, label) {
@@ -1021,6 +1025,18 @@ ipcMain.on("notify", (_e, title, body) => new Notification({ title, body }).show
 process.on("uncaughtException", (e) => maidLog("ошибка:", e?.stack ?? e));
 process.on("unhandledRejection", (e) => maidLog("ошибка (обещание):", e?.stack ?? e));
 const afterUpdate = process.argv.includes("--updated");
+// Обновилась ли программа с прошлого запуска: версия прошлого запуска (settings.lastVersion) старее нынешней — она и есть «с какой»;
+// lastVersion ещё нет (поставлена до 0.1.58) — по флагу --updated от установщика, «с какой» неизвестно (""); иначе null — молчит.
+function updatedFrom(last, now, flag) {
+  if (!last) return flag ? "" : null;
+  const a = last.split(".").map(Number);
+  const b = now.split(".").map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((b[i] ?? 0) !== (a[i] ?? 0)) return (b[i] ?? 0) > (a[i] ?? 0) ? last : null;
+  }
+  return null;
+}
+let updatedNote = null; // «обновилась» — виджету один раз (widget-ready)
 maidLog("старт процесса", app.getVersion(), afterUpdate ? "после обновления" : "");
 let haveLock = app.requestSingleInstanceLock();
 // После обновления установщик запускает новую копию, пока старая может ещё закрываться: подождать её до 15 с, а не закрыться самой.
@@ -1034,6 +1050,11 @@ app.whenReady().then(() => {
   if (!haveLock) return;
   app.setAppUserModelId("Горничная");
   loadSettings();
+  updatedNote = updatedFrom(settings.lastVersion ?? "", app.getVersion(), afterUpdate);
+  if (settings.lastVersion !== app.getVersion()) {
+    settings.lastVersion = app.getVersion();
+    saveSettings();
+  }
   tray = new Tray(icon().isEmpty() ? nativeImage.createEmpty() : icon().resize({ width: 16, height: 16 }));
   tray.setToolTip("Горничная");
   tray.on("click", () => showMain());

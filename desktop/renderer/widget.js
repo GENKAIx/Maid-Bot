@@ -458,6 +458,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       + (!weighty ? "" : `<button class="ghost life" data-i="close" title="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="life-ring" cx="12" cy="12" r="10"/><path class="x" d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg></button>`);
   // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
   b.dataset.notice = notice ?? "";
+  b.dataset.ask = bubbleAsk(buttons); // о чём вопрос: ответили галочкой в списке — облачко закроется (answeredInList)
   $("#inbox").classList.add("away"); // пока говорит — значок не мешает облачку
   b.onmouseenter = notice && !buttons.length
     ? () => setTimeout(() => { if (b.dataset.notice === String(notice) && !b.classList.contains("hidden")) inboxRead(notice); }, 1200)
@@ -467,6 +468,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   acts.querySelectorAll("button").forEach((btn) => {
     if (btn.dataset.p) return; // кнопки вопроса «добавить?» — startProposal
     btn.onclick = async () => {
+      b.dataset.ask = ""; // ответили в облачке — «вижу-вижу» не нужно
       if (notice) inboxRead(notice);
       if (btn.dataset.i === "close") return hideBubble();
       if (btn.dataset.i === "undo") {
@@ -1540,7 +1542,35 @@ function render() {
   }
   renderCourses();
   inboxTidy();
+  askSettled();
   if (binTasks.size) flyTasksToBin();
+}
+
+// Облачко спрашивает о привычке за день («… — сегодня сделали?») или о задаче с прошедшим сроком (tails.js), а ответили не в нём:
+// галочкой в списке, в Telegram, на сайте. Тогда облачко с вопросом закрывается, оповещение прочитано, и она коротко реагирует.
+// dataset.ask: «h:id:день» — привычка, «t:id» — задача; пусто — не вопрос.
+function bubbleAsk(buttons) {
+  const m = buttons.map((x) => /^habit:(\d+):(\d{4}-\d{2}-\d{2}):/.exec(x.data ?? "")).find(Boolean);
+  return m ? `h:${m[1]}:${m[2]}` : "";
+}
+// key — «h:id» (галочка привычки сегодня) или «t:id» (задача).
+function answeredInList(key) {
+  const b = $("#bubble");
+  const ask = b.dataset.ask ?? "";
+  if (!ask || b.classList.contains("hidden")) return;
+  if (key[0] === "h" ? ask !== `${key}:${data.day}` : ask !== key) return;
+  b.dataset.ask = "";
+  if (b.dataset.notice) inboxRead(Number(b.dataset.notice));
+  const v = lineItem("answered");
+  say(v.t, { ms: 3500, mood: v.m });
+}
+// Данные дня обновились: на вопрос уже ответили в другом месте.
+function askSettled() {
+  const ask = $("#bubble").dataset.ask ?? "";
+  let m = /^h:(\d+):(.+)$/.exec(ask);
+  if (m && m[2] === data.day && data.habits?.find((h) => h.id === Number(m[1]))?.status) return answeredInList(`h:${m[1]}`);
+  m = /^t:(\d+)$/.exec(ask);
+  if (m && !(data.tasks ?? []).some((t) => t.id === Number(m[1]))) answeredInList(ask);
 }
 
 // --- Задачи, отменённые или удалённые не здесь (в чате, в Telegram, с телефона) ---
@@ -2405,6 +2435,8 @@ maid.on("reply", (r) => wakeUp() || remember(r.heard ?? "", r) || say(r.text, { 
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // Состояние обновления программы — значок-шестерёнка, когда вышла новая версия (inbox.js).
 maid.on("update", inboxUpdate);
+// Программа обновилась (main.js, updatedFrom): сказать об этом один раз, когда виджет огляделся.
+maid.on("updated", (u) => setTimeout(() => say(line("updated", { v: u.to }), { ms: 8000, mood: "excited", emotion: "happy" }), 2500));
 
 // Окно сквозное везде, кроме панели, облачка и фигурки: main.js следит за курсором по этим прямоугольникам
 // (forward-события мыши у «сквозного» окна на Windows ненадёжны, поэтому опрос курсора).
@@ -2631,6 +2663,7 @@ $("#body").addEventListener("click", async (e) => {
       // Название — из данных, не из строки: последним в строке бывает метка срока («сегодня», «завтра»).
       keepDone(Number(id), data.tasks.find((t) => t.id === Number(id))?.title ?? li.querySelector(".check + span").textContent);
       countDone(data.day);
+      answeredInList(`t:${id}`);
       holdRender = Date.now() + 1100; // список не перерисовывать, пока строка едет вниз
       setTimeout(() => slideDown(li), 420);
       await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
@@ -2641,7 +2674,7 @@ $("#body").addEventListener("click", async (e) => {
       e.target.classList.add("pressed");
       // Сняли галочку — день снова пустой, а не пропуск: можно сделать позже; крестик ставит полночь, если так и не сделали.
       if (was) { e.target.textContent = ""; popTone(-5, { vol: 0.2, soft: true }); }
-      else { popTone(2); burst(e.target); react("streak", 4000); habitDoneAt.set(Number(habit), Date.now()); }
+      else { popTone(2); burst(e.target); react("streak", 4000); habitDoneAt.set(Number(habit), Date.now()); answeredInList(`h:${habit}`); }
       await maid.api("POST", was ? `/api/habits/${habit}/unmark` : `/api/habits/${habit}/mark`, was ? {} : { status: "done" });
       maid.changed();
     }

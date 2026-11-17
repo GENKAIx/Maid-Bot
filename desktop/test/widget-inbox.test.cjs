@@ -120,7 +120,7 @@ check(/overflow-x:\s*hidden/.test(cardsBox), "область карточек о
 const main = read("src/main.js"), preload = read("src/preload.js");
 check(/widget\?\.webContents\.send\("update", s\)/.test(main) && /e\.sender\.send\("update", updates\.state\(\)\)/.test(main), "главный процесс не сообщает виджету об обновлении");
 check(/ipcMain\.on\("update-install", \(e\) => \{ if \(widget && e\.sender === widget\.webContents\)/.test(main), "виджет не может запустить обновление (или может кто угодно)");
-check(/installUpdate: \(\) => ipcRenderer\.send\("update-install"\)/.test(preload) && /"tour", "update"\]/.test(preload), "в окне виджета нет installUpdate или события update");
+check(/installUpdate: \(\) => ipcRenderer\.send\("update-install"\)/.test(preload) && /"tour", "update"[,\]]/.test(preload), "в окне виджета нет installUpdate или события update");
 check(/maid\.on\("update", inboxUpdate\)/.test(widget), "виджет не слушает событие update");
 t.inboxUpdate({ status: "latest", version: "0.1.54" });
 check(t.groupItems("update").length === 0, "значок обновления есть, хотя версия последняя");

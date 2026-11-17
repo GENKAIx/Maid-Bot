@@ -45,6 +45,6 @@ contextBridge.exposeInMainWorld("maid", {
   /** Скачать и поставить новую версию программы (значок-шестерёнка в виджете); состояние приходит событием "update". */
   installUpdate: () => ipcRenderer.send("update-install"),
   on: (channel, fn) => {
-    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity", "down", "down-shown", "prefs", "tour", "update"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
+    if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity", "down", "down-shown", "prefs", "tour", "update", "updated"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },
 });

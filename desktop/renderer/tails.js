@@ -6,6 +6,7 @@
 
 function askTail(t) {
   const settle = async (body, reply, mood, emotion = "neutral") => {
+    $("#bubble").dataset.ask = ""; // ответили в облачке — «вижу-вижу» не нужно
     try {
       await maid.api("POST", `/api/tasks/${t.id}`, body);
       // Ответ показать до обновления данных, иначе следующий хвост перебьёт его.
@@ -23,6 +24,7 @@ function askTail(t) {
 
   const ask = () => {
     say(`Вы не отметили ${tailWhen(t.due_date)} задачу «${t.title}». Вы её сделали?`, { ms: 0 });
+    $("#bubble").dataset.ask = `t:${t.id}`; // закрыли задачу в списке — облачко закроется (widget.js, answeredInList)
     $("#bubbleCards").innerHTML = `<div class="tail-choices">`
       + `<button type="button" class="tail-yes" data-choice="done">✓ Сделано</button>`
       + `<button type="button" class="tail-move" data-choice="move">📅 Перенести</button>`
@@ -47,6 +49,7 @@ function askTail(t) {
   const pick = () => {
     popTone(1);
     say(`Давай выберем дату для «${t.title}» 📅`, { ms: 0, mood: "think" });
+    $("#bubble").dataset.ask = `t:${t.id}`;
     const days = Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => dayAfter(data.day, i));
     $("#bubbleCards").innerHTML = `<div class="tail-days">${days.map((day, i) => {
       const d = new Date(`${day}T12:00:00Z`);
