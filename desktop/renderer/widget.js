@@ -464,6 +464,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       + (!weighty ? "" : `<button class="ghost life" data-i="close" title="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="life-ring" cx="12" cy="12" r="10"/><path class="x" d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg></button>`);
   // Напоминание из ящика (inbox.js): любая кнопка или ✕ — прочитано; без кнопок — если курсор задержался на облачке.
   b.dataset.notice = notice ?? "";
+  b.dataset.choices = buttons.length ? "1" : ""; // вопрос с кнопками: щелчок по горничной закрывает, но не читает (maidClick)
   b.dataset.ask = bubbleAsk(buttons); // о чём вопрос: ответили галочкой в списке — облачко закроется (answeredInList)
   $("#inbox").classList.add("away"); // пока говорит — значок не мешает облачку
   b.onmouseenter = notice && !buttons.length
@@ -2483,11 +2484,15 @@ $("#inbox").addEventListener("click", (e) => {
 drawInbox();
 // Щелчок по горничной — тычок (fun.js), двойной по свёрнутой — развернуть панель (свернуть — кнопкой #foldBtn). Тычок ждёт, не будет ли второго щелчка.
 // Висит облачко с ответом или сообщением — щелчок закрывает его (облачко самого тычка — dataset.quip — тычет дальше).
+// Оповещение без кнопок при этом прочитано, как по ✕; вопрос с кнопками остаётся в ящике — ответить позже.
 function maidClick() {
   clearTimeout(clickTimer);
   if (Date.now() - pettedAt < 400) return; // отпустили после «погладить» — это не тычок
   const b = $("#bubble");
-  if (!b.classList.contains("hidden") && !b.dataset.quip) return void hideBubble();
+  if (!b.classList.contains("hidden") && !b.dataset.quip) {
+    if (b.dataset.notice && !b.dataset.choices) inboxRead(Number(b.dataset.notice));
+    return void hideBubble();
+  }
   clickTimer = setTimeout(poke, 230);
 }
 $("#maid").addEventListener("click", maidClick);
