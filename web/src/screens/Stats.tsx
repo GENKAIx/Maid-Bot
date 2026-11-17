@@ -3,13 +3,24 @@ import { get } from "../api";
 import { appsWithoutGames, iconKey, prettyName, sumByApp } from "../appnames";
 import { Bars, DayPie, NestedBars, Segment } from "../charts";
 import { Card, Empty, Spinner } from "../components";
+import { dayFacts, STAT_TABS, type StatTab } from "../dayrate";
 import { addDays, dur, humanDay, metricText, monthTitle, shortDay, todayKey } from "../format";
 import { STAT_RANGES as RANGES, type Range } from "../pcday";
 import { SleepTimeline, sleepAverages, sleepDays } from "../sleep";
 import type { ActivityRow, DiaryRow, MetricRow } from "../types";
+import { DayRatings } from "./DayRatings";
 
 // Статистика: компьютер, игры, шаги, сон, спорт — за один день (по умолчанию сегодня, любой день — из календаря у даты),
-// по дням (неделя, месяц), по неделям (3 месяца), по месяцам (год).
+// по дням (неделя, месяц), по неделям (3 месяца), по месяцам (год). Сверху вкладки: Компьютер, Сон, Шаги и спорт, Оценка дня
+// (STAT_TABS в dayrate.ts); открытая вкладка запоминается в этом браузере.
+
+const TAB_KEY = "maid.statTab";
+function savedTab(): StatTab {
+  try {
+    const v = localStorage.getItem(TAB_KEY);
+    return STAT_TABS.some((t) => t.id === v) ? (v as StatTab) : STAT_TABS[0].id;
+  } catch { return STAT_TABS[0].id; }
+}
 
 interface Bucket { key: string; label: string; title: string; days: string[] }
 
@@ -39,6 +50,12 @@ export function Stats({ version }: { version: number }) {
   const [activity, setActivity] = useState<ActivityRow[] | null>(null);
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
   const [sleepNotes, setSleepNotes] = useState<DiaryRow[]>([]);
+  const [noteDays, setNoteDays] = useState<{ day: string; n: number }[]>([]);
+  const [tab, setTabState] = useState<StatTab>(savedTab);
+  const setTab = (t: StatTab) => {
+    setTabState(t);
+    try { localStorage.setItem(TAB_KEY, t); } catch { /* приватный режим — вкладка не запомнится */ }
+  };
   const [icons, setIcons] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
@@ -59,6 +76,9 @@ export function Stats({ version }: { version: number }) {
     }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
   }, [from, end, version]);
+  useEffect(() => {
+    get<{ day: string; n: number }[]>("/api/diary/days").then(setNoteDays).catch(() => setNoteDays([]));
+  }, [version]);
   useEffect(() => {
     get<Record<string, string>>("/api/icons").then(setIcons).catch(() => setIcons({}));
   }, [version]);
@@ -110,6 +130,8 @@ export function Stats({ version }: { version: number }) {
   const sleepRows = (r.group === "day" ? allDays : allDays.filter((d) => sd.get(d)?.hours).slice(-31)).map((d) => sd.get(d) ?? { day: d });
   const slept = sleepRows.filter((d) => d.hours);
   const times = sleepAverages(slept);
+  const rating = metric("rating_day", "avg");
+  const facts = dayFacts(allDays, { activity, metrics, sleep: sd, notes: noteDays });
   const sleepHead = slept.length ? [`в среднем ${h(avg(slept.map((d) => d.hours!)))}`, times && `отбой ~${times.bed}, подъём ~${times.wake}`].filter(Boolean).join(" · ") : "";
 
   return (
@@ -129,8 +151,14 @@ export function Stats({ version }: { version: number }) {
         <span className="spacer" />
         <Segment value={range} options={RANGES.map((x) => ({ id: x.id, title: x.title }))} onChange={(v) => { setRange(v); setEnd(today); }} />
       </div>
+      <div className="stat-tabs" role="tablist">
+        {STAT_TABS.map((t) => (
+          <button key={t.id} role="tab" aria-selected={t.id === tab} className={t.id === tab ? "on" : ""} onClick={() => setTab(t.id)}>{t.title}</button>
+        ))}
+      </div>
 
       <div className="cards">
+        {tab === "pc" && (
         <Card title="Компьютер и игры" className="reveal wide" action={pcDays.length > 0 && !oneDay && <span className="muted small">{pcDays.length} дн. с данными</span>}>
           {pcDays.length > 0 ? (
             <>
@@ -152,9 +180,13 @@ export function Stats({ version }: { version: number }) {
             </>
           ) : <Empty>Нет данных трекера</Empty>}
         </Card>
+        )}
+        {tab === "sleep" && (
         <Card title={`Сон`} className="reveal wide" action={<span className="muted small">{sleepHead}</span>}>
           {sleepRows.some((d) => d.hours) ? <SleepTimeline days={sleepRows} /> : <Empty>Сон не записан — скажите боту «лёг в 1:30, встал в 9:00»</Empty>}
         </Card>
+        )}
+        {tab === "body" && (<>
         <Card title={`Шаги${perDay}`} className="reveal" action={<span className="muted small">{sumText(steps, n)}</span>}>
           {has(steps) ? chart(steps, "var(--green)", n, 10000) : <Empty>Шагов нет — подключите Быструю команду на айфоне</Empty>}
         </Card>
@@ -166,11 +198,13 @@ export function Stats({ version }: { version: number }) {
             {chart(weight, "var(--accent)", (v) => `${v.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг`)}
           </Card>
         )}
-        {metrics.some((m) => !["steps", "sleep_hours", "sport_min", "weight"].includes(m.key)) && (
+        {metrics.some((m) => !["steps", "sleep_hours", "sport_min", "weight", "rating_day"].includes(m.key)) && (
           <Card title="Другие показатели" className="reveal wide">
-            <OtherMetrics metrics={metrics.filter((m) => !["steps", "sleep_hours", "sport_min", "weight"].includes(m.key))} bs={bs} oneDay={oneDay} />
+            <OtherMetrics metrics={metrics.filter((m) => !["steps", "sleep_hours", "sport_min", "weight", "rating_day"].includes(m.key))} bs={bs} oneDay={oneDay} />
           </Card>
         )}
+        </>)}
+        {tab === "rating" && <DayRatings rows={facts} bars={rating} oneDay={oneDay} onPick={(d) => { setRange("day"); setEnd(d); }} />}
       </div>
     </div>
   );

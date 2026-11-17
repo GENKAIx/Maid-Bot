@@ -484,6 +484,21 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .remind-own { gap: 6px; flex-wrap: wrap; align-items: center; }
 .remind-own input { width: 72px; }
 .day-nav .spacer { flex: 1; }
+/* Статистика: вкладки под периодом (Stats.tsx) и «Оценка дня» (DayRatings.tsx). */
+.stat-tabs { display: flex; gap: 4px; margin: 14px 0 4px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.stat-tabs button { border: none; background: transparent; padding: 8px 14px; font-size: 14px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.stat-tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.day-rates { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.day-rate { width: 100%; display: grid; grid-template-columns: 160px 40px 1fr; align-items: center; gap: 12px; text-align: left; border: none; background: transparent; padding: 7px 8px; border-radius: 8px; color: var(--text); font-size: 14px; }
+.day-rate:not(:disabled):hover { background: var(--panel-2); }
+.day-rate:disabled { cursor: default; }
+.day-rate-date { color: var(--muted); }
+.rate-badge { display: inline-flex; justify-content: center; align-items: center; height: 26px; border-radius: 8px; font-weight: 700; color: #fff; }
+.rate-badge.high { background: var(--green); }
+.rate-badge.mid { background: var(--orange); }
+.rate-badge.low { background: var(--red); }
+.rate-badge.none { background: var(--panel-2); color: var(--muted); font-weight: 400; }
+@media (max-width: 640px) { .day-rate { grid-template-columns: 40px 1fr; } .day-rate-date { grid-column: 1 / -1; font-size: 12px; } }
 .totals { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; align-items: center; }
 .total { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; display: grid; min-width: 140px; }
 .total b { font-size: 22px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
