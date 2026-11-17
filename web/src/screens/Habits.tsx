@@ -20,6 +20,17 @@ function spanText(h: { start_date: string; end_date: string | null }, today: str
   return `день ${daysBetween(h.start_date, today) + 1} из ${daysBetween(h.start_date, h.end_date) + 1} · до ${shortDay(h.end_date)}`;
 }
 const NEW_HABIT = "каждый день ";
+/** Число в клетке: 35, 1,2к — чтобы влезло в квадрат. */
+export const shortNum = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(".", ",")}к` : String(Math.round(v * 10) / 10).replace(".", ","));
+/** Полное число для итогов: 1 542, 2,5. */
+export const fullNum = (v: number) => (Math.round(v * 10) / 10).toLocaleString("ru-RU");
+/** Итог месяца по числам из слов человека («прочитал 35 страниц») — в единице последнего числа; чисел нет — null. */
+function monthAmount(days: HabitMonth["habits"][number]["days"]): { sum: number; unit: string } | null {
+  const withNum = days.filter((x) => x.amount != null);
+  if (!withNum.length) return null;
+  const unit = withNum.at(-1)!.unit ?? "";
+  return { sum: withNum.filter((x) => (x.unit ?? "") === unit).reduce((a, x) => a + (x.amount ?? 0), 0), unit };
+}
 
 export function Habits({ month, version, onChanged }: { month?: string; version: number; onChanged: () => void }) {
   const today = todayKey();
@@ -86,6 +97,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
               const ask = data.ask ?? { first: "12:00", last: "23:00" };
               const shown = h.times.length ? h.times : [ask.first];
               const span = spanText(h, today);
+              const much = monthAmount(h.days);
               return [
                 <span key={`t${h.id}`} className="hg-title">
                   <span className="hg-name">
@@ -93,6 +105,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                     {fire >= 2 && <span className="hg-fire" title={`Серия: ${fire} дн. подряд`}>🔥{fire}</span>}
                     <Chip>{done}/{due}</Chip>
                   </span>
+                  {much && <span className="hg-much small" title="Сколько за месяц — по тому, что вы писали горничной («прочитал 35 страниц»)">за месяц {fullNum(much.sum)}{much.unit && ` ${much.unit}`}</span>}
                   {span && <span className="hg-span muted small">{span}</span>}
                   <span className="hg-tools">
                   <button
@@ -110,12 +123,12 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                 ...h.days.map((x) => (
                   <button
                     key={`${h.id}-${x.day}`}
-                    className={`hg-cell ${x.due ? "due" : ""} ${x.status ?? ""} ${x.day === today ? "today hg-now" : ""} ${x.day > today ? "future" : ""}`}
+                    className={`hg-cell ${x.due ? "due" : ""} ${x.status ?? ""} ${x.day === today ? "today hg-now" : ""} ${x.day > today ? "future" : ""} ${x.status === "done" && x.amount != null ? "num" : ""}`}
                     disabled={x.day > today}
                     onClick={() => mark(h.id, x.day, x.status)}
-                    title={`${x.day}${x.status === "done" ? " — сделано" : x.status === "skipped" ? " — пропуск" : x.due ? " — запланировано" : ""}`}
+                    title={`${x.day}${x.status === "done" ? " — сделано" : x.status === "skipped" ? " — пропуск" : x.due ? " — запланировано" : ""}${x.amount != null ? ` · ${x.amount}${x.unit ? " " + x.unit : ""}` : ""}`}
                   >
-                    {x.status === "done" ? "✓" : x.status === "skipped" ? "–" : ""}
+                    {x.status === "done" ? (x.amount != null ? shortNum(x.amount) : "✓") : x.status === "skipped" ? "–" : ""}
                   </button>
                 )),
                 ...(editing === h.id
@@ -125,7 +138,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
               ];
             })}
           </div>
-          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить, 📊 — статистика привычки.</p>
+          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить, 📊 — статистика привычки. Число в клетке — сколько сделали, если написали горничной: «прочитал 35 страниц».</p>
         </Card>
       )}
     </div>

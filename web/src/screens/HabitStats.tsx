@@ -4,6 +4,7 @@ import { Bars } from "../charts";
 import { Spinner } from "../components";
 import { MONTHS, MONTHS_GEN, WEEKDAYS, shortDay } from "../format";
 import type { HabitStatCell, HabitStats } from "../types";
+import { fullNum } from "./Habits";
 
 // Статистика одной привычки — открывается щелчком по названию на странице «Привычки», строкой под ней:
 // серии и проценты, год клетками (как у GitHub), по дням недели и по месяцам.
@@ -78,7 +79,30 @@ function StatsBody({ s }: { s: HabitStats }) {
         </div>
       </div>
       {hint && <p className="small hs-hint">{hint}</p>}
+      {s.amount && <AmountBlock a={s.amount} />}
     </>
+  );
+}
+
+/** Сколько сделано — по числам, которые человек называл горничной («прочитал 35 страниц»). */
+function AmountBlock({ a }: { a: NonNullable<HabitStats["amount"]> }) {
+  const u = (v: number) => `${fullNum(v)}${a.unit ? " " + a.unit : ""}`;
+  return (
+    <div className="hs-amount">
+      <h4 className="hs-sub">Сколько — по вашим словам</h4>
+      <div className="hs-figures">
+        <Figure big={u(a.week)} small="за эту неделю" />
+        <Figure big={u(a.month)} small="за этот месяц" />
+        <Figure big={u(a.total)} small="всего" />
+        <Figure big={u(a.best.value)} small={`лучший день · ${shortDay(a.best.day)}`} />
+      </div>
+      <Bars
+        height={90}
+        color="var(--green)"
+        format={(v) => (v ? u(v) : "—")}
+        bars={a.days.map((d) => ({ label: String(Number(d.day.slice(-2))), value: d.value ?? 0, title: `${shortDay(d.day)}${d.value == null ? ": числа нет" : ""}` }))}
+      />
+    </div>
   );
 }
 

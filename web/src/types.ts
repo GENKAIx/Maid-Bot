@@ -105,7 +105,8 @@ export interface HabitMonthRow {
 export interface HabitMonth {
   month: string;
   today: { habit: { id: number; title: string }; status: "done" | "skipped" | null; streak: number; doneDays: number; plannedDays: number }[];
-  habits: (Omit<HabitMonthRow, "days_"> & { days: { day: string; due: boolean; status: string | null }[] })[];
+  /** amount — сколько сделано за день, если человек сам назвал число («прочитал 35 страниц»); unit — «стр.», «км». */
+  habits: (Omit<HabitMonthRow, "days_"> & { days: { day: string; due: boolean; status: string | null; amount?: number | null; unit?: string }[] })[];
   /** Общее время вопросов из настроек (habit_first, habit_last). */
   ask?: { first: string; last: string };
 }
@@ -137,4 +138,6 @@ export interface HabitStats {
   total: { done: number; planned: number };
   weekdays: { done: number; planned: number }[];
   months: { month: string; done: number; planned: number }[];
+  /** Сколько сделано — если человек хоть раз называл число: суммы за неделю (с пн), месяц, всё время, лучший день, 30 дней. */
+  amount?: { unit: string; week: number; month: number; total: number; best: { day: string; value: number }; days: { day: string; value: number | null }[] } | null;
 }
