@@ -35,10 +35,12 @@ try {
   // Полки пусты — «Что посмотреть?» не предлагается, вместо него заготовка «Фильм …» (самое время научить).
   const evening = at(20);
   check(!fits(evening).includes("watch") && !fits(evening).includes("play") && !fits(evening).includes("read"), "пустые полки, а вопрос про них предлагается");
-  check(ids(evening).slice(0, 2).every((id) => ["film", "game", "tomorrow"].includes(id)), `вечер без заметок: первыми ${ids(evening)}`);
+  const hotIds = (c) => HINTS.filter((h) => h.fit(c) === 2).map((h) => h.id);
+  check(["film", "game", "tomorrow"].includes(ids(evening)[0]) && !hotIds(evening).includes(ids(evening)[1]), `вечер без заметок: ${ids(evening)}`);
   // Есть фильмы и игры — вечером вопросы про них первыми.
   const stocked = at(20, { notes: { ...none, film: 3, game: 1 } });
-  check(JSON.stringify(ids(stocked).slice(0, 2).sort()) === JSON.stringify(["play", "watch"]) || ids(stocked).slice(0, 2).includes("watch"), `вечер с заметками: первыми ${ids(stocked)}`);
+  // Порядок вперемешку: «самое время», обычная, «самое время», обычная — в один ряд влезает две-три плашки.
+  check(ids(stocked)[0] === "watch" && ids(stocked)[2] === "play" && !hotIds(stocked).includes(ids(stocked)[1]), `вечер с заметками: ${ids(stocked)}`);
   check(fits(stocked).includes("watch") && fits(stocked).includes("play") && !fits(stocked).includes("read"), "книг нет, а «что почитать?» есть");
   // Днём в будни «что посмотреть?» можно, но не «самое время».
   check(HINTS.find((h) => h.id === "watch").fit(at(14, { notes: { ...none, film: 1 } })) === 1, "днём в будни «что посмотреть?» не должно быть первым");
@@ -54,7 +56,8 @@ try {
   // Не больше запрошенного и без повторов; «самое время» — не больше двух.
   const four = pickHints(stocked, {}, 4, Math.random);
   check(four.length === 4 && new Set(four.map((h) => h.id)).size === 4, "набор не из четырёх разных фраз");
-  check(pickHints(at(9, { weekend: true, notes: { ...none, film: 1, game: 1, book: 1 } }), {}, 4, Math.random).filter((h, i) => i >= 2).length === 2, "после двух «самое время» должны идти обычные");
+  const busy = at(9, { weekend: true, notes: { ...none, film: 1, game: 1, book: 1 } });
+  check(pickHints(busy, {}, 4, Math.random).filter((h) => hotIds(busy).includes(h.id)).length === 2, "«самое время» — ровно две из четырёх, когда их много");
   // Показанное реже — вперёд: за несколько показов видны все подходящие фразы.
   const seen = {};
   const all = new Set();
@@ -72,8 +75,10 @@ check(/document\.activeElement === chatInput && !chatInput\.value && !pictures\.
 check(/\$\("#chatHist"\)\.classList\.contains\("hidden"\) && !collapsed/.test(src), "подсказки поверх истории или в свёрнутом виде");
 check(/addEventListener\("mousedown", \(e\) => \{ if \(e\.target\.closest\("\.hint"\)\) e\.preventDefault\(\); \}\)/.test(src), "щелчок по подсказке уводит фокус из строки");
 check(/if \(h\.send\) enqueue\("\/api\/input", \{ text: h\.text, id: crypto\.randomUUID\(\) \}, h\.text\);/.test(src), "вопрос не уходит той же очередью, что сообщение из строки");
-check(/if \(b\.offsetTop - box\.offsetTop >= HINT_ROWS_PX\) b\.remove\(\);/.test(src) && /const HINT_ROWS_PX = 58;/.test(src), "не влезшее в два ряда считается показанным");
+// 18.11.2026: не влезшие плашки переносились на второй ряд («Завтра в … …» одна под остальными). Ряд один, не влезшее не показывается.
+// Сравнивать надо положение на экране: offsetTop у блока и у плашек считается от разных предков, и лишнее не убиралось.
+check(/if \(b\.getBoundingClientRect\(\)\.top - top >= HINT_ROW_PX\) b\.remove\(\);/.test(src) && /const HINT_ROW_PX = 26;/.test(src), "плашки переносятся на второй ряд");
 check(/if \(typeof syncHints === "function"\) syncHints\(\);/.test(widget), "syncSend не убирает подсказки при записи голоса и картинках");
-check(/\.chat \.hints\.hidden, \.recording > \.hints \{ display: none; \}/.test(css) && /\.chat \.hints \{[^}]*max-height: 58px/.test(css), "нет стилей подсказок (скрытие, не больше двух рядов)");
+check(/\.chat \.hints\.hidden, \.recording > \.hints \{ display: none; \}/.test(css) && /\.chat \.hints \{[^}]*max-height: 26px/.test(css), "нет стилей подсказок (скрытие, один ряд)");
 console.log(bad ? `${bad} из ${n} не прошло` : `ok ${n}`);
 process.exit(bad ? 1 : 0);

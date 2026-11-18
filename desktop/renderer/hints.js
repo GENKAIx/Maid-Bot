@@ -7,7 +7,7 @@
 // fit(c) — насколько фраза к месту: 0 — не показывать, 1 — можно, 2 — самое время. c: { hour, weekend, night, notes, tasks }.
 const HINT_COUNT = 4;
 const HINT_SEEN_KEY = "maid.hints.seen";
-const HINT_ROWS_PX = 58; // два ряда плашек (style.css, .chat .hints max-height)
+const HINT_ROW_PX = 26; // один ряд плашек (style.css, .chat .hints max-height)
 const hintEvening = (c) => c.hour >= 18 || c.weekend;
 const HINTS = [
   { id: "watch", text: "Что посмотреть?", send: true, fit: (c) => (c.night || !(c.notes.film + c.notes.series) ? 0 : hintEvening(c) ? 2 : 1) },
@@ -29,14 +29,20 @@ const HINTS = [
   { id: "done", text: "Сделал …", fill: "Сделал ", fit: (c) => (c.tasks ? 1 : 0) },
 ];
 
-/** Какие фразы показать: до двух «самое время», остальные — из подходящих; в каждой группе сначала показанные реже
- *  (seen — сколько раз фраза уже показывалась), при равенстве — случайно. Порядок на экране: «самое время» первыми. */
+/** Какие фразы показать: до двух «самое время» и остальные подходящие; в каждой группе сначала показанные реже
+ *  (seen — сколько раз фраза уже показывалась), при равенстве — случайно. Порядок — вперемешку: «самое время», обычная,
+ *  «самое время», обычная… — в один ряд влезает две-три плашки, и рядом с вопросом к месту всегда видно что-то новое. */
 function pickHints(c, seen = {}, n = HINT_COUNT, rnd = Math.random) {
   const rated = HINTS.map((h) => ({ h, fit: h.fit(c), seen: seen[h.id] ?? 0, r: rnd() })).filter((x) => x.fit > 0);
   const rare = (a, b) => a.seen - b.seen || a.r - b.r;
   const hot = rated.filter((x) => x.fit === 2).sort(rare).slice(0, 2);
-  const rest = rated.filter((x) => !hot.includes(x)).sort(rare).slice(0, Math.max(0, n - hot.length));
-  return [...hot, ...rest].map((x) => x.h);
+  const rest = rated.filter((x) => x.fit === 1).sort(rare);
+  const out = [];
+  for (let i = 0; i < n && out.length < n; i++) {
+    if (hot[i]) out.push(hot[i].h);
+    if (rest[i] && out.length < n) out.push(rest[i].h);
+  }
+  return out;
 }
 
 // --- показ ---
@@ -71,8 +77,9 @@ function syncHints() {
     return b;
   }));
   box.classList.toggle("hidden", !hintsShown.length);
-  // Не влезшее в два ряда убирается и показанным не считается — придёт в другой раз.
-  for (const b of [...box.children]) if (b.offsetTop - box.offsetTop >= HINT_ROWS_PX) b.remove();
+  // Ряд один: что в него не влезло (перенеслось ниже), убирается и показанным не считается — придёт в другой раз.
+  const top = box.getBoundingClientRect().top;
+  for (const b of [...box.children]) if (b.getBoundingClientRect().top - top >= HINT_ROW_PX) b.remove();
   hintsShown = hintsShown.filter((h) => box.querySelector(`[data-hint="${h.id}"]`));
   for (const h of hintsShown) seen[h.id] = (seen[h.id] ?? 0) + 1;
   try { localStorage.setItem(HINT_SEEN_KEY, JSON.stringify(seen)); } catch {}
