@@ -90,6 +90,7 @@ export function linkDays(answer: string, publicUrl: string, today: string, max =
     if (!days.includes(d)) days.push(d);
     return humanDay(d, d.slice(0, 4) !== today.slice(0, 4)).split(",")[0];
   });
+  days.sort(); // кнопки — по дате, а не по порядку упоминания (ГГГГ-ММ-ДД сортируется как строка)
   const shown = days.slice(0, max);
   if (!shown.length) return { text, days };
   const links = shown.map((d) => (publicUrl ? `<a href="${publicUrl}/diary/${d}">${short(d)}</a>` : short(d))).join(" · ");

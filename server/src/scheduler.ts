@@ -5,6 +5,7 @@ import { persona, type Emotion } from "./personas.ts";
 import {
   activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, moneyTotals, plansText, sectionName,
   tomorrowText, upcomingDates,
+  wholeSentences,
 } from "./report.ts";
 import { escapesText } from "./escapes.ts";
 import { morningText } from "./morning.ts";
@@ -16,13 +17,6 @@ import { addDays, dayKey, durationHuman, humanDay, timeOf, zonedToUtc } from "./
 
 /** Слова горничной в вечернем итоге — не длиннее (знаков); длиннее в полтора раза — обрезаем по слову. */
 export const EVENING_MAX = 300;
-/** Ответ ИИ оборвался на полуслове («…если продержится, покажит») — оставить только законченные предложения. */
-export function wholeSentences(text: string): string {
-  if (/[.!?…][»")]*$/.test(text)) return text;
-  const ends = [...text.matchAll(/[.!?…][»")]*(?=\s)/g)];
-  const last = ends.at(-1);
-  return last ? text.slice(0, last.index + last[0].length) : "";
-}
 
 const plural = (n: number, one: string, few: string, many: string) =>
   n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;

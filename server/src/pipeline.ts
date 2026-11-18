@@ -5,7 +5,7 @@ import { asUser, extractJson } from "./llm.ts";
 import { HEALTH_TOPICS, SECTIONS, buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
 import { scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
-import { changesList, esc, metricLine, moneyLine, upcomingDates } from "./report.ts";
+import { changesList, esc, metricLine, moneyLine, upcomingDates, wholeSentences } from "./report.ts";
 import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
 import { planEventReminders } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
@@ -48,6 +48,8 @@ export type ClashChoice = "shift" | "keep";
 
 /** Потолки списков в запросе к модели: данные растут, а запрос — нет. Берётся ближайшее и упомянутое в сообщении. */
 export const PROMPT_CAP = { events: 120, tasks: 80, dates: 50, memory: 100, notes: 80 };
+/** Длина ответа на вопрос по записям: с запасом — у модели с «обдумыванием» 800 кончались посреди фразы (18.11.2026). */
+export const ANSWER_MAX_TOKENS = 1500;
 
 /** Слова сообщения (от 4 букв) — чтобы упомянутое попало в запрос, даже если оно старое или далёкое. */
 const wordsOf = (text: string) => new Set((text.toLowerCase().match(/[\p{L}\d]{4,}/gu) ?? []).map((w) => w.slice(0, 6)));
@@ -807,11 +809,13 @@ export class Pipeline {
           role: "system",
           content: `${persona(u.persona).voice}\nОтвечай на вопрос пользователя только по его записям ниже. ` +
             `Нет данных — так и скажи, не выдумывай. ${shelfRule}Вопросы о тебе самой — по твоей карточке, не по записям. Коротко, 1–4 предложения. Сегодня ${today}. ` +
-            `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай.\n\n${data}${traits ? "\n\n" + traits : ""}`,
+            `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай; данные за один день — не называй это средним.\n\n${data}${traits ? "\n\n" + traits : ""}`,
         },
         { role: "user", content: question },
-      ], { temperature: 0.4, kind: "answer" });
-      return linkDays(esc(out.trim()), this.publicUrl, today);
+      ], { temperature: 0.4, kind: "answer", maxTokens: ANSWER_MAX_TOKENS });
+      // Оборвался на полуслове (кончилась длина) — только законченные предложения; не осталось ни одного — как есть.
+      const text = out.trim();
+      return linkDays(esc(wholeSentences(text) || text), this.publicUrl, today);
     } catch (e) {
       console.error("[answer]", e);
       return { text: persona(u.persona).failed, days: [] };

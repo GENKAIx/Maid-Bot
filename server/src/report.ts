@@ -7,6 +7,14 @@ import { addDays, daysBetween, durationHuman, humanDay, MONTHS_GEN, nextYearly, 
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/** Ответ ИИ оборвался на полуслове («…если продержится, покажит») — оставить только законченные предложения. */
+export function wholeSentences(text: string): string {
+  if (/[.!?…][»")]*$/.test(text)) return text;
+  const ends = [...text.matchAll(/[.!?…][»")]*(?=\s)/g)];
+  const last = ends.at(-1);
+  return last ? text.slice(0, last.index + last[0].length) : "";
+}
+
 export function eventLine(e: EventRow, withDay = false): string {
   const time = e.time ? `${e.time}${e.end_time ? "–" + e.end_time : ""}` : "весь день";
   return `${withDay ? humanDay(e.date_iso) + ", " : ""}${time} — ${esc(e.title)}`;
