@@ -879,7 +879,8 @@ export function createApi(deps: ApiDeps) {
       const heard = await transcribe(audio, b.mime).catch((e) => {
         throw new HttpError(502, `не получилось распознать: ${(e as Error).message}`);
       });
-      if (!heard) throw new HttpError(422, "ничего не расслышала");
+      // Слов нет — чаще всего записалась тишина: микрофон выключен (на наушниках) или выбран не тот.
+      if (!heard) throw new HttpError(422, "Ничего не услышала. Проверьте свой микрофон — может, он выключен на наушниках или выбран не тот.");
       const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: heard.slice(0, 4000) });
       return { ...r, heard };
     }

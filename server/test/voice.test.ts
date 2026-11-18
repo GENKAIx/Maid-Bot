@@ -56,7 +56,10 @@ test("голосовое: распознаётся и записывается �
     const big = Buffer.alloc(5_100_000).toString("base64");
     assert.equal((await post("/api/voice", { audio: big, mime: "audio/webm" }, token)).status, 413);
     config.stt.baseUrl += "/nope";
-    assert.equal((await post("/api/voice", { audio, mime: "audio/webm" }, token)).status, 422);
+    // Тишина (микрофон выключен на наушниках, 18.11.2026) — слов нет: 422 и подсказка проверить микрофон.
+    const silent = await post("/api/voice", { audio, mime: "audio/webm" }, token);
+    assert.equal(silent.status, 422);
+    assert.match(silent.json.error, /^Ничего не услышала.*микрофон/);
   } finally {
     Object.assign(config.stt, saved);
     server.close();
