@@ -3,14 +3,18 @@
 
 // --- тап по голове ---
 // Щелчок по верхней части фигурки — она реагирует (панель не сворачивается). Частые тычки подряд — сначала просит
-// перестать, на десятом обижается на полминуты.
+// перестать, на десятом обижается: дуется (основа позы — «дуется», widget.js baseMood), пока не пройдёт полминуты
+// с последнего тычка — каждый тычок во время обиды отодвигает прощение (sulkFor), но не дальше двух минут с её начала.
 // Реакция зависит от того, чем она занята (pokeBusy: только что разбудили, думает, пьёт чай, убирается, ночь после отбоя —
 // на первый тычок серии) и куда попали (pokeZone: чепчик, бант, щёки, грудь — три раза из четырёх, иначе обычная реплика).
 // Фразы — в lines.js (line / lineItem): много вариантов, без повторов.
 const POKE_SULK = 30_000;
+const POKE_SULK_MAX = 120_000;
 let pokes = 0;
 let lastPoke = 0;
 let sulkUntil = 0;
+let sulkFrom = 0;
+let sulkTimer = 0;
 
 function boop(kind) {
   const f = $("#face");
@@ -19,7 +23,7 @@ function boop(kind) {
   f.classList.add(kind);
 }
 // Короткая реплика — только если облачко свободно (напоминание с кнопками не перебиваем).
-function quip(text, moodName, ms = 1900) {
+function quip(text, moodName, ms = 3200) {
   const b = $("#bubble");
   if (b.classList.contains("hidden") || b.dataset.quip) {
     say(text, { ms, mood: moodName });
@@ -52,25 +56,32 @@ function pokeBusy(now = Date.now()) {
   return afterBedtime() ? "night" : "";
 }
 const POKE_KEY = { woke: "pokeWoke", think: "pokeThink", tea: "pokeTea", clean: "pokeClean", night: "pokeNight", cap: "pokeCap", bow: "pokeBow", cheek: "pokeCheek", chest: "pokeChest" };
+// Обида или её продление: простит через POKE_SULK после этого тычка, но не позже POKE_SULK_MAX с начала обиды.
+function sulkFor(now) {
+  sulkUntil = Math.min(now + POKE_SULK, sulkFrom + POKE_SULK_MAX);
+  clearTimeout(sulkTimer);
+  sulkTimer = setTimeout(() => {
+    sulkUntil = 0;
+    quip(line("forgive"), "bow", 3500);
+  }, Math.max(0, sulkUntil - now));
+}
 function poke(zone = "") {
   const now = Date.now();
   if (now < sulkUntil) {
+    sulkFor(now);
     boop("huff");
-    quip(line("sulk"), "pout", 1800);
+    quip(line("sulk"), "pout", 2600);
     return;
   }
   pokes = now - lastPoke < 4000 ? pokes + 1 : 1;
   lastPoke = now;
   if (pokes >= 10) {
     pokes = 0;
-    sulkUntil = now + POKE_SULK;
+    sulkFrom = now;
+    sulkFor(now);
     boop("huff");
     play("oops");
     quip(line("sulkStart"), "angry", 4000);
-    setTimeout(() => {
-      if (Date.now() < sulkUntil - 50) return;
-      quip(line("forgive"), "bow", 3500);
-    }, POKE_SULK);
     return;
   }
   boop("boop");
@@ -82,7 +93,7 @@ function poke(zone = "") {
   // 4–6-й тычок подряд — через раз смотрит пустым взглядом: «вы закончили?».
   if (pokes >= 4 && Math.random() < 0.5) {
     popTone(-2, { vol: 0.18, soft: true });
-    quip(line("pokeMore"), "deadpan", 2600);
+    quip(line("pokeMore"), "deadpan", 3400);
     return;
   }
   // Первый тычок серии — по тому, чем занята (ночью — через раз, чтобы не одно и то же); иначе — по месту, куда попали.
@@ -91,7 +102,7 @@ function poke(zone = "") {
   if (how === "woke") pokedAwake = true; // «О, вы вернулись!» после такого не нужно (wakeUp)
   const p = lineItem(POKE_KEY[how] ?? "poke");
   popTone(Math.floor(Math.random() * 8), { vol: 0.2, soft: true });
-  quip(p.t, how === "think" ? thinkPick : p.m, how ? 2400 : 1900);
+  quip(p.t, how === "think" ? thinkPick : p.m, how ? 3800 : 3200);
 }
 
 // --- настроение от того, как идёт день ---

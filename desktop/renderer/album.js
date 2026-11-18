@@ -38,6 +38,7 @@ function pet() {
   boop("boop");
   popTone(5, { vol: 0.18, soft: true });
   if (Date.now() < sulkUntil) {
+    clearTimeout(sulkTimer);
     sulkUntil = 0;
     quip(line("forgive"), "bow", 3500);
     return;

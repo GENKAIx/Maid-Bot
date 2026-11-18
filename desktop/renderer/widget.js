@@ -124,6 +124,8 @@ function baseMood() {
   // Есть просроченные задачи — недовольна, но сон важнее (fun.js, dueMood).
   const due = typeof dueMood !== "undefined" ? dueMood : "";
   if (state === "sleep") return "sleep";
+  // Обиделась на тычки — дуется, пока не простит (fun.js, sulkFor).
+  if (typeof sulkUntil !== "undefined" && Date.now() < sulkUntil) return "pout";
   if (due) return due;
   // День не задался (просрочено, не отмечено) — грустно метёт (fun.js, dayMood).
   return typeof dayMood !== "undefined" && dayMood === "bad" ? "clean" : "idle";

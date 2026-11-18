@@ -17,6 +17,7 @@ const section = fun.slice(0, fun.indexOf("// --- настроение от то�
 check(/function pokeZone\(/.test(section) && /function pokeBusy\(/.test(section), "в fun.js нет pokeZone / pokeBusy");
 
 const said = [];
+const timers = [];
 let rnd = 0;
 const ctx = {
   $: () => ({ classList: { contains: () => true, remove() {}, add() {} }, dataset: {}, offsetWidth: 0, getBoundingClientRect: () => ({ left: 100, top: 50, width: 200, height: 213.5 }) }),
@@ -25,8 +26,9 @@ const ctx = {
   quipLog: said,
   state: "idle", mood: "", moodUntil: 0, napWokeAt: 0, pokedAwake: false, thinkPick: "think2", night: false,
   afterBedtime: () => ctx.night,
-  setTimeout: () => 1,
-  Math: { random: () => rnd, floor: Math.floor },
+  setTimeout: (f, ms) => { timers.push([f, ms]); return timers.length; },
+  clearTimeout: (id) => { if (id) timers[id - 1] = null; },
+  Math: { random: () => rnd, floor: Math.floor, min: Math.min, max: Math.max },
   Date: { now: () => ctx.clock },
   clock: 1_000_000,
 };
@@ -91,12 +93,32 @@ try {
   check(poke("cap")[0] === "annoyed7", `седьмой тычок подряд: ${said}`);
   poke("cap"); poke("cap");
   check(poke("chest")[0] === "sulkStart", `десятый тычок — обида: ${said}`);
-  const sulk = poke("cheek");
+  const began = ctx.clock;
+  const until = () => vm.runInContext("sulkUntil", ctx);
+  check(until() === began + 30_000, "обида — на 30 с");
+  // 18.11.2026: прощала через 30 с после десятого тычка, сколько бы ни тыкали дальше. Теперь каждый тычок, пока дуется,
+  // отодвигает прощение на 30 с от него (но не дальше 2 минут с начала обиды), прежний таймер снят.
+  const sulk = poke("cheek", 20_000);
   check(sulk[0] === "sulk" && sulk[1] === "pout", `тычок, пока дуется: ${sulk}`);
+  check(until() === ctx.clock + 30_000, `тычок во время обиды не продлил её: осталось ${until() - ctx.clock} мс`);
+  check(timers.filter(Boolean).length === 1, `таймеров прощения ${timers.filter(Boolean).length}, должен быть один`);
+  for (let i = 0; i < 8; i++) poke("cap", 20_000);
+  check(until() === began + 120_000, `обида длиннее двух минут: ${until() - began} мс`);
+  // Время вышло — прощает сама, следующий тычок уже обычный.
+  const [forgive] = timers.filter(Boolean).at(-1);
+  said.length = 0; ctx.clock = began + 120_000; forgive();
+  check(said[0]?.[0] === "forgive" && until() === 0, `по таймеру не простила: ${said}`);
+  rnd = 0;
+  check(poke("cap", fresh)[0] === "pokeCap", `после прощения тычок снова обычный: ${said}`);
 } catch (e) {
   check(false, `оборвалось: ${e?.stack ?? e}`);
 }
 
+// Пока дуется, основа позы — «дуется», а не обычная стойка; «погладить» снимает и таймер прощения.
+check(/Date\.now\(\) < sulkUntil\) return "pout";/.test(widget.match(/function baseMood\(\) \{[^]*?\n\}/)?.[0] ?? ""), "пока дуется, возвращается в обычную позу");
+check(/clearTimeout\(sulkTimer\);\s*sulkUntil = 0;/.test(fs.readFileSync(path.join(dir, "album.js"), "utf8")), "«погладить» не снимает таймер прощения");
+// Поза после тычка держится не меньше 3 с.
+check(/function quip\(text, moodName, ms = 3200\)/.test(fun), "поза тычка короче 3 с");
 // Щелчок передаёт место в poke; разбуженная тычком не здоровается, если новостей нет.
 check(/const zone = e \? pokeZoneAt\(e\) : "";/.test(widget) && /setTimeout\(\(\) => poke\(zone\), 230\)/.test(widget), "maidClick не передаёт место тычка");
 check(/napWokeAt = Date\.now\(\);\s*pokedAwake = false;/.test(widget), "wakeUp не запоминает время пробуждения");
