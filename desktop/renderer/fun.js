@@ -4,6 +4,8 @@
 // --- тап по голове ---
 // Щелчок по верхней части фигурки — она реагирует (панель не сворачивается). Частые тычки подряд — сначала просит
 // перестать, на десятом обижается на полминуты.
+// Реакция зависит от того, чем она занята (pokeBusy: только что разбудили, думает, пьёт чай, убирается, ночь после отбоя —
+// на первый тычок серии) и куда попали (pokeZone: чепчик, бант, щёки, грудь — три раза из четырёх, иначе обычная реплика).
 // Фразы — в lines.js (line / lineItem): много вариантов, без повторов.
 const POKE_SULK = 30_000;
 let pokes = 0;
@@ -25,7 +27,32 @@ function quip(text, moodName, ms = 1900) {
   }
   react(moodName, ms + 300);
 }
-function poke() {
+// Зоны по кадру фигурки 400×427, в долях ширины и высоты: [зона, x0, y0, x1, y1]. Позы немного разные — зоны с запасом;
+// бант — и на шее, и в волосах справа. Мимо зон (волосы, глаза, руки) — обычный тычок.
+const POKE_ZONES = [
+  ["bow", 0.46, 0.62, 0.68, 0.74], ["bow", 0.75, 0.25, 0.93, 0.41],
+  ["cap", 0.28, 0, 0.86, 0.21],
+  ["cheek", 0.33, 0.47, 0.47, 0.62], ["cheek", 0.6, 0.47, 0.74, 0.62],
+  ["chest", 0.36, 0.74, 0.73, 0.92],
+];
+const POKE_ZONE_CHANCE = 0.75;
+function pokeZone(x, y) {
+  return POKE_ZONES.find(([, x0, y0, x1, y1]) => x >= x0 && x < x1 && y >= y0 && y < y1)?.[0] ?? "";
+}
+function pokeZoneAt(e) {
+  const r = $("#face").getBoundingClientRect();
+  return r.width && r.height ? pokeZone((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height) : "";
+}
+// Чем она занята в момент тычка: woke — разбудили меньше 5 с назад, think — ждёт ответа сервера, tea / clean — занята своим,
+// night — после отбоя. Пусто — свободна.
+function pokeBusy(now = Date.now()) {
+  if (now - napWokeAt < 5000) return "woke";
+  if (state === "think") return "think";
+  if (now < moodUntil && (mood === "tea" || mood === "clean")) return mood;
+  return afterBedtime() ? "night" : "";
+}
+const POKE_KEY = { woke: "pokeWoke", think: "pokeThink", tea: "pokeTea", clean: "pokeClean", night: "pokeNight", cap: "pokeCap", bow: "pokeBow", cheek: "pokeCheek", chest: "pokeChest" };
+function poke(zone = "") {
   const now = Date.now();
   if (now < sulkUntil) {
     boop("huff");
@@ -58,9 +85,13 @@ function poke() {
     quip(line("pokeMore"), "deadpan", 2600);
     return;
   }
-  const p = lineItem("poke");
+  // Первый тычок серии — по тому, чем занята (ночью — через раз, чтобы не одно и то же); иначе — по месту, куда попали.
+  const busy = pokes === 1 ? pokeBusy(now) : "";
+  const how = busy && (busy !== "night" || Math.random() < 0.6) ? busy : zone && Math.random() < POKE_ZONE_CHANCE ? zone : "";
+  if (how === "woke") pokedAwake = true; // «О, вы вернулись!» после такого не нужно (wakeUp)
+  const p = lineItem(POKE_KEY[how] ?? "poke");
   popTone(Math.floor(Math.random() * 8), { vol: 0.2, soft: true });
-  quip(p.t, p.m);
+  quip(p.t, how === "think" ? thinkPick : p.m, how ? 2400 : 1900);
 }
 
 // --- настроение от того, как идёт день ---

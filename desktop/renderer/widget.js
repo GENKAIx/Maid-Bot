@@ -279,6 +279,8 @@ const NAP_UNHEARD = 5 * 60;
 const NAP_NIGHT = 3 * 60;
 let napping = false;
 let napFolded = false; // панель свернула она сама, засыпая
+let napWokeAt = 0; // когда проснулась (мс): тычок в первые секунды — «я только уснула…» (fun.js, pokeBusy)
+let pokedAwake = false; // разбудили тычком — без «О, вы вернулись!», если новостей нет
 
 let napSince = 0; // когда человек ушёл (мс)
 let missed = []; // уведомления, пришедшие во сне
@@ -324,6 +326,8 @@ function fallAsleep(idleSec) {
 function wakeUp() {
   if (!napping) return;
   napping = false;
+  napWokeAt = Date.now();
+  pokedAwake = false;
   learnBedtime(napSince, Date.now());
   const away = Date.now() - napSince;
   const news = missed;
@@ -335,7 +339,7 @@ function wakeUp() {
   // Потягивается: удивилась — и машет.
   react("surprised", 1300);
   setTimeout(() => {
-    if (napping) return;
+    if (napping || (pokedAwake && !news.length)) return;
     react("hello", 4500);
     if (!cfg.napRecap || (away < 2 * 60_000 && !news.length)) return;
     const lines = news.slice(-4).map((n) => `• ${String(n.text).split("\n")[0].replace(/<[^>]+>/g, "")}`);
@@ -2482,10 +2486,10 @@ $("#inbox").addEventListener("click", (e) => {
   if (ib) openGroup(ib.dataset.group);
 });
 drawInbox();
-// Щелчок по горничной — тычок (fun.js), двойной по свёрнутой — развернуть панель (свернуть — кнопкой #foldBtn). Тычок ждёт, не будет ли второго щелчка.
+// Щелчок по горничной — тычок (fun.js; реакция зависит от места и от того, чем она занята), двойной по свёрнутой — развернуть панель (свернуть — кнопкой #foldBtn). Тычок ждёт, не будет ли второго щелчка.
 // Висит облачко с ответом или сообщением — щелчок закрывает его (облачко самого тычка — dataset.quip — тычет дальше).
 // Оповещение без кнопок при этом прочитано, как по ✕; вопрос с кнопками остаётся в ящике — ответить позже.
-function maidClick() {
+function maidClick(e) {
   clearTimeout(clickTimer);
   if (Date.now() - pettedAt < 400) return; // отпустили после «погладить» — это не тычок
   const b = $("#bubble");
@@ -2493,7 +2497,8 @@ function maidClick() {
     if (b.dataset.notice && !b.dataset.choices) inboxRead(Number(b.dataset.notice));
     return void hideBubble();
   }
-  clickTimer = setTimeout(poke, 230);
+  const zone = e ? pokeZoneAt(e) : ""; // куда попали: чепчик, бант, щёки, грудь (fun.js)
+  clickTimer = setTimeout(() => poke(zone), 230);
 }
 $("#maid").addEventListener("click", maidClick);
 // Зажали левую кнопку на горничной на секунду и не потащили окно — погладили (album.js).
