@@ -1223,6 +1223,7 @@ async function toggleMic() {
   }
   micUi(false);
   const v = await Voice.stop();
+  syncSend(); // запись кончилась только сейчас — справа снова микрофон (в micUi(false) Voice.on ещё был true)
   if (v) enqueue("/api/voice", { ...v, id: crypto.randomUUID() }, "🎙 Голосовое сообщение");
 }
 mic.addEventListener("click", (e) => { e.preventDefault(); toggleMic(); });
