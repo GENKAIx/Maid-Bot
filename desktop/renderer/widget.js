@@ -1192,6 +1192,15 @@ function heardMood(text, r) {
 // --- голосом: щелчок по микрофону — запись, ещё щелчок (или Enter) — отправить, Esc — отменить ---
 const mic = $("#chatMic");
 let micTick = 0;
+// Микрофон выключен (на наушниках) или выбран не тот: волна ровная. 5 с такой записи — сказать сразу, запись не прерывать
+// (одно предупреждение на запись); вся запись — тишина — на сервер не уходит (Voice.stop → { silent }).
+const MIC_HINT = "Ничего не слышу — проверьте свой микрофон: может, он выключен на наушниках или выбран не тот.";
+let micWarned = false;
+function micCheck() {
+  if (micWarned || !Voice.on || Voice.seconds < 5 || !Voice.hushed) return;
+  micWarned = true;
+  say(MIC_HINT, { emotion: "worried", ms: 8000, sound: "oops" });
+}
 // Кнопка справа: пусто — микрофон; есть текст или картинки, или идёт запись — превращается в «отправить».
 function syncSend() {
   if (typeof syncHints === "function") syncHints(); // запись голоса, картинки, текст — подсказки над строкой уходят (hints.js)
@@ -1205,7 +1214,8 @@ function micUi(on) {
   clearInterval(micTick);
   if (!on) return;
   const time = chatBox.querySelector(".rec-time");
-  const show = () => (time.textContent = Voice.clock());
+  micWarned = false;
+  const show = () => { time.textContent = Voice.clock(); micCheck(); };
   show();
   micTick = setInterval(show, 250);
   Voice.wave(chatBox.querySelector(".rec-wave"), "#cdbcff");
@@ -1224,6 +1234,7 @@ async function toggleMic() {
   micUi(false);
   const v = await Voice.stop();
   syncSend(); // запись кончилась только сейчас — справа снова микрофон (в micUi(false) Voice.on ещё был true)
+  if (v?.silent) return void say(MIC_HINT, { emotion: "worried", ms: 8000, sound: "oops" });
   if (v) enqueue("/api/voice", { ...v, id: crypto.randomUUID() }, "🎙 Голосовое сообщение");
 }
 mic.addEventListener("click", (e) => { e.preventDefault(); toggleMic(); });

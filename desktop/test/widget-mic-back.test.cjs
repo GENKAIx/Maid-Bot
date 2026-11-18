@@ -26,7 +26,7 @@ const ctx = {
     get on() { return rec; },
     start: async () => { rec = true; },
     stop: async () => { rec = false; return { audio: "AAAA", mime: "audio/webm" }; },
-    clock: () => "0:01", wave() {},
+    clock: () => "0:01", wave() {}, seconds: 0, hushed: false,
   },
   enqueue: () => {},
   say: () => {},
@@ -35,7 +35,7 @@ const ctx = {
 vm.createContext(ctx);
 (async () => {
   try {
-    vm.runInContext(`${fn("syncSend")}\n${fn("micUi")}\n${fn("toggleMic")}\nthis.toggleMic = toggleMic;`, ctx);
+    vm.runInContext(`let micWarned = false;\n${fn("micCheck")}\n${fn("syncSend")}\n${fn("micUi")}\n${fn("toggleMic")}\nthis.toggleMic = toggleMic;`, ctx);
     await ctx.toggleMic();
     check(cls.has("recording") && cls.has("ready"), `идёт запись — справа «отправить»: ${[...cls]}`);
     await ctx.toggleMic();

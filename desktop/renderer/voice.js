@@ -1,4 +1,5 @@
-// Запись голоса с микрофона для /api/voice: Voice.start() → Voice.stop() даёт { audio (base64), mime } или null.
+// Запись голоса с микрофона для /api/voice: Voice.start() → Voice.stop() даёт { audio (base64), mime }, { silent: true }
+// (вся запись — тишина, микрофон выключен) или null.
 const Voice = (() => {
   const MAX_MS = 120_000; // дольше — сама останавливается и отправляет
   const MIN_MS = 500; // короче — случайный щелчок, не отправляем
@@ -11,6 +12,11 @@ const Voice = (() => {
   let levels = []; // громкость 0..1, один столбик в STEP мс — для рисования волны
   let sampler = 0;
   const STEP = 70;
+  // Тишина — все замеры ниже QUIET: выключенный микрофон даёт ноль или почти ноль (~0,05), тихая комната — 0,15–0,3,
+  // речь — 0,4 и выше. Судить — не меньше чем по HUSH_MIN замерам (~1,4 с); замеров нет (громкость не меряется) — не судить.
+  const QUIET = 0.12;
+  const HUSH_MIN = 20;
+  const isHush = (lv) => lv.length >= HUSH_MIN && lv.every((v) => v < QUIET);
 
   async function start(onLimit) {
     if (rec) return;
@@ -64,8 +70,10 @@ const Voice = (() => {
   async function stop() {
     if (!rec) return null;
     const short = Date.now() - startedAt < MIN_MS;
+    const silent = isHush(levels);
     const blob = await finish();
     if (short || !blob.size) return null;
+    if (silent) return { silent: true }; // вся запись — тишина: на сервер не отправлять
     const audio = await new Promise((resolve, reject) => {
       const fr = new FileReader();
       fr.onload = () => resolve(String(fr.result).split(",")[1] ?? "");
@@ -114,5 +122,5 @@ const Voice = (() => {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   };
 
-  return { start, stop, cancel, wave, clock, get on() { return Boolean(rec); }, get seconds() { return rec ? Math.floor((Date.now() - startedAt) / 1000) : 0; } };
+  return { start, stop, cancel, wave, clock, isHush, get hushed() { return isHush(levels); }, get on() { return Boolean(rec); }, get seconds() { return rec ? Math.floor((Date.now() - startedAt) / 1000) : 0; } };
 })();
