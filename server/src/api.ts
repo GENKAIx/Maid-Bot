@@ -10,11 +10,13 @@ import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.t
 import { ALBUM, albumOf, albumSee } from "./album.ts";
 import { habitMonth, habitsOfDay, habitStats } from "./habits.ts";
 import { historyOf, NOTICE_KINDS } from "./notices.ts";
+import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, RATED_SHELVES, SHELF_KEYS, SHELVES, sameNote, type Shelf } from "./notes.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import { proposalView, TRASH_DAYS, type Pipeline } from "./pipeline.ts";
 
 /** Для поиска: нижний регистр, «ё» как «е». */
 const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е");
+const ShelfKey = z.enum(SHELF_KEYS as [Shelf, ...Shelf[]]);
 import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
@@ -490,13 +492,13 @@ export function createApi(deps: ApiDeps) {
     // или POST /api/events/:id {status:"active"} (как «↩ Вернуть» после удаления).
     if (m === "GET" && p === "/api/trash") {
       const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
-      return { days: TRASH_DAYS, tasks: await store.trashTasks(u.id, since), events: await store.trashEvents(u.id, since) };
+      return { days: TRASH_DAYS, tasks: await store.trashTasks(u.id, since), events: await store.trashEvents(u.id, since), notes: await store.trashNotes(u.id, since) };
     }
     // Поиск по задачам и планам (экран «Поиск»): все слова запроса — в названии, заметках или подробностях, без учёта регистра и «ё».
     // Ищет и в корзине (удалённое/отменённое за TRASH_DAYS дней, inTrash); удалённое навсегда (purged) и давно удалённое — нет.
     if (m === "GET" && p === "/api/search") {
       const words = norm(q("q") ?? "").split(/\s+/).filter(Boolean).slice(0, 8);
-      if (!words.length) return { tasks: [], events: [], days: TRASH_DAYS };
+      if (!words.length) return { tasks: [], events: [], notes: [], days: TRASH_DAYS };
       const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
       const hit = (...texts: (string | null)[]) => { const t = norm(texts.filter(Boolean).join(" ")); return words.every((w) => t.includes(w)); };
       const binned = (status: string, at: string | null) => status === "deleted" || status === "cancelled" ? (at && at >= since ? "trash" : "gone") : "";
@@ -513,15 +515,60 @@ export function createApi(deps: ApiDeps) {
         .sort((x, y) => (x.date_iso >= today ? 0 : 1) - (y.date_iso >= today ? 0 : 1)
           || (x.date_iso >= today ? x.date_iso.localeCompare(y.date_iso) : y.date_iso.localeCompare(x.date_iso)))
         .slice(0, 60);
-      return { tasks, events, days: TRASH_DAYS };
+      // Заметки «на потом»: по названию и пометке; лежащие на полке — первыми.
+      const notes = (await store.allNotes(u.id))
+        .filter((n) => n.status !== "purged" && hit(n.title, n.note))
+        .map((n) => ({ ...n, bin: binned(n.status, n.closed_at) }))
+        .filter((n) => n.bin !== "gone")
+        .sort((x, y) => (x.status === "open" ? 0 : 1) - (y.status === "open" ? 0 : 1) || y.id - x.id)
+        .slice(0, 60);
+      return { tasks, events, notes, days: TRASH_DAYS };
     }
     // «Удалить навсегда» (× у строки) и «Очистить корзину» (all): из корзины пропадают, вернуть уже нельзя.
     if (m === "POST" && p === "/api/trash/purge") {
       const Ids = z.array(z.number().int().positive()).max(500);
-      const b = parseBody(z.object({ all: z.literal(true).optional(), tasks: Ids.optional(), events: Ids.optional() }), await readJson(req));
-      if (!b.all && !b.tasks && !b.events) throw new HttpError(400, "нужно all, tasks или events");
+      const b = parseBody(z.object({ all: z.literal(true).optional(), tasks: Ids.optional(), events: Ids.optional(), notes: Ids.optional() }), await readJson(req));
+      if (!b.all && !b.tasks && !b.events && !b.notes) throw new HttpError(400, "нужно all, tasks, events или notes");
       const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
-      return store.purgeTrash(u.id, since, b.all ? undefined : { tasks: b.tasks ?? [], events: b.events ?? [] });
+      return store.purgeTrash(u.id, since, b.all ? undefined : { tasks: b.tasks ?? [], events: b.events ?? [], notes: b.notes ?? [] });
+    }
+
+    // Заметки «на потом» (экран «Заметки»): полки и всё, что на них лежит или отмечено готовым. Удалённые — в корзине.
+    if (m === "GET" && p === "/api/notes") {
+      return { shelves: SHELF_KEYS.map((key) => ({ key, title: SHELVES[key], rated: RATED_SHELVES.includes(key) })), notes: await store.notesOf(u.id) };
+    }
+    // Новая заметка строкой на экране: название как есть, полка — выбранная вкладка. Отменяется («↩ Отменить»).
+    // На этой полке уже лежит такая же — новая не создаётся, приходит та с duplicate.
+    if (m === "POST" && p === "/api/notes") {
+      const b = parseBody(z.object({ title: z.string().trim().min(1).max(NOTE_TITLE_MAX), shelf: ShelfKey.optional(), note: z.string().trim().max(NOTE_TEXT_MAX).optional() }), await readJson(req));
+      const shelf = b.shelf ?? "other";
+      const same = (await store.notesOf(u.id)).find((n) => n.status === "open" && n.shelf === shelf && sameNote(n.title, b.title));
+      if (same) return { ...same, duplicate: true };
+      let id = 0;
+      const undo = await pipeline.manual(u, `📌 ${b.title}`, async (log) => {
+        id = await store.addNote({ user_id: u.id, shelf, title: b.title, note: b.note ?? "", message_id: null });
+        await log("notes", id, { status: "deleted" });
+      });
+      return { ...(await store.note(id)), undo };
+    }
+    // Правка заметки: готово (done, с оценкой rating 1–10 или без), вернуть на полку (open), удалить (deleted — в корзину),
+    // переложить (shelf), переименовать, пометка. Отменяется, как правка задачи.
+    const noteRow = p.match(/^\/api\/notes\/(\d+)$/);
+    if (m === "POST" && noteRow) {
+      const b = parseBody(z.object({
+        status: z.enum(["open", "done", "deleted"]).optional(), shelf: ShelfKey.optional(), title: z.string().trim().min(1).max(NOTE_TITLE_MAX).optional(),
+        note: z.string().trim().max(NOTE_TEXT_MAX).optional(), rating: z.number().int().min(1).max(10).nullable().optional(),
+      }), await readJson(req));
+      const n = await store.note(Number(noteRow[1]));
+      if (!n || n.user_id !== u.id || n.status === "purged") throw new HttpError(404, "нет заметки");
+      if (!Object.keys(b).length) throw new HttpError(400, "нужно status, shelf, title, note или rating");
+      const what = b.status === "deleted" ? "🗑" : b.status === "done" ? "✓" : b.status === "open" ? "↺" : "✎";
+      const undo = await pipeline.manual(u, `${what} ${n.title}`, async (log) => {
+        await log("notes", n.id, { status: n.status, shelf: n.shelf, title: n.title, note: n.note, rating: n.rating });
+        // Вернули на полку — оценка снимается: она была за «готово».
+        await store.updateNote(n.id, b.status === "open" && b.rating === undefined ? { ...b, rating: null } : b);
+      });
+      return { ...(await store.note(n.id)), undo };
     }
 
     // ?all=1 — все даты с ближайшим наступлением (в течение года), иначе ближайшие 30 дней.

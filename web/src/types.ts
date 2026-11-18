@@ -18,6 +18,19 @@ export interface TaskRow {
   notes: string;
   status: string;
 }
+/** Заметка «на потом» (экран «Заметки»): полка shelf, оценка rating — у готовой. */
+export interface NoteRow {
+  id: number;
+  shelf: string;
+  title: string;
+  note: string;
+  status: string;
+  rating: number | null;
+  created_at: string;
+  closed_at: string | null;
+}
+/** Полка заметок; rated — у готового спрашивают оценку (фильмы, сериалы, игры, книги). */
+export interface NoteShelf { key: string; title: string; rated: boolean }
 export interface DateItem {
   id: number;
   title: string;

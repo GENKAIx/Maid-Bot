@@ -1,6 +1,7 @@
 import { z } from "zod";
-import type { DateRow, EventRow, HabitRow, MemoryRow, TaskRow } from "./db.ts";
+import type { DateRow, EventRow, HabitRow, MemoryRow, NoteRow, TaskRow } from "./db.ts";
 import { timesOf } from "./habits.ts";
+import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, SHELF_KEYS, sameNote, shelfKey, type Shelf } from "./notes.ts";
 import { EMOTIONS } from "./personas.ts";
 import { addDays, isDayKey, normalizeTime, weekdayLong } from "./time.ts";
 
@@ -122,10 +123,19 @@ const Trait = z.object({
   title: str.min(1),
   note: optStr,
 });
+// Заметка «на потом» (notes.ts): что посмотреть, во что поиграть, что почитать, идея.
+const Stash = z.object({
+  shelf: optStr,
+  title: str.min(1),
+  note: optStr,
+});
 const Edit = z.object({
   action: z.enum(["cancel", "done", "move", "reopen", "rename", "remind"]),
-  kind: z.enum(["event", "task", "date", "memory", "habit"]),
+  kind: z.enum(["event", "task", "date", "memory", "habit", "note"]),
   id: z.number().int(),
+  // Только заметка: move — на какую полку переложить; done — оценка 1–10, если названа.
+  new_shelf: optStr,
+  rating: z.number().nullable().optional().catch(null),
   new_title: optStr,
   new_date: optStr,
   new_time: optStr,
@@ -150,6 +160,7 @@ export const ParseSchema = z.object({
   summary: z.preprocess((v) => (typeof v === "string" ? v : ""), z.string()),
   events: arr(Event),
   tasks: arr(Task),
+  stash: arr(Stash),
   dates: arr(DateItem),
   memory: arr(Memory),
   traits: arr(Trait),
@@ -173,6 +184,8 @@ export const ParseSchema = z.object({
     .nullable()
     .optional()
     .catch(null),
+  // Вопрос про заметки «на потом»: с каких полок показать.
+  shelves: z.preprocess((v) => (typeof v === "string" ? [v] : Array.isArray(v) ? v : []), z.array(z.unknown())).transform((l) => l.filter((x): x is string => typeof x === "string")),
   clarify: optStr,
   draw: z
     .object({ prompt: str.min(1), title: optStr })
@@ -192,6 +205,8 @@ export interface Parsed {
   summary: string;
   events: { title: string; date: string; time: string | null; endTime: string | null; details: string }[];
   tasks: { title: string; priority: "high" | "normal" | "low"; due: string | null; category: string }[];
+  /** Заметки «на потом» — на полку (notes.ts). */
+  stash: { shelf: Shelf; title: string; note: string }[];
   dates: { title: string; date: string; type: string; person: string; yearly: boolean }[];
   memory: { kind: string; subject: string; text: string; replaces: number | null }[];
   /** Дебафы и бафы профиля, которые пользователь назвал сам («у меня аллергия на арахис»). */
@@ -207,9 +222,11 @@ export interface Parsed {
   };
   marks: { habitId: number; status: "done" | "skipped"; dayKey: string; amount: number | null; unit: string }[];
   money: { kind: "income" | "expense"; amount: number; currency: string; category: string; note: string; dayKey: string }[];
-  edits: { action: "cancel" | "done" | "move" | "reopen" | "rename" | "remind"; kind: "event" | "task" | "date" | "memory" | "habit"; id: number; newDate: string | null; newTime: string | null; newTitle?: string; newTimes?: string[] }[];
+  edits: { action: "cancel" | "done" | "move" | "reopen" | "rename" | "remind"; kind: "event" | "task" | "date" | "memory" | "habit" | "note"; id: number; newDate: string | null; newTime: string | null; newTitle?: string; newTimes?: string[]; newShelf?: Shelf; rating?: number | null }[];
   question: string | null;
   lookup: { from: string; to: string } | null;
+  /** Вопрос про заметки «на потом» («что посмотреть?») — с каких полок отвечать; пусто — вопрос не про них. */
+  shelves: Shelf[];
   /** Корни слов для поиска по всем записям («сердц», «голов»). */
   search: string[];
   clarify: string | null;
@@ -231,6 +248,8 @@ export interface ParseContext {
   tasks: TaskRow[];
   dates: DateRow[];
   memory: MemoryRow[];
+  /** Заметки «на потом», что лежат на полках, — чтобы не записать второй раз и было что отметить готовым. */
+  notes?: NoteRow[];
   /** Активные дебафы и бафы — готовым текстом (profile.traitPrompt); пусто — нет. */
   traits?: string;
   habits: HabitRow[];
@@ -246,6 +265,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
   const tks = ctx.tasks.map((t) => `#${t.id} ${t.title}${t.due_date ? " (до " + t.due_date + ")" : ""}`).join("\n") || "нет";
   const dts = ctx.dates.map((d) => `#${d.id} ${d.date_iso.slice(5)} — ${d.title}`).join("\n") || "нет";
   const mem = ctx.memory.map((m) => `#${m.id} [${m.kind}] ${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n") || "нет";
+  const nts = (ctx.notes ?? []).map((n) => `#${n.id} [${n.shelf}] ${n.title}`).join("\n") || "нет";
   const bin = (ctx.trash ?? []).map((e) => `#${e.id} ${e.date_iso}${e.time ? " " + e.time : ""} — ${e.title} (${e.status === "deleted" ? "удалено" : "отменено"})`).join("\n") || "пусто";
   // Время напоминаний — чтобы «напоминай как в названии» или «перенеси напоминание на 9» было с чем сравнить.
   const remindOf = (h: HabitRow) => {
@@ -272,13 +292,15 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
  "summary": "[ЧЧ:ММ] почти дословная очищенная выжимка сообщения",
  "events": [{"title": "...", "date_iso": "YYYY-MM-DD", "time": "ЧЧ:ММ или null", "end_time": null, "details": ""}],
  "tasks": [{"title": "...", "priority": "high|normal|low", "due_date": "YYYY-MM-DD или null", "category": ""}],
+ "stash": [{"shelf": "${SHELF_KEYS.join("|")}", "title": "название как есть", "note": "пометка, если сказана: кто посоветовал, где смотреть"}] — заметки «на потом»,
  "dates": [{"title": "...", "date_iso": "YYYY-MM-DD", "type": "birthday|anniversary|holiday|deadline|other", "person": "", "yearly": true}],
  "memory": [{"kind": "fact|preference|person|goal", "subject": "о ком/о чём", "text": "...", "replaces": null}],
  "traits": [{"kind": "debuff|buff", "category": "allergy|food|med|condition|body|habit|other", "title": "коротко: «Аллергия на арахис»", "note": "подробности, если названы"}],
- "edits": [{"action": "cancel|done|move|reopen|rename|remind", "kind": "event|task|date|memory|habit", "id": 12, "new_date": null, "new_time": null, "new_title": null, "new_times": null}],
+ "edits": [{"action": "cancel|done|move|reopen|rename|remind", "kind": "event|task|date|memory|habit|note", "id": 12, "new_date": null, "new_time": null, "new_title": null, "new_times": null, "new_shelf": null, "rating": null}],
  "question": "если пользователь спрашивает о своих данных — вопрос, иначе null",
  "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни нужны для ответа (null — за всё время),
  "search": ["корни слов для поиска по записям, напр. сердц, кардиолог"] — только если вопрос про конкретную вещь,
+ "shelves": ["${SHELF_KEYS.join("|")}"] — только если вопрос про заметки «на потом» (что посмотреть, во что поиграть), иначе [],
  "clarify": "один короткий вопрос, если без него нельзя записать правильно, иначе null",
  "draw": {"prompt": "подробное описание картинки по-английски для генератора", "title": "коротко по-русски, что рисуем"} или null — только если просят нарисовать/сгенерировать/создать картинку,
  "emotion": "${EMOTIONS.join("|")}",
@@ -321,6 +343,16 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 - tasks — явные дела и просьбы («купить хлеб», «напомни позвонить маме», «надо сдать отчёт до пятницы»).
   Размышления без решения («надо бы как-нибудь…», «хорошо бы когда-то…», «может, стоит…») — suggest_tasks.
   Одно и то же не клади и в habits/tasks, и в suggest_*.
+- stash — заметка «на потом» без дня и времени: что он хочет когда-нибудь посмотреть, во что поиграть, что почитать, или идея,
+  мысль, ссылка, чтобы не потерять («фильм Дюна 2», «поиграть в Hades», «глянуть сериал Разделение», «книга Мастер и Маргарита»,
+  «идея: значки бафов», «запиши заметку: …», «надо бы как-нибудь посмотреть Дюну»). shelf: film — фильм, series — сериал и аниме,
+  game — игра, book — книга, idea — идея или мысль, other — остальное и когда неясно. title — название как есть, без слов
+  «посмотреть», «поиграть», «фильм»; несколько названий — несколько записей. Такое — только в stash: не tasks и не suggest_tasks.
+  Назван день или время («посмотреть Дюну в субботу», «кино в 20:00») — это events или tasks, НЕ stash. Дело, которое надо
+  сделать («купить лампочку», «позвонить маме»), — tasks. Уже есть в списке «Заметки на потом» ниже — не повторять.
+  «Посмотрел Дюну», «прошёл Hades» про заметку из списка — edits kind=note action=done с её номером, rating — оценка 1–10,
+  если названа («8 из 10»), иначе null; дневник при этом пиши как обычно. Нет в списке — просто дневник.
+  «Убери Hades из заметок» — cancel; «Дюна — это сериал», «переложи в игры» — move с new_shelf; переименовать — rename.
 - «Выпил таблетку», «сделал зарядку» про привычку из списка — habit_marks с её номером (не задача и не дневник).
   Назвал, сколько сделал («прочитал 35 страниц», «пробежал 5 км», «ещё 20 страниц») — amount числом этого сообщения
   (не сумма за день — сложит сервер) и unit коротко по-русски («стр.», «км», «мин», «раз»); числа нет — amount null.
@@ -336,6 +368,8 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
 - Вопрос о прошлом («что я ел в понедельник?») — question + lookup, остальное пустое.
   «Когда болело сердце?» — question + search ["сердц", "кардиолог"], lookup null (искать за всё время).
   «Сколько потратил на еду в октябре?» — question + lookup на октябрь, search пустой (суммы код посчитает сам).
+  «Что посмотреть?», «во что поиграть?», «что я хотел почитать?», «какие у меня идеи?», «покажи заметки» — question + shelves
+  (посмотреть — ["film", "series"]; все заметки — все полки), lookup null, search — только если спрашивает про конкретное.
 - Только поболтать (без фактов) — всё пустое, кроме talk, reply и emotion.
 - talk true — с тобой разговаривают: вопрос лично тебе («как дела?», «а ты что думаешь?»), делятся новостью или переживанием
   и ждут реакции («представляешь, меня повысили!», «что-то грустно»), просят совета, шутят, просто болтают. Факты из такого
@@ -368,6 +402,8 @@ ${evs}
 ${bin}
 Открытые задачи:
 ${tks}
+Заметки на потом (полка в скобках):
+${nts}
 Важные даты:
 ${dts}
 Что известно о пользователе:
@@ -454,6 +490,16 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     tasks.push({ title: t.title, priority: t.priority ?? "normal", due, category: t.category ?? "" });
   }
 
+  // Заметки «на потом»: без названия и повторы в одном сообщении — мимо.
+  const stash: Parsed["stash"] = [];
+  for (const n of r.stash) {
+    const title = n.title.trim().slice(0, NOTE_TITLE_MAX);
+    const shelf = shelfKey(n.shelf) ?? "other";
+    if (!title || stash.some((x) => x.shelf === shelf && sameNote(x.title, title))) continue;
+    stash.push({ shelf, title, note: (n.note ?? "").trim().slice(0, NOTE_TEXT_MAX) });
+  }
+  stash.splice(20);
+
   const dates: Parsed["dates"] = [];
   for (const d of r.dates) {
     const date = day(d.date_iso, "dates.date_iso");
@@ -475,12 +521,23 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
   for (const e of r.edits) {
     const newDate = day(e.new_date, "edits.new_date");
     const newTime = e.new_time ? normalizeTime(e.new_time) : null;
+    const newTitle = (e.new_title ?? "").trim().slice(0, 200);
+    // Заметка: полка — для move, оценка — для done; остальное — как у задачи.
+    if (e.kind === "note") {
+      const newShelf = shelfKey(e.new_shelf);
+      if ((e.action === "move" && !newShelf) || e.action === "remind" || (e.action === "rename" && !newTitle)) {
+        dropped.push(`edits: заметка #${e.id}, ${e.action} без данных`);
+        continue;
+      }
+      const rating = e.action === "done" && e.rating != null && e.rating >= 1 && e.rating <= 10 ? Math.round(e.rating) : null;
+      edits.push({ action: e.action, kind: "note", id: e.id, newDate: null, newTime: null, ...(e.action === "rename" ? { newTitle } : {}), ...(e.action === "move" ? { newShelf: newShelf! } : {}), rating });
+      continue;
+    }
     if (e.action === "move" && !newDate && !newTime) {
       dropped.push(`edits: перенос #${e.id} без даты`);
       clarify ??= "На когда перенести?";
       continue;
     }
-    const newTitle = (e.new_title ?? "").trim().slice(0, 200);
     if (e.action === "rename" && (!newTitle || (e.kind !== "event" && e.kind !== "task" && e.kind !== "habit"))) {
       dropped.push(`edits: переименование #${e.id} без названия`);
       clarify ??= "Как назвать?";
@@ -576,7 +633,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
   }
 
   let summary = r.summary.trim();
-  const hasContent = diary.length || events.length || tasks.length || dates.length || memory(r).length || r.traits.length || edits.length ||
+  const hasContent = diary.length || events.length || tasks.length || stash.length || dates.length || memory(r).length || r.traits.length || edits.length ||
     metrics.length || habits.length || marks.length || money.length;
   if (!summary && !r.question && (hasContent || ctx.text.trim().length > 0) && !clarify) {
     summary = `[${ctx.now}] ${ctx.text.trim()}`;
@@ -590,6 +647,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     summary,
     events,
     tasks,
+    stash,
     dates,
     memory: memory(r),
     traits: r.traits.map((t) => ({ kind: t.kind, category: t.category ?? "other", title: t.title.trim().slice(0, 60), note: (t.note ?? "").trim().slice(0, 200) })),
@@ -601,6 +659,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     edits,
     question: r.question ?? null,
     lookup,
+    shelves: r.question ? [...new Set(r.shelves.map(shelfKey).filter((x): x is Shelf => Boolean(x)))] : [],
     search,
     clarify,
     draw: r.draw?.prompt.trim() ? { prompt: r.draw.prompt.trim().slice(0, 1500), title: (r.draw.title ?? "").trim().slice(0, 80) } : null,

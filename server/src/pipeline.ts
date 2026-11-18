@@ -11,6 +11,7 @@ import { planEventReminders } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
 import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from "./clash.ts";
 import { addTraitFromChat, traitPrompt } from "./profile.ts";
+import { SHELVES, notesData, sameNote } from "./notes.ts";
 
 // Сообщение → запись → разбор → действия → ответ.
 // Порядок важен: сначала сохраняем сырое сообщение (повтор доставки найдёт его), потом разбор,
@@ -18,7 +19,7 @@ import { addTraitFromChat, traitPrompt } from "./profile.ts";
 
 /** Что и куда записалось — для карточек в приложении. */
 export interface Change {
-  kind: "diary" | "event" | "task" | "date" | "memory" | "metric" | "money" | "habit" | "mark" | "edit" | "trait";
+  kind: "diary" | "event" | "task" | "date" | "memory" | "metric" | "money" | "habit" | "mark" | "edit" | "trait" | "note";
   title: string;
   detail?: string;
 }
@@ -46,7 +47,7 @@ export interface Reply {
 export type ClashChoice = "shift" | "keep";
 
 /** Потолки списков в запросе к модели: данные растут, а запрос — нет. Берётся ближайшее и упомянутое в сообщении. */
-export const PROMPT_CAP = { events: 120, tasks: 80, dates: 50, memory: 100 };
+export const PROMPT_CAP = { events: 120, tasks: 80, dates: 50, memory: 100, notes: 80 };
 
 /** Слова сообщения (от 4 букв) — чтобы упомянутое попало в запрос, даже если оно старое или далёкое. */
 const wordsOf = (text: string) => new Set((text.toLowerCase().match(/[\p{L}\d]{4,}/gu) ?? []).map((w) => w.slice(0, 6)));
@@ -70,6 +71,8 @@ export async function promptLists(s: Store, userId: number, today: string, text:
     events: capped(await s.eventsBetween(userId, addDays(today, -1), addDays(today, 45)), PROMPT_CAP.events, words, (e) => e.title),
     trash: await s.eventsClosedSince(userId, addDays(today, -1), new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString()),
     tasks: capped(await s.openTasks(userId), PROMPT_CAP.tasks, words, (t) => t.title),
+    // Заметки «на потом», что лежат на полках: свежие и упомянутые.
+    notes: capped((await s.notesOf(userId)).filter((n) => n.status === "open"), PROMPT_CAP.notes, words, (n) => n.title),
     dates: capped(dates, PROMPT_CAP.dates, words, (d) => `${d.title} ${d.person ?? ""}`),
     memory,
   };
@@ -493,6 +496,21 @@ export class Pipeline {
       }));
       changes.push({ kind: "task", title: t.title, detail: t.due ? `до ${humanDay(t.due)}` : undefined });
     }
+    // Заметки «на потом» — на полку; то, что там уже лежит, второй раз не кладём.
+    const noteLines: string[] = [];
+    if (r.stash.length) {
+      const shelved = (await s.notesOf(u.id)).filter((n) => n.status === "open").map((n) => ({ shelf: n.shelf, title: n.title }));
+      for (const n of r.stash) {
+        if (shelved.some((x) => x.shelf === n.shelf && sameNote(x.title, n.title))) {
+          noteLines.push(`📌 уже на полке «${SHELVES[n.shelf]}»: ${esc(n.title)}`);
+          continue;
+        }
+        await log("add", "notes", await s.addNote({ user_id: u.id, shelf: n.shelf, title: n.title, note: n.note, message_id: msg.id }));
+        shelved.push(n);
+        noteLines.push(`📌 на полку «${SHELVES[n.shelf]}»: ${esc(n.title)}`);
+        changes.push({ kind: "note", title: n.title, detail: `Заметки · ${SHELVES[n.shelf]}${n.note ? " · " + short(n.note, 60) : ""}` });
+      }
+    }
     for (const d of r.dates) {
       await log("add", "dates", await s.addDate({
         user_id: u.id, title: d.title, date_iso: d.date, type: d.type, person: d.person, notes: "", yearly: d.yearly ? 1 : 0,
@@ -588,6 +606,28 @@ export class Pipeline {
         editLines.push(e.action === "done" ? `✔ сделано: ${esc(t.title)}` : e.action === "cancel" ? `✖ убрано: ${esc(t.title)}`
           : e.action === "reopen" ? `↺ снова открыто: ${esc(t.title)}`
           : e.action === "rename" ? `✎ переименовано: ${esc(t.title)} → ${esc(e.newTitle!)}` : `➜ срок: ${esc(t.title)} → ${e.newDate}`);
+      } else if (e.kind === "note") {
+        const n = await s.note(e.id);
+        if (!n || n.user_id !== u.id || n.status === "purged") continue;
+        const before = { status: n.status, title: n.title, shelf: n.shelf, rating: n.rating };
+        const shelf = SHELVES[n.shelf as keyof typeof SHELVES] ?? n.shelf;
+        if (e.action === "done") {
+          await s.updateNote(n.id, { status: "done", rating: e.rating ?? n.rating });
+          editLines.push(`✔ готово, «${shelf}»: ${esc(n.title)}${e.rating ? ` · ${e.rating}/10` : ""}`);
+        } else if (e.action === "cancel") {
+          await s.updateNote(n.id, { status: "deleted" });
+          editLines.push(`✖ убрано из заметок: ${esc(n.title)}`);
+        } else if (e.action === "reopen") {
+          await s.updateNote(n.id, { status: "open" });
+          editLines.push(`↺ снова на полке «${shelf}»: ${esc(n.title)}`);
+        } else if (e.action === "rename") {
+          await s.updateNote(n.id, { title: e.newTitle! });
+          editLines.push(`✎ переименовано: ${esc(n.title)} → ${esc(e.newTitle!)}`);
+        } else if (e.action === "move" && e.newShelf) {
+          await s.updateNote(n.id, { shelf: e.newShelf });
+          editLines.push(`➜ на полку «${SHELVES[e.newShelf]}»: ${esc(n.title)}`);
+        } else continue;
+        await log("update", "notes", n.id, before);
       } else if (e.kind === "date") {
         const d = await s.date(e.id);
         if (!d || d.user_id !== u.id || e.action !== "cancel") continue;
@@ -627,7 +667,7 @@ export class Pipeline {
       lines: [
         ...changesList({
           sections, summary: Boolean(r.summary), events: r.events.length, tasks: r.tasks.length, dates: r.dates.length,
-          memory: r.memory.length, metrics: r.metrics, money: r.money, habits: r.habits.map((h) => h.title), edits: [...traitLines, ...editLines],
+          memory: r.memory.length, metrics: r.metrics, money: r.money, habits: r.habits.map((h) => h.title), edits: [...traitLines, ...noteLines, ...editLines],
         }),
         ...markLines,
       ],
@@ -670,6 +710,7 @@ export class Pipeline {
         else if (a.tbl === "metrics") await s.setMetricDeleted(a.row_id, true);
         else if (a.tbl === "traits") await s.updateTrait(a.row_id, a.kind === "add" ? { status: "removed" } : before ?? {});
         else if (a.tbl === "money") await s.setMoneyDeleted(a.row_id, true);
+        else if (a.tbl === "notes") await s.updateNote(a.row_id, a.kind === "add" ? { status: "deleted" } : before ?? {});
         else if (a.tbl === "habits") {
           // Правка мышью (POST /api/habits/:id) помнит и название, конец, «без напоминаний», время напоминаний; старые записи — только статус.
           if (a.kind === "add") await s.updateHabit(a.row_id, { status: "deleted" });
@@ -750,14 +791,22 @@ export class Pipeline {
 
   private async answer(u: User, r: Parsed, question: string, today: string): Promise<{ text: string; days: string[] }> {
     const range = r.lookup ?? (r.search.length ? { from: EVER, to: today } : { from: addDays(today, -7), to: today });
-    const data = await answerData(this.store, u, range, r.search);
+    // Вопрос про заметки «на потом» («что посмотреть?») — ответ по полкам, дневник тут не нужен. Обычный вопрос со словами
+    // для поиска — к найденному в дневнике добавляются и заметки с этими словами.
+    const notes = r.shelves.length || r.search.length ? notesData(await this.store.notesOf(u.id), r.shelves, r.search) : "";
+    const data = r.shelves.length
+      ? `Заметки «на потом»:\n${notes || "ничего не записано"}`
+      : (await answerData(this.store, u, range, r.search)) + (notes ? `\n\nЗаметки «на потом» с этими словами:\n${notes}` : "");
+    const shelfRule = r.shelves.length
+      ? "Спрашивают про заметки «на потом»: назови, что ждёт на полке (до 8 названий; если их больше — скажи, сколько всего), и предложи одно на выбор. Полка пуста — так и скажи. "
+      : "";
     const traits = traitPrompt(await this.store.traitsOf(u.id));
     try {
       const out = await this.llm([
         {
           role: "system",
           content: `${persona(u.persona).voice}\nОтвечай на вопрос пользователя только по его записям ниже. ` +
-            `Нет данных — так и скажи, не выдумывай. Вопросы о тебе самой — по твоей карточке, не по записям. Коротко, 1–4 предложения. Сегодня ${today}. ` +
+            `Нет данных — так и скажи, не выдумывай. ${shelfRule}Вопросы о тебе самой — по твоей карточке, не по записям. Коротко, 1–4 предложения. Сегодня ${today}. ` +
             `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай.\n\n${data}${traits ? "\n\n" + traits : ""}`,
         },
         { role: "user", content: question },

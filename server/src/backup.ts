@@ -18,6 +18,7 @@ export async function exportJson(store: Store, userId: number) {
     diary: await store.diaryRange(userId, ...all),
     events: await store.allEvents(userId),
     tasks: await store.allTasks(userId),
+    notes: await store.allNotes(userId),
     dates: await store.allDates(userId),
     memory: await store.allMemory(userId),
     metrics: await store.metricsRange(userId, ...all),

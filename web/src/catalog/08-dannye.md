@@ -15,6 +15,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | `diary` | записи дневника по разделам |
 | `events` | планы, повторы |
 | `tasks` | задачи |
+| `notes` | заметки «на потом» (шаг 17): полка `shelf`, название, пометка, статус (`open`, `done`, `deleted`, `purged`), оценка `rating` 1–10 у готовой, `closed_at` |
 | `dates` | важные даты |
 | `memory` | что помнить |
 | `metrics` | числа: вес, сон, шаги… |
@@ -58,6 +59,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | Дневник | `/api/diary`, `/api/diary/days`, `DELETE /api/diary/:id`, `POST /api/sleep` (сон за день вручную или `clear`) |
 | Планы | `/api/events`, `POST /api/events` (новый план из виджета: `title`, `date`, `time`, `end_time`; с отменой), `POST /api/events/:id`, `…/repeat`, `…/copy` |
 | Задачи и даты | `/api/tasks`, `POST /api/tasks/:id` (`status`, в т. ч. `deleted`; `due_date`; `title`), `POST /api/tasks/:id/plan` (задача → план), `POST /api/tasks/:id/copy` (`date`), `/api/dates` |
+| Заметки | `GET /api/notes` → `{shelves: [{key, title, rated}], notes}` (ждущие и готовые); `POST /api/notes` (`title`, `shelf`, `note`; такая же на полке уже есть — она же с `duplicate`); `POST /api/notes/:id` (`status`: `open` / `done` / `deleted`, `rating` 1–10, `shelf`, `title`, `note`) — в ответе `undo`, правка откатывается как правка задачи. Удалённые — в `/api/trash` (`notes`), находятся в `/api/search` (`notes`), `POST /api/trash/purge` принимает `notes` |
 | Привычки | `/api/habits`, `/api/habits/:id/mark`, `GET /api/habits/:id/stats` (статистика одной привычки: год по дням — 371 клетка с понедельника 52 недели назад, серия сейчас и лучшая, сделано из запланированного за 30, 90 дней и всё время, по дням недели и 12 месяцам; неотмеченное сегодня не считается; `habitStatsOf`), `POST /api/habits/:id` (title, quiet, times — время напоминаний ЧЧ:ММ, до 4, пусто — общее из настроек, finish — конец вчера или сегодня, если отмечена; status stopped — удалить; отметки остаются; через журнал отмены) |
 | Числа | `/api/money`, `/api/metrics`, `/api/steps`, `/api/health/topics` |
 | Профиль | `GET/POST /api/profile` (title, height, birthday — ГГГГ-ММ-ДД или пусто, avatar — data URL; возраст в характеристиках — полных лет по дате рождения), `POST /api/profile/steam` (link — ссылка на профиль Steam: аватар берётся оттуда), `POST /api/traits` (новый дебаф/баф), `POST /api/traits/:id` (status, title, note; у предложенного `active`/`declined` — ответ на предложение) |

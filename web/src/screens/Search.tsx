@@ -3,13 +3,13 @@ import { get } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
 import { shortDay, todayKey } from "../format";
 import { navigate } from "../router";
-import type { EventRow, TaskRow } from "../types";
+import type { EventRow, NoteRow, TaskRow } from "../types";
 
-// Поиск по задачам и планам (GET /api/search): все слова запроса — в названии или заметках, без учёта регистра и «ё».
+// Поиск по задачам, планам и заметкам «на потом» (GET /api/search): все слова запроса — в названии или заметках, без учёта регистра и «ё».
 // Находит и то, что лежит в корзине («в корзине» → экран «Корзина»). Запрос — в адресе: /search/<запрос>; Ctrl+K или «/» — сюда.
 
 type Hit = { bin: "" | "trash" };
-type Found = { tasks: (TaskRow & Hit)[]; events: (EventRow & Hit)[] };
+type Found = { tasks: (TaskRow & Hit)[]; events: (EventRow & Hit)[]; notes: (NoteRow & Hit)[] };
 
 const TASK_STATUS: Record<string, [string, string]> = {
   open: ["открыта", "good"], done: ["сделана", ""], failed: ["не буду", ""], dodged: ["без ответа", ""], planned: ["стала планом", ""],
@@ -59,15 +59,29 @@ export function Search({ query, version }: { query?: string; version: number }) 
     <div className="screen">
       <h2 className="screen-title">Поиск</h2>
       <div className="search-box">
-        <input ref={input} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Что найти: «врач», «купить», «отчёт»…"
-          aria-label="Поиск по задачам и планам" onKeyDown={(e) => e.key === "Escape" && setQ("")} />
+        <input ref={input} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Что найти: «врач», «купить», «Дюна»…"
+          aria-label="Поиск по задачам, планам и заметкам" onKeyDown={(e) => e.key === "Escape" && setQ("")} />
       </div>
       {error ? <Empty>Нет связи: {error}</Empty>
-        : !q.trim() ? <p className="muted small search-hint">Ищет по названиям и заметкам задач и планов — и в корзине тоже. Ctrl+K или «/» — открыть поиск с любого экрана.</p>
+        : !q.trim() ? <p className="muted small search-hint">Ищет по задачам, планам и заметкам «на потом» — и в корзине тоже. Ctrl+K или «/» — открыть поиск с любого экрана.</p>
         : !found ? <Spinner />
-        : !found.tasks.length && !found.events.length ? <Empty>Ничего не нашлось по «{q.trim()}»</Empty>
+        : !found.tasks.length && !found.events.length && !found.notes.length ? <Empty>Ничего не нашлось по «{q.trim()}»</Empty>
         : (
           <div className="cards">
+            {found.notes.length > 0 && (
+              <Card title={`Заметки · ${found.notes.length}`} className="reveal wide" action={<button className="link" onClick={() => navigate("/notes")}>открыть заметки</button>}>
+                <ul className="list search">
+                  {found.notes.map((n) => (
+                    <li key={n.id} className={n.status === "open" ? "" : "closed"}>
+                      <span className="grow"><Marked text={n.title} words={words} />
+                        {n.note && <span className="muted small note"><Marked text={n.note} words={words} /></span>}
+                      </span>
+                      {n.bin === "trash" ? trashChip : n.status === "done" ? <Chip>готово{n.rating ? ` · ${n.rating}/10` : ""}</Chip> : <Chip tone="good">ждёт</Chip>}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
             {found.tasks.length > 0 && (
               <Card title={`Задачи · ${found.tasks.length}`} className="reveal wide">
                 <ul className="list search">

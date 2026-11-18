@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
 import { shortDay, todayKey } from "../format";
-import type { EventRow, TaskRow } from "../types";
+import type { EventRow, NoteRow, TaskRow } from "../types";
 
-// Корзина: удалённые и отменённые задачи и планы за последние дни (сервер держит их TRASH_DAYS дней). «Вернуть» —
+// Корзина: удалённые и отменённые задачи и планы и удалённые заметки за последние дни (сервер держит их TRASH_DAYS дней). «Вернуть» —
 // задача снова открыта, план снова в планах; то же, что «верни … из корзины» словами. «✕» — удалить навсегда,
 // «Очистить корзину» — всё сразу (после вопроса «точно?»); вернуть такое уже нельзя.
 
@@ -12,7 +12,9 @@ type Trash = {
   days: number;
   tasks: (TaskRow & { closed_at: string | null })[];
   events: (EventRow & { updated_at: string })[];
+  notes: NoteRow[];
 };
+type Kind = "task" | "event" | "note";
 
 /** Когда удалено: «сегодня 14:05», «вчера», «8 ноя». */
 function when(iso: string | null) {
@@ -46,10 +48,11 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
     return () => { alive = false; };
   }, [version]);
 
-  async function restore(kind: "task" | "event", id: number) {
+  async function restore(kind: Kind, id: number) {
     setBusy(`${kind}${id}`);
     try {
       if (kind === "task") await post(`/api/tasks/${id}`, { status: "open" });
+      else if (kind === "note") await post(`/api/notes/${id}`, { status: "open" });
       else await post(`/api/events/${id}`, { status: "active" });
       onChanged();
     } catch (e) {
@@ -59,7 +62,7 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
     }
   }
 
-  async function purge(body: { all: true } | { tasks: number[] } | { events: number[] }, ask: string, key: string) {
+  async function purge(body: { all: true } | { tasks: number[] } | { events: number[] } | { notes: number[] }, ask: string, key: string) {
     if (!confirm(ask)) return;
     setBusy(key);
     try {
@@ -76,14 +79,14 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
   if (!trash) return <Spinner />;
   // Меньше 3 дней до исчезновения — красным.
   const stays = (iso: string | null) => (iso && new Date(iso).getTime() + (trash.days - 3) * 86_400_000 < Date.now() ? "bad" : "");
-  const back = (kind: "task" | "event", id: number) => (
+  const back = (kind: Kind, id: number) => (
     <button className="link" disabled={busy === `${kind}${id}`} onClick={() => restore(kind, id)}>↩ Вернуть</button>
   );
-  const gone = (kind: "task" | "event", id: number, title: string) => (
+  const gone = (kind: Kind, id: number, title: string) => (
     <button className="link forever" disabled={busy === `${kind}${id}`} title="Удалить навсегда" aria-label={`Удалить навсегда: ${title}`}
-      onClick={() => purge(kind === "task" ? { tasks: [id] } : { events: [id] }, `Удалить «${title}» навсегда? Вернуть будет нельзя.`, `${kind}${id}`)}>✕</button>
+      onClick={() => purge(kind === "task" ? { tasks: [id] } : kind === "note" ? { notes: [id] } : { events: [id] }, `Удалить «${title}» навсегда? Вернуть будет нельзя.`, `${kind}${id}`)}>✕</button>
   );
-  const total = trash.tasks.length + trash.events.length;
+  const total = trash.tasks.length + trash.events.length + trash.notes.length;
 
   return (
     <div className="screen">
@@ -127,6 +130,21 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
             </ul>
           ) : <Empty>Удалённых планов нет</Empty>}
         </Card>
+        {trash.notes.length > 0 && (
+          <Card title={`Заметки · ${trash.notes.length}`} className="reveal wide">
+            <ul className="list trash">
+              {trash.notes.map((n) => (
+                <li key={n.id}>
+                  <span className="grow">{n.title}{n.note && <span className="muted small"> · {n.note}</span>}</span>
+                  <span className="muted small">удалена {when(n.closed_at)}</span>
+                  <Chip tone={stays(n.closed_at)}>{left(n.closed_at, trash.days)}</Chip>
+                  {back("note", n.id)}
+                  {gone("note", n.id, n.title)}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </div>
     </div>
   );

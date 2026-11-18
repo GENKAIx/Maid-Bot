@@ -357,6 +357,23 @@ ALTER TABLE notices ADD COLUMN kind TEXT NOT NULL DEFAULT '';
 ALTER TABLE habit_marks ADD COLUMN amount {real};
 ALTER TABLE habit_marks ADD COLUMN unit TEXT NOT NULL DEFAULT '';
 `,
+  // Шаг 17: заметки «на потом» (notes.ts) — что посмотреть, во что поиграть, что почитать, идеи. shelf — полка (film, series,
+  // game, book, idea, other); status: open, done (посмотрел / прошёл — с оценкой rating 1–10 или без), deleted (в корзине), purged.
+  `
+CREATE TABLE IF NOT EXISTS notes (
+  id {pk},
+  user_id INTEGER NOT NULL,
+  shelf TEXT NOT NULL DEFAULT 'other',
+  title TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',
+  rating INTEGER,
+  message_id INTEGER,
+  created_at TEXT NOT NULL,
+  closed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS notes_user ON notes (user_id, status);
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -465,6 +482,20 @@ export interface DateRow {
   notes: string;
   yearly: number;
   status: string;
+}
+/** Заметка «на потом» (notes.ts): полка shelf, пометка note, оценка rating — когда отмечена готовой. */
+export interface NoteRow {
+  id: number;
+  user_id: number;
+  shelf: string;
+  title: string;
+  note: string;
+  status: string;
+  rating: number | null;
+  message_id: number | null;
+  created_at: string;
+  /** Когда отметили готовой или удалили; null — лежит на полке. */
+  closed_at: string | null;
 }
 export interface MemoryRow {
   id: number;
@@ -606,7 +637,7 @@ export interface ActionRow {
 type Row = Record<string, unknown>;
 const now = () => new Date().toISOString();
 
-export type Table = "diary" | "events" | "tasks" | "dates" | "memory" | "metrics" | "habits" | "habit_marks" | "money" | "traits";
+export type Table = "diary" | "events" | "tasks" | "dates" | "memory" | "metrics" | "habits" | "habit_marks" | "money" | "traits" | "notes";
 
 export class Store {
   private constructor(readonly driver: Driver) {}
@@ -920,7 +951,7 @@ export class Store {
   }
   /** «Удалить навсегда» в корзине: задачи и планы из корзины (удалённые/отменённые не раньше since) получают статус purged —
    *  в корзине их больше нет. Строки остаются: на них ссылается журнал отмены. pick не задан — вся корзина. */
-  async purgeTrash(userId: number, since: string, pick?: { tasks?: number[]; events?: number[] }): Promise<{ tasks: number; events: number }> {
+  async purgeTrash(userId: number, since: string, pick?: { tasks?: number[]; events?: number[]; notes?: number[] }): Promise<{ tasks: number; events: number; notes: number }> {
     const ids = (list: number[] = []) => (!pick ? "" : list.length ? ` AND id IN (${list.map(() => "?").join(", ")})` : " AND 0");
     const tasks = await this.run(
       `UPDATE tasks SET status = 'purged' WHERE user_id = ? AND status IN ('deleted', 'cancelled') AND closed_at >= ?${ids(pick?.tasks)}`,
@@ -930,10 +961,44 @@ export class Store {
       `UPDATE events SET status = 'purged' WHERE user_id = ? AND status IN ('cancelled', 'deleted') AND updated_at >= ?${ids(pick?.events)}`,
       userId, since, ...(pick?.events ?? []),
     );
-    return { tasks, events };
+    const notes = await this.run(
+      `UPDATE notes SET status = 'purged' WHERE user_id = ? AND status = 'deleted' AND closed_at >= ?${ids(pick?.notes)}`,
+      userId, since, ...(pick?.notes ?? []),
+    );
+    return { tasks, events, notes };
   }
   allTasks(userId: number): Promise<TaskRow[]> {
     return this.all<TaskRow>("SELECT * FROM tasks WHERE user_id = ? ORDER BY id", userId);
+  }
+
+  // --- заметки «на потом» ---
+  addNote(n: { user_id: number; shelf: string; title: string; note: string; message_id: number | null }): Promise<number> {
+    return this.insert(
+      "INSERT INTO notes (user_id, shelf, title, note, status, message_id, created_at) VALUES (?, ?, ?, ?, 'open', ?, ?)",
+      n.user_id, n.shelf, n.title, n.note, n.message_id, now(),
+    );
+  }
+  note(id: number): Promise<NoteRow | undefined> {
+    return this.get<NoteRow>("SELECT * FROM notes WHERE id = ?", id);
+  }
+  /** Правка заметки; смена статуса ставит closed_at (open — снова пусто). at — время отметки (тесты). */
+  async updateNote(id: number, patch: Partial<Pick<NoteRow, "shelf" | "title" | "note" | "status" | "rating">>, at?: Date) {
+    for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE notes SET ${k} = ? WHERE id = ?`, v as never, id);
+    if (patch.status) await this.run("UPDATE notes SET closed_at = ? WHERE id = ?", patch.status === "open" ? null : at ? at.toISOString() : now(), id);
+  }
+  /** Заметки на полках: открытые и готовые, свежие первыми. */
+  notesOf(userId: number): Promise<NoteRow[]> {
+    return this.all<NoteRow>("SELECT * FROM notes WHERE user_id = ? AND status IN ('open', 'done') ORDER BY id DESC", userId);
+  }
+  /** Корзина: удалённые заметки не раньше since (ISO), свежие первыми. */
+  trashNotes(userId: number, since: string): Promise<NoteRow[]> {
+    return this.all<NoteRow>(
+      "SELECT * FROM notes WHERE user_id = ? AND status = 'deleted' AND closed_at >= ? ORDER BY closed_at DESC, id DESC LIMIT 200",
+      userId, since,
+    );
+  }
+  allNotes(userId: number): Promise<NoteRow[]> {
+    return this.all<NoteRow>("SELECT * FROM notes WHERE user_id = ? ORDER BY id", userId);
   }
 
   // --- важные даты ---

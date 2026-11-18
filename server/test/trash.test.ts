@@ -46,12 +46,12 @@ test("корзина: «удалить навсегда» убирает из к
   await store.updateEvent(e, { status: "cancelled" });
 
   // Открытую и чужую по номеру не тронуть.
-  assert.deepEqual(await store.purgeTrash(u.id, since, { tasks: [a, open, alien] }), { tasks: 1, events: 0 });
+  assert.deepEqual(await store.purgeTrash(u.id, since, { tasks: [a, open, alien] }), { tasks: 1, events: 0, notes: 0 });
   assert.deepEqual((await store.trashTasks(u.id, since)).map((t) => t.title), ["Б"]);
   assert.equal((await store.task(open))?.status, "open");
   assert.equal((await store.task(alien))?.status, "deleted");
 
-  assert.deepEqual(await store.purgeTrash(u.id, since), { tasks: 1, events: 1 });
+  assert.deepEqual(await store.purgeTrash(u.id, since), { tasks: 1, events: 1, notes: 0 });
   assert.equal((await store.trashTasks(u.id, since)).length, 0);
   assert.equal((await store.trashEvents(u.id, since)).length, 0);
   assert.equal((await store.trashTasks(other.id, since)).length, 1);
