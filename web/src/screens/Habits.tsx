@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { get, post } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
 import { WEEKDAYS, addMonths, monthTitle, shortDay, todayKey } from "../format";
@@ -8,7 +8,8 @@ import type { HabitMonth } from "../types";
 import { HabitStatsPanel } from "./HabitStats";
 
 // Привычки: сетка месяца (строка — привычка, столбец — день), отметка щелчком, серии и время напоминаний (🔔 — правка прямо в строке),
-// щелчок по названию — статистика привычки строкой под ней (HabitStats.tsx).
+// щелчок по названию — статистика привычки строкой под ней (HabitStats.tsx). Адрес «/habits?h=12» (из виджета на ПК) —
+// статистика этой привычки раскрыта сразу, а её строка подсвечена волной по клеткам.
 
 const WEEK_SHORT = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86400000);
@@ -20,6 +21,11 @@ function spanText(h: { start_date: string; end_date: string | null }, today: str
   return `день ${daysBetween(h.start_date, today) + 1} из ${daysBetween(h.start_date, h.end_date) + 1} · до ${shortDay(h.end_date)}`;
 }
 const NEW_HABIT = "каждый день ";
+/** Привычка из адреса «?h=12» — какую раскрыть и подсветить; нет или мусор — null. */
+export function habitFromSearch(search: string): number | null {
+  const m = /^\d{1,9}$/.exec(new URLSearchParams(search).get("h") ?? "");
+  return m ? Number(m[0]) : null;
+}
 /** Число в клетке: 35, 1,2к — чтобы влезло в квадрат. */
 export const shortNum = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(".", ",")}к` : String(Math.round(v * 10) / 10).replace(".", ","));
 /** Полное число для итогов: 1 542, 2,5. */
@@ -39,6 +45,8 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   const [stats, setStats] = useState<number | null>(null);
+  const [flash, setFlash] = useState<number | null>(null);
+  const want = useRef(habitFromSearch(location.search));
 
   useEffect(() => {
     let alive = true;
@@ -52,6 +60,20 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
     await post(`/api/habits/${id}/mark`, { status, day });
     onChanged();
   }
+
+  // Пришли из виджета по «?h=12»: раскрыть статистику, прокрутить к строке и подсветить её; адрес — снова чистый «/habits».
+  useEffect(() => {
+    const id = want.current;
+    if (!data || id == null) return;
+    want.current = null;
+    history.replaceState(null, "", location.pathname);
+    if (!data.habits.some((h) => h.id === id)) return;
+    setStats(id);
+    setFlash(id);
+    requestAnimationFrame(() => document.querySelector(`[data-habit-row="${id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
+    const t = setTimeout(() => setFlash(null), 2600);
+    return () => clearTimeout(t);
+  }, [data]);
 
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!data) return <Spinner />;
@@ -99,7 +121,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
               const span = spanText(h, today);
               const much = monthAmount(h.days);
               return [
-                <span key={`t${h.id}`} className="hg-title">
+                <span key={`t${h.id}`} className={`hg-title ${flash === h.id ? "hg-flash" : ""}`} data-habit-row={h.id}>
                   <span className="hg-name">
                     <button className={`hg-open grow ${stats === h.id ? "on" : ""}`} onClick={() => setStats(stats === h.id ? null : h.id)} title="Статистика привычки">{h.title}</button>
                     {fire >= 2 && <span className="hg-fire" title={`Серия: ${fire} дн. подряд`}>🔥{fire}</span>}
@@ -120,10 +142,11 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                   </button>
                   </span>
                 </span>,
-                ...h.days.map((x) => (
+                ...h.days.map((x, k) => (
                   <button
                     key={`${h.id}-${x.day}`}
-                    className={`hg-cell ${x.due ? "due" : ""} ${x.status ?? ""} ${x.day === today ? "today hg-now" : ""} ${x.day > today ? "future" : ""} ${x.status === "done" && x.amount != null ? "num" : ""}`}
+                    style={flash === h.id ? { animationDelay: `${k * 22}ms` } : undefined}
+                    className={`hg-cell ${flash === h.id ? "hg-flash" : ""} ${x.due ? "due" : ""} ${x.status ?? ""} ${x.day === today ? "today hg-now" : ""} ${x.day > today ? "future" : ""} ${x.status === "done" && x.amount != null ? "num" : ""}`}
                     disabled={x.day > today}
                     onClick={() => mark(h.id, x.day, x.status)}
                     title={`${x.day}${x.status === "done" ? " — сделано" : x.status === "skipped" ? " — пропуск" : x.due ? " — запланировано" : ""}${x.amount != null ? ` · ${x.amount}${x.unit ? " " + x.unit : ""}` : ""}`}

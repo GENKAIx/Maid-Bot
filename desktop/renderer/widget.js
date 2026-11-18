@@ -2679,6 +2679,10 @@ $("#body").addEventListener("click", async (e) => {
     if (t) taskDayTimer = setTimeout(() => togglePlansOn(t.due_date && t.due_date > data.day ? t.due_date : data.day, `[data-task="${t.id}"]`), 280);
     return;
   }
+  // Название привычки — страница «Привычки» в главном окне: статистика этой привычки раскрыта, строка подсвечена (Habits.tsx, ?h=).
+  const habitName = !tick ? e.target.closest("li.habit:not(.leaving):not(.undo-row) .t") : null;
+  const habitOpen = habitName?.closest("li").querySelector("[data-habit]")?.dataset.habit;
+  if (habitOpen) return maid.openSection(`/habits?h=${Number(habitOpen)}`);
   const id = e.target.dataset?.done;
   const habit = e.target.dataset?.habit;
   try {

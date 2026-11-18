@@ -805,8 +805,9 @@ ipcMain.on("open-day", (_e, day) => {
   shell.openExternal(`${settings.server.replace(/\/$/, "")}/diary/${day}`);
 });
 // Раздел приложения (щелчок по карточке в облачке горничной): главное окно открывается сразу на нём.
+// «/habits?h=12» — щелчок по названию привычки в виджете: страница привычек со статистикой этой привычки.
 ipcMain.on("open-section", (_e, p) => {
-  if (!/^\/[\w\/-]*$/.test(String(p)) || !/^https?:\/\//.test(settings.server)) return showMain();
+  if (!/^\/[\w\/-]*(\?h=\d+)?$/.test(String(p)) || !/^https?:\/\//.test(settings.server)) return showMain();
   showMain();
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
 });

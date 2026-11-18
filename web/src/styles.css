@@ -300,6 +300,22 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .hg-times { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); /* видимая ширина карточки — кнопки не уезжают вправо за прокрутку */ display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; margin: 2px 0 6px; background: var(--panel-2); border-radius: 10px; }
 .hg-open { border: none; background: transparent; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .hg-open:hover, .hg-open.on { color: var(--accent); }
+/* Привычка, на которую пришли из виджета (?h=): плашка названия вспыхивает дважды, по клеткам слева направо бежит волна. */
+.hg-title.hg-flash { border-radius: 10px; animation: hg-flash-title 1.2s ease-in-out 2; }
+.hg-cell.hg-flash { animation: hg-flash-cell .7s ease-out backwards; }
+@keyframes hg-flash-title {
+  0%, 100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
+  40% { background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft), 0 0 0 8px var(--accent); }
+}
+@keyframes hg-flash-cell {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+  35% { transform: scale(1.28); box-shadow: 0 0 0 2px var(--accent); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hg-title.hg-flash { animation: none; background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft); }
+  .hg-cell.hg-flash { animation: none; }
+}
 .hg-panel { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); margin: 2px 0 8px; padding: 12px 14px; background: var(--panel-2); border-radius: 12px; }
 .hs { display: flex; flex-direction: column; gap: 14px; }
 .hs-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
