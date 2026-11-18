@@ -36,7 +36,7 @@ vm.createContext(ctx);
 try {
   vm.runInContext(section, ctx);
   // quip подменяем: что сказала и с какой позой.
-  vm.runInContext("quip = (text, moodName) => quipLog.push([text, moodName]);", ctx);
+  vm.runInContext("quip = (text, moodName, ms, hold) => quipLog.push([text, moodName, ms, hold]);", ctx);
   const zone = (x, y) => vm.runInContext(`pokeZone(${x}, ${y})`, ctx);
   for (const [x, y, want] of [[0.55, 0.1, "cap"], [0.4, 0.56, "cheek"], [0.67, 0.56, "cheek"], [0.57, 0.68, "bow"], [0.84, 0.33, "bow"],
     [0.55, 0.82, "chest"], [0.55, 0.4, ""], [0.05, 0.9, ""], [0.95, 0.05, ""]]) {
@@ -118,7 +118,11 @@ try {
 check(/Date\.now\(\) < sulkUntil\) return "pout";/.test(widget.match(/function baseMood\(\) \{[^]*?\n\}/)?.[0] ?? ""), "пока дуется, возвращается в обычную позу");
 check(/clearTimeout\(sulkTimer\);\s*sulkUntil = 0;/.test(fs.readFileSync(path.join(dir, "album.js"), "utf8")), "«погладить» не снимает таймер прощения");
 // Поза после тычка держится не меньше 3 с.
-check(/function quip\(text, moodName, ms = 3200\)/.test(fun), "поза тычка короче 3 с");
+// 18.11.2026: поза после тычка — 8 с (POKE_HOLD), облачко — как было (3,2–3,8 с).
+check(/function quip\(text, moodName, ms = 3200, hold = ms \+ 300\)/.test(fun) && /react\(moodName, hold\);/.test(fun), "у quip нет отдельного времени позы");
+check(/const POKE_HOLD = 8000;/.test(fun), "поза тычка не 8 с");
+check((fun.match(/, POKE_HOLD\);/g) ?? []).length === 3, "8 с — не у всех тычков (обычный, «вы закончили?», «хватит»)");
+check(/how \? 3800 : 3200, POKE_HOLD\)/.test(fun), "облачко тычка изменилось");
 // Щелчок передаёт место в poke; разбуженная тычком не здоровается, если новостей нет.
 check(/const zone = e \? pokeZoneAt\(e\) : "";/.test(widget) && /setTimeout\(\(\) => poke\(zone\), 230\)/.test(widget), "maidClick не передаёт место тычка");
 check(/napWokeAt = Date\.now\(\);\s*pokedAwake = false;/.test(widget), "wakeUp не запоминает время пробуждения");

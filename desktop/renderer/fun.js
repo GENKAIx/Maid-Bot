@@ -8,6 +8,7 @@
 // Реакция зависит от того, чем она занята (pokeBusy: только что разбудили, думает, пьёт чай, убирается, ночь после отбоя —
 // на первый тычок серии) и куда попали (pokeZone: чепчик, бант, щёки, грудь — три раза из четырёх, иначе обычная реплика).
 // Фразы — в lines.js (line / lineItem): много вариантов, без повторов.
+const POKE_HOLD = 8000; // поза после тычка держится дольше облачка
 const POKE_SULK = 30_000;
 const POKE_SULK_MAX = 120_000;
 let pokes = 0;
@@ -22,14 +23,14 @@ function boop(kind) {
   void f.offsetWidth;
   f.classList.add(kind);
 }
-// Короткая реплика — только если облачко свободно (напоминание с кнопками не перебиваем).
-function quip(text, moodName, ms = 3200) {
+// Короткая реплика — только если облачко свободно (напоминание с кнопками не перебиваем). ms — сколько висит облачко, hold — поза.
+function quip(text, moodName, ms = 3200, hold = ms + 300) {
   const b = $("#bubble");
   if (b.classList.contains("hidden") || b.dataset.quip) {
     say(text, { ms, mood: moodName });
     b.dataset.quip = "1";
   }
-  react(moodName, ms + 300);
+  react(moodName, hold);
 }
 // Зоны по кадру фигурки 400×427, в долях ширины и высоты: [зона, x0, y0, x1, y1]. Позы немного разные — зоны с запасом;
 // бант — и на шее, и в волосах справа. Мимо зон (волосы, глаза, руки) — обычный тычок.
@@ -87,13 +88,13 @@ function poke(zone = "") {
   boop("boop");
   if (pokes >= 7) {
     popTone(-4, { vol: 0.18, soft: true });
-    quip(line(`annoyed${pokes}`), "worried");
+    quip(line(`annoyed${pokes}`), "worried", 3200, POKE_HOLD);
     return;
   }
   // 4–6-й тычок подряд — через раз смотрит пустым взглядом: «вы закончили?».
   if (pokes >= 4 && Math.random() < 0.5) {
     popTone(-2, { vol: 0.18, soft: true });
-    quip(line("pokeMore"), "deadpan", 3400);
+    quip(line("pokeMore"), "deadpan", 3400, POKE_HOLD);
     return;
   }
   // Первый тычок серии — по тому, чем занята (ночью — через раз, чтобы не одно и то же); иначе — по месту, куда попали.
@@ -102,7 +103,7 @@ function poke(zone = "") {
   if (how === "woke") pokedAwake = true; // «О, вы вернулись!» после такого не нужно (wakeUp)
   const p = lineItem(POKE_KEY[how] ?? "poke");
   popTone(Math.floor(Math.random() * 8), { vol: 0.2, soft: true });
-  quip(p.t, how === "think" ? thinkPick : p.m, how ? 3800 : 3200);
+  quip(p.t, how === "think" ? thinkPick : p.m, how ? 3800 : 3200, POKE_HOLD);
 }
 
 // --- настроение от того, как идёт день ---
