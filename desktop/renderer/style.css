@@ -874,7 +874,7 @@ body.quick { background: transparent; }
 .ib .ib-n[hidden] { display: none; }
 /* Шестерёнка, пока качается новая версия (inbox.js, updateBadge): крутится, справа — сколько скачано. */
 .ib.busy { width: auto; display: flex; align-items: center; gap: 5px; }
-.ib.busy img { flex: none; width: 36px; height: 36px; animation: ibSpin 4s linear infinite; }
+.ib.busy img { flex: none; width: 36px; height: 36px; animation: ibSpin 12s linear infinite; }
 .stage.side-left .ib.busy img { width: 28px; height: 28px; }
 @keyframes ibSpin { to { transform: rotate(360deg); } }
 .ib .ib-pct { padding: 1px 6px; border-radius: 8px; background: rgba(20, 16, 32, .78); color: #fff; font-size: 12px; font-weight: 700; line-height: 16px;
