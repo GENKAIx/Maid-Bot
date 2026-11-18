@@ -10,6 +10,7 @@ const Voice = (() => {
   let ctx = null; // AudioContext для уровня громкости
   let analyser = null;
   let levels = []; // громкость 0..1, один столбик в STEP мс — для рисования волны
+  let first = 0; // сколько старых замеров выброшено с начала (levels[0] — замер номер first)
   let sampler = 0;
   const STEP = 70;
   // Тишина — все замеры ниже QUIET: выключенный микрофон даёт ноль или почти ноль (~0,05), тихая комната — 0,15–0,3,
@@ -28,6 +29,7 @@ const Voice = (() => {
     rec.start(250);
     startedAt = Date.now();
     levels = [];
+    first = 0;
     try {
       ctx = new AudioContext();
       analyser = ctx.createAnalyser();
@@ -42,8 +44,8 @@ const Voice = (() => {
         const lv = Math.min(1, Math.sqrt(Math.sqrt(sum / buf.length)) * 1.6);
         // Таймер может приходить реже (окно в фоне) — столбиков столько, сколько прошло шагов, чтобы волна шла со временем.
         const due = Math.floor((Date.now() - startedAt) / STEP);
-        while (levels.length < due) levels.push(lv);
-        if (levels.length > 2000) levels.splice(0, levels.length - 2000);
+        while (first + levels.length < due) levels.push(lv);
+        if (levels.length > 2000) first += levels.splice(0, levels.length - 2000).length;
       }, STEP);
     } catch {
       analyser = null;
@@ -87,6 +89,19 @@ const Voice = (() => {
     if (rec) await finish();
   }
 
+  /** Где рисовать столбики волны: место каждого — по его времени (замер k — момент (k+1)·STEP), он въезжает из-за правого
+   *  края и плавно уходит влево. Раньше место считалось по счёту от правого края, а сдвиг — по часам: таймер замеров
+   *  опаздывает на миллисекунды, и в эти кадры вся волна прыгала на шаг вправо и обратно («глитч», 19.11.2026). */
+  function waveBars(lv, from, elapsed, w, pitch, gap) {
+    const out = [];
+    for (let i = lv.length - 1; i >= 0; i--) {
+      const x = w + gap - (elapsed - (from + i + 1) * STEP) / STEP * pitch;
+      out.push({ x, lv: lv[i] });
+      if (x < -pitch) break;
+    }
+    return out;
+  }
+
   /** Рисует волну записи в canvas, пока идёт запись: столбики громкости, новые справа, старые уходят влево. */
   function wave(canvas, color = "#fff") {
     const g = canvas.getContext("2d");
@@ -100,17 +115,12 @@ const Voice = (() => {
       g.fillStyle = color;
       const bar = 2 * dpr;
       const gap = 2 * dpr;
-      const n = Math.floor(w / (bar + gap));
-      // Последний столбик плавно «въезжает» справа между отсчётами.
-      const shift = ((Date.now() - startedAt) % STEP) / STEP * (bar + gap);
-      for (let i = 0; i <= n; i++) {
-        const lv = levels[levels.length - 1 - i];
-        const x = w - (i + 1) * (bar + gap) + gap - shift + (bar + gap);
-        if (x < -bar) break;
-        const bh = lv === undefined ? bar : Math.max(bar, lv * h * 0.9);
-        g.globalAlpha = lv === undefined ? 0.35 : 1;
-        g.fillRect(x, (h - bh) / 2, bar, bh);
-      }
+      const pitch = bar + gap;
+      const bars = waveBars(levels, first, Date.now() - startedAt, w, pitch, gap);
+      for (const b of bars) g.fillRect(b.x, (h - Math.max(bar, b.lv * h * 0.9)) / 2, bar, Math.max(bar, b.lv * h * 0.9));
+      // Левее первого замера (запись только началась) — бледные точки-заглушки тем же шагом.
+      g.globalAlpha = 0.35;
+      for (let x = (bars.at(-1)?.x ?? w + gap) - pitch; x >= -bar; x -= pitch) g.fillRect(x, (h - bar) / 2, bar, bar);
       g.globalAlpha = 1;
       requestAnimationFrame(draw);
     };
@@ -122,5 +132,5 @@ const Voice = (() => {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   };
 
-  return { start, stop, cancel, wave, clock, isHush, get hushed() { return isHush(levels); }, get on() { return Boolean(rec); }, get seconds() { return rec ? Math.floor((Date.now() - startedAt) / 1000) : 0; } };
+  return { start, stop, cancel, wave, clock, isHush, waveBars, STEP, get hushed() { return isHush(levels); }, get on() { return Boolean(rec); }, get seconds() { return rec ? Math.floor((Date.now() - startedAt) / 1000) : 0; } };
 })();
