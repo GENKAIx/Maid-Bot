@@ -872,6 +872,15 @@ body.quick { background: transparent; }
 .ib .ib-n { position: absolute; right: -5px; bottom: -3px; min-width: 18px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 9px;
   background: #e0566a; color: #fff; font-size: 11px; font-weight: 700; line-height: 17px; text-align: center; pointer-events: none; }
 .ib .ib-n[hidden] { display: none; }
+/* Шестерёнка, пока качается новая версия (inbox.js, updateBadge): крутится, справа — сколько скачано. */
+.ib.busy { width: auto; display: flex; align-items: center; gap: 5px; }
+.ib.busy img { flex: none; width: 36px; height: 36px; animation: ibSpin 1.6s linear infinite; }
+.stage.side-left .ib.busy img { width: 28px; height: 28px; }
+@keyframes ibSpin { to { transform: rotate(360deg); } }
+.ib .ib-pct { padding: 1px 6px; border-radius: 8px; background: rgba(20, 16, 32, .78); color: #fff; font-size: 12px; font-weight: 700; line-height: 16px;
+  font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.ib .ib-pct[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .ib.busy img { animation: none; } }
 .ib.new { animation: ibWiggle .7s ease 3; }
 @keyframes ibWiggle { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-16deg); } 40% { transform: rotate(13deg); } 60% { transform: rotate(-8deg); } 80% { transform: rotate(4deg); } }
 /* Список оповещений раздела в облачке (inbox.js, openList): строка — название и время, щелчок открывает. */

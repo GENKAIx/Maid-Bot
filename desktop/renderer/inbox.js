@@ -65,6 +65,11 @@ function inboxUpdate(s) {
   ibUpdate = s && ["available", "downloading", "ready"].includes(s.status) && s.next ? s : null;
   drawInbox(ibUpdate && !had ? "update" : "");
 }
+/** Шестерёнка, пока качается и ставится новая версия: крутится (busy), справа — сколько скачано (pct, «59 %»). */
+function updateBadge(u) {
+  const busy = Boolean(u && ["downloading", "ready"].includes(u.status));
+  return { busy, pct: busy && Number.isFinite(u.percent) ? `${u.percent} %` : "" };
+}
 function openUpdate(u) {
   if (u.status !== "available") return say(`Скачиваю версию ${u.next}${u.percent ? ` — ${u.percent} %` : ""}. Программа перезапустится сама.`, { ms: 8000 });
   say(`Вышла новая версия программы — ${u.next} (у вас ${u.version}). Обновить сейчас? Программа скачает её и перезапустится сама.`, {
@@ -132,6 +137,15 @@ function drawInbox(fresh = "") {
     const badge = b.querySelector(".ib-n");
     badge.textContent = g.n > 1 ? (g.n > 99 ? "99+" : g.n) : "";
     badge.hidden = g.n < 2;
+    if (g.id === "update") {
+      const u = updateBadge(ibUpdate);
+      b.classList.toggle("busy", u.busy);
+      let pct = b.querySelector(".ib-pct");
+      if (!pct) { pct = document.createElement("span"); pct.className = "ib-pct"; b.append(pct); }
+      pct.textContent = u.pct;
+      pct.hidden = !u.pct;
+      if (u.busy) b.title = `Обновление · скачано ${u.pct || "…"}`;
+    }
     if (fresh === g.id) {
       b.classList.remove("new");
       void b.offsetWidth;
