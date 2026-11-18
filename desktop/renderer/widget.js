@@ -492,7 +492,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
           maid.changed();
         } catch (e) {
           play("oops");
-          say(e.message, { ms: 6000 });
+          say(errText(e), { ms: 6000 });
         }
         return;
       }
@@ -525,7 +525,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
           maid.changed();
         } else hideBubble();
       } catch (e) {
-        say(e.message, { ms: 6000 });
+        say(errText(e), { ms: 6000 });
       }
     };
   });
@@ -733,7 +733,7 @@ function startProposal(p) {
         maid.changed();
       } else say(r.text, { ms: 4000 });
     } catch (e) {
-      if (!quiet) say(e.message, { ms: 6000, emotion: "worried" });
+      if (!quiet) say(errText(e), { ms: 6000, emotion: "worried" });
     }
   };
   acts.querySelectorAll("button[data-p]").forEach((btn) => (btn.onclick = () => decide(btn.dataset.p)));
@@ -836,7 +836,8 @@ function saveOutbox() {
   try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(keep)); } catch { try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(keep.filter((m) => !m.body.images && !m.body.audio))); } catch {} }
 }
 const offline = (e) => /нет связи с сервером|сервер не ответил/.test(e?.message ?? "");
-const errText = (e) => String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+// Текст ошибки для облачка: без приставки Electron, «нет связи» — понятной фразой (что не получилось и что делать).
+const errText = (e) => { const t = String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""); return t === "нет связи с сервером" ? "Нет связи с сервером — не получилось. Попробуйте ещё раз, когда связь вернётся." : t === "сервер не ответил" ? "Сервер не ответил — не получилось. Попробуйте ещё раз." : t; };
 
 function sendChat() {
   const text = chatInput.value.trim();
@@ -1128,7 +1129,7 @@ function clashButtons(r) {
       say(x.text, { ms: 5000, sound: action === "shift" ? "ding" : null });
       maid.changed();
     } catch (e) {
-      say(e.message, { ms: 6000, emotion: "worried" });
+      say(errText(e), { ms: 6000, emotion: "worried" });
     }
   };
   // «Оставить» заполняется и нажимается сама через cfg.clashWait секунд — молчание и есть «оставить».
@@ -1143,7 +1144,7 @@ function failedButtons(r) {
       else say(x.text, { emotion: x.emotion, changes: x.changes ?? [], days: x.days ?? [], undo: x.undoable ? x.messageId : null, ms: 16000, sound: x.changes?.length ? "ding" : null, proposal: x.proposal, buttons: [...failedButtons(x), ...clashButtons(x)] });
       maid.changed();
     } catch (e) {
-      say(e.message, { ms: 6000, emotion: "worried" });
+      say(errText(e), { ms: 6000, emotion: "worried" });
     }
   };
   return [{ text: "🔁 Повторить", run: () => act("retry") }, { text: "📝 Оставить заметкой", run: () => act("note") }];
@@ -1807,7 +1808,7 @@ async function rowCommit(key) {
     if (!task) load();
   } catch (err) {
     play("oops");
-    say(err.message, { ms: 6000 });
+    say(errText(err), { ms: 6000 });
     load();
   }
 }
@@ -1878,6 +1879,21 @@ function bindRelogin() {
 // позже свежего, отбрасывается — иначе только что добавленная задача пропадала из него, улетала в корзину и возвращалась.
 let loadSeq = 0;
 let loadApplied = 0;
+// Связь вернулась. Не было дольше OFFLINE_SAY_MS — сказать вслух; короткий обрыв — только «починила» (гаечный ключ).
+// Сообщения, ждавшие связи, — отправить сразу, не дожидаясь 20-секундного повтора. Спит — молча.
+const OFFLINE_SAY_MS = 15_000;
+const BACK_LINES = ["Связь вернулась — можно отмечать.", "Снова на связи!", "Связь починила, всё работает."];
+let offlineSince = 0;
+function backOnline() {
+  online = true;
+  settle();
+  if (napping) return;
+  const waiting = outbox.some((x) => x.state === "later");
+  if (waiting) retryOutbox(null);
+  if (Date.now() - offlineSince >= OFFLINE_SAY_MS && $("#bubble").classList.contains("hidden"))
+    say(waiting ? "Связь вернулась — отправляю то, что ждало." : BACK_LINES[Math.floor(Math.random() * BACK_LINES.length)], { ms: 4500, mood: "wrench" });
+  else react("wrench", 4000);
+}
 async function load() {
   const seq = ++loadSeq;
   try {
@@ -1889,7 +1905,7 @@ async function load() {
     data = fresh;
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
-    if (!online) { online = true; settle(); if (!napping) react("wrench", 4000); } // связь вернулась — «починила»
+    if (!online) backOnline();
     // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.
     if (json === lastJson) return;
     lastJson = json;
@@ -1897,7 +1913,7 @@ async function load() {
     if (seq < loadApplied) return; // свежий ответ уже пришёл — сбой старого запроса не в счёт
     // Нет связи — старые данные пока оставить, следующий опрос через 5 с.
     loadFail = String(err?.message ?? "").replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
-    if (online) { online = false; settle(); }
+    if (online) { online = false; offlineSince = Date.now(); settle(); }
     // Вход устарел — вместо списка «Войти» (данные остаются: по ним работают часы и полоса дней).
     if (!data || /^вход устарел/.test(loadFail)) { lastJson = ""; render(); } // «Нет связи» и почему
     return;
@@ -2621,7 +2637,7 @@ async function unmarkHabitDay(h) {
     load();
   } catch (err) {
     play("oops");
-    say(err.message, { ms: 6000 });
+    say(errText(err), { ms: 6000 });
   }
 }
 async function markHabitDay(h, status) {
@@ -2631,7 +2647,7 @@ async function markHabitDay(h, status) {
     maid.changed();
   } catch (err) {
     play("oops");
-    say(err.message, { ms: 6000 });
+    say(errText(err), { ms: 6000 });
   }
   load();
 }
@@ -2722,7 +2738,7 @@ $("#body").addEventListener("click", async (e) => {
     }
   } catch (err) {
     play("oops");
-    say(err.message, { ms: 6000 });
+    say(errText(err), { ms: 6000 });
     load();
   }
 });
@@ -2738,7 +2754,7 @@ async function reopenTask(id) {
     load();
   } catch (err) {
     play("oops");
-    say(err.message, { ms: 6000 });
+    say(errText(err), { ms: 6000 });
     load();
   }
 }

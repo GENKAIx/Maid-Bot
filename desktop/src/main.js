@@ -160,6 +160,8 @@ function movedTo(base, res) {
   } catch { return null; }
 }
 
+/** Паузы между повторами запроса без ответа сервера: всего ~10 с — столько длится перезапуск сервера при выкладке. */
+const API_RETRY_MS = [700, 1400, 2800, 5000];
 async function api(method, p, body, moved = false) {
   if (!token()) {
     if (tokenEnc) throw new Error("Ключ ещё не расшифровался (защита Windows) — пробую снова.");
@@ -179,8 +181,8 @@ async function api(method, p, body, moved = false) {
     headers: { Authorization: `Bearer ${settings.token}`, "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   };
-  // Соединение иногда рвётся (VPN, сон компьютера) — «fetch failed» без ответа сервера. Повторить ещё дважды;
-  // POST тоже: сервер его не получил, раз ответа нет вовсе.
+  // Соединение иногда рвётся (VPN, сон компьютера, перезапуск сервера при выкладке) — «fetch failed» без ответа сервера.
+  // Повторять около 10 с (паузы API_RETRY_MS); POST тоже: сервер его не получил, раз ответа нет вовсе.
   let res;
   for (let i = 0; ; i++) {
     try {
@@ -189,11 +191,11 @@ async function api(method, p, body, moved = false) {
     } catch (e) {
       // Понятные слова вместо «fetch failed»: по ним виджет понимает, что сообщение можно повторить позже.
       if (e?.name === "TimeoutError") throw new Error("сервер не ответил");
-      if (i >= 2) {
+      if (i >= API_RETRY_MS.length) {
         maidLog("нет связи с сервером:", e?.cause?.code ?? e?.message ?? e);
         throw new Error("нет связи с сервером");
       }
-      await new Promise((r) => setTimeout(r, 700 * (i + 1)));
+      await new Promise((r) => setTimeout(r, API_RETRY_MS[i]));
     }
   }
   // Сервер переехал на https-адрес: запомнить его и повторить запрос уже с ключом (один раз).

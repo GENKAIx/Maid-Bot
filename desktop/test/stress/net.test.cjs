@@ -23,12 +23,12 @@ test("сервер работает: данные приходят, ключ у�
   assert.equal(srv.log.at(-1).auth, "Bearer good-key");
 });
 
-test("сервер выключен: три попытки, «нет связи с сервером», запись в журнале", async (t) => {
+test("сервер выключен: пять попыток за ~10 с, «нет связи с сервером», запись в журнале", async (t) => {
   const { srv, h, api } = await rig(t);
   await srv.close();
   const t0 = Date.now();
   assert.equal(await errOf(api("GET", "/api/today")), "нет связи с сервером");
-  assert.ok(Date.now() - t0 >= 2000, "между попытками 0,7 и 1,4 с");
+  assert.ok(Date.now() - t0 >= 9500, "паузы 0,7 + 1,4 + 2,8 + 5 с — переживает перезапуск сервера при выкладке");
   assert.match(h.log(), /нет связи с сервером: ECONNREFUSED/);
 });
 
