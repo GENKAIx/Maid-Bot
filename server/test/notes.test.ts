@@ -203,6 +203,8 @@ test("API заметок: список, добавить, повтор, гото
     assert.deepEqual([reopened.status, reopened.rating], ["open", null]); // вернули на полку — оценка снята
 
     assert.equal((await call("POST", `/api/notes/${idea.id}`, { shelf: "idea", note: "для виджета" })).body.shelf, "idea");
+    // Виджету ПК — сколько ждёт на полках (подсказки над строкой чата: «Что посмотреть?» — только когда есть что).
+    assert.deepEqual((await call("GET", "/api/today")).body.notes, { film: 1, series: 0, game: 0, book: 0, idea: 1, other: 0 });
     assert.equal((await call("POST", `/api/notes/${alien}`, { status: "deleted" })).status, 404);
     assert.equal((await call("POST", `/api/notes/${idea.id}`, {})).status, 400);
 

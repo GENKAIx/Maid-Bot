@@ -10,7 +10,7 @@ import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.t
 import { ALBUM, albumOf, albumSee } from "./album.ts";
 import { habitMonth, habitsOfDay, habitStats } from "./habits.ts";
 import { historyOf, NOTICE_KINDS } from "./notices.ts";
-import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, RATED_SHELVES, SHELF_KEYS, SHELVES, sameNote, type Shelf } from "./notes.ts";
+import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, RATED_SHELVES, SHELF_KEYS, SHELVES, noteCounts, sameNote, type Shelf } from "./notes.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import { proposalView, TRASH_DAYS, type Pipeline } from "./pipeline.ts";
 
@@ -109,6 +109,8 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
     // Отмеченные сделанными за 15 минут (в чате, в Telegram, с телефона): виджет ПК ставит им галочку на их дне.
     done_fresh: await store.eventsClosedSince(u.id, today, new Date(now.getTime() - FAR_FRESH_MS).toISOString(), ["done"]),
     tasks: await store.openTasks(u.id),
+    // Сколько заметок «на потом» ждёт на каждой полке: подсказки над строкой чата виджета ПК (desktop hints.js).
+    notes: noteCounts(await store.notesOf(u.id)),
     // Сделанные сегодня (где угодно: виджет, телефон, Telegram) — виджет показывает их внизу и считает в настроение дня.
     done_today: (await store.doneTasksBetween(u.id, zonedToUtc(today, "00:00", u.tz), zonedToUtc(addDays(today, 1), "00:00", u.tz)))
       .map((t) => ({ id: t.id, title: t.title, done_at: t.done_at })),

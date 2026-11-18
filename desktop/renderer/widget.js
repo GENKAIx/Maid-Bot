@@ -1177,6 +1177,7 @@ const mic = $("#chatMic");
 let micTick = 0;
 // Кнопка справа: пусто — микрофон; есть текст или картинки, или идёт запись — превращается в «отправить».
 function syncSend() {
+  if (typeof syncHints === "function") syncHints(); // запись голоса, картинки, текст — подсказки над строкой уходят (hints.js)
   const ready = Voice.on || Boolean(chatInput.value.trim()) || pictures.length > 0;
   $("#chat").classList.toggle("ready", ready);
   $("#chatSend").title = Voice.on ? "Отправить запись (Enter)" : "Отправить (Enter)";

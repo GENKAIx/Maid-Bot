@@ -34,6 +34,13 @@ const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L
 /** Одно и то же название: без регистра, «ё» и знаков («Дюна 2» и «дюна-2»). */
 export const sameNote = (a: string, b: string) => norm(a) === norm(b);
 
+/** Сколько заметок ждёт на каждой полке — виджету ПК для подсказок («Что посмотреть?» — только когда есть что). */
+export function noteCounts(rows: NoteRow[]): Record<Shelf, number> {
+  const out = Object.fromEntries(SHELF_KEYS.map((k) => [k, 0])) as Record<Shelf, number>;
+  for (const n of rows) if (n.status === "open" && n.shelf in out) out[n.shelf as Shelf]++;
+  return out;
+}
+
 /** Давность словами — датой нельзя: даты в ответах становятся ссылками на дневник (ask.linkDays). */
 function ago(iso: string, now: Date): string {
   const days = Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000));

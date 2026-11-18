@@ -61,6 +61,8 @@
       <form class="chat" id="chat" autocomplete="off">
         <div class="hist hidden" id="chatHist" aria-label="Последние ответы"></div>
         <div class="outbox hidden" id="chatQueue" aria-live="polite"></div>
+        <!-- Готовые фразы над пустой строкой в фокусе (hints.js): вопрос уходит сразу, заготовка встаёт в строку. -->
+        <div class="hints hidden" id="chatHints" aria-label="Что можно сказать горничной"></div>
         <div class="pics hidden" id="chatPics" title="Картинки уйдут вместе с сообщением"></div>
         <div class="rec-bar" aria-live="polite">
           <button type="button" class="rec-trash" title="Удалить запись (Esc)" aria-label="Удалить запись"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
@@ -96,6 +98,7 @@
   <canvas class="veil" id="veil" aria-hidden="true"></canvas>
   <script src="inbox.js"></script>
   <script src="widget.js"></script>
+  <script src="hints.js"></script>
   <script src="tour.js"></script>
   <script src="tails.js"></script>
 </body>
