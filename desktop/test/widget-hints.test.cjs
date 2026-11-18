@@ -78,6 +78,7 @@ check(/if \(h\.send\) enqueue\("\/api\/input", \{ text: h\.text, id: crypto\.ran
 // 18.11.2026: не влезшие плашки переносились на второй ряд («Завтра в … …» одна под остальными). Ряд один, не влезшее не показывается.
 // Сравнивать надо положение на экране: offsetTop у блока и у плашек считается от разных предков, и лишнее не убиралось.
 check(/if \(b\.getBoundingClientRect\(\)\.top - top >= HINT_ROW_PX\) b\.remove\(\);/.test(src) && /const HINT_ROW_PX = 26;/.test(src), "плашки переносятся на второй ряд");
+check(/if \(!chatInput\.value && chatInput\.style\.height\) chatInput\.style\.removeProperty\("height"\);/.test(src), "пустая строка в фокусе не сбрасывает оставшуюся высоту");
 check(/if \(typeof syncHints === "function"\) syncHints\(\);/.test(widget), "syncSend не убирает подсказки при записи голоса и картинках");
 check(/\.chat \.hints\.hidden, \.recording > \.hints \{ display: none; \}/.test(css) && /\.chat \.hints \{[^}]*max-height: 26px/.test(css), "нет стилей подсказок (скрытие, один ряд)");
 console.log(bad ? `${bad} из ${n} не прошло` : `ok ${n}`);

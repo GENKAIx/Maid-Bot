@@ -107,7 +107,12 @@ $("#chatHints").addEventListener("click", (e) => {
   e.stopPropagation();
   useHint(b.dataset.hint);
 });
-chatInput.addEventListener("focus", () => { hintsOff = false; syncHints(); });
+chatInput.addEventListener("focus", () => {
+  hintsOff = false;
+  // Пустая строка — высотой в одну строку: оставшаяся от прежнего текста высота сбрасывается, иначе поле вместе с подсказками съедает список.
+  if (!chatInput.value && chatInput.style.height) chatInput.style.removeProperty("height");
+  syncHints();
+});
 chatInput.addEventListener("blur", () => setTimeout(syncHints, 120));
 chatInput.addEventListener("input", syncHints);
 $("#chatHistBtn").addEventListener("click", () => setTimeout(syncHints, 0));
