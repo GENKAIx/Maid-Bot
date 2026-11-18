@@ -444,7 +444,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     const el = document.createElement("button");
     el.className = "card day";
     el.textContent = "📅 " + humanDay(d).split(",")[0];
-    el.onclick = () => maid.openDay(d);
+    el.onclick = () => maid.openSection(`/diary/${d}`); // день дневника — в полной версии на ПК, не в браузере
     cards.appendChild(el);
   }
   // Вопрос «добавить?»: пункты (у нескольких — галочки, по умолчанию отмечены все).

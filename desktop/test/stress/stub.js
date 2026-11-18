@@ -43,7 +43,6 @@
     idle: () => (stress.idle !== undefined ? Promise.resolve(stress.idle) : invoke("idle")),
     changed: () => send("changed"),
     openMain: () => send("open-main"),
-    openDay: (day) => send("open-day", day),
     openSection: (p) => send("open-section", p),
     openQuick: () => send("quick-show"),
     hideQuick: () => send("quick-hide"),

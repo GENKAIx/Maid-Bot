@@ -25,6 +25,8 @@ try {
   const fits = (c) => HINTS.filter((h) => h.fit(c) > 0).map((h) => h.id);
 
   check(new Set(HINTS.map((h) => h.id)).size === HINTS.length, "повтор id у подсказок");
+  // «На этой неделе» в среду — 3 дня с понедельника, сна почти нет; «последние 7 дней» — целая неделя записей (18.11.2026).
+  check(HINTS.find((h) => h.id === "sleepq")?.text === "Как я спал последние 7 дней?", "вопрос о сне — за последние 7 дней, а не «на этой неделе»");
   for (const h of HINTS) {
     check(Boolean(h.send) !== Boolean(h.fill), `${h.id}: либо вопрос (send), либо заготовка (fill)`);
     check(h.text.length <= 28, `${h.id}: фраза длиннее 28 знаков — не влезет в плашку`);

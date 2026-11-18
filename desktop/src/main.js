@@ -802,10 +802,6 @@ function broadcast(channel, data) {
 
 // --- связь с окнами ---
 ipcMain.handle("api", (_e, method, p, body) => api(method, p, body));
-ipcMain.on("open-day", (_e, day) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day)) || !/^https?:\/\//.test(settings.server)) return;
-  shell.openExternal(`${settings.server.replace(/\/$/, "")}/diary/${day}`);
-});
 // Раздел приложения (щелчок по карточке в облачке горничной): главное окно открывается сразу на нём.
 // «/habits?h=12» — щелчок по названию привычки в виджете: страница привычек со статистикой этой привычки.
 ipcMain.on("open-section", (_e, p) => {

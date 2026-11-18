@@ -24,7 +24,7 @@ const HINTS = [
   { id: "week", text: "Сколько потратил за неделю?", send: true, fit: (c) => (c.weekend ? 2 : 1) },
   { id: "slept", text: "Лёг в …, встал в …", fill: "Лёг в ", fit: (c) => (c.hour >= 5 && c.hour < 13 ? 2 : 0) },
   { id: "ate", text: "Съел …", fill: "Съел ", fit: () => 1 },
-  { id: "sleepq", text: "Как я спал на этой неделе?", send: true, fit: () => 1 },
+  { id: "sleepq", text: "Как я спал последние 7 дней?", send: true, fit: () => 1 },
   { id: "habit", text: "Хочу каждый день …", fill: "Хочу каждый день ", fit: () => 1 },
   { id: "done", text: "Сделал …", fill: "Сделал ", fit: (c) => (c.tasks ? 1 : 0) },
 ];
