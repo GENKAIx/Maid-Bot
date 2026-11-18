@@ -1,6 +1,6 @@
 {
   "name": "maid-desktop",
-  "version": "0.1.71",
+  "version": "0.1.72",
   "private": true,
   "description": "Горничная на ПК: окно, виджет поверх всех окон, трекер активности",
   "main": "src/main.js",
