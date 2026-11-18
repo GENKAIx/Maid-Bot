@@ -47,6 +47,58 @@ export function Bars({ bars, color = "var(--accent)", format = (v: number) => St
   );
 }
 
+/** Столбики из частей (расходы дня по категориям). future — день ещё не наступил: пустой пунктир высотой avg.
+ *  highlight — выбранная часть: остальные бледнеют. mark — подпись, которая видна всегда («сегодня, 18»). */
+export function StackedBars({ bars, format, height = 150, avg, highlight }: {
+  bars: { label: string; title?: string; mark?: boolean; future?: boolean; parts: { key: string; value: number; color: string }[] }[];
+  format: (v: number) => string; height?: number; avg?: { value: number; label: string }; highlight?: string | null;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const sum = (b: (typeof bars)[number]) => b.parts.reduce((s, p) => s + p.value, 0);
+  const max = Math.max(avg?.value ?? 0, ...bars.map(sum), 1);
+  const w = 100 / bars.length;
+  const step = Math.max(1, Math.ceil(bars.length / 10));
+  const tip = (b: (typeof bars)[number]) => {
+    const ps = b.parts.filter((p) => p.value && (!highlight || p.key === highlight)).sort((a, z) => z.value - a.value);
+    const total = ps.reduce((s, p) => s + p.value, 0);
+    return `${b.title ?? b.label}: ${format(total)}${ps.length > 1 ? "\n" + ps.map((p) => `${p.key} — ${format(p.value)}`).join("\n") : ""}`;
+  };
+  return (
+    <div className="chart">
+      <div className={`chart-area ${highlight ? "dim" : ""}`} style={{ height }} onMouseLeave={() => setHover(null)}>
+        {avg && <div className="chart-avg" style={{ bottom: `${(avg.value / max) * 100}%` }}><span>{avg.label}</span></div>}
+        {bars.map((b, i) => (
+          <div
+            key={i}
+            className={`chart-col ${hover === i ? "on" : ""}`}
+            style={{ width: `${w}%` }}
+            onMouseEnter={() => !b.future && setHover(i)}
+            onClick={() => !b.future && setHover(hover === i ? null : i)}
+          >
+            {b.future && avg
+              ? <div className="chart-bar future" style={{ height: `${(avg.value / max) * 100}%` }} />
+              : (
+                <div className="chart-bar stack" style={{ height: `${(sum(b) / max) * 100}%`, animationDelay: `${i * 12}ms` }}>
+                  {b.parts.filter((p) => p.value).map((p) => (
+                    <i key={p.key} className={highlight === p.key ? "hl" : ""} style={{ flexGrow: p.value, background: p.color }} />
+                  ))}
+                </div>
+              )}
+          </div>
+        ))}
+        {hover !== null && bars[hover] && (
+          <div className="chart-tip" style={{ left: `${(hover + 0.5) * w}%` }}>{tip(bars[hover])}</div>
+        )}
+      </div>
+      <div className="chart-labels">
+        {bars.map((b, i) => (
+          <span key={i} className={b.mark ? "mark" : ""} style={{ width: `${w}%` }}>{b.mark || (i % step === 0 && !bars.slice(i + 1, i + step).some((x) => x.mark) && !bars.slice(Math.max(0, i - 2), i).some((x) => x.mark)) ? b.label : ""}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Столбик в столбике: всё время (back) и часть его (front) снизу — время за ПК и игры в нём. */
 export function NestedBars({ bars, back, front, format, tip, height = 160, goal }: {
   bars: { label: string; title?: string; back: number; front: number }[];
@@ -103,13 +155,24 @@ export function DayPie({ pc, games, format, size = 84 }: { pc: number; games: nu
 }
 
 /** Горизонтальные полосы долей (категории расходов). */
-export function Shares({ items, format }: { items: { label: string; value: number; color?: string }[]; format: (v: number) => string }) {
+export function Shares({ items, format, active, onPick }: {
+  items: { label: string; value: number; color?: string }[]; format: (v: number) => string;
+  /** Щелчок по строке выбирает её (повторный — снимает выбор). */ active?: string | null; onPick?: (label: string | null) => void;
+}) {
   const total = items.reduce((s, i) => s + i.value, 0) || 1;
   return (
     <ul className="shares">
       {items.map((i) => (
-        <li key={i.label}>
-          <span className="share-label">{i.label}</span>
+        <li
+          key={i.label}
+          className={`${onPick ? "pick" : ""} ${active === i.label ? "on" : ""} ${active && active !== i.label ? "off" : ""}`}
+          onClick={onPick && (() => onPick(active === i.label ? null : i.label))}
+          {...(onPick ? {
+            role: "button", tabIndex: 0, "aria-pressed": active === i.label,
+            onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(active === i.label ? null : i.label); } },
+          } : {})}
+        >
+          <span className="share-label">{i.color && onPick && <i className="share-dot" style={{ background: i.color }} />}{i.label}</span>
           <span className="share-bar"><i style={{ width: `${(i.value / total) * 100}%`, background: i.color ?? "var(--accent)" }} /></span>
           <span className="share-value">{format(i.value)} <span className="muted small">{Math.round((i.value / total) * 100)}%</span></span>
         </li>
