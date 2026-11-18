@@ -21,7 +21,7 @@ import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates } from "./report.ts";
 import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, snooze, type Button, type Send } from "./scheduler.ts";
-import { addDays, dayKey, isDayKey, isEveningTime, isTime, zonedToUtc } from "./time.ts";
+import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
@@ -466,6 +466,24 @@ export function createApi(deps: ApiDeps) {
       if (!r || r.user_id !== u.id) throw new HttpError(404, "нет записи");
       await store.setDiaryDeleted(r.id, true);
       return { ok: true };
+    }
+    // Сон за день вручную (щелчок по дню на шкале сна в «Статистике»): записи «сон» за день и sleep_hours уходят в удалённые,
+    // вместо них — одна запись «лёг в …, встал в …» (её же читают шкала, вечерний итог и горничная) и часы сна; clear — только убрать.
+    if (m === "POST" && p === "/api/sleep") {
+      const At = z.string().transform((s, ctx) => normalizeTime(s) ?? (ctx.addIssue({ code: "custom", message: "время ЧЧ:ММ" }), z.NEVER));
+      const b = parseBody(z.object({
+        day: z.string().refine((d) => isDayKey(d) && d <= today, "день — не позже сегодня"),
+        bed: At.optional(), wake: At.optional(), note: z.string().trim().max(300).default(""), clear: z.boolean().default(false),
+      }).refine((x) => x.clear || (x.bed && x.wake), "нужны «лёг» и «встал»"), await readJson(req));
+      for (const r of await store.diaryOf(u.id, b.day)) if (r.section === "sleep") await store.setDiaryDeleted(r.id, true);
+      for (const x of await store.metricsRange(u.id, b.day, b.day, "sleep_hours")) await store.setMetricDeleted(x.id, true);
+      if (b.clear) return { day: b.day, hours: 0 };
+      const clock = (t: string) => t.replace(/^0(\d)/, "$1");
+      const h = (t: string) => Number(t.slice(0, 2)) + Number(t.slice(3)) / 60;
+      const hours = Math.round((((h(b.wake!) - h(b.bed!) + 24) % 24) || 24) * 100) / 100;
+      await store.addDiary(u.id, b.day, "sleep", `лёг в ${clock(b.bed!)}, встал в ${clock(b.wake!)}${b.note ? `. ${b.note}` : ""}`, null);
+      await store.setDayMetric({ user_id: u.id, day_key: b.day, key: "sleep_hours", label: "Сон", value: hours, unit: "ч", source: "manual" });
+      return { day: b.day, bed: b.bed, wake: b.wake, hours };
     }
     if (m === "GET" && p === "/api/tasks") return store.openTasks(u.id);
     // Корзина: удалённые и отменённые задачи и планы за TRASH_DAYS дней. Вернуть — POST /api/tasks/:id {status:"open"}

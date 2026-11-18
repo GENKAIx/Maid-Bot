@@ -76,6 +76,11 @@ export function Stats({ version }: { version: number }) {
     }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
   }, [from, end, version]);
+  // Сон исправили на шкале — перечитать только сон и показатели, без мигания всей страницы.
+  const reloadSleep = () => Promise.all([
+    get<{ rows: MetricRow[] }>(`/api/metrics?from=${from}&to=${end}`),
+    get<DiaryRow[]>(`/api/diary?section=sleep&from=${from}&to=${end}`),
+  ]).then(([m, s]) => { setMetrics(m.rows); setSleepNotes(s); }).catch((e) => setError((e as Error).message));
   useEffect(() => {
     get<{ day: string; n: number }[]>("/api/diary/days").then(setNoteDays).catch(() => setNoteDays([]));
   }, [version]);
@@ -126,6 +131,8 @@ export function Stats({ version }: { version: number }) {
   const topApps = sumByApp(appsWithoutGames(activity));
 
   const sd = sleepDays(sleepNotes, metrics);
+  const sleepTexts = new Map<string, string[]>();
+  for (const n of sleepNotes) sleepTexts.set(n.day_key, [...(sleepTexts.get(n.day_key) ?? []), n.text]);
   const allDays = bs.flatMap((b) => b.days);
   const sleepRows = (r.group === "day" ? allDays : allDays.filter((d) => sd.get(d)?.hours).slice(-31)).map((d) => sd.get(d) ?? { day: d });
   const slept = sleepRows.filter((d) => d.hours);
@@ -183,7 +190,7 @@ export function Stats({ version }: { version: number }) {
         )}
         {tab === "sleep" && (
         <Card title={`Сон`} className="reveal wide" action={<span className="muted small">{sleepHead}</span>}>
-          {sleepRows.some((d) => d.hours) ? <SleepTimeline days={sleepRows} /> : <Empty>Сон не записан — скажите боту «лёг в 1:30, встал в 9:00»</Empty>}
+          {sleepRows.length ? <SleepTimeline days={sleepRows} notes={sleepTexts} onChanged={reloadSleep} /> : <Empty>Сон не записан — скажите боту «лёг в 1:30, встал в 9:00»</Empty>}
         </Card>
         )}
         {tab === "body" && (<>

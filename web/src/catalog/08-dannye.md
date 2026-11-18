@@ -55,7 +55,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | Настройки | `/api/settings` (характер — только из `PERSONAS`, иначе 400), `/api/personas`, `/api/backup` |
 | Push | `/api/push/key`, `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/test`, `/api/push/act` |
 | День | `/api/today`, `/api/day`, `/api/notices` |
-| Дневник | `/api/diary`, `/api/diary/days`, `DELETE /api/diary/:id` |
+| Дневник | `/api/diary`, `/api/diary/days`, `DELETE /api/diary/:id`, `POST /api/sleep` (сон за день вручную или `clear`) |
 | Планы | `/api/events`, `POST /api/events` (новый план из виджета: `title`, `date`, `time`, `end_time`; с отменой), `POST /api/events/:id`, `…/repeat`, `…/copy` |
 | Задачи и даты | `/api/tasks`, `POST /api/tasks/:id` (`status`, в т. ч. `deleted`; `due_date`; `title`), `POST /api/tasks/:id/plan` (задача → план), `POST /api/tasks/:id/copy` (`date`), `/api/dates` |
 | Привычки | `/api/habits`, `/api/habits/:id/mark`, `GET /api/habits/:id/stats` (статистика одной привычки: год по дням — 371 клетка с понедельника 52 недели назад, серия сейчас и лучшая, сделано из запланированного за 30, 90 дней и всё время, по дням недели и 12 месяцам; неотмеченное сегодня не считается; `habitStatsOf`), `POST /api/habits/:id` (title, quiet, times — время напоминаний ЧЧ:ММ, до 4, пусто — общее из настроек, finish — конец вчера или сегодня, если отмечена; status stopped — удалить; отметки остаются; через журнал отмены) |
