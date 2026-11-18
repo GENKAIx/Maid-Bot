@@ -122,7 +122,7 @@ export function nextYearly(dateIso: string, today: string): string {
   return dateIso;
 }
 
-const MONTHS_GEN = [
+export const MONTHS_GEN = [
   "января", "февраля", "марта", "апреля", "мая", "июня",
   "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ];

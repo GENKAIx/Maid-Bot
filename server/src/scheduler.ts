@@ -4,7 +4,7 @@ import { asUser, type LlmCall } from "./llm.ts";
 import { persona, type Emotion } from "./personas.ts";
 import {
   activityLines, dateLine, diaryBySection, esc, eventLine, metricLine, moneyLine, moneyTotals, plansText, sectionName,
-  upcomingDates,
+  tomorrowText, upcomingDates,
 } from "./report.ts";
 import { escapesText } from "./escapes.ts";
 import { morningText } from "./morning.ts";
@@ -223,7 +223,7 @@ export class Scheduler {
       const tomorrow = addDays(today, 1);
       const evs = await s.eventsBetween(u.id, tomorrow, tomorrow);
       if (evs.length) {
-        await this.safeSend(u, `🌙 Завтра, ${humanDay(tomorrow)}:\n${evs.map((e) => "• " + eventLine(e)).join("\n")}`, "neutral", undefined, "tomorrow");
+        await this.safeSend(u, tomorrowText(evs, tomorrow, persona(u.persona).tomorrow), "neutral", undefined, "tomorrow");
       }
     }
     if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {

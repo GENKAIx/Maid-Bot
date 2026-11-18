@@ -1,7 +1,7 @@
 import type { ActivityRow, DateRow, DiaryRow, EventRow, MetricRow, MoneyRow, Store, TaskRow, User } from "./db.ts";
 import { habitLine, habitsOfDay } from "./habits.ts";
 import { HEALTH_TOPICS, SECTIONS, TRACKER_SECTIONS, type Section } from "./parse.ts";
-import { addDays, daysBetween, durationHuman, humanDay, nextYearly } from "./time.ts";
+import { addDays, daysBetween, durationHuman, humanDay, MONTHS_GEN, nextYearly, weekdayLong } from "./time.ts";
 
 // Готовые тексты для бота и приложения. Telegram — HTML.
 
@@ -10,6 +10,15 @@ export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
 export function eventLine(e: EventRow, withDay = false): string {
   const time = e.time ? `${e.time}${e.end_time ? "–" + e.end_time : ""}` : "весь день";
   return `${withDay ? humanDay(e.date_iso) + ", " : ""}${time} — ${esc(e.title)}`;
+}
+
+/** Облачко «Завтра» (вечером, в час tomorrow_time): обращение голосом характера, день словами, сначала дела на весь день,
+ * потом по времени. 🌙 в начале — по нему notices.ts узнаёт раздел. */
+export function tomorrowText(evs: EventRow[], day: string, opener: string): string {
+  const [, m, d] = day.split("-").map(Number);
+  const wd = weekdayLong(day);
+  const sorted = [...evs].sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
+  return `🌙 ${opener}\n${wd[0].toUpperCase()}${wd.slice(1)}, ${d} ${MONTHS_GEN[m - 1]}\n${sorted.map((e) => "• " + eventLine(e)).join("\n")}`;
 }
 
 export function taskLine(t: TaskRow, today: string): string {

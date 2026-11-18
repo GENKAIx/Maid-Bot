@@ -197,6 +197,10 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble.angry { background: #fde6ea; --tail: #fde6ea; }
 .bubble.happy, .bubble.proud { background: #e9f8ef; --tail: #e9f8ef; }
 .bubble-text { max-height: 220px; overflow: auto; white-space: pre-wrap; }
+/* Строки плана в облачке (widget.js, planRows): время колонкой, «весь день» — серым и мельче. */
+.plan-list { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 6px 0 2px; white-space: normal; }
+.plan-t { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plan-t.allday { font-weight: 600; font-size: .82em; opacity: .55; align-self: center; }
 /* Вбок не прокручивается никогда: иначе любой сдвиг внутри (наведение на кнопку) рисовал полосу внизу и всё съезжало. */
 .bubble-cards { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; max-height: 190px; overflow-y: auto; overflow-x: hidden; }
 .bubble-cards:empty { display: none; }

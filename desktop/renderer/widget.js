@@ -386,6 +386,22 @@ setInterval(() => {
 }, 30_000);
 
 // --- облачко ---
+// Строки плана «• 19:00 — Продать…», «• весь день — …» (облачко «Завтра», утренний список, ответы про планы) — одной
+// сеткой: время колонкой слева, название справа. html — уже экранированный текст (tgHtml); другие строки — как были.
+function planRows(html) {
+  const out = [];
+  let list = null;
+  for (const line of html.split("\n")) {
+    const m = line.match(/^• (весь день|\d{1,2}:\d{2}(?:–\d{1,2}:\d{2})?) — (.+)$/);
+    if (!m) { if (list) out.push({ grid: list }); list = null; out.push(line); continue; }
+    (list ??= []).push(`<b class="plan-t${m[1] === "весь день" ? " allday" : ""}">${m[1]}</b><span class="plan-x">${m[2]}</span>`);
+  }
+  if (list) out.push({ grid: list });
+  // Сетка — блок: переводы строки вокруг неё не нужны (в pre-wrap они дали бы пустые строки).
+  return out.reduce((s, x, i) => typeof x === "string"
+    ? s + (i && typeof out[i - 1] === "string" ? "\n" : "") + x
+    : s + `<span class="plan-list">${x.grid.join("")}</span>`, "");
+}
 function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false, drawing = null, tour = false } = {}) {
   // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices). Идёт экскурсия — говорит
   // только она (tour); уведомления при этом всё равно ложатся в ящик.
@@ -402,7 +418,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   // С вопросом «добавить?» или «Сдвинуть на …?» (план лёг на занятое время) — ещё и сам вопрос (последняя строка).
   const ask = proposal || text.split("\n").at(-1).startsWith("⚠ ");
   const plain = changes.length ? text.split("\n")[0] + (ask ? "\n" + text.split("\n").at(-1) : "") : text;
-  $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + tgHtml(plain);
+  $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + planRows(tgHtml(plain));
   // Печать по буквам: не у «…», вопросов с полосой и кнопок-самонажатий (у них свои таймеры), не при «меньше движения».
   stopType();
   const typed = cfg.typing !== "off" && text !== "…" && !proposal && !buttons.some((x) => x.auto) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
