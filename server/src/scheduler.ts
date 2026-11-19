@@ -62,6 +62,12 @@ export async function rateDay(store: Store, u: User, day: string, value: number)
   await store.setDayMetric({ user_id: u.id, day_key: day, key: "rating_day", label, value, unit, source: "evening" });
   return `Записала: день на ⭐ ${value}/10.`;
 }
+/** Оценка дня — та же, что на сайте (web/src/dayrate.ts, dayFacts): первая неудалённая строка rating_day за день по порядку базы
+ *  (номер строки), откуда бы она ни была — звёзды и кнопки (evening) или слова в чате (text). Повторная звезда меняет свою строку
+ *  на месте. Виджету в data.metrics брать так же: первую строку rating_day. Нет оценки — undefined. */
+export async function dayRating(store: Store, userId: number, day: string): Promise<number | undefined> {
+  return (await store.metricsRange(userId, day, day, "rating_day"))[0]?.value;
+}
 
 /** Когда спросить про привычку: в её время (или habit_first, 12:00), и ещё раз в habit_last (23:00), если тот позже. */
 export function habitAskTimes(u: Pick<User, "habit_first" | "habit_last">, own: string[]): string[] {
@@ -221,8 +227,12 @@ export class Scheduler {
       }
     }
     if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
-      // Под итогом — вопрос голосом характера и оценка дня от 1 до 10.
-      await this.safeSend(u, `${await this.eveningText(u, today)}\n\n${persona(u.persona).rate}`, "proud", rateButtons(today), "evening");
+      // Под итогом — вопрос голосом характера и оценка дня от 1 до 10. День уже оценён (звёздами в виджете или словами в чате) —
+      // вместо вопроса его оценка и без кнопок.
+      const summary = await this.eveningText(u, today);
+      const rated = await dayRating(s, u.id, today);
+      if (rated === undefined) await this.safeSend(u, `${summary}\n\n${persona(u.persona).rate}`, "proud", rateButtons(today), "evening");
+      else await this.safeSend(u, `${summary}\n\n⭐ Оценка дня: ${rated}/10`, "proud", undefined, "evening");
       // В воскресенье вечером — мягко о задачах, от которых сбежали за неделю.
       if (new Date(`${today}T12:00:00Z`).getUTCDay() === 0 && (await s.once(`escapes:${u.id}:${today}`))) {
         const text = escapesText(await s.allTasks(u.id), today, u.tz);
