@@ -69,7 +69,9 @@ const fold = widget.match(/\nfunction setCollapsed\([^]*?\n\}/)?.[0] ?? "";
 check(/fitMiniSub\(\)/.test(fold), "setCollapsed не подгоняет строку карточки при сворачивании");
 check(/fonts\??\.ready[^\n]*fitMiniSub/.test(widget), "после загрузки шрифта строка карточки не подгоняется");
 const mini = widget.match(/\nfunction renderMini\([^]*?\n\}/)?.[0] ?? "";
-check(/miniSubLines\(/.test(mini) && /fitMiniSub\(\)/.test(mini), "renderMini не берёт строку из miniSubLines/fitMiniSub");
+// С 19.11.2026 строки по времени суток собирает miniView (widget-mini-day.test.cjs); днём — по-прежнему miniSubLines.
+const view = widget.match(/\nfunction miniView\([^]*?\n\}/)?.[0] ?? "";
+check(/miniView\(/.test(mini) && /fitMiniSub\(\)/.test(mini) && /miniSubLines\(plan\?\.rel, late, left - late\)/.test(view), "renderMini не берёт строку из miniSubLines/fitMiniSub");
 
 console.log(`${n - bad}/${n}`);
 process.exit(bad ? 1 : 0);

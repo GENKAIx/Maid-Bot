@@ -14,7 +14,8 @@ const rate = read("rate.js"), widget = read("widget.js"), html = read("widget.ht
 check(html.indexOf('src="rate.js"') > 0 && html.indexOf('src="rate.js"') < html.indexOf('src="widget.js"'), "rate.js не подключён до widget.js");
 // Ответ сервера показывается после анимации, а не поверх неё.
 check(/const shown = rateShow\(Number\(m\[2\]\)\);[^]*?await shown;\s*say\(r\.text/.test(widget), "ответ сервера не ждёт конца анимации оценки");
-check(/\.bubble-actions\.rated \.rate-star \{ pointer-events: none; \}/.test(css), "после оценки по звёздам можно щёлкнуть ещё раз");
+// С 19.11.2026 правила звёзд общие для облачка и вечерней свёрнутой карточки: :is(.bubble-actions, .mini-stars).
+check(/(\.bubble-actions|:is\(\.bubble-actions, \.mini-stars\))\.rated \.rate-star \{ pointer-events: none; \}/.test(css), "после оценки по звёздам можно щёлкнуть ещё раз");
 check(/\.rate-fly \{[^}]*position: fixed;[^}]*pointer-events: none;/.test(css), "летящие звёзды перехватывают клики или не поверх окна");
 check(/prefers-reduced-motion: reduce/.test(rate), "анимация оценки не учитывает «меньше движения»");
 

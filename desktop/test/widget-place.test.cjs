@@ -14,14 +14,15 @@ const screens = [["1920×1080 100%", 1920, 1040], ["1920×1080 125%", 1536, 824]
 let bad = 0, n = 0;
 const fail = (m) => { bad++; console.log("FAIL", m); };
 for (const [name, W, H] of screens) for (const side of ["right", "left"]) for (const folded of [false, true])
-  for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]]) {
+  for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]]) for (const miniH of [144, 196]) {
     displays = [{ id: 1, bounds: { x: 0, y: 0, width: W, height: H + 40 }, workArea: { x: 0, y: 0, width: W, height: H } }];
-    fold = { folded, miniH: 144, head: 131 };
+    // 196 — карточка утром (ряд из трёх планов) и вечером (звёзды оценки) выше на ~52 px (widget.js, miniView; 19.11.2026).
+    fold = { folded, miniH, head: 131 };
     settings = { widget: { side, x: Math.round(cx * W) - 300, y: Math.round(cy * H) - 500, display: 1 } };
     const A = api(settings, fold, screen);
     // down решает wantDown по месту карточки (как settleWidget для неподвижного окна, не в режиме «вниз»)
     let b = A.widgetBounds();
-    const area = displays[0].workArea, tag = `${name} side=${side} ${folded ? "свёрнут" : "развёрнут"} @${cx},${cy}`;
+    const area = displays[0].workArea, tag = `${name} side=${side} ${folded ? "свёрнут" : "развёрнут"} @${cx},${cy} карточка ${miniH}`;
     const panelL = b.x + b.width - A.PANEL_W, panelT = b.y + b.height - 400;
     n++;
     if (panelL < area.x - 0.5 || panelL + A.PANEL_W > area.x + area.width + 0.5) fail(`${tag}: панель по x ${panelL}..${panelL + A.PANEL_W}`);
@@ -32,7 +33,7 @@ for (const [name, W, H] of screens) for (const side of ["right", "left"]) for (c
     } else {
       const cardBottom = b.y + b.height - 8;
       const down = A.wantDown(cardBottom, A.panelInWindow(b.height), area);
-      const top = down ? cardBottom - 144 + 76 - fold.head : cardBottom - A.panelInWindow(b.height) - fold.head;
+      const top = down ? cardBottom - fold.miniH + 76 - fold.head : cardBottom - A.panelInWindow(b.height) - fold.head;
       if (!down && top < area.y - 0.5) fail(`${tag}: вверх, голова за верхом (${top})`);
     }
   }

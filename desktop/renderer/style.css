@@ -135,6 +135,33 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .mini-sub.late { color: #f0a46b; }
 /* Второй строке нечего сказать (планов нет, просрочки нет) — её нет, «Задачи · 7» встаёт по центру рядом с часами. */
 .mini-sub:empty { display: none; }
+/* Карточка по времени суток (widget.js, miniView): ряд под верхом — утром три ближайших плана плашками цвета плана (время, под ним
+   название), вечером «Как прошёл день?» и десять звёзд оценки дня. Днём и ночью ряда нет. */
+.mini-extra:empty { display: none; }
+.mini-plans { display: flex; gap: 6px; margin-top: 10px; }
+.mini-plans span { flex: 1; min-width: 0; padding: 4px 7px; border-radius: 8px; background: rgba(255, 255, 255, .06); box-shadow: inset 2px 0 0 var(--c);
+  font-size: 11.5px; color: #cfc9e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-plans b { display: block; color: var(--c); font-weight: 700; font-variant-numeric: tabular-nums; }
+.mini-rate { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.mini-stars { display: flex; }
+/* Звёзды мельче, чем в облачке: .mini-rate в начале — вес больше, чем у общих правил :is(.bubble-actions, .mini-stars) ниже по файлу. */
+.mini-rate .mini-stars button.rate-star { margin-right: -2px; width: 16px; height: 18px; cursor: pointer; }
+.mini-rate .mini-stars button.rate-star img { width: 17px; height: 17px; }
+.mini-rate .mini-stars button.rate-star:disabled { cursor: default; }
+/* Ночь: тускнеет верх карточки (opacity самой .mini — настройка «Прозрачность»), фон темнее, вместо кольца — луна в той же кнопке
+   «развернуть»; под курсором карточка чуть просыпается, строка ввода — как днём. */
+.mini.night { background: rgba(14, 13, 28, .86); }
+.mini.night .mini-top { opacity: .62; transition: opacity .6s; }
+.mini.night:is(:hover, :focus-within) .mini-top { opacity: .85; }
+.mini.night .mini-clock { color: #c3bde0; }
+.mini-moon { display: none; width: 22px; height: 22px; margin: auto; border-radius: 50%; box-shadow: inset -7px -3px 0 0 #ece5c4; transform: rotate(-20deg);
+  filter: drop-shadow(0 0 6px rgba(236, 229, 196, .35)); }
+.mini.night .mini-ring, .mini.night .mini-count { display: none; }
+.mini.night .mini-moon { display: block; }
+/* Сменилась часть суток — строки и ряд въезжают снизу. */
+.mini-text.swap, .mini-extra.swap { animation: miniSwap .45s ease both; }
+@keyframes miniSwap { from { opacity: 0; transform: translateY(5px); } }
+@media (prefers-reduced-motion: reduce) { .mini-text.swap, .mini-extra.swap { animation: none; } .mini.night .mini-top { transition: none; } }
 /* Кольцо «сделано из всего»: дуга растёт по часовой от верха. Это же кнопка «развернуть». */
 .mini .mini-open { position: relative; width: 42px; height: 42px; border-radius: 50%; background: none; flex: none; }
 .mini .mini-open:hover { background: rgba(255, 255, 255, .06); }
@@ -332,19 +359,20 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .bubble-actions button:hover { border-color: #c9c2da; }
 .bubble-actions button.ghost { margin-left: auto; background: transparent; border-color: transparent; }
 /* Оценка дня — ряд из десяти звёзд (widget.js, say): серые, под курсором зажигаются все до той, на которую навели. */
-.bubble-actions button.rate-star { padding: 0; margin-right: -7px; width: 21px; height: 22px; border: 0; background: none; display: grid; place-items: center; }
-.bubble-actions button.rate-star img { width: 20px; height: 20px; display: block; filter: grayscale(1) opacity(.45); transition: filter .12s, scale .12s; pointer-events: none; }
-.bubble-actions:has(.rate-star:hover) .rate-star img { filter: none; }
-.bubble-actions .rate-star:hover ~ .rate-star img { filter: grayscale(1) opacity(.45); }
-.bubble-actions .rate-star:hover img { scale: 1.2; }
+/* Тот же ряд — на вечерней свёрнутой карточке (.mini-stars): правила общие, размер звёзд там меньше (.mini-rate .mini-stars выше). */
+:is(.bubble-actions, .mini-stars) button.rate-star { padding: 0; margin-right: -7px; width: 21px; height: 22px; border: 0; background: none; display: grid; place-items: center; }
+:is(.bubble-actions, .mini-stars) button.rate-star img { width: 20px; height: 20px; display: block; filter: grayscale(1) opacity(.45); transition: filter .12s, scale .12s; pointer-events: none; }
+:is(.bubble-actions, .mini-stars):has(.rate-star:hover) .rate-star img { filter: none; }
+:is(.bubble-actions, .mini-stars) .rate-star:hover ~ .rate-star img { filter: grayscale(1) opacity(.45); }
+:is(.bubble-actions, .mini-stars) .rate-star:hover img { scale: 1.2; }
 /* Оценку поставили (rate.js): ряд больше не слушает курсор, горят только зажжённые по одной звёзды. */
-.bubble-actions.rated .rate-star { pointer-events: none; }
-.bubble-actions.rated .rate-star img { filter: grayscale(1) opacity(.45); scale: 1; }
-.bubble-actions.rated .rate-star.on img { filter: none; animation: ratePop .28s cubic-bezier(.3, 1.8, .5, 1); }
+:is(.bubble-actions, .mini-stars).rated .rate-star { pointer-events: none; }
+:is(.bubble-actions, .mini-stars).rated .rate-star img { filter: grayscale(1) opacity(.45); scale: 1; }
+:is(.bubble-actions, .mini-stars).rated .rate-star.on img { filter: none; animation: ratePop .28s cubic-bezier(.3, 1.8, .5, 1); }
 @keyframes ratePop { from { scale: .4; } 60% { scale: 1.45; } to { scale: 1; } }
 /* Летящая звезда — копия поверх окна: осыпается, летит к горничной или падает звездопадом. */
 .rate-fly { position: fixed; z-index: 50; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .35)); }
-@media (prefers-reduced-motion: reduce) { .bubble-actions.rated .rate-star.on img { animation: none; } }
+@media (prefers-reduced-motion: reduce) { :is(.bubble-actions, .mini-stars).rated .rate-star.on img { animation: none; } }
 /* Время жизни облачка: кольцо вокруг ✕ тает к нулю (widget.js startLife), под курсором — стоит и ярче; в конце облачко бледнеет. */
 .bubble-actions button.life { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
 .bubble-actions button.life svg { width: 24px; height: 24px; display: block; overflow: visible; }

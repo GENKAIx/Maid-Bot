@@ -742,7 +742,8 @@ function hideClock() {
   stopFly();
 }
 // Выдвижная панель свёрнутого вида: карточка с головой горничной поднимается на её высоту (--drawer), панель раскрывается под ней.
-// В режиме «вниз» (у верха экрана) под карточкой уже есть место — карточка стоит, панель встаёт прямо под неё.
+// В режиме «вниз» (у верха экрана) под карточкой уже есть место — карточка стоит, панель встаёт прямо под неё и выше места до низа окна
+// не растёт (высокая карточка — утро, вечер, строка ввода — съедает это место; список внутри прокручивается).
 const DRAWER_SHOWN = 2_000;
 function syncDrawer() {
   const box = $("#planClock");
@@ -750,7 +751,9 @@ function syncDrawer() {
   const down = collapsed && st.classList.contains("down");
   const open = collapsed && !box.classList.contains("hidden");
   st.style.setProperty("--drawer", open && !down ? `${box.offsetHeight + 6}px` : "0px");
-  box.style.bottom = down ? `${8 + (parseFloat(st.style.getPropertyValue("--lift")) || 0) - 6 - box.offsetHeight}px` : "";
+  const lift = parseFloat(st.style.getPropertyValue("--lift")) || 0;
+  box.style.maxHeight = down ? `${lift - 6}px` : "";
+  box.style.bottom = down ? `${8 + lift - 6 - box.offsetHeight}px` : "";
 }
 new ResizeObserver(() => syncDrawer()).observe($("#planClock"));
 function hideClockLater(ms = CLOCK_SHOWN) {

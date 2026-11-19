@@ -2030,7 +2030,7 @@ function miniPlan() {
     const rel = d <= 0 ? "идёт" : d < 60 ? `через ${d} мин` : `через ${Math.round(d / 60)} ч`;
     // Золотой час: скоро начало (15 мин) или начался, а на «⏰ Пора» ещё не ответили (planHeat); ответили — обычный цвет.
     const lv = planHeat(e)?.level;
-    return { e, time: e.time, rel, title: e.title, soon: d > 0 ? d <= 15 : !!lv && lv !== "soon" };
+    return { e, time: e.time, rel, title: e.title, soon: d > 0 ? d <= 15 : !!lv && lv !== "soon", d };
   }
   return null;
 }
@@ -2182,23 +2182,138 @@ function fitMiniSub() {
   }
 }
 document.fonts?.ready.then(fitMiniSub);
+// Свёрнутая карточка по времени суток (вариант Б полного ревью 19.11.2026, выбран пользователем): одна строка отвечает на вопрос,
+// который в это время и задают. Ночь — как сон горничной (afterBedtime: от «Отбоя» до «Утра») и всё после полуночи до «Утра»
+// (вечер вчерашнего дня после полуночи не оценивается: data.day уже новый); утро — от «Утра» до 11:00; вечер — с 18:00; остальное —
+// день. План идёт или начнётся в течение MINI_NEAR минут — в любое время дневной вид: отсчёт, золотой час и свечение живут в нём.
+const MINI_MORNING_END = 11;
+const MINI_EVENING = 18;
+const MINI_NEAR = 60;
+function miniPeriod(t, near) {
+  if (near) return "day";
+  const h = t.getHours();
+  if (afterBedtime(t) || h < cfg.morning) return "night";
+  if (h < MINI_MORNING_END) return "morning";
+  return h >= MINI_EVENING ? "evening" : "day";
+}
+// Первый план «завтра» для вечера и ночи: до полудня (ночь после полуночи) data.day уже новый — это ближайший план сегодня,
+// иначе — первый план следующего дня из data.upcoming. Со временем — раньше, чем без времени.
+function miniTomorrow(now) {
+  const list = now.getHours() < 12
+    ? (data.events ?? []).filter((e) => !e.time || minutesUntil(e) > 0)
+    : (data.upcoming ?? []).filter((e) => e.date_iso === dayAfter(data.day, 1));
+  const e = list.find((x) => x.time) ?? list[0];
+  return e ? `завтра ${e.time ? `${e.time} · ` : ""}${e.title}` : "";
+}
+// Оценка дня: показатель rating_day из /api/today (тот же, что пишут звёзды облачка, Telegram и «оценка дня 7» в чате);
+// поставили с карточки, а данные ещё старые, — она (miniRated, только за тот же день).
+let miniRated = null;
+function dayRating() {
+  const m = (data.metrics ?? []).find((x) => x.key === "rating_day");
+  if (m) return Number(m.value);
+  return miniRated?.day === data.day ? miniRated.v : null;
+}
+// Что на карточке в эту часть суток: первая строка (HTML), варианты второй (fitMiniSub ставит влезающий), ряд под верхом (HTML).
+function miniView(part, { plan, late, left, done, now }) {
+  if (part === "morning") {
+    const ahead = (data.events ?? []).filter((e) => !e.time || minutesUntil(e) > 0);
+    const plans = ahead.length ? `${ahead.length} ${plural(ahead.length, "план", "плана", "планов")}` : "";
+    const lines = miniSubLines(plans, late, left - late);
+    if (!lines.length && left > 0) lines.push(`${left} ${plural(left, "дело", "дела", "дел")}`);
+    // Три ближайших плана со временем — плашками цвета плана (как точки ленты «Дальше»): время, под ним название. Цвет — в data-c,
+    // его ставит renderMini (style="…" в разметке запрещён политикой страницы, style-src 'self').
+    const chips = ahead.filter((e) => e.time).slice(0, 3)
+      .map((e) => `<span data-c="${esc(colorOf(e))}" title="${esc(`${e.time} ${e.title}`)}"><b>${esc(e.time)}</b>${esc(e.title)}</span>`);
+    return { line1: "Доброе утро ☀", lines, extra: chips.length ? `<div class="mini-plans">${chips.join("")}</div>` : "" };
+  }
+  if (part === "evening") {
+    const total = done + left;
+    const next = miniTomorrow(now); // строки — текст (fitMiniSub ставит textContent), не разметка: без esc
+    const lateTxt = late ? miniSubLines("", late, 0)[0] : "";
+    const lines = [...new Set([[lateTxt, next].filter(Boolean).join(" · "), lateTxt || next])].filter(Boolean);
+    // Десять звёзд оценки дня — как под вечерним итогом, не дожидаясь его. Оценён (здесь, в облачке, в Telegram) — горят до оценки.
+    const v = dayRating();
+    const stars = Array.from({ length: 10 }, (_, i) => `<button type="button" class="rate-star${v && i < v ? " on" : ""}" data-v="${i + 1}" title="${i + 1} из 10" aria-label="Оценить день на ${i + 1} из 10"${v ? " disabled" : ""}><img src="../assets/star.png" alt="" draggable="false" /></button>`).join("");
+    return {
+      line1: !total ? "Добрый вечер" : done >= total ? "Всё сделано ✨" : `Сделано ${done} из ${total}`,
+      lines,
+      extra: `<div class="mini-rate"><span>${v ? "Оценка дня" : "Как прошёл день?"}</span><span class="mini-stars${v ? " rated" : ""}" id="miniStars"${v ? ` title="Оценка дня: ${v} из 10"` : ""}>${stars}</span></div>`,
+    };
+  }
+  // Ночь — без просрочки и счёта: только что завтра первым.
+  if (part === "night") return { line1: "Спокойной ночи", lines: [miniTomorrow(now)].filter(Boolean), extra: "" };
+  return {
+    line1: plan
+      ? `<span class="mini-plan${plan.soon ? " soon" : ""}"><b>${esc(plan.time)}</b> ${esc(plan.title)}</span>`
+      : left > 0 ? `Задачи · ${left}` : "Всё на сегодня ✨",
+    // Вторая строка — главное словами: когда план, что просрочено, сколько осталось (что влезает, miniSubLines).
+    lines: miniSubLines(plan?.rel, late, left - late),
+    extra: "",
+  };
+}
+let miniPart = "";
+let miniExtraHtml = "";
+let miniRateBusy = false; // звёзды карточки летят — ряд не пересобирать
 function renderMini(open, todo, left, done) {
   const plan = miniPlan();
   const late = open.filter(overdue).length;
-  $("#miniTasks").innerHTML = plan
-    ? `<span class="mini-plan${plan.soon ? " soon" : ""}"><b>${esc(plan.time)}</b> ${esc(plan.title)}</span>`
-    : left > 0 ? `Задачи · ${left}` : "Всё на сегодня ✨";
-  // Вторая строка — главное словами: когда план, что просрочено, сколько осталось (что влезает, miniSubLines).
-  miniLines = miniSubLines(plan?.rel, late, left - late);
+  const now = new Date();
+  const part = miniPeriod(now, plan && plan.d <= MINI_NEAR);
+  const view = miniView(part, { plan, late, left, done, now });
+  $("#miniTasks").innerHTML = view.line1;
+  miniLines = view.lines;
   fitMiniSub();
-  $("#miniSub").classList.toggle("late", late > 0);
+  $("#miniSub").classList.toggle("late", late > 0 && part !== "night");
+  const mini = $("#mini");
+  for (const p of ["morning", "evening", "night"]) mini.classList.toggle(p, part === p);
+  if (view.extra !== miniExtraHtml && !miniRateBusy) {
+    $("#miniExtra").innerHTML = miniExtraHtml = view.extra;
+    for (const s of $("#miniExtra").querySelectorAll("[data-c]")) s.style.setProperty("--c", s.dataset.c);
+  }
+  // Сменилась часть суток — строки и ряд въезжают снизу (не при первом показе и только у видимой, свёрнутой карточки).
+  if (miniPart && miniPart !== part && collapsed) {
+    for (const el of [mini.querySelector(".mini-text"), $("#miniExtra")]) {
+      el.classList.remove("swap");
+      void el.offsetWidth;
+      el.classList.add("swap");
+    }
+  }
+  miniPart = part;
   // План идёт — обводка со свечением, пока человек не ткнул в карточку и не развернул панель (или ответил на «⏰ Пора»).
-  $("#mini").classList.toggle("live", plan?.rel === "идёт" && !miniSeen[ackKey(plan.e)] && planAcks[ackKey(plan.e)] !== "ok");
+  mini.classList.toggle("live", part === "day" && plan?.rel === "идёт" && !miniSeen[ackKey(plan.e)] && planAcks[ackKey(plan.e)] !== "ok");
   const total = done + left;
   $("#miniArc").style.strokeDasharray = `${total ? (done / total) * RING : 0} ${RING}`;
   $("#miniCount").textContent = total ? `${done}/${total}` : "✓";
-  $("#miniOpen").title = total ? `Сделано ${done} из ${total} · развернуть панель` : "Развернуть панель";
+  $("#miniOpen").title = total && part !== "night" ? `Сделано ${done} из ${total} · развернуть панель` : "Развернуть панель";
 }
+// Въезд доигран — класс снять: копия карточки при развороте (foldAnimated, cloneNode) иначе проиграла бы его заново и стояла пустой.
+for (const el of [$("#mini .mini-text"), $("#miniExtra")]) el.addEventListener("animationend", (e) => { if (e.animationName === "miniSwap") el.classList.remove("swap"); });
+// Звёзды вечерней карточки: та же оценка дня, что под вечерним итогом, — POST /api/rate за день с сервера (data.day),
+// анимация rateShow на ряду карточки; ответ — облачком над головой, панель остаётся свёрнутой.
+$("#miniExtra").addEventListener("click", async (ev) => {
+  const star = ev.target.closest(".rate-star");
+  const row = star?.closest(".mini-stars");
+  if (!star || !row || row.classList.contains("rated") || miniRateBusy || !data) return;
+  const v = Number(star.dataset.v);
+  const day = data.day;
+  miniRateBusy = true;
+  const shown = rateShow(v, row);
+  try {
+    const r = await maid.api("POST", "/api/rate", { day, value: v });
+    await shown;
+    miniRated = { day, v };
+    say(r.text, { ms: 5000, mood: rateMood(v), stay: true });
+    maid.changed();
+  } catch (e) {
+    await shown;
+    say(errText(e), { ms: 6000, stay: true });
+  } finally {
+    miniRateBusy = false;
+    // Ряд пересобрать (null — такого вида не бывает, даже если в новом виде ряда нет): оценили — звёзды горят до оценки, не вышло — снова пустые.
+    miniExtraHtml = null;
+    render();
+  }
+});
 
 function setCollapsed(on) {
   collapsed = on;
@@ -2550,7 +2665,8 @@ function dropDrag() {
 const head = $("#head");
 draggable(head, (e) => e.target.closest("button"));
 draggable($("#maid"), () => false);
-draggable($("#mini"), (e) => e.target.closest("button, input"));
+// Ряд звёзд — не ручка: после первого щелчка звёзды не ловят мышь (.rated), второе нажатие двойного щелчка попадает в сам ряд.
+draggable($("#mini"), (e) => e.target.closest("button, input, .mini-stars"));
 document.addEventListener("pointerup", dropDrag);
 window.addEventListener("blur", dropDrag);
 
@@ -2628,7 +2744,7 @@ $("#planClock").addEventListener("click", (e) => {
   hideClock();
   foldAnimated(false);
 }, true);
-$("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button, form")) return; autoOpened = false; foldAnimated(false); });
+$("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button, form, .mini-stars")) return; autoOpened = false; foldAnimated(false); });
 // Строка ввода свёрнутой панели: Enter — в ту же очередь, что чат панели; ответ — облачком над головой, панель остаётся свёрнутой.
 $("#miniAsk").onsubmit = (e) => {
   e.preventDefault();

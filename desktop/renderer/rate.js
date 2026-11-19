@@ -1,4 +1,5 @@
-// Оценка дня звёздами: что происходит после щелчка по звезде (widget.js зовёт rateShow из обработчика кнопок облачка).
+// Оценка дня звёздами: что происходит после щелчка по звезде (widget.js зовёт rateShow из обработчика кнопок облачка
+// и из ряда звёзд вечерней свёрнутой карточки).
 // Сначала звёзды до выбранной зажигаются по одной, каждая со своим «поп» на полтона выше — счёт слышно. Дальше по ступени:
 //   1–3  — звёзды гаснут и осыпаются вниз, горничная грустит;
 //   4–6  — звёзды один раз подпрыгивают на месте, она кланяется;
@@ -28,13 +29,13 @@ function rateFly(el, frames, opts) {
   return el.animate(frames, { fill: "forwards", ...opts }).finished.catch(() => {}).then(() => el.remove());
 }
 
-/** Показать оценку v (1–10) на ряду звёзд облачка; обещание выполняется, когда всё долетело. */
-async function rateShow(v) {
-  const acts = $("#bubbleActions");
-  const stars = [...acts.querySelectorAll(".rate-star")].slice(0, v);
+/** Показать оценку v (1–10) на ряду звёзд (облачка или вечерней свёрнутой карточки, #miniStars); обещание выполняется,
+ *  когда всё долетело. */
+async function rateShow(v, row = $("#bubbleActions")) {
+  const stars = [...row.querySelectorAll(".rate-star")].slice(0, v);
   react(rateMood(v), 5000);
   if (!stars.length) return;
-  acts.classList.add("rated"); // наведение больше не перекрашивает ряд, повторный щелчок не пройдёт
+  row.classList.add("rated"); // наведение больше не перекрашивает ряд, повторный щелчок не пройдёт
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
     stars.forEach((s) => s.classList.add("on"));
     return rateWait(600);
