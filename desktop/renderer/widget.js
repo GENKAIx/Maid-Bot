@@ -1445,7 +1445,7 @@ function render() {
   let rows = [];
   const inHours = (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч`);
   const row = (e, lead) => `<div class="nx nx-row${lead ? " nx-lead" : ""}" data-day="${esc(e.date_iso)}" data-id="${e.id}">`
-    + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span>`
+    + `<i class="nx-dot" data-c="${e.time ? colorOf(e) : UNTIMED_COLOR}"></i><b class="nx-t${e.time ? "" : " none"}">${esc(e.time ?? "—")}</b><span class="nx-title">${esc(e.title)}</span>`
     + `${lead && e.time ? `<span class="nx-in">через ${esc(inHours(minutesUntil(e)))}</span>` : ""}</div>`;
   if (shown.length) {
     const m = minutesUntil(shown[0]);
