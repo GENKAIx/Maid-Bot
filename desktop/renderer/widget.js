@@ -2162,19 +2162,35 @@ function seeMini() {
   $("#mini").classList.remove("live");
 }
 $("#mini").addEventListener("pointerdown", seeMini);
+// Вторая строка свёрнутой карточки — варианты от полного к короткому: «через 40 мин · 2 просрочены · 3 дела» → без «3 дела»
+// (они в кольце) → только «2 просрочены» (время плана видно строкой выше). Просрочка не пропадает никогда. Без плана «N дел» нет.
+function miniSubLines(rel, late, rest) {
+  const lateTxt = late ? `${late} ${plural(late, "просрочено", "просрочены", "просрочено")}` : "";
+  const restTxt = rel && rest > 0 ? `${rest} ${plural(rest, "дело", "дела", "дел")}` : "";
+  const ways = [[rel, lateTxt, restTxt], [rel, lateTxt], late ? [lateTxt] : [rel]];
+  return [...new Set(ways.map((w) => w.filter(Boolean).join(" · ")))].filter(Boolean);
+}
+// Ставит первый вариант, что влезает целиком (строка в карточке 136 px — полная при просрочке обрывалась «через 40 мин · 2 п…»).
+// Карточка скрыта (развёрнута панель) — мерить нечем, стоит полный; подгоняется при сворачивании (setCollapsed) и после шрифта.
+let miniLines = [];
+function fitMiniSub() {
+  const el = $("#miniSub");
+  el.textContent = miniLines[0] ?? "";
+  for (const line of miniLines) {
+    el.textContent = line;
+    if (!el.clientWidth || el.scrollWidth <= el.clientWidth) return;
+  }
+}
+document.fonts?.ready.then(fitMiniSub);
 function renderMini(open, todo, left, done) {
   const plan = miniPlan();
   const late = open.filter(overdue).length;
   $("#miniTasks").innerHTML = plan
     ? `<span class="mini-plan${plan.soon ? " soon" : ""}"><b>${esc(plan.time)}</b> ${esc(plan.title)}</span>`
     : left > 0 ? `Задачи · ${left}` : "Всё на сегодня ✨";
-  // Вторая строка — главное словами: когда план, что просрочено, сколько осталось.
-  const sub = [
-    plan?.rel,
-    late ? `${late} ${plural(late, "просрочено", "просрочены", "просрочено")}` : "",
-    left - late > 0 && plan ? `${left - late} ${plural(left - late, "дело", "дела", "дел")}` : "",
-  ].filter(Boolean);
-  $("#miniSub").textContent = sub.join(" · ");
+  // Вторая строка — главное словами: когда план, что просрочено, сколько осталось (что влезает, miniSubLines).
+  miniLines = miniSubLines(plan?.rel, late, left - late);
+  fitMiniSub();
   $("#miniSub").classList.toggle("late", late > 0);
   // План идёт — обводка со свечением, пока человек не ткнул в карточку и не развернул панель (или ответил на «⏰ Пора»).
   $("#mini").classList.toggle("live", plan?.rel === "идёт" && !miniSeen[ackKey(plan.e)] && planAcks[ackKey(plan.e)] !== "ok");
@@ -2192,6 +2208,7 @@ function setCollapsed(on) {
   if (on && !$("#chatHist").classList.contains("hidden")) toggleHistory(false);
   $("#w").classList.toggle("hidden", on);
   $("#stage").classList.toggle("folded", on);
+  if (on) fitMiniSub(); // карточку только что показали — теперь строку есть чем мерить
   // Строка чата спряталась вместе с панелью — фокус из неё убрать сразу. Иначе он оставался в невидимой строке, и первый же щелчок
   // по облачку (✕, «Отменить») уводил его: blur → focusInput(false) → окно становилось сквозным посреди щелчка, и щелчок пропадал.
   if (on && $("#w").contains(document.activeElement)) {
