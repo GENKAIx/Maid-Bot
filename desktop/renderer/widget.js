@@ -2175,10 +2175,27 @@ function setCollapsed(on) {
     document.activeElement.blur();
     maid.focusInput(false);
   }
+  // Недописанное сообщение переходит в строку, которая теперь видна (раньше у карточки и панели были две отдельные строки,
+  // и текст из свёрнутой пропадал при разворачивании). Развернули сами — курсор сразу в чате, в конце текста.
+  const typing = document.activeElement === $("#miniInput");
+  const d = moveDraft(on, chatInput.value, $("#miniInput").value);
+  $("#miniInput").value = d.mini;
+  if (chatInput.value !== d.chat) { chatInput.value = d.chat; fitChat(); syncSend(); }
+  if (!on && d.chat.trim() && (typing || !autoOpened)) {
+    maid.focusInput(true);
+    chatInput.focus();
+    chatInput.setSelectionRange(d.chat.length, d.chat.length);
+  }
   syncLift();
   sendFold();
   // Запоминается свёрнутость, выбранная вами: панель, развёрнутая сама ради сообщения (autoOpened), после перезапуска снова свёрнута.
   if (!autoOpened && !napFolded) saveFold();
+}
+// Черновик при сворачивании (toMini) и разворачивании. В карточке строка одна — переносы там пробелами; если в карточке текст
+// не трогали, в панели остаются исходные переносы. Скрытая строка карточки после разворота пустая — второго черновика нет.
+function moveDraft(toMini, chat, mini) {
+  const flat = chat.replace(/\s*\n\s*/g, " ");
+  return toMini ? { chat, mini: flat } : { chat: mini === flat ? chat : mini, mini: "" };
 }
 function saveFold() {
   try { localStorage.setItem("maid.collapsed", collapsed ? "1" : ""); } catch {}
