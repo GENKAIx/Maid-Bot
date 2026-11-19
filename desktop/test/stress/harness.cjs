@@ -67,6 +67,7 @@ function boot(opts = {}) {
       this.js = [];
       this.destroyed = false;
       this.visible = false;
+      this.top = false;
       this.ignoreMouse = null;
       this.kind = "?";
       this.webContents = new WebContents(this);
@@ -83,6 +84,8 @@ function boot(opts = {}) {
     }
     isDestroyed() { return this.destroyed; }
     isMinimized() { return false; }
+    isVisible() { return this.visible; }
+    isAlwaysOnTop() { return this.top; }
     isFocused() { return false; }
     isFocusable() { return true; }
     restore() {}
@@ -93,7 +96,7 @@ function boot(opts = {}) {
     moveTop() { this.calls.push("moveTop"); }
     reload() { this.calls.push("reload"); }
     removeMenu() {}
-    setAlwaysOnTop(on, lvl) { this.calls.push(`top:${on}:${lvl ?? ""}`); }
+    setAlwaysOnTop(on, lvl) { this.top = Boolean(on); this.calls.push(`top:${on}:${lvl ?? ""}`); }
     setVisibleOnAllWorkspaces() {}
     setIgnoreMouseEvents(on) { this.ignoreMouse = on; this.calls.push(`ignoreMouse:${on}`); }
     close() {
@@ -122,6 +125,8 @@ function boot(opts = {}) {
     quit: () => { app.quitCalled = true; },
     setAppUserModelId() {},
     setLoginItemSettings: (o) => { app.loginItem = o; },
+    // Ключи Chromium до запуска (main.js выключает подсчёт перекрытия окон — f113767).
+    commandLine: { switches: [], appendSwitch(k, v) { this.switches.push([k, v]); } },
   });
   let ready = Promise.resolve();
   const safe = {
