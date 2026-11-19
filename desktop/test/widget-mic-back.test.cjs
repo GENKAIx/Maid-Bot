@@ -20,6 +20,7 @@ const ctx = {
   chatBox: chat,
   chatInput: { value: "", focus() {} },
   pictures: [],
+  syncMarks() {}, // метки над строкой (marks.js) — здесь не про них
   micTick: 0,
   clearInterval() {}, setInterval() { return 0; },
   Voice: {

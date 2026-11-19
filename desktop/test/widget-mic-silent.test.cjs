@@ -39,7 +39,7 @@ check(/micCheck\(\)/.test(fn("micUi")), "micUi: во время записи н�
     const ctx = {
       $: () => ({ classList: { toggle() {} }, title: "" }),
       chatBox: { classList: { toggle() {} }, querySelector: () => ({}) },
-      chatInput: { value: "", focus() {} }, pictures: [], micTick: 0,
+      chatInput: { value: "", focus() {} }, pictures: [], micTick: 0, syncMarks() {},
       clearInterval() {}, setInterval() { return 0; },
       Voice: {
         get on() { return rec; }, get seconds() { return secs; }, get hushed() { return hush; },

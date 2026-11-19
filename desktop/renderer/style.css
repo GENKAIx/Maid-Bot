@@ -271,6 +271,18 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .chat button.hint:hover { border-color: var(--accent); color: #fff; background: rgba(183, 156, 255, .24); }
 @keyframes hintsIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .chat .hints { animation: none; } }
+/* Метки, пока пишешь (marks.js): день, время, сумма — до двух рядов над строкой (в быстрой записи — один, data-rows); что не влезло,
+   marks.js убирает, сначала — «ок» (красные и янтарные — первыми); «переспросит» — янтарная, «опечатка» — красная.
+   Подсказки (над пустой строкой) и метки (над непустой) вместе не бывают. */
+.draft-marks { flex: 0 0 100%; min-width: 0; display: flex; flex-wrap: wrap; gap: 5px; max-height: 53px; overflow: hidden; }
+.draft-marks.hidden, .recording > .draft-marks, #w.hist-open .draft-marks, .q .out.hidden { display: none; }
+.dmark { flex: none; height: 24px; line-height: 22px; padding: 0 9px; border-radius: 12px; border: 1px solid rgba(183, 156, 255, .35);
+  background: rgba(183, 156, 255, .12); color: #e6dcff; font-size: 12px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums;
+  animation: hintsIn .16s ease-out both; }
+.dmark.ask { border-color: rgba(240, 180, 90, .5); background: rgba(240, 180, 90, .14); color: #f5d49a; }
+.dmark.bad { border-color: rgba(240, 100, 100, .55); background: rgba(240, 100, 100, .16); color: #ffb3b3; }
+.q .draft-marks { margin-top: 8px; max-height: 24px; }
+@media (prefers-reduced-motion: reduce) { .dmark { animation: none; } }
 .chat .outbox { display: flex; flex-direction: column; gap: 4px; }
 .chat .ob-row { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 4px 3px 10px; border-radius: 10px; background: rgba(183, 156, 255, .12); font-size: 12.5px; }
 .chat .ob-row.later { background: rgba(255, 255, 255, .06); color: var(--muted); }

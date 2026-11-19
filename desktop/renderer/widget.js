@@ -1202,8 +1202,15 @@ function micCheck() {
   say(MIC_HINT, { emotion: "worried", ms: 8000, sound: "oops" });
 }
 // Кнопка справа: пусто — микрофон; есть текст или картинки, или идёт запись — превращается в «отправить».
+// Метки над строкой, пока пишешь (marks.js): какой день, время и сумму поняла строка. День — сервера (data.day), время — на часах.
+// Прячутся при записи голоса и открытой истории (style.css). На свёрнутой карточке меток нет: там им нет места.
+function syncMarks() {
+  if (typeof draftMarksShow !== "function") return;
+  draftMarksShow($("#chatMarks"), chatInput.value, data?.day ? { ...draftNow(), today: data.day } : draftNow());
+}
 function syncSend() {
   if (typeof syncHints === "function") syncHints(); // запись голоса, картинки, текст — подсказки над строкой уходят (hints.js)
+  syncMarks();
   const ready = Voice.on || Boolean(chatInput.value.trim()) || pictures.length > 0;
   $("#chat").classList.toggle("ready", ready);
   $("#chatSend").title = Voice.on ? "Отправить запись (Enter)" : "Отправить (Enter)";
@@ -1954,6 +1961,7 @@ async function load() {
     loadFail = "";
     const json = JSON.stringify(fresh);
     data = fresh;
+    syncMarks(); // день сервера и часы идут — «через 2 часа», «завтра» в метке не устаревают (перерисовка — только если поменялись)
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
     if (!online) backOnline();

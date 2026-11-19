@@ -8,9 +8,12 @@
 <body class="quick">
   <form class="q" id="f">
     <div class="qrow"><img id="pic" class="hidden" alt="" title="Картинка уйдёт вместе с записью — Esc убрать" /><input id="t" placeholder="Записать… (Ctrl+V — картинка, Enter — отправить, Esc — закрыть)" autocomplete="off" /></div>
+    <!-- Пока пишешь — метки дня, времени и суммы (marks.js) на месте строки ответа, в один ряд (окно 132 px). -->
+    <div class="draft-marks hidden" id="marks" data-rows="1"></div>
     <div class="out" id="out"></div>
   </form>
   <script src="common.js"></script>
+  <script src="marks.js"></script>
   <script src="quick.js"></script>
 </body>
 </html>
