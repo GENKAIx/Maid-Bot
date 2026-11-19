@@ -91,13 +91,13 @@ function play(name) {
 const KIND = {
   diary: ["📓", "Дневник"], event: ["📅", "План"], task: ["✅", "Задача"], date: ["🎂", "Дата"], memory: ["🧠", "Память"],
   metric: ["📊", "Показатель"], money: ["💰", "Деньги"], habit: ["🔁", "Привычка"], mark: ["✔", "Отметка"], edit: ["✎", "Правка"],
-  trait: ["🛡", "Профиль"],
+  trait: ["🛡", "Профиль"], note: ["📝", "Заметка"],
 };
 
 // Куда ведёт карточка записи из облачка: раздел приложения (веб-приложение в главном окне).
 function sectionOf(c, day = data?.day) {
   if (c.kind === "diary") return /^Здоровье/.test(c.title) ? "/health" : `/diary/${day ?? ""}`.replace(/\/$/, "");
-  return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits", trait: "/profile" }[c.kind] ?? "/";
+  return { event: "/plans", task: "/plans", date: "/plans", money: "/money", metric: "/health", habit: "/habits", mark: "/habits", trait: "/profile", note: "/notes" }[c.kind] ?? "/";
 }
 
 // --- горничная: 41 анимация (assets/maid/<имя>.webp, исходники — «А ПРИКОЛЫ/Маскот/Анимации», «…/Маскот/mascot2», «…/Маскот/3/forget»
