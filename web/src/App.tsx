@@ -1,6 +1,7 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { getToken, post, setToken, whenUnauthorized } from "./api";
 import { Composer } from "./Composer";
+import { NAV_TABS, oldPath } from "./nav";
 import { navigate, parsePath, usePath } from "./router";
 import { Album } from "./screens/Album";
 import { Diary } from "./screens/Diary";
@@ -12,13 +13,11 @@ import { Money } from "./screens/Money";
 import { Notes } from "./screens/Notes";
 import { Plans } from "./screens/Plans";
 import { Profile } from "./screens/Profile";
-import { MaidSettings } from "./screens/MaidSettings";
-import { Settings } from "./screens/Settings";
+import { SettingsTabs } from "./screens/SettingsTabs";
 import { Stats } from "./screens/Stats";
 import { Today } from "./screens/Today";
 import { Search } from "./screens/Search";
 import { Trash } from "./screens/Trash";
-import { desktop, Widget } from "./screens/Widget";
 import { Features } from "./screens/Features";
 import { Icon } from "./icons";
 
@@ -28,31 +27,9 @@ const Catalog = lazy(() => import("./screens/Catalog").then((m) => ({ default: m
 // Каркас: вход, навигация (слева на ПК; снизу на телефоне — четыре экрана и «Ещё»), экран, строка ввода.
 // version растёт после каждой записи — экраны перечитывают данные.
 
-// Порядок — от частого к редкому: каждый день, учёт, служебное. group — разделитель перед группой в меню.
-// Профиль и «Персонализация» — на ПК сразу под логотипом, на телефоне — первыми в «Ещё».
-const TABS: { id: string; path: string; title: string; icon: string; more?: boolean; group?: "track" | "tools" }[] = [
-  { id: "today", path: "/", title: "Сегодня", icon: "today" },
-  { id: "plans", path: "/plans", title: "Планы", icon: "plans" },
-  { id: "habits", path: "/habits", title: "Привычки", icon: "habits" },
-  { id: "diary", path: "/diary", title: "Дневник", icon: "diary" },
-  { id: "profile", path: "/profile", title: "Профиль", icon: "profile", more: true },
-  { id: "maid", path: "/maid", title: "Персонализация", icon: "maid", more: true },
-  { id: "notes", path: "/notes", title: "Заметки", icon: "notes", more: true },
-  { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true, group: "track" },
-  { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
-  { id: "stats", path: "/stats", title: "Статистика", icon: "stats", more: true },
-  { id: "search", path: "/search", title: "Поиск", icon: "search", more: true, group: "tools" },
-  { id: "trash", path: "/trash", title: "Корзина", icon: "trash", more: true },
-  // Только в программе для ПК (сайт открыт в её окне): настройки виджета на рабочем столе.
-  ...(desktop() ? [{ id: "widget", path: "/widget", title: "Виджет", icon: "widget", more: true }] : []),
-  { id: "history", path: "/history", title: "История", icon: "history", more: true },
-  { id: "album", path: "/album", title: "Альбом", icon: "album", more: true },
-  { id: "features", path: "/features", title: "Возможности", icon: "features", more: true },
-  { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
-  { id: "catalog", path: "/catalog", title: "Каталог", icon: "catalog", more: true },
-];
+const TABS = NAV_TABS;
 /** Пункты над главными экранами на ПК (на телефоне — первыми в «Ещё»). */
-const NAV_TOP = new Set(["profile", "maid"]);
+const NAV_TOP = new Set(["profile"]);
 
 export function App() {
   const [authed, setAuthed] = useState(Boolean(getToken()));
@@ -60,6 +37,8 @@ export function App() {
   const [more, setMore] = useState(false);
   const path = usePath();
   const { tab, arg } = parsePath(path);
+  // Прежние адреса разделов, ставших вкладками «Настроек» (/maid, /widget — их открывает и виджет на ПК).
+  useEffect(() => { const to = oldPath(path); if (to) navigate(to, true); }, [path]);
   const onChanged = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
@@ -104,9 +83,7 @@ export function App() {
     : tab === "stats" ? <Stats version={version} />
     : tab === "search" ? <Search query={arg} version={version} />
     : tab === "trash" ? <Trash version={version} onChanged={onChanged} />
-    : tab === "maid" ? <MaidSettings />
-    : tab === "settings" ? <Settings onLogout={logout} />
-    : tab === "widget" ? <Widget />
+    : tab === "settings" ? <SettingsTabs tab={arg} onLogout={logout} />
     : tab === "history" ? <History filter={arg} version={version} />
     : tab === "album" ? <Album version={version} />
     : tab === "features" ? <Features />
@@ -121,11 +98,18 @@ export function App() {
   // Перед первым пунктом группы («Учёт», «Служебное») — тонкая линия.
   const grouped = (t: (typeof TABS)[number]) => (t.group ? <Fragment key={t.id}><div className="nav-sep" />{item(t)}</Fragment> : item(t));
   const inMore = TABS.some((t) => t.more && t.id === tab);
+  // Поиск — не пункт меню, а строка под логотипом (на телефоне — первой в «Ещё»); Ctrl+K и «/» открывают его отовсюду.
+  const find = (
+    <a key="search" className={`nav-find ${tab === "search" ? "on" : ""}`} href="/search" onClick={(e) => { e.preventDefault(); navigate("/search"); }}>
+      <span className="nav-icon"><Icon name="search" /></span><span className="grow">Поиск</span><kbd>Ctrl K</kbd>
+    </a>
+  );
 
   return (
     <div className="app">
       <nav className="nav">
         <div className="brand"><img src="/icon.svg" alt="" width={28} height={28} /><span>Горничная</span></div>
+        <div className="nav-more-group">{find}</div>
         <div className="nav-more-group nav-profile">{TABS.filter((t) => NAV_TOP.has(t.id)).map(item)}</div>
         {TABS.filter((t) => !t.more).map(item)}
         <div className="nav-more-group">{TABS.filter((t) => t.more && !NAV_TOP.has(t.id)).map(grouped)}</div>
@@ -137,6 +121,7 @@ export function App() {
       {more && (
         <div className="sheet-back" onClick={() => setMore(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            {find}
             {TABS.filter((t) => t.more).map(grouped)}
           </div>
         </div>

@@ -42,7 +42,7 @@ test("эмоции примеров — из тех, что есть у горн
 
 test("раздел в меню и на своём адресе", () => {
   const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
-  assert.match(app, /\{ id: "features", path: "\/features", title: "Возможности"/);
+  assert.match(readFileSync(new URL("../src/nav.ts", import.meta.url), "utf8"), /\{ id: "features", path: "\/features", title: "Возможности"/);
   assert.match(app, /tab === "features" \? <Features/);
 });
 

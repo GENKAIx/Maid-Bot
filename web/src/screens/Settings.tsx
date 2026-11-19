@@ -7,7 +7,7 @@ import { SpendCard } from "./Spend";
 import { UpdateCard } from "./Widget";
 
 // Настройки — техническое: обновление программы, тема и уведомления на этом устройстве, расход модели, вход, копия, выход.
-// Как и когда пишет горничная (характер, время сообщений, напоминания, игры) — страница «Персонализация» (MaidSettings.tsx).
+// Как и когда пишет горничная (характер, время сообщений, напоминания, игры) — вкладка «Горничная» (MaidSettings.tsx); обе — вкладки экрана «Настройки» (SettingsTabs.tsx).
 
 interface Me {
   id: number; login: string | null; name: string; tz: string;
@@ -64,7 +64,6 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
   }
   return (
     <div className="screen">
-      <h2 className="screen-title">Настройки</h2>
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="cards">
         <UpdateCard />

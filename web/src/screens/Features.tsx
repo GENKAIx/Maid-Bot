@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { DayPie } from "../charts";
 import { demoLength, FEATURES, frameAt, type Demo, type Feature, type Frame, type Row } from "../features";
 import { dur } from "../format";
+import { navigate } from "../router";
 
 // Раздел «Возможности»: фичи сверху вниз. У каждой — название, зачем она, живой пример «с горничной» (копия виджета) и, где есть,
 // второй (копия панели дня, чат Telegram, поиск, круг статистики) и кнопка «▶ Показать».
@@ -230,6 +231,8 @@ export function Features() {
       <h2 className="screen-title">Возможности</h2>
       <p className="muted fx-lead">Что умеет горничная — с живыми примерами. «Показать» проигрывает пример ещё раз.</p>
       {FEATURES.map((f) => <FeatureCard key={f.id} f={f} />)}
+      {/* Каталог для разработки — не в меню (19.11.2026), только отсюда и по адресу /catalog. */}
+      <p className="muted small fx-catalog">Как всё устроено внутри — <a href="/catalog" onClick={(e) => { e.preventDefault(); navigate("/catalog"); }}>каталог для разработки</a>.</p>
     </div>
   );
 }

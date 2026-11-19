@@ -408,7 +408,6 @@ export function Widget() {
 
   return (
     <div className="screen wp">
-      <h2 className="screen-title">Виджет</h2>
       <p className="muted small">Панель с горничной на рабочем столе этого компьютера. Меняется сразу; на других устройствах — свои настройки.</p>
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="wp-list">
