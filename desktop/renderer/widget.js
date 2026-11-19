@@ -1404,6 +1404,17 @@ $("#next").addEventListener("click", async (ev) => {
     say(`Не вышло: ${String(err?.message ?? err)}`, { emotion: "worried", ms: 6000 });
   }
 });
+// ПКМ по плану в ленте «Дальше» (плашка, строки, прошедший план, «Дальше: …») — то же меню, что у карточки в панели планов
+// (clock.js openPlanMenu): повтор, время, перенести или копия на завтра, переименовать, «✓ Состоялось», «× Убрать из планов».
+// Строки важных дат — без меню (data-date). Планы следующего дня в ленте — из data.upcoming.
+$("#next").addEventListener("contextmenu", (ev) => {
+  const nx = ev.target.closest(".nx[data-id]");
+  if (!nx || nx.dataset.date || !data) return;
+  const e = [...(data.events ?? []), ...(data.upcoming ?? [])].find((x) => x.id === Number(nx.dataset.id));
+  if (!e) return;
+  ev.preventDefault();
+  openPlanMenu(e, nx, ev.clientX, ev.clientY);
+});
 
 function render() {
   // Строка улетает или список смыкается — не пересобирать его посреди анимации (иначе строка прыгает назад), дорисовать после.

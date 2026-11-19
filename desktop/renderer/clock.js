@@ -503,8 +503,9 @@ function leaving(id) {
   return going(x) && x.at ? ` leaving${x.fly ? " fly" : ""}` : "";
 }
 // Галочка — состоялся, × — убрать (отменён); оба заливаются и улетают, щелчок по отметке до улёта — вернуть в планы.
-async function setPlanStatus(id, status) {
-  const e = plansOf(clockDay).find((x) => x.id === id) ?? planDone.get(id)?.e;
+// known — сам план, если меню открыли не в панели (ПКМ по ленте «Дальше»): панель тогда закрыта или на другом дне.
+async function setPlanStatus(id, status, known) {
+  const e = plansOf(clockDay).find((x) => x.id === id) ?? planDone.get(id)?.e ?? known;
   if (!e) return;
   clearTimeout(doneTimers.get(id));
   doneTimers.delete(id);
@@ -2145,7 +2146,7 @@ function openPlanMenu(e, li, x, y) {
     if (act === "move") return movePlan(e, dayAfter(e.date_iso, 1), li);
     if (act === "copy") return copyPlan(e, dayAfter(e.date_iso, 1));
     if (act === "rename") return openRename(e, li);
-    setPlanStatus(e.id, act);
+    setPlanStatus(e.id, act, e);
   });
 }
 function showPlanMenu(menu, x, y) {
@@ -2268,7 +2269,8 @@ function openRepeat(e) {
         <button type="button" class="ghost" data-close>Отмена</button><button type="button" class="rp-ok" data-save${next.length ? "" : " disabled"}>Повторять</button></div>`;
   };
   draw();
-  const r = $("#planClock").getBoundingClientRect();
+  // Открыли из ленты «Дальше» при закрытой панели — у ленты (у закрытой панели прямоугольник пустой, окно встало бы в угол).
+  const r = ($("#planClock").classList.contains("hidden") ? $("#next") : $("#planClock")).getBoundingClientRect();
   showPlanMenu(box, r.left + Math.max(0, (r.width - 300) / 2), r.top + 40);
   box.addEventListener("input", (ev) => {
     const k = ev.target.dataset.in;
