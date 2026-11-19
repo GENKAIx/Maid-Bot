@@ -707,7 +707,7 @@ export class Pipeline {
         } else if (a.tbl === "tasks") {
           if (a.kind === "add") await s.updateTask(a.row_id, { status: "deleted" });
           else if (before) await s.updateTask(a.row_id, before);
-        } else if (a.tbl === "dates") await s.setDateStatus(a.row_id, a.kind === "add" ? "deleted" : before?.status ?? "active");
+        } else if (a.tbl === "dates") await s.updateDate(a.row_id, a.kind === "add" ? { status: "deleted" } : before ?? { status: "active" });
         else if (a.tbl === "memory") await s.setMemoryStatus(a.row_id, a.kind === "add" ? "superseded" : before?.status ?? "active");
         else if (a.tbl === "metrics") await s.setMetricDeleted(a.row_id, true);
         else if (a.tbl === "traits") await s.updateTrait(a.row_id, a.kind === "add" ? { status: "removed" } : before ?? {});

@@ -1,18 +1,39 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
-import { WEEKDAYS, addDays, dateWhen, humanDay, shortDay, todayKey } from "../format";
-import type { DateItem, EventRow, TaskRow } from "../types";
+import { WEEKDAYS, addDays, shortDay, todayKey } from "../format";
+import { navigate } from "../router";
+import type { EventRow, TaskRow } from "../types";
+import { Dates } from "./Dates";
 
-// Планы: неделя днями, что дальше, все задачи, все важные даты.
+// Планы: две вкладки (19.11.2026) — «Планы» (неделя днями, что дальше, все задачи) и «Даты» (важные даты, screens/Dates.tsx;
+// раньше — список внизу этой страницы). Вкладка — в адресе: /plans и /plans/dates.
 
-export function Plans({ version, onChanged }: { version: number; onChanged: () => void }) {
+export function Plans({ tab, version, onChanged }: { tab?: string; version: number; onChanged: () => void }) {
+  const tabs = (
+    <div className="stat-tabs" role="tablist">
+      {([["", "Планы"], ["dates", "Даты"]] as const).map(([id, title]) => (
+        <button key={id} role="tab" aria-selected={(tab === "dates" ? "dates" : "") === id} className={(tab === "dates" ? "dates" : "") === id ? "on" : ""}
+          onClick={() => navigate(id ? `/plans/${id}` : "/plans", true)}>{title}</button>
+      ))}
+    </div>
+  );
+  if (tab === "dates") return (
+    <div className="screen">
+      <h2 className="screen-title">Важные даты</h2>
+      {tabs}
+      <Dates version={version} onChanged={onChanged} />
+    </div>
+  );
+  return <Week tabs={tabs} version={version} onChanged={onChanged} />;
+}
+
+function Week({ tabs, version, onChanged }: { tabs: React.ReactNode; version: number; onChanged: () => void }) {
   const today = todayKey();
   const [start, setStart] = useState(addDays(today, -((new Date().getDay() + 6) % 7)));
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [later, setLater] = useState<EventRow[]>([]);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
-  const [dates, setDates] = useState<DateItem[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -22,10 +43,9 @@ export function Plans({ version, onChanged }: { version: number; onChanged: () =
       get<EventRow[]>(`/api/events?from=${start}&to=${end}`),
       get<EventRow[]>(`/api/events?from=${addDays(end, 1)}&to=${addDays(end, 60)}`),
       get<TaskRow[]>("/api/tasks"),
-      get<DateItem[]>("/api/dates?all=1"),
-    ]).then(([e, l, t, d]) => {
+    ]).then(([e, l, t]) => {
       if (!alive) return;
-      setEvents(e); setLater(l); setTasks(t); setDates(d);
+      setEvents(e); setLater(l); setTasks(t);
     }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
   }, [start, version]);
@@ -47,6 +67,7 @@ export function Plans({ version, onChanged }: { version: number; onChanged: () =
         <button className="ghost" onClick={() => setStart(addDays(start, 7))} aria-label="Следующая неделя">›</button>
         {!week.includes(today) && <button className="link" onClick={() => setStart(addDays(today, -((new Date().getDay() + 6) % 7)))}>эта неделя</button>}
       </div>
+      {tabs}
 
       <div className="week reveal">
         {week.map((d, i) => {
@@ -89,22 +110,6 @@ export function Plans({ version, onChanged }: { version: number; onChanged: () =
           ) : <Empty>Открытых задач нет</Empty>}
         </Card>
 
-        <Card title={`Важные даты · ${dates.length}`} className="reveal wide">
-          {dates.length ? (
-            <ul className="list dates">
-              {dates.map((x) => (
-                <li key={x.id}>
-                  <span className="time">{shortDay(x.on)}</span>
-                  <span className="grow">
-                    {x.type === "birthday" ? "🎂 " : ""}{x.title}{x.age ? <span className="muted"> · {x.age}</span> : null}
-                    <span className="muted small"> · {humanDay(x.on, true)}</span>
-                  </span>
-                  <Chip tone={x.inDays <= 7 ? "accent" : ""}>{dateWhen(x.inDays)}</Chip>
-                </li>
-              ))}
-            </ul>
-          ) : <Empty>Дат нет. Напишите, например: «день рождения мамы 3 мая»</Empty>}
-        </Card>
       </div>
     </div>
   );

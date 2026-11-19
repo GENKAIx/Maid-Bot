@@ -102,8 +102,8 @@ test("шаг 12 базы: ночное время вечернего итога 
   const b = await store.ensureUser("2", "Б", "Europe/Moscow");
   await store.updateUser(a.id, { evening_time: "00:15" });
   await store.updateUser(b.id, { evening_time: "21:30" });
-  // Как до шага 12: и столбцов шагов 13 и 15 ещё нет.
-  await store.driver.exec("ALTER TABLE users DROP COLUMN habit_first; ALTER TABLE users DROP COLUMN habit_last; ALTER TABLE notices DROP COLUMN kind; ALTER TABLE habit_marks DROP COLUMN amount; ALTER TABLE habit_marks DROP COLUMN unit;");
+  // Как до шага 12: и столбцов шагов 13, 15, 16 и 18 ещё нет.
+  await store.driver.exec("ALTER TABLE users DROP COLUMN habit_first; ALTER TABLE users DROP COLUMN habit_last; ALTER TABLE notices DROP COLUMN kind; ALTER TABLE habit_marks DROP COLUMN amount; ALTER TABLE habit_marks DROP COLUMN unit; ALTER TABLE dates DROP COLUMN closed_at;");
   await store.kvSet("schema_version", "11");
   await store.close();
   store = await Store.open(file);

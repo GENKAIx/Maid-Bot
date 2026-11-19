@@ -75,7 +75,7 @@ export function App() {
   const screen =
     tab === "diary" ? <Diary day={arg} version={version} onChanged={onChanged} />
     : tab === "habits" ? <Habits month={arg} version={version} onChanged={onChanged} />
-    : tab === "plans" ? <Plans version={version} onChanged={onChanged} />
+    : tab === "plans" ? <Plans tab={arg} version={version} onChanged={onChanged} />
     : tab === "notes" ? <Notes version={version} onChanged={onChanged} />
     : tab === "profile" ? <Profile version={version} onChanged={onChanged} />
     : tab === "health" ? <Health version={version} />

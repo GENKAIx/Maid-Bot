@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
-import { shortDay, todayKey } from "../format";
+import { MONTHS_GEN, shortDay, todayKey } from "../format";
 import type { EventRow, NoteRow, TaskRow } from "../types";
 
-// Корзина: удалённые и отменённые задачи и планы и удалённые заметки за последние дни (сервер держит их TRASH_DAYS дней). «Вернуть» —
+// Корзина: удалённые и отменённые задачи и планы, удалённые заметки и важные даты (даты — с 19.11.2026) за последние дни (сервер держит их TRASH_DAYS дней). «Вернуть» —
 // задача снова открыта, план снова в планах; то же, что «верни … из корзины» словами. «✕» — удалить навсегда,
 // «Очистить корзину» — всё сразу (после вопроса «точно?»); вернуть такое уже нельзя.
 
@@ -13,8 +13,9 @@ type Trash = {
   tasks: (TaskRow & { closed_at: string | null })[];
   events: (EventRow & { updated_at: string })[];
   notes: NoteRow[];
+  dates?: { id: number; title: string; date_iso: string; closed_at: string | null }[];
 };
-type Kind = "task" | "event" | "note";
+type Kind = "task" | "event" | "note" | "date";
 
 /** Когда удалено: «сегодня 14:05», «вчера», «8 ноя». */
 function when(iso: string | null) {
@@ -53,6 +54,7 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
     try {
       if (kind === "task") await post(`/api/tasks/${id}`, { status: "open" });
       else if (kind === "note") await post(`/api/notes/${id}`, { status: "open" });
+      else if (kind === "date") await post(`/api/dates/${id}`, { status: "active" });
       else await post(`/api/events/${id}`, { status: "active" });
       onChanged();
     } catch (e) {
@@ -62,7 +64,7 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
     }
   }
 
-  async function purge(body: { all: true } | { tasks: number[] } | { events: number[] } | { notes: number[] }, ask: string, key: string) {
+  async function purge(body: { all: true } | { tasks: number[] } | { events: number[] } | { notes: number[] } | { dates: number[] }, ask: string, key: string) {
     if (!confirm(ask)) return;
     setBusy(key);
     try {
@@ -84,9 +86,10 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
   );
   const gone = (kind: Kind, id: number, title: string) => (
     <button className="link forever" disabled={busy === `${kind}${id}`} title="Удалить навсегда" aria-label={`Удалить навсегда: ${title}`}
-      onClick={() => purge(kind === "task" ? { tasks: [id] } : kind === "note" ? { notes: [id] } : { events: [id] }, `Удалить «${title}» навсегда? Вернуть будет нельзя.`, `${kind}${id}`)}>✕</button>
+      onClick={() => purge(kind === "task" ? { tasks: [id] } : kind === "note" ? { notes: [id] } : kind === "date" ? { dates: [id] } : { events: [id] }, `Удалить «${title}» навсегда? Вернуть будет нельзя.`, `${kind}${id}`)}>✕</button>
   );
-  const total = trash.tasks.length + trash.events.length + trash.notes.length;
+  const dates = trash.dates ?? [];
+  const total = trash.tasks.length + trash.events.length + trash.notes.length + dates.length;
 
   return (
     <div className="screen">
@@ -140,6 +143,22 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
                   <Chip tone={stays(n.closed_at)}>{left(n.closed_at, trash.days)}</Chip>
                   {back("note", n.id)}
                   {gone("note", n.id, n.title)}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+        {dates.length > 0 && (
+          <Card title={`Даты · ${dates.length}`} className="reveal wide">
+            <ul className="list trash">
+              {dates.map((d) => (
+                <li key={d.id}>
+                  <span className="time">{Number(d.date_iso.slice(8, 10))} {MONTHS_GEN[Number(d.date_iso.slice(5, 7)) - 1].slice(0, 3)}</span>
+                  <span className="grow">{d.title}</span>
+                  <span className="muted small">удалена {when(d.closed_at)}</span>
+                  <Chip tone={stays(d.closed_at)}>{left(d.closed_at, trash.days)}</Chip>
+                  {back("date", d.id)}
+                  {gone("date", d.id, d.title)}
                 </li>
               ))}
             </ul>

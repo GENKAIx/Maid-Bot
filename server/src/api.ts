@@ -5,7 +5,7 @@ import path from "node:path";
 import { z } from "zod";
 import { PERSONAS } from "./personas.ts";
 import { login, LoginGate, tokenHash, userByToken } from "./auth.ts";
-import type { Store, UsageRow, User } from "./db.ts";
+import type { DateRow, Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { ALBUM, albumOf, albumSee } from "./album.ts";
 import { habitMonth, habitsOfDay, habitStats } from "./habits.ts";
@@ -20,7 +20,7 @@ const ShelfKey = z.enum(SHELF_KEYS as [Shelf, ...Shelf[]]);
 import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
-import { moneyTotals, upcomingDates } from "./report.ts";
+import { moneyTotals, upcomingDates, yearKnown } from "./report.ts";
 import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
@@ -494,7 +494,7 @@ export function createApi(deps: ApiDeps) {
     // или POST /api/events/:id {status:"active"} (как «↩ Вернуть» после удаления).
     if (m === "GET" && p === "/api/trash") {
       const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
-      return { days: TRASH_DAYS, tasks: await store.trashTasks(u.id, since), events: await store.trashEvents(u.id, since), notes: await store.trashNotes(u.id, since) };
+      return { days: TRASH_DAYS, tasks: await store.trashTasks(u.id, since), events: await store.trashEvents(u.id, since), notes: await store.trashNotes(u.id, since), dates: await store.trashDates(u.id, since) };
     }
     // Поиск по задачам и планам (экран «Поиск»): все слова запроса — в названии, заметках или подробностях, без учёта регистра и «ё».
     // Ищет и в корзине (удалённое/отменённое за TRASH_DAYS дней, inTrash); удалённое навсегда (purged) и давно удалённое — нет.
@@ -529,10 +529,10 @@ export function createApi(deps: ApiDeps) {
     // «Удалить навсегда» (× у строки) и «Очистить корзину» (all): из корзины пропадают, вернуть уже нельзя.
     if (m === "POST" && p === "/api/trash/purge") {
       const Ids = z.array(z.number().int().positive()).max(500);
-      const b = parseBody(z.object({ all: z.literal(true).optional(), tasks: Ids.optional(), events: Ids.optional(), notes: Ids.optional() }), await readJson(req));
-      if (!b.all && !b.tasks && !b.events && !b.notes) throw new HttpError(400, "нужно all, tasks, events или notes");
+      const b = parseBody(z.object({ all: z.literal(true).optional(), tasks: Ids.optional(), events: Ids.optional(), notes: Ids.optional(), dates: Ids.optional() }), await readJson(req));
+      if (!b.all && !b.tasks && !b.events && !b.notes && !b.dates) throw new HttpError(400, "нужно all, tasks, events, notes или dates");
       const since = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
-      return store.purgeTrash(u.id, since, b.all ? undefined : { tasks: b.tasks ?? [], events: b.events ?? [], notes: b.notes ?? [] });
+      return store.purgeTrash(u.id, since, b.all ? undefined : { tasks: b.tasks ?? [], events: b.events ?? [], notes: b.notes ?? [], dates: b.dates ?? [] });
     }
 
     // Заметки «на потом» (экран «Заметки»): полки и всё, что на них лежит или отмечено готовым. Удалённые — в корзине.
@@ -576,7 +576,59 @@ export function createApi(deps: ApiDeps) {
     // ?all=1 — все даты с ближайшим наступлением (в течение года), иначе ближайшие 30 дней.
     if (m === "GET" && p === "/api/dates") {
       const within = q("all") ? 366 : 30;
-      return upcomingDates(await store.activeDates(u.id), today, within).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age }));
+      return upcomingDates(await store.activeDates(u.id), today, within).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age, year_known: yearKnown(d.row) }));
+    }
+    // Дата руками (сайт, «Планы» → «Даты»): день и месяц, год — если известен (для возраста). Без года — год записи
+    // (как у дат, записанных словами; возраст тогда не считается), разовая без года — ближайшее наступление. Отменяется.
+    const DateFields = { title: z.string().trim().min(1).max(200), month: z.number().int().min(1).max(12), day: z.number().int().min(1).max(31),
+      year: z.number().int().min(1900).max(2200).nullable(), type: z.enum(["birthday", "anniversary", "holiday", "deadline", "other"]), yearly: z.boolean() };
+    const dateIso = (month: number, dd: number, year: number | null, yearly: boolean, base: number) => {
+      const md = `${String(month).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+      if (year !== null) return isDayKey(`${year}-${md}`) ? `${year}-${md}` : null;
+      // Без года: с года base вперёд — первый, где такой день есть (29 февраля — ближайший високосный); разовая — не в прошлом.
+      for (let y = !yearly && `${base}-${md}` < today ? base + 1 : base; y < base + 8; y++) if (isDayKey(`${y}-${md}`)) return `${y}-${md}`;
+      return null;
+    };
+    const dateOut = async (id: number, undo: number) => { const d = (await store.date(id))!; return { ...d, year_known: yearKnown(d), undo }; };
+    if (m === "POST" && p === "/api/dates") {
+      const b = parseBody(z.object(DateFields), await readJson(req));
+      const iso = dateIso(b.month, b.day, b.year, b.yearly, Number(today.slice(0, 4)));
+      if (!iso) throw new HttpError(400, "нет такого дня");
+      let id = 0;
+      const undo = await pipeline.manual(u, `📅 ${b.title}`, async (log) => {
+        id = await store.addDate({ user_id: u.id, title: b.title, date_iso: iso, type: b.type, person: "", notes: "", yearly: b.yearly ? 1 : 0, message_id: null });
+        await log("dates", id, { status: "deleted" });
+      });
+      return dateOut(id, undo);
+    }
+    // Правка даты: название, день (month + day + year вместе), вид, «каждый год», удалить (deleted — в корзину) или вернуть (active).
+    const dateRow = p.match(/^\/api\/dates\/(\d+)$/);
+    if (m === "POST" && dateRow) {
+      const b = parseBody(z.object({
+        title: DateFields.title.optional(), month: DateFields.month.optional(), day: DateFields.day.optional(), year: DateFields.year.optional(),
+        type: DateFields.type.optional(), yearly: DateFields.yearly.optional(), status: z.enum(["active", "deleted"]).optional(),
+      }), await readJson(req));
+      const d = await store.date(Number(dateRow[1]));
+      if (!d || d.user_id !== u.id || d.status === "purged") throw new HttpError(404, "нет даты");
+      if (!Object.keys(b).length) throw new HttpError(400, "нужно title, month и day, type, yearly или status");
+      const patch: Partial<Pick<DateRow, "title" | "date_iso" | "type" | "yearly" | "status">> = {};
+      if (b.title !== undefined) patch.title = b.title;
+      if (b.type !== undefined) patch.type = b.type;
+      if (b.yearly !== undefined) patch.yearly = b.yearly ? 1 : 0;
+      if (b.status !== undefined) patch.status = b.status;
+      if (b.month !== undefined || b.day !== undefined) {
+        if (b.month === undefined || b.day === undefined) throw new HttpError(400, "день и месяц — вместе");
+        // Год не указан — как было у даты без года: год её записи.
+        const iso = dateIso(b.month, b.day, b.year ?? null, b.yearly ?? Boolean(d.yearly), Number((d.created_at ?? today).slice(0, 4)));
+        if (!iso) throw new HttpError(400, "нет такого дня");
+        patch.date_iso = iso;
+      }
+      const what = b.status === "deleted" ? "🗑" : b.status === "active" ? "↺" : "✎";
+      const undo = await pipeline.manual(u, `${what} ${d.title}`, async (log) => {
+        await log("dates", d.id, { title: d.title, date_iso: d.date_iso, type: d.type, yearly: d.yearly, status: d.status });
+        await store.updateDate(d.id, patch);
+      });
+      return dateOut(d.id, undo);
     }
     // Иконки программ и игр: { ключ: data-URL }; ключ — iconKey(имя).
     if (m === "GET" && p === "/api/icons") return Object.fromEntries((await store.icons(u.id)).map((i) => [i.name_key, `data:image/png;base64,${i.png}`]));

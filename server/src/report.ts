@@ -46,14 +46,19 @@ export interface UpcomingDate {
   age: number | null;
 }
 
+/** Год даты настоящий (год рождения, начала), а не подставленный: дату без года записывают с годом записи. */
+export function yearKnown(r: Pick<DateRow, "date_iso" | "created_at">): boolean {
+  const y = Number(r.date_iso.slice(0, 4));
+  return y > 1900 && y < Number((r.created_at ?? "9999").slice(0, 4));
+}
+
 export function upcomingDates(rows: DateRow[], today: string, within = 60): UpcomingDate[] {
   const out: UpcomingDate[] = [];
   for (const r of rows) {
     const on = r.yearly ? nextYearly(r.date_iso, today) : r.date_iso;
     const inDays = daysBetween(today, on);
     if (inDays < 0 || inDays > within) continue;
-    const startYear = Number(r.date_iso.slice(0, 4));
-    const age = r.yearly && startYear > 1900 && on.slice(0, 4) !== r.date_iso.slice(0, 4) ? Number(on.slice(0, 4)) - startYear : null;
+    const age = r.yearly && yearKnown(r) ? Number(on.slice(0, 4)) - Number(r.date_iso.slice(0, 4)) : null;
     out.push({ row: r, on, inDays, age });
   }
   return out.sort((a, b) => a.inDays - b.inDays);

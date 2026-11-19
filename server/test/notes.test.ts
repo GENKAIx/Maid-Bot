@@ -215,7 +215,7 @@ test("API заметок: список, добавить, повтор, гото
     const found = (await call("GET", `/api/search?q=${encodeURIComponent("ДЮН")}`)).body;
     assert.deepEqual(found.notes.map((n: any) => [n.title, n.bin]), [["Дюна 2", ""]]); // чужая не находится
     assert.deepEqual((await call("GET", `/api/search?q=${encodeURIComponent("виджета")}`)).body.notes.map((n: any) => [n.title, n.bin]), [["Значки бафов", "trash"]]);
-    assert.deepEqual((await call("POST", "/api/trash/purge", { notes: [idea.id, made.id, alien] })).body, { tasks: 0, events: 0, notes: 1 });
+    assert.deepEqual((await call("POST", "/api/trash/purge", { notes: [idea.id, made.id, alien] })).body, { tasks: 0, events: 0, notes: 1, dates: 0 });
     assert.equal((await call("GET", "/api/trash")).body.notes.length, 0);
     assert.equal((await call("GET", `/api/search?q=${encodeURIComponent("виджета")}`)).body.notes.length, 0);
     assert.equal((await call("POST", `/api/notes/${idea.id}`, { status: "open" })).status, 404);

@@ -374,6 +374,10 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 CREATE INDEX IF NOT EXISTS notes_user ON notes (user_id, status);
 `,
+  // Шаг 18: когда важную дату удалили (для корзины, как у задач и заметок); снова активна — пусто.
+  `
+ALTER TABLE dates ADD COLUMN closed_at TEXT;
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -482,6 +486,9 @@ export interface DateRow {
   notes: string;
   yearly: number;
   status: string;
+  /** Когда записали: год даты не раньше года записи — год неизвестен (report.ts yearKnown). */
+  created_at?: string;
+  closed_at?: string | null;
 }
 /** Заметка «на потом» (notes.ts): полка shelf, пометка note, оценка rating — когда отмечена готовой. */
 export interface NoteRow {
@@ -951,7 +958,7 @@ export class Store {
   }
   /** «Удалить навсегда» в корзине: задачи и планы из корзины (удалённые/отменённые не раньше since) получают статус purged —
    *  в корзине их больше нет. Строки остаются: на них ссылается журнал отмены. pick не задан — вся корзина. */
-  async purgeTrash(userId: number, since: string, pick?: { tasks?: number[]; events?: number[]; notes?: number[] }): Promise<{ tasks: number; events: number; notes: number }> {
+  async purgeTrash(userId: number, since: string, pick?: { tasks?: number[]; events?: number[]; notes?: number[]; dates?: number[] }): Promise<{ tasks: number; events: number; notes: number; dates: number }> {
     const ids = (list: number[] = []) => (!pick ? "" : list.length ? ` AND id IN (${list.map(() => "?").join(", ")})` : " AND 0");
     const tasks = await this.run(
       `UPDATE tasks SET status = 'purged' WHERE user_id = ? AND status IN ('deleted', 'cancelled') AND closed_at >= ?${ids(pick?.tasks)}`,
@@ -965,7 +972,11 @@ export class Store {
       `UPDATE notes SET status = 'purged' WHERE user_id = ? AND status = 'deleted' AND closed_at >= ?${ids(pick?.notes)}`,
       userId, since, ...(pick?.notes ?? []),
     );
-    return { tasks, events, notes };
+    const dates = await this.run(
+      `UPDATE dates SET status = 'purged' WHERE user_id = ? AND status = 'deleted' AND closed_at >= ?${ids(pick?.dates)}`,
+      userId, since, ...(pick?.dates ?? []),
+    );
+    return { tasks, events, notes, dates };
   }
   allTasks(userId: number): Promise<TaskRow[]> {
     return this.all<TaskRow>("SELECT * FROM tasks WHERE user_id = ? ORDER BY id", userId);
@@ -1012,7 +1023,19 @@ export class Store {
     return this.get<DateRow>("SELECT * FROM dates WHERE id = ?", id);
   }
   async setDateStatus(id: number, status: string) {
-    await this.run("UPDATE dates SET status = ? WHERE id = ?", status, id);
+    await this.updateDate(id, { status });
+  }
+  /** Правка даты; смена статуса ставит closed_at (active — снова пусто), чтобы удалённая попала в корзину. */
+  async updateDate(id: number, patch: Partial<Pick<DateRow, "title" | "date_iso" | "type" | "yearly" | "status">>) {
+    for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE dates SET ${k} = ? WHERE id = ?`, v as never, id);
+    if (patch.status) await this.run("UPDATE dates SET closed_at = ? WHERE id = ?", patch.status === "active" ? null : now(), id);
+  }
+  /** Корзина: удалённые даты не раньше since (ISO), свежие первыми. */
+  trashDates(userId: number, since: string): Promise<DateRow[]> {
+    return this.all<DateRow>(
+      "SELECT * FROM dates WHERE user_id = ? AND status = 'deleted' AND closed_at >= ? ORDER BY closed_at DESC, id DESC LIMIT 200",
+      userId, since,
+    );
   }
   activeDates(userId: number): Promise<DateRow[]> {
     return this.all<DateRow>("SELECT * FROM dates WHERE user_id = ? AND status = 'active' ORDER BY substr(date_iso, 6), id", userId);

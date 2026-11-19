@@ -41,6 +41,8 @@ export interface DateItem {
   on: string;
   inDays: number;
   age: number | null;
+  /** Год настоящий (год рождения), а не год записи — сервер report.ts yearKnown. */
+  year_known: boolean;
 }
 export interface DiaryRow {
   id: number;

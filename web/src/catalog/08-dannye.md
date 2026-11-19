@@ -16,7 +16,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | `events` | планы, повторы |
 | `tasks` | задачи |
 | `notes` | заметки «на потом» (шаг 17): полка `shelf`, название, пометка, статус (`open`, `done`, `deleted`, `purged`), оценка `rating` 1–10 у готовой, `closed_at` |
-| `dates` | важные даты |
+| `dates` | важные даты: `date_iso` (год меньше года записи `created_at` — настоящий, тогда считается возраст, `yearKnown` в `report.ts`; без года — год записи), `type`, `yearly`, статус (`active`, `deleted`, `purged`), `closed_at` — когда удалена (шаг 18, для корзины) |
 | `memory` | что помнить |
 | `metrics` | числа: вес, сон, шаги… |
 | `habits`, `habit_marks` | привычки и отметки по дням; у отметки — сколько сделано (`amount`, `unit`), если человек сам назвал число |
@@ -58,7 +58,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | День | `/api/today`, `/api/day`, `/api/notices` |
 | Дневник | `/api/diary`, `/api/diary/days`, `DELETE /api/diary/:id`, `POST /api/sleep` (сон за день вручную или `clear`) |
 | Планы | `/api/events`, `POST /api/events` (новый план из виджета: `title`, `date`, `time`, `end_time`; с отменой), `POST /api/events/:id`, `…/repeat`, `…/copy` |
-| Задачи и даты | `/api/tasks`, `POST /api/tasks/:id` (`status`, в т. ч. `deleted`; `due_date`; `title`), `POST /api/tasks/:id/plan` (задача → план), `POST /api/tasks/:id/copy` (`date`), `/api/dates` |
+| Задачи и даты | `/api/tasks`, `POST /api/tasks/:id` (`status`, в т. ч. `deleted`; `due_date`; `title`), `POST /api/tasks/:id/plan` (задача → план), `POST /api/tasks/:id/copy` (`date`), `GET /api/dates` (`?all=1` — на год вперёд; у каждой `on`, `inDays`, `age`, `year_known`), `POST /api/dates` (`title`, `month`, `day`, `year` или null, `type`, `yearly`; отменяется — `undo`), `POST /api/dates/:id` (то же по частям, `status`: `deleted` — в корзину, `active` — вернуть); корзина — `dates` в `GET /api/trash` и `POST /api/trash/purge` (проверка — `server/test/dates-edit.test.ts`) |
 | Заметки | `GET /api/notes` → `{shelves: [{key, title, rated}], notes}` (ждущие и готовые); `POST /api/notes` (`title`, `shelf`, `note`; такая же на полке уже есть — она же с `duplicate`); `POST /api/notes/:id` (`status`: `open` / `done` / `deleted`, `rating` 1–10, `shelf`, `title`, `note`) — в ответе `undo`, правка откатывается как правка задачи. Удалённые — в `/api/trash` (`notes`), находятся в `/api/search` (`notes`), `POST /api/trash/purge` принимает `notes` |
 | Привычки | `/api/habits`, `/api/habits/:id/mark`, `GET /api/habits/:id/stats` (статистика одной привычки: год по дням — 371 клетка с понедельника 52 недели назад, серия сейчас и лучшая, сделано из запланированного за 30, 90 дней и всё время, по дням недели и 12 месяцам; неотмеченное сегодня не считается; `habitStatsOf`), `POST /api/habits/:id` (title, quiet, times — время напоминаний ЧЧ:ММ, до 4, пусто — общее из настроек, finish — конец вчера или сегодня, если отмечена; status stopped — удалить; отметки остаются; через журнал отмены) |
 | Числа | `/api/money`, `/api/metrics`, `/api/steps`, `/api/health/topics` |
