@@ -1,0 +1,170 @@
+{
+ "about": "Пишет tools/maid-look/make_masks.py, руками не править: sha256 исходной анимации (src) и её маски (keep) и LOOK_VERSION из desktop/renderer/look.js, для которой маски сделаны.",
+ "version": 2,
+ "files": {
+  "analysis.webp": {
+   "src": "8ccdbd61da386634cc9ff5deb83c57d659695008b151458f002be0b53ea8ccd1",
+   "keep": "31cba13a00eb20fb4367baceb494b3cefc9be0544f011d6bbccbdc8b1dab6291"
+  },
+  "angry.webp": {
+   "src": "de5e18fa271d3a50683227643585c9fb8ac29ac9b35b635e64ccb60ab7ad387e",
+   "keep": "c313a1664bc9887b7479cce8c5464db26f5e9ee7c15636eb8ddc5b22228b4dfe"
+  },
+  "bedtime.webp": {
+   "src": "586f4794211801e111ffeb9830d42025be065e7648422941ec136d86762928e9",
+   "keep": "e60c6302b1d5bf6ee11a9322b3848406f0e10b110f2f8d374ce02b90eaeee193"
+  },
+  "bow.webp": {
+   "src": "cc384d714e9f5f2156dac578fbe591cdb6f830e076c3b23feb5129365a479c8b",
+   "keep": "d9f56c9917675fa74c3f3631acb3faa6b083acc111a11f1949789eb8c8c23bfe"
+  },
+  "clean.webp": {
+   "src": "0e8e439fe11a7a3449db9816b818bee7556252fcf043132daa4202cee46f13e3",
+   "keep": "8b176273baeb11e4cb3e98289569f368f5e4c9d5731919784c2983db381c9a8c"
+  },
+  "deadpan.webp": {
+   "src": "b648d757538e08d40075fee4a48fc5f5ea85a25ed47cfe8a15b5af6f7b3bfcca",
+   "keep": "d4d168ddea51bb31ff45bceebba17d4dc50ccb47ba7ede9fd397475916bd1675"
+  },
+  "done.webp": {
+   "src": "235dc7dbee462508b435f01111b8c0f29ee30ab47ca9aa2a3df64af99f0291cc",
+   "keep": "2cd3f6f58c1d30ae55eeadbed44025429f288e38b533b003e4d4adb1a76e3354"
+  },
+  "excited.webp": {
+   "src": "4f1d0dafd8fe3ad7ca8a67442f91105dff2b93e7ddca2072bc81b6c1ecc0146f",
+   "keep": "1d64fadbf3f35d1ebc85c421d54c78375af81e080c3e3cb4c2f0de761aa79f3b"
+  },
+  "facepalm.webp": {
+   "src": "0bff2e797dbeb5d2f496d96a876fd37014c0fd6193fb6dda7914fb6afff28561",
+   "keep": "fae252223dfda3effe7beef41f0392e5f814689f7d406c5a9a09315af36ffd1a"
+  },
+  "forget.webp": {
+   "src": "317a2874c0a44fb4601158bd70c8cc891afd799501ec6a3c17f9f6a66f8a158e",
+   "keep": "c526217cdd886c49ba2036b0b98789371d26ca840373aabe5ee743c7c344ed92"
+  },
+  "gasp.webp": {
+   "src": "f14987212224efbdfa71a3d269cb2b1566d8e7e4db61cda59f0ba022463b9432",
+   "keep": "4cd59f6ce39f8ea0ebad5127d13bdea8ddba562ddbc9b35ad8d2742521903463"
+  },
+  "giggle.webp": {
+   "src": "a3dad1536e27802a703a7cbac81593b7e8ad990058a1ed604194370691cfb802",
+   "keep": "ea09c24ce329a8fcaee327c59c5ae5de7c86f9b07f83ae5d3c676d28eb5ccd80"
+  },
+  "happy.webp": {
+   "src": "c9441aacffd7e291672599cb43cbb728d1a2b120f25247559cf6bd3d884f82ab",
+   "keep": "e859700621b4088c1175fa7a7661263710ff485e9c84b15c326df6562f7ec949"
+  },
+  "hello.webp": {
+   "src": "92c0a200ceea3378b131aac5204111699a3b0741bb2f33b161859dee092e843f",
+   "keep": "854a01fdb43c3a15b3f6f8c3e6fc877f9004030b99a6d7a3c0855f489324800d"
+  },
+  "idle.webp": {
+   "src": "4370094ca8092baf815e3f27e2c5bab5451cdf5edcd9b54de0bb77ab5b1cf2b5",
+   "keep": "e396eee16862cd4d1bf34cc02834e8acdad01c3518ae434f559f3a236031aac9"
+  },
+  "letter.webp": {
+   "src": "fe76eee3196320f98c6f4b57aa72f0b9734e48b1fc9313e5cf370423cc7831fa",
+   "keep": "a384deda9ef005987fd4cb75915b67837d5d44dc87e1c21d7ad5148c63bfb7f5"
+  },
+  "list.webp": {
+   "src": "27ad39fc2e3874f492168d2da3d1296a121969b3517487c7a2e9c545101252cd",
+   "keep": "2424007bd6e6f528014a863f08d13571c2f8dc05deff9288f6ba90fcb5e8d2ac"
+  },
+  "listen.webp": {
+   "src": "5172455052d65af1d51c6b0761a4878302e65c57ed93c139dd324b48548e73c7",
+   "keep": "65d5f1c05ffafb44edb8013da60b150d213b913538325c15457b8b5356fd8e08"
+  },
+  "neutral.webp": {
+   "src": "b75b82ce3af6608e91252ed01589e8a7b0c7ef3f3344240107a4602ebd0ac550",
+   "keep": "f5d417d9be42a048916a238108b5495042aaa740c27e9b7d440fe9774a8bac8b"
+  },
+  "offline.webp": {
+   "src": "2b805f1ccb8edb78ead6952bf700a1e2c94e71c40bf839e457a69786e7899f7b",
+   "keep": "76a16e10250a74d83627870110e869b4b5271f85e1095d7070d6a3522ad1d1b3"
+  },
+  "pout.webp": {
+   "src": "8fd3239dec300aa80d81b40e0f7c210acd52140390d62d451091cfd95380cd20",
+   "keep": "a9ff03cc4403b3d5ca8a7d1bfd7f7772825b764dcffca35ae8672ead350c8ce1"
+  },
+  "present.webp": {
+   "src": "b83018a4d3cc01d7c4c2535a955f4539e4875106163bc0acf7c803ff0bf44b59",
+   "keep": "bb9eb35bae1198c6d073498a708a7e7321d9588ce426b95991153b3a61941cc5"
+  },
+  "proud.webp": {
+   "src": "eb2b4be61fb9eab10755368864500e48650714a840824cc373afdae260c9eede",
+   "keep": "255d239c3997927314ad74206bc7a70e88d7f9690137ca6e82b31c1ad4a65131"
+  },
+  "refuse.webp": {
+   "src": "44cd62de7a5f366176c00741bd83ccd5293d954f87f60422963465be0e94ec6c",
+   "keep": "5621b466a377b832f660de23c1b5113dd4130ad122e34fe70fd67c52468a0c4c"
+  },
+  "remind.webp": {
+   "src": "3f7177ed8d5eda9656cea9938357f126fc332abbde3d60d51d3ba10e25d424cb",
+   "keep": "c60a0d9ffeba3f072608849c8dac6c28fb1a73ba138f0e9afe049398c999afe2"
+  },
+  "sad.webp": {
+   "src": "1c9fb7f691f9707c2b4cad0a3232ac956198f7b4aefd299987c8d9551c22a2c3",
+   "keep": "4fcd08a73ca6d5a676e26832563590ce50af32658c6b8aee086d83178673a242"
+  },
+  "salute.webp": {
+   "src": "b0e0a67dd6fc66217e2465869c8b4bcaaaab6498f05920c9de952e014275ca66",
+   "keep": "6f481930de7cfb3b0775e95769a41b5271400215968175d1f43715b74da53fd0"
+  },
+  "shh.webp": {
+   "src": "9533c9f588ddd549c23e5dd1cf64320571e29f8b69f1156e55efa94aab49462f",
+   "keep": "e94b3e6f344361979075b7f29e2ab75537106d97520611e477b3de8479012079"
+  },
+  "shy.webp": {
+   "src": "68047518b44e834bffacd7e86244dfa7841face0d043249c1240811d5b3c1786",
+   "keep": "84404bb624fcf7672f7d13bc6d207a6ed15813fafa2faa4ce45673ec344ba079"
+  },
+  "sleep.webp": {
+   "src": "45a7fd5d753972bbb196bda4f2fe5a7f66054e85af38d7043f68e656872ada35",
+   "keep": "64aca7ac3cfe1f2497fb7b87af9187719dfe263a172be93a52e4c402b23e361b"
+  },
+  "smitten.webp": {
+   "src": "cab52b551d5147717acdb58aa5fc98bf07a88fbc941b3bf93832e819aaeca849",
+   "keep": "26be94713fa10686a9e6928e6ec2e8763afd59cff772fd7e4c06930c3ca42d53"
+  },
+  "smug.webp": {
+   "src": "8937db03722864f91d4e160978b69bf9f2700f4eb79458e751a052163444fc9a",
+   "keep": "0bb5dee87c74a77e0fb5500214d0da7863668795b5cf23d59b1ca91ac09246c9"
+  },
+  "streak.webp": {
+   "src": "18ccc63a05cb4b01a97cbdc1d0c368f37ab4d1e216f50ca78c935d0a15838d72",
+   "keep": "61e8e7547f24895b694121af9f4f341b949f1f58938e41e27876782786ceed20"
+  },
+  "surprised.webp": {
+   "src": "97c06d1e7df440ee18834f79b20a6da8916ac5f81087c254e91163a6ed7689e9",
+   "keep": "06ce1bcfb6464008a8551c53255ea912534e3d505c845301e6675a1fd7fb53bd"
+  },
+  "tea.webp": {
+   "src": "3d293d215e881036bbbe64fe741fba3a385266c052ba017907ee2fcd27c07b9d",
+   "keep": "174da04d76d7781fc44d8a749f299e7f72eef7437c766896cf474343fe274209"
+  },
+  "think.webp": {
+   "src": "f8ac9ad41887925994e89cb8563c08e7430356e2e1e0efc89748deb05f2a0d92",
+   "keep": "acd326e102bb4a86c2b8e05911ab3c36b8478f105e07def1dd06ebb5f2ffe564"
+  },
+  "think2.webp": {
+   "src": "473fac564f61558b668c726001b4202fc304ada14159f37c4ae8dd9d19bc5c77",
+   "keep": "2ca7786b83f0d9666895580c13b6d0fad05a4930aa738eb707a69aab1dabda4f"
+  },
+  "thumbsup.webp": {
+   "src": "fe969f34eb04dd7e1beb408daca241e9fd3a3e085e5e677e8eee5837992a7f54",
+   "keep": "4eac1191e7aeb094687c1069ef42357a2bb1fad757ae754f0e79e59f2dd84bc2"
+  },
+  "worried.webp": {
+   "src": "82dfb4d57d8b7d303336e410f2aa8206d15b1c589ec073dc58e784d3d2d2f6d8",
+   "keep": "5a909b60ba5f494adec4b3aae5f74dbea791abe3de48f047c83fc65c86845749"
+  },
+  "wrench.webp": {
+   "src": "5c68558da97bd25abe4dbcd724c867638da1aa794dba35c816670c0e8bc35e6e",
+   "keep": "891515347784228aeb84babc0afc07024a2035468d7edcff5315304462bf1e7c"
+  },
+  "write.webp": {
+   "src": "266b93be226729a2b7cafa96ecc1e6907a1cbbc7f20b84219fe9b5d05c27b696",
+   "keep": "48d6f7523e58a3914d2194406d613615e09ebfe2a720deaa9e834e9bf6f89931"
+  }
+ }
+}
