@@ -1363,6 +1363,12 @@ function planHeat(e) {
   const late = (Date.now() - Math.max(planStart(e).getTime(), typeof ack === "number" ? ack : 0)) / 60000;
   return { level: late < HEAT_SMOLDER ? "smolder" : late < HEAT_BURN ? "burn" : "settled" };
 }
+/** Сегодняшний план, который прошёл (начался больше 30 мин назад и из ленты ушёл), но не отмечен: не сделан и без ответа
+ *  (✓, «Окей»). Самый поздний — одной бледной строкой «прошёл» над лентой, до отметки или конца дня; иначе null. */
+function missedPlan(events, acks) {
+  const gone = events.filter((e) => e.time && minutesUntil(e) <= -30 && (!e.status || e.status === "active") && acks[ackKey(e)] !== "ok");
+  return gone.sort((a, b) => planStart(a) - planStart(b)).at(-1) ?? null;
+}
 const heatSeen = new Map(); // id → последний показанный уровень: тревога горничной — по разу
 // Разовые вспышки плашки — по часам, чтобы перерисовка (раз в 5 с) не обрывала их: всплеск «скоро» и дымок погашенного огня.
 const HERO_FLASH = 1400;
@@ -1382,7 +1388,7 @@ function ackStarted(text) {
 // Кнопки горящей плашки: ✓ — план состоялся, ⏰ — напомнить через HEAT_SNOOZE мин (плашка затихает и снова затлеет).
 $("#next").addEventListener("click", async (ev) => {
   const act = ev.target.closest(".hero-act");
-  const id = act && Number(act.closest(".nx-hero").dataset.id);
+  const id = act && Number(act.closest(".nx[data-id]").dataset.id); // горящая плашка или строка «прошёл»
   const e = id && [...data.events, ...data.upcoming].find((x) => x.id === id); // плашка бывает и планом следующего дня
   if (!e) return;
   if (act.dataset.act === "snooze") {
@@ -1476,11 +1482,16 @@ function render() {
       + ` · ${e.time ? `${esc(e.time)} ` : ""}${esc(e.title)}</div>`;
   }
   // Планов нет — «+ План»: панель дня на сегодня с формой нового плана (clock.js, addPlanToday).
-  if (!nextHtml && !rows.length) nextHtml = `<div class="nx-none"><span class="muted">Планов нет</span><button type="button" class="next-add" data-addplan title="Добавить план на сегодня">+ План</button></div>`;
+  const missed = missedPlan(data.events, planAcks);
+  if (!nextHtml && !rows.length && !missed) nextHtml = `<div class="nx-none"><span class="muted">Планов нет</span><button type="button" class="next-add" data-addplan title="Добавить план на сегодня">+ План</button></div>`;
   const dates = feedDates(data.dates ?? [], data.day, Number(cfg.dateLead ?? 1), hiddenDates);
   rows.push(...dates.map((d) => `<div class="nx nx-row nx-date" data-day="${esc(d.on)}" data-id="d${esc(dateKey(d))}" data-date="${esc(dateKey(d))}">`
     + `<i class="nx-dot"></i><b class="nx-t">${esc(`${WD_SHORT[wdOf(d.on)]} ${Number(d.on.slice(8))}`)}</b><span class="nx-title">${DATE_ICON[d.type] ?? DATE_ICON.other} ${esc(d.title)}</span></div>`));
   if (rows.length) nextHtml += `<div class="nx-rows">${rows.join("")}</div>`;
+  // Прошедший неотмеченный план — первой бледной строкой: «19:00 Название · прошёл ✓» (✓ — сделано, как на горящей плашке).
+  if (missed) nextHtml = `<div class="nx-rows"><div class="nx nx-row nx-missed" data-day="${esc(missed.date_iso)}" data-id="${missed.id}">`
+    + `<i class="nx-dot" data-c="${colorOf(missed)}"></i><b class="nx-t">${esc(missed.time)}</b><span class="nx-title">${esc(missed.title)}</span>`
+    + `<span class="nx-in">прошёл</span><button type="button" class="hero-act" data-act="done" title="Сделано">✓</button></div></div>${nextHtml}`;
   const nextKey = (el) => el.dataset.id;
   const nextWas = snapRows($("#next"), ".nx[data-id]", nextKey, "next");
   $("#next").innerHTML = nextHtml;
