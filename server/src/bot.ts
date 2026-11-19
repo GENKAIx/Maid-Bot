@@ -89,7 +89,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     "Я сама разложу: дневник, планы, задачи, важные даты.\n\n" +
     "/list — список на сегодня с галочками\n/today — сегодня\n/plans — планы\n/tasks — задачи\n/dates — важные даты\n/memory — что я помню\n" +
     "/ask текст — просто поговорить\n/undo — отменить последнее\n/summary — итог дня\n/persona — характер\n" +
-    "/habits — привычки на сегодня\n/token — ключ для приложения на ПК";
+    "/habits — привычки на сегодня\n/token — ключ для виджета на айфоне";
 
   // Друг по приглашению: учётная запись, логин и пароль, адрес сервера и установщик; владельцу — что пришёл новый.
   async function acceptInvite(ctx: Context, chat: string, code: string) {
@@ -301,7 +301,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const u = await userOf(ctx);
     if (!u) return;
     const token = await issueToken(store, u.id, "telegram /token");
-    await ctx.reply(`Ключ для приложения на ПК (никому не показывайте):\n<code>${token}</code>`, { parse_mode: "HTML" });
+    await ctx.reply(`Ключ для виджета на айфоне (никому не показывайте):\n<code>${token}</code>`, { parse_mode: "HTML" });
   });
 
   bot.callbackQuery(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped|later)$/, async (ctx) => {
