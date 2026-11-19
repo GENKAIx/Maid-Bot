@@ -45,6 +45,9 @@ const targets = new Set(steps.flatMap((s) => [s.target ?? []].flat()));
 for (const t of ["#chatInput", "#chatMic", "#chatClip", "#chatHistBtn", "#next", "#body", "#head", "#maid"]) check(targets.has(t), `экскурсия не показывает ${t}`);
 check(steps.some((s) => s.id === "profile"), "нет шага знакомства (профиль)");
 check(steps.at(-1)?.id === "end", "последний шаг — не финал");
+// С 0.1.53 горничная о хвостах сама не спрашивает — они лежат под будильником ⏰ (inbox.js). Экскурсия обещала обратное (до 19.11.2026).
+const listStep = steps.find((s) => s.id === "list")?.text ?? "";
+check(!/спрошу сама|по одному/.test(listStep) && /⏰/.test(listStep), `шаг «list» неверно говорит про просроченное: ${listStep}`);
 check(/\/api\/profile/.test(tour), "знакомство не сохраняет профиль");
 check(/openSection\("\/features"\)/.test(tour), "в финале нет ссылки на «Возможности»");
 
