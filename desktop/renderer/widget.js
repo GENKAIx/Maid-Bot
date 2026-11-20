@@ -430,15 +430,30 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   if (text !== "…" && !stay) openForMessage();
   // Ответ на вопрос со ссылками на дни: строку «📅 …» заменяют кнопки дней.
   if (days.length) text = text.replace(/\n📅 .*$/, "");
+  // Слова с характером (wordfx.js): пометки «[крик]слово[/]» разбираются только в своих репликах — lineItem() ставит перед
+  // такой невидимый знак WORDFX_OWN. Дальше text — чистый, marked — с пометками. Чужой текст (ответ сервера, названия) не трогаем.
+  const own = text.startsWith(WORDFX_OWN);
+  if (own) text = text.slice(WORDFX_OWN.length);
+  const marked = text;
+  if (own) text = wordfxStrip(text);
   // Ответ без карточек — текст целиком; с карточками — только первая строка (остальное показывают карточки).
   // С вопросом «добавить?» или «Сдвинуть на …?» (план лёг на занятое время) — ещё и сам вопрос (последняя строка).
   const ask = proposal || text.split("\n").at(-1).startsWith("⚠ ");
-  const plain = changes.length ? text.split("\n")[0] + (ask ? "\n" + text.split("\n").at(-1) : "") : text;
-  $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + planRows(tgHtml(plain));
+  const shownOf = (t) => (changes.length ? t.split("\n")[0] + (ask ? "\n" + t.split("\n").at(-1) : "") : t);
+  const plain = shownOf(text);
+  // Слова с характером (wordfx.js): помеченные слова оживают только в короткой реплике без вопроса; иначе пометки просто сняты.
+  const fxOn = marked !== text && text !== "…" && !proposal && plain.length <= WORDFX_LONG;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + (fxOn ? wordfxHtml(planRows(tgHtml(shownOf(marked)))) : planRows(tgHtml(plain)));
+  // fxb (текст не обрезается: слову с эффектом нужно место вокруг) ставит fitBubble — только пока облачку хватает высоты.
+  $("#bubbleText").dataset.fx = fxOn && $("#bubbleText .fx") ? "1" : "";
+  $("#bubbleText").classList.remove("fxb");
+  $("#bubbleText").classList.toggle("still", still);
   // Печать по буквам: не у «…», вопросов с полосой и кнопок-самонажатий (у них свои таймеры), не при «меньше движения».
   stopType();
-  const typed = cfg.typing !== "off" && text !== "…" && !proposal && !buttons.some((x) => x.auto) && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const typed = cfg.typing !== "off" && text !== "…" && !proposal && !buttons.some((x) => x.auto) && !still;
   const tw = typed ? planType($("#bubbleText"), plain.length > 140 ? 2.5 : 1) : null;
+  if (!tw && fxOn) wordfxStatic($("#bubbleText")); // без печати помеченные слова сразу в конечном виде
   const late = tw ? tw.total : 0; // карточки и кнопки — когда текст допечатан
   const cards = $("#bubbleCards");
   cards.innerHTML = "";
@@ -621,26 +636,32 @@ function planType(box, speed) {
     }
   };
   walk(box);
+  wordfxPrep(box);
+  // У помеченного слова (wordfx.js) свой темп: пауза перед ним, буквы медленнее или всё слово разом, пауза после.
   // Когда показать каждую букву: ровно по TYPE_CPS, после .!? — пауза 260 мс, после , ; : — 120 мс, перевод строки — 180 мс.
   const step = 1000 / ((TYPE_CPS[cfg.typeSpeed] ?? 35) * speed);
-  let t = 0;
+  let t = 0, tail = 0; // tail — когда кончится действие последнего помеченного слова (печать ждёт его и после последней буквы)
   const at = chars.map((sp) => {
     const now = t;
     const ch = sp.textContent;
-    t += step + (/[.!?…]/.test(ch) ? 260 : /[,;:]/.test(ch) ? 120 : ch === "\n" ? 180 : 0) / speed;
+    const pause = (/[.!?…]/.test(ch) ? 260 : /[,;:]/.test(ch) ? 120 : ch === "\n" ? 180 : 0) / speed;
+    const fx = wordfxStep(sp, t, step, pause);
+    if (fx) { t = fx.next; if (sp === sp._fx._last) tail = t; return fx.at; }
+    t += step + pause;
     return now;
   });
-  return { chars, at, total: Math.round(t) };
+  return { chars, at, total: Math.round(t), tail: Math.round(tail) };
 }
 function runType(tw, emotion) {
   const b = $("#bubble");
   const pitch = (TYPE_PITCH[emotion] ?? 1) * 640;
   const run = (typing = { i: 0, t0: performance.now(), timer: 0, then: null, n: 0 });
   b.classList.add("typing");
-  const finish = () => {
+  const finish = (cut) => {
     if (typing !== run) return;
     clearInterval(run.timer);
     for (const sp of tw.chars) sp.classList.add("on");
+    wordfxFinish($("#bubbleText"), cut === true);
     typing = null;
     b.classList.remove("typing");
     b.removeEventListener("click", skip, true);
@@ -652,7 +673,7 @@ function runType(tw, emotion) {
     typeTimers.forEach(clearTimeout);
     typeTimers = [];
     b.querySelectorAll(".card, .prop-list").forEach((el) => (el.style.animationDelay = "0ms"));
-    finish();
+    finish(true);
   };
   run.skip = skip;
   b.addEventListener("click", skip, true);
@@ -670,18 +691,21 @@ function runType(tw, emotion) {
       follow = !last || last.getBoundingClientRect().bottom <= box.getBoundingClientRect().bottom + 4;
     }
     const t = performance.now() - run.t0;
-    let shown = false;
+    let shown = null;
     while (run.i < tw.chars.length && tw.at[run.i] <= t) {
       const sp = tw.chars[run.i++];
       sp.classList.add("on");
-      if (/\S/.test(sp.textContent)) shown = true;
+      if (/\S/.test(sp.textContent)) shown = sp;
+      wordfxShown(sp);
     }
     if (shown && follow && box) {
       const last = tw.chars[run.i - 1].getBoundingClientRect(), r = box.getBoundingClientRect();
       if (last.bottom > r.bottom || last.top < r.top) { box.scrollTop += last.bottom - r.bottom; want = box.scrollTop; }
     }
-    if (shown && run.n++ % 3 === 0) typeBlip(pitch);
-    if (run.i >= tw.chars.length) finish();
+    // «Бип»: у буквы помеченного слова — свой (высота, громкость, частота), у обычной — на каждый третий такт.
+    if (shown && !wordfxBlip(shown, run.n, pitch) && run.n % 3 === 0) typeBlip(pitch);
+    if (shown) run.n++;
+    if (run.i >= tw.chars.length && t >= (tw.tail ?? 0)) finish();
   };
   run.timer = setInterval(tick, 16);
 }
@@ -2420,12 +2444,16 @@ function fitBubble() {
     if (was) b.style.setProperty("--drop", "0px");
     return;
   }
+  if (b._jolt?.playState === "running") return; // облачко трясётся (wordfxJolt) — замер был бы с поворотом; перемерит по окончании
   const r = b.getBoundingClientRect();
   const top = screenY + r.top - was - (screen.availTop ?? 0);
   const drop = Math.max(0, Math.ceil(4 - top));
   if (drop !== was) b.style.setProperty("--drop", `${drop}px`);
   const room = `${Math.max(120, Math.floor(r.bottom - was + drop - 4))}px`;
   if (b.style.getPropertyValue("--room") !== room) b.style.setProperty("--room", room);
+  // Слова с характером: тексту снимают обрезку, только пока облачко не упёрлось в потолок высоты (иначе текст должен листаться).
+  const tx = $("#bubbleText");
+  tx.classList.toggle("fxb", tx.dataset.fx === "1" && b.offsetHeight < parseFloat(room) - 1);
 }
 setInterval(fitBubble, 250);
 new ResizeObserver(fitBubble).observe($("#bubble"));

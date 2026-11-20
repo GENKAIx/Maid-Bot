@@ -1,0 +1,238 @@
+/* Слова с характером (wordfx.js): вид помеченных слов в облачке виджета. Числа — из мастерской
+   docs/review/слова-с-характером-2026-11-20.html; там же их можно покрутить и подобрать новые.
+   Разметка: .fx.fx-<имя> (помеченное место; тут переменные эффекта) > .fw (слово) > .tw (буква: --i номер, --h середина, --n всего);
+   .pt — знак за словом; классы .in (показана первая буква) и .go (слово допечатано) ставит печать. */
+#bubbleText.fxb { overflow: visible; max-height: none; }
+#bubbleText .fx .fw { display: inline-block; white-space: nowrap; position: relative; }
+#bubbleText .fx .fw .tw { display: inline-block; white-space: pre; }
+#bubbleText .fx .nb { white-space: nowrap; }
+/* знак препинания сразу за словом: держится рядом, но выглядит как обычный текст */
+#bubbleText .fx .pt .tw.tw { color: var(--ink); font-weight: 400; font-style: normal; background: none; -webkit-text-fill-color: currentColor; text-shadow: none; filter: none; transform: none; animation: none; transition: none; }
+#bubbleText .fx .pt .tw.tw.on { opacity: 1; }
+/* «меньше движения»: цвет и жирность остаются, движение — нет */
+#bubbleText.still .fx, #bubbleText.still .fx *, #bubbleText.still .fx *::before, #bubbleText.still .fx *::after,
+#bubbleText .fx.cut, #bubbleText .fx.cut *, #bubbleText .fx.cut *::before, #bubbleText .fx.cut *::after { animation: none !important; transition: none !important; }
+/* облачко спрятано (opacity: 0, текст остаётся до следующей реплики) — слова замирают, а не крутятся невидимыми */
+.bubble.hidden #bubbleText .fx, .bubble.hidden #bubbleText .fx *, .bubble.hidden #bubbleText .fx *::before, .bubble.hidden #bubbleText .fx *::after { animation-play-state: paused !important; }
+/* искры и бумажки поверх облачка (wordfxSparkle) */
+.bubble > .fx-spark { position: absolute; z-index: 8; pointer-events: none; line-height: 1; font-style: normal; }
+
+/* строго — Слово мелко дрожит от сдержанной злости. */
+#bubbleText .fx-shk { --dur: 140ms; --amp: 0.7px; --rot: 2deg; --weight: 750; --color: #c22f4b; }
+#bubbleText .fx-shk .tw { color: var(--color); font-weight: var(--weight); animation: wx-shk-a var(--dur) steps(2) infinite; animation-delay: calc(var(--i) * -37ms); }
+@keyframes wx-shk-a {
+  0% { transform: translate(calc(var(--amp) * .85), calc(var(--amp) * -.7)) rotate(calc(var(--rot) * -1)); }
+  50% { transform: translate(calc(var(--amp) * -1), calc(var(--amp) * .7)) rotate(var(--rot)); }
+  100% { transform: translate(calc(var(--amp) * .6), calc(var(--amp) * .4)); }
+}
+
+/* крик — Крупные буквы влетают по одной и остаются трястись, облачко вздрагивает. */
+#bubbleText .fx-yell { --dur: 110ms; --amp: 1px; --rot: 3deg; --size: 1.34em; --pop: 220ms; --shake: 4px; --color: #d11f3f; }
+#bubbleText .fx-yell .fw { font-size: var(--size); line-height: 1; margin: 0 1px; }
+#bubbleText .fx-yell .tw { color: var(--color); font-weight: 850; text-shadow: 1px 1px 0 color-mix(in srgb, var(--color) 22%, transparent); }
+#bubbleText .fx-yell .tw.on { animation: wx-yell-in var(--pop) cubic-bezier(.3, 1.7, .5, 1) both, wx-yell-shk var(--dur) steps(2) var(--pop) infinite; }
+@keyframes wx-yell-in { from { transform: scale(2.3); opacity: 0; } }
+@keyframes wx-yell-shk {
+  0% { transform: translate(var(--amp), calc(var(--amp) * -.8)) rotate(calc(var(--rot) * -1)); }
+  50% { transform: translate(calc(var(--amp) * -1.1), calc(var(--amp) * .8)) rotate(var(--rot)); }
+  100% { transform: translate(calc(var(--amp) * .6), calc(var(--amp) * .5)); }
+}
+
+/* по слогам — Слово впечатывается по слогам, с дефисами; каждый слог падает с глухим ударом. */
+#bubbleText .fx-syl { --gap: 340ms; --dur: 260ms; --drop: 7px; --from: 1.5; --size: 0.92em; --shake: 2.5px; --color: #1d1830; }
+#bubbleText .fx-syl .fw { color: var(--color); font-weight: 800; font-size: var(--size); letter-spacing: .04em; text-transform: uppercase; }
+#bubbleText .fx-syl .sy { display: inline-block; position: relative; transform-origin: 50% 100%; }
+#bubbleText .fx-syl .hy { font-style: normal; opacity: .55; margin: 0 1px; }
+#bubbleText .fx-syl:not(.fin) .sy:not(.hit) { opacity: 0; }
+#bubbleText .fx-syl .sy.hit { animation: wx-syl-hit var(--dur) cubic-bezier(.5, 0, .9, .4) both; }
+#bubbleText .fx-syl .sy::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 1px; background: currentColor; opacity: 0; pointer-events: none; }
+#bubbleText .fx-syl .sy.hit::after { animation: wx-syl-dust calc(var(--dur) * 1.4) calc(var(--dur) * .5) ease-out both; }
+#bubbleText .fx-syl.fin .sy.hit::after { animation: none; }
+@keyframes wx-syl-hit {
+  0% { opacity: 0; transform: translateY(calc(var(--drop) * -1)) scale(var(--from)); }
+  50% { opacity: 1; transform: translateY(0) scale(1.1, .8); }
+  74% { transform: translateY(-1px) scale(.97, 1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes wx-syl-dust { from { opacity: .8; transform: scaleX(.5); } to { opacity: 0; transform: scaleX(1.35); } }
+
+/* конфетти — Слово подпрыгивает с «чпоком», из него летят цветные бумажки, потом буквы подмигивают цветом. */
+#bubbleText .fx-confetti { --pop: 420ms; --jump: 4px; --count: 12; --wink: 3000ms; --c1: #d6336c; --c2: #1c7ed6; --c3: #1e8e3e; }
+#bubbleText .fx-confetti .tw { font-weight: 700; }
+#bubbleText .fx-confetti.go .fw { animation: wx-confetti-pop var(--pop) ease-out; }
+#bubbleText .fx-confetti.go .tw { animation: wx-confetti-w1 var(--wink) calc(var(--pop) + 300ms + var(--wink) * .05 * var(--i)) ease-in-out infinite; }
+#bubbleText .fx-confetti.go .fw .tw:nth-child(3n+2) { animation-name: wx-confetti-w2; }
+#bubbleText .fx-confetti.go .fw .tw:nth-child(3n) { animation-name: wx-confetti-w3; }
+@keyframes wx-confetti-pop {
+  0% { transform: none; }
+  28% { transform: translateY(calc(var(--jump) * -1)) scale(1.14, 1.2); }
+  58% { transform: translateY(calc(var(--jump) * .25)) scale(1.04, .94); }
+  80% { transform: translateY(calc(var(--jump) * -.2)); }
+  100% { transform: none; }
+}
+@keyframes wx-confetti-w1 { 0%, 18%, 100% { color: inherit; transform: none; } 5%, 11% { color: var(--c1); transform: translateY(calc(var(--jump) * -.5)); } }
+@keyframes wx-confetti-w2 { 0%, 18%, 100% { color: inherit; transform: none; } 5%, 11% { color: var(--c2); transform: translateY(calc(var(--jump) * -.5)); } }
+@keyframes wx-confetti-w3 { 0%, 18%, 100% { color: inherit; transform: none; } 5%, 11% { color: var(--c3); transform: translateY(calc(var(--jump) * -.5)); } }
+
+/* золото — По буквам бежит золотой блик; допечатанное слово вырастает, искрит и дышит. */
+#bubbleText .fx-gold { --shine: 2200ms; --grow: 700ms; --peak: 1.5; --rest: 1.12; --breath: 1700ms; --mid: #c98f10; --glint: #f6cf58; }
+#bubbleText .fx-gold .fw { margin: 0 3px; transform-origin: 50% 70%; }
+#bubbleText .fx-gold .tw { font-weight: 850; color: #b07c12; background: linear-gradient(100deg, rgb(from var(--mid) calc(r - 63) calc(g - 51) calc(b - 10)) 0%, var(--mid) 30%, var(--glint) 48%, rgb(from var(--mid) calc(r + 10) calc(g + 11) calc(b + 7)) 60%, rgb(from var(--mid) calc(r - 63) calc(g - 51) calc(b - 10)) 100%) 100% 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: wx-gold-shine var(--shine) linear infinite; animation-delay: calc(var(--i) * 90ms); }
+#bubbleText .fx-gold.go .fw { transform: scale(var(--rest)); filter: drop-shadow(0 0 2px rgb(from var(--glint) calc(r - 4) calc(g - 9) calc(b + 9) / .6)); animation: wx-gold-grow var(--grow) cubic-bezier(.3, 1.6, .4, 1) both, wx-gold-breath var(--breath) var(--grow) ease-in-out infinite; }
+@keyframes wx-gold-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes wx-gold-grow { 0% { transform: scale(1); filter: none; } 45% { transform: scale(var(--peak)) rotate(-3deg); filter: drop-shadow(0 0 6px rgb(from var(--glint) calc(r - 4) calc(g - 9) calc(b + 9))); } 100% { transform: scale(var(--rest)); filter: drop-shadow(0 0 2px rgb(from var(--glint) calc(r - 4) calc(g - 9) calc(b + 9) / .6)); } }
+@keyframes wx-gold-breath { 0%, 100% { transform: scale(var(--rest)); filter: drop-shadow(0 0 2px rgb(from var(--glint) calc(r - 4) calc(g - 9) calc(b + 9) / .6)); } 50% { transform: scale(calc(var(--rest) + .08)); filter: drop-shadow(0 0 5px rgb(from var(--glint) calc(r - 4) calc(g - 9) calc(b + 9) / .95)); } }
+
+/* счёт — Число набегает от единицы до своего значения, а в конце вырастает и искрит, как золото. */
+#bubbleText .fx-count { --step: 70ms; --tick: 160ms; --grow: 700ms; --peak: 1.5; --rest: 1.12; --breath: 1700ms; --color: #ff8093; }
+#bubbleText .fx-count .fw { margin: 0 3px; transform-origin: 50% 70%; color: var(--color); font-weight: 850; font-variant-numeric: tabular-nums; }
+#bubbleText .fx-count .fw .tw.on { opacity: 0; }
+#bubbleText .fx-count .fw::before { content: attr(data-n); position: absolute; left: 50%; top: 0; transform: translateX(-50%); white-space: nowrap; }
+#bubbleText .fx-count .fw.tick::before { animation: wx-count-tick var(--tick) cubic-bezier(.3, 1.7, .5, 1); }
+#bubbleText .fx-count.fin .fw { transform: scale(var(--rest)); filter: drop-shadow(0 0 2px rgb(from var(--color) calc(r + 74) calc(g + 84) calc(b + 86) / .6)); animation: wx-count-grow var(--grow) cubic-bezier(.3, 1.6, .4, 1) both, wx-count-breath var(--breath) var(--grow) ease-in-out infinite; }
+@keyframes wx-count-tick { from { transform: translateX(-50%) translateY(-8px) scale(1.6); opacity: .2; } }
+@keyframes wx-count-grow { 0% { transform: scale(1); filter: none; } 45% { transform: scale(var(--peak)) rotate(-3deg); filter: drop-shadow(0 0 6px rgb(from var(--color) calc(r + 74) calc(g + 84) calc(b + 86))); } 100% { transform: scale(var(--rest)); filter: drop-shadow(0 0 2px rgb(from var(--color) calc(r + 74) calc(g + 84) calc(b + 86) / .6)); } }
+@keyframes wx-count-breath { 0%, 100% { transform: scale(var(--rest)); filter: drop-shadow(0 0 2px rgb(from var(--color) calc(r + 74) calc(g + 84) calc(b + 86) / .6)); } 50% { transform: scale(calc(var(--rest) + .08)); filter: drop-shadow(0 0 5px rgb(from var(--color) calc(r + 74) calc(g + 84) calc(b + 86) / .95)); } }
+.bubble.angry #bubbleText .fx-count .fw { color: #e0405c; }
+
+/* пульс — Слово бьётся, как сердце: двойной удар, и вверх улетает сердечко. */
+#bubbleText .fx-pulse { --dur: 1150ms; --amp: 0.17; --amp2: 0.1; --hdur: 1600ms; --rise: 17px; --color: #d6336c; --hcolor: #f06595; }
+#bubbleText .fx-pulse .tw { color: var(--color); font-weight: 750; }
+#bubbleText .fx-pulse .fw { margin: 0 2px; animation: wx-pulse-beat var(--dur) ease-in-out infinite; }
+@keyframes wx-pulse-beat { 0%, 40%, 100% { transform: scale(1); } 10% { transform: scale(calc(1 + var(--amp))); } 20% { transform: scale(1); } 30% { transform: scale(calc(1 + var(--amp2))); } }
+#bubbleText .fx-pulse.go .fw::after { content: "♥"; position: absolute; opacity: 0; right: -4px; top: -6px; font-size: 8px; font-style: normal; color: var(--hcolor); animation: wx-pulse-heart var(--hdur) ease-out infinite; }
+@keyframes wx-pulse-heart { 0% { transform: translate(0, 3px) scale(.3); opacity: 0; } 20% { opacity: 1; transform: translate(1px, -3px) scale(1); } 100% { transform: translate(6px, calc(var(--rise) * -1)) scale(.8) rotate(14deg); opacity: 0; } }
+
+/* шёпот — Слова мельче и серее, буквы мягко мерцают — сказано вполголоса. */
+#bubbleText .fx-whisper { --dur: 2600ms; --lag: 55ms; --dim: 0.58; --size: 0.84; --color: #77708f; }
+#bubbleText .fx-whisper { font-size: calc(var(--size) * 1em); font-style: italic; letter-spacing: .02em; }
+#bubbleText .fx-whisper .pt { font-size: calc(1em / var(--size)); font-style: normal; letter-spacing: 0; }
+#bubbleText .fx-whisper .tw { color: var(--color); }
+#bubbleText .fx-whisper .tw.on { animation: wx-whisper-hush var(--dur) ease-in-out infinite; animation-delay: calc(var(--i) * var(--lag)); }
+@keyframes wx-whisper-hush { 0%, 100% { opacity: var(--dim); } 50% { opacity: 1; } }
+
+/* капля — Буквы по очереди провисают, а с последнего слова срывается капля. */
+#bubbleText .fx-drip { --dur: 2800ms; --lag: 140ms; --sag: 2.5px; --stretch: 1.24; --fall: 15px; --color: #3f73c9; --dcolor: #5b93ea; }
+#bubbleText .fx-drip .tw { color: var(--color); font-weight: 700; transform-origin: 50% 0; animation: wx-drip-sag var(--dur) ease-in-out infinite; animation-delay: calc(var(--i) * var(--lag)); }
+@keyframes wx-drip-sag { 0%, 100% { transform: none; } 45%, 60% { transform: translateY(var(--sag)) scaleY(var(--stretch)); } }
+#bubbleText .fx-drip.go .fw.lw::after { content: ""; position: absolute; opacity: 0; left: calc(50% - 2px); top: 88%; width: 4px; height: 6px; border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%; background: var(--dcolor); animation: wx-drip-drop var(--dur) ease-in infinite; }
+@keyframes wx-drip-drop { 0%, 30% { transform: translateY(-2px) scale(.2); opacity: 0; } 45% { transform: translateY(0) scale(1); opacity: .95; } 85% { transform: translateY(var(--fall)) scale(.9, 1.15); opacity: .9; } 100% { transform: translateY(calc(var(--fall) + 4px)) scale(1.6, .3); opacity: 0; } }
+
+/* увядает — Буквы с конца слова по очереди клонятся вниз и блёкнут, последняя почти падает. */
+#bubbleText .fx-wilt { --dur: 800ms; --step: 110ms; --bend: 12deg; --fall: 28deg; --sigh: 4500ms; --lift: 1px; --color: #7d7389; }
+#bubbleText .fx-wilt.go .tw { transform-origin: 15% 100%; color: var(--color); transform: rotate(calc(var(--i) / var(--n) * var(--bend)));
+  animation: wx-wilt-bend var(--dur) cubic-bezier(.45, 0, .4, 1) backwards; animation-delay: calc((var(--n) - 1 - var(--i)) * var(--step)); }
+#bubbleText .fx-wilt.go .lw .tw:last-child { transform: translateY(1.5px) rotate(var(--fall)); animation-name: wx-wilt-fall; animation-duration: calc(var(--dur) * 1.3); }
+#bubbleText .fx-wilt.go .fw { animation: wx-wilt-sigh var(--sigh) ease-in-out infinite; animation-delay: calc(var(--dur) + var(--step) * 8); }
+@keyframes wx-wilt-bend { from { transform: none; color: #1d1830; } 70% { transform: rotate(calc(var(--i) / var(--n) * var(--bend) * 1.2)); } }
+@keyframes wx-wilt-fall { from { transform: none; color: #1d1830; } 55% { transform: translateY(1.5px) rotate(calc(var(--fall) * 1.25)); } 78% { transform: translateY(1.5px) rotate(calc(var(--fall) * .9)); } }
+@keyframes wx-wilt-sigh { 0%, 78%, 100% { transform: none; } 86% { transform: translateY(calc(var(--lift) * -1)) rotate(-.6deg); } 93% { transform: translateY(calc(var(--lift) * .5)); } }
+
+/* нехотя — Слово нехотя растягивается по буквам и сжимается обратно. */
+#bubbleText .fx-str { --dur: 1400ms; --wide: 0.16em; --weight: 650; --color: #7a5a2c; }
+#bubbleText .fx-str .fw { color: var(--color); font-weight: var(--weight); margin: 0 calc((var(--m, 1) - 1) * var(--wide) / 4); }
+#bubbleText .fx-str .tw { animation: wx-str-a var(--dur) ease-in-out infinite alternate; }
+@keyframes wx-str-a { from { transform: none; } to { transform: translateX(calc((var(--j, 0) - var(--c, 0)) * var(--wide) / 2)); } }
+
+/* сползает — Буквы одна за другой оседают лесенкой, будто слово сползает со строки, потом нехотя подтягиваются. */
+#bubbleText .fx-slump { --cycle: 5200ms; --drop: 6px; --tilt: 14deg; --lag: 90ms; --color: #70738a; }
+#bubbleText .fx-slump .fw .tw { color: var(--color); }
+#bubbleText .fx-slump.go .fw .tw { transform: translateY(calc(var(--drop) * var(--i) / max(1, var(--n) - 1))) rotate(calc(var(--tilt) * var(--i) / max(1, var(--n) - 1))); animation: wx-slump-a var(--cycle) calc(var(--i) * var(--lag)) infinite backwards; }
+@keyframes wx-slump-a {
+  0% { transform: translateY(0) rotate(0deg); animation-timing-function: ease-in; }
+  12% { transform: translateY(calc(var(--drop) * var(--i) / max(1, var(--n) - 1) * 1.18)) rotate(calc(var(--tilt) * var(--i) / max(1, var(--n) - 1) * 1.1)); animation-timing-function: ease-out; }
+  19% { transform: translateY(calc(var(--drop) * var(--i) / max(1, var(--n) - 1))) rotate(calc(var(--tilt) * var(--i) / max(1, var(--n) - 1))); }
+  72% { transform: translateY(calc(var(--drop) * var(--i) / max(1, var(--n) - 1))) rotate(calc(var(--tilt) * var(--i) / max(1, var(--n) - 1))); animation-timing-function: cubic-bezier(.55, 0, .25, 1); }
+  92% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+/* ой — Слово выскакивает со вспышкой, потом изредка дёргается. */
+#bubbleText .fx-jolt { --dur: 550ms; --big: 1.5; --stag: 90ms; --period: 3000ms; --amp: 2; --color: #c2410c; --flash: #ffd43b; }
+#bubbleText .fx-jolt .fw { margin: 0 1px; isolation: isolate; }
+#bubbleText .fx-jolt .tw { color: var(--color); font-weight: 800; }
+#bubbleText .fx-jolt:not(.go) .fw { opacity: 0; }
+#bubbleText .fx-jolt.go .fw { animation: wx-jolt-pop var(--dur) cubic-bezier(.2, 1.9, .4, 1) both, wx-jolt-twitch var(--period) infinite; animation-delay: calc(var(--w, 0) * var(--stag)), calc(var(--dur) * 18 / 11 + var(--w, 0) * var(--stag)); }
+@keyframes wx-jolt-pop { 0% { transform: scale(.2) translateY(6px); opacity: 0; } 60% { transform: scale(var(--big)) translateY(-3px) rotate(-4deg); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes wx-jolt-twitch { 0%, 90%, 100% { transform: none; } 93% { transform: translateY(calc(var(--amp) * -1px)) rotate(calc(var(--amp) * -1deg)); } 96% { transform: translateY(calc(var(--amp) * .5px)) rotate(calc(var(--amp) * .75deg)); } }
+#bubbleText .fx-jolt.go .fw::before { content: ""; position: absolute; inset: -5px -7px; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--flash) 90%, transparent), transparent); opacity: 0; animation: wx-jolt-flash calc(var(--dur) * 14 / 11) ease-out both; }
+@keyframes wx-jolt-flash { from { opacity: 1; transform: scale(.4); } to { opacity: 0; transform: scale(1.7); } }
+
+/* сбой — Слово дёргается рывками и на миг расслаивается на два цветных слоя. */
+#bubbleText .fx-glitch { --period: 2600ms; --amp: 2px; --skew: 14deg; --split: 2.5px; --color: #1d1830; --c1: #00b8d4; --c2: #ff2e7e; }
+#bubbleText .fx-glitch .fw { font-weight: 800; color: var(--color); }
+#bubbleText .fx-glitch.go .fw { animation: wx-glitch-a var(--period) steps(1) infinite; }
+@keyframes wx-glitch-a { 0%, 12%, 55%, 100% { transform: none; } 4% { transform: translate(calc(var(--amp) * -1), calc(var(--amp) * .5)) skewX(calc(var(--skew) * -1)); } 8% { transform: translate(var(--amp), calc(var(--amp) * -.5)) skewX(calc(var(--skew) * .7857)); } 52% { transform: translate(calc(var(--amp) * .5), 0) skewX(calc(var(--skew) * .5)); } }
+#bubbleText .fx-glitch.go .fw::before, #bubbleText .fx-glitch.go .fw::after { content: attr(data-t); position: absolute; left: 0; top: 0; pointer-events: none; mix-blend-mode: multiply; opacity: 0; }
+#bubbleText .fx-glitch.go .fw::before { color: var(--c1); animation: wx-glitch-b var(--period) steps(1) infinite; }
+#bubbleText .fx-glitch.go .fw::after { color: var(--c2); animation: wx-glitch-c var(--period) steps(1) infinite; }
+@keyframes wx-glitch-b { 0%, 14%, 50%, 57%, 100% { opacity: 0; } 2% { opacity: .95; transform: translate(calc(var(--split) * -1), 0); clip-path: inset(0 0 55% 0); } 6% { opacity: .95; transform: translate(calc(var(--split) * .8), calc(var(--split) * .4)); clip-path: inset(40% 0 15% 0); } 10% { opacity: .95; transform: translate(calc(var(--split) * -.6), calc(var(--split) * -.4)); clip-path: inset(70% 0 0 0); } 52% { opacity: .95; transform: translate(calc(var(--split) * -.8), 0); clip-path: inset(55% 0 0 0); } }
+@keyframes wx-glitch-c { 0%, 14%, 50%, 57%, 100% { opacity: 0; } 2% { opacity: .95; transform: translate(var(--split), 0); clip-path: inset(50% 0 0 0); } 6% { opacity: .95; transform: translate(calc(var(--split) * -.8), calc(var(--split) * -.4)); clip-path: inset(0 0 60% 0); } 10% { opacity: .95; transform: translate(calc(var(--split) * .6), calc(var(--split) * .4)); clip-path: inset(20% 0 45% 0); } 52% { opacity: .95; transform: translate(calc(var(--split) * .8), 0); clip-path: inset(0 0 50% 0); } }
+
+/* правка — Слово зачёркивается и улетает, сверху встаёт исправленное. */
+#bubbleText .fx-fix { --wait: 800ms; --strike: 280ms; --out: 400ms; --into: 500ms; --tilt: -2deg; --color: #6b3fd4; --line: #c22f4b; }
+#bubbleText .fx-fix .fw { display: inline-grid; justify-items: center; }
+#bubbleText .fx-fix .fo, #bubbleText .fx-fix .ft { grid-area: 1 / 1; white-space: nowrap; position: relative; }
+#bubbleText .fx-fix .fo::after { content: ""; position: absolute; left: -2px; right: -2px; top: 54%; height: 2px; border-radius: 2px; background: var(--line); transform: scaleX(0) rotate(-3deg); transform-origin: 0 50%; }
+#bubbleText .fx-fix.go .fo::after { transform: scaleX(1) rotate(-3deg); animation: wx-fix-strike var(--strike) ease-out both; }
+#bubbleText .fx-fix.go .fo { opacity: 0; animation: wx-fix-out var(--out) var(--wait) ease-in both; }
+#bubbleText .fx-fix .ft { color: var(--color); font-weight: 800; }
+#bubbleText .fx-fix:not(.go) .ft { opacity: 0; }
+#bubbleText .fx-fix.go .ft { transform: rotate(var(--tilt)); animation: wx-fix-in var(--into) calc(var(--wait) + var(--out) * .75) cubic-bezier(.3, 1.7, .5, 1) both; }
+#bubbleText .fx-fix.go .pt .tw.tw { animation: wx-fix-pt calc(var(--into) * .4) calc(var(--wait) + var(--out) * .75 + var(--into) * .5) both; }
+@keyframes wx-fix-pt { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wx-fix-strike { from { transform: scaleX(0) rotate(-3deg); } to { transform: scaleX(1) rotate(-3deg); } }
+@keyframes wx-fix-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(8px) rotate(7deg) scale(.8); } }
+@keyframes wx-fix-in { from { opacity: 0; transform: translateY(-11px) rotate(calc(var(--tilt) - 7deg)) scale(1.35); } to { opacity: 1; transform: rotate(var(--tilt)); } }
+
+/* кавычки — Вокруг слова выскакивают крупные насмешливые кавычки и сгибаются, как пальцы; слово — курсивом. */
+#bubbleText .fx-quote { --dur: 620ms; --sway: 2600ms; --bend: 16deg; --size: 1.4em; --lean: -3deg; --color: #8a3d94; --qcolor: #d6478f; }
+#bubbleText .fx-quote .fw { margin: 0 calc(var(--size) * .5); color: var(--color); font-style: italic; font-weight: 600; transition: transform calc(var(--dur) * .5) ease-out; }
+#bubbleText .fx-quote.go .fw { transform: rotate(var(--lean)); }
+#bubbleText .fx-quote .fw::before, #bubbleText .fx-quote .fw::after { position: absolute; top: 50%; margin-top: -.58em; font-size: var(--size); line-height: 1; font-style: normal; font-weight: 800; color: var(--qcolor); opacity: 0; }
+#bubbleText .fx-quote .fw::before { content: "«"; right: 100%; transform-origin: 70% 85%; }
+#bubbleText .fx-quote .fw::after { content: "»"; left: 100%; transform-origin: 30% 85%; }
+#bubbleText .fx-quote.go .fw::before, #bubbleText .fx-quote.go .fw::after { opacity: 1; }
+#bubbleText .fx-quote.go .fw::before { animation: wx-quote-inl var(--dur) ease-out backwards, wx-quote-swayl var(--sway) var(--dur) ease-in-out infinite; }
+#bubbleText .fx-quote.go .fw::after { animation: wx-quote-inr var(--dur) ease-out backwards, wx-quote-swayr var(--sway) var(--dur) ease-in-out infinite; }
+@keyframes wx-quote-inl {
+  0% { opacity: 0; transform: translateY(5px) scale(.2); }
+  28% { opacity: 1; transform: translateY(-2px) scale(1.2); }
+  45% { transform: translateY(1px) rotate(calc(var(--bend) * -1)) scale(1); }
+  60% { transform: translateY(-1px) scale(1.05); }
+  75% { transform: translateY(1px) rotate(calc(var(--bend) * -1)) scale(1); }
+  100% { transform: none; }
+}
+@keyframes wx-quote-inr {
+  0% { opacity: 0; transform: translateY(5px) scale(.2); }
+  28% { opacity: 1; transform: translateY(-2px) scale(1.2); }
+  45% { transform: translateY(1px) rotate(var(--bend)) scale(1); }
+  60% { transform: translateY(-1px) scale(1.05); }
+  75% { transform: translateY(1px) rotate(var(--bend)) scale(1); }
+  100% { transform: none; }
+}
+@keyframes wx-quote-swayl {
+  0%, 64% { transform: none; }
+  71% { transform: translateY(1px) rotate(calc(var(--bend) * -.8)); }
+  78% { transform: none; }
+  85% { transform: translateY(1px) rotate(calc(var(--bend) * -.8)); }
+  92%, 100% { transform: none; }
+}
+@keyframes wx-quote-swayr {
+  0%, 64% { transform: none; }
+  71% { transform: translateY(1px) rotate(calc(var(--bend) * .8)); }
+  78% { transform: none; }
+  85% { transform: translateY(1px) rotate(calc(var(--bend) * .8)); }
+  92%, 100% { transform: none; }
+}
+
+/* маркер — По словам проезжает жёлтый маркер. */
+#bubbleText .fx-mark { --dur: 550ms; --color: #ffd43b; --dense: 88%; --top: 10%; --bot: 8%; --weight: 650; }
+#bubbleText .fx-mark { font-weight: var(--weight); padding: 0 2px; margin: 0 -2px; border-radius: 3px; background: linear-gradient(transparent var(--top), color-mix(in srgb, var(--color) var(--dense), transparent) var(--top), color-mix(in srgb, var(--color) var(--dense), transparent) calc(100% - var(--bot)), transparent calc(100% - var(--bot))) no-repeat 0 0 / 0% 100%; -webkit-box-decoration-break: clone; box-decoration-break: clone; transition: background-size var(--dur) cubic-bezier(.3, .8, .3, 1); }
+#bubbleText .fx-mark.go { background-size: 100% 100%; }
+
+/* дыхание — Слово медленно дышит: чуть растёт и мягко светится. */
+#bubbleText .fx-breath { --dur: 3200ms; --grow: 1.07; --glow: 9px; --dense: 60%; --color: #5b3fc4; --halo: #6b3fd4; --weight: 700; }
+#bubbleText .fx-breath .tw { color: var(--color); font-weight: var(--weight); }
+#bubbleText .fx-breath .fw { margin: 0 2px; animation: wx-breath-a var(--dur) ease-in-out infinite; }
+@keyframes wx-breath-a { 0%, 100% { transform: scale(1); text-shadow: 0 0 0 transparent; } 50% { transform: scale(var(--grow)); text-shadow: 0 0 var(--glow) color-mix(in srgb, var(--halo) var(--dense), transparent); } }

@@ -18,7 +18,9 @@ const props = new Map();
 const classes = new Set();
 let base = 340, tall = 300;
 const bubble = {
-  classList: { contains: (c) => classes.has(c) },
+  // toggle, dataset, offsetHeight — для #bubbleText: fitBubble ставит ему fxb (слова с характером, wordfx.js); здесь его нет
+  classList: { contains: (c) => classes.has(c), toggle: () => {} },
+  dataset: {}, offsetHeight: 0,
   style: { getPropertyValue: (k) => props.get(k) ?? "", setProperty: (k, v) => props.set(k, v) },
   getBoundingClientRect: () => {
     const bottom = base + (parseFloat(props.get("--drop")) || 0);

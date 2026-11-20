@@ -56,6 +56,8 @@ const ctx = {
   clearInterval: (id) => timers.delete(id),
   clearTimeout: () => {},
   typeBlip: () => {},
+  // слова с характером (wordfx.js) здесь не проверяются — widget-wordfx.test.cjs; обычная буква: «бип» как всегда
+  wordfxShown: () => {}, wordfxBlip: () => false, wordfxFinish: () => {},
 };
 const advance = (ms) => { for (let t = 0; t < ms; t += 16) { clock += 16; for (const f of [...timers.values()]) f(); } };
 vm.createContext(ctx);
