@@ -116,12 +116,12 @@ if (ctx.view) {
   check(/id="miniStars"/.test(V("evening", {}).extra) && !/rated/.test(V("evening", {}).extra), "вечер: ряд звёзд не оценён");
   ctx.data.metrics = [{ key: "rating_day", value: 7, source: "evening" }];
   v = V("evening", {});
-  const lit = [...v.extra.matchAll(/class="rate-star on"/g)].length;
-  check(/class="mini-stars rated"/.test(v.extra) && lit === 7, `день уже оценён на 7 — горят 7 звёзд и ряд не нажимается (горит ${lit})`);
+  check(v.extra === "", `день уже оценён — ряда звёзд в свёрнутой карточке нет (остался: ${v.extra.slice(0, 60)})`);
   check(ctx.rating() === 7, "dayRating не читает rating_day из data.metrics");
   ctx.data.metrics = [];
   ctx.setRated({ day: "2026-11-19", v: 4 });
   check(ctx.rating() === 4, "оценка, поставленная с карточки, не видна, пока данные не обновились");
+  check(V("evening", {}).extra === "", "оценили с карточки — ряд уходит сразу, не дожидаясь новых данных");
   ctx.setRated({ day: "2026-11-18", v: 4 });
   check(ctx.rating() === null, "вчерашняя оценка с карточки считается сегодняшней");
   ctx.setRated(null);

@@ -2360,13 +2360,13 @@ function miniView(part, { plan, late, left, done, now }) {
     const next = miniTomorrow(now); // строки — текст (fitMiniSub ставит textContent), не разметка: без esc
     const lateTxt = late ? miniSubLines("", late, 0)[0] : "";
     const lines = [...new Set([[lateTxt, next].filter(Boolean).join(" · "), lateTxt || next])].filter(Boolean);
-    // Десять звёзд оценки дня — как под вечерним итогом, не дожидаясь его. Оценён (здесь, в облачке, в Telegram) — горят до оценки.
-    const v = dayRating();
-    const stars = Array.from({ length: 10 }, (_, i) => `<button type="button" class="rate-star${v && i < v ? " on" : ""}" data-v="${i + 1}" title="${i + 1} из 10" aria-label="Оценить день на ${i + 1} из 10"${v ? " disabled" : ""}><img src="../assets/star.png" alt="" draggable="false" /></button>`).join("");
+    // Десять звёзд оценки дня — как под вечерним итогом, не дожидаясь его. День уже оценён (здесь, в облачке, в Telegram) —
+    // ряда нет совсем (20.11.2026: раньше звёзды горели до оценки и висели, хотя улетели к горничной).
+    const stars = Array.from({ length: 10 }, (_, i) => `<button type="button" class="rate-star" data-v="${i + 1}" title="${i + 1} из 10" aria-label="Оценить день на ${i + 1} из 10"><img src="../assets/star.png" alt="" draggable="false" /></button>`).join("");
     return {
       line1: !total ? "Добрый вечер" : done >= total ? "Всё сделано ✨" : `Сделано ${done} из ${total}`,
       lines,
-      extra: `<div class="mini-rate"><span>${v ? "Оценка дня" : "Как прошёл день?"}</span><span class="mini-stars${v ? " rated" : ""}" id="miniStars"${v ? ` title="Оценка дня: ${v} из 10"` : ""}>${stars}</span></div>`,
+      extra: dayRating() ? "" : `<div class="mini-rate"><span>Как прошёл день?</span><span class="mini-stars" id="miniStars">${stars}</span></div>`,
     };
   }
   // Ночь — без просрочки и счёта: только что завтра первым.
@@ -2438,7 +2438,7 @@ $("#miniExtra").addEventListener("click", async (ev) => {
     say(errText(e), { ms: 6000, stay: true });
   } finally {
     miniRateBusy = false;
-    // Ряд пересобрать (null — такого вида не бывает, даже если в новом виде ряда нет): оценили — звёзды горят до оценки, не вышло — снова пустые.
+    // Ряд пересобрать (null — такого вида не бывает, даже если в новом виде ряда нет): оценили — ряд уходит, не вышло — снова пустые звёзды.
     miniExtraHtml = null;
     render();
   }
