@@ -1055,3 +1055,29 @@ test("«это задача, а не план»: время в названии 
   assert.deepEqual(await store.eventsBetween(u.id, "2026-11-01", "2026-12-31"), [], "нового плана нет");
   assert.deepEqual(c.changes.map((x) => x.kind), ["task"]);
 });
+
+test("дописать пропущенное: «и ещё 300 на такси» — новая трата под тем же ответом; «Отменить» убирает обе", async () => {
+  const { store, u, calls, pipe, say, fix } = await setup([
+    { summary: "s", money: [{ kind: "expense", amount: 450, category: "еда", note: "шаурма" }] },
+    { add: { money: [{ kind: "expense", amount: 300, category: "транспорт", note: "такси" }] } },
+    { add: { tasks: [{ title: "Купить хлеб" }] }, edits: [{ ref: "r1", set: { amount: 500 } }], reply: "Записала хлеб и поправила сумму." },
+  ]);
+  const r = await say("потратил 450 на шаурму", "1");
+  const first = r.changes![0].ref!;
+  const c = await fix(r.messageId, "и ещё 300 на такси", "c1");
+  const taxi = (await store.moneyRange(u.id, "2026-11-01", "2026-11-30")).find((m) => m.note === "такси")!;
+  assert.equal(taxi.message_id, r.messageId);
+  assert.deepEqual(c.changes.map((x) => x.ref), [first, { tbl: "money", id: taxi.id }]);
+  assert.deepEqual(c.changed, [`money:${taxi.id}`]);
+  assert.match(c.text, /^Записала\.\n＋ такси: −300 RUB — транспорт, такси$/);
+  assert.match(calls[1][0].content, /Пропущено в ответе/);
+
+  const c2 = await fix(r.messageId, "и купить хлеб, а шаурма 500", "c2");
+  assert.match(c2.text, /^Записала хлеб и поправила сумму\.\n✎ шаурма: .+\n＋ Купить хлеб/);
+  assert.equal((await store.money(first.id))!.amount, 500);
+
+  await pipe.undo(u);
+  assert.deepEqual(await store.moneyRange(u.id, "2026-11-01", "2026-11-30"), []);
+  assert.equal((await store.openTasks(u.id)).length, 0);
+  assert.equal(await pipe.undo(u), "Нечего отменять.");
+});

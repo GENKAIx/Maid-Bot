@@ -988,7 +988,7 @@ export class Pipeline {
       // Реплика модели — только если сделано всё, что она назвала: номер мимо или поле без перемен — и её «перенесла и поменяла
       // категорию» была бы неправдой. Тогда — нейтральное «Поправила.» («Убрала.», если только убрала) и строки о том, что правда поменялось.
       const whole = !dropped && plans.length === sets.size;
-      const head = whole && out.reply ? esc(out.reply) : !plans.length && !adds ? "Убрала." : "Поправила.";
+      const head = whole && out.reply ? esc(out.reply) : plans.length ? "Поправила." : !adds ? "Убрала." : !gone.length ? "Записала." : "Поправила.";
       const rest = dropped ? "\nОстального в этом ответе не нашла — не меняла." : "";
       const lines: string[] = [];
       const touched: number[] = [];
