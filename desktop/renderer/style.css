@@ -516,10 +516,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 @keyframes liveGlowMini { 50% { box-shadow: 0 0 16px -4px rgba(255, 154, 77, .65); } }
 @property --heat-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 .w .next .nx-hero { position: relative; isolation: isolate; }
+/* Бегущий огонёк — кольцо поверх фона плашки (z-index 1): под полупрозрачным фоном края сглаживались по-разному и на стыках
+   прямых краёв со скруглениями проступали точки (20.11.2026). Кольцо — только полоска по краю, кнопки и текст не задевает. */
 .w .next .nx-hero.heat { --ember: #ff9a4d; background: color-mix(in srgb, var(--ember) 14%, color-mix(in srgb, var(--accent) 10%, transparent));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ember) 45%, transparent); }
 .w .next .nx-hero.heat .hero-txt b { color: var(--ember); }
-.w .next .nx-hero.heat::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1.5px; pointer-events: none;
+.w .next .nx-hero.heat::before { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; padding: 1.5px; pointer-events: none;
   background: conic-gradient(from var(--heat-a), transparent 0 58%, color-mix(in srgb, var(--ember) 60%, transparent) 74%, #ffd27a 84%, transparent 94%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
   animation: heatRun 6s linear infinite; animation-delay: var(--heat-phase, 0ms); opacity: .8; }
