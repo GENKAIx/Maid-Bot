@@ -37,7 +37,7 @@ const code = [
 
 // Планы: _in — через сколько минут начало (подмена minutesUntil: тест не зависит от того, когда его запустили).
 const ctx = {
-  cfg: { morning: 7, bedtime: "23:00" },
+  daySleep: { wake: 7, bed: "23:00" },
   localStorage: { getItem: () => null },
   data: null,
   minutesUntil: (e) => (e.time ? e._in : null),
@@ -56,12 +56,12 @@ if (ctx.period) {
   const table = [[6, 59, "night"], [7, 0, "morning"], [10, 59, "morning"], [11, 0, "day"], [17, 59, "day"], [18, 0, "evening"], [22, 59, "evening"], [23, 0, "night"], [0, 30, "night"], [3, 0, "night"]];
   for (const [h, m, want] of table) check(P(h, m) === want, `${h}:${String(m).padStart(2, "0")} — «${P(h, m)}», а надо «${want}» (утро 7, отбой 23:00)`);
   check(P(8, 0, true) === "day" && P(19, 0, true) === "day" && P(23, 30, true) === "day", "план рядом (идёт или через час) — не дневной вид");
-  ctx.cfg.bedtime = "00:30";
+  ctx.daySleep.bed = "00:30";
   check(P(23, 59) === "evening", "отбой 00:30: в 23:59 ещё вечер");
   check(P(0, 10) === "night", "после полуночи до «Утра» — ночь, даже до отбоя (вечер вчерашнего дня не оценивается)");
-  ctx.cfg.morning = 9; ctx.cfg.bedtime = "23:00";
-  check(P(8, 0) === "night" && P(9, 0) === "morning", "«Утро» в 9: в 8:00 ещё ночь, в 9:00 — утро");
-  ctx.cfg.morning = 7;
+  ctx.daySleep.wake = 9; ctx.daySleep.bed = "23:00";
+  check(P(8, 0) === "night" && P(9, 0) === "morning", "подъём в 9: в 8:00 ещё ночь, в 9:00 — утро");
+  ctx.daySleep.wake = 7;
 }
 
 if (ctx.view) {

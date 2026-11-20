@@ -989,8 +989,6 @@ const WIDGET_PREFS = {
   doneHabits: oneOf("dim", "hide"),
   napAfter: oneOf(0, 5, 15, 30, 60),
   napNight: (v) => typeof v === "boolean",
-  bedtime: oneOf("auto", "22:00", "23:00", "00:00", "01:00"),
-  morning: oneOf(6, 7, 8, 9),
   napRecap: (v) => typeof v === "boolean",
   napFold: (v) => typeof v === "boolean",
   popSound: oneOf("bubble", "chime", "off"),

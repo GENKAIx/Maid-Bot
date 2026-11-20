@@ -66,8 +66,7 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble", fx: "normal" };
-const BEDTIMES = ["auto", "22:00", "23:00", "00:00", "01:00"]; // настройка «Отбой»
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, napRecap: true, napFold: true, popSound: "bubble", fx: "normal" };
 const MAID_W = { s: 160, m: 196, l: 236 };
 // Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
 const ACCENTS = { violet: ["#b79cff", "#4fd09a"], blue: ["#8ab8ff", "#5ec8f0"], green: ["#7fd9a8", "#4fd09a"], pink: ["#ff9cc8", "#ff7eb3"], amber: ["#ffc46b", "#f2b84b"] };
@@ -275,8 +274,9 @@ function setState(s) {
 // Засыпает, если ПК не трогали cfg.napAfter минут (или не ответили на её сообщение NAP_UNHEARD), после отбоя — уже через NAP_NIGHT
 // (настройка «napNight»). «Не засыпать» (napAfter 0) — не спит совсем. Пока спит — молчит: уведомления только в ящик и в список
 // «пока вас не было». Тронули ПК — просыпается, «О, вы вернулись!» и пересказ (napRecap). napFold — засыпая, сворачивает панель, проснувшись — разворачивает.
-// Отбой — из настройки «bedtime» или «auto»: она узнаёт его сама, когда вечером человек уходил от ПК больше чем на 1,5 ч
-// (медиана 14 последних ночей, по умолчанию 23:00). Утро (cfg.morning) — до этого часа ещё ночь.
+// Отбой и подъём — с сервера («Персонализация → О вас», /api/today: bed, wake; с 20.11.2026, раньше — «Отбой» и «Утро» в
+// настройках виджета, свои на каждом ПК). Отбой «auto» — она узнаёт его сама, когда вечером человек уходил от ПК больше чем
+// на 1,5 ч (медиана 14 последних ночей, по умолчанию 23:00). До часа подъёма — ещё ночь. Старый сервер без них — 7:00 и «сама».
 const NAP_UNHEARD = 5 * 60;
 const NAP_NIGHT = 3 * 60;
 let napping = false;
@@ -288,9 +288,30 @@ let napSince = 0; // когда человек ушёл (мс)
 let missed = []; // уведомления, пришедшие во сне
 let unheardAt = 0; // её сообщение, на которое ещё не отреагировали
 const nightMin = (t) => { const m = t.getHours() * 60 + t.getMinutes(); return m < 12 * 60 ? m + 24 * 60 : m; }; // после полуночи — «24:30»
+let daySleep = { bed: "auto", wake: 7 };
+let oldSleep = null; // прежние «Отбой» и «Утро» этого ПК из настроек виджета — один раз переезжают на сервер (sleepMove)
+function daySleepSync(d) {
+  daySleep = {
+    bed: typeof d.bed === "string" && /^\d{2}:\d{2}$/.test(d.bed) ? d.bed : "auto",
+    wake: Number.isInteger(d.wake) && d.wake >= 0 && d.wake < 12 ? d.wake : 7,
+  };
+  sleepMove(d);
+}
+// Перенос с прежней версии: на этом ПК «Отбой» или «Утро» были выбраны свои, а на сервере ещё по умолчанию — записать их
+// в «О вас» один раз (флаг maid.sleepMoved); сервер без подъёма и отбоя (нет d.wake) — не трогаем.
+function sleepMove(d) {
+  if (!oldSleep || d.wake === undefined || localStorage.getItem("maid.sleepMoved")) return;
+  const patch = {};
+  if (["21:00", "22:00", "23:00", "00:00", "01:00", "02:00"].includes(oldSleep.bed) && d.bed === "auto") patch.bed = oldSleep.bed;
+  if ([5, 6, 8, 9, 10].includes(oldSleep.wake) && d.wake === 7) patch.wake = oldSleep.wake;
+  oldSleep = null;
+  const done = () => localStorage.setItem("maid.sleepMoved", "1");
+  if (!Object.keys(patch).length) return done();
+  maid.api("POST", "/api/you", patch).then(done, () => {});
+}
 function bedtime() {
-  if (cfg.bedtime !== "auto") {
-    const [h, m] = cfg.bedtime.split(":").map(Number);
+  if (daySleep.bed !== "auto") {
+    const [h, m] = daySleep.bed.split(":").map(Number);
     return (h < 12 ? h + 24 : h) * 60 + m;
   }
   let list = [];
@@ -310,7 +331,7 @@ function learnBedtime(from, to) {
 }
 function afterBedtime(t = new Date()) {
   const m = nightMin(t);
-  return m >= bedtime() && m < cfg.morning * 60 + 24 * 60;
+  return m >= bedtime() && m < daySleep.wake * 60 + 24 * 60;
 }
 const restState = () => (napping ? "sleep" : "idle");
 function fallAsleep(idleSec) {
@@ -2035,6 +2056,7 @@ async function load() {
     data = fresh;
     syncMarks(); // день сервера и часы идут — «через 2 часа», «завтра» в метке не устаревают (перерисовка — только если поменялись)
     lookSync(data.maid_hair, data.maid_eyes); // цвета волос и глаз с сайта (maidlook.js)
+    daySleepSync(data); // подъём и отбой из «Персонализации»
     setLineCall(data.call); // обращение из «Персонализации» (lines.js): «хозяйка» или имя вместо «хозяин»
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
@@ -2276,7 +2298,7 @@ const MINI_NEAR = 60;
 function miniPeriod(t, near) {
   if (near) return "day";
   const h = t.getHours();
-  if (afterBedtime(t) || h < cfg.morning) return "night";
+  if (afterBedtime(t) || h < daySleep.wake) return "night";
   if (h < MINI_MORNING_END) return "morning";
   return h >= MINI_EVENING ? "evening" : "day";
 }
@@ -2664,10 +2686,10 @@ async function loadCfg() {
   const s = await maid.settings();
   const w = s.widget ?? {};
   cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: Number.isInteger(w.taskCount) && w.taskCount >= 1 && w.taskCount <= 500 ? w.taskCount : 100, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim",
-    napAfter: [0, 5, 15, 30, 60].includes(w.napAfter) ? w.napAfter : 15, napNight: w.napNight !== false, bedtime: BEDTIMES.includes(w.bedtime) ? w.bedtime : "auto",
-    morning: [6, 7, 8, 9].includes(w.morning) ? w.morning : 7, napRecap: w.napRecap !== false, napFold: w.napFold !== false,
+    napAfter: [0, 5, 15, 30, 60].includes(w.napAfter) ? w.napAfter : 15, napNight: w.napNight !== false, napRecap: w.napRecap !== false, napFold: w.napFold !== false,
     popSound: ["chime", "off"].includes(w.popSound) ? w.popSound : "bubble", xpBar: w.xpBar === "event" ? "event" : "always",
     fx: ["quiet", "festive"].includes(w.fx) ? w.fx : "normal" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+  if (w.bedtime !== undefined || w.morning !== undefined) oldSleep = { bed: w.bedtime, wake: w.morning };
   // «Звуки выключены» раньше жили в localStorage виджета — переносим в настройки один раз.
   if (w.mute === undefined && localStorage.getItem("maid.mute")) {
     cfg.mute = true;

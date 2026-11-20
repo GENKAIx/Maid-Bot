@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Card, Empty, Spinner } from "../components";
+import { navigate } from "../router";
 
 // Виджет на рабочем столе: что на панели, горничная, задачи, сроки самонажатия кнопок. Настройки живут в программе на ПК
 // (desktop/src/preload-app.js → main.js «app:widget-*»), сайт их только показывает и меняет; в браузере и на телефоне раздела нет.
@@ -10,11 +11,10 @@ export interface WidgetPrefs {
   plans?: "list" | "off"; dateLead?: "0" | "1" | "3" | "7"; doneTasks?: "keep" | "hide"; laterTasks?: "hide" | "show";
   proposalWait?: number; clashWait?: number; mute?: boolean; typing?: "sound" | "quiet" | "off"; typeSpeed?: "slow" | "normal" | "fast";
   accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: number; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
-  napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; bedtime?: Bedtime; morning?: 6 | 7 | 8 | 9; napRecap?: boolean; napFold?: boolean; popSound?: Pop;
+  napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; napRecap?: boolean; napFold?: boolean; popSound?: Pop;
   xpBar?: "always" | "event"; fx?: "quiet" | "normal" | "festive";
 }
 type Pop = "bubble" | "chime" | "off";
-type Bedtime = "auto" | "22:00" | "23:00" | "00:00" | "01:00";
 /** Общее программы на ПК (раньше — только в меню значка у часов). */
 export interface General { autostart: boolean; canAutostart: boolean; keys: { quick: string; grab: string }; error?: string }
 type Accent = "violet" | "blue" | "green" | "pink" | "amber";
@@ -82,7 +82,7 @@ const DEFAULTS: Required<WidgetPrefs> = {
   show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true },
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
   accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim",
-  napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble", xpBar: "always", fx: "normal",
+  napAfter: 15, napNight: true, napRecap: true, napFold: true, popSound: "bubble", xpBar: "always", fx: "normal",
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
 const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"]];
@@ -543,10 +543,9 @@ export function Widget() {
           {p.napAfter !== 0 && <>
             <Setting title="Ночью засыпает быстрее" hint="После отбоя — уже через 3 минуты"
               side={<Toggle label="Ночью засыпает быстрее" on={p.napNight} set={(napNight) => save({ napNight })} />} />
-            <Setting title="Отбой" hint={p.bedtime === "auto" ? "Узнаёт сама: когда вечером вы надолго уходите от компьютера" : "С этого часа — ночь: не суетится, без чая и уборки"}
-              side={<Segment label="Отбой" value={p.bedtime} onPick={(bedtime) => save({ bedtime })} options={[["auto", "Сама"], ["22:00", "22:00"], ["23:00", "23:00"], ["00:00", "00:00"], ["01:00", "01:00"]]} />} />
-            <Setting title="Утро" hint="До этого часа ещё ночь"
-              side={<Segment label="Утро" value={p.morning} onPick={(morning) => save({ morning })} options={[[6, "6:00"], [7, "7:00"], [8, "8:00"], [9, "9:00"]]} />} />
+            {/* Подъём и отбой с 20.11.2026 — в «Персонализации → О вас», одни на все компьютеры (виджет берёт их с сервера). */}
+            <Setting title="Подъём и отбой" hint="Теперь в «Персонализации → О вас» — одни на все компьютеры"
+              side={<button type="button" className="link" onClick={() => navigate("/settings/persona")}>Открыть</button>} />
             <Setting title="Сворачивать панель во сне" hint="Засыпая, сворачивает панель в карточку, проснувшись — разворачивает"
               side={<Toggle label="Сворачивать панель во сне" on={p.napFold} set={(napFold) => save({ napFold })} />} />
             <Setting title="Рассказывать, что было" hint="Проснувшись, пересказывает, что пришло, пока вас не было"
