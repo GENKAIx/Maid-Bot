@@ -3,7 +3,7 @@ import type { DateRow, DiaryRow, EventRow, HabitRow, MemoryRow, MetricRow, Money
 import type { Change } from "./pipeline.ts";
 import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, moneyCard, noteCard, taskCard, traitCard } from "./cards.ts";
 import { SHELF_KEYS, SHELVES, NOTE_TEXT_MAX, NOTE_TITLE_MAX, shelfKey } from "./notes.ts";
-import { CURRENCY, HEALTH_TOPICS, MONEY_CATEGORIES, SECTIONS, num, promptHeader, topicOf } from "./parse.ts";
+import { CURRENCY, HEALTH_TOPICS, MONEY_CATEGORIES, SECTIONS, normalize, num, promptHeader, topicOf, type Parsed } from "./parse.ts";
 import { EMOTIONS } from "./personas.ts";
 import { esc } from "./report.ts";
 import { isDayKey, normalizeTime } from "./time.ts";
@@ -12,7 +12,10 @@ import { isDayKey, normalizeTime } from "./time.ts";
 // а не транспорт», «сумма 540», «на завтра») меняет только записи этого ответа. Модель видит только их (r1…rn) и отвечает,
 // какие поля поменять; код проверяет каждое значение теми же проверками, что разбор (parse.ts), и пишет всё одной транзакцией
 // (Pipeline.correct). Журнал — под id исходного сообщения (kind edit, before — прежние значения изменённых полей): одна
-// «↩ Отменить» откатывает ответ вместе с поправками. Вид записи (план → задача, → заметка) поправкой не меняется.
+// «↩ Отменить» откатывает ответ вместе с поправками.
+// Ещё поправка убирает записи ответа («в задачи не надо» — remove, removeRow) и меняет вид записи («это задача, а не план»):
+// прежняя убирается, новая записывается тем же разбором и той же записью, что у сообщения (parse.ts normalize, Pipeline.apply),
+// под тем же ответом (kind add). Привычку, память и профиль поправка не заводит.
 
 /** Запись ответа с карточкой: таблица, id и строка из базы. */
 export type AnswerRow =
@@ -154,7 +157,7 @@ ${asked}
 - важная дата: title, date_iso (ГГГГ-ММ-ДД), type (${DATE_TYPES.join("|")}), yearly (true|false)
 
 Ответь ОДНИМ JSON-объектом:
-{"edits": [{"ref": "r1", "set": {"time": "17:00"}}], "clarify": null, "unsupported": false, "reply": "короткая живая реплика, что поправила (1 предложение)", "emotion": "${EMOTIONS.join("|")}"}
+{"edits": [{"ref": "r1", "set": {"time": "17:00"}}], "remove": [], "add": {}, "clarify": null, "unsupported": false, "reply": "короткая живая реплика, что поправила (1 предложение)", "emotion": "${EMOTIONS.join("|")}"}
 
 Правила:
 - В set — только поля, которые просит поменять поправка; остальное оставь как есть и не повторяй.
@@ -163,11 +166,29 @@ ${asked}
 - Сдвигаешь начало плана, а конец не назван — end_time не ставь: длительность сохранит сервер. Конец раньше начала («с 22 до 2») — до утра следующего дня, так можно.
 - «Это еда, а не транспорт» — category; «сумма 540» — amount; «на завтра», «это было вчера» — date_iso, due_date или day_key.
 - Трата или доход — это поле kind у денег, его менять можно.
-- Просят поменять вид записи («это задача, а не план», «это заметка», «запиши в дневник, а не в планы») — unsupported: true, edits пустой: вид записи ты менять не умеешь.
+
+Убрать запись и записать в другом виде:
+- remove — номера записей, которые не надо было записывать («в задачи не надо», «это не трата», «убери встречу»). Остальные записи не трогай.
+- Просят другой вид записи («это задача, а не план», «запиши в дневник, а не в траты», «это на полку фильмов») — remove прежней записи и add с новой:
+  перенеси в неё название, дату, время, сумму — всё, что подходит новому виду. Вид — только из списка ниже.
+- add — новые записи, поля — как у разбора сообщения:
+  "events": [{"title": "...", "date_iso": "ГГГГ-ММ-ДД", "time": "ЧЧ:ММ или null", "end_time": null, "details": ""}] — план,
+  "tasks": [{"title": "...", "priority": "${PRIORITIES.join("|")}", "due_date": "ГГГГ-ММ-ДД или null"}] — задача,
+  "money": [{"kind": "expense|income", "amount": 450, "currency": "RUB", "category": "${MONEY_CATEGORIES.join("|")}", "note": "на что / от кого", "day_iso": null}],
+  "metrics": [{"key": "weight|pulse|… латиницей", "label": "подпись по-русски", "value": 85, "unit": "", "note": "", "day_iso": null}] — показатель,
+  "diary": [{"section": "${Object.keys(SECTIONS).join("|")}", "topic": "только для health", "text": "...", "day_iso": null}] — дневник,
+  "stash": [{"shelf": "${SHELF_KEYS.join("|")}", "title": "название как есть", "note": ""}] — заметка «на потом»,
+  "dates": [{"title": "...", "date_iso": "ГГГГ-ММ-ДД", "type": "${DATE_TYPES.join("|")}", "person": "", "yearly": true}] — важная дата.
+- Сделать из записи привычку, запомнить о пользователе, записать в профиль (аллергия, особенность) — этого поправка не умеет: unsupported: true, остальное пустое.
 - Ничего не выдумывай: числа, даты и время — только названные в поправке или прямо из неё вытекающие («на час позже»).`;
 }
 
 const optText = z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim() : null), z.string().nullable());
+/** Номер записи: «r2», «2», 2 → «r2». */
+const refOf = (v: unknown) => {
+  const k = String(v).trim().toLowerCase();
+  return /^\d+$/.test(k) ? `r${k}` : k;
+};
 const EditItem = z.object({ ref: z.union([z.string(), z.number()]), set: z.record(z.unknown()).optional() }).passthrough();
 /** Ответ модели. Пункт без set — поля рядом с ref (так тоже бывает). */
 export const CorrectSchema = z.object({
@@ -176,10 +197,14 @@ export const CorrectSchema = z.object({
       const r = EditItem.safeParse(x);
       if (!r.success) return [];
       const { ref, set, ...rest } = r.data;
-      const k = String(ref).trim().toLowerCase();
-      return [{ ref: /^\d+$/.test(k) ? `r${k}` : k, set: (set ?? rest) as Record<string, unknown> }];
+      return [{ ref: refOf(ref), set: (set ?? rest) as Record<string, unknown> }];
     }),
   ),
+  remove: z.preprocess((v) => (Array.isArray(v) ? v : v == null ? [] : [v]), z.array(z.unknown())).transform((list) =>
+    list.filter((x) => typeof x === "string" || typeof x === "number").map(refOf),
+  ),
+  /** Новые записи — сырые, в видах ADD_KINDS; проверяет их разбор сообщения (addOf). */
+  add: z.preprocess((v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {}), z.record(z.unknown())),
   clarify: optText,
   unsupported: z.boolean().catch(false),
   reply: optText,
@@ -195,7 +220,7 @@ type Check = Planned | { problem: string } | { unsupported: true };
 /** Модель не назвала ни одного поля, которое можно поменять, — переспросить. */
 export const NOT_UNDERSTOOD = "Не поняла, что поправить в этом ответе. Скажите иначе — например, «не в 15, а в 17».";
 /** Просят сменить вид записи — честно: не умеет. */
-export const KIND_CHANGE = "Поменять вид записи (план, задача, заметка, дневник…) я пока не умею. Нажмите «↩ Отменить» и скажите заново, как нужно.";
+export const KIND_CHANGE = "Так поменять эту запись я пока не умею (привычки, память и профиль — только заново). Нажмите «↩ Отменить» и скажите заново, как нужно.";
 /** Ответ отменили «↩ Отменить» (в том числе пока поправка ждала модель) — ничего не пишется. */
 export const ALREADY_UNDONE = "Этот ответ уже отменён — поправлять нечего.";
 
@@ -465,6 +490,71 @@ export async function applyPlanned(s: Store, p: Planned) {
     case "dates": return s.updateDate(p.x.id, patch);
   }
 }
+
+/** Убрать запись ответа (внутри транзакции). Возвращает «как было» для журнала (kind edit): «↩ Отменить» вернёт этим
+ *  статус, а у денег, показателя и дневника — снимет пометку deleted (Pipeline.undoOne). У плана снимаются напоминания. */
+export async function removeRow(s: Store, x: Editable): Promise<Record<string, unknown>> {
+  switch (x.tbl) {
+    case "events":
+      await s.cancelReminders("event", x.id);
+      await s.updateEvent(x.id, { status: "deleted" });
+      return { status: x.row.status };
+    case "tasks":
+      await s.updateTask(x.id, { status: "deleted" });
+      return { status: x.row.status };
+    case "notes":
+      await s.updateNote(x.id, { status: "deleted" });
+      return { status: x.row.status };
+    case "dates":
+      await s.updateDate(x.id, { status: "deleted" });
+      return { status: x.row.status };
+    case "money": await s.setMoneyDeleted(x.id, true); return { deleted: 0 };
+    case "metrics": await s.setMetricDeleted(x.id, true); return { deleted: 0 };
+    case "diary": await s.setDiaryDeleted(x.id, true); return { deleted: 0 };
+  }
+}
+
+/** Виды новых записей поправки — как у разбора сообщения (parse.ts ParseSchema). */
+const ADD_KINDS: readonly string[] = ["events", "tasks", "money", "metrics", "diary", "stash", "dates"];
+/** Виды разбора, которых поправка не заводит: привычка, память, профиль — честное «не умею» (KIND_CHANGE). */
+const NOT_ADDED = ["habits", "suggest_habits", "habit_marks", "memory", "traits"];
+/** Новые записи поправки (смена вида): тот же разбор, что у сообщения, — те же проверки (виды — как названы: literal).
+ *  Что-то отброшено или вид непонятен — вопрос, а не запись части: иначе «это задача, а не план» убрал бы план и ничего не
+ *  записал. Привычка, память, профиль — unsupported. День по умолчанию (деньги, показатель, дневник без day_iso) — день
+ *  исходного ответа (day), а не поправки: вчерашняя трата, ставшая дневником, остаётся вчерашней. null — новых записей нет. */
+export function addOf(
+  raw: Record<string, unknown>, ctx: { today: string; now: string; day: string },
+): { parsed: Parsed; count: number } | { problem: string } | { unsupported: true } | null {
+  const pick: Record<string, unknown> = { date_iso: ctx.day };
+  let asked = 0;
+  for (const [k, v] of Object.entries(raw)) {
+    // Одна запись объектом, а не списком, — тоже запись; пустое — ничего.
+    const list = Array.isArray(v) ? v : v && typeof v === "object" ? (Object.keys(v).length ? [v] : []) : v == null || v === "" ? [] : [v];
+    if (!list.length) continue;
+    if (NOT_ADDED.includes(k)) return { unsupported: true };
+    if (!ADD_KINDS.includes(k)) return { problem: NOT_UNDERSTOOD };
+    pick[k] = list;
+    asked += list.length;
+  }
+  if (!asked) return null;
+  const r = normalize(pick, { today: ctx.today, now: ctx.now, text: "", literal: true });
+  if (r.clarify) return { problem: r.clarify };
+  const count = r.events.length + r.tasks.length + r.money.length + r.metrics.length + r.diary.length + r.stash.length + r.dates.length;
+  if (r.dropped.length || count < asked) {
+    if (r.dropped.length) console.warn("[correct] новые записи:", r.dropped.join("; "));
+    return { problem: NOT_UNDERSTOOD };
+  }
+  const parsed: Parsed = {
+    ...r, summary: "", tags: [], memory: [], traits: [], habits: [], marks: [], edits: [],
+    suggest: { habits: [], tasks: [], remind: null }, question: null, lookup: null, shelves: [], search: [], draw: null,
+  };
+  return { parsed, count };
+}
+
+/** Строка ответа о новой записи поправки: «＋ Встреча с Петей: до 9 ноября, Пн». */
+export const addLine = (c: Change) => `＋ ${html(c.title)}${c.detail ? `: ${html(c.detail)}` : ""}`;
+/** Строка ответа об убранной записи: «✕ Встреча с Петей — убрала». */
+export const removeLine = (x: AnswerRow) => `✕ ${html(cardOf(x).title)} — убрала`;
 
 /** Запись снова из базы — перед записью поправки (пока модель думала, её могли поправить мышью) и для карточки после неё. */
 export const reload = (s: Store, x: AnswerRow) => loadRow(s, x.tbl, x.id);

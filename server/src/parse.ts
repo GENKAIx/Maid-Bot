@@ -437,7 +437,8 @@ export function timeInTitle(title: string): { title: string; time: string } | nu
 }
 
 /** Проверить и привести ответ модели. Неверные даты и время отбрасываются, а не угадываются. */
-export function normalize(raw: unknown, ctx: { today: string; now: string; text: string }): Parsed {
+/** literal — виды записей как названы (поправка «это задача, а не план»): задача со временем в названии остаётся задачей. */
+export function normalize(raw: unknown, ctx: { today: string; now: string; text: string; literal?: boolean }): Parsed {
   const r = ParseSchema.parse(raw ?? {});
   const dropped: string[] = [];
   const day = (s: string | null | undefined, field: string, opts: { future?: boolean; past?: boolean } = {}) => {
@@ -489,7 +490,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
   for (const t of r.tasks) {
     const due = day(t.due_date, "tasks.due_date");
     const at = timeInTitle(t.title);
-    if (at && (due ?? ctx.today) >= ctx.today) {
+    if (at && !ctx.literal && (due ?? ctx.today) >= ctx.today) {
       events.push({ title: at.title, date: due ?? (at.time > ctx.now ? ctx.today : addDays(ctx.today, 1)), time: at.time, endTime: null, details: "" });
       continue;
     }

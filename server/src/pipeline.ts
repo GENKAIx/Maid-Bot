@@ -14,8 +14,9 @@ import { addTraitFromChat, traitPrompt } from "./profile.ts";
 import { SHELVES, notesData, sameNote } from "./notes.ts";
 import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, moneyCard, noteCard, taskCard, traitCard } from "./cards.ts";
 import {
-  ALREADY_UNDONE, CorrectSchema, KIND_CHANGE, NOT_UNDERSTOOD, alive, answerCards, answerRows, applyPlanned, cardOf, changeLine, correctPrompt, editable,
-  goneReply, planEdit, refKey, reload, turned, type CorrectOut, type Planned,
+  ALREADY_UNDONE, CorrectSchema, KIND_CHANGE, NOT_UNDERSTOOD, addLine, addOf, alive, answerCards, answerRows, applyPlanned, cardOf, changeLine, correctPrompt, editable,
+  removeLine, removeRow,
+  goneReply, planEdit, refKey, reload, turned, type CorrectOut, type Editable, type Planned,
 } from "./correct.ts";
 
 // Сообщение → запись → разбор → действия → ответ.
@@ -781,7 +782,9 @@ export class Pipeline {
         // Поправка к ответу (kind edit, correct.ts) помнит прежние поля — их и вернуть; записанное ответом (add) — убрать.
         // Журнал идёт от новых к старым: сначала откатываются поправки, потом сама запись.
         const restore = a.kind === "edit" && before;
-        if (a.tbl === "diary") await (restore ? s.updateDiary(a.row_id, before) : s.setDiaryDeleted(a.row_id, true));
+        // Поправка убрала деньги, показатель или дневник (removeRow) — вернуть: снять пометку deleted.
+        const unremove = restore && "deleted" in before;
+        if (a.tbl === "diary") await (unremove ? s.setDiaryDeleted(a.row_id, false) : restore ? s.updateDiary(a.row_id, before) : s.setDiaryDeleted(a.row_id, true));
         else if (a.tbl === "events") {
           await s.cancelReminders("event", a.row_id);
           if (a.kind === "add") await s.updateEvent(a.row_id, { status: "deleted" });
@@ -795,9 +798,9 @@ export class Pipeline {
           else if (before) await s.updateTask(a.row_id, before);
         } else if (a.tbl === "dates") await s.updateDate(a.row_id, a.kind === "add" ? { status: "deleted" } : before ?? { status: "active" });
         else if (a.tbl === "memory") await s.setMemoryStatus(a.row_id, a.kind === "add" ? "superseded" : before?.status ?? "active");
-        else if (a.tbl === "metrics") await (restore ? s.updateMetric(a.row_id, before) : s.setMetricDeleted(a.row_id, true));
+        else if (a.tbl === "metrics") await (unremove ? s.setMetricDeleted(a.row_id, false) : restore ? s.updateMetric(a.row_id, before) : s.setMetricDeleted(a.row_id, true));
         else if (a.tbl === "traits") await s.updateTrait(a.row_id, a.kind === "add" ? { status: "removed" } : before ?? {});
-        else if (a.tbl === "money") await (restore ? s.updateMoney(a.row_id, before) : s.setMoneyDeleted(a.row_id, true));
+        else if (a.tbl === "money") await (unremove ? s.setMoneyDeleted(a.row_id, false) : restore ? s.updateMoney(a.row_id, before) : s.setMoneyDeleted(a.row_id, true));
         else if (a.tbl === "notes") await s.updateNote(a.row_id, a.kind === "add" ? { status: "deleted" } : before ?? {});
         else if (a.tbl === "habits") {
           // Правка мышью (POST /api/habits/:id) помнит и название, конец, «без напоминаний», время напоминаний; старые записи — только статус.
@@ -862,7 +865,7 @@ export class Pipeline {
     const keep = async (reply: string, clarify = false, asked?: string) => {
       const o: CorrectSaved = { changed: [], clarify, emotion: "neutral", ...(clarify && asked ? { asked } : {}) };
       await s.setMessage(message.id, { reply, parse_json: JSON.stringify(o) });
-      return { reply, o };
+      return { reply, o, wrote: false };
     };
     // Без записи: ответ сохраняется в служебном сообщении (state done — повтор вернёт его же, а не спросит модель снова).
     // Сообщение забирает claimMessage: из двух одновременных запросов с одним id итог пишет один.
@@ -934,6 +937,20 @@ export class Pipeline {
         console.warn("[correct] нет записи", e.ref);
       }
     }
+    // Убрать (remove): убранную запись не правят. Номер не из списка — мимо, как у edits.
+    const removes = new Set<string>();
+    for (const ref of out.remove) {
+      if (byRef.has(ref)) removes.add(ref);
+      else {
+        dropped++;
+        console.warn("[correct] нет записи", ref);
+      }
+    }
+    for (const ref of removes) sets.delete(ref);
+    // Новые записи (смена вида) — тем же разбором, что сообщение; не прошли проверку — вопрос, ничего не пишем.
+    const adds = addOf(out.add, { today, now: timeOf(at, u.tz), day: orig.day_key });
+    if (adds && "unsupported" in adds) return say(KIND_CHANGE);
+    if (adds && "problem" in adds) return say(esc(adds.problem), true, asked);
 
     // Дальше всё — в транзакции и по записям из базы сейчас: пока модель думала, ответ могли отменить, а запись — подвинуть
     // мышью или сделать задачей. Проверка, длительность плана и «как было» в журнале — от записи сейчас, а не до запроса.
@@ -953,20 +970,29 @@ export class Pipeline {
         if (!x || !alive(x) || !editable(x)) return keep(goneReply(x ?? was));
         checks.push(planEdit(x, set, today));
       }
+      const gone: Editable[] = [];
+      for (const ref of removes) {
+        const was = byRef.get(ref)!;
+        await s.lockRow(was.tbl, was.id);
+        const x = await reload(s, was);
+        if (!x || !alive(x) || !editable(x)) return keep(goneReply(x ?? was));
+        gone.push(x);
+      }
       if (checks.some((c) => "unsupported" in c)) return keep(KIND_CHANGE);
       // Неверное значение или поле, которого у записи нет, — ничего не пишем, спрашиваем.
       const problem = checks.find((c): c is { problem: string } => "problem" in c);
       if (problem) return keep(esc(problem.problem), true, asked);
       const plans = checks.filter((c): c is Planned => "patch" in c && Object.keys(c.patch).length > 0);
       // «Так и записано» — только когда все названные поля и так такие; номер мимо — не поняла.
-      if (!plans.length) return sets.size && !dropped ? keep("Так и записано — ничего не меняла.") : keep(NOT_UNDERSTOOD, true, asked);
+      if (!plans.length && !gone.length && !adds) return sets.size && !dropped ? keep("Так и записано — ничего не меняла.") : keep(NOT_UNDERSTOOD, true, asked);
       // Реплика модели — только если сделано всё, что она назвала: номер мимо или поле без перемен — и её «перенесла и поменяла
-      // категорию» была бы неправдой. Тогда — нейтральное «Поправила.» и строки «✎ …» о том, что правда поменялось.
+      // категорию» была бы неправдой. Тогда — нейтральное «Поправила.» («Убрала.», если только убрала) и строки о том, что правда поменялось.
       const whole = !dropped && plans.length === sets.size;
-      const head = whole && out.reply ? esc(out.reply) : "Поправила.";
+      const head = whole && out.reply ? esc(out.reply) : !plans.length && !adds ? "Убрала." : "Поправила.";
       const rest = dropped ? "\nОстального в этом ответе не нашла — не меняла." : "";
       const lines: string[] = [];
       const touched: number[] = [];
+      const changed = plans.map((pl) => refKey(pl.x));
       for (const pl of plans) {
         const was = cardOf(pl.x);
         await s.logAction(u.id, orig.id, "edit", pl.x.tbl, pl.x.id, pl.before);
@@ -979,15 +1005,28 @@ export class Pipeline {
         }
         lines.push(changeLine(was, cardOf((await reload(s, pl.x))!)));
       }
+      for (const x of gone) {
+        await s.logAction(u.id, orig.id, "edit", x.tbl, x.id, await removeRow(s, x));
+        lines.push(removeLine(x));
+      }
+      if (adds) {
+        // Под исходным ответом (kind add): карточки ответа, следующая поправка и «↩ Отменить» видят их как записи ответа.
+        const got = await this.apply(u, orig, adds.parsed, at);
+        touched.push(...got.touched);
+        for (const c of got.changes) {
+          lines.push(addLine(c));
+          if (c.ref) changed.push(refKey(c.ref));
+        }
+      }
       const clash = touched.length ? (await findClash(s, u.id, touched)) ?? undefined : undefined;
       const reply = `${head}\n${lines.join("\n")}${rest}${clash ? "\n" + clashLine(clash, esc) : ""}`;
-      const o: CorrectSaved = { changed: plans.map((pl) => refKey(pl.x)), clarify: false, emotion: out.emotion, ...(clash ? { clash } : {}) };
+      const o: CorrectSaved = { changed, clarify: false, emotion: out.emotion, ...(clash ? { clash } : {}) };
       await s.setMessage(message.id, { reply, parse_json: JSON.stringify(o) });
-      return { reply, o };
+      return { reply, o, wrote: true };
     });
     // Тот же id уже записал другой запрос — второй раз не пишем, отдаём его итог.
     if (!saved) return stored();
-    if (saved.o.changed.length) this.changed(u);
+    if (saved.wrote) this.changed(u); // и только убранное: changed его не называет, а списки (Telegram) обновить надо
     return view(saved.reply, saved.o);
   }
 

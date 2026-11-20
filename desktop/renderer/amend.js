@@ -67,7 +67,8 @@ function amendRoll(oldText, newText) {
  *  «⚠ …», «остального не нашла») — как есть. В переписку уходит весь текст. */
 function amendText(text) {
   const [first, ...rest] = String(text ?? "").split("\n");
-  return [first, ...rest.filter((l) => !l.startsWith("✎ "))].join("\n");
+  // «✎ было → стало», «✕ … — убрала», «＋ новая запись» показывают карточки (прокрутка, зачёркнутая, въехавшая).
+  return [first, ...rest.filter((l) => !/^[✎✕＋] /.test(l))].join("\n");
 }
 
 // --- облачко ---

@@ -172,19 +172,142 @@ test("неверное значение — вопрос и никакой за�
   assert.ok((await store.actionsOf(r.messageId)).every((a) => a.kind === "add"), "в журнале — только записи ответа");
 });
 
-test("вид записи не меняется: честный ответ и «Отменить», ничего не записано", async () => {
+test("чего поправка не умеет (привычка, память) — честный ответ и «Отменить», ничего не записано", async () => {
   const { store, u, say, fix } = await setup([
     meeting(),
-    { unsupported: true, reply: "Сделала задачей!", edits: [{ ref: "r1", set: { time: "17:00" } }] },
+    { unsupported: true, reply: "Сделала привычкой!", edits: [{ ref: "r1", set: { time: "17:00" } }], remove: ["r1"] },
   ]);
   const r = await say("завтра в 15 встреча с Петей", "1");
-  const c = await fix(r.messageId, "это задача, а не план", "c1");
-  assert.match(c.text, /вид записи/);
+  const c = await fix(r.messageId, "сделай это привычкой", "c1");
+  assert.match(c.text, /не умею/);
   assert.match(c.text, /«↩ Отменить»/);
   assert.doesNotMatch(c.text, /Сделала/);
   assert.deepEqual(c.changed, []);
-  assert.equal((await store.event(r.changes![0].ref!.id))!.time, "15:00");
+  const ev = (await store.event(r.changes![0].ref!.id))!;
+  assert.deepEqual([ev.time, ev.status], ["15:00", "active"]);
   assert.equal((await store.openTasks(u.id)).length, 0);
+});
+
+test("«в задачи не надо»: задача убрана, трата осталась; карточки — без задачи; «Отменить» убирает и трату", async () => {
+  const { store, u, calls, pipe, say, fix } = await setup([
+    {
+      summary: "s",
+      tasks: [{ title: "Забрать гель из пункта Ozon" }],
+      money: [{ kind: "expense", amount: 1097, currency: "RUB", category: "дом", note: "Ozon, гель для стирки" }],
+    },
+    { remove: ["r1"], reply: "Убрала из задач, трату оставила.", emotion: "neutral" },
+  ]);
+  const r = await say("заказал гель для стирки на озоне 1097, надо забрать", "1");
+  const [task, money] = r.changes!.map((x) => x.ref!);
+  assert.deepEqual([task.tbl, money.tbl], ["tasks", "money"]);
+
+  const c = await fix(r.messageId, "в задачи добавлять не надо", "c1");
+  assert.equal((await store.task(task.id))!.status, "deleted");
+  assert.equal((await store.money(money.id))!.deleted, 0);
+  assert.deepEqual(c.changes.map((x) => x.ref), [money], "карточка задачи ушла, трата — на месте");
+  assert.deepEqual(c.changed, []);
+  assert.match(c.text, /^Убрала из задач, трату оставила\.\n✕ Забрать гель из пункта Ozon — убрала$/);
+  assert.equal((await store.openTasks(u.id)).length, 0);
+  assert.match(calls[1][0].content, /"remove"/, "модели объяснено, как убрать запись");
+
+  await pipe.undo(u);
+  assert.equal((await store.task(task.id))!.status, "deleted", "отмена ответа убирает задачу и после возврата из поправки");
+  assert.equal((await store.money(money.id))!.deleted, 1);
+  assert.equal(await pipe.undo(u), "Нечего отменять.");
+});
+
+test("убрать: каждое — по-своему (план без напоминаний, дневник, деньги, заметка, дата); все убраны — поправлять нечего", async () => {
+  const { store, say, fix } = await setup([
+    {
+      ...meeting(), diary: [{ section: "food", text: "овсянка" }],
+      money: [{ kind: "expense", amount: 300, category: "еда", note: "кофе" }],
+      stash: [{ shelf: "movies", title: "Дюна" }], dates: [{ title: "ДР мамы", date_iso: "2026-12-01", type: "birthday" }],
+    },
+    { remove: ["r1", "r2", "r3", "r4", "r5"] },
+  ]);
+  const r = await say("всё сразу", "1");
+  const refs = r.changes!.map((x) => x.ref!);
+  assert.deepEqual(refs.map((x) => x.tbl), ["diary", "events", "notes", "dates", "money"]);
+  const ev = refs[1].id;
+  assert.ok((await store.pendingReminders("event", ev)).length > 0);
+  const c = await fix(r.messageId, "ничего этого не записывай", "c1");
+  assert.equal(c.text.split("\n").filter((l) => l.startsWith("✕")).length, 5);
+  assert.match(c.text, /^Убрала\.\n/, "своей реплики нет — нейтральная");
+  assert.deepEqual(c.changes, []);
+  assert.equal((await store.diaryRow(refs[0].id))!.deleted, 1);
+  assert.equal((await store.event(ev))!.status, "deleted");
+  assert.deepEqual(await store.pendingReminders("event", ev), [], "напоминания сняты");
+  assert.equal((await store.note(refs[2].id))!.status, "deleted");
+  assert.equal((await store.date(refs[3].id))!.status, "deleted");
+  assert.equal((await store.money(refs[4].id))!.deleted, 1);
+  const again = await fix(r.messageId, "не в 15, а в 17", "c2");
+  assert.match(again.text, /Записей этого ответа уже нет/);
+});
+
+test("«это задача, а не план»: план убран (без напоминаний), задача записана под тем же ответом; «Отменить» убирает её", async () => {
+  const { store, u, pipe, say, fix } = await setup([
+    meeting(),
+    { remove: ["r1"], add: { tasks: [{ title: "Встреча с Петей", due_date: "2026-11-09", priority: "normal" }] }, reply: "Сделала задачей." },
+  ]);
+  const r = await say("завтра в 15 встреча с Петей", "1");
+  const ev = r.changes![0].ref!.id;
+  const c = await fix(r.messageId, "это задача, а не план", "c1");
+  assert.equal((await store.event(ev))!.status, "deleted");
+  assert.deepEqual(await store.pendingReminders("event", ev), []);
+  const [t] = await store.openTasks(u.id);
+  assert.deepEqual([t.title, t.due_date, t.message_id], ["Встреча с Петей", "2026-11-09", r.messageId]);
+  assert.deepEqual(c.changes.map((x) => x.ref), [{ tbl: "tasks", id: t.id }]);
+  assert.deepEqual(c.changed, [`tasks:${t.id}`]);
+  assert.match(c.text, /^Сделала задачей\.\n✕ Встреча с Петей — убрала\n＋ Встреча с Петей/);
+
+  await pipe.undo(u);
+  assert.equal((await store.task(t.id))!.status, "deleted");
+  assert.equal((await store.event(ev))!.status, "deleted");
+  assert.equal(await pipe.undo(u), "Нечего отменять.");
+});
+
+test("сменить вид: трата → дневник, задача → заметка на полку; новую запись следующая поправка видит и правит", async () => {
+  const { store, u, calls, say, fix } = await setup([
+    { summary: "s", tasks: [{ title: "Посмотреть Дюну" }], money: [{ kind: "expense", amount: 500, category: "еда", note: "ужин" }] },
+    { remove: ["r2"], add: { diary: [{ section: "food", text: "ужин в кафе" }] } },
+    { remove: ["r1"], add: { stash: [{ shelf: "movies", title: "Дюна" }] } },
+    { edits: [{ ref: "r2", set: { title: "Дюна 2" } }] },
+  ]);
+  const r = await say("надо посмотреть дюну, ужин 500", "1");
+  const [task, money] = r.changes!.map((x) => x.ref!);
+  await fix(r.messageId, "ужин — это в дневник, а не трата", "c1");
+  assert.equal((await store.money(money.id))!.deleted, 1);
+  const food = (await store.diaryOf(u.id, "2026-11-08")).find((d) => d.section === "food")!;
+  assert.equal(food.text, "ужин в кафе");
+  const c2 = await fix(r.messageId, "дюну — на полку фильмов, не в задачи", "c2");
+  assert.equal((await store.task(task.id))!.status, "deleted");
+  const note = (await store.notesOf(u.id)).find((n) => n.title === "Дюна")!;
+  assert.deepEqual(c2.changes.map((x) => x.ref), [{ tbl: "diary", id: food.id }, { tbl: "notes", id: note.id }]);
+  await fix(r.messageId, "назови Дюна 2", "c3");
+  const sys = calls[3][0].content;
+  assert.match(sys, /r1 дневник: \{"section":"food","text":"ужин в кафе"/);
+  assert.match(sys, /r2 заметка «на потом»: \{"shelf":"film","title":"Дюна"/);
+  assert.doesNotMatch(sys, /^r\d+ (задача|деньги):/m, "убранных записей модель не видит");
+  assert.equal((await store.note(note.id))!.title, "Дюна 2");
+});
+
+test("новая запись без нужного (план без дня) — вопрос, и ничего не убрано; номер мимо в remove — не поняла", async () => {
+  const { store, u, say, fix } = await setup([
+    { summary: "s", tasks: [{ title: "Позвонить маме" }] },
+    { remove: ["r1"], add: { events: [{ title: "Позвонить маме", time: "18:00" }] } },
+    { remove: ["r7"] },
+  ]);
+  const r = await say("надо позвонить маме", "1");
+  const t = r.changes![0].ref!.id;
+  const c = await fix(r.messageId, "это план на 18", "c1");
+  assert.equal(c.clarify, true);
+  assert.match(c.text, /На какой день «Позвонить маме»\?/);
+  assert.equal((await store.task(t))!.status, "open");
+  assert.deepEqual(await store.eventsBetween(u.id, "2026-11-01", "2026-12-31"), []);
+  const c2 = await fix(r.messageId, "убери вторую", "c2");
+  assert.equal(c2.text, "Не поняла, что поправить в этом ответе. Скажите иначе — например, «не в 15, а в 17».");
+  assert.equal((await store.task(t))!.status, "open");
+  assert.ok((await store.actionsOf(r.messageId)).every((a) => a.kind === "add"), "ни одной поправки в журнале");
 });
 
 test("в ответе нечего поправить — честно и без запроса к модели", async () => {
@@ -402,10 +525,10 @@ test("поле, которого у записи нет, — вопрос, а н
   assert.equal(c1.text, "Не поняла, что поправить в этом ответе. Скажите иначе — например, «не в 15, а в 17».");
   assert.equal(c1.clarify, true);
   const c2 = await fix(r.messageId, "это задача, а не план", "c2");
-  assert.match(c2.text, /вид записи/);
+  assert.match(c2.text, /не умею/);
   assert.doesNotMatch(c2.text, /Так и записано|Сделала/);
   const c3 = await fix(r.messageId, "это пульс, а не вес", "c3");
-  assert.match(c3.text, /вид записи/);
+  assert.match(c3.text, /не умею/);
   assert.equal((await store.metric(metric.id))!.label, "Вес");
   // Настоящее «то же значение»: время и так 15:00.
   const c4 = await fix(r.messageId, "в 15, как и было", "c4");
@@ -873,4 +996,62 @@ test("план стал задачей, пока поправка ждёт мо�
   const ev = (await store.event(id))!;
   assert.deepEqual([ev.status, ev.time], ["tasked", "15:00"]);
   assert.ok((await store.actionsOf(r.messageId)).every((a) => a.kind === "add"), "в журнале ответа — ни одной поправки");
+});
+
+test("смена вида: привычка — «не умею», неизвестный вид — вопрос, и ничего не убрано; одна запись объектом — тоже запись", async () => {
+  const { store, u, say, fix } = await setup([
+    meeting(),
+    { remove: ["r1"], add: { habits: [{ title: "Встреча", days: "1234567" }] }, reply: "Сделала привычкой!" },
+    { remove: ["r1"], add: { task: [{ title: "Встреча с Петей" }] }, reply: "Сделала задачей." },
+    { remove: ["r1"], add: { tasks: { title: "Встреча с Петей" } }, reply: "Сделала задачей." },
+  ]);
+  const r = await say("завтра в 15 встреча с Петей", "1");
+  const ev = r.changes![0].ref!.id;
+  const c1 = await fix(r.messageId, "сделай привычкой", "c1");
+  assert.match(c1.text, /не умею/);
+  const c2 = await fix(r.messageId, "это задача", "c2");
+  assert.doesNotMatch(c2.text, /Сделала/);
+  assert.equal(c2.clarify, true);
+  assert.equal((await store.event(ev))!.status, "active", "план на месте");
+  assert.ok((await store.actionsOf(r.messageId)).every((a) => a.kind === "add"), "ни одной поправки в журнале");
+  const c3 = await fix(r.messageId, "это задача", "c3");
+  assert.match(c3.text, /^Сделала задачей\./);
+  assert.equal((await store.event(ev))!.status, "deleted");
+  assert.deepEqual((await store.openTasks(u.id)).map((t) => t.title), ["Встреча с Петей"]);
+});
+
+test("поправка, которая только убрала, — тоже «данные поменялись» (список в Telegram обновится)", async () => {
+  const { store, u, say, fix, pipe } = await setup([meeting(), { remove: ["r1"] }]);
+  let calls = 0;
+  pipe.onChange = () => void calls++;
+  const r = await say("завтра в 15 встреча с Петей", "1");
+  calls = 0;
+  await fix(r.messageId, "не надо", "c1");
+  assert.equal(calls, 1);
+  void store; void u;
+});
+
+test("смена вида вчерашней записи: новая — в тот же день, что ответ, а не в день поправки", async () => {
+  const { store, u, pipe, fix } = await setup([
+    { summary: "s", money: [{ kind: "expense", amount: 500, category: "еда", note: "ужин" }] },
+    { remove: ["r1"], add: { diary: [{ section: "food", text: "ужин в кафе", day_iso: null }] } },
+  ]);
+  const r = await pipe.handle({ user: u, source: "telegram", sourceId: "1", text: "ужин 500", at: new Date(AT.getTime() - 24 * 3600e3) });
+  assert.equal((await store.money(r.changes![0].ref!.id))!.day_key, "2026-11-07");
+  await fix(r.messageId, "это в дневник", "c1");
+  assert.ok((await store.diaryOf(u.id, "2026-11-07")).some((d) => d.text === "ужин в кафе"), "вчерашний день");
+  assert.ok(!(await store.diaryOf(u.id, "2026-11-08")).some((d) => d.text === "ужин в кафе"));
+});
+
+test("«это задача, а не план»: время в названии задачи — всё равно задача, как просили", async () => {
+  const { store, u, say, fix } = await setup([
+    meeting(),
+    { remove: ["r1"], add: { tasks: [{ title: "Встреча с Петей в 15:00", due_date: "2026-11-09" }] }, reply: "Сделала задачей." },
+  ]);
+  const r = await say("завтра в 15 встреча с Петей", "1");
+  const c = await fix(r.messageId, "это задача, а не план", "c1");
+  const [t] = await store.openTasks(u.id);
+  assert.equal(t?.title, "Встреча с Петей в 15:00");
+  assert.deepEqual(await store.eventsBetween(u.id, "2026-11-01", "2026-12-31"), [], "нового плана нет");
+  assert.deepEqual(c.changes.map((x) => x.kind), ["task"]);
 });
