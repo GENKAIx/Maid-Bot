@@ -1,0 +1,15 @@
+{
+ "about": "Пишет tools/maid-look/make_previews.py, руками не править: LOOK_VERSION из desktop/renderer/look.js и sha256 исходной анимации (src) и её маски (keep), по которым сделаны картинки этой папки.",
+ "version": 2,
+ "size": [
+  360,
+  384
+ ],
+ "quality": 88,
+ "files": {
+  "hello.webp": {
+   "src": "92c0a200ceea3378b131aac5204111699a3b0741bb2f33b161859dee092e843f",
+   "keep": "854a01fdb43c3a15b3f6f8c3e6fc877f9004030b99a6d7a3c0855f489324800d"
+  }
+ }
+}
