@@ -141,6 +141,17 @@ function lineFits(v, hour) {
   if (v.day && (typeof dayMood === "undefined" || dayMood !== v.day)) return false;
   return true;
 }
+// Обращение из «Персонализации → О вас» (20.11.2026): сервер шлёт в /api/today слово call — «хозяин», «хозяйка» или имя;
+// widget.js ставит его setLineCall на каждом опросе. В репликах «хозяин» (только слово целиком, как обращение; «хозяина» и
+// другие падежи не трогаем) заменяется им, заглавная остаётся заглавной — как callAs на сервере (server/src/you.ts).
+let lineCall = "хозяин";
+function setLineCall(word) {
+  lineCall = typeof word === "string" && word.trim() ? word.trim() : "хозяин";
+}
+function lineCallIn(text) {
+  if (lineCall === "хозяин") return text;
+  return text.replace(/(^|[^А-Яа-яЁё])([Хх])озяин(?![А-Яа-яЁё])/g, (_, pre, h) => pre + (h === "Х" ? lineCall[0].toUpperCase() + lineCall.slice(1) : lineCall));
+}
 // Вариант целиком ({ t, m }) — для тычков, где нужна и эмоция.
 function lineItem(key, vars = {}) {
   const all = LINES[key] ?? [];
@@ -158,7 +169,7 @@ function lineItem(key, vars = {}) {
   // Реплика со словами с характером («[крик]…[/]», wordfx.js) получает невидимый знак в начале: по нему say() понимает, что
   // пометки в тексте — свои, и разбирает их. Квадратные скобки в подставленных значениях пометкой стать не должны.
   const own = /\[\/\]/.test(v.t) ? WORDFX_OWN : "";
-  return { m: v.m ?? "neutral", t: own + v.t.replace(/\{(\w+)\}/g, (_, k) => (own ? String(vars[k] ?? "").replace(/[\[\]]/g, "") : vars[k] ?? "")) };
+  return { m: v.m ?? "neutral", t: own + lineCallIn(v.t).replace(/\{(\w+)\}/g, (_, k) => (own ? String(vars[k] ?? "").replace(/[\[\]]/g, "") : vars[k] ?? "")) };
 }
 function line(key, vars) {
   return lineItem(key, vars).t;

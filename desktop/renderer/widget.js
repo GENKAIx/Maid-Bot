@@ -2035,6 +2035,7 @@ async function load() {
     data = fresh;
     syncMarks(); // день сервера и часы идут — «через 2 часа», «завтра» в метке не устаревают (перерисовка — только если поменялись)
     lookSync(data.maid_hair, data.maid_eyes); // цвета волос и глаз с сайта (maidlook.js)
+    setLineCall(data.call); // обращение из «Персонализации» (lines.js): «хозяйка» или имя вместо «хозяин»
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
     hpSync(data); // перекаты огоньков, рубежи серий, «все привычки дня» (habitparty.js) — до сравнения
