@@ -965,6 +965,17 @@ export function createApi(deps: ApiDeps) {
       const b = parseBody(z.object({ messageId: z.number().int().optional() }), await readJson(req));
       return { text: await pipeline.undo(u, b.messageId) };
     }
+    // Поправка к ответу (строка «поправить этот ответ…» под облачком виджета): text меняет только записи ответа messageId
+    // (correct.ts). id — от клиента: повтор с тем же id вернёт прежний итог без второй записи.
+    if (m === "POST" && p === "/api/correct") {
+      const b = parseBody(
+        z.object({ messageId: z.number().int(), text: z.string().trim().min(1).max(500), id: z.string().min(1).max(80).optional() }),
+        await readJson(req),
+      );
+      const r = await pipeline.correct(u, b.messageId, b.text, { sourceId: b.id ?? crypto.randomUUID() });
+      if (!r) throw new HttpError(404, "нет такого ответа");
+      return r;
+    }
     if (m === "POST" && p === "/api/icons") {
       const b = parseBody(IconsInput, await readJson(req));
       for (const i of b.icons) {

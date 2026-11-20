@@ -18,11 +18,11 @@ interface Report {
 /** Назначения запросов (server/src/llm.ts, USAGE_KINDS). */
 const KIND_NAMES: Record<string, string> = {
   parse: "Разбор сообщений", answer: "Ответы на вопросы", chat: "Разговор", summary: "Вечерний итог",
-  patterns: "Связи в самочувствии", draw: "Рисование", voice: "Голосовые", other: "Другое",
+  patterns: "Связи в самочувствии", draw: "Рисование", voice: "Голосовые", correct: "Поправки к ответам", other: "Другое",
 };
 const KIND_COLORS: Record<string, string> = {
   parse: "var(--accent)", answer: "var(--blue)", chat: "var(--green)", summary: "var(--orange)",
-  patterns: "var(--red)", draw: "#c65fb8", voice: "#2bb3b0", other: "var(--grey)",
+  patterns: "var(--red)", draw: "#c65fb8", voice: "#2bb3b0", correct: "#c9a227", other: "var(--grey)",
 };
 const kindName = (k: string) => KIND_NAMES[k] ?? k;
 

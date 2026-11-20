@@ -1,5 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import { createApi, usageReport } from "../src/api.ts";
@@ -8,7 +9,7 @@ import { config } from "../src/config.ts";
 import { Store } from "../src/db.ts";
 import { callOpenRouterDraw } from "../src/draw.ts";
 import { PgDriver } from "../src/driver.ts";
-import { callLlm, onLlmUsage, type LlmCall, type LlmUsage } from "../src/llm.ts";
+import { USAGE_KINDS, callLlm, onLlmUsage, type LlmCall, type LlmUsage } from "../src/llm.ts";
 import { Pipeline } from "../src/pipeline.ts";
 import { transcribe } from "../src/voice.ts";
 
@@ -154,4 +155,20 @@ test("/api/usage: дни, назначения, итог месяца; без в
   } finally {
     server.close();
   }
+});
+
+test("каждое назначение расхода (USAGE_KINDS) — на сайте со своим названием и своим цветом (Spend.tsx)", () => {
+  // Без строки в KIND_NAMES в «На что ушло» видно сырое «correct · 3», без цвета — полоска цвета «Разбора сообщений».
+  const site = readFileSync(new URL("../../web/src/screens/Spend.tsx", import.meta.url), "utf8");
+  const table = (name: string): Record<string, string> => {
+    const body = site.match(new RegExp(`const ${name}: Record<string, string> = \{([^}]*)\};`))?.[1] ?? "";
+    return Object.fromEntries([...body.matchAll(/(\w+): "([^"]*)"/g)].map((m) => [m[1], m[2]]));
+  };
+  const names = table("KIND_NAMES");
+  const colors = table("KIND_COLORS");
+  for (const k of USAGE_KINDS) {
+    assert.ok(names[k], `нет названия у «${k}»`);
+    assert.ok(colors[k], `нет цвета у «${k}»`);
+  }
+  assert.equal(new Set(USAGE_KINDS.map((k) => colors[k])).size, USAGE_KINDS.length, "цвета не повторяются");
 });

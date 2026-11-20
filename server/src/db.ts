@@ -645,6 +645,8 @@ type Row = Record<string, unknown>;
 const now = () => new Date().toISOString();
 
 export type Table = "diary" | "events" | "tasks" | "dates" | "memory" | "metrics" | "habits" | "habit_marks" | "money" | "traits" | "notes";
+/** Таблицы, строку которых берёт lockRow (у всех есть user_id; у отметок привычек его нет). */
+const LOCKABLE = ["messages", "diary", "events", "tasks", "dates", "memory", "metrics", "habits", "money", "traits", "notes"];
 
 export class Store {
   private constructor(readonly driver: Driver) {}
@@ -693,6 +695,13 @@ export class Store {
 
   transaction<T>(fn: () => Promise<T>): Promise<T> {
     return this.driver.tx(fn);
+  }
+  /** Правка строки по полям — только из списка allowed (журнал отмены возвращает «как было» этим же путём). */
+  private async patchRow(table: string, id: number, patch: Record<string, unknown>, allowed: string[]) {
+    for (const [k, v] of Object.entries(patch)) {
+      if (!allowed.includes(k)) throw new Error(`bad field ${k}`);
+      await this.run(`UPDATE ${table} SET ${k} = ? WHERE id = ?`, v as never, id);
+    }
   }
 
   // --- пользователи ---
@@ -803,6 +812,30 @@ export class Store {
       "SELECT * FROM messages WHERE user_id = ? AND source <> 'import' ORDER BY id DESC LIMIT ?", userId, limit,
     )).reverse();
   }
+  /** Сообщения в ответ на messageId (reply_to), от старых к новым: ответ на уточнение, поправки к ответу. */
+  repliesTo(userId: number, messageId: number): Promise<Message[]> {
+    return this.all<Message>("SELECT * FROM messages WHERE user_id = ? AND reply_to = ? ORDER BY id", userId, messageId);
+  }
+  /** Забрать сообщение: state → done, если ещё не done. false — его уже закончил другой запрос (повтор доставки пришёл,
+   *  пока первый ждал модель); в Postgres второй ждёт строку до конца первой транзакции и видит done. */
+  async claimMessage(id: number): Promise<boolean> {
+    return (await this.run("UPDATE messages SET state = 'done' WHERE id = ? AND state <> 'done'", id)) > 0;
+  }
+  /** Ответ сообщению, пока его не закончили (state не done), — одним запросом, без чтения перед ним: сбой одного из двух
+   *  запросов с тем же id не перезапишет итог другого (поправка к ответу). false — уже done, ответ не тронут. */
+  async replyUnlessDone(id: number, reply: string): Promise<boolean> {
+    return (await this.run("UPDATE messages SET reply = ? WHERE id = ? AND state <> 'done'", reply, id)) > 0;
+  }
+  /** Взять строку до конца транзакции — первой инструкцией, пока в транзакции ничего не прочитано. В Postgres (READ COMMITTED,
+   *  пул соединений) правка поля самим собой держит блокировку строки до COMMIT: вторая транзакция с тем же lockRow ждёт первую
+   *  и потом видит её итог; в SQLite транзакции и так идут по одной. Поправка к ответу и «↩ Отменить» берут строку ответа
+   *  (messages), поправка — ещё и правимую запись. Поле — не из уникального ключа (у messages user_id в нём): так это
+   *  обычная блокировка правки. false — строки нет. */
+  async lockRow(table: Exclude<Table, "habit_marks"> | "messages", id: number): Promise<boolean> {
+    if (!LOCKABLE.includes(table)) throw new Error(`bad table ${table}`);
+    const field = table === "messages" ? "state" : "user_id";
+    return (await this.run(`UPDATE ${table} SET ${field} = ${field} WHERE id = ?`, id)) > 0;
+  }
 
   // --- действия (для отмены) ---
   async logAction(userId: number, messageId: number, kind: string, tbl: Table, rowId: number, before?: unknown) {
@@ -813,6 +846,10 @@ export class Store {
   }
   actionsOf(messageId: number): Promise<ActionRow[]> {
     return this.all<ActionRow>("SELECT * FROM actions WHERE message_id = ? AND undone = 0 ORDER BY id DESC", messageId);
+  }
+  /** Сообщение уже отменяли: в журнале есть его отменённые действия. */
+  async wasUndone(messageId: number): Promise<boolean> {
+    return Boolean(await this.get("SELECT 1 AS x FROM actions WHERE message_id = ? AND undone = 1 LIMIT 1", messageId));
   }
   async markUndone(actionId: number) {
     await this.run("UPDATE actions SET undone = 1 WHERE id = ?", actionId);
@@ -861,6 +898,10 @@ export class Store {
   }
   async setDiaryDeleted(id: number, deleted: boolean) {
     await this.run("UPDATE diary SET deleted = ? WHERE id = ?", deleted ? 1 : 0, id);
+  }
+  /** Поправка к ответу (correct.ts): текст, раздел, подраздел здоровья, день. «Отменить» возвращает прежнее тем же методом. */
+  async updateDiary(id: number, patch: Partial<Pick<DiaryRow, "text" | "section" | "topic" | "day_key">>) {
+    await this.patchRow("diary", id, patch, ["text", "section", "topic", "day_key"]);
   }
 
   // --- планы ---
@@ -1054,6 +1095,10 @@ export class Store {
   activeMemory(userId: number): Promise<(MemoryRow & { user_id: number })[]> {
     return this.all("SELECT * FROM memory WHERE user_id = ? AND status = 'active' ORDER BY id", userId);
   }
+  /** Одна запись памяти (и заменённая — status superseded): карточка «Запомнила» после поправки к ответу (correct.ts). */
+  memoryRow(id: number): Promise<(MemoryRow & { user_id: number }) | undefined> {
+    return this.get<MemoryRow & { user_id: number }>("SELECT * FROM memory WHERE id = ?", id);
+  }
 
   // --- профиль: дебафы и бафы ---
   addTrait(t: Pick<TraitRow, "user_id" | "kind" | "category" | "title" | "note" | "source" | "status" | "evidence" | "message_id">): Promise<number> {
@@ -1105,8 +1150,8 @@ export class Store {
     }
     return this.addMetric({ ...m, note: m.note ?? "", message_id: null });
   }
-  metric(id: number): Promise<MetricRow | undefined> {
-    return this.get<MetricRow>("SELECT * FROM metrics WHERE id = ?", id);
+  metric(id: number): Promise<(MetricRow & { deleted: number }) | undefined> {
+    return this.get<MetricRow & { deleted: number }>("SELECT * FROM metrics WHERE id = ?", id);
   }
   metricsRange(userId: number, from: string, to: string, key?: string): Promise<MetricRow[]> {
     return key
@@ -1126,6 +1171,10 @@ export class Store {
   }
   async setMetricDeleted(id: number, deleted: boolean) {
     await this.run("UPDATE metrics SET deleted = ? WHERE id = ?", deleted ? 1 : 0, id);
+  }
+  /** Поправка к ответу: число, день, пометка (ключ, подпись и единица — от вида показателя, не правятся). */
+  async updateMetric(id: number, patch: Partial<Pick<MetricRow, "value" | "day_key" | "note">>) {
+    await this.patchRow("metrics", id, patch, ["value", "day_key", "note"]);
   }
 
   // --- привычки ---
@@ -1201,6 +1250,14 @@ export class Store {
   }
   async setMoneyDeleted(id: number, deleted: boolean) {
     await this.run("UPDATE money SET deleted = ? WHERE id = ?", deleted ? 1 : 0, id);
+  }
+  /** Одна запись денег (и удалённая — deleted = 1). */
+  money(id: number): Promise<(MoneyRow & { deleted: number }) | undefined> {
+    return this.get<MoneyRow & { deleted: number }>("SELECT * FROM money WHERE id = ?", id);
+  }
+  /** Поправка к ответу: сумма, валюта, трата/доход, категория, на что, день. */
+  async updateMoney(id: number, patch: Partial<Pick<MoneyRow, "amount" | "currency" | "kind" | "category" | "note" | "day_key">>) {
+    await this.patchRow("money", id, patch, ["amount", "currency", "kind", "category", "note", "day_key"]);
   }
 
   // --- напоминания ---

@@ -59,7 +59,8 @@ const Diary = z.object({
   text: str.min(1),
   day_iso: optStr,
 });
-const num = z.preprocess((v) => (typeof v === "string" ? Number(v.replace(",", ".").replace(/\s/g, "")) : v), z.number().finite());
+/** Число от модели: «1 200», «85,3» тоже (поправка к ответу проверяет им суммы и показатели — correct.ts). */
+export const num = z.preprocess((v) => (typeof v === "string" ? Number(v.replace(",", ".").replace(/\s/g, "")) : v), z.number().finite());
 const Metric = z.object({
   key: str.min(1),
   label: optStr,
@@ -260,6 +261,12 @@ export interface ParseContext {
   clarifying?: { original: string; question: string };
 }
 
+/** Две строки о «сегодня» для запроса к модели: день, день недели, время, пояс и даты вчера/завтра/послезавтра
+ *  (разбор и поправка к ответу — correct.ts — видят одно и то же). */
+export const promptHeader = (today: string, now: string, tz: string) =>
+  `Сегодня ${today} (${weekdayLong(today)}), сейчас ${now}, часовой пояс ${tz}.
+Вчера = ${addDays(today, -1)}, завтра = ${addDays(today, 1)}, послезавтра = ${addDays(today, 2)}.`;
+
 export function buildPrompt(ctx: ParseContext, voice: string): string {
   const evs = ctx.events.map((e) => `#${e.id} ${e.date_iso}${e.time ? " " + e.time : ""} — ${e.title}`).join("\n") || "нет";
   const tks = ctx.tasks.map((t) => `#${t.id} ${t.title}${t.due_date ? " (до " + t.due_date + ")" : ""}`).join("\n") || "нет";
@@ -274,8 +281,7 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
   };
   const hab = ctx.habits.map((h) => `#${h.id} ${h.title} (дни ${h.days}${h.end_date ? ", до " + h.end_date : ""}; ${remindOf(h)})`).join("\n") || "нет";
   return `Ты разбираешь сообщения пользователя для его личного дневника-помощника.
-Сегодня ${ctx.today} (${weekdayLong(ctx.today)}), сейчас ${ctx.now}, часовой пояс ${ctx.tz}.
-Вчера = ${addDays(ctx.today, -1)}, завтра = ${addDays(ctx.today, 1)}, послезавтра = ${addDays(ctx.today, 2)}.
+${promptHeader(ctx.today, ctx.now, ctx.tz)}
 
 Ответь ОДНИМ JSON-объектом:
 {
@@ -674,7 +680,7 @@ function memory(r: RawParse) {
   return r.memory.map((m) => ({ kind: m.kind, subject: m.subject ?? "", text: m.text, replaces: m.replaces ?? null }));
 }
 
-const CURRENCY: Record<string, string> = {
+export const CURRENCY: Record<string, string> = {
   "РУБ": "RUB", "Р": "RUB", "₽": "RUB", "RUR": "RUB", "$": "USD", "ДОЛЛАР": "USD", "БАКС": "USD", "€": "EUR", "ЕВРО": "EUR",
 };
 
@@ -684,7 +690,8 @@ export function latinKey(s: string): string | null {
   return /^[a-z]/.test(k) ? k : null;
 }
 
-function topicOf(t: string | null | undefined): string {
+/** Подраздел здоровья по слову модели: ключ, русское название или новый ключ латиницей; пусто — other. */
+export function topicOf(t: string | null | undefined): string {
   if (!t) return "other";
   const k = t.toLowerCase().trim();
   if (HEALTH_TOPICS[k]) return k;

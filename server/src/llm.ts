@@ -42,8 +42,8 @@ export type LlmCall = (messages: ChatMessage[], opts?: { json?: boolean; tempera
 export const MAX_TOKENS_JSON = 3000;
 export const MAX_TOKENS_TEXT = 800;
 
-/** На что ушёл запрос к модели (строки на сайте — web/src/screens/Settings.tsx, KIND_NAMES). */
-export const USAGE_KINDS = ["parse", "answer", "chat", "summary", "patterns", "draw", "voice", "other"] as const;
+/** На что ушёл запрос к модели (строки на сайте — web/src/screens/Spend.tsx, KIND_NAMES). correct — поправка к ответу (correct.ts). */
+export const USAGE_KINDS = ["parse", "answer", "chat", "summary", "patterns", "draw", "voice", "correct", "other"] as const;
 export type UsageKind = (typeof USAGE_KINDS)[number];
 /** Расход одного запроса: токены и деньги (cost — доллары, null — провайдер цену не сообщил). index.ts складывает по дням (таблица llm_usage). */
 /** userId — чей запрос (учёт по людям, /accounts); 0 — ничей или не известно. */

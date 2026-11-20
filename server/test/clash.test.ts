@@ -113,3 +113,18 @@ test("до конца дня занято — вопрос без «Сдвину
   assert.equal(r.clash?.shiftTo, null);
   assert.match(r.text, /⚠ В 23:00–23:59 у тебя уже «Ночная смена»\.$/);
 });
+
+test("пара вопроса — в parse_json ответа (и после уточнения — у исходного сообщения): кнопка находит строку ⚠ и после переименования", async () => {
+  const { store, u, pipe } = await setup([{ clarify: "Утра или вечера?" }, say("Новый созвон", "14:30")]);
+  const old = await busy(store, u.id, "Встреча", "14:00", "15:00");
+  const q = await pipe.handle({ user: u, ...msg("1") });
+  const r = await pipe.handle({ user: u, ...msg("2") });
+  assert.equal(r.messageId, q.messageId, "ответ — у исходного сообщения");
+  const saved = JSON.parse((await store.message(r.messageId))!.parse_json!);
+  assert.deepEqual(saved.clash, { eventId: r.clash!.eventId, withId: old });
+  assert.equal(saved.clarify, "Утра или вечера?", "разбор исходного сообщения на месте");
+  await store.updateEvent(old, { title: "Планёрка" });
+  const d = await pipe.decideClash(u, r.messageId, r.clash!.eventId, old, "keep");
+  assert.ok(d.reply && !d.reply.includes("⚠") && d.reply.endsWith("\nХорошо, оставила оба."));
+  assert.equal((await store.message(r.messageId))!.reply, d.reply);
+});
