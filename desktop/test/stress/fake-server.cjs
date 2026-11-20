@@ -271,6 +271,8 @@ function create() {
         const was = hb.status === "done";
         hb.status = m[2] === "mark" ? body?.status ?? "done" : null;
         srv.xp += (hb.status === "done" ? 5 : 0) - (was ? 5 : 0);
+        // Серия как на сервере (habits.ts streak): сегодняшняя отметка «сделано» продлевает её на день, снятие — убирает этот день.
+        hb.streak = Math.max(0, (hb.streak ?? 0) + (hb.status === "done" ? 1 : 0) - (was ? 1 : 0));
       }
       return finish(200, { text: "Отметила ✓" });
     }

@@ -1552,13 +1552,13 @@ function render() {
     const st = i >= 0 ? stats(h) : null;
     const sub = st
       ? `<span class="course-meter" title="Сделано ${st.done} из ${st.total} · день ${i + 1} из ${h.course.length}"><span class="cm-bar"><i data-w="${Math.round((st.done / Math.max(1, st.total)) * 100)}"></i></span>${st.done}/${st.total}</span>`
-      : h.streak >= 2 ? ` <span class="muted">🔥${h.streak}</span>` : "";
+      : flameHtml(h); // огонёк серии с возрастом 7 / 30 / 100 (habitparty.js)
     const go = leavingRows.get(`h${h.id}`);
     if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
     const name = i >= 0 ? `<span class="t">${esc(h.title)}</span>${sub}` : `<span class="t">${esc(h.title)}${sub}</span>`;
     if (go) return `<li class="habit ${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span>${name}</li>`;
     const fresh = habitArriving(h) ? ` arrive" data-arrive="h${h.id}` : "";
-    return `<li class="habit${h.status ? " did" : ""}${fresh}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}</li>`;
+    return `<li class="habit${h.status ? " did" : ""}${i < 0 ? flameRowClass(h) : ""}${fresh}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}${i < 0 ? flameTagHtml(h) : ""}</li>`;
   };
   const allTasks = taskRows();
   const later = allTasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -1639,6 +1639,7 @@ function render() {
   inboxTidy();
   askSettled();
   if (binTasks.size) flyTasksToBin();
+  hpAfterRender(); // праздники привычек: дотянуть анимации огоньков и начать волну или салют (habitparty.js)
 }
 
 // Облачко спрашивает о привычке за день («… — сегодня сделали?») или о задаче с прошедшим сроком (tails.js), а ответили не в нём:
@@ -1985,6 +1986,7 @@ async function load() {
     lookSync(data.maid_hair, data.maid_eyes); // цвета волос и глаз с сайта (maidlook.js)
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
+    hpSync(data); // перекаты огоньков, рубежи серий, «все привычки дня» (habitparty.js) — до сравнения
     xpSync(data.xp); // полоса опыта в шапке (xp.js) — до сравнения, сама решает, рисовать ли
     if (!online) backOnline();
     // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.

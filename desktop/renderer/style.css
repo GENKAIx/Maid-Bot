@@ -117,7 +117,7 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .w {
   position: relative; z-index: 2; align-self: flex-end; width: 324px; margin: 0 8px 8px; flex: 0 0 max(380px, calc(100vh - 380px)); min-height: 120px; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
   background: rgba(29, 24, 48, .86); border: 1px solid rgba(255, 255, 255, .09); backdrop-filter: blur(14px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .2); overflow: hidden; transition: opacity .25s, transform .25s;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .2); overflow: hidden; transition: opacity .25s, transform .25s, box-shadow .4s;
 }
 .w.hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
 .stage.folded .w { display: none; }
@@ -727,7 +727,7 @@ body.quick { background: transparent; }
 /* Полоска и «9/30» — ровной колонкой у всех привычек: полоска одной длины, счёт в колонке под «30/30», прижат вправо. */
 .w .list .course-meter { display: grid; grid-template-columns: 48px 32px; align-items: center; column-gap: 6px; margin-left: auto; font-size: 11px;
   color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
-.w .list .course-meter .cm-bar { width: 48px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.w .list .course-meter .cm-bar { width: 48px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; transition: box-shadow .3s, filter .3s; }
 .w .list .course-meter .cm-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent-2); }
 /* Срок задачи справа: просроченное — красным, сегодня — светлее. */
 .w .list .due { margin-left: auto; flex: none; padding: 1px 7px; border-radius: 8px; font-size: 11px; line-height: 16px; white-space: nowrap;
@@ -1374,3 +1374,55 @@ body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .
   text-shadow: 0 0 8px rgba(139, 92, 246, .95), 0 0 2px rgba(79, 140, 255, .9); }
 .xp-fly.dot { font-size: 12px; color: #c4b0ff; }
 @media (prefers-reduced-motion: reduce) { .w .xp-bar b, .w .xp-lvl, .w .xp-bar { transition: none; } .w .xp-lvl.up, .w .xp-bar.glow b { animation: none; } }
+/* Праздники привычек (habitparty.js). «Огонёк взрослеет»: 7 дней — светится, 30 — синий, 100 — золотой с искрой. */
+.w .flame { color: var(--muted); white-space: nowrap; font-weight: 500; }
+.w .flame em { font-style: normal; display: inline-block; }
+.w .flame b { font-weight: inherit; }
+.w .flame.a7 { color: #ffb36b; font-weight: 700; }
+.w .flame em { filter: var(--hp-f, none); }
+.w .flame.a7 em { --hp-f: drop-shadow(0 0 3px rgba(255, 140, 60, .75)); }
+.w .flame.a30 { color: #8fc2ff; font-weight: 700; }
+.w .flame.a30 em { --hp-f: hue-rotate(185deg) saturate(1.6) brightness(1.2) drop-shadow(0 0 3px rgba(110, 170, 255, .8)); scale: 1.12; }
+.w .flame.a100 { color: #f2c661; font-weight: 750; position: relative; }
+.w .flame.a100 em { --hp-f: sepia(.4) saturate(1.8) brightness(1.15) drop-shadow(0 0 4px rgba(242, 198, 97, .9)); scale: 1.2; }
+.w .flame.a100::after { content: "✦"; position: absolute; left: -2px; top: -5px; font-size: 8px; color: #fff3c4; animation: hpTwinkle 1.8s ease-in-out infinite; }
+@keyframes hpTwinkle { 0%, 100% { opacity: .2; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.1); } }
+.w .flame.flare em { animation: hpFlare .75s cubic-bezier(.3, 1.6, .4, 1) both; animation-delay: var(--hp-delay, 0ms); }
+@keyframes hpFlare { 0% { transform: scale(1); } 35% { transform: scale(2.5) translateY(-3px); filter: var(--hp-f, none) brightness(1.8); } 100% { transform: scale(1); } }
+.w .hp-roll { display: inline-flex; flex-direction: column; height: 1.25em; line-height: 1.25em; overflow: hidden; vertical-align: bottom; }
+.w .hp-roll i { font-style: normal; animation: hpRoll .5s cubic-bezier(.3, 1.4, .5, 1) forwards; animation-delay: var(--hp-delay, 0ms); }
+@keyframes hpRoll { to { transform: translateY(-100%); } }
+.w .list li.hp-sweep { position: relative; }
+.w .list li.hp-sweep::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 6px;
+  background: linear-gradient(100deg, transparent 35%, var(--hp-glint, rgba(255, 179, 107, .38)) 50%, transparent 65%) no-repeat; background-size: 300% 100%; background-position: 100% 0;
+  animation: hpSweep .9s ease-out forwards; animation-delay: var(--hp-delay, 0ms); }
+.w .list li.hp-sweep.t30 { --hp-glint: rgba(143, 194, 255, .4); }
+.w .list li.hp-sweep.t100 { --hp-glint: rgba(242, 198, 97, .5); }
+@keyframes hpSweep { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.w .hp-tag { flex: none; margin-left: 6px; padding: 1px 7px; border-radius: 9px; font-size: 10.5px; font-weight: 700; white-space: nowrap; color: #2a1a08; background: #ffb36b;
+  animation: hpTag 3.7s ease-out forwards; animation-delay: var(--hp-delay, 0ms); }
+.w .hp-tag.t30 { background: #8fc2ff; color: #0b1a33; }
+.w .hp-tag.t100 { background: linear-gradient(90deg, #f2c661, #ffe9a8); color: #3a2a00; box-shadow: 0 0 8px rgba(242, 198, 97, .6); }
+@keyframes hpTag { 0% { opacity: 0; transform: translateX(10px) scale(.8); } 11% { opacity: 1; transform: none; } 92% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(6px); } }
+/* «Волна по отметкам». */
+.w .list li.habit .mark.hp-wave { animation: pipWave .5s cubic-bezier(.3, 1.6, .4, 1) both; }
+.w .flame em.hp-jump { animation: hpJump .55s cubic-bezier(.3, 1.6, .4, 1) both; }
+@keyframes hpJump { 0% { transform: none; } 40% { transform: translateY(-6px) scale(1.35); } 100% { transform: none; } }
+.w .cm-bar.hp-shine { box-shadow: 0 0 8px rgba(79, 208, 154, .8); filter: brightness(1.4); }
+.w .habit-list.hp-party, #body.hp-party { animation: party .6s cubic-bezier(.3, 1.6, .4, 1); }
+/* «Салют из искр»: подсветка панели. */
+.w.hp-lit { box-shadow: 0 0 0 1px rgba(183, 156, 255, .5), 0 0 34px rgba(139, 92, 246, .45), 0 10px 30px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .2); }
+.w.hp-goldw { box-shadow: 0 0 0 1px rgba(242, 198, 97, .6), 0 0 34px rgba(242, 198, 97, .45), 0 10px 30px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .2); }
+/* Частицы — fixed поверх окна, вне списка. */
+.hp-fx { position: fixed; z-index: 6; pointer-events: none; font-style: normal; transform: translate(-50%, -50%); }
+.hp-dot { width: 5px; height: 5px; border-radius: 50%; }
+.hp-star { font-size: 11px; line-height: 1; text-shadow: 0 0 6px currentColor; }
+.hp-comet { width: 6px; height: 6px; border-radius: 50%; }
+.hp-conf { width: 6px; height: 9px; border-radius: 2px; transform: none; animation: confetti 1.3s cubic-bezier(.2, .7, .4, 1) both; }
+.hp-orb { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle, #fff, rgba(255, 226, 122, .7) 45%, transparent 70%); animation: hpOrb .5s ease-out forwards; }
+@keyframes hpOrb { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .w .flame.a100::after, .w .flame.flare em, .w .hp-roll i, .w .list li.hp-sweep::after, .w .list li.habit .mark.hp-wave, .w .flame em.hp-jump, .w .habit-list.hp-party, #body.hp-party { animation: none; }
+  .w .hp-roll i:first-child { display: none; }
+  .w .hp-tag { animation: none; }
+}
