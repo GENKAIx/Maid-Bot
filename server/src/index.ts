@@ -22,6 +22,8 @@ const store = await Store.open(config.databaseUrl || config.dbFile);
 console.log(`[start] база: ${config.databaseUrl ? "Postgres" : "SQLite " + config.dbFile}`);
 const pipeline = new Pipeline(store, callLlm, config.publicUrl);
 if (drawReady()) pipeline.draw = callDraw;
+// «Записать в профиль?» (you.ts aboutOffer) — как уведомление с кнопками: Telegram, push, облачко виджета.
+pipeline.onAbout = (u, text, buttons) => send(u, text, "neutral", buttons, "note");
 // Расход модели, рисования и голоса — по дням и назначениям (таблица llm_usage), на сайте — «Настройки» → «Расход».
 onLlmUsage((x) => void store.addUsage(new Date(), x).catch((e) => console.error("[usage]", e)));
 

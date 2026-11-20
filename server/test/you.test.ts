@@ -6,7 +6,7 @@ import { hashPassword } from "../src/auth.ts";
 import { Store } from "../src/db.ts";
 import { persona } from "../src/personas.ts";
 import { Pipeline } from "../src/pipeline.ts";
-import { addressRule, addressWord, callAs, findCities, saveYou, tzOffset, youView, type City } from "../src/you.ts";
+import { aboutOffer, addressRule, addressWord, askNext, askShown, callAs, findCities, saveYou, tzOffset, youButton, youView, type City } from "../src/you.ts";
 
 // «Персонализация → О вас» (20.11.2026): обращение, город с часовым поясом, подъём и отбой — на сервере, одни на все устройства.
 
@@ -120,8 +120,91 @@ test("API: /api/you читает и пишет, /api/city подсказывае
     const u = (await store.userByLogin("owner"))!;
     const t = await todayJson(store, u);
     assert.deepEqual([t.call, t.wake, t.bed], ["Андрей", 8, "auto"]);
+    // Город и подъём указаны, обращение по имени выбрано — вопросов нет; стёрли обращение — облачко спросит его.
+    assert.equal(t.ask, null);
+    await call("/api/you", { address: null }, token);
+    const t2 = await todayJson(store, (await store.userByLogin("owner"))!);
+    assert.equal(t2.ask?.field, "address");
+    assert.deepEqual((await call("/api/you/ask", { field: "address" }, token)).json, { ok: true });
+    assert.equal((await todayJson(store, (await store.userByLogin("owner"))!)).ask, null, "показали — 3 дня тишины");
+    assert.equal((await call("/api/you/button", { data: "you:address:mistress" }, token)).json.text, "Хорошо, хозяйка 🙂");
+    assert.equal((await call("/api/you/button", { data: "you:nope:1" }, token)).status, 400);
   } finally {
     server.close();
     await store.close();
   }
+});
+
+test("Рина спрашивает в облачке: город → подъём → обращение, раз в 3 дня, «Не скажу» — больше никогда", async () => {
+  const store = await Store.open(":memory:");
+  let u = await store.ensureUser("1", "Андрей", "Europe/Moscow");
+  const t0 = new Date("2026-11-20T10:00:00Z");
+  assert.equal(askNext(u, t0)?.field, "city");
+  assert.deepEqual(askNext(u, t0)!.buttons.map((b) => b.data), ["you:city:later", "you:city:never"]);
+  assert.equal(await askShown(store, u, "wake", t0), false, "не тот вопрос — не отмечаем");
+  assert.equal(await askShown(store, u, "city", t0), true);
+  u = (await store.user(u.id))!;
+  assert.equal(askNext(u, new Date(t0.getTime() + 2 * 86_400_000)), null, "через 2 дня — рано");
+  const t3 = new Date(t0.getTime() + 3 * 86_400_000);
+  assert.equal(askNext(u, t3)?.field, "city", "через 3 дня — снова город (не ответили)");
+  assert.match((await youButton(store, u, "you:city:never", t3)).text, /больше не спрашиваю/);
+  u = (await store.user(u.id))!;
+  const t6 = new Date(t3.getTime() + 3 * 86_400_000);
+  const wake = askNext(u, t6)!;
+  assert.equal(wake.field, "wake", "город — «Не скажу», дальше подъём");
+  assert.ok(wake.buttons.some((b) => b.data === "you:wake:8"));
+  assert.match((await youButton(store, u, "you:wake:8", t6)).text, /до 8:00/);
+  u = (await store.user(u.id))!;
+  assert.equal(u.wake, 8);
+  const t9 = new Date(t6.getTime() + 3 * 86_400_000);
+  const addr = askNext(u, t9)!;
+  assert.equal(addr.field, "address");
+  assert.ok(addr.buttons.some((b) => b.data === "you:address:name" && b.text.includes("Андрей")));
+  assert.equal((await youButton(store, u, "you:address:name", t9)).text, "Хорошо, Андрей 🙂");
+  u = (await store.user(u.id))!;
+  assert.equal(askNext(u, new Date(t9.getTime() + 30 * 86_400_000)), null, "всё отвечено — не спрашивает");
+  await assert.rejects(youButton(store, u, "you:tz:never"), /неизвестная кнопка/);
+  await store.close();
+});
+
+test("«Записать в профиль?»: город и подъём из разговора, Да — записано и пояс по городу, Нет — ничего", async () => {
+  const store = await Store.open(":memory:");
+  let u = await store.ensureUser("1", "Андрей", "Europe/Moscow");
+  const cities = async (q: string) => (q === "Екатеринбург" ? [EKB] : []);
+  const o = (await aboutOffer(store, u, { city: "Екатеринбург", wake: 7 }, cities))!;
+  assert.equal(o.text, "Записать в профиль: город — Екатеринбург (Свердловская область), часы — по UTC+5, подъём — 7:00?");
+  assert.deepEqual(o.buttons.map((b) => b.data), ["you:offer:yes", "you:offer:no"]);
+  const r = await youButton(store, u, "you:offer:yes");
+  assert.equal(r.tzChanged, true);
+  assert.match(r.text, /Записала в профиль: город Екатеринбург, подъём 7:00\. Часы теперь по UTC\+5/);
+  u = (await store.user(u.id))!;
+  assert.equal(u.tz, "Asia/Yekaterinburg");
+  assert.ok((await youView(store, u)).filled.includes("wake"), "подъём 7:00, подтверждённый человеком, — заполнен");
+  assert.equal((await youButton(store, u, "you:offer:yes")).text, "Это уже решили.", "второе нажатие — ничего");
+  assert.equal(await aboutOffer(store, u, { city: "екатеринбург", wake: 7 }, cities), null, "уже так в профиле — не спрашивает");
+  assert.equal(await aboutOffer(store, u, { city: "Атлантида" }, cities), null, "город не нашёлся — молчит");
+  assert.ok(await aboutOffer(store, u, { wake: 9 }, cities));
+  assert.equal((await youButton(store, u, "you:offer:no")).text, "Хорошо, не записываю.");
+  assert.equal((await store.user(u.id))!.wake, 7);
+  await store.close();
+});
+
+test("разговор: «я из Екатеринбурга, встаю в 7» — разбор кладёт about, горничная отдельно спрашивает «Записать в профиль?»", async () => {
+  const store = await Store.open(":memory:");
+  const u = await store.ensureUser("1", "Андрей", "Europe/Moscow");
+  const pipe = new Pipeline(store, async () => JSON.stringify({ summary: "о себе", about: { city: "Екатеринбург", wake: "7:00" }, reply: "Приятно познакомиться!" }));
+  pipe.cities = async (q) => (q === "Екатеринбург" ? [EKB] : []);
+  const sent: { text: string; data: string[] }[] = [];
+  pipe.onAbout = async (_u, text, buttons) => void sent.push({ text, data: buttons.map((b) => b.data) });
+  const r = await pipe.handle({ user: u, source: "telegram", sourceId: "1", text: "я из Екатеринбурга, встаю в 7", at: new Date("2026-11-20T08:00:00Z") });
+  assert.match(r.text, /Приятно познакомиться/);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].text, /^Записать в профиль: город — Екатеринбург.*подъём — 7:00\?$/);
+  assert.deepEqual(sent[0].data, ["you:offer:yes", "you:offer:no"]);
+  // Без about — ничего не спрашивает.
+  const pipe2 = new Pipeline(store, async () => JSON.stringify({ summary: "чай", reply: "Записала" }));
+  pipe2.onAbout = pipe.onAbout;
+  await pipe2.handle({ user: u, source: "telegram", sourceId: "2", text: "выпил чаю", at: new Date("2026-11-20T08:05:00Z") });
+  assert.equal(sent.length, 1);
+  await store.close();
 });

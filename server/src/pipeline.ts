@@ -11,6 +11,7 @@ import { planEventReminders } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
 import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from "./clash.ts";
 import { addTraitFromChat, traitPrompt } from "./profile.ts";
+import { aboutOffer, findCities, type City, type YouButton } from "./you.ts";
 import { SHELVES, notesData, sameNote } from "./notes.ts";
 import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, moneyCard, noteCard, taskCard, traitCard } from "./cards.ts";
 import {
@@ -231,6 +232,10 @@ export class Pipeline {
   /** Вопрос «добавить?» закрыт (ответили, отказались, истёк) — убрать кнопки там, где он висит (Telegram).
    *  text — новый текст ответа целиком, outcome — строка итога. */
   onProposal: ((u: User, p: ProposalRow, text: string, outcome: string) => Promise<void>) | null = null;
+  /** Человек назвал о себе город или подъём — спросить отдельным сообщением «Записать в профиль?» с кнопками (index.ts → send). */
+  onAbout: ((u: User, text: string, buttons: YouButton[]) => Promise<void>) | null = null;
+  /** Поиск города для «Записать в профиль?» (you.ts findCities; тесты подставляют свой). */
+  cities: (q: string) => Promise<City[]> = findCities;
   changed(u: User) {
     try { this.onChange?.(u); } catch (e) { console.error("[pipeline] onChange", e); }
   }
@@ -362,6 +367,13 @@ export class Pipeline {
     // названию (план могли переименовать, пока висят кнопки), и отличает её от вопроса поправки к этому ответу.
     const base = original ? jsonOf(original.parse_json) : parsed;
     await s.setMessage(target.id, { state: "done", reply, ...(clash ? { parse_json: JSON.stringify({ ...base, clash: pairOf(clash) }) } : {}) });
+    // Сказал о себе город или подъём — «Записать в профиль?» отдельным сообщением с кнопками; не вышло (нет сети) — молча.
+    if (parsed.about && this.onAbout) {
+      try {
+        const o = await aboutOffer(s, u, parsed.about, this.cities);
+        if (o) await this.onAbout(u, o.text, o.buttons);
+      } catch (e) { console.error("[about]", e); }
+    }
     return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes, proposal, clash };
   }
 

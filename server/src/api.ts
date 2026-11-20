@@ -23,10 +23,10 @@ import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates, yearKnown } from "./report.ts";
 import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
-import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, snooze, type Button, type Send } from "./scheduler.ts";
+import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, replanEvents as replanEventsOf, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
-import { ADDRESSES, addressWord, findCities, saveYou, youView, type City } from "./you.ts";
+import { ADDRESSES, addressWord, askNext, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
@@ -112,6 +112,8 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
     call: addressWord(u),
     wake: u.wake,
     bed: u.bed,
+    // Вопрос Рины о вас для облачка виджета (askNext): не чаще раза в 3 дня, иначе null.
+    ask: askNext(u, now),
     upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
     // Далёкие (дальше upcoming) планы, добавленные или изменённые за 15 минут: виджет ПК едет к их дню, откуда бы их ни записали.
     far_fresh: await store.eventsChangedSince(u.id, addDays(today, 14), new Date(now.getTime() - FAR_FRESH_MS).toISOString()),
@@ -223,14 +225,13 @@ export function createApi(deps: ApiDeps) {
   const { store, pipeline } = deps;
   const gate = deps.loginGate ?? new LoginGate();
 
-  /** Напоминания о будущих планах — заново (сменили, когда напоминать, или часовой пояс). */
-  async function replanEvents(u: User) {
-    const at = new Date(), today = dayKey(at, u.tz);
-    for (const e of await store.eventsBetween(u.id, today, addDays(today, 400))) {
-      if (!e.time) continue;
-      await store.cancelReminders("event", e.id);
-      await planEventReminders(store, u, e, at);
-    }
+  const replanEvents = (u: User) => replanEventsOf(store, u);
+  /** Кнопка «you:…» (вопрос Рины о вас, «Записать в профиль?»): ответ; сменился пояс — напоминания заново. */
+  async function runYou(u: User, data: string): Promise<string> {
+    let r;
+    try { r = await youButton(store, u, data); } catch (e) { throw new HttpError(400, (e as Error).message); }
+    if (r.tzChanged) await replanEvents((await store.user(u.id))!);
+    return r.text;
   }
 
   /** Кнопка из уведомления (push): отметка привычки или «отложить» — то же, что callback в боте. */
@@ -243,6 +244,7 @@ export function createApi(deps: ApiDeps) {
     if (trait) return decideTrait(store, u, Number(trait[1]), trait[2] === "yes");
     const rate = data.match(RATE);
     if (rate) return rateDay(store, u, rate[1], Number(rate[2]));
+    if (data.startsWith("you:")) return runYou(u, data);
     if (data === "snooze") {
       const buttons: Button[] = all.filter((d) => d !== "snooze").map((d) => {
         const h = d.match(HABIT);
@@ -392,6 +394,15 @@ export function createApi(deps: ApiDeps) {
       // Другой часовой пояс — у напоминаний о будущих планах другое время.
       if (r.tzChanged) await replanEvents(fresh);
       return youView(store, fresh);
+    }
+    // Вопрос облачка показан (виджет) — следующий не раньше чем через 3 дня; ответ кнопкой — как кнопка уведомления.
+    if (m === "POST" && p === "/api/you/ask") {
+      const b = parseBody(z.object({ field: z.string().max(20) }), await readJson(req));
+      return { ok: await askShown(store, u, b.field) };
+    }
+    if (m === "POST" && p === "/api/you/button") {
+      const b = parseBody(z.object({ data: z.string().max(64) }), await readJson(req));
+      return { text: await runYou(u, b.data) };
     }
     // Подсказки города: ?q=Каз → до 6 городов с регионом и поясом. Сеть не ответила — 502, на сайте «поиск не отвечает».
     if (m === "GET" && p === "/api/city") {

@@ -193,6 +193,15 @@ export const ParseSchema = z.object({
     .nullable()
     .optional()
     .catch(null),
+  // Постоянное о себе: где живёт, во сколько обычно встаёт — горничная спросит «Записать в профиль?» (you.ts aboutOffer).
+  about: z
+    .object({
+      city: optStr.catch(null),
+      wake: z.preprocess((v) => (typeof v === "string" ? Number(v.split(":")[0]) : v), z.number().int().min(0).max(23).nullable().optional()).catch(null),
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   emotion: z.enum(EMOTIONS).catch("neutral"),
   talk: z.boolean().catch(false),
   reply: optStr,
@@ -234,6 +243,8 @@ export interface Parsed {
   /** Просьба нарисовать картинку: prompt — описание для модели картинок по-английски, title — коротко по-русски. */
   draw: { prompt: string; title: string } | null;
   emotion: (typeof EMOTIONS)[number];
+  /** Человек сам назвал постоянное о себе: город, где живёт, час обычного подъёма — предложить записать в «О вас». */
+  about?: { city: string | null; wake: number | null } | null;
   /** С горничной разговаривают (вопрос ей, новость или переживание, совет, шутка) — ответ ведёт разговор (pipeline talkText), а не reply. */
   talk: boolean;
   reply: string | null;
@@ -301,6 +312,7 @@ ${promptHeader(ctx.today, ctx.now, ctx.tz)}
  "stash": [{"shelf": "${SHELF_KEYS.join("|")}", "title": "название как есть", "note": "пометка, если сказана: кто посоветовал, где смотреть"}] — заметки «на потом»,
  "dates": [{"title": "...", "date_iso": "YYYY-MM-DD", "type": "birthday|anniversary|holiday|deadline|other", "person": "", "yearly": true}],
  "memory": [{"kind": "fact|preference|person|goal", "subject": "о ком/о чём", "text": "...", "replaces": null}],
+ "about": {"city": "город, где человек живёт, или null", "wake": "час обычного подъёма числом или null"} или null,
  "traits": [{"kind": "debuff|buff", "category": "allergy|food|med|condition|body|habit|other", "title": "коротко: «Аллергия на арахис»", "note": "подробности, если названы"}],
  "edits": [{"action": "cancel|done|move|reopen|rename|remind", "kind": "event|task|date|memory|habit|note", "id": 12, "new_date": null, "new_time": null, "new_title": null, "new_times": null, "new_shelf": null, "rating": null}],
  "question": "если пользователь спрашивает о своих данных — вопрос, иначе null",
@@ -371,6 +383,9 @@ ${promptHeader(ctx.today, ctx.now, ctx.tz)}
   непереносимость еды («не переношу лактозу», «мне нельзя глютен»), противопоказания и хроническое («мне нельзя бегать — колено»):
   kind debuff. Что ему устойчиво помогает («от мигрени помогает темнота») — buff. Разовое самочувствие («сегодня тошнило») — НЕ traits,
   это diary.health. Уже есть в списке «Дебафы» ниже — не повторять. Такое — только в traits, не в memory.
+- about — только постоянное о себе, сказанное самим человеком: где живёт («я из Казани», «живу в Екатеринбурге», «у нас в Перми
+  снег») → city — название города в именительном; во сколько обычно встаёт («встаю в 7», «подъём у меня в шесть») → wake — час.
+  Разовое («завтра встану в 6», «еду в Москву», «был в Сочи») — не about. Ничего такого — null. Остальной разбор — как обычно.
 - Вопрос о прошлом («что я ел в понедельник?») — question + lookup, остальное пустое.
   «Когда болело сердце?» — question + search ["сердц", "кардиолог"], lookup null (искать за всё время).
   «Сколько потратил на еду в октябре?» — question + lookup на октябрь, search пустой (суммы код посчитает сам).
@@ -658,6 +673,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
     dates,
     memory: memory(r),
     traits: r.traits.map((t) => ({ kind: t.kind, category: t.category ?? "other", title: t.title.trim().slice(0, 60), note: (t.note ?? "").trim().slice(0, 200) })),
+    about: r.about && (r.about.city || r.about.wake != null) ? { city: r.about.city?.slice(0, 80) || null, wake: r.about.wake ?? null } : null,
     metrics,
     habits,
     suggest,

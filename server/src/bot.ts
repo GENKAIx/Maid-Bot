@@ -10,9 +10,10 @@ import { habitLine, habitsOfDay } from "./habits.ts";
 import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
 import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, esc, memoryText, plansText, tasksText, todayText } from "./report.ts";
-import { RATE, rateDay, type Scheduler, type Send } from "./scheduler.ts";
+import { RATE, rateDay, replanEvents, type Scheduler, type Send } from "./scheduler.ts";
 import { dayKey } from "./time.ts";
 import { decideTrait } from "./profile.ts";
+import { youButton } from "./you.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { activeModel, asUser, IMAGE_MAX_BYTES, IMAGE_TYPES, isOpenRouter, LITE_MODEL, setLiteModel } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
@@ -321,6 +322,16 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (!u) return ctx.answerCallbackQuery();
     const text = await decideTrait(store, u, Number(ctx.match[1]), ctx.match[2] === "yes");
     await ctx.answerCallbackQuery({ text: text.replace(/<[^>]+>/g, "").slice(0, 190) });
+    await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  });
+
+  // «Записать в профиль?» и вопросы Рины о вас (you.ts): ответ — всплывашкой, кнопки убираются.
+  bot.callbackQuery(/^you:\w+:\w+$/, async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return ctx.answerCallbackQuery();
+    const r = await youButton(store, u, ctx.match[0]).catch(() => ({ text: "Не поняла кнопку.", tzChanged: false }));
+    if (r.tzChanged) await replanEvents(store, (await store.user(u.id))!);
+    await ctx.answerCallbackQuery({ text: r.text.slice(0, 190) });
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
   });
 

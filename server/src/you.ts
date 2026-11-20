@@ -182,3 +182,111 @@ export async function saveYou(store: Store, u: User, p: YouPatch): Promise<{ tzC
   if (Object.keys(patch).length) await store.updateUser(u.id, patch);
   return { tzChanged: tz !== u.tz };
 }
+
+// --- Рина спрашивает сама (20.11.2026) ---
+// В облачке виджета: по одному вопросу, не чаще раза в 3 дня, только город → подъём → обращение; «Не скажу» — этот вопрос
+// больше никогда (ask.off). Показ отмечает виджет (POST /api/you/ask) — даже без ответа следующий вопрос через 3 дня.
+// В разговоре: человек сам назвал город или час подъёма — отдельным сообщением «Записать в профиль?» с кнопками (aboutOffer);
+// что предложено, лежит в kv `youoffer:<id>` до ответа.
+
+export const ASK_ORDER = ["city", "wake", "address"] as const;
+export const ASK_EVERY_MS = 3 * 86_400_000;
+export interface YouButton { text: string; data: string }
+export interface AskCard { field: (typeof ASK_ORDER)[number]; text: string; buttons: YouButton[] }
+
+/** Следующий вопрос облачка или null: рано (меньше 3 дней с прошлого), всё указано или на всё «Не скажу». */
+export function askNext(u: User, now = new Date()): AskCard | null {
+  const a = askOf(u);
+  if (a.last && now.getTime() - Date.parse(a.last) < ASK_EVERY_MS) return null;
+  const filled = { city: Boolean(cityOf(u)), wake: a.set.includes("wake"), address: a.set.includes("address") };
+  const field = ASK_ORDER.find((k) => !filled[k] && !a.off.includes(k));
+  if (!field) return null;
+  const never = { text: "Не скажу", data: `you:${field}:never` };
+  if (field === "city") {
+    return { field, text: "Кстати, из какого вы города? Напишите мне название — запишу, и часы встанут по вашему поясу.", buttons: [{ text: "Потом", data: "you:city:later" }, never] };
+  }
+  if (field === "wake") {
+    return { field, text: "А во сколько вы обычно встаёте? До этого часа я на ПК буду спать.", buttons: [...[6, 7, 8, 9].map((h) => ({ text: `${h}:00`, data: `you:wake:${h}` })), never] };
+  }
+  const name = u.name.trim();
+  return { field, text: "Как мне к вам обращаться?", buttons: [
+    { text: "Хозяин", data: "you:address:master" }, { text: "Хозяйка", data: "you:address:mistress" },
+    ...(name ? [{ text: `По имени — ${name}`.slice(0, 40), data: "you:address:name" }] : []), never,
+  ] };
+}
+
+async function askSave(store: Store, u: User, change: (a: AskState) => void) {
+  const fresh = (await store.user(u.id)) ?? u;
+  const a = askOf(fresh);
+  change(a);
+  await store.updateUser(u.id, { ask: JSON.stringify(a) });
+}
+
+/** Виджет показал вопрос: следующий — не раньше чем через 3 дня. Чужой или уже не нужный вопрос — ничего. */
+export async function askShown(store: Store, u: User, field: string, now = new Date()): Promise<boolean> {
+  if (askNext(u, now)?.field !== field) return false;
+  await askSave(store, u, (a) => { a.last = now.toISOString(); });
+  return true;
+}
+
+const offerKey = (u: User) => `youoffer:${u.id}`;
+interface Offer { city?: City; wake?: number }
+
+/** Человек сам назвал в разговоре город или час подъёма — что предложить записать. Уже так же в профиле — ничего. */
+export async function aboutOffer(store: Store, u: User, about: { city?: string | null; wake?: number | null },
+  cities: (q: string) => Promise<City[]> = findCities): Promise<{ text: string; buttons: YouButton[] } | null> {
+  const offer: Offer = {};
+  const parts: string[] = [];
+  const cur = cityOf(u);
+  const name = about.city?.trim();
+  if (name && cur?.name.toLowerCase() !== name.toLowerCase()) {
+    const c = (await cities(name))[0];
+    if (c && c.name.toLowerCase() !== cur?.name.toLowerCase()) {
+      offer.city = c;
+      parts.push(`город — ${c.name}${c.region && c.region !== c.name ? ` (${c.region})` : ""}${c.tz !== u.tz ? `, часы — по ${tzOffset(c.tz)}` : ""}`);
+    }
+  }
+  const w = about.wake;
+  if (typeof w === "number" && (WAKES as readonly number[]).includes(w) && !(askOf(u).set.includes("wake") && u.wake === w)) {
+    offer.wake = w;
+    parts.push(`подъём — ${w}:00`);
+  }
+  if (!parts.length) return null;
+  await store.kvSet(offerKey(u), JSON.stringify(offer));
+  return { text: `Записать в профиль: ${parts.join(", ")}?`, buttons: [{ text: "✅ Да", data: "you:offer:yes" }, { text: "✖ Нет", data: "you:offer:no" }] };
+}
+
+/** Кнопка «you:…» — из облачка виджета, Telegram или push. Возвращает ответ и сменился ли пояс (тогда напоминания — заново). */
+export async function youButton(store: Store, u: User, data: string, now = new Date()): Promise<{ text: string; tzChanged: boolean }> {
+  const m = data.match(/^you:(city|wake|address|offer):(\w+)$/);
+  if (!m) throw new Error("неизвестная кнопка");
+  const [, field, v] = m;
+  const done = (text: string, tzChanged = false) => ({ text, tzChanged });
+  if (field === "offer") {
+    const raw = await store.kvGet(offerKey(u));
+    await store.kvSet(offerKey(u), "");
+    if (!raw) return done("Это уже решили.");
+    if (v !== "yes") return done("Хорошо, не записываю.");
+    const o = JSON.parse(raw) as Offer;
+    const r = await saveYou(store, u, { ...(o.city ? { city: o.city } : {}), ...(o.wake ? { wake: o.wake } : {}) });
+    const what = [o.city ? `город ${o.city.name}` : "", o.wake ? `подъём ${o.wake}:00` : ""].filter(Boolean).join(", ");
+    return done(`Записала в профиль: ${what}.${r.tzChanged ? ` Часы теперь по ${tzOffset((await store.user(u.id))!.tz)}.` : ""}`, r.tzChanged);
+  }
+  // Ответ на вопрос облачка — следующий тоже не раньше чем через 3 дня (если показ не отметился).
+  await askSave(store, u, (a) => {
+    if (!a.last) a.last = now.toISOString();
+    if (v === "never" && !a.off.includes(field)) a.off.push(field);
+  });
+  if (v === "never") return done("Хорошо, больше не спрашиваю. Если передумаете — «Персонализация → О вас» на сайте.");
+  if (v === "later") return done("Хорошо, спрошу в другой раз.");
+  const fresh = (await store.user(u.id))!;
+  if (field === "wake") {
+    await saveYou(store, fresh, { wake: Number(v) });
+    return done(`Поняла: до ${Number(v)}:00 — тишина.`);
+  }
+  if (field === "address" && (ADDRESSES as readonly string[]).includes(v)) {
+    await saveYou(store, fresh, { address: v as Address });
+    return done(`Хорошо, ${addressWord((await store.user(u.id))!)} 🙂`);
+  }
+  throw new Error("неизвестная кнопка");
+}

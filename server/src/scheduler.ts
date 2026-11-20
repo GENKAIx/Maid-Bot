@@ -109,6 +109,16 @@ export function leadText(min: number): string {
 }
 
 /** Запланировать напоминания о плане со временем — по настройке пользователя (remindPlan); уже прошедшие моменты пропускаются. */
+/** Напоминания о будущих планах — заново (сменили, когда напоминать, или часовой пояс). */
+export async function replanEvents(store: Store, u: User) {
+  const at = new Date(), today = dayKey(at, u.tz);
+  for (const e of await store.eventsBetween(u.id, today, addDays(today, 400))) {
+    if (!e.time) continue;
+    await store.cancelReminders("event", e.id);
+    await planEventReminders(store, u, e, at);
+  }
+}
+
 export async function planEventReminders(store: Store, u: User, e: EventRow, now: Date) {
   if (!e.time || e.status !== "active") return;
   const start = zonedToUtc(e.date_iso, e.time, u.tz);

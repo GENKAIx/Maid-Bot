@@ -385,10 +385,27 @@ setInterval(() => watchAway(), 3_000);
 document.addEventListener("pointermove", () => napping && wakeUp());
 document.addEventListener("keydown", () => napping && wakeUp());
 
+// Вопрос Рины о вас (сервер: /api/today.ask, you.ts askNext; 20.11.2026): город → подъём → обращение, не чаще раза в 3 дня.
+// Задаётся в спокойную минуту: не спит, не ночь, облачко пустое, ничего не происходит, с запуска прошло 2 минуты; один раз
+// за запуск. Показ отмечается на сервере (POST /api/you/ask) — даже без ответа следующий вопрос через 3 дня.
+const YOU_ASK_AFTER = 120_000;
+const youAskBoot = Date.now();
+let youAsked = "";
+function youAskTick(now = Date.now()) {
+  const a = data?.ask;
+  if (!a || youAsked || napping || touring || state !== "idle" || !online || now < moodUntil || afterBedtime()) return false;
+  if (now - youAskBoot < YOU_ASK_AFTER || !$("#bubble").classList.contains("hidden")) return false;
+  youAsked = a.field;
+  say(a.text, { buttons: a.buttons, ms: 30000, mood: "listen" });
+  maid.api("POST", "/api/you/ask", { field: a.field }).catch(() => {});
+  return true;
+}
+
 setInterval(() => {
   if (state === "think") return;
   const want = restState();
   if (want !== state) setState(want);
+  else if (youAskTick()) return;
   // После отбоя — не суетится: без чая, уборки и радостей; изредка показывает на подушку — «марш спать».
   else if (afterBedtime()) {
     if (state === "idle" && online && Date.now() > moodUntil && $("#bubble").classList.contains("hidden") && Math.random() < 0.05) react("bedtime", 6000, true);
@@ -581,6 +598,11 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
           // Закономерность из уведомления: добавить в дебафы профиля или нет.
           const r = await maid.api("POST", `/api/traits/${m[1]}`, { status: m[2] === "yes" ? "active" : "declined" });
           say(r.text || "Готово", { ms: 5000 });
+          maid.changed();
+        } else if (/^you:\w+:\w+$/.test(x.data)) {
+          // Вопрос Рины о вас и «Записать в профиль?» (you.ts youButton): ответ — её словами; «Не скажу» / «Нет» — без радости.
+          const r = await maid.api("POST", "/api/you/button", { data: x.data });
+          say(r.text, { ms: 5000, mood: /:(never|no|later)$/.test(x.data) ? "bow" : "happy" });
           maid.changed();
         } else if ((m = x.data.match(/^rate:(\d{4}-\d{2}-\d{2}):(\d+)$/))) {
           // Оценка дня под вечерним итогом (звёзды, 1–10): звёзды зажигаются по одной и по ступени оценки осыпаются,
