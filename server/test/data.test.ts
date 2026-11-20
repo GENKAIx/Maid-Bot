@@ -379,6 +379,21 @@ test("сервер отдаёт собранное веб-приложение: 
   }
 });
 
+test("/api/today: xp — опыт и уровень для шапки виджета ПК, как в профиле", async () => {
+  const { todayJson } = await import("../src/api.ts");
+  const { profileView } = await import("../src/profile.ts");
+  const { dayKey } = await import("../src/time.ts");
+  const store = await Store.open(":memory:");
+  const u = await store.ensureUser("903", "Т", "Europe/Moscow");
+  const now = new Date();
+  assert.deepEqual((await todayJson(store, u, now)).xp, { xp: 0, level: 1, into: 0, need: 100 });
+  for (let i = 0; i < 11; i++) await store.updateTask(await store.addTask({ user_id: u.id, title: `Дело ${i}`, priority: "normal", category: "", due_date: null, notes: "", message_id: null }), { status: "done" });
+  const j = await todayJson(store, u, now);
+  assert.deepEqual(j.xp, { xp: 110, level: 2, into: 10, need: 125 });
+  const p = await profileView(store, u, dayKey(now, u.tz));
+  assert.deepEqual({ xp: p.xp, level: p.level, into: p.into, need: p.need }, j.xp);
+});
+
 test("/api/today: far_fresh — далёкие планы, записанные недавно", async () => {
   const { todayJson } = await import("../src/api.ts");
   const { addDays, dayKey } = await import("../src/time.ts");

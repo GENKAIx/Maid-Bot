@@ -22,7 +22,7 @@ import { backupName, exportJson } from "./backup.ts";
 import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates, yearKnown } from "./report.ts";
-import { decideTrait, profileView, saveProfile, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
+import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
@@ -119,6 +119,8 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
     done_today: (await store.doneTasksBetween(u.id, zonedToUtc(today, "00:00", u.tz), zonedToUtc(addDays(today, 1), "00:00", u.tz)))
       .map((t) => ({ id: t.id, title: t.title, done_at: t.done_at })),
     dates: upcomingDates(await store.activeDates(u.id), today, 30).map((d) => ({ ...d.row, on: d.on, inDays: d.inDays, age: d.age })),
+    // Опыт и уровень (profile.ts xpOf): полоса опыта в шапке виджета ПК — три COUNT на опрос.
+    xp: await xpOf(store, u.id),
   };
 }
 

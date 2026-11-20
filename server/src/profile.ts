@@ -97,6 +97,14 @@ export function levelOf(xp: number): { level: number; into: number; need: number
   }
   return { level, into: left, need: 100 + 25 * (level - 1) };
 }
+/** Опыт и уровень одним куском: профиль и шапка виджета ПК (/api/today, поле xp) считают по одной формуле. */
+export async function xpOf(store: Store, userId: number): Promise<{ xp: number; level: number; into: number; need: number }> {
+  return xpFrom(await store.xpCounts(userId));
+}
+function xpFrom(counts: { tasks: number; habits: number; days: number }) {
+  const xp = counts.tasks * XP.task + counts.habits * XP.habit + counts.days * XP.day;
+  return { xp, ...levelOf(xp) };
+}
 
 /** Полных лет на дату today (ГГГГ-ММ-ДД); нет даты или она в будущем — null. */
 export function ageOn(birthday: string, today: string): number | null {
@@ -114,7 +122,7 @@ const num = (v: number, digits = 1) => v.toLocaleString("ru-RU", { maximumFracti
 export async function profileView(store: Store, u: User, today: string) {
   const info = await profileInfo(store, u.id);
   const counts = await store.xpCounts(u.id);
-  const xp = counts.tasks * XP.task + counts.habits * XP.habit + counts.days * XP.day;
+  const { xp } = xpFrom(counts);
   const week = addDays(today, -6);
   const weights = await store.metricsRange(u.id, "2000-01-01", today, "weight");
   const weight = weights.at(-1);
