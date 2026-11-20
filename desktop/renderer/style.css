@@ -651,7 +651,6 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .course.finished { border-color: rgba(79, 208, 154, .45); }
 .course.party { animation: party .6s cubic-bezier(.3, 1.6, .4, 1); }
 @keyframes party { 0% { transform: scale(1); } 30% { transform: scale(1.06) rotate(-1.5deg); } 60% { transform: scale(.98) rotate(1deg); } 100% { transform: none; } }
-.confetti { position: absolute; top: 40%; width: 6px; height: 9px; border-radius: 2px; animation: confetti 1.3s cubic-bezier(.2, .7, .4, 1) forwards; pointer-events: none; }
 @keyframes confetti { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 90px)) rotate(var(--rot)); opacity: 0; } }
 /* Галочки списка — тоже «чпок». */
 .w .check, .w .mark { position: relative; }

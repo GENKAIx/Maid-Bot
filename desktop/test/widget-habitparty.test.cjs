@@ -160,6 +160,29 @@ check(!x.party && !x.hpMark.has(13), "раздел спрятан — рубеж
 ctx.cfg.sections.habits = true;
 check(/transition: box-shadow \.3s, filter \.3s; \}/.test(css.match(/\.w \.list \.course-meter \.cm-bar \{[^}]*\}/)?.[0] ?? ""), "свечение полоски курса гаснет плавно (переход на самой полоске)");
 
+// --- 5в. Конец курса — салют, одинаковый на курс любой длины ---
+const course = read("desktop/renderer/course.js");
+check(/setTimeout\(\(\) => el\.isConnected && hpCourseSalute\(el\), after\)/.test(course), "celebrate (course.js): после волны по дням — салют");
+check(/if \(justFinished\) \{ animUntil = Math\.max/.test(course) && /animUntil = Math\.max\(animUntil, Date\.now\(\) \+ after \+ 100\)/.test(course), "от конца курса до салюта список не перерисовывается — плашка не пересоздаётся, салют не теряется");
+check(/const marked = changed\.find\(\(h\) => stats\(h\)\.finished/.test(course), "закрылись два курса разом — показывается и празднуется законченный");
+check(!/confetti/.test(course) && !/function party\(/.test(course) && !/^\.confetti \{/m.test(css), "старого конфетти курса больше нет — одна версия финала");
+for (const len of [5, 30, 100]) {
+  let got = null;
+  const el = { classList: { add() {}, remove() {} }, querySelectorAll: () => Array.from({ length: len }, (_, i) => ({ i })) };
+  vm.runInContext("hpSaluteFrom = (from, done) => { this.__from = from; }", ctx);
+  ctx.api.course = vm.runInContext("hpCourseSalute", ctx);
+  ctx.api.course(el);
+  got = ctx.__from;
+  check(got.length === Math.min(len, 8) && got[0].i === 0 && got[got.length - 1].i === len - 1, `курс ${len} дн.: кометы от ${Math.min(len, 8)} дней, от первого до последнего — залп тот же (${got.length})`);
+}
+
+x.clear();
+const d15 = "2026-12-05";
+const cDays = (last) => ({ course: [{ day: "2026-12-04", s: "done" }, { day: "2026-12-03", s: "rest" }, { day: d15, s: last }] });
+x.hpSync(today([H(15, "done", 3), H(16, null, 0, cDays("plan"))], d15));
+x.hpSync(today([H(15, "done", 3), H(16, "done", 0, cDays("done"))], d15));
+check(!x.party, "последней отметкой дня закончился курс — играет только салют курса, без волны поверх");
+
 // --- 6. Места вызова, реплики, звук, движение ---
 check(/hpSync\(data\)/.test(widget.match(/async function load\(\)[^]*?\n\}/)?.[0] ?? ""), "load() отдаёт /api/today в hpSync до сравнения JSON");
 check(/hpAfterRender\(\)/.test(widget) && /: flameHtml\(h\)/.test(widget) && /flameTagHtml\(h\)/.test(widget) && /flameRowClass\(h\)/.test(widget), "render: огонёк, ярлык, блик и праздник после перерисовки");

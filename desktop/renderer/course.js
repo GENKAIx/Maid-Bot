@@ -89,7 +89,9 @@ function renderCourses() {
   const now = new Map(list.map((h) => [h.id, h.course.map((x) => x.s).join(",")]));
   const fresh = !box.childElementCount || prev === null;
   // Плашка всплывает после отметки — показываем ту привычку, которую отметили, и только её.
-  const marked = prev ? list.find((h) => prev.has(h.id) && prev.get(h.id) !== now.get(h.id)) : null;
+  // Поменялись несколько — показать тот, что только что закончился: его салют уже ждёт habitparty.js (hpSync, courseEnd).
+  const changed = prev ? list.filter((h) => prev.has(h.id) && prev.get(h.id) !== now.get(h.id)) : [];
+  const marked = changed.find((h) => stats(h).finished && prev.get(h.id).split(",").some((s) => s !== "rest" && s !== "done")) ?? changed[0] ?? null;
   if (marked) shownCourse = marked.id;
 
   const main = list.find((h) => h.id === shownCourse);
@@ -134,7 +136,7 @@ function renderCourses() {
         n++;
       }
     });
-    if (justFinished) setTimeout(() => celebrate(box.querySelector(".course")), 380);
+    if (justFinished) { animUntil = Math.max(animUntil, Date.now() + 500); setTimeout(() => celebrate(box.querySelector(".course")), 380); }
   }
   pendingPopped.clear();
   lastMarks = now;
@@ -179,7 +181,8 @@ function burst(pip, delay = 0) {
   }, delay);
 }
 
-// Курс пройден: волна по всем пупыркам слева направо, конфетти, горничная кланяется, курс сворачивается в медаль.
+// Курс пройден: волна по всем пупыркам слева направо, потом салют из искр (habitparty.js hpCourseSalute; одинаковый на курс
+// любой длины), горничная кланяется, курс сворачивается в медаль.
 function celebrate(el) {
   if (!el) return;
   tuck(false);
@@ -194,27 +197,9 @@ function celebrate(el) {
     if (i % 2 === 0) popTone((i / 2) % 14, { vol: 0.16 });
   }, i * step));
   const after = pips.length * step + 180;
-  setTimeout(() => party(el), after);
-  setTimeout(() => el.isConnected && el.classList.add("as-medal"), after + 1900);
-}
-function party(el) {
-  if (!el.isConnected) return;
-  cheer();
-  el.classList.add("party");
-  const colors = ["#b79cff", "#4fd09a", "#ffb36b", "#ff8a9a", "#7cc4ff", "#ffe27a"];
-  for (let k = 0; k < 26; k++) {
-    const c = document.createElement("b");
-    c.className = "confetti";
-    c.style.background = colors[k % colors.length];
-    c.style.left = `${8 + Math.random() * 84}%`;
-    c.style.setProperty("--dx", `${(Math.random() - 0.5) * 120}px`);
-    c.style.setProperty("--dy", `${-40 - Math.random() * 70}px`);
-    c.style.setProperty("--rot", `${(Math.random() - 0.5) * 720}deg`);
-    c.style.animationDelay = `${Math.random() * 120}ms`;
-    el.appendChild(c);
-  }
-  setTimeout(() => { el.querySelectorAll(".confetti").forEach((e) => e.remove()); el.classList.remove("party"); }, 1600);
-  say(line("courseDone"), { emotion: "proud", ms: 7000, mood: "bow" });
+  animUntil = Math.max(animUntil, Date.now() + after + 100); // до салюта список не перерисовывать — иначе плашка курса пересоздастся и салют пропадёт
+  setTimeout(() => el.isConnected && hpCourseSalute(el), after);
+  setTimeout(() => el.isConnected && el.classList.add("as-medal"), after + 2600);
 }
 
 const pendingPopped = new Set();

@@ -6,6 +6,7 @@
 //    потом 26 конфетти и арпеджио, как в конце курса, но над всей панелью.
 //  • «Салют из искр» — тот же повод, но в особый день: брызги отметок кометами летят к Рине и рвутся тремя залпами над панелью.
 //    Особый день — когда сегодня у какой-то привычки был рубеж серии 7 / 30 / 100 (в этой отметке или раньше за день).
+//    Тот же салют (hpCourseSalute) — в конце курса, вместо конфетти: одинаковый на курс любой длины.
 // Всё срабатывает по данным (/api/today в load → hpSync), а не по щелчку: так же и после отметки в облачке, в меню привычки,
 // в режиме «улетают», в Telegram или на телефоне. Каждый праздник — раз в день (localStorage maid.habitParty), снять и снова
 // поставить галочку — не повтор. Панель свёрнута или горничная спит — без праздника (день всё равно засчитан).
@@ -101,6 +102,9 @@ function hpSync(d) {
     if (hpParty.kind === "marks" && !hpParty.marks.length) hpParty = null;
   }
   if (party) seen.party = true;
+  // Этой же отметкой закончился курс — его салют играет course.js (hpCourseSalute); волну или второй салют поверх не запускать.
+  const courseEnd = list.some((h) => prev.status.get(h.id) !== "done" && h.status === "done" && h.course?.length
+    && h.course.every((x) => x.s === "done" || x.s === "rest"));
   if (!fresh.length && !party) return;
   hpSave(seen);
   // Особый день — рубеж серии был сегодня (в этой отметке или раньше): тогда вместо волны салют.
@@ -108,8 +112,9 @@ function hpSync(d) {
   // Праздник — после ближайшей перерисовки (hpAfterRender). Если та ещё не прошла (список держат), не затирать прошлое событие, а сложить.
   const q = hpParty;
   const marks = [...(q?.marks ?? []).filter((m) => !fresh.some((f) => f.id === m.id)), ...fresh];
-  const big = party || q?.kind === "wave" || q?.kind === "salute";
+  const big = (party && !courseEnd) || q?.kind === "wave" || q?.kind === "salute";
   hpParty = { kind: big ? (tops.length ? "salute" : "wave") : "marks", n: list.length, marks, top: Math.max(0, ...tops, q?.top ?? 0) };
+  if (hpParty.kind === "marks" && !marks.length) hpParty = null;
 }
 
 // Время эффекта строки считается с первой перерисовки, которая его показала (список могли придержать); устарело — не показывать.
@@ -192,32 +197,47 @@ function hpWave(n) {
 }
 
 // --- «Салют из искр» ---
+// Все привычки дня в день рубежа серии: брызги от каждой отметки.
 function hpSalute(top) {
   const marks = [...$("#body").querySelectorAll(".habit-list li.habit .mark")];
+  if (!$("#face")) return hpWave(marks.length);
+  hpSaluteFrom(marks, () => {
+    if ($("#bubble").classList.contains("hidden")) say(line(top ? "habitsSalute" : "habitsAll", { n: top, what: HP_TIERS[top] ?? "" }), { ms: 7000, mood: "excited" });
+  });
+}
+// Курс пройден (course.js celebrate, после волны по дням): салют от дней курса — один и тот же на курс любой длины.
+function hpCourseSalute(el) {
+  const pips = [...el.querySelectorAll(".pip:not(.rest)")];
+  const pick = pips.length <= 8 ? pips : Array.from({ length: 8 }, (_, i) => pips[Math.round((i * (pips.length - 1)) / 7)]);
+  el.classList.add("party");
+  setTimeout(() => el.classList.remove("party"), 700);
+  hpSaluteFrom(pick, () => say(line("courseDone"), { emotion: "proud", ms: 7000, mood: "bow" }));
+}
+// Кометы от источников (отметки, дни курса) летят к Рине, потом подсветка панели и три залпа над ней; done — облачко после залпов.
+function hpSaluteFrom(from, done) {
   const face = $("#face");
-  if (!face) return hpWave(marks.length);
   const still = hpStill();
-  animUntil = Math.max(animUntil, Date.now() + marks.length * 80 + 900);
-  const f = face.getBoundingClientRect();
-  const to = { x: f.left + f.width * 0.5, y: f.top + f.height * 0.32 };
+  animUntil = Math.max(animUntil, Date.now() + from.length * 80 + 900); // список не перерисовывать, пока летят кометы
+  const f = face?.getBoundingClientRect();
+  const to = f?.width ? { x: f.left + f.width * 0.5, y: f.top + f.height * 0.32 } : null;
   const cols = ["#4fd09a", "#b79cff", "#ffb36b"];
-  marks.forEach((m, i) => {
+  from.forEach((m, i) => {
     setTimeout(() => {
       if (!m.isConnected) return;
       burst(m);
       hpSound((s) => s.voice(0, 520 + i * 90, 1300 + i * 120, 0.16, 0.03));
     }, i * 80);
-    if (!still) for (let k = 0; k < 3; k++) hpComet(m, to, cols[(i + k) % 3], i * 80 + k * 50, 560 + Math.random() * 140);
+    if (!still && to && m.offsetParent) for (let k = 0; k < 3; k++) hpComet(m, to, cols[(i + k) % 3], i * 80 + k * 50, 560 + Math.random() * 140);
   });
   setTimeout(() => {
     react("excited", 6000);
     hpAgain($("#w"), "hp-lit");
-    const shots = [[0, 0, 0], [300, 46, -14], [580, -34, 18]];
-    for (const [at, dx, dy] of shots) setTimeout(() => hpSalvo(to.x + dx, to.y + dy, shots.findIndex((s) => s[0] === at), still), at);
-    setTimeout(() => {
-      if ($("#bubble").classList.contains("hidden")) say(line(top ? "habitsSalute" : "habitsAll", { n: top, what: HP_TIERS[top] ?? "" }), { ms: 7000, mood: "excited" });
-    }, 1300);
-  }, marks.length * 80 + 800);
+    if (to) {
+      const shots = [[0, 0, 0], [300, 46, -14], [580, -34, 18]];
+      shots.forEach(([at, dx, dy], k) => setTimeout(() => hpSalvo(to.x + dx, to.y + dy, k, still), at));
+    }
+    setTimeout(done, 1300);
+  }, from.length * 80 + 800);
 }
 function hpSalvo(x, y, k, still) {
   hpSound((s) => { s.voice(0, 190, 60, 0.22, 0.1); s.noise(0, 0.28, 0.05, { kind: "highpass", f0: 2200 }); });
