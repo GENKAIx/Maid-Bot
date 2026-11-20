@@ -11,6 +11,7 @@ export interface WidgetPrefs {
   proposalWait?: number; clashWait?: number; mute?: boolean; typing?: "sound" | "quiet" | "off"; typeSpeed?: "slow" | "normal" | "fast";
   accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: number; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
   napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; bedtime?: Bedtime; morning?: 6 | 7 | 8 | 9; napRecap?: boolean; napFold?: boolean; popSound?: Pop;
+  xpBar?: "always" | "event";
 }
 type Pop = "bubble" | "chime" | "off";
 type Bedtime = "auto" | "22:00" | "23:00" | "00:00" | "01:00";
@@ -81,7 +82,7 @@ const DEFAULTS: Required<WidgetPrefs> = {
   show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true },
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
   accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim",
-  napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble",
+  napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble", xpBar: "always",
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
 const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"]];
@@ -469,6 +470,10 @@ export function Widget() {
               options={(["s", "m", "l"] as const).map((v) => [v, { s: "Мельче", m: "Обычный", l: "Крупнее" }[v],
                 <div className={`wm-ts ts-${v}`}><p className="nx"><em>14:30</em>· Созвон</p><Row t="Купить хлеб" /><Row t="Оплатить свет" /></div>])} />
           </Setting>
+          <Setting title="Опыт и уровень в шапке" hint={p.xpBar === "event"
+            ? "Полоса и «ур. N» появляются на несколько секунд после галочки и при наведении на шапку"
+            : "Тонкая полоса под часами и «ур. N» видны всегда; после галочки в полосу летит «+10 ✦»"}
+            side={<Segment label="Опыт и уровень в шапке" value={p.xpBar} onPick={(xpBar) => save({ xpBar })} options={[["always", "Всегда"], ["event", "По событию"]]} />} />
         </section>
 
         <section className="wp-sec reveal">

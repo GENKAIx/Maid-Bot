@@ -570,21 +570,24 @@ function taskFly(id) {
     taskTimers.set(id, setTimeout(done, DONE_SHUT));
   }, DONE_FLY));
 }
-async function doneTaskHere(id) {
+async function doneTaskHere(id, from = null) {
   const t = (data?.tasks ?? []).find((x) => x.id === id) ?? taskDone.get(id)?.t;
   if (!t || taskDone.has(id)) return;
   taskDone.set(id, { t, at: Date.now() });
   taskCountdown(id);
   drawClock();
   popTone(4);
+  xpGain(from, "task");
   react?.("done", 4000);
   try {
     await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
+    xpSent();
     maid.changed();
   } catch (err) {
     clearTimeout(taskTimers.get(id));
     taskDone.delete(id);
     drawClock();
+    xpUndo("task");
     say(err.message, { ms: 6000 });
     return;
   }
@@ -598,10 +601,13 @@ async function undoTaskHere(id) {
   taskTimers.delete(id);
   taskDone.delete(id);
   drawClock();
+  xpTake("task");
   try {
     await maid.api("POST", `/api/tasks/${id}`, { status: "open" });
+    xpSent();
     maid.changed();
   } catch (err) {
+    xpUndo("task", 1);
     say(err.message, { ms: 6000 });
   }
   await load();
@@ -867,7 +873,7 @@ $("#planClock").addEventListener("mouseout", (e) => {
 $("#planClock").addEventListener("click", (e) => {
   const tdone = e.target.closest("[data-tdone]");
   if (tdone) {
-    doneTaskHere(Number(tdone.closest(".pl-card").dataset.task));
+    doneTaskHere(Number(tdone.closest(".pl-card").dataset.task), tdone);
     return hideClockLater();
   }
   const tundo = e.target.closest("[data-tundo]");

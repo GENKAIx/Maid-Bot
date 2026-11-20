@@ -77,6 +77,14 @@ const DATASETS = {
   broken: () => ({ tasks: null, habits: "нет", events: [{ id: 1 }], upcoming: [{ id: 2, title: null, date_iso: null, time: "25:99" }] }),
 };
 
+// Уровень по опыту — копия levelOf из server/src/profile.ts.
+function xpLevel(xp) {
+  let level = 1;
+  let left = xp;
+  while (left >= 100 + 25 * (level - 1)) { left -= 100 + 25 * (level - 1); level++; }
+  return { xp, level, into: left, need: 100 + 25 * (level - 1) };
+}
+
 function create() {
   const srv = {
     token: "good-key",
@@ -98,6 +106,7 @@ function create() {
     notices: [],
     redirectTo: null,
     latency: () => 0,
+    xp: 740, // опыт для полосы в шапке (как server/src/profile.ts): 5-й уровень, 190 из 200 — две задачи до 6-го
     counts: () => srv.log.reduce((m, r) => ((m[`${r.method} ${r.path}`] = (m[`${r.method} ${r.path}`] ?? 0) + 1), m), {}),
     reset(dataset = srv.dataset) { srv.dataset = dataset; srv.state = DATASETS[dataset](srv.now()); },
   };
@@ -105,7 +114,7 @@ function create() {
 
   const today = () => {
     const now = srv.now();
-    return { day: dayKey(now), dates: [], done_today: [], diary: [], activity: [], far_fresh: [], gone_fresh: [], done_fresh: [], ...srv.state };
+    return { day: dayKey(now), dates: [], done_today: [], diary: [], activity: [], far_fresh: [], gone_fresh: [], done_fresh: [], xp: xpLevel(srv.xp), ...srv.state };
   };
 
   // --- поправка к ответу (как server/src/pipeline.ts, correct): простые правила вместо модели ---
@@ -252,13 +261,17 @@ function create() {
     if (req.method === "POST" && (m = p.match(/^\/api\/tasks\/(\d+)$/))) {
       const id = Number(m[1]);
       const t = srv.state.tasks?.find?.((x) => x.id === id);
-      if (body?.status === "done" && t) { srv.state.tasks = srv.state.tasks.filter((x) => x !== t); (srv.done ??= []).push(t); }
-      if (body?.status === "open") { const i = (srv.done ?? []).findIndex((x) => x.id === id); if (i >= 0) srv.state.tasks.push(...srv.done.splice(i, 1)); }
+      if (body?.status === "done" && t) { srv.state.tasks = srv.state.tasks.filter((x) => x !== t); (srv.done ??= []).push(t); srv.xp += 10; }
+      if (body?.status === "open") { const i = (srv.done ?? []).findIndex((x) => x.id === id); if (i >= 0) { srv.state.tasks.push(...srv.done.splice(i, 1)); srv.xp -= 10; } }
       return finish(200, { ok: true });
     }
     if (req.method === "POST" && (m = p.match(/^\/api\/habits\/(\d+)\/(mark|unmark)$/))) {
       const hb = srv.state.habits?.find?.((x) => x.id === Number(m[1]));
-      if (hb) hb.status = m[2] === "mark" ? body?.status ?? "done" : null;
+      if (hb) {
+        const was = hb.status === "done";
+        hb.status = m[2] === "mark" ? body?.status ?? "done" : null;
+        srv.xp += (hb.status === "done" ? 5 : 0) - (was ? 5 : 0);
+      }
       return finish(200, { text: "Отметила ✓" });
     }
     if (req.method === "POST" && (p === "/api/input" || p === "/api/voice")) {

@@ -53,6 +53,7 @@ const PORT = Number(process.env.STRESS_PORT) || 8799;
         if (b.token) srv.token = b.token;
         if (b.notice) srv.notices.push({ id: srv.notices.length + 1, text: b.notice, emotion: "neutral", buttons: b.buttons });
         if (b.patch) Object.assign(srv.state, b.patch);
+        if (b.xp !== undefined) srv.xp = b.xp; // опыт для полосы в шапке: {"xp": 1180} — у самого порога уровня
         if (b.nextReply !== undefined) srv.nextReply = b.nextReply; // следующий ответ /api/input целиком (поправка к ответу)
         if (b.clearLog) srv.log.length = 0;
         if (b.mainSend) push(b.mainSend, b.data);

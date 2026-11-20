@@ -1350,3 +1350,27 @@ body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .
 /* Ушедшая строка (widget.js, ghostRow): копия гаснет на старом месте внутри блока; у привычки — ещё и зачёркнута. */
 .w .next, .w .pins, .w .scroll { position: relative; }
 .row-ghost.habit-list .t { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .45); }
+/* Опыт в шапке (xp.js): тонкая полоса под строкой часов, «ур. N» — справа на её конце (строку часов и даты не теснит). Режим «по событию» (.xp-event) — видно только
+   несколько секунд после прибавки (.xp-show) и при наведении на шапку; место под полосу остаётся, чтобы панель не прыгала. */
+.w .head.has-xp { position: relative; padding-bottom: 19px; }
+.w .head:not(.has-xp) .xp-tag, .w .head:not(.has-xp) .xp-bar { display: none; }
+.w .xp-tag { position: absolute; right: 14px; bottom: 3px; display: flex; }
+.w .xp-lvl { font-size: 10.5px; font-weight: 700; line-height: 1; padding: 2px 7px; border-radius: 99px; background: rgba(139, 92, 246, .24); color: #ddd0ff;
+  box-shadow: inset 0 0 0 1px rgba(183, 156, 255, .22); font-variant-numeric: tabular-nums; white-space: nowrap; transition: opacity .35s; }
+.w .xp-bar { position: absolute; left: 14px; right: 60px; bottom: 7px; height: 3px; border-radius: 99px; background: rgba(255, 255, 255, .07); overflow: hidden;
+  opacity: .6; transition: opacity .35s; }
+.w .xp-bar b { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8b5cf6, #4f8cff); box-shadow: 0 0 8px rgba(110, 120, 255, .55);
+  transition: width .6s cubic-bezier(.3, .9, .3, 1); }
+.w.xp-show .xp-bar, .w .head:hover .xp-bar { opacity: 1; }
+.w.xp-event .xp-lvl, .w.xp-event .xp-bar { opacity: 0; }
+.w.xp-event.xp-show .xp-lvl, .w.xp-event.xp-show .xp-bar, .w.xp-event .head:hover .xp-lvl, .w.xp-event .head:hover .xp-bar { opacity: 1; }
+.w .xp-bar.glow b { animation: xpGlow .8s ease-out; }
+@keyframes xpGlow { 0% { filter: brightness(1.9) saturate(1.3); } 100% { filter: none; } }
+.w .xp-lvl.up { animation: xpUp 1.1s cubic-bezier(.2, .9, .3, 1.4); }
+@keyframes xpUp { 0% { transform: scale(1); } 25% { transform: scale(1.35); background: #8b5cf6; color: #fff; box-shadow: 0 0 16px rgba(139, 92, 246, .9); } 100% { transform: scale(1); } }
+.w .xp-lvl { min-width: 36px; text-align: center; }
+.w .xp-lvl.gain { background: linear-gradient(90deg, #8b5cf6, #4f8cff); color: #fff; box-shadow: 0 0 10px rgba(110, 120, 255, .6); }
+.xp-fly { position: fixed; z-index: 5; pointer-events: none; font-style: normal; font-size: 13px; font-weight: 750; color: #efe8ff; white-space: nowrap;
+  text-shadow: 0 0 8px rgba(139, 92, 246, .95), 0 0 2px rgba(79, 140, 255, .9); }
+.xp-fly.dot { font-size: 12px; color: #c4b0ff; }
+@media (prefers-reduced-motion: reduce) { .w .xp-bar b, .w .xp-lvl, .w .xp-bar { transition: none; } .w .xp-lvl.up, .w .xp-bar.glow b { animation: none; } }

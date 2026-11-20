@@ -1799,6 +1799,7 @@ const doneMood = () => (Math.random() < 0.35 ? "thumbsup" : "done");
 function startLeave(key, mark) {
   popTone(4);
   burst(mark);
+  xpGain(mark, key[0] === "t" ? "task" : "habit");
   react(doneMood(), 4000);
   leavingRows.set(key, { at: Date.now(), pausedAt: 0, armed: false, fly: false, title: mark.nextElementSibling?.textContent ?? "" });
   render();
@@ -1810,6 +1811,7 @@ function cancelLeave(key) {
   clearTimeout(x.timer);
   leavingRows.delete(key);
   popTone(-5, { vol: 0.2, soft: true });
+  xpTake(key[0] === "t" ? "task" : "habit");
   render();
 }
 function rowCountdown(key) {
@@ -1853,6 +1855,7 @@ function undoGone(key) {
   clearTimeout(x.timer);
   leavingRows.delete(key);
   popTone(-5, { vol: 0.2, soft: true });
+  xpTake(key[0] === "t" ? "task" : "habit");
   render();
 }
 async function rowCommit(key) {
@@ -1874,11 +1877,14 @@ async function rowCommit(key) {
   else { const h = data?.habits?.find((v) => v.id === id); if (h) h.status = "done"; }
   leavingRows.delete(key);
   render();
+  xpHold();
   try {
     await maid.api("POST", task ? `/api/tasks/${id}` : `/api/habits/${id}/mark`, { status: "done" });
+    xpSent();
     maid.changed();
     if (!task) load();
   } catch (err) {
+    xpUndo(task ? "task" : "habit");
     play("oops");
     say(errText(err), { ms: 6000 });
     load();
@@ -1979,6 +1985,7 @@ async function load() {
     lookSync(data.maid_hair, data.maid_eyes); // цвета волос и глаз с сайта (maidlook.js)
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
+    xpSync(data.xp); // полоса опыта в шапке (xp.js) — до сравнения, сама решает, рисовать ли
     if (!online) backOnline();
     // Опрос каждые 5 с: перерисовывать только когда что-то изменилось, иначе сбивается прокрутка списка.
     if (json === lastJson) return;
@@ -2593,6 +2600,7 @@ function applyCfg() {
   st.style.setProperty("--accent", accent);
   st.style.setProperty("--accent-2", done);
   for (const id of ["#pins", "#next", "#body"]) $(id).style.zoom = String(TEXT_ZOOM[cfg.textSize] ?? 1);
+  xpApplyCfg();
 }
 async function loadCfg() {
   const s = await maid.settings();
@@ -2600,7 +2608,7 @@ async function loadCfg() {
   cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: Number.isInteger(w.taskCount) && w.taskCount >= 1 && w.taskCount <= 500 ? w.taskCount : 100, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim",
     napAfter: [0, 5, 15, 30, 60].includes(w.napAfter) ? w.napAfter : 15, napNight: w.napNight !== false, bedtime: BEDTIMES.includes(w.bedtime) ? w.bedtime : "auto",
     morning: [6, 7, 8, 9].includes(w.morning) ? w.morning : 7, napRecap: w.napRecap !== false, napFold: w.napFold !== false,
-    popSound: ["chime", "off"].includes(w.popSound) ? w.popSound : "bubble" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+    popSound: ["chime", "off"].includes(w.popSound) ? w.popSound : "bubble", xpBar: w.xpBar === "event" ? "event" : "always" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   // «Звуки выключены» раньше жили в localStorage виджета — переносим в настройки один раз.
   if (w.mute === undefined && localStorage.getItem("maid.mute")) {
     cfg.mute = true;
@@ -2933,13 +2941,16 @@ $("#body").addEventListener("click", async (e) => {
   if (habitOpen) return maid.openSection(`/habits?h=${Number(habitOpen)}`);
   const id = e.target.dataset?.done;
   const habit = e.target.dataset?.habit;
+  let xpBack = null; // отметка не прошла — вернуть опыт в шапке, как было
   try {
     if (id) {
       // Галочка задачи: пупырка вдавливается с брызгами, строка съезжает вниз к сделанному, потом сервер.
+      const again = e.target.classList.contains("done"); // второй щелчок, пока строка едет вниз: опыт уже дан
       e.target.classList.add("done", "pressed");
       e.target.textContent = "✓";
       popTone(4);
       burst(e.target);
+      if (!again) { xpGain(e.target, "task"); xpBack = () => xpUndo("task"); }
       react(doneMood(), 4000);
       const li = e.target.closest("li");
       // Название — из данных, не из строки: последним в строке бывает метка срока («сегодня», «завтра»).
@@ -2949,18 +2960,21 @@ $("#body").addEventListener("click", async (e) => {
       holdRender = Date.now() + 1100; // список не перерисовывать, пока строка едет вниз
       setTimeout(() => slideDown(li), 420);
       await maid.api("POST", `/api/tasks/${id}`, { status: "done" });
+      if (xpBack) xpSent();
       maid.changed();
     } else if (habit) {
       const was = e.target.classList.contains("done");
       e.target.classList.toggle("done", !was);
       e.target.classList.add("pressed");
       // Сняли галочку — день снова пустой, а не пропуск: можно сделать позже; крестик ставит полночь, если так и не сделали.
-      if (was) { e.target.textContent = ""; popTone(-5, { vol: 0.2, soft: true }); }
-      else { popTone(2); burst(e.target); react("streak", 4000); habitDoneAt.set(Number(habit), Date.now()); answeredInList(`h:${habit}`); }
+      if (was) { e.target.textContent = ""; popTone(-5, { vol: 0.2, soft: true }); xpTake("habit"); xpBack = () => xpUndo("habit", 1); }
+      else { popTone(2); burst(e.target); xpGain(e.target, "habit"); xpBack = () => xpUndo("habit"); react("streak", 4000); habitDoneAt.set(Number(habit), Date.now()); answeredInList(`h:${habit}`); }
       await maid.api("POST", was ? `/api/habits/${habit}/unmark` : `/api/habits/${habit}/mark`, was ? {} : { status: "done" });
+      xpSent();
       maid.changed();
     }
   } catch (err) {
+    xpBack?.();
     play("oops");
     say(errText(err), { ms: 6000 });
     load();
@@ -2971,12 +2985,15 @@ $("#body").addEventListener("click", async (e) => {
 async function reopenTask(id) {
   forgetDone(id);
   popTone(-5, { vol: 0.2, soft: true });
+  xpTake("task");
   render();
   try {
     await maid.api("POST", `/api/tasks/${id}`, { status: "open" });
+    xpSent();
     maid.changed();
     load();
   } catch (err) {
+    xpUndo("task", 1);
     play("oops");
     say(errText(err), { ms: 6000 });
     load();
