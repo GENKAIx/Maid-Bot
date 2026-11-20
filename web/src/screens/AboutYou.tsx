@@ -152,7 +152,8 @@ export function AboutYou() {
   const [you, setYou] = useState<You | null>(null);
   const [error, setError] = useState("");
   const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
-  const [saving, setSaving] = useState(false);
+  // Сохранения — по очереди: щелчок, пришедший во время сохранения (например, сразу после ухода с поля), не теряется.
+  const chain = useRef<Promise<void>>(Promise.resolve());
   const [name, setName] = useState("");
   const [height, setHeight] = useState("");
 
@@ -169,19 +170,18 @@ export function AboutYou() {
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!you) return <Spinner />;
 
-  async function save(patch: Patch, said = "Сохранено.") {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const v = await post<You>("/api/you", patch);
-      setYou(v);
-      setHeight(v.height ? String(v.height) : "");
-      setNote({ text: said });
-    } catch (e) {
-      setNote({ text: (e as Error).message, bad: true });
-    } finally {
-      setSaving(false);
-    }
+  // said — что сказать после сохранения; функция — по ответу сервера (например, какой пояс он на самом деле поставил).
+  function save(patch: Patch, said: string | ((v: You) => string) = "Сохранено.") {
+    chain.current = chain.current.then(async () => {
+      try {
+        const v = await post<You>("/api/you", patch);
+        setYou(v);
+        setHeight(v.height ? String(v.height) : "");
+        setNote({ text: typeof said === "function" ? said(v) : said });
+      } catch (e) {
+        setNote({ text: (e as Error).message, bad: true });
+      }
+    });
   }
   const has = (k: FieldKey) => you.filled.includes(k);
   const n = you.filled.length;
@@ -217,13 +217,17 @@ export function AboutYou() {
         </Row>
         <Row k="birthday" icon="🎂" label="День рождения" on={has("birthday")} value={has("birthday") ? dateRu(you.birthday) : "не указан"} onClear={() => save({ birthday: "" })}>
           <input type="date" aria-label="Дата рождения" defaultValue={you.birthday} key={you.birthday} min="1900-01-01" max={new Date().toISOString().slice(0, 10)}
-            onBlur={(e) => e.target.value !== you.birthday && save({ birthday: e.target.value })} />
+            onBlur={(e) => {
+              // Недописанная или пустая дата — прежняя остаётся (стереть — крестиком ✕).
+              if (!e.target.value) { e.target.value = you.birthday; return; }
+              if (e.target.value !== you.birthday) save({ birthday: e.target.value });
+            }} />
         </Row>
       </Card>
 
       <Card title="Где вы" className="reveal">
         <Row k="city" icon="🏙" label="Город" on={has("city")} value={you.city ? cityLine(you.city) : "не указан"} onClear={() => save({ city: null }, "Город стёрт.")}>
-          <CitySearch onPick={(c) => save({ city: c }, you.tz !== c.tz ? `Записала: ${c.name}. Часы — по ${offsetOf(c.tz)}.` : `Записала: ${c.name}.`)} />
+          <CitySearch onPick={(c) => save({ city: c }, (v) => (v.tz !== you.tz ? `Записала: ${c.name}. Часы — по ${v.tz_offset}.` : `Записала: ${c.name}.`))} />
         </Row>
         <Row k="tz" icon="🕒" label="Часовой пояс" on={has("tz")} value={`${you.tz_offset}${you.tz_from_city ? ", по городу" : you.tz === you.tz_default ? " — Москва, по умолчанию" : ""}`}
           onClear={() => save({ tz: null })}>

@@ -55,6 +55,17 @@ test("город ставит часовой пояс, стёртый город
   await saveYou(store, u, { city: EKB });
   u = (await store.user(u.id))!;
   assert.equal(u.tz, "Asia/Novosibirsk");
+  // Пояс выбран самим и совпал с поясом города — стёртый город его не уносит.
+  await saveYou(store, u, { tz: "Asia/Yekaterinburg" });
+  u = (await store.user(u.id))!;
+  await saveYou(store, u, { city: null });
+  u = (await store.user(u.id))!;
+  assert.equal(u.tz, "Asia/Yekaterinburg", "свой пояс остаётся");
+  await saveYou(store, u, { tz: null });
+  u = (await store.user(u.id))!;
+  await saveYou(store, u, { city: EKB });
+  u = (await store.user(u.id))!;
+  assert.equal(u.tz, "Asia/Yekaterinburg", "свой пояс стёрли — город снова ставит свой");
   await assert.rejects(saveYou(store, u, { tz: "Mars/Olympus" }), /пояса/);
   await assert.rejects(saveYou(store, u, { wake: 3 }), /подъём/);
   await assert.rejects(saveYou(store, u, { bed: "19:00" }), /отбоя/);
@@ -173,19 +184,34 @@ test("«Записать в профиль?»: город и подъём из �
   const cities = async (q: string) => (q === "Екатеринбург" ? [EKB] : []);
   const o = (await aboutOffer(store, u, { city: "Екатеринбург", wake: 7 }, cities))!;
   assert.equal(o.text, "Записать в профиль: город — Екатеринбург (Свердловская область), часы — по UTC+5, подъём — 7:00?");
-  assert.deepEqual(o.buttons.map((b) => b.data), ["you:offer:yes", "you:offer:no"]);
-  const r = await youButton(store, u, "you:offer:yes");
+  const [yes, no] = o.buttons.map((b) => b.data);
+  assert.match(yes, /^you:offer:y\w+$/);
+  assert.equal(no, yes.replace(":y", ":n"));
+  const r = await youButton(store, u, yes);
   assert.equal(r.tzChanged, true);
   assert.match(r.text, /Записала в профиль: город Екатеринбург, подъём 7:00\. Часы теперь по UTC\+5/);
   u = (await store.user(u.id))!;
   assert.equal(u.tz, "Asia/Yekaterinburg");
   assert.ok((await youView(store, u)).filled.includes("wake"), "подъём 7:00, подтверждённый человеком, — заполнен");
-  assert.equal((await youButton(store, u, "you:offer:yes")).text, "Это уже решили.", "второе нажатие — ничего");
+  assert.equal((await youButton(store, u, yes)).text, "Это уже решили.", "второе нажатие — ничего");
   assert.equal(await aboutOffer(store, u, { city: "екатеринбург", wake: 7 }, cities), null, "уже так в профиле — не спрашивает");
   assert.equal(await aboutOffer(store, u, { city: "Атлантида" }, cities), null, "город не нашёлся — молчит");
-  assert.ok(await aboutOffer(store, u, { wake: 9 }, cities));
-  assert.equal((await youButton(store, u, "you:offer:no")).text, "Хорошо, не записываю.");
+  // Два предложения подряд: «Да» под первым записывает своё, а не второе.
+  const o9 = (await aboutOffer(store, u, { wake: 9 }, cities))!;
+  const o10 = (await aboutOffer(store, u, { wake: 10 }, cities))!;
+  assert.equal((await youButton(store, u, o9.buttons[1].data)).text, "Хорошо, не записываю.");
   assert.equal((await store.user(u.id))!.wake, 7);
+  await youButton(store, u, o10.buttons[0].data);
+  assert.equal((await store.user(u.id))!.wake, 10, "второе предложение — своё");
+  // Свой пояс: текст не обещает сменить часы, и «Да» их не меняет.
+  await saveYou(store, (await store.user(u.id))!, { city: null, tz: "Europe/Samara" });
+  u = (await store.user(u.id))!;
+  const kzn: City = { name: "Казань", region: "Татарстан", country: "Россия", lat: 55.79, lon: 49.12, tz: "Europe/Moscow" };
+  const ok = (await aboutOffer(store, u, { city: "Казань" }, async () => [kzn]))!;
+  assert.equal(ok.text, "Записать в профиль: город — Казань (Татарстан)?");
+  const rk = await youButton(store, u, ok.buttons[0].data);
+  assert.equal(rk.tzChanged, false);
+  assert.equal((await store.user(u.id))!.tz, "Europe/Samara");
   await store.close();
 });
 
@@ -194,13 +220,16 @@ test("разговор: «я из Екатеринбурга, встаю в 7» 
   const u = await store.ensureUser("1", "Андрей", "Europe/Moscow");
   const pipe = new Pipeline(store, async () => JSON.stringify({ summary: "о себе", about: { city: "Екатеринбург", wake: "7:00" }, reply: "Приятно познакомиться!" }));
   pipe.cities = async (q) => (q === "Екатеринбург" ? [EKB] : []);
+  pipe.aboutDelayMs = 0;
   const sent: { text: string; data: string[] }[] = [];
   pipe.onAbout = async (_u, text, buttons) => void sent.push({ text, data: buttons.map((b) => b.data) });
   const r = await pipe.handle({ user: u, source: "telegram", sourceId: "1", text: "я из Екатеринбурга, встаю в 7", at: new Date("2026-11-20T08:00:00Z") });
   assert.match(r.text, /Приятно познакомиться/);
+  assert.equal(sent.length, 0, "вопрос — после ответа, ответ его не ждёт");
+  await pipe.aboutJob;
   assert.equal(sent.length, 1);
   assert.match(sent[0].text, /^Записать в профиль: город — Екатеринбург.*подъём — 7:00\?$/);
-  assert.deepEqual(sent[0].data, ["you:offer:yes", "you:offer:no"]);
+  assert.match(sent[0].data.join(" "), /^you:offer:y\w+ you:offer:n\w+$/);
   // Без about — ничего не спрашивает.
   const pipe2 = new Pipeline(store, async () => JSON.stringify({ summary: "чай", reply: "Записала" }));
   pipe2.onAbout = pipe.onAbout;

@@ -46,6 +46,14 @@ export function askOf(u: Pick<User, "ask">): AskState {
   }
 }
 
+/** Идёт ли часовой пояс за городом: человек не выбирал пояс сам (ask.set), и пояс — по умолчанию или от прежнего города.
+ *  Одно правило для записи (saveYou) и для текста «Записать в профиль?» (aboutOffer). */
+export function tzFollowsCity(u: Pick<User, "tz" | "city" | "ask">): boolean {
+  if (askOf(u).set.includes("tz")) return false;
+  const old = cityOf(u);
+  return u.tz === config.defaultTimezone || Boolean(old && old.tz === u.tz);
+}
+
 export const isTimeZone = (tz: string) => {
   try {
     new Intl.DateTimeFormat("ru-RU", { timeZone: tz });
@@ -147,11 +155,11 @@ export async function saveYou(store: Store, u: User, p: YouPatch): Promise<{ tzC
       if (!isTimeZone(p.city.tz)) throw new Error("у города странный часовой пояс");
       patch.city = JSON.stringify({ name: p.city.name.slice(0, 80), region: p.city.region.slice(0, 80), country: p.city.country.slice(0, 60), lat: p.city.lat, lon: p.city.lon, tz: p.city.tz });
       // Пояс — от города, если человек не ставил свой (пояс прежнего города или по умолчанию).
-      if (p.tz === undefined && (u.tz === config.defaultTimezone || (old && old.tz === u.tz))) tz = p.city.tz;
+      if (p.tz === undefined && tzFollowsCity(u)) tz = p.city.tz;
     } else {
       patch.city = "";
-      // Стёрли город — пояс, взятый от него, уходит вместе с ним.
-      if (p.tz === undefined && old && old.tz === u.tz) tz = config.defaultTimezone;
+      // Стёрли город — пояс, взятый от него, уходит вместе с ним; выбранный самим — остаётся.
+      if (p.tz === undefined && !askOf(u).set.includes("tz") && old && old.tz === u.tz) tz = config.defaultTimezone;
     }
   }
   if (p.tz !== undefined) {
@@ -229,7 +237,8 @@ export async function askShown(store: Store, u: User, field: string, now = new D
   return true;
 }
 
-const offerKey = (u: User) => `youoffer:${u.id}`;
+// У каждого предложения свой ключ и свой id в кнопках: «Да» под старым сообщением не запишет данные нового.
+const offerKey = (u: User, id: string) => `youoffer:${u.id}:${id}`;
 interface Offer { city?: City; wake?: number }
 
 /** Человек сам назвал в разговоре город или час подъёма — что предложить записать. Уже так же в профиле — ничего. */
@@ -243,7 +252,7 @@ export async function aboutOffer(store: Store, u: User, about: { city?: string |
     const c = (await cities(name))[0];
     if (c && c.name.toLowerCase() !== cur?.name.toLowerCase()) {
       offer.city = c;
-      parts.push(`город — ${c.name}${c.region && c.region !== c.name ? ` (${c.region})` : ""}${c.tz !== u.tz ? `, часы — по ${tzOffset(c.tz)}` : ""}`);
+      parts.push(`город — ${c.name}${c.region && c.region !== c.name ? ` (${c.region})` : ""}${c.tz !== u.tz && tzFollowsCity(u) ? `, часы — по ${tzOffset(c.tz)}` : ""}`);
     }
   }
   const w = about.wake;
@@ -252,8 +261,9 @@ export async function aboutOffer(store: Store, u: User, about: { city?: string |
     parts.push(`подъём — ${w}:00`);
   }
   if (!parts.length) return null;
-  await store.kvSet(offerKey(u), JSON.stringify(offer));
-  return { text: `Записать в профиль: ${parts.join(", ")}?`, buttons: [{ text: "✅ Да", data: "you:offer:yes" }, { text: "✖ Нет", data: "you:offer:no" }] };
+  const id = `${Date.now().toString(36)}${Math.floor(Math.random() * 36 ** 3).toString(36)}`;
+  await store.kvSet(offerKey(u, id), JSON.stringify(offer));
+  return { text: `Записать в профиль: ${parts.join(", ")}?`, buttons: [{ text: "✅ Да", data: `you:offer:y${id}` }, { text: "✖ Нет", data: `you:offer:n${id}` }] };
 }
 
 /** Кнопка «you:…» — из облачка виджета, Telegram или push. Возвращает ответ и сменился ли пояс (тогда напоминания — заново). */
@@ -263,10 +273,11 @@ export async function youButton(store: Store, u: User, data: string, now = new D
   const [, field, v] = m;
   const done = (text: string, tzChanged = false) => ({ text, tzChanged });
   if (field === "offer") {
-    const raw = await store.kvGet(offerKey(u));
-    await store.kvSet(offerKey(u), "");
+    const yes = v[0] === "y", key = offerKey(u, v.slice(1));
+    const raw = await store.kvGet(key);
+    await store.kvSet(key, "");
     if (!raw) return done("Это уже решили.");
-    if (v !== "yes") return done("Хорошо, не записываю.");
+    if (!yes) return done("Хорошо, не записываю.");
     const o = JSON.parse(raw) as Offer;
     const r = await saveYou(store, u, { ...(o.city ? { city: o.city } : {}), ...(o.wake ? { wake: o.wake } : {}) });
     const what = [o.city ? `город ${o.city.name}` : "", o.wake ? `подъём ${o.wake}:00` : ""].filter(Boolean).join(", ");

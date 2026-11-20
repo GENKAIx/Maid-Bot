@@ -26,7 +26,7 @@ import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, tr
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, replanEvents as replanEventsOf, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
-import { ADDRESSES, addressWord, askNext, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
+import { ADDRESSES, addressWord, askNext, askOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
@@ -112,6 +112,8 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
     call: addressWord(u),
     wake: u.wake,
     bed: u.bed,
+    // Подъём и отбой, выбранные самим (ask.set): виджет не переносит поверх них прежние настройки ПК (sleepMove).
+    you_set: askOf(u).set.filter((k) => k === "wake" || k === "bed"),
     // Вопрос Рины о вас для облачка виджета (askNext): не чаще раза в 3 дня, иначе null.
     ask: askNext(u, now),
     upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),

@@ -236,6 +236,10 @@ export class Pipeline {
   onAbout: ((u: User, text: string, buttons: YouButton[]) => Promise<void>) | null = null;
   /** Поиск города для «Записать в профиль?» (you.ts findCities; тесты подставляют свой). */
   cities: (q: string) => Promise<City[]> = findCities;
+  /** Через сколько после ответа спросить «Записать в профиль?» (ответ должен успеть уйти первым); тесты ставят 0. */
+  aboutDelayMs = 1500;
+  /** Последнее отложенное «Записать в профиль?» — тесты ждут его. */
+  aboutJob: Promise<void> | null = null;
   changed(u: User) {
     try { this.onChange?.(u); } catch (e) { console.error("[pipeline] onChange", e); }
   }
@@ -367,12 +371,16 @@ export class Pipeline {
     // названию (план могли переименовать, пока висят кнопки), и отличает её от вопроса поправки к этому ответу.
     const base = original ? jsonOf(original.parse_json) : parsed;
     await s.setMessage(target.id, { state: "done", reply, ...(clash ? { parse_json: JSON.stringify({ ...base, clash: pairOf(clash) }) } : {}) });
-    // Сказал о себе город или подъём — «Записать в профиль?» отдельным сообщением с кнопками; не вышло (нет сети) — молча.
+    // Сказал о себе город или подъём — «Записать в профиль?» отдельным сообщением с кнопками, после ответа: ответ не ждёт
+    // геокодер, а вопрос приходит вслед за ним (aboutDelayMs). Не вышло (нет сети) — молча.
     if (parsed.about && this.onAbout) {
-      try {
-        const o = await aboutOffer(s, u, parsed.about, this.cities);
-        if (o) await this.onAbout(u, o.text, o.buttons);
-      } catch (e) { console.error("[about]", e); }
+      const onAbout = this.onAbout, about = parsed.about, cities = this.cities;
+      this.aboutJob = new Promise<void>((done) => setTimeout(() => {
+        aboutOffer(s, u, about, cities)
+          .then((o) => (o ? onAbout(u, o.text, o.buttons) : undefined))
+          .catch((e) => console.error("[about]", e))
+          .finally(done);
+      }, this.aboutDelayMs));
     }
     return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes, proposal, clash };
   }

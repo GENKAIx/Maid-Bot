@@ -1296,8 +1296,13 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
   background: var(--ink-bg); color: var(--on-ink); border-radius: 12px; box-shadow: var(--lift); font-size: 13px; line-height: 1.4; font-weight: 400; }
 .you-q.open .you-tip { display: grid; }
 @media (hover: hover) { .you-q:hover .you-tip, .you-q:focus-within .you-tip { display: grid; } }
+/* Открытая подсказка — поверх соседних карточек (у карточек своя анимация появления и свой слой). */
+.cards.you > .card:has(.you-q.open, .you-q:hover, .you-q:focus-within) { position: relative; z-index: 5; }
 @media (max-width: 640px) {
-  .you-row-head { flex-wrap: wrap; }
+  /* На телефоне подсказка — во всю ширину строки, а не от «?»: не уходит за край экрана. */
+  .you-row-head { flex-wrap: wrap; position: relative; }
+  .you-q { position: static; }
+  .you-tip { left: 0; right: 0; width: auto; }
   .you-val { flex-basis: 100%; margin-left: 0; padding-left: 30px; box-sizing: border-box; }
   .you-v { text-align: left; }
   .you-row-body { padding-left: 0; }

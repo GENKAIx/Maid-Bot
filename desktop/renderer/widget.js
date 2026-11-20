@@ -302,8 +302,9 @@ function daySleepSync(d) {
 function sleepMove(d) {
   if (!oldSleep || d.wake === undefined || localStorage.getItem("maid.sleepMoved")) return;
   const patch = {};
-  if (["21:00", "22:00", "23:00", "00:00", "01:00", "02:00"].includes(oldSleep.bed) && d.bed === "auto") patch.bed = oldSleep.bed;
-  if ([5, 6, 8, 9, 10].includes(oldSleep.wake) && d.wake === 7) patch.wake = oldSleep.wake;
+  const own = Array.isArray(d.you_set) ? d.you_set : []; // выбранное на сайте самим — не трогаем
+  if (["21:00", "22:00", "23:00", "00:00", "01:00", "02:00"].includes(oldSleep.bed) && d.bed === "auto" && !own.includes("bed")) patch.bed = oldSleep.bed;
+  if ([5, 6, 8, 9, 10].includes(oldSleep.wake) && d.wake === 7 && !own.includes("wake")) patch.wake = oldSleep.wake;
   oldSleep = null;
   const done = () => localStorage.setItem("maid.sleepMoved", "1");
   if (!Object.keys(patch).length) return done();

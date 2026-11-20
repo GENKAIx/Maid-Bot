@@ -43,6 +43,13 @@ const at = (h, m = 0) => new Date(2026, 10, 20, h, m);
   ctx.sync({ wake: 7, bed: "auto" });
   check(posted.length === 1, "второй раз не переносим");
 
+  // Подъём выбран на сайте самим (you_set) и случайно равен 7:00 — прежний выбор ПК его не перебивает.
+  delete store["maid.sleepMoved"];
+  ctx.old({ bed: "23:00", wake: 9 });
+  ctx.sync({ wake: 7, bed: "auto", you_set: ["wake"] });
+  await new Promise((r) => setTimeout(r, 0));
+  check(JSON.stringify(posted[1]) === JSON.stringify(["POST", "/api/you", { bed: "23:00" }]), `выбранный самим подъём не переносим: ${JSON.stringify(posted[1])}`);
+
   // На сервере уже своё — его и берём; ночь считается по нему.
   ctx.sync({ wake: 9, bed: "00:30" });
   check(ctx.get().wake === 9 && ctx.get().bed === "00:30", "подъём и отбой с сервера");
