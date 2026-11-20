@@ -70,8 +70,11 @@ test("push: подписка, кнопка без входа отмечает п
     assert.equal((await call("/api/push/act", { act: act + "x", action: 0 })).status, 403);
     assert.equal((await call("/api/push/act", { act, action: 5 })).status, 403);
 
+    // «Отложить» — у вопроса за другой, ещё не отмеченный день (отмеченный день отложенное не присылает).
+    const day2 = "2026-11-09";
+    const act2 = push.sign(u.id, [...habitButtons(hid, day2), { text: "⏰", data: "snooze" }]);
     const before = Date.now();
-    assert.match((await call("/api/push/act", { act, action: 3 })).json.text, /Напомню/);
+    assert.match((await call("/api/push/act", { act: act2, action: 3 })).json.text, /Напомню/);
     const later = new Date(before + 31 * 60_000);
     const sent: { text: string; buttons?: Button[] }[] = [];
     // Считаем только напоминание «отложить»: вечером тот же тик шлёт ещё «Итог дня» и вопрос по неотмеченной привычке
@@ -83,7 +86,7 @@ test("push: подписка, кнопка без входа отмечает п
     await sch.tick(later);
     assert.equal(sent.length, 1);
     assert.match(sent[0].text, /Витамины/);
-    assert.deepEqual(sent[0].buttons?.map((b) => b.data), habitButtons(hid, day).map((b) => b.data));
+    assert.deepEqual(sent[0].buttons?.map((b) => b.data), habitButtons(hid, day2).map((b) => b.data));
 
     assert.equal((await call("/api/push/unsubscribe", { endpoint: sub.endpoint }, token)).json.ok, true);
     assert.equal((await call("/api/push/key", undefined, token)).json.subs.length, 0);

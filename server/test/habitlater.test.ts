@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { Store } from "../src/db.ts";
 import { habitsOfDay } from "../src/habits.ts";
 import { Pipeline } from "../src/pipeline.ts";
-import { habitAskTimes, habitButtons, Scheduler, type Button } from "../src/scheduler.ts";
+import { habitAskTimes, habitButtons, Scheduler, snooze, type Button } from "../src/scheduler.ts";
 
 // «Да / Ещё нет / Нет» у вопроса про привычку и минус за день без ответа.
 
@@ -59,5 +59,21 @@ test("не ответил до конца дня — минус; вчера вс
   // Своё «Нет» — уже не «спасти».
   await pipe.markHabit(u, hid, "2026-11-14", "skipped", "web");
   assert.equal((await habitsOfDay(store, u, "2026-11-15"))[0].yesterday, "skipped");
+  await store.close();
+});
+
+test("отложенное «Через 30 мин» не приходит, если привычку уже отметили", async () => {
+  const { store, u, hid, sent, sch, pipe } = await setup();
+  await sch.tick(new Date("2026-11-12T06:05:00Z")); // 09:05 МСК — вопрос
+  assert.equal(sent.length, 1);
+  // «⏰ Через 30 мин» в push, потом отметка в виджете — отложенный вопрос уже не нужен.
+  await snooze(store, u, "🔁 Напоминаю: Зарядка", habitButtons(hid, "2026-11-12"), 30, new Date("2026-11-12T06:06:00Z"));
+  await pipe.markHabit(u, hid, "2026-11-12", "done", "web");
+  await sch.tick(new Date("2026-11-12T06:40:00Z"));
+  assert.equal(sent.length, 1);
+  // Не отмеченная — отложенное приходит, как и раньше.
+  await snooze(store, u, "🔁 Напоминаю: Зарядка", habitButtons(hid, "2026-11-13"), 30, new Date("2026-11-13T06:06:00Z"));
+  await sch.tick(new Date("2026-11-13T06:40:00Z"));
+  assert.equal(sent.filter((x) => /Напоминаю/.test(x.text)).length, 1);
   await store.close();
 });

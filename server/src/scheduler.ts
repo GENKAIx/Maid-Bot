@@ -126,6 +126,15 @@ export async function snooze(store: Store, u: User, text: string, buttons: Butto
   await store.addReminder(u.id, "snooze", now.getTime(), due, text, buttons.length ? JSON.stringify(buttons) : "");
 }
 
+/** У напоминания кнопки вопроса про привычку (habit:ID:день:…), а на этот день она уже отмечена или привычки больше нет. */
+export async function habitAnswered(store: Store, buttons: Button[] | undefined): Promise<boolean> {
+  const m = buttons?.map((b) => /^habit:(\d+):(\d{4}-\d{2}-\d{2}):/.exec(b.data)).find(Boolean);
+  if (!m) return false;
+  const h = await store.habit(Number(m[1]));
+  if (!h || h.status !== "active") return true;
+  return (await store.marksOf(h.user_id, m[2], m[2])).some((x) => x.habit_id === h.id);
+}
+
 /** Окно, в котором ещё не поздно прислать дайджест после простоя сервера. */
 const LATE_MIN = 180;
 /** Напоминание о привычке позже часа уже не шлём. */
@@ -168,8 +177,10 @@ export class Scheduler {
         } catch {
           buttons = undefined;
         }
-        if (!late) await this.safeSend(u, r.text, "neutral", buttons, reminderKind(buttons));
-        await this.store.markReminder(r.id, late ? "cancelled" : "sent");
+        // Отложенный вопрос про привычку («⏰ Через 30 мин»), а её за это время уже отметили (виджет, сайт, чат) — не шлём.
+        const stale = late || (await habitAnswered(this.store, buttons));
+        if (!stale) await this.safeSend(u, r.text, "neutral", buttons, reminderKind(buttons));
+        await this.store.markReminder(r.id, stale ? "cancelled" : "sent");
       }
       for (const u of await this.store.users()) {
         // Утро, итог дня и прочее — для этого человека: расход ИИ на его счёт.
