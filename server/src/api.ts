@@ -9,6 +9,7 @@ import type { DateRow, Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { ALBUM, albumOf, albumSee } from "./album.ts";
 import { habitMonth, habitsOfDay, habitStats } from "./habits.ts";
+import { MAID_EYES, MAID_HAIR } from "./look.ts";
 import { historyOf, NOTICE_KINDS } from "./notices.ts";
 import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, RATED_SHELVES, SHELF_KEYS, SHELVES, noteCounts, sameNote, type Shelf } from "./notes.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
@@ -101,6 +102,9 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
   return {
     ...(await dayJson(store, u, today)),
     persona: u.persona,
+    // «Перекрасить Рину»: в каком цвете виджет ПК показывает её анимации (desktop/renderer/look.js) — с каждым опросом.
+    maid_hair: u.maid_hair,
+    maid_eyes: u.maid_eyes,
     upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
     // Далёкие (дальше upcoming) планы, добавленные или изменённые за 15 минут: виджет ПК едет к их дню, откуда бы их ни записали.
     far_fresh: await store.eventsChangedSince(u.id, addDays(today, 14), new Date(now.getTime() - FAR_FRESH_MS).toISOString()),
@@ -333,6 +337,9 @@ export function createApi(deps: ApiDeps) {
         game_alerts: z.coerce.number().int().min(0).max(1).optional(),
         game_first_min: z.coerce.number().int().min(15).max(24 * 60).optional(),
         game_every_min: z.coerce.number().int().min(15).max(24 * 60).optional(),
+        // «Перекрасить Рину» (look.ts): только id из look.js виджета; Рина узнаёт свой цвет со следующего промпта.
+        maid_hair: z.enum(MAID_HAIR, { message: "нет такого цвета" }).optional(),
+        maid_eyes: z.enum(MAID_EYES, { message: "нет такого цвета" }).optional(),
       }), await readJson(req));
       if (b.event_reminders !== undefined) b.event_reminders = remindText(b.event_reminders);
       if ((b.habit_last ?? u.habit_last) <= (b.habit_first ?? u.habit_first)) throw new HttpError(400, "второй вопрос про привычки — позже первого");

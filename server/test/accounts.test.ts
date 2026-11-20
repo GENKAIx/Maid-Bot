@@ -77,9 +77,10 @@ test("сводка аккаунтов: кто когда писал, сколь�
 test("шаг 14 базы: старый расход (без людей) сохраняется как ничей", async () => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "maid-acc-")), "maid.sqlite");
   (await Store.open(file)).close();
-  // Вернуть базу к шагу 13: старая таблица расхода без user_id и одна строка в ней; столбцов шагов 15, 16 и 18 ещё нет.
+  // Вернуть базу к шагу 13: старая таблица расхода без user_id и одна строка в ней; столбцов шагов 15, 16, 18 и 19 ещё нет.
   const db = new DatabaseSync(file);
   db.exec(`ALTER TABLE notices DROP COLUMN kind; ALTER TABLE habit_marks DROP COLUMN amount; ALTER TABLE habit_marks DROP COLUMN unit; ALTER TABLE dates DROP COLUMN closed_at;
+    ALTER TABLE users DROP COLUMN maid_hair; ALTER TABLE users DROP COLUMN maid_eyes;
     DROP TABLE llm_usage;
     CREATE TABLE llm_usage (day TEXT NOT NULL, kind TEXT NOT NULL, model TEXT NOT NULL, calls INTEGER NOT NULL DEFAULT 0, input INTEGER NOT NULL DEFAULT 0,
       output INTEGER NOT NULL DEFAULT 0, micro_usd INTEGER NOT NULL DEFAULT 0, priced INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, model));

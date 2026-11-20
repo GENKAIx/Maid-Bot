@@ -223,7 +223,7 @@ export class Scheduler {
       const tomorrow = addDays(today, 1);
       const evs = await s.eventsBetween(u.id, tomorrow, tomorrow);
       if (evs.length) {
-        await this.safeSend(u, tomorrowText(evs, tomorrow, persona(u.persona).tomorrow), "neutral", undefined, "tomorrow");
+        await this.safeSend(u, tomorrowText(evs, tomorrow, persona(u.persona, u).tomorrow), "neutral", undefined, "tomorrow");
       }
     }
     if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
@@ -231,7 +231,7 @@ export class Scheduler {
       // вместо вопроса его оценка и без кнопок.
       const summary = await this.eveningText(u, today);
       const rated = await dayRating(s, u.id, today);
-      if (rated === undefined) await this.safeSend(u, `${summary}\n\n${persona(u.persona).rate}`, "proud", rateButtons(today), "evening");
+      if (rated === undefined) await this.safeSend(u, `${summary}\n\n${persona(u.persona, u).rate}`, "proud", rateButtons(today), "evening");
       else await this.safeSend(u, `${summary}\n\n⭐ Оценка дня: ${rated}/10`, "proud", undefined, "evening");
       // В воскресенье вечером — мягко о задачах, от которых сбежали за неделю.
       if (new Date(`${today}T12:00:00Z`).getUTCDay() === 0 && (await s.once(`escapes:${u.id}:${today}`))) {
@@ -301,7 +301,7 @@ export class Scheduler {
       const words = await this.llm([
         {
           role: "system",
-          content: `${persona(u.persona).voice}\nВечерний итог дня для хозяина — 2–3 коротких предложения, не длиннее ${EVENING_MAX} знаков, ` +
+          content: `${persona(u.persona, u).voice}\nВечерний итог дня для хозяина — 2–3 коротких предложения, не длиннее ${EVENING_MAX} знаков, ` +
             `без заголовков, списков и эмодзи в начале строк. НЕ пересказывай, что было за день: цифры он уже видит. ` +
             `Найди одну неочевидную связь по записям за неделю (что повторяется, что идёт после чего: еда и самочувствие, игры и сон, ` +
             `дела и настроение) и дай один конкретный маленький совет на завтра с учётом завтрашних планов. Только по фактам ниже, ` +

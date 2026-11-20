@@ -9,7 +9,7 @@ lead: Таблицы базы и адреса сервера — что где �
 
 | Таблица | Что хранит |
 |---|---|
-| `users` | пользователь и настройки: характер, время утра/«завтра»/вечера, `event_lead_min` и `event_reminders` (когда напоминать о планах: `day`, минуты через запятую, `off`; пусто — за `event_lead_min` и в момент), игры (`game_alerts`, `game_first_min`, `game_every_min`) |
+| `users` | пользователь и настройки: характер, время утра/«завтра»/вечера, `event_lead_min` и `event_reminders` (когда напоминать о планах: `day`, минуты через запятую, `off`; пусто — за `event_lead_min` и в момент), игры (`game_alerts`, `game_first_min`, `game_every_min`), внешность Рины (шаг 19, «Перекрасить Рину»): `maid_hair` — волосы `red` (свои, по умолчанию) / `brown` / `gold` / `silver` / `violet` / `black`, `maid_eyes` — глаза `violet` (свои, по умолчанию) / `green` / `blue` / `amber`; id и названия — `server/src/look.ts`, те же, что `LOOK_HAIR` / `LOOK_EYES` в `desktop/renderer/look.js`; выбранные цвета подставляются в карточку Рины во всех промптах (`persona(u.persona, u)` → `rina` в `personas.ts`) |
 | `sessions` | входы на сайт и в программу — только хеш ключа; вход, которым не пользовались 90 дней, закрывается при следующем обращении (`SESSION_IDLE_DAYS`) |
 | `messages` | сырые сообщения и ответы на них; `parse_json` — разбор модели, у ответа с вопросом «Сдвинуть?» рядом с ним пара `clash: {eventId, withId}` (по ней `decideClash` узнаёт строку ⚠); у служебного сообщения поправки к ответу — её итог (`changed`, `clarify`, `asked`, `clash`, после ответа кнопкой — `clashDone`) |
 | `diary` | записи дневника по разделам |
@@ -52,10 +52,10 @@ lead: Таблицы базы и адреса сервера — что где �
 | Группа | Адреса |
 |---|---|
 | Служебные | `/healthz`, `/webhook` (Telegram) |
-| Вход | `/api/login`, `/api/logout`, `/api/me`, `/api/public` |
-| Настройки | `/api/settings` (характер — только из `PERSONAS`, иначе 400), `/api/personas`, `/api/backup` |
+| Вход | `/api/login`, `/api/logout`, `/api/me` (строка `users` без `password_hash`, в т. ч. `maid_hair`, `maid_eyes`, и `sessions`), `/api/public` |
+| Настройки | `/api/settings` (характер — только из `PERSONAS`, иначе 400; `maid_hair`, `maid_eyes` — только id из `look.ts`, иначе 400 «нет такого цвета»; ответ — строка `users` без `password_hash`), `/api/personas`, `/api/backup` |
 | Push | `/api/push/key`, `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/test`, `/api/push/act` |
-| День | `/api/today`, `/api/day`, `/api/notices` |
+| День | `/api/today` (день целиком и рядом `persona`, `maid_hair`, `maid_eyes` — по ним виджет ПК перекрашивает анимации на каждом опросе; `upcoming`, `far_fresh`, `gone_fresh`, `done_fresh`, `tasks`, `notes`, `done_today`, `dates`; `todayJson`), `/api/day`, `/api/notices` |
 | Дневник | `/api/diary`, `/api/diary/days`, `DELETE /api/diary/:id`, `POST /api/sleep` (сон за день вручную или `clear`) |
 | Планы | `/api/events`, `POST /api/events` (новый план из виджета: `title`, `date`, `time`, `end_time`; с отменой), `POST /api/events/:id`, `…/repeat`, `…/copy` |
 | Задачи и даты | `/api/tasks`, `POST /api/tasks/:id` (`status`, в т. ч. `deleted`; `due_date`; `title`), `POST /api/tasks/:id/plan` (задача → план), `POST /api/tasks/:id/copy` (`date`), `GET /api/dates` (`?all=1` — на год вперёд; у каждой `on`, `inDays`, `age`, `year_known`), `POST /api/dates` (`title`, `month`, `day`, `year` или null, `type`, `yearly`; отменяется — `undo`), `POST /api/dates/:id` (то же по частям, `status`: `deleted` — в корзину, `active` — вернуть); корзина — `dates` в `GET /api/trash` и `POST /api/trash/purge` (проверка — `server/test/dates-edit.test.ts`) |

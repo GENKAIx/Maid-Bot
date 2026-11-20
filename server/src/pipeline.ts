@@ -245,7 +245,7 @@ export class Pipeline {
     const at = inc.at ?? new Date();
     const u = inc.user;
     const today = dayKey(at, u.tz);
-    const p = persona(u.persona);
+    const p = persona(u.persona, u);
     const pending = inc.chatOnly ? undefined : await s.pendingClarify(u.id);
     const pics = inc.images?.length ? inc.images : undefined;
     const { message, created } = await s.saveMessage({
@@ -767,7 +767,7 @@ export class Pipeline {
   }
   private async undoOne(u: User, messageId?: number): Promise<string> {
     const s = this.store;
-    const p = persona(u.persona);
+    const p = persona(u.persona, u);
     const msg = messageId ? await s.message(messageId) : await s.lastDoneMessage(u.id);
     if (!msg || msg.user_id !== u.id) return "Нечего отменять.";
     await this.closeProposals(u, "declined", msg.id);
@@ -833,7 +833,7 @@ export class Pipeline {
   async correct(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date }): Promise<CorrectReply | null> {
     const s = this.store;
     const at = opts.at ?? new Date();
-    const p = persona(u.persona);
+    const p = persona(u.persona, u);
     let target = await s.message(messageId);
     if (!target || target.user_id !== u.id) return null;
     // Ответ на уточнение и прежняя поправка — служебные: записи лежат у исходного сообщения.
@@ -1059,7 +1059,7 @@ export class Pipeline {
       const out = await this.llm([
         {
           role: "system",
-          content: `${persona(u.persona).voice}\nОтвечай на вопрос пользователя только по его записям ниже. ` +
+          content: `${persona(u.persona, u).voice}\nОтвечай на вопрос пользователя только по его записям ниже. ` +
             `Нет данных — так и скажи, не выдумывай. ${shelfRule}Вопросы о тебе самой — по твоей карточке, не по записям. Коротко, 1–4 предложения. Сегодня ${today}. ` +
             `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай; данные за один день — не называй это средним.\n\n${data}${traits ? "\n\n" + traits : ""}`,
         },
@@ -1070,14 +1070,14 @@ export class Pipeline {
       return linkDays(esc(wholeSentences(text) || text), this.publicUrl, today);
     } catch (e) {
       console.error("[answer]", e);
-      return { text: persona(u.persona).failed, days: [] };
+      return { text: persona(u.persona, u).failed, days: [] };
     }
   }
 
   /** Ответ разговором: голос характера, что знает о собеседнике, последние сообщения (/ask и сообщения с talk).
    *  saved — что из этого сообщения уже записал разбор (строки ответа); ответ — одним абзацем: под ним строки записанного. */
   private async talkText(u: User, msg: Message, at: Date, images?: Picture[], saved: string[] = []): Promise<string> {
-    const p = persona(u.persona);
+    const p = persona(u.persona, u);
     const today = dayKey(at, u.tz);
     const traits = traitPrompt(await this.store.traitsOf(u.id));
     const mem = (await this.store.activeMemory(u.id)).slice(-PROMPT_CAP.memory).map((m) => `${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n");
@@ -1091,7 +1091,7 @@ export class Pipeline {
   }
 
   private async chat(u: User, msg: Message, at: Date, images?: Picture[]): Promise<Reply> {
-    const p = persona(u.persona);
+    const p = persona(u.persona, u);
     try {
       const text = await this.talkText(u, msg, at, images);
       await this.store.setMessage(msg.id, { state: "done", reply: text });

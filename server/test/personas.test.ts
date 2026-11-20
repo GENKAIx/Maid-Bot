@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildPrompt } from "../src/parse.ts";
 import { readFileSync } from "node:fs";
-import { HOUSE_RULES, PERSONAS, RINA, persona } from "../src/personas.ts";
+import { EYES_NAMES, HAIR_NAMES, MAID_EYES, MAID_HAIR } from "../src/look.ts";
+import { HOUSE_RULES, PERSONAS, RINA, persona, rina } from "../src/personas.ts";
 
 // Общие правила горничной (personas.ts, HOUSE_RULES): интимное записывать спокойно, без отказов и нотаций; политику не обсуждать.
 
@@ -40,6 +41,35 @@ test("карточка Рины — в голосе каждого характ�
   assert.match(RINA, /фиолетов/i);
   assert.match(RINA, /красн/i);
   assert.match(RINA, /не выдумывай/i);
+});
+
+// «Перекрасить Рину» (look.ts, 20.11.2026): цвет волос и глаз из настройки хозяина — в её карточке; свои цвета — текст как был.
+test("карточка Рины: выбранные волосы и глаза вместо своих, без выбора — прежний текст", () => {
+  assert.ok(RINA.includes("Как ты выглядишь: тёмно-красные волосы, длинный хвост сбоку, перехваченный чёрным бантом; фиолетовые глаза; "));
+  for (const id of [...Object.keys(PERSONAS), undefined]) {
+    const own = persona(id).voice;
+    for (const look of [{ maid_hair: "red", maid_eyes: "violet" }, {}, { maid_hair: null, maid_eyes: null }, { maid_hair: "pink", maid_eyes: "toString" }]) {
+      assert.equal(persona(id, look).voice, own, `свои (или незнакомые) цвета поменяли промпт у ${id}: ${JSON.stringify(look)}`);
+    }
+    const v = persona(id, { maid_hair: "gold", maid_eyes: "green" }).voice;
+    assert.match(v, /золотистые волосы/);
+    assert.match(v, /зелёные глаза/);
+    assert.doesNotMatch(v, /тёмно-красн/);
+    assert.doesNotMatch(v, /фиолетовые глаза/);
+    assert.ok(v.startsWith(PERSONAS[id ?? ""]?.voice ?? PERSONAS.strict.voice) && v.includes(HOUSE_RULES), `голос или правила потеряны у ${id}`);
+    assert.equal(v.split("Тебя зовут Рина").length, 2, `карточка Рины повторяется у ${id}`);
+  }
+  for (const h of MAID_HAIR) assert.ok(rina({ maid_hair: h }).includes(`: ${HAIR_NAMES[h]} волосы, `), `волосы ${h}`);
+  for (const e of MAID_EYES) assert.ok(rina({ maid_eyes: e }).includes(`; ${EYES_NAMES[e]} глаза; `), `глаза ${e}`);
+});
+
+test("промпт разбора: Рина в выбранных цветах", () => {
+  const ctx = { today: "2026-11-20", now: "21:00", tz: "Europe/Moscow", events: [], tasks: [], dates: [], memory: [], habits: [], recent: [] };
+  const p = buildPrompt(ctx, persona("sassy", { maid_hair: "silver", maid_eyes: "amber" }).voice);
+  assert.match(p, /серебристые волосы/);
+  assert.match(p, /янтарные глаза/);
+  assert.doesNotMatch(p, /тёмно-красн|фиолетовые глаза/);
+  assert.match(buildPrompt(ctx, persona("sassy").voice), /тёмно-красные волосы.*фиолетовые глаза/);
 });
 
 test("ответ на вопрос: о себе Рина отвечает по своей карточке, а не «нет данных»", () => {

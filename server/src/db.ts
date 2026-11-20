@@ -378,6 +378,11 @@ CREATE INDEX IF NOT EXISTS notes_user ON notes (user_id, status);
   `
 ALTER TABLE dates ADD COLUMN closed_at TEXT;
 `,
+  // Шаг 19: «Перекрасить Рину» — цвет волос и глаз горничной (id — look.ts, как в desktop/renderer/look.js); у всех — свои цвета.
+  `
+ALTER TABLE users ADD COLUMN maid_hair TEXT NOT NULL DEFAULT 'red';
+ALTER TABLE users ADD COLUMN maid_eyes TEXT NOT NULL DEFAULT 'violet';
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -422,6 +427,10 @@ export interface User {
   game_alerts: number;
   game_first_min: number;
   game_every_min: number;
+  /** «Перекрасить Рину» (look.ts): волосы — id из MAID_HAIR, свои — red. */
+  maid_hair: string;
+  /** Глаза — id из MAID_EYES, свои — violet. */
+  maid_eyes: string;
 }
 export interface Message {
   id: number;

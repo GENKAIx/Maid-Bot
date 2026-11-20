@@ -94,7 +94,7 @@ async function dayWords(llm: LlmCall | null, u: User, today: string, thought: st
     const text = await llm([
       {
         role: "system",
-        content: `${persona(u.persona).voice}\nУтреннее сообщение хозяину на ${humanDay(today)} (${today}). Ответь JSON {"fact": "...", "wish": "..."}.\n` +
+        content: `${persona(u.persona, u).voice}\nУтреннее сообщение хозяину на ${humanDay(today)} (${today}). Ответь JSON {"fact": "...", "wish": "..."}.\n` +
           `fact — одно короткое забавное предложение про этот день, не длиннее ${LINE_MAX} знаков: праздник этого дня (можно неофициальный и ` +
           `смешной), событие, случившееся в этот день в истории, или интересный факт. Пиши только то, в чём уверена. Не уверена — скажи ` +
           `что-нибудь про время года или день недели.\n` +

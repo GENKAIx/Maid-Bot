@@ -235,6 +235,24 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     }
   });
 
+  // «Перекрасить Рину» (шаг 19 базы, look.ts): у новых и у старых пользователей — свои цвета, выбранный цвет сохраняется.
+  test(`${kind}: цвет волос и глаз Рины — свои у новых и старых пользователей, выбранный сохраняется`, async () => {
+    const { store, u } = await setup(open);
+    assert.deepEqual([u.maid_hair, u.maid_eyes], ["red", "violet"]);
+    await store.updateUser(u.id, { maid_hair: "gold", maid_eyes: "green" });
+    const me = (await store.user(u.id))!;
+    assert.deepEqual([me.maid_hair, me.maid_eyes], ["gold", "green"]);
+    // Как до шага 19: столбцов ещё нет, пользователи уже есть — после миграции у них свои цвета, остальное на месте.
+    await store.driver.exec("ALTER TABLE users DROP COLUMN maid_hair; ALTER TABLE users DROP COLUMN maid_eyes;");
+    await store.kvSet("schema_version", "18");
+    const again = await Store.over(store.driver);
+    const old = (await again.user(u.id))!;
+    assert.deepEqual([old.maid_hair, old.maid_eyes, old.name, old.persona], ["red", "violet", "Тест", "strict"]);
+    await again.updateUser(u.id, { maid_eyes: "amber" });
+    assert.deepEqual([(await again.user(u.id))!.maid_hair, (await again.user(u.id))!.maid_eyes], ["red", "amber"]);
+    await again.close();
+  });
+
   test(`${kind}: импорт Excel — обе разметки, другие листы, повторный запуск ничего не дублирует`, async () => {
     const { store, u } = await setup(open);
     const wb = sampleWorkbook();
