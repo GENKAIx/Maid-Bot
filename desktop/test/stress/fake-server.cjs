@@ -7,6 +7,21 @@ const pad = (n) => String(n).padStart(2, "0");
 const dayKey = (t = new Date()) => `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
 const dayPlus = (n, from = new Date()) => { const t = new Date(from); t.setDate(t.getDate() + n); return dayKey(t); };
 const hm = (t) => `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+// Карточки «что куда записалось» — того же вида, что у сервера (server/src/cards.ts): у каждой ref — таблица и id записи.
+const MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+const WD_SHORT = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+const humanDay = (key) => { const [y, m, d] = key.split("-").map(Number); return `${d} ${MONTHS_GEN[m - 1]}, ${WD_SHORT[new Date(y, m - 1, d).getDay()]}`; };
+const MONEY_OF = { такси: "транспорт", метро: "транспорт", кофе: "кафе", обед: "еда", хлеб: "продукты" };
+const MONEY_CATS = ["еда", "продукты", "кафе", "транспорт", "дом", "связь", "подписки", "здоровье", "одежда", "развлечения", "игры", "подарки", "другое"];
+function cardOf(x) {
+  if (x.card) return x.card; // карточка, заданная целиком (srv.nextReply)
+  if (x.tbl === "events") return { kind: "event", title: x.title, detail: `${humanDay(x.date)}${x.time ? " " + x.time : ""}`, ref: { tbl: "events", id: x.id } };
+  const what = [x.category, x.note].filter(Boolean).join(", ");
+  return { kind: "money", title: x.note || x.category || "Расход", detail: `−${x.amount.toLocaleString("ru-RU")} ${x.currency}${what ? " — " + what : ""}`, ref: { tbl: "money", id: x.id } };
+}
+const changeLine = (was, now) => `✎ ${was.title}${(was.detail ?? "") === (now.detail ?? "") ? " — поправила" : `: ${was.detail || "—"} → ${now.detail || "—"}`}`;
+const KIND_CHANGE = "Поменять вид записи (план, задача, заметка, дневник…) я пока не умею. Нажмите «↩ Отменить» и скажите заново, как нужно.";
+const NOT_UNDERSTOOD = "Не поняла, что поправить в этом ответе. Скажите иначе — например, «не в 15, а в 17».";
 
 /** Наборы данных для /api/today. now — «сейчас» виджета (для сдвинутых часов). */
 const DATASETS = {
@@ -74,6 +89,12 @@ function create() {
     shiftMs: 0,
     state: null, // текущие данные (задачи отмечаются по-настоящему)
     messages: new Map(), // id сообщения → ответ (повтор с тем же id не записывается дважды)
+    // Поправка к ответу: записи за карточками («таблица:id» → запись), ответы с ними (messageId → { keys, asked, undone }),
+    // итоги поправок по id (повтор не пишет второй раз). nextReply — следующий ответ /api/input целиком (один раз).
+    records: new Map(),
+    answers: new Map(),
+    corrections: new Map(),
+    nextReply: null,
     notices: [],
     redirectTo: null,
     latency: () => 0,
@@ -86,6 +107,90 @@ function create() {
     const now = srv.now();
     return { day: dayKey(now), dates: [], done_today: [], diary: [], activity: [], far_fresh: [], gone_fresh: [], done_fresh: [], ...srv.state };
   };
+
+  // --- поправка к ответу (как server/src/pipeline.ts, correct): простые правила вместо модели ---
+  const record = (x) => {
+    const r = { ...x, id: x.id ?? 500 + srv.records.size + 1 };
+    srv.records.set(`${r.tbl}:${r.id}`, r);
+    return r;
+  };
+  const answer = (messageId, recs) => srv.answers.set(messageId, { keys: recs.map((x) => `${x.tbl}:${x.id}`), asked: null, undone: false });
+  // /api/input: «завтра в 15 стоматолог» — план, «такси 450» (или «450 на такси») — трата; и то и другое — две карточки.
+  // srv.nextReply — ответ целиком (его карточки с ref тоже можно поправлять, но только правилами без полей: «это задача», вопрос).
+  function inputReply(text, messageId) {
+    if (srv.nextReply) {
+      const r = { emotion: "neutral", undoable: true, changes: [], ...srv.nextReply, messageId };
+      srv.nextReply = null;
+      const recs = (r.changes ?? []).filter((c) => c?.ref).map((c) => record({ tbl: c.ref.tbl, id: c.ref.id, card: c }));
+      if (recs.length) answer(messageId, recs);
+      return r;
+    }
+    const recs = [], lines = [];
+    const ev = text.match(/(сегодня|завтра)\s+в\s+(\d{1,2})(?::(\d{2}))?(?!\d)\s*([^,.;]*)/i);
+    if (ev && Number(ev[2]) <= 23) {
+      const title = ev[4].replace(/\s*(такси|метро|кофе|обед|хлеб)\s+\d+.*$/i, "").trim().replace(/^./, (c) => c.toUpperCase()) || "План";
+      const e = record({ tbl: "events", title, date: dayPlus(/завтра/i.test(ev[1]) ? 1 : 0, srv.now()), time: `${pad(Number(ev[2]))}:${ev[3] ?? "00"}` });
+      recs.push(e);
+      lines.push(`📅 ${title} — ${cardOf(e).detail}`);
+    }
+    const mo = text.match(/(такси|метро|кофе|обед|хлеб)\s+(\d+)|(\d+)\s+на\s+(такси|метро|кофе|обед|хлеб)/i);
+    if (mo) {
+      const note = (mo[1] ?? mo[4]).toLowerCase();
+      const m = record({ tbl: "money", amount: Number(mo[2] ?? mo[3]), currency: "RUB", category: MONEY_OF[note], note });
+      recs.push(m);
+      lines.push(`💰 ${cardOf(m).detail}`);
+    }
+    if (!recs.length) return null;
+    answer(messageId, recs);
+    return { text: `Записала:\n${lines.join("\n")}`, emotion: "happy", changes: recs.map(cardOf), messageId, undoable: true };
+  }
+  // /api/correct: «не в 15, а в 17» / «в 17» — время плана, «в 7» — вопрос «утра или вечера?» (следующая поправка — ответ),
+  // «сумма 540» / «не 450, а 540» — сумма, «это еда» — категория, «это задача» — не умеет (честный текст), «в 19» — ещё и наложение
+  // на «Ужин с друзьями» (кнопки «Сдвинуть» / «Оставить»). Ответ отменён (/api/undo) — записей нет, поправлять нечего.
+  function correctReply(a, messageId, text) {
+    const recs = () => a.keys.map((k) => srv.records.get(k)).filter(Boolean);
+    const view = (reply, changed = [], extra = {}) => ({
+      text: reply, emotion: changed.length ? "happy" : "neutral", messageId, undoable: !a.undone, changes: recs().map(cardOf), changed, ...extra,
+    });
+    if (a.undone) return view("Этот ответ уже отменён — поправлять нечего.");
+    const t = text.toLowerCase();
+    const ev = recs().find((x) => x.tbl === "events" && !x.card);
+    const mo = recs().find((x) => x.tbl === "money" && !x.card);
+    const edit = (x, patch, head) => {
+      const was = cardOf(x);
+      Object.assign(x, patch);
+      const now = cardOf(x);
+      if (was.title === now.title && was.detail === now.detail) return view("Так и записано — ничего не меняла.");
+      const clash = x.tbl === "events" && x.time === "19:00"
+        ? { eventId: x.id, title: x.title, withId: 9001, withTitle: "Ужин с друзьями", span: "19:00–20:30", shiftTo: "20:30" } : null;
+      const warn = clash ? `\n⚠ В ${clash.span} у тебя уже «${clash.withTitle}». Сдвинуть «${clash.title}» на ${clash.shiftTo}?` : "";
+      return view(`${head}\n${changeLine(was, now)}${warn}`, [`${x.tbl}:${x.id}`], clash ? { clash } : {});
+    };
+    if (/это\s+(задача|заметка|дневник|привычка)|сделай\s+задач/.test(t)) return view(KIND_CHANGE);
+    let m;
+    if (a.asked && ev && /утр|веч|дня|днём|ноч/.test(t)) {
+      const { hour, min } = a.asked;
+      a.asked = null;
+      const h = /веч|дня|днём/.test(t) && hour < 12 ? hour + 12 : hour;
+      return edit(ev, { time: `${pad(h)}:${min}` }, `Перенесла на ${pad(h)}:${min}.`);
+    }
+    if (mo && (m = t.match(/(?:сумма|не\s+\d+,?\s*а)\s+(\d+)/))) return edit(mo, { amount: Number(m[1]) }, "Поправила сумму.");
+    if (mo && (m = t.match(/это\s+([а-яё]+)/)) && MONEY_CATS.includes(m[1])) return edit(mo, { category: m[1] }, "Поправила категорию.");
+    const times = [...t.matchAll(/(?:^|\s)в\s+(\d{1,2})(?::(\d{2}))?(?!\d)/g)];
+    if (ev && times.length) {
+      const last = times.at(-1);
+      const hour = Number(last[1]), min = last[2] ?? "00";
+      const tail = t.slice(last.index + last[0].length);
+      if (hour > 23) return view(`Уточните, пожалуйста: ${hour} — такого часа нет. Во сколько?`, [], { clarify: true });
+      if (hour >= 1 && hour <= 11 && !/утр|веч|дня|днём|ноч/.test(tail)) {
+        a.asked = { hour, min };
+        return view(`Уточните, пожалуйста: в ${hour} утра или вечера?`, [], { clarify: true });
+      }
+      const h = /веч|дня|днём/.test(tail) && hour < 12 ? hour + 12 : hour;
+      return edit(ev, { time: `${pad(h)}:${min}` }, `Перенесла на ${pad(h)}:${min}.`);
+    }
+    return view(NOT_UNDERSTOOD, [], { clarify: true });
+  }
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://x");
@@ -159,13 +264,32 @@ function create() {
     if (req.method === "POST" && (p === "/api/input" || p === "/api/voice")) {
       // Как настоящий: повтор с тем же id второй раз не записывается.
       if (body?.id && srv.messages.has(body.id)) return finish(200, srv.messages.get(body.id));
-      const r = { text: `Записала: ${String(body?.text ?? "").slice(0, 80)}`, emotion: "happy", changes: [], messageId: srv.messages.size + 1 };
+      const r = inputReply(String(body?.text ?? ""), 1001 + (srv.inputs?.length ?? 0))
+        ?? { text: `Записала: ${String(body?.text ?? "").slice(0, 80)}`, emotion: "happy", changes: [], messageId: srv.messages.size + 1 };
       if (body?.id) srv.messages.set(body.id, r);
       (srv.inputs ??= []).push(body);
       return finish(200, r);
     }
+    if (req.method === "POST" && p === "/api/correct") {
+      (srv.corrects ??= []).push(body);
+      const text = typeof body?.text === "string" ? body.text.trim() : "";
+      const badId = body?.id !== undefined && (typeof body.id !== "string" || !body.id || body.id.length > 80);
+      if (!Number.isInteger(body?.messageId) || !text || text.length > 500 || badId) return finish(400, { error: "неверный запрос" });
+      const a = srv.answers.get(body.messageId);
+      if (!a) return finish(404, { error: "нет такого ответа" });
+      if (body.id && srv.corrections.has(body.id)) return finish(200, { ...srv.corrections.get(body.id), duplicate: true });
+      const r = correctReply(a, body.messageId, text);
+      if (body.id) srv.corrections.set(body.id, r);
+      return finish(200, r);
+    }
     if (req.method === "POST" && p === "/api/rate") { (srv.rates ??= []).push(body); return finish(200, { text: "Спасибо" }); }
-    if (req.method === "POST" && p === "/api/undo") { (srv.undos ??= []).push(body); return finish(200, { text: "Отменила" }); }
+    if (req.method === "POST" && p === "/api/undo") {
+      (srv.undos ??= []).push(body);
+      // Отмена ответа с карточками убирает его записи: поправка после неё — «уже отменён».
+      const a = srv.answers.get(body?.messageId);
+      if (a && !a.undone) { a.undone = true; for (const k of a.keys) srv.records.delete(k); }
+      return finish(200, { text: "Отменила" });
+    }
     if (req.method === "POST") { (srv.posts ??= []).push({ p, body }); return finish(200, { ok: true, text: "Готово" }); }
     return finish(404, { error: "нет такого адреса" });
   });

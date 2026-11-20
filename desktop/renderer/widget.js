@@ -402,6 +402,22 @@ function planRows(html) {
     ? s + (i && typeof out[i - 1] === "string" ? "\n" : "") + x
     : s + `<span class="plan-list">${x.grid.join("")}</span>`, "");
 }
+// Карточка записи в облачке (say и новые карточки после поправки — amend.js): щелчок — раздел приложения. data-ref — запись
+// за карточкой («таблица:id»), название и подробность — отдельными span: поправка находит карточку и прокручивает в них изменившееся.
+function bubbleCard(c) {
+  const [icon, name] = KIND[c.kind] ?? ["•", c.kind];
+  const el = document.createElement("div");
+  el.className = `card k-${c.kind} go`;
+  el.title = "Открыть в приложении";
+  const ref = amendKey(c.ref);
+  if (ref) el.dataset.ref = ref;
+  el.onclick = () => {
+    hideBubble();
+    maid.openSection(sectionOf(c));
+  };
+  el.innerHTML = `<span class="card-icon">${icon}</span><span class="card-body"><b>${esc(name)}</b> <span class="card-title">${esc(c.title)}</span>${c.detail ? `<span class="card-detail">${esc(c.detail)}</span>` : ""}</span>`;
+  return el;
+}
 function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false, drawing = null, tour = false } = {}) {
   // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices). Идёт экскурсия — говорит
   // только она (tour); уведомления при этом всё равно ложатся в ящик.
@@ -427,16 +443,8 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   const cards = $("#bubbleCards");
   cards.innerHTML = "";
   changes.forEach((c, i) => {
-    const [icon, name] = KIND[c.kind] ?? ["•", c.kind];
-    const el = document.createElement("div");
-    el.className = `card k-${c.kind} go`;
-    el.title = "Открыть в приложении";
-    el.onclick = () => {
-      hideBubble();
-      maid.openSection(sectionOf(c));
-    };
+    const el = bubbleCard(c);
     el.style.animationDelay = `${late + 160 + i * 140}ms`;
-    el.innerHTML = `<span class="card-icon">${icon}</span><span class="card-body"><b>${esc(name)}</b> ${esc(c.title)}${c.detail ? `<span class="card-detail">${esc(c.detail)}</span>` : ""}</span>`;
     cards.appendChild(el);
     typeTimers.push(setTimeout(() => play("pop"), late + 160 + i * 140));
   });
@@ -471,6 +479,8 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     img.onclick = () => img.classList.toggle("big");
     cards.appendChild(img);
   }
+  // Строка «поправить этот ответ…» под карточками (amend.js) — только у ответа, который что-то записал; новое облачко её сбрасывает.
+  amendMount({ undo, changes, proposal, text });
   const weighty = !!(drawing || changes.length || days.length || undo || notice || buttons.some((x) => !x.auto) || plain.length > 140 || (ms === 0 && text !== "…"));
   const acts = $("#bubbleActions");
   acts.innerHTML = proposal
@@ -792,7 +802,8 @@ function startAuto(btn, wait) {
     if (autoRun !== run) return;
     const dt = t - run.last;
     run.last = t;
-    if (!b.matches(":hover") && !b.classList.contains("hidden")) run.left -= dt;
+    // Пишут поправку к этому ответу (amend.js) — тоже пауза: «Оставить» не нажмётся посреди поправки.
+    if (!b.matches(":hover") && !b.classList.contains("hidden") && !amendHeld()) run.left -= dt;
     fill.style.transform = `scaleX(${Math.min(1, 1 - run.left / wait)})`;
     if (run.left > 0) return void (run.raf = requestAnimationFrame(tick));
     btn.classList.add("pressed");
@@ -822,7 +833,8 @@ function startLife(total, shown) {
     if (life !== run) return;
     const dt = t - run.last;
     run.last = t;
-    const held = b.matches(":hover");
+    // Держит и строка поправки (amend.js): в фокусе, с текстом или поправка ещё идёт.
+    const held = b.matches(":hover") || amendHeld();
     if (held) run.left = Math.max(run.left, LIFE_GRACE);
     else if (!b.classList.contains("hidden")) run.left -= dt;
     b.classList.toggle("held", held);
@@ -907,7 +919,8 @@ async function pump() {
     pumping = false;
     saveOutbox();
     drawOutbox();
-    setState(restState());
+    // Идёт поправка к ответу (amend.js) — она ещё думает: «думает» снимет ответ поправки.
+    if (!amendFlying) setState(restState());
     if (next) pump();
   }
 }
@@ -1292,6 +1305,7 @@ function hideBubble() {
   stopLife();
   stopProposal();
   stopAuto();
+  amendHide(); // строка поправки отпускает фокус, черновик стирается (amend.js)
   $("#bubble").classList.add("hidden");
   maid.hover(false);
   $("#inbox").classList.remove("away");
@@ -1314,8 +1328,8 @@ function refoldLater() {
   refoldTimer = setTimeout(function again() {
     if (!autoOpened || collapsed) return (autoOpened = false);
     if (!$("#bubble").classList.contains("hidden")) return; // новое сообщение — ждём, когда уйдёт и оно
-    // Курсор на панели или в чате что-то пишут — не трогаем, пока не отпустят.
-    if ($("#w").matches(":hover") || document.activeElement === chatInput || chatInput.value.trim()) return (refoldTimer = setTimeout(again, 1500));
+    // Курсор на панели или в чате (или в строке поправки, amend.js) что-то пишут — не трогаем, пока не отпустят.
+    if ($("#w").matches(":hover") || document.activeElement === chatInput || chatInput.value.trim() || amendHeld()) return (refoldTimer = setTimeout(again, 1500));
     autoOpened = false;
     foldAnimated(true);
   }, 900);

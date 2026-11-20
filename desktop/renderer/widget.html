@@ -13,6 +13,11 @@
       <div class="bubble hidden" id="bubble">
         <div class="bubble-text" id="bubbleText"></div>
         <div class="bubble-cards" id="bubbleCards"></div>
+        <!-- Поправка к ответу (amend.js): тихая строка под карточками ответа, который что-то записал. -->
+        <form class="amend hidden" id="bubbleAmend" autocomplete="off">
+          <label class="amend-line"><span class="amend-pen" aria-hidden="true">✎</span><input id="amendInput" type="text" maxlength="500" placeholder="поправить этот ответ…" aria-label="Поправить этот ответ" title="Enter — отправить поправку, Esc — стереть"><span class="amend-spin" aria-hidden="true"></span></label>
+          <div class="amend-err" id="amendErr" role="alert"></div>
+        </form>
         <div class="bubble-actions" id="bubbleActions"></div>
       </div>
       <!-- Оповещения (inbox.js) — до четырёх значков в ряд над левым краем панели. -->
@@ -103,6 +108,7 @@
   <canvas class="veil" id="veil" aria-hidden="true"></canvas>
   <script src="inbox.js"></script>
   <script src="marks.js"></script>
+  <script src="amend.js"></script>
   <script src="widget.js"></script>
   <script src="hints.js"></script>
   <script src="tour.js"></script>
