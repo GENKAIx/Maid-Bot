@@ -276,7 +276,8 @@ function setState(s) {
 // «пока вас не было». Тронули ПК — просыпается, «О, вы вернулись!» и пересказ (napRecap). napFold — засыпая, сворачивает панель, проснувшись — разворачивает.
 // Отбой и подъём — с сервера («Персонализация → О вас», /api/today: bed, wake; с 20.11.2026, раньше — «Отбой» и «Утро» в
 // настройках виджета, свои на каждом ПК). Отбой «auto» — она узнаёт его сама, когда вечером человек уходил от ПК больше чем
-// на 1,5 ч (медиана 14 последних ночей, по умолчанию 23:00). До часа подъёма — ещё ночь. Старый сервер без них — 7:00 и «сама».
+// на 1,5 ч (медиана 14 последних ночей, по умолчанию 23:00). До подъёма — ещё ночь. Старый сервер без них — 7:00 и «сама».
+// С 20.11.2026 подъём и отбой — любое своё время с минутами: подъём — wake_at «06:30» (сервер до этого слал только час wake).
 const NAP_UNHEARD = 5 * 60;
 const NAP_NIGHT = 3 * 60;
 let napping = false;
@@ -288,12 +289,18 @@ let napSince = 0; // когда человек ушёл (мс)
 let missed = []; // уведомления, пришедшие во сне
 let unheardAt = 0; // её сообщение, на которое ещё не отреагировали
 const nightMin = (t) => { const m = t.getHours() * 60 + t.getMinutes(); return m < 12 * 60 ? m + 24 * 60 : m; }; // после полуночи — «24:30»
-let daySleep = { bed: "auto", wake: 7 };
+let daySleep = { bed: "auto", wakeMin: 7 * 60 }; // wakeMin — подъём в минутах от полуночи
 let oldSleep = null; // прежние «Отбой» и «Утро» этого ПК из настроек виджета — один раз переезжают на сервер (sleepMove)
+// Подъём из данных дня: «06:30» (wake_at), у старого сервера — час (wake); утро — до полудня, иначе 7:00.
+function wakeMinFrom(d) {
+  const m = typeof d.wake_at === "string" ? d.wake_at.match(/^(\d{2}):(\d{2})$/) : null;
+  const min = m ? Number(m[1]) * 60 + Number(m[2]) : Number.isInteger(d.wake) ? d.wake * 60 : NaN;
+  return min >= 0 && min < 12 * 60 ? min : 7 * 60;
+}
 function daySleepSync(d) {
   daySleep = {
     bed: typeof d.bed === "string" && /^\d{2}:\d{2}$/.test(d.bed) ? d.bed : "auto",
-    wake: Number.isInteger(d.wake) && d.wake >= 0 && d.wake < 12 ? d.wake : 7,
+    wakeMin: wakeMinFrom(d),
   };
   sleepMove(d);
 }
@@ -332,7 +339,7 @@ function learnBedtime(from, to) {
 }
 function afterBedtime(t = new Date()) {
   const m = nightMin(t);
-  return m >= bedtime() && m < daySleep.wake * 60 + 24 * 60;
+  return m >= bedtime() && m < daySleep.wakeMin + 24 * 60;
 }
 const restState = () => (napping ? "sleep" : "idle");
 function fallAsleep(idleSec) {
@@ -2328,7 +2335,7 @@ const MINI_NEAR = 60;
 function miniPeriod(t, near) {
   if (near) return "day";
   const h = t.getHours();
-  if (afterBedtime(t) || h < daySleep.wake) return "night";
+  if (afterBedtime(t) || h * 60 + t.getMinutes() < daySleep.wakeMin) return "night";
   if (h < MINI_MORNING_END) return "morning";
   return h >= MINI_EVENING ? "evening" : "day";
 }

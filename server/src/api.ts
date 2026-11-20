@@ -26,7 +26,7 @@ import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, tr
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, replanEvents as replanEventsOf, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
-import { ADDRESSES, addressWord, askNext, askOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
+import { ADDRESSES, addressWord, askNext, askOf, wakeAt, wakeMinOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
@@ -110,7 +110,9 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
     maid_eyes: u.maid_eyes,
     // «О вас» (you.ts): как обращаться в готовых репликах виджета, подъём и отбой — для сна на ПК (одни на все компьютеры).
     call: addressWord(u),
-    wake: u.wake,
+    // wake — час (виджеты до 0.1.83 знают только его), wake_at — подъём с минутами «06:30» (с 20.11.2026).
+    wake: Math.floor(wakeMinOf(u) / 60),
+    wake_at: wakeAt(u),
     bed: u.bed,
     // Подъём и отбой, выбранные самим (ask.set): виджет не переносит поверх них прежние настройки ПК (sleepMove).
     you_set: askOf(u).set.filter((k) => k === "wake" || k === "bed"),
@@ -385,7 +387,7 @@ export function createApi(deps: ApiDeps) {
         name: z.string().max(80).optional(),
         city: CityIn.nullable().optional(),
         tz: z.string().max(64).nullable().optional(),
-        wake: z.number().int().nullable().optional(),
+        wake: z.union([z.number().int(), z.string().max(5)]).nullable().optional(), // «06:30» или час числом (старый виджет)
         bed: z.string().max(5).nullable().optional(),
         birthday: z.string().max(10).optional(),
         height: z.number().nullable().optional(),

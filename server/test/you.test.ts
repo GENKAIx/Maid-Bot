@@ -68,20 +68,50 @@ test("город ставит часовой пояс, стёртый город
   assert.equal(u.tz, "Asia/Yekaterinburg", "свой пояс стёрли — город снова ставит свой");
   await assert.rejects(saveYou(store, u, { tz: "Mars/Olympus" }), /пояса/);
   await assert.rejects(saveYou(store, u, { wake: 3 }), /подъём/);
-  await assert.rejects(saveYou(store, u, { bed: "19:00" }), /отбоя/);
+  await assert.rejects(saveYou(store, u, { bed: "12:30" }), /отбой/);
   await assert.rejects(saveYou(store, u, { address: "name", name: "  " }), /имя/);
   await saveYou(store, u, { wake: 8, bed: "23:00", address: "mistress", birthday: "1996-03-14", height: 170 });
   v = await youView(store, (await store.user(u.id))!);
-  assert.deepEqual([v.wake, v.bed, v.address, v.call, v.birthday, v.height], [8, "23:00", "mistress", "хозяйка", "1996-03-14", 170]);
+  assert.deepEqual([v.wake, v.bed, v.address, v.call, v.birthday, v.height], ["08:00", "23:00", "mistress", "хозяйка", "1996-03-14", 170]);
   assert.deepEqual(v.filled, ["city", "wake", "address", "bed", "birthday", "height", "tz"], "всё указано — 7 из 7");
   // Стереть подъём, обращение и пояс — снова по умолчанию и «не заполнено»; подъём 7 по умолчанию заполненным не считается.
   await saveYou(store, (await store.user(u.id))!, { wake: null, address: null, tz: null, city: null });
   u = (await store.user(u.id))!;
   v = await youView(store, u);
-  assert.deepEqual([v.wake, v.address, v.tz], [7, "master", "Europe/Moscow"]);
+  assert.deepEqual([v.wake, v.address, v.tz], ["07:00", "master", "Europe/Moscow"]);
   assert.deepEqual(v.filled, ["bed", "birthday", "height"]);
   await saveYou(store, u, { wake: 7 });
   assert.ok((await youView(store, (await store.user(u.id))!)).filled.includes("wake"), "7:00, выбранные самим, — заполнено");
+  await store.close();
+});
+
+test("свой подъём и отбой (20.11.2026): любое время с минутами в своих границах; прежний час в базе читается как час", async () => {
+  const store = await Store.open(":memory:");
+  let u = await store.createUser({ login: "own", passwordHash: "x", name: "Тест", tz: "Europe/Moscow" });
+  await saveYou(store, u, { wake: "06:30", bed: "23:45" });
+  u = (await store.user(u.id))!;
+  assert.equal(u.wake, 390, "в базе — минуты");
+  let v = await youView(store, u);
+  assert.deepEqual([v.wake, v.bed], ["06:30", "23:45"]);
+  assert.deepEqual(v.filled, ["wake", "bed"]);
+  let t = await todayJson(store, u);
+  assert.deepEqual([t.wake, t.wake_at, t.bed], [6, "06:30", "23:45"], "старый виджет — час, новый — с минутами");
+  // Границы: подъём 04:00–11:59, отбой 18:00–03:59 или «сама».
+  for (const ok of ["04:00", "11:59"]) await saveYou(store, u, { wake: ok });
+  for (const bad of ["03:59", "12:00", "6:30", "25:00", "утро"]) await assert.rejects(saveYou(store, u, { wake: bad }), /подъём/, bad);
+  for (const ok of ["18:00", "03:59", "00:15", "auto"]) await saveYou(store, u, { bed: ok });
+  for (const bad of ["17:59", "04:00", "12:00", "23:5"]) await assert.rejects(saveYou(store, u, { bed: bad }), /отбой/, bad);
+  // Час числом (кнопки облачка, «встаю в 7», перенос со старого виджета) — как раньше.
+  await saveYou(store, u, { wake: 9 });
+  assert.equal((await youView(store, (await store.user(u.id))!)).wake, "09:00");
+  // Запись до 20.11.2026 — час (и 7 по умолчанию у новых): читается как час.
+  await store.updateUser(u.id, { wake: 8 });
+  u = (await store.user(u.id))!;
+  assert.equal((await youView(store, u)).wake, "08:00");
+  t = await todayJson(store, u);
+  assert.deepEqual([t.wake, t.wake_at], [8, "08:00"]);
+  const fresh = await store.createUser({ login: "own2", passwordHash: "x", name: "Новый", tz: "Europe/Moscow" });
+  assert.equal((await youView(store, fresh)).wake, "07:00");
   await store.close();
 });
 
@@ -120,17 +150,20 @@ test("API: /api/you читает и пишет, /api/city подсказывае
     const { json: { token } } = await call("/api/login", { login: "owner", password: "secret-pass-1" });
     assert.equal((await call("/api/you")).status, 401);
     const v0 = (await call("/api/you", undefined, token)).json;
-    assert.deepEqual([v0.address, v0.call, v0.city, v0.wake, v0.bed, v0.tz], ["master", "хозяин", null, 7, "auto", "Europe/Moscow"]);
+    assert.deepEqual([v0.address, v0.call, v0.city, v0.wake, v0.bed, v0.tz], ["master", "хозяин", null, "07:00", "auto", "Europe/Moscow"]);
     assert.deepEqual(v0.filled, []);
     const found = (await call("/api/city?q=" + encodeURIComponent("Екат"), undefined, token)).json;
     assert.equal(found[0].name, "Екатеринбург");
     const v1 = (await call("/api/you", { city: found[0], address: "name", wake: 8 }, token)).json;
-    assert.deepEqual([v1.city.name, v1.tz, v1.tz_offset, v1.call, v1.wake], ["Екатеринбург", "Asia/Yekaterinburg", "UTC+5", "Андрей", 8]);
-    assert.equal((await call("/api/you", { wake: 4 }, token)).status, 400);
+    assert.deepEqual([v1.city.name, v1.tz, v1.tz_offset, v1.call, v1.wake], ["Екатеринбург", "Asia/Yekaterinburg", "UTC+5", "Андрей", "08:00"]);
+    assert.equal((await call("/api/you", { wake: 3 }, token)).status, 400);
+    assert.equal((await call("/api/you", { wake: "12:30" }, token)).status, 400);
+    assert.equal((await call("/api/you", { wake: "07:40" }, token)).json.wake, "07:40", "своё время с сайта");
+    await call("/api/you", { wake: "08:00" }, token);
     assert.equal((await call("/api/you", { address: "boss" }, token)).status, 400);
     const u = (await store.userByLogin("owner"))!;
     const t = await todayJson(store, u);
-    assert.deepEqual([t.call, t.wake, t.bed], ["Андрей", 8, "auto"]);
+    assert.deepEqual([t.call, t.wake, t.wake_at, t.bed], ["Андрей", 8, "08:00", "auto"]);
     // Город и подъём указаны, обращение по имени выбрано — вопросов нет; стёрли обращение — облачко спросит его.
     assert.equal(t.ask, null);
     await call("/api/you", { address: null }, token);
@@ -166,7 +199,7 @@ test("Рина спрашивает в облачке: город → подъё
   assert.ok(wake.buttons.some((b) => b.data === "you:wake:8"));
   assert.match((await youButton(store, u, "you:wake:8", t6)).text, /до 8:00/);
   u = (await store.user(u.id))!;
-  assert.equal(u.wake, 8);
+  assert.equal(u.wake, 480);
   const t9 = new Date(t6.getTime() + 3 * 86_400_000);
   const addr = askNext(u, t9)!;
   assert.equal(addr.field, "address");
@@ -200,9 +233,9 @@ test("«Записать в профиль?»: город и подъём из �
   const o9 = (await aboutOffer(store, u, { wake: 9 }, cities))!;
   const o10 = (await aboutOffer(store, u, { wake: 10 }, cities))!;
   assert.equal((await youButton(store, u, o9.buttons[1].data)).text, "Хорошо, не записываю.");
-  assert.equal((await store.user(u.id))!.wake, 7);
+  assert.equal((await store.user(u.id))!.wake, 420);
   await youButton(store, u, o10.buttons[0].data);
-  assert.equal((await store.user(u.id))!.wake, 10, "второе предложение — своё");
+  assert.equal((await store.user(u.id))!.wake, 600, "второе предложение — своё");
   // Свой пояс: текст не обещает сменить часы, и «Да» их не меняет.
   await saveYou(store, (await store.user(u.id))!, { city: null, tz: "Europe/Samara" });
   u = (await store.user(u.id))!;

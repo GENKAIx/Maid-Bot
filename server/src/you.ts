@@ -10,10 +10,29 @@ import { dayKey } from "./time.ts";
 /** Как обращаться: «хозяин» (как было всегда), «хозяйка», по имени (users.name). */
 export const ADDRESSES = ["master", "mistress", "name"] as const;
 export type Address = (typeof ADDRESSES)[number];
-/** Подъём — час, с которого у горничной утро (виджет на ПК: конец ночи); те же варианты, что были в настройке виджета, шире. */
-export const WAKES = [5, 6, 7, 8, 9, 10] as const;
-/** Отбой: «auto» — виджет узнаёт сам (когда вечером человек надолго уходит от ПК), иначе час, с которого ночь. */
-export const BEDS = ["auto", "21:00", "22:00", "23:00", "00:00", "01:00", "02:00"] as const;
+/** Подъём — с какого времени у горничной утро (виджет на ПК: конец ночи). С 20.11.2026 — любое своё время с минутами, 04:00–11:59
+ *  (раньше — целый час 5–10); в users.wake — минуты от полуночи. Прежние записи и значение по умолчанию у новых (7) — часы:
+ *  число меньше 24 читается как час (wakeMinOf). */
+export const WAKE_FROM = 4 * 60;
+export const WAKE_TO = 12 * 60 - 1;
+const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+const minutesOf = (s: string) => { const m = s.match(/^([01]\d|2[0-3]):([0-5]\d)$/); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+/** Подъём человека в минутах от полуночи. */
+export const wakeMinOf = (u: Pick<User, "wake">) => (u.wake < 24 ? u.wake * 60 : u.wake);
+/** Подъём строкой «06:30». */
+export const wakeAt = (u: Pick<User, "wake">) => hhmm(wakeMinOf(u));
+/** «06:30» или час числом (кнопки «7:00» в облачке, «встаю в 7» из разговора, перенос со старого виджета) → минуты; не подходит — null. */
+export function wakeMinutes(v: number | string): number | null {
+  const min = typeof v === "number" ? (Number.isInteger(v) ? v * 60 : null) : minutesOf(v);
+  return min !== null && min >= WAKE_FROM && min <= WAKE_TO ? min : null;
+}
+/** Отбой: «auto» — виджет узнаёт сам (когда вечером человек надолго уходит от ПК), иначе своё время «ЧЧ:ММ», с которого ночь:
+ *  с 18:00 до 03:59 (с 20.11.2026 любое; раньше — 21:00–02:00 целыми часами). */
+export function bedOk(v: string): boolean {
+  if (v === "auto") return true;
+  const min = minutesOf(v);
+  return min !== null && (min >= 18 * 60 || min < 4 * 60);
+}
 
 /** Выбранный город: название, регион и страна (чтобы не спутать Кировск и Киров), координаты, часовой пояс города. */
 export interface City { name: string; region: string; country: string; lat: number; lon: number; tz: string }
@@ -123,7 +142,7 @@ export async function youView(store: Store, u: User, now = new Date()) {
   return {
     name: u.name, address: u.address as Address, call: addressWord(u),
     city, tz: u.tz, tz_offset: tzOffset(u.tz, now), tz_default: config.defaultTimezone, tz_from_city: Boolean(city && city.tz === u.tz),
-    wake: u.wake, bed: u.bed, birthday: info.birthday, height: info.height,
+    wake: wakeAt(u), bed: u.bed, birthday: info.birthday, height: info.height,
     weight: weight ? weight.value : null,
     filled: YOU_FIELDS.filter((k) => filled[k]),
     traits: { debuffs: traits.filter((t) => t.kind === "debuff").length, buffs: traits.filter((t) => t.kind === "buff").length },
@@ -136,7 +155,8 @@ export interface YouPatch {
   /** Новый город (из findCities) или null — стереть. Часовой пояс города ставится сам, если пояс не задан тем же запросом. */
   city?: City | null;
   tz?: string | null;
-  wake?: number | null; bed?: string | null;
+  /** Подъём: «06:30» или час числом; null — снова 7:00. */
+  wake?: number | string | null; bed?: string | null;
   birthday?: string; height?: number | null;
 }
 
@@ -170,12 +190,13 @@ export async function saveYou(store: Store, u: User, p: YouPatch): Promise<{ tzC
   }
   if (tz !== u.tz) patch.tz = tz;
   if (p.wake !== undefined) {
-    if (p.wake !== null && !(WAKES as readonly number[]).includes(p.wake)) throw new Error(`подъём — с ${WAKES[0]}:00 до ${WAKES[WAKES.length - 1]}:00`);
-    patch.wake = p.wake ?? 7;
+    const min = p.wake === null ? 7 * 60 : wakeMinutes(p.wake);
+    if (min === null) throw new Error(`подъём — с ${hhmm(WAKE_FROM)} до ${hhmm(WAKE_TO)}`);
+    patch.wake = min;
     mark("wake", p.wake !== null);
   }
   if (p.bed !== undefined) {
-    if (p.bed !== null && !(BEDS as readonly string[]).includes(p.bed)) throw new Error("нет такого времени отбоя");
+    if (p.bed !== null && !bedOk(p.bed)) throw new Error("отбой — с 18:00 до 03:59 или «сама»");
     patch.bed = p.bed ?? "auto";
     mark("bed", p.bed !== null);
   }
@@ -256,7 +277,7 @@ export async function aboutOffer(store: Store, u: User, about: { city?: string |
     }
   }
   const w = about.wake;
-  if (typeof w === "number" && (WAKES as readonly number[]).includes(w) && !(askOf(u).set.includes("wake") && u.wake === w)) {
+  if (typeof w === "number" && wakeMinutes(w) !== null && !(askOf(u).set.includes("wake") && wakeMinOf(u) === w * 60)) {
     offer.wake = w;
     parts.push(`подъём — ${w}:00`);
   }

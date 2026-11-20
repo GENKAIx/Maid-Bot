@@ -1299,6 +1299,10 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .you-seg { flex-wrap: wrap; }
 .you-name { display: flex; gap: 8px; align-items: center; font-size: 14px; }
 .you-height { width: 90px; }
+/* Готовые варианты и рядом своё время (подъём, отбой; 20.11.2026): своё подсвечено, когда выбрано оно. */
+.you-pick-own { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
+.you-row-body input.you-time { width: 108px; }
+.you-row-body input.you-time.on { border-color: var(--accent); }
 .you-row-body select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 6px 9px; outline: none; font: inherit; max-width: 100%; }
 .you-row-body select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .you-row-body input[type="date"] { width: 160px; }
@@ -1332,6 +1336,7 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
   .you-row { grid-template-columns: 1fr; }
   .you-row-head { position: relative; }
   .you-row-body { justify-items: start; padding-left: 28px; }
+  .you-pick-own { justify-content: flex-start; }
   .you-q { position: static; }
   .you-tip { left: 0; right: 0; width: auto; }
   .you-progress { grid-template-columns: auto 1fr; }

@@ -13,10 +13,11 @@ type FieldKey = "city" | "wake" | "address" | "bed" | "birthday" | "height" | "t
 interface You {
   name: string; address: "master" | "mistress" | "name"; call: string;
   city: City | null; tz: string; tz_offset: string; tz_default: string; tz_from_city: boolean;
-  wake: number; bed: string; birthday: string; height: number | null; weight: number | null;
+  /** Подъём «06:30» (с 20.11.2026 — любое своё время), отбой — «auto» или «23:45». */
+  wake: string; bed: string; birthday: string; height: number | null; weight: number | null;
   filled: FieldKey[]; traits: { debuffs: number; buffs: number };
 }
-type Patch = Partial<{ address: You["address"] | null; name: string; city: City | null; tz: string | null; wake: number | null; bed: string | null; birthday: string; height: number | null }>;
+type Patch = Partial<{ address: You["address"] | null; name: string; city: City | null; tz: string | null; wake: string | null; bed: string | null; birthday: string; height: number | null }>;
 
 const TOTAL = 7;
 /** «Зачем», «Куда уходит», «Убрать» — подсказка у «?». */
@@ -25,13 +26,13 @@ const TIPS: Record<FieldKey, [string, string, string]> = {
   birthday: ["Возраст в профиле.", "Только на нашем сервере, никуда не уходит.", "Стереть — возраст пропадёт."],
   city: ["Часовой пояс подберётся сам. Потом по городу Рина будет говорить погоду.", "Название — нашему серверу, координаты города — сервису погоды Open-Meteo. Ни имени, ни дел.", "Стереть — пояс, взятый от города, снова московский."],
   tz: ["Чтобы напоминания, утренний список и вечерний итог приходили в ваше время, а не по Москве.", "Только на нашем сервере.", "Стереть — снова Москва."],
-  wake: ["С этого часа у Рины на ПК утро: она просыпается. Раньше — ночь. На «Утренний список» не влияет: его время — в части «Рина», «Когда писать».", "Только на нашем сервере; виджет на каждом ПК берёт его оттуда.", "Стереть — 7:00, как по умолчанию."],
-  bed: ["С этого часа на ПК ночь: Рина не суетится и засыпает быстрее. «Сама» — узнаёт, когда вы вечером надолго уходите от ПК.", "Только на нашем сервере; виджет на каждом ПК берёт его оттуда.", "Стереть — снова «сама»."],
+  wake: ["С этого времени у Рины на ПК утро: она просыпается. Раньше — ночь. На «Утренний список» не влияет: его время — в части «Рина», «Когда писать».", "Только на нашем сервере; виджет на каждом ПК берёт его оттуда.", "Стереть — 7:00, как по умолчанию."],
+  bed: ["С этого времени на ПК ночь: Рина не суетится и засыпает быстрее. «Сама» — узнаёт, когда вы вечером надолго уходите от ПК.", "Только на нашем сервере; виджет на каждом ПК берёт его оттуда.", "Стереть — снова «сама»."],
   height: ["Вместе с весом — ИМТ в профиле.", "Только на нашем сервере, никуда не уходит.", "Стереть — ИМТ пропадёт."],
 };
 const NEXT: Record<FieldKey, string> = {
   city: "Укажите город — часы встанут по вашему поясу.",
-  wake: "Укажите подъём — до этого часа Рина на ПК спит.",
+  wake: "Укажите подъём — до этого времени Рина на ПК спит.",
   address: "Выберите обращение — если «хозяин» не нравится, Рина будет звать вас иначе.",
   bed: "Укажите отбой — ночью Рина будет тише.",
   birthday: "Укажите день рождения — появится возраст.",
@@ -39,8 +40,11 @@ const NEXT: Record<FieldKey, string> = {
   tz: "Укажите часовой пояс — сообщения придут в ваше время.",
 };
 const ORDER: FieldKey[] = ["city", "wake", "address", "bed", "birthday", "height", "tz"];
-const WAKES = [5, 6, 7, 8, 9, 10];
+// Готовые варианты подъёма и отбоя; рядом — поле своего времени с минутами (20.11.2026). Границы — как на сервере (you.ts).
+const WAKES: [string, string][] = ["05:00", "06:00", "07:00", "08:00", "09:00", "10:00"].map((t) => [t, t.replace(/^0/, "")]);
 const BEDS: [string, string][] = [["auto", "Сама"], ["21:00", "21"], ["22:00", "22"], ["23:00", "23"], ["00:00", "00"], ["01:00", "01"], ["02:00", "02"]];
+/** «06:30» → «6:30». */
+const short = (t: string) => t.replace(/^0(\d)/, "$1");
 /** Пояса России и соседей — на выбор вручную; свой пояс города, если его нет в списке, добавляется в начало. */
 const ZONES: [string, string][] = [
   ["Europe/Kaliningrad", "Калининград"], ["Europe/Moscow", "Москва"], ["Europe/Samara", "Самара"], ["Asia/Yekaterinburg", "Екатеринбург"],
@@ -114,6 +118,16 @@ function Pick<T extends string | number>({ value, options, onPick, label }: { va
         <button key={String(v)} type="button" role="radio" aria-checked={value === v} className={value === v ? "on" : ""} onClick={() => value !== v && onPick(v)}>{name}</button>
       ))}
     </div>
+  );
+}
+
+/** Своё время рядом с готовыми вариантами: сохраняется, когда поле покинули (или Enter); пустое — прежнее остаётся.
+ *  Шаг — 5 минут; границы проверяет сервер, ошибка — в строке над полосой. */
+function OwnTime({ value, label, min, max, onSave }: { value: string; label: string; min?: string; max?: string; onSave: (t: string) => void }) {
+  return (
+    <input type="time" className={`you-time${value ? " on" : ""}`} step={300} aria-label={label} title={label} defaultValue={value} key={value} min={min} max={max}
+      onBlur={(e) => { if (!e.target.value) { e.target.value = value; return; } if (e.target.value !== value) onSave(e.target.value); }}
+      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
   );
 }
 
@@ -243,11 +257,19 @@ export function AboutYou({ onChanged }: { onChanged?: () => void }) {
       </Card>
 
       <Card title="Ваш день" className="reveal">
-        <Row k="wake" icon="⏰" label="Подъём" on={has("wake")} value={has("wake") ? `${you.wake}:00` : "7:00 — по умолчанию"} onClear={() => save({ wake: null })}>
-          <Pick label="Подъём" value={has("wake") ? you.wake : null} onPick={(w) => save({ wake: w })} options={WAKES.map((w) => [w, `${w}:00`] as [number, string])} />
+        <Row k="wake" icon="⏰" label="Подъём" on={has("wake")} value={has("wake") ? short(you.wake) : "7:00 — по умолчанию"} onClear={() => save({ wake: null })}>
+          <div className="you-pick-own">
+            <Pick label="Подъём" value={has("wake") ? you.wake : null} onPick={(w) => save({ wake: w })} options={WAKES} />
+            <OwnTime label="Своё время подъёма, 4:00–11:59" value={has("wake") && !WAKES.some(([w]) => w === you.wake) ? you.wake : ""}
+              min="04:00" max="11:59" onSave={(t) => save({ wake: t }, `Подъём — ${short(t)}.`)} />
+          </div>
         </Row>
-        <Row k="bed" icon="🌙" label="Отбой" on={has("bed")} value={has("bed") ? (you.bed === "auto" ? "узнаёт сама" : you.bed) : "узнаёт сама — по умолчанию"} onClear={() => save({ bed: null })}>
-          <Pick label="Отбой" value={has("bed") ? you.bed : null} onPick={(b) => save({ bed: b })} options={BEDS} />
+        <Row k="bed" icon="🌙" label="Отбой" on={has("bed")} value={has("bed") ? (you.bed === "auto" ? "узнаёт сама" : short(you.bed)) : "узнаёт сама — по умолчанию"} onClear={() => save({ bed: null })}>
+          <div className="you-pick-own">
+            <Pick label="Отбой" value={has("bed") ? you.bed : null} onPick={(b) => save({ bed: b })} options={BEDS} />
+            <OwnTime label="Своё время отбоя, 18:00–3:59" value={has("bed") && !BEDS.some(([b]) => b === you.bed) ? you.bed : ""}
+              onSave={(t) => save({ bed: t }, `Отбой — ${short(t)}.`)} />
+          </div>
         </Row>
       </Card>
 

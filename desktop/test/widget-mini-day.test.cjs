@@ -37,7 +37,7 @@ const code = [
 
 // Планы: _in — через сколько минут начало (подмена minutesUntil: тест не зависит от того, когда его запустили).
 const ctx = {
-  daySleep: { wake: 7, bed: "23:00" },
+  daySleep: { wakeMin: 7 * 60, bed: "23:00" },
   localStorage: { getItem: () => null },
   data: null,
   minutesUntil: (e) => (e.time ? e._in : null),
@@ -59,9 +59,9 @@ if (ctx.period) {
   ctx.daySleep.bed = "00:30";
   check(P(23, 59) === "evening", "отбой 00:30: в 23:59 ещё вечер");
   check(P(0, 10) === "night", "после полуночи до «Утра» — ночь, даже до отбоя (вечер вчерашнего дня не оценивается)");
-  ctx.daySleep.wake = 9; ctx.daySleep.bed = "23:00";
+  ctx.daySleep.wakeMin = 9 * 60; ctx.daySleep.bed = "23:00";
   check(P(8, 0) === "night" && P(9, 0) === "morning", "подъём в 9: в 8:00 ещё ночь, в 9:00 — утро");
-  ctx.daySleep.wake = 7;
+  ctx.daySleep.wakeMin = 7 * 60;
 }
 
 if (ctx.view) {

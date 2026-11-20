@@ -22,7 +22,7 @@ const ctx = {
 vm.createContext(ctx);
 vm.runInContext([
   decl(/\nconst nightMin = .*/, "nightMin"), decl(/\nlet daySleep = .*/, "daySleep"), decl(/\nlet oldSleep = .*/, "oldSleep"),
-  fn("daySleepSync"), fn("sleepMove"), fn("bedtime"), fn("afterBedtime"),
+  fn("wakeMinFrom"), fn("daySleepSync"), fn("sleepMove"), fn("bedtime"), fn("afterBedtime"),
   "this.sync = daySleepSync; this.after = afterBedtime; this.get = () => daySleep; this.old = (x) => { oldSleep = x; };",
 ].join("\n"), ctx);
 
@@ -31,7 +31,7 @@ const at = (h, m = 0) => new Date(2026, 10, 20, h, m);
   // Сервер без подъёма и отбоя (старый) — 7:00 и «сама», ничего не шлём.
   ctx.old({ bed: "23:00", wake: 8 });
   ctx.sync({});
-  check(ctx.get().wake === 7 && ctx.get().bed === "auto", "старый сервер — 7:00 и «сама»");
+  check(ctx.get().wakeMin === 420 && ctx.get().bed === "auto", "старый сервер — 7:00 и «сама»");
   check(!posted.length && !store["maid.sleepMoved"], "старому серверу перенос не шлём");
 
   // Новый сервер с умолчаниями, на ПК было своё — один раз уходит на сервер.
@@ -52,10 +52,17 @@ const at = (h, m = 0) => new Date(2026, 10, 20, h, m);
 
   // На сервере уже своё — его и берём; ночь считается по нему.
   ctx.sync({ wake: 9, bed: "00:30" });
-  check(ctx.get().wake === 9 && ctx.get().bed === "00:30", "подъём и отбой с сервера");
+  check(ctx.get().wakeMin === 540 && ctx.get().bed === "00:30", "подъём и отбой с сервера");
   check(!ctx.after(at(23, 59)) && ctx.after(at(0, 40)) && ctx.after(at(8, 59)) && !ctx.after(at(9, 0)), "ночь — от отбоя 00:30 до подъёма 9:00");
   ctx.sync({ wake: 7, bed: "лишнее" });
   check(ctx.get().bed === "auto", "странный отбой — «сама»");
+
+  // Своё время с минутами (20.11.2026): wake_at «06:30» главнее часа wake; ночь кончается в 6:30, а не в 6:00 или 7:00.
+  ctx.sync({ wake: 6, wake_at: "06:30", bed: "23:45" });
+  check(ctx.get().wakeMin === 390, `подъём 06:30 → ${ctx.get().wakeMin} мин`);
+  check(!ctx.after(at(23, 40)) && ctx.after(at(23, 45)) && ctx.after(at(6, 29)) && !ctx.after(at(6, 30)), "ночь — от отбоя 23:45 до подъёма 6:30");
+  ctx.sync({ wake: 7, wake_at: "13:00" });
+  check(ctx.get().wakeMin === 420, "подъём после полудня не бывает — 7:00");
 
   // Настроек «Утро» и «Отбой» у виджета больше нет: ни в main.js, ни на сайте; на сайте — ссылка в «Персонализацию».
   check(!/\bbedtime: oneOf|\bmorning: oneOf/.test(main), "main.js ещё принимает bedtime/morning");
