@@ -195,9 +195,9 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
               <li key={s.key} className="stat-pill" title={s.hint}>
                 <StatGlyph name={s.key} />
                 <span className="stat-name">{s.label}</span>
-                {/* Одно поле — одно место: день рождения и рост правятся в «Настройках → Персонализация → О вас». */}
+                {/* Одно поле — одно место: день рождения и рост правятся в «Персонализации → О вас». */}
                 {editable(s.key) ? (
-                  <button className="stat-val link" onClick={() => navigate("/settings/persona")}
+                  <button className="stat-val link" onClick={() => navigate("/persona")}
                     title={s.key === "age" ? "Дата рождения — в «Персонализации»" : "Рост — в «Персонализации»"}>{s.value}</button>
                 ) : <span className="stat-val">{s.value}</span>}
               </li>

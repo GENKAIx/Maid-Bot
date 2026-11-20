@@ -1,7 +1,7 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { getToken, post, setToken, whenUnauthorized } from "./api";
+import { get, getToken, post, setToken, whenUnauthorized } from "./api";
 import { Composer } from "./Composer";
-import { NAV_TABS, oldPath } from "./nav";
+import { NAV_TABS, navCount, oldPath } from "./nav";
 import { navigate, parsePath, usePath } from "./router";
 import { Album } from "./screens/Album";
 import { Diary } from "./screens/Diary";
@@ -11,6 +11,7 @@ import { History } from "./screens/History";
 import { Login } from "./screens/Login";
 import { Money } from "./screens/Money";
 import { Notes } from "./screens/Notes";
+import { Persona } from "./screens/Persona";
 import { Plans } from "./screens/Plans";
 import { Profile } from "./screens/Profile";
 import { SettingsTabs } from "./screens/SettingsTabs";
@@ -29,7 +30,7 @@ const Catalog = lazy(() => import("./screens/Catalog").then((m) => ({ default: m
 
 const TABS = NAV_TABS;
 /** Пункты над главными экранами на ПК (на телефоне — первыми в «Ещё»). */
-const NAV_TOP = new Set(["profile"]);
+const NAV_TOP = new Set(["profile", "persona"]);
 
 export function App() {
   const [authed, setAuthed] = useState(Boolean(getToken()));
@@ -37,9 +38,17 @@ export function App() {
   const [more, setMore] = useState(false);
   const path = usePath();
   const { tab, arg } = parsePath(path);
-  // Прежние адреса разделов, ставших вкладками «Настроек» (/maid, /widget — их открывает и виджет на ПК).
+  // Прежние адреса: /maid, /settings/persona — «Персонализация», /widget — вкладка «Настроек» (его открывает виджет на ПК).
   useEffect(() => { const to = oldPath(path); if (to) navigate(to, true); }, [path]);
   const onChanged = useCallback(() => setVersion((v) => v + 1), []);
+  // Сколько заполнено в «Персонализации → О вас» — счётчик «2/7» в меню; перечитывается после каждой записи.
+  const [youFilled, setYouFilled] = useState<number | null>(null);
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    get<{ filled?: string[] }>("/api/you").then((v) => alive && setYouFilled(Array.isArray(v.filled) ? v.filled.length : null)).catch(() => {});
+    return () => { alive = false; };
+  }, [authed, version]);
 
   useEffect(() => {
     whenUnauthorized(() => setAuthed(false));
@@ -78,6 +87,7 @@ export function App() {
     : tab === "plans" ? <Plans tab={arg} version={version} onChanged={onChanged} />
     : tab === "notes" ? <Notes version={version} onChanged={onChanged} />
     : tab === "profile" ? <Profile version={version} onChanged={onChanged} />
+    : tab === "persona" ? <Persona onChanged={onChanged} />
     : tab === "health" ? <Health version={version} />
     : tab === "money" ? <Money version={version} />
     : tab === "stats" ? <Stats version={version} />
@@ -90,11 +100,15 @@ export function App() {
     : tab === "catalog" ? <Suspense fallback={null}><Catalog chapter={arg} /></Suspense>
     : <Today version={version} onChanged={onChanged} />;
 
-  const item = (t: (typeof TABS)[number]) => (
-    <a key={t.id} className={`nav-item ${tab === t.id ? "on" : ""}`} href={t.path} onClick={(e) => { e.preventDefault(); navigate(t.path); }}>
-      <span className="nav-icon"><Icon name={t.icon} /></span><span>{t.title}</span>
-    </a>
-  );
+  const item = (t: (typeof TABS)[number]) => {
+    const count = navCount(t.id, youFilled);
+    return (
+      <a key={t.id} className={`nav-item ${tab === t.id ? "on" : ""}`} href={t.path} onClick={(e) => { e.preventDefault(); navigate(t.path); }}>
+        <span className="nav-icon"><Icon name={t.icon} /></span><span>{t.title}</span>
+        {count && <span className="nav-count" title="Заполнено в «О вас»">{count}</span>}
+      </a>
+    );
+  };
   // Перед первым пунктом группы («Учёт», «Служебное») — тонкая линия.
   const grouped = (t: (typeof TABS)[number]) => (t.group ? <Fragment key={t.id}><div className="nav-sep" />{item(t)}</Fragment> : item(t));
   const inMore = TABS.some((t) => t.more && t.id === tab);

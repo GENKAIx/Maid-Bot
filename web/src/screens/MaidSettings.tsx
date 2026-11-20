@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import { Card, Empty, Spinner } from "../components";
 
-// Часть «Рина» вкладки «Персонализация» в «Настройках» (до 19.11.2026 — страница «Персонализация», до 20.11.2026 — вкладка «Горничная»): как и когда горничная с вами общается — характер, внешность (цвет волос и глаз), время сообщений, напоминания о планах, игры.
+// Часть «Рина» экрана «Персонализация» (Persona.tsx; 19–20.11.2026 — вкладка «Настроек», до того — «Горничная»): как и когда горничная с вами общается — характер, внешность (цвет волос и глаз), время сообщений, напоминания о планах, игры.
 // Техническое (тема, push, расход модели, вход) — в «Настройках». Кто она — карточка RINA в server/src/personas.ts.
 
 interface Me {
@@ -213,7 +213,7 @@ export function MaidSettings() {
   return (
     <div className="screen">
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
-      <div className="cards">
+      <div className="cards rina">
         <Card title="Характер" className="reveal">
           <div className="persona-pick" role="radiogroup" aria-label="Характер">
             {personas.map((p) => (

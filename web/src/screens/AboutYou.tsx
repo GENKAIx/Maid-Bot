@@ -86,7 +86,8 @@ function Why({ k, label }: { k: FieldKey; label: string }) {
   );
 }
 
-/** Строка поля: значок, название, «?», справа — значение или «Указать», под ней — правка. */
+/** Строка поля в одну линию (компактно, 20.11.2026): слева значок, название, «?» и под ними значение с ✕, справа — правка.
+ *  На телефоне правка — под значением. */
 function Row({ k, icon, label, on, value, onClear, children }: {
   k: FieldKey; icon: string; label: string; on: boolean; value: ReactNode; onClear?: () => void; children?: ReactNode;
 }) {
@@ -148,7 +149,8 @@ function CitySearch({ onPick }: { onPick: (c: City) => void }) {
   );
 }
 
-export function AboutYou() {
+/** onChanged — после каждого сохранения: меню перечитывает счётчик «2/7» (App.tsx). */
+export function AboutYou({ onChanged }: { onChanged?: () => void }) {
   const [you, setYou] = useState<You | null>(null);
   const [error, setError] = useState("");
   const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
@@ -178,6 +180,7 @@ export function AboutYou() {
         setYou(v);
         setHeight(v.height ? String(v.height) : "");
         setNote({ text: typeof said === "function" ? said(v) : said });
+        onChanged?.();
       } catch (e) {
         setNote({ text: (e as Error).message, bad: true });
       }
@@ -195,14 +198,16 @@ export function AboutYou() {
 
   return (
     <div className="cards you">
-      <Card className="reveal">
-        <div className="you-progress">
-          <div className="you-count"><b>Заполнено {n} из {TOTAL}</b>{note && <span className={`small${note.bad ? " bad" : " muted"}`} role="status">{note.text}</span>}</div>
-          <div className="you-bar" aria-hidden="true"><i style={{ width: `${(n / TOTAL) * 100}%` }} /></div>
-          <p className="muted small">{next ? <><b>Дальше:</b> {NEXT[next]}</> : <><b>Всё заполнено.</b> Поменять любое поле можно здесь же.</>}</p>
-          <p className="muted small">Ничего не обязательно: пустое поле — функция выключена или работает как по умолчанию.</p>
-        </div>
-      </Card>
+      {/* Полоса «Заполнено» — тонкой строкой, а не карточкой (20.11.2026: было много пустого места). */}
+      <div className="you-progress reveal">
+        <b className="you-count">{n} из {TOTAL}</b>
+        <div className="you-bar" aria-hidden="true"><i style={{ width: `${(n / TOTAL) * 100}%` }} /></div>
+        <p className="muted small">
+          {next ? <><b>Дальше:</b> {NEXT[next]}</> : <><b>Всё заполнено.</b> Поменять любое поле можно здесь же.</>}{" "}
+          <span title="Пустое поле — функция выключена или работает как по умолчанию.">Ничего не обязательно.</span>
+        </p>
+        {note && <span className={`small you-note${note.bad ? " bad" : " muted"}`} role="status">{note.text}</span>}
+      </div>
 
       <Card title="Как к вам обращаться" className="reveal">
         <Row k="address" icon="🙋" label="Обращение" on={has("address")} value={has("address") ? addrText : "«хозяин» — по умолчанию"} onClear={() => save({ address: null })}>

@@ -1,16 +1,18 @@
-// Меню сайта и вкладки «Настроек» без React (App.tsx, screens/SettingsTabs.tsx). 19.11.2026: Персонализация и Виджет стали
-// вкладками «Настроек», Поиск — строкой под логотипом (и Ctrl+K), Каталог — ссылкой внизу «Возможностей».
+// Меню сайта и вкладки «Настроек» без React (App.tsx, screens/SettingsTabs.tsx). 19.11.2026: Виджет стал вкладкой «Настроек»,
+// Поиск — строкой под логотипом (и Ctrl+K), Каталог — ссылкой внизу «Возможностей». 20.11.2026: Персонализация — снова
+// своим пунктом меню, сразу под «Профилем», со счётчиком заполненного «О вас» в названии («2/7»).
 
 export type NavTab = { id: string; path: string; title: string; icon: string; more?: boolean; group?: "track" | "tools" };
 
 /** Порядок — от частого к редкому: каждый день, учёт, служебное. group — разделитель перед группой в меню.
- *  Профиль — на ПК сразу под логотипом, на телефоне — первым в «Ещё». */
+ *  Профиль и Персонализация — на ПК сразу под логотипом, на телефоне — первыми в «Ещё». */
 export const NAV_TABS: NavTab[] = [
   { id: "today", path: "/", title: "Сегодня", icon: "today" },
   { id: "plans", path: "/plans", title: "Планы", icon: "plans" },
   { id: "habits", path: "/habits", title: "Привычки", icon: "habits" },
   { id: "diary", path: "/diary", title: "Дневник", icon: "diary" },
   { id: "profile", path: "/profile", title: "Профиль", icon: "profile", more: true },
+  { id: "persona", path: "/persona", title: "Персонализация", icon: "persona", more: true },
   { id: "notes", path: "/notes", title: "Заметки", icon: "notes", more: true },
   { id: "health", path: "/health", title: "Здоровье", icon: "health", more: true, group: "track" },
   { id: "money", path: "/money", title: "Деньги", icon: "money", more: true },
@@ -22,13 +24,20 @@ export const NAV_TABS: NavTab[] = [
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
 ];
 
-export type SettingsTabId = "persona" | "widget" | "app";
+/** Сколько полей в «Персонализации → О вас» (screens/AboutYou.tsx; сервер отдаёт заполненные в /api/you → filled). */
+export const YOU_FIELDS = 7;
 
-/** Вкладки «Настроек»: Персонализация (о вас и о Рине, 20.11.2026; раньше «Горничная», id maid), виджет на рабочем столе
- *  (только в программе на ПК), техническое. */
+/** Счётчик в названии пункта меню: у Персонализации — «2/7» по заполненному «О вас»; пока не знаем — ничего. */
+export function navCount(id: string, filled: number | null): string | null {
+  if (id !== "persona" || filled === null) return null;
+  return `${Math.min(filled, YOU_FIELDS)}/${YOU_FIELDS}`;
+}
+
+export type SettingsTabId = "widget" | "app";
+
+/** Вкладки «Настроек»: виджет на рабочем столе (только в программе на ПК) и техническое. */
 export function settingsTabs(desk: boolean): { id: SettingsTabId; title: string }[] {
   return [
-    { id: "persona", title: "Персонализация" },
     ...(desk ? [{ id: "widget" as const, title: "Виджет" }] : []),
     { id: "app", title: "Программа" },
   ];
@@ -36,12 +45,13 @@ export function settingsTabs(desk: boolean): { id: SettingsTabId; title: string 
 
 /** Открытая вкладка по адресу /settings/<вкладка>; без неё и с незнакомой — первая. */
 export function settingsTab(arg: string | undefined, desk: boolean): SettingsTabId {
-  return settingsTabs(desk).find((t) => t.id === arg)?.id ?? "persona";
+  const tabs = settingsTabs(desk);
+  return tabs.find((t) => t.id === arg)?.id ?? tabs[0].id;
 }
 
-/** Прежние адреса разделов, ставших вкладками: виджет на ПК и старые закладки открывают /widget и /maid, /settings/maid —
- *  вкладка «Горничная» до 20.11.2026. */
+/** Прежние адреса: виджет на ПК и старые закладки открывают /widget и /maid; /settings/maid и /settings/persona —
+ *  Персонализация, пока она была вкладкой «Настроек» (19–20.11.2026). */
 export function oldPath(path: string): string | null {
-  const moved: Record<string, string> = { "/maid": "/settings/persona", "/settings/maid": "/settings/persona", "/widget": "/settings/widget" };
+  const moved: Record<string, string> = { "/maid": "/persona", "/settings/maid": "/persona", "/settings/persona": "/persona", "/widget": "/settings/widget" };
   return moved[path.replace(/\/+$/, "")] ?? null;
 }

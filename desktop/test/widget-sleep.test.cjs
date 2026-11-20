@@ -59,7 +59,7 @@ const at = (h, m = 0) => new Date(2026, 10, 20, h, m);
 
   // Настроек «Утро» и «Отбой» у виджета больше нет: ни в main.js, ни на сайте; на сайте — ссылка в «Персонализацию».
   check(!/\bbedtime: oneOf|\bmorning: oneOf/.test(main), "main.js ещё принимает bedtime/morning");
-  check(!/title="Утро"|title="Отбой"/.test(site) && /navigate\("\/settings\/persona"\)/.test(site), "в настройках виджета на сайте остались «Утро»/«Отбой» или нет ссылки");
+  check(!/title="Утро"|title="Отбой"/.test(site) && /navigate\("\/persona"\)/.test(site), "в настройках виджета на сайте остались «Утро»/«Отбой» или нет ссылки");
   check(/daySleepSync\(data\)/.test(widget) && !/cfg\.(morning|bedtime)/.test(widget), "widget.js не берёт подъём и отбой из данных дня");
 
   console.log(bad ? `${bad} из ${n} проверок не прошли` : `OK: ${n} проверок подъёма и отбоя`);

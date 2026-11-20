@@ -545,7 +545,7 @@ export function Widget() {
               side={<Toggle label="Ночью засыпает быстрее" on={p.napNight} set={(napNight) => save({ napNight })} />} />
             {/* Подъём и отбой с 20.11.2026 — в «Персонализации → О вас», одни на все компьютеры (виджет берёт их с сервера). */}
             <Setting title="Подъём и отбой" hint="Теперь в «Персонализации → О вас» — одни на все компьютеры"
-              side={<button type="button" className="link" onClick={() => navigate("/settings/persona")}>Открыть</button>} />
+              side={<button type="button" className="link" onClick={() => navigate("/persona")}>Открыть</button>} />
             <Setting title="Сворачивать панель во сне" hint="Засыпая, сворачивает панель в карточку, проснувшись — разворачивает"
               side={<Toggle label="Сворачивать панель во сне" on={p.napFold} set={(napFold) => save({ napFold })} />} />
             <Setting title="Рассказывать, что было" hint="Проснувшись, пересказывает, что пришло, пока вас не было"
