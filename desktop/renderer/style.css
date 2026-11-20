@@ -243,6 +243,23 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 /* Печать по буквам (runType): невидимые буквы держат место, облачко не прыгает. Кнопки — после текста. */
 .tw { opacity: 0; }
 .tw.on { opacity: 1; }
+/* Походка букв по эмоции (widget.js: TYPE_GAIT, planType): буквы слова — в .gw, у каждой своё появление.
+   Радость — впрыгивают снизу, строгость — впечатываются сверху, грусть — медленно оседают, удивление — выскакивают крупными,
+   насмешка — въезжают сбоку с наклоном, спокойно — мягко проявляются. */
+#bubbleText .gw { display: inline-block; white-space: nowrap; }
+#bubbleText .gw > .tw { display: inline-block; white-space: pre; }
+#bubbleText[data-gait="happy"] .gw > .tw.on { animation: gait-happy .34s cubic-bezier(.3, 1.9, .5, 1) both; }
+#bubbleText[data-gait="stern"] .gw > .tw.on { animation: gait-stern .16s cubic-bezier(.6, 0, 1, .5) both; }
+#bubbleText[data-gait="sad"] .gw > .tw.on { animation: gait-sad .7s ease-out both; }
+#bubbleText[data-gait="surprised"] .gw > .tw.on { animation: gait-surprised .26s cubic-bezier(.3, 1.8, .5, 1) both; }
+#bubbleText[data-gait="teasing"] .gw > .tw.on { animation: gait-teasing .32s cubic-bezier(.3, 1.4, .5, 1) both; }
+#bubbleText[data-gait="neutral"] .gw > .tw.on { animation: gait-neutral .26s ease-out both; }
+@keyframes gait-happy { from { transform: translateY(9px) scale(.4); opacity: 0; } }
+@keyframes gait-stern { 0% { transform: translateY(-10px) scale(1.5); opacity: 0; } 80% { transform: translateY(1px) scale(1.08, .9); opacity: 1; } }
+@keyframes gait-sad { from { transform: translateY(-6px); opacity: 0; filter: blur(2px); } }
+@keyframes gait-surprised { from { transform: scale(2.3) rotate(-12deg); opacity: 0; } }
+@keyframes gait-teasing { from { transform: translateX(-7px) skewX(-22deg); opacity: 0; } }
+@keyframes gait-neutral { from { transform: translateY(3px); opacity: 0; } }
 .bubble.typing .bubble-actions { opacity: 0; pointer-events: none; }
 .bubble .bubble-actions { transition: opacity .2s; }
 .bubble.typing { cursor: pointer; }

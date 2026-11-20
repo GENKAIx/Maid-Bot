@@ -994,6 +994,7 @@ const WIDGET_PREFS = {
   napRecap: (v) => typeof v === "boolean",
   napFold: (v) => typeof v === "boolean",
   popSound: oneOf("bubble", "chime", "off"),
+  fx: oneOf("quiet", "normal", "festive"),
   xpBar: oneOf("always", "event"),
   sections: (v) => v && typeof v === "object" && Object.entries(v).every(([k, x]) => ["next", "habits", "tasks"].includes(k) && typeof x === "boolean"),
 };

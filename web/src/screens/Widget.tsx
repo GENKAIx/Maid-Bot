@@ -11,7 +11,7 @@ export interface WidgetPrefs {
   proposalWait?: number; clashWait?: number; mute?: boolean; typing?: "sound" | "quiet" | "off"; typeSpeed?: "slow" | "normal" | "fast";
   accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: number; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
   napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; bedtime?: Bedtime; morning?: 6 | 7 | 8 | 9; napRecap?: boolean; napFold?: boolean; popSound?: Pop;
-  xpBar?: "always" | "event";
+  xpBar?: "always" | "event"; fx?: "quiet" | "normal" | "festive";
 }
 type Pop = "bubble" | "chime" | "off";
 type Bedtime = "auto" | "22:00" | "23:00" | "00:00" | "01:00";
@@ -82,7 +82,7 @@ const DEFAULTS: Required<WidgetPrefs> = {
   show: true, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true },
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
   accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim",
-  napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble", xpBar: "always",
+  napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble", xpBar: "always", fx: "normal",
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
 const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"]];
@@ -518,6 +518,10 @@ export function Widget() {
             <Choices label="Скорость печати" value={p.typeSpeed} onPick={(typeSpeed) => { void save({ typeSpeed }); setPing((n) => n + 1); }}
               options={[["slow", "Медленно", "22 буквы в секунду"], ["normal", "Обычно", "35 букв в секунду"], ["fast", "Быстро", "60 букв в секунду"]]} />
           </Setting>}
+          <Setting title="Эффекты" hint="Слова с характером, превращения облачка, походка букв">
+            <Choices label="Эффекты" value={p.fx} onPick={(fx) => { void save({ fx }); setPing((n) => n + 1); }}
+              options={[["quiet", "Тихо", "без эффектов, ровный текст"], ["normal", "Обычно", "не чаще одной реплики из трёх"], ["festive", "Празднично", "в каждой подходящей реплике"]]} />
+          </Setting>
         </section>
 
         <section className="wp-sec reveal">

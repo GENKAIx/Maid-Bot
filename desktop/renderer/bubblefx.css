@@ -1,0 +1,83 @@
+/* Облачко-актёр и значки у головы (bubblefx.js, с 20.11.2026). Перенесено из ревью ревью-опыт-праздники-облачка-2026-11-20.html. */
+
+/* Слой частиц поверх окна и «призрак» уходящего облачка. */
+.bfx-layer { position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: visible; }
+.bfx-layer > i { position: absolute; display: block; pointer-events: none; }
+.bfx-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.bubble.bfx-ghost { position: absolute; margin: 0 !important; translate: none; max-height: none; animation: none; transition: none; pointer-events: none; opacity: 1; }
+.bubble.bfx-gone { opacity: 0 !important; transition: none !important; }
+
+/* Облачко-актёр: фон — в отдельном слое (.bfx-shape), текст и кнопки поверх. Цвет фона — тот же, что у облачка (--tail). */
+.bubble.bfx { --bxbg: var(--tail, rgba(255, 255, 255, .97)); background: none; box-shadow: none; filter: drop-shadow(0 9px 12px rgba(0, 0, 0, .27)); transform-origin: 100% 70%; }
+.bubble.bfx::after { display: none; }
+.bfx-shape, .bfx-deco { position: absolute; inset: 0; display: block; pointer-events: none; border-radius: 14px; }
+.bfx-shape { z-index: -1; background: var(--bxbg); transition: background-color .45s, border-radius .45s, opacity .25s, transform .3s; }
+.bfx-shape::after { content: ""; position: absolute; right: -7px; bottom: min(22px, calc(50% - 8px)); border: 8px solid transparent; border-left: 8px solid var(--bxbg); border-right: 0; transition: border-color .45s; }
+.stage.side-left .bfx-shape::after { right: auto; left: -7px; border-left: 0; border-right: 8px solid var(--bxbg); }
+.bfx-deco { z-index: 0; }
+.bubble.bfx > :not(.bfx-shape):not(.bfx-deco) { position: relative; z-index: 1; }
+.bubble.bfx .bubble-text { transition: color .5s, opacity .3s; }
+.bfx-deco svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+/* тает — грусть */
+.bubble.bfx.k-melt { --bxbg: #f1f4fd; }
+.bubble.bfx.k-melt .bfx-shape { filter: url(#bfx-goo); border-radius: 14px 14px 22px 26px / 14px 14px 28px 32px; }
+.bubble.bfx.k-melt .bubble-text { color: #4a4868; }
+.bfx-drip { position: absolute; bottom: 1px; width: 15px; height: 17px; margin-left: -7px; border-radius: 50%; background: var(--bxbg); display: block; }
+.bfx-layer > .bfx-drop { width: 7px; height: 9px; margin: -4px; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; background: #f1f4fd; box-shadow: inset -1px -1px 0 rgba(120, 130, 190, .35); }
+.bfx-layer > .bfx-splash { width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #f1f4fd; }
+
+/* сдувается — усталость */
+.bubble.bfx.k-flat { --bxbg: #eceaf3; }
+.bubble.bfx.k-flat .bfx-shape { border-radius: 20px 9px 24px 8px / 10px 22px 8px 26px; transition: border-radius 1s, background-color .6s; }
+.bubble.bfx.k-flat .bubble-text { color: #5d5975; }
+.bfx-layer > .bfx-puff { width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 1.6px solid rgba(255, 255, 255, .85); background: rgba(255, 255, 255, .25); }
+
+/* сердце — благодарность */
+.bubble.bfx.k-heart { transform: translateY(-14px); transition: opacity .25s, transform .4s cubic-bezier(.3, 1.5, .5, 1); min-width: 96px; }
+.bubble.bfx.k-heart .bfx-shape { opacity: 0; transform: scale(.6); }
+.bubble.bfx.k-heart .bubble-text { color: #9c2350; font-weight: 650; text-align: center; }
+.bfx-deco svg.bfx-heart { inset: auto; left: 47%; top: 50%; width: var(--hw, 150px); height: auto; transform: translate(-50%, -37%) scale(.2); opacity: 0; transition: transform .5s cubic-bezier(.3, 1.7, .4, 1), opacity .2s; }
+.k-heart svg.bfx-heart { transform: translate(-50%, -37%) scale(1); opacity: 1; }
+.bubble.bfx.k-heart.beat { animation: bfx-beat .95s ease-in-out infinite; }
+@keyframes bfx-beat { 0%, 40%, 100% { transform: translateY(-14px) scale(1); } 10% { transform: translateY(-14px) scale(1.09); } 20% { transform: translateY(-14px) scale(1); } 30% { transform: translateY(-14px) scale(1.055); } }
+.bfx-layer > .bfx-mini { width: 13px; height: 12px; margin: -6px; }
+.bfx-layer > .bfx-mini svg { display: block; width: 100%; height: 100%; }
+
+/* цветы — похвала */
+.bfx-vine { fill: none; stroke: #3fae78; stroke-width: 2; stroke-linecap: round; x: 0; y: 0; width: 100%; height: 100%; rx: 14px; stroke-dasharray: 100; animation: bfx-vine 1.1s ease-in-out backwards; }
+@keyframes bfx-vine { from { stroke-dashoffset: 100; } }
+.bfx-flower { position: absolute; display: block; width: 19px; height: 19px; margin: -9.5px; animation: bfx-bloom .5s cubic-bezier(.3, 1.7, .45, 1) backwards, bfx-sway 2.6s ease-in-out .5s infinite alternate; }
+.bfx-deco .bfx-flower svg { position: static; display: block; width: 100%; height: 100%; }
+@keyframes bfx-bloom { from { transform: scale(0) rotate(-120deg); } }
+@keyframes bfx-sway { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+.bfx-leaf { position: absolute; display: block; width: 9px; height: 5px; margin: -2.5px -4.5px; background: #4fbf88; border-radius: 80% 0 80% 0; animation: bfx-bloom .4s cubic-bezier(.3, 1.7, .45, 1) backwards; }
+.bfx-layer > .bfx-petal { width: 6px; height: 8px; margin: -4px -3px; border-radius: 60% 60% 60% 60% / 80% 80% 40% 40%; background: #ffb3d1; }
+
+/* упала за панель */
+.bfx-layer > .bfx-dust { width: 16px; height: 16px; margin: -8px; border-radius: 50%; background: radial-gradient(circle, rgba(230, 222, 255, .8), rgba(230, 222, 255, 0) 70%); }
+.maid.bfx-pale .face { filter: grayscale(1) brightness(1.35) contrast(.8); transition: filter .3s; }
+
+/* ---------- значки у головы ---------- */
+.bfx-marks { position: absolute; inset: 0; z-index: 2; display: block; pointer-events: none; }
+.bfx-mk { position: absolute; display: block; pointer-events: none; transition: opacity .2s, transform .2s; }
+.bfx-mk.out { opacity: 0; transform: scale(.6); }
+.bfx-mk svg { display: block; width: 100%; height: auto; overflow: visible; }
+.bfx-mk i { position: absolute; display: block; }
+/* линии уныния */
+.bfx-mk-gloom { left: 27%; top: -3%; width: 62%; height: 42%; border-radius: 46% 46% 30% 30% / 60% 60% 20% 20%; background: linear-gradient(180deg, rgba(34, 38, 92, .75), rgba(34, 38, 92, 0)); animation: bfx-fade .5s ease-out backwards; }
+@keyframes bfx-fade { from { opacity: 0; } }
+.bfx-mk-gloom i { top: 6%; width: 2.6%; background: #262a5c; border-radius: 2px; transform-origin: 50% 0; animation: bfx-hang .5s cubic-bezier(.3, 1.4, .5, 1) backwards; }
+@keyframes bfx-hang { from { transform: scaleY(0); } }
+.maid.bfx-on-gloom .face { filter: saturate(.62) brightness(.88); transition: filter .4s; }
+/* капля пота */
+.bfx-mk-drop { left: 77%; top: 16%; width: 9.5%; }
+.bfx-mk-drop svg { animation: bfx-drip 1.5s ease-in 2 both; }
+@keyframes bfx-drip { 0% { transform: translateY(-30%) scale(0); opacity: 0; } 14% { transform: translateY(0) scale(1); opacity: 1; } 80% { transform: translateY(150%) scale(1); opacity: 1; } 100% { transform: translateY(180%) scale(.8); opacity: 0; } }
+.stage.side-left .bfx-mk-drop { left: auto; right: 77%; }
+
+/* облачко спрятано — его украшения замирают; «меньше движения» — без движения */
+.bubble.hidden .bfx-deco *, .bubble.hidden.bfx { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+  .bfx-mk, .bfx-mk *, .bubble.bfx, .bubble.bfx *, .bfx-layer * { animation: none !important; transition: none !important; }
+}

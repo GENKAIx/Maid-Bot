@@ -66,7 +66,7 @@ function noteWakes(awake, later) {
     ? `Проснулись задачи: ${woke.map((t) => `«${t.title}»`).join(", ")} — срок уже близко ⏰`
     : `Вспомнила про «${woke[0].title}» — ${dueWhen(woke[0].due_date)} ⏰`, { ms: 8000 });
 }
-let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble" };
+let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true }, clock: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal", accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim", napAfter: 15, napNight: true, bedtime: "auto", morning: 7, napRecap: true, napFold: true, popSound: "bubble", fx: "normal" };
 const BEDTIMES = ["auto", "22:00", "23:00", "00:00", "01:00"]; // настройка «Отбой»
 const MAID_W = { s: 160, m: 196, l: 236 };
 // Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
@@ -425,6 +425,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   const b = $("#bubble");
   delete b.dataset.quip;
   stopProposal();
+  bubblefxStop(); // прошлое превращение облачка (bubblefx.js) — сразу
   if (proposal && proposal.status !== "open") proposal = null;
   // stay — ответ на строку свёрнутого виджета: облачко над головой, панель остаётся свёрнутой.
   if (text !== "…" && !stay) openForMessage();
@@ -441,8 +442,10 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   const ask = proposal || text.split("\n").at(-1).startsWith("⚠ ");
   const shownOf = (t) => (changes.length ? t.split("\n")[0] + (ask ? "\n" + t.split("\n").at(-1) : "") : t);
   const plain = shownOf(text);
-  // Слова с характером (wordfx.js): помеченные слова оживают только в короткой реплике без вопроса; иначе пометки просто сняты.
-  const fxOn = marked !== text && text !== "…" && !proposal && plain.length <= WORDFX_LONG;
+  // Правила вкуса (bubblefx.js): эффект — слова или превращение облачка — не чаще одной реплики из трёх, не в серьёзном,
+  // не при настройке «Эффекты: тихо». Слова с характером (wordfx.js) оживают только в короткой реплике без вопроса; иначе пометки просто сняты.
+  const fxAllow = text !== "…" && bubblefxAllow(plain);
+  const fxOn = fxAllow && marked !== text && !proposal && plain.length <= WORDFX_LONG;
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   $("#bubbleText").innerHTML = (heard ? `<div class="heard">🎙 ${esc(heard)}</div>` : "") + (fxOn ? wordfxHtml(planRows(tgHtml(shownOf(marked)))) : planRows(tgHtml(plain)));
   // fxb (текст не обрезается: слову с эффектом нужно место вокруг) ставит fitBubble — только пока облачку хватает высоты.
@@ -452,7 +455,9 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   // Печать по буквам: не у «…», вопросов с полосой и кнопок-самонажатий (у них свои таймеры), не при «меньше движения».
   stopType();
   const typed = cfg.typing !== "off" && text !== "…" && !proposal && !buttons.some((x) => x.auto) && !still;
-  const tw = typed ? planType($("#bubbleText"), plain.length > 140 ? 2.5 : 1) : null;
+  // Походка букв по эмоции: радостные впрыгивают, строгие впечатываются, грустные оседают… (style.css, «походка букв»).
+  $("#bubbleText").dataset.gait = typed && cfg.fx !== "quiet" ? TYPE_GAIT[emotion] ?? "neutral" : "";
+  const tw = typed ? planType($("#bubbleText"), plain.length > 140 ? 2.5 : 1, !!$("#bubbleText").dataset.gait) : null;
   if (!tw && fxOn) wordfxStatic($("#bubbleText")); // без печати помеченные слова сразу в конечном виде
   const late = tw ? tw.total : 0; // карточки и кнопки — когда текст допечатан
   const cards = $("#bubbleCards");
@@ -571,6 +576,10 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     };
   });
   b.className = `bubble ${emotion}`;
+  // Превращение облачка (bubblefx.js) — если слова с характером в этой реплике не играют; линии уныния — у каждой грустной.
+  const bx = fxAllow && $("#bubbleText").dataset.fx !== "1" ? bubblefxPick({ emotion, heard, plain, weighty }) : null;
+  if (bx || $("#bubbleText").dataset.fx === "1") bubblefxUsed();
+  if (emotion === "sad" && text !== "…") bubblefxMark("gloom", 2800);
   placeBubble();
   fitBubble();
   if (tw) runType(tw, emotion);
@@ -610,29 +619,46 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     if (typing) typing.then = () => startLife(total, weighty);
     else startLife(total, weighty);
   }
+  // Превращение — когда текст допечатан.
+  if (bx) {
+    if (typing) { const then = typing.then; typing.then = () => { then?.(); bubblefxStart(bx); }; }
+    else bubblefxStart(bx);
+  }
 }
 
 // --- печать текста в облачке: буквы появляются по одной, тихий «бип» на каждые 2–3 буквы (как речь персонажей в играх) ---
 // Место под текст занято сразу (буквы просто невидимы), поэтому облачко не прыгает. Щелчок по облачку — весь текст сразу.
 const TYPE_CPS = { slow: 22, normal: 35, fast: 60 }; // знаков в секунду (настройка «typeSpeed»)
-const TYPE_PITCH = { happy: 1.18, excited: 1.25, love: 1.12, sad: 0.82, angry: 0.78, annoyed: 0.85, surprised: 1.3, neutral: 1 };
+// Высота «бипа» — своя у всех 11 эмоций сервера (personas.ts, EMOTIONS) и у местных (excited, love, angry, annoyed).
+const TYPE_PITCH = { neutral: 1, happy: 1.18, proud: 1.1, worried: 0.92, stern: 0.78, sleepy: 0.7, surprised: 1.3, sad: 0.82, teasing: 1.08, awkward: 1.22, deadpan: 0.88,
+  excited: 1.25, love: 1.12, angry: 0.78, annoyed: 0.85 };
+// Походка букв по эмоции (style.css): как появляется каждая буква. Эмоции без своей походки — ближайшая из шести.
+const TYPE_GAIT = { happy: "happy", excited: "happy", proud: "happy", love: "happy", stern: "stern", angry: "stern", annoyed: "stern",
+  sad: "sad", sleepy: "sad", surprised: "surprised", awkward: "surprised", teasing: "teasing", neutral: "neutral", worried: "neutral", deadpan: "neutral" };
 let typing = null;
 let typeTimers = [];
-function planType(box, speed) {
+function planType(box, speed, gait = false) {
   const chars = [];
-  const walk = (n) => {
+  // gait — походка букв: буквы слова лежат в .gw (слово не рвётся на строки, буквы двигаются). Не у слов с характером
+  // (у них своё движение) и не у слов длиннее 24 знаков (ссылки — им нужно переноситься где угодно).
+  const walk = (n, fx = false) => {
     for (const c of [...n.childNodes]) {
       if (c.nodeType === 3) {
         const frag = document.createDocumentFragment();
-        for (const ch of c.data) {
-          const sp = document.createElement("span");
-          sp.className = "tw";
-          sp.textContent = ch;
-          frag.appendChild(sp);
-          chars.push(sp);
+        for (const part of gait && !fx ? c.data.split(/(\s+)/) : [c.data]) {
+          const word = gait && !fx && part && !/\s/.test(part) && [...part].length <= 24 ? document.createElement("span") : null;
+          if (word) word.className = "gw";
+          for (const ch of part) {
+            const sp = document.createElement("span");
+            sp.className = "tw";
+            sp.textContent = ch;
+            (word ?? frag).appendChild(sp);
+            chars.push(sp);
+          }
+          if (word) frag.appendChild(word);
         }
         c.replaceWith(frag);
-      } else if (c.nodeType === 1 && !c.classList.contains("heard")) walk(c);
+      } else if (c.nodeType === 1 && !c.classList.contains("heard")) walk(c, fx || c.classList.contains("fx"));
     }
   };
   walk(box);
@@ -1330,6 +1356,7 @@ function hideBubble() {
   stopProposal();
   stopAuto();
   amendHide(); // строка поправки отпускает фокус, черновик стирается (amend.js)
+  bubblefxExit(); // превращённое облачко уходит по-своему: стекает, падает сдутым, роняет цветы (bubblefx.js)
   $("#bubble").classList.add("hidden");
   maid.hover(false);
   $("#inbox").classList.remove("away");
@@ -2638,7 +2665,8 @@ async function loadCfg() {
   cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: Number.isInteger(w.taskCount) && w.taskCount >= 1 && w.taskCount <= 500 ? w.taskCount : 100, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim",
     napAfter: [0, 5, 15, 30, 60].includes(w.napAfter) ? w.napAfter : 15, napNight: w.napNight !== false, bedtime: BEDTIMES.includes(w.bedtime) ? w.bedtime : "auto",
     morning: [6, 7, 8, 9].includes(w.morning) ? w.morning : 7, napRecap: w.napRecap !== false, napFold: w.napFold !== false,
-    popSound: ["chime", "off"].includes(w.popSound) ? w.popSound : "bubble", xpBar: w.xpBar === "event" ? "event" : "always" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+    popSound: ["chime", "off"].includes(w.popSound) ? w.popSound : "bubble", xpBar: w.xpBar === "event" ? "event" : "always",
+    fx: ["quiet", "festive"].includes(w.fx) ? w.fx : "normal" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   // «Звуки выключены» раньше жили в localStorage виджета — переносим в настройки один раз.
   if (w.mute === undefined && localStorage.getItem("maid.mute")) {
     cfg.mute = true;

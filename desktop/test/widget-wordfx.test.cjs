@@ -1019,6 +1019,7 @@ if (x) {
       try {
         vm.runInContext(`this.sayText = (function () {
           const planRows = (s) => s, tgHtml = (s) => s, esc = (s) => s;
+          const bubblefxAllow = () => true; // правила вкуса (bubblefx.js) — своя проверка, widget-bubblefx.test.cjs
           return function (text, { changes = [], proposal = null, heard = "" } = {}) {
             ${widget.slice(from, to)}
             return { own, text, marked, plain, fxOn, html: ${put} };
@@ -1033,7 +1034,7 @@ if (x) {
     const body = widget.slice(sayAt, sayEnd);
     same([count(widget, /wordfxStrip\(/g), count(widget, /wordfxHtml\(/g), count(body, /wordfxStrip\(/g), count(body, /wordfxHtml\(/g)], [1, 1, 1, 1], "widget.js: wordfxStrip и wordfxHtml зовутся по разу, оба в say");
     check(/\r?\n\s*if \(own\) text = wordfxStrip\(text\);\r?\n/.test(body), "say: wordfxStrip зовётся не под условием own");
-    check(/const fxOn = marked !== text && /.test(body) && /\(fxOn \? wordfxHtml\(/.test(body), "say: wordfxHtml зовётся не под условием fxOn (marked !== text)");
+    check(/const fxOn = fxAllow && marked !== text && /.test(body) && /\(fxOn \? wordfxHtml\(/.test(body), "say: wordfxHtml зовётся не под условием fxOn (marked !== text)");
     check(/const own = text\.startsWith\(WORDFX_OWN\);\r?\n\s*if \(own\) text = text\.slice\(WORDFX_OWN\.length\);\r?\n\s*const marked = text;/.test(body), "say: знак WORDFX_OWN не снимается до разбора");
   }
   if (sayText) {
