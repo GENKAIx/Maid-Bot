@@ -242,14 +242,29 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await store.updateUser(u.id, { maid_hair: "gold", maid_eyes: "green" });
     const me = (await store.user(u.id))!;
     assert.deepEqual([me.maid_hair, me.maid_eyes], ["gold", "green"]);
-    // Как до шага 19: столбцов ещё нет, пользователи уже есть — после миграции у них свои цвета, остальное на месте.
-    await store.driver.exec("ALTER TABLE users DROP COLUMN maid_hair; ALTER TABLE users DROP COLUMN maid_eyes;");
+    // Как до шага 19: столбцов ещё нет (и столбцов шага 20), пользователи уже есть — после миграции у них свои цвета, остальное на месте.
+    await store.driver.exec("ALTER TABLE users DROP COLUMN maid_hair; ALTER TABLE users DROP COLUMN maid_eyes;" +
+      " ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask;");
     await store.kvSet("schema_version", "18");
     const again = await Store.over(store.driver);
     const old = (await again.user(u.id))!;
     assert.deepEqual([old.maid_hair, old.maid_eyes, old.name, old.persona], ["red", "violet", "Тест", "strict"]);
     await again.updateUser(u.id, { maid_eyes: "amber" });
     assert.deepEqual([(await again.user(u.id))!.maid_hair, (await again.user(u.id))!.maid_eyes], ["red", "amber"]);
+    await again.close();
+  });
+
+  test(`${kind}: «О вас» — у старых пользователей «хозяин», подъём 7, отбой сам, города нет; записанное читается`, async () => {
+    const { store, u } = await setup(open);
+    assert.deepEqual([u.address, u.city, u.wake, u.bed, u.ask], ["master", "", 7, "auto", ""]);
+    await store.driver.exec("ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask;");
+    await store.kvSet("schema_version", "19");
+    const again = await Store.over(store.driver);
+    const old = (await again.user(u.id))!;
+    assert.deepEqual([old.address, old.city, old.wake, old.bed, old.name], ["master", "", 7, "auto", "Тест"]);
+    await again.updateUser(u.id, { address: "name", wake: 8, bed: "23:00", city: '{"name":"Казань"}' });
+    const now = (await again.user(u.id))!;
+    assert.deepEqual([now.address, now.wake, now.bed, now.city], ["name", 8, "23:00", '{"name":"Казань"}']);
     await again.close();
   });
 

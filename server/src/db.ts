@@ -383,6 +383,15 @@ ALTER TABLE dates ADD COLUMN closed_at TEXT;
 ALTER TABLE users ADD COLUMN maid_hair TEXT NOT NULL DEFAULT 'red';
 ALTER TABLE users ADD COLUMN maid_eyes TEXT NOT NULL DEFAULT 'violet';
 `,
+  // Шаг 20: «Персонализация → О вас» (you.ts) — обращение (master/mistress/name), город (JSON: название, регион, координаты, пояс),
+  // подъём (час) и отбой (auto или ЧЧ:ММ) — раньше они жили в настройках виджета на каждом ПК; ask — когда и что горничная уже спрашивала.
+  `
+ALTER TABLE users ADD COLUMN address TEXT NOT NULL DEFAULT 'master';
+ALTER TABLE users ADD COLUMN city TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN wake INTEGER NOT NULL DEFAULT 7;
+ALTER TABLE users ADD COLUMN bed TEXT NOT NULL DEFAULT 'auto';
+ALTER TABLE users ADD COLUMN ask TEXT NOT NULL DEFAULT '';
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -431,6 +440,16 @@ export interface User {
   maid_hair: string;
   /** Глаза — id из MAID_EYES, свои — violet. */
   maid_eyes: string;
+  /** «О вас» (you.ts): как обращаться — master («хозяин»), mistress («хозяйка»), name (по имени из name). */
+  address: string;
+  /** Город JSON (you.ts City) или пусто. */
+  city: string;
+  /** Подъём — час (5–10), с которого утро. */
+  wake: number;
+  /** Отбой — auto или ЧЧ:ММ. */
+  bed: string;
+  /** Что горничная уже спрашивала о человеке (you.ts askState): JSON или пусто. */
+  ask: string;
 }
 export interface Message {
   id: number;

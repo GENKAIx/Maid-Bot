@@ -1,4 +1,5 @@
 import { lookNames, type MaidLook } from "./look.ts";
+import { addressRule, callAs } from "./you.ts";
 
 // Характеры горничной. Голос задаёт промпт; короткие фразы — для ответов без LLM.
 
@@ -104,10 +105,12 @@ export const HOUSE_RULES =
   "коротко, в своём характере отвечаешь, что это не твоя тема, и возвращаешься к делам хозяина; своих мнений о политике не высказываешь. " +
   "Если хозяин пишет о таком в рассказе о своём дне — запиши как его заметку, без своих оценок.";
 
-/** Характер по id и внешность хозяйской настройки (обычно сам пользователь: persona(u.persona, u)); без неё — свои цвета. */
-export const persona = (id: string | undefined, look?: MaidLook): Persona => {
+/** Характер по id и внешность хозяйской настройки (обычно сам пользователь: persona(u.persona, u)); без неё — свои цвета.
+ *  20.11.2026, «О вас»: обращение (you.ts) — строкой в голос и в готовую фразу «Хозяин, вот ваши планы на завтра». */
+export const persona = (id: string | undefined, who?: MaidLook & { address?: string; name?: string }): Persona => {
   const p = PERSONAS[id ?? ""] ?? PERSONAS.strict;
-  return { ...p, voice: `${p.voice} ${rina(look)} ${HOUSE_RULES}` };
+  const rule = addressRule(who);
+  return { ...p, voice: `${p.voice} ${rina(who)} ${HOUSE_RULES}${rule ? ` ${rule}` : ""}`, tomorrow: callAs(p.tomorrow, who) };
 };
 
 export function pick<T>(list: T[], seed: number): T {

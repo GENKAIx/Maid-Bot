@@ -26,6 +26,7 @@ import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, tr
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
+import { ADDRESSES, addressWord, findCities, saveYou, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
@@ -47,6 +48,8 @@ export interface ApiDeps {
   botName?: () => string | undefined;
   /** Счётчик неудачных входов (тесты подставляют свой). */
   loginGate?: LoginGate;
+  /** Поиск города для «О вас» (тесты подставляют свой; по умолчанию — геокодер Open-Meteo). */
+  cities?: (q: string) => Promise<City[]>;
 }
 
 class HttpError extends Error {
@@ -105,6 +108,10 @@ export async function todayJson(store: Store, u: User, now = new Date()) {
     // «Перекрасить Рину»: в каком цвете виджет ПК показывает её анимации (desktop/renderer/look.js) — с каждым опросом.
     maid_hair: u.maid_hair,
     maid_eyes: u.maid_eyes,
+    // «О вас» (you.ts): как обращаться в готовых репликах виджета, подъём и отбой — для сна на ПК (одни на все компьютеры).
+    call: addressWord(u),
+    wake: u.wake,
+    bed: u.bed,
     upcoming: await store.eventsBetween(u.id, addDays(today, 1), addDays(today, 14)),
     // Далёкие (дальше upcoming) планы, добавленные или изменённые за 15 минут: виджет ПК едет к их дню, откуда бы их ни записали.
     far_fresh: await store.eventsChangedSince(u.id, addDays(today, 14), new Date(now.getTime() - FAR_FRESH_MS).toISOString()),
@@ -215,6 +222,16 @@ export function clientIp(req: http.IncomingMessage): string {
 export function createApi(deps: ApiDeps) {
   const { store, pipeline } = deps;
   const gate = deps.loginGate ?? new LoginGate();
+
+  /** Напоминания о будущих планах — заново (сменили, когда напоминать, или часовой пояс). */
+  async function replanEvents(u: User) {
+    const at = new Date(), today = dayKey(at, u.tz);
+    for (const e of await store.eventsBetween(u.id, today, addDays(today, 400))) {
+      if (!e.time) continue;
+      await store.cancelReminders("event", e.id);
+      await planEventReminders(store, u, e, at);
+    }
+  }
 
   /** Кнопка из уведомления (push): отметка привычки или «отложить» — то же, что callback в боте. */
   async function runButton(u: User, data: string, all: string[]): Promise<string> {
@@ -348,16 +365,37 @@ export function createApi(deps: ApiDeps) {
       await store.updateUser(u.id, b);
       const fresh = (await store.user(u.id))!;
       // Сменили, когда напоминать, — напоминания о будущих планах перекладываются заново.
-      if (["event_reminders", "event_lead_min", "morning_time"].some((k) => k in b && b[k as keyof typeof b] !== u[k as keyof User])) {
-        const at = new Date(), today = dayKey(at, fresh.tz);
-        for (const e of await store.eventsBetween(u.id, today, addDays(today, 400))) {
-          if (!e.time) continue;
-          await store.cancelReminders("event", e.id);
-          await planEventReminders(store, fresh, e, at);
-        }
-      }
+      if (["event_reminders", "event_lead_min", "morning_time"].some((k) => k in b && b[k as keyof typeof b] !== u[k as keyof User])) await replanEvents(fresh);
       const { password_hash: _, ...me } = fresh;
       return me;
+    }
+    // «Персонализация → О вас»: обращение, город, часовой пояс, подъём, отбой, день рождения, рост (you.ts).
+    if (m === "GET" && p === "/api/you") return youView(store, u);
+    if (m === "POST" && p === "/api/you") {
+      const CityIn = z.object({
+        name: z.string().trim().min(1).max(80), region: z.string().max(80).default(""), country: z.string().max(60).default(""),
+        lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180), tz: z.string().max(64),
+      });
+      const b = parseBody(z.object({
+        address: z.enum(ADDRESSES, { message: "нет такого обращения" }).optional(),
+        name: z.string().max(80).optional(),
+        city: CityIn.nullable().optional(),
+        tz: z.string().max(64).nullable().optional(),
+        wake: z.number().int().optional(),
+        bed: z.string().max(5).optional(),
+        birthday: z.string().max(10).optional(),
+        height: z.number().nullable().optional(),
+      }), await readJson(req));
+      let r;
+      try { r = await saveYou(store, u, b); } catch (e) { throw new HttpError(400, (e as Error).message); }
+      const fresh = (await store.user(u.id))!;
+      // Другой часовой пояс — у напоминаний о будущих планах другое время.
+      if (r.tzChanged) await replanEvents(fresh);
+      return youView(store, fresh);
+    }
+    // Подсказки города: ?q=Каз → до 6 городов с регионом и поясом. Сеть не ответила — 502, на сайте «поиск не отвечает».
+    if (m === "GET" && p === "/api/city") {
+      try { return await (deps.cities ?? findCities)(q("q") ?? ""); } catch (e) { throw new HttpError(502, (e as Error).message); }
     }
     if (m === "GET" && p === "/api/backup") {
       const data = await exportJson(store, u.id);
