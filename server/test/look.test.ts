@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import vm from "node:vm";
@@ -21,8 +21,10 @@ const TZ = "Europe/Moscow";
 const AT = zonedToUtc("2026-11-08", "14:30", TZ);
 const RINA_MARK = "Тебя зовут Рина";
 
-test("цвета сервера — те же id, порядок и названия, что LOOK_HAIR / LOOK_EYES виджета (desktop/renderer/look.js)", () => {
-  const src = readFileSync(new URL("../../desktop/renderer/look.js", import.meta.url), "utf8");
+// В сборке сервера (Dockerfile) папки desktop нет — там сверка пропускается; та же сверка без пропуска — node desktop/test/look-ids.test.cjs.
+const DESK_LOOK = new URL("../../desktop/renderer/look.js", import.meta.url);
+test("цвета сервера — те же id, порядок и названия, что LOOK_HAIR / LOOK_EYES виджета (desktop/renderer/look.js)", { skip: existsSync(DESK_LOOK) ? false : "нет desktop/ (сборка сервера)" }, () => {
+  const src = readFileSync(DESK_LOOK, "utf8");
   const MARK = "// --- браузер ---";
   assert.ok(src.includes(MARK), "в look.js нет метки «// --- браузер ---» — таблицы не достать");
   const ctx = vm.createContext({});
