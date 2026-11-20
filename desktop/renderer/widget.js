@@ -624,6 +624,11 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   const bx = fxAllow && $("#bubbleText").dataset.fx !== "1" ? bubblefxPick({ emotion, heard, plain, weighty }) : null;
   if (bx || $("#bubbleText").dataset.fx === "1") bubblefxUsed();
   if (emotion === "sad" && text !== "…") bubblefxMark("gloom", 2800);
+  // Походка букв: буква впрыгивает со сдвигом и увеличением и на миг выступает за край текста — у обрезанного текста от этого
+  // мигала полоса прокрутки и текст дёргался (20.11.2026). Весь текст помещается — обрезку снимает fitBubble (fxb), как у слов
+  // с характером. Мерить сейчас: буквы ещё не двигаются.
+  const tx = $("#bubbleText");
+  tx.dataset.fits = tx.dataset.gait && tx.scrollHeight <= tx.clientHeight + 1 ? "1" : "";
   placeBubble();
   fitBubble();
   if (tw) runType(tw, emotion);
@@ -751,6 +756,8 @@ function runType(tw, emotion) {
   // так, что последняя буква ушла под край (листнули вниз — снова листается и держит её у нижнего края).
   const box = b.querySelector(".bubble-text");
   let follow = true, want = 0;
+  // Где буква стоит в строке — по её слову: сама буква ещё летит (походка, эффект слова), её сдвиг дёргал прокрутку.
+  const spot = (sp) => (sp.closest(".gw, .fw") ?? sp).getBoundingClientRect();
   // Обычный таймер, а не кадры отрисовки: печать идёт и когда окно не перерисовывается.
   const tick = () => {
     if (typing !== run) return;
@@ -758,7 +765,7 @@ function runType(tw, emotion) {
     if (box && Math.abs(box.scrollTop - want) >= 2) {
       want = box.scrollTop;
       const last = tw.chars[run.i - 1];
-      follow = !last || last.getBoundingClientRect().bottom <= box.getBoundingClientRect().bottom + 4;
+      follow = !last || spot(last).bottom <= box.getBoundingClientRect().bottom + 4;
     }
     const t = performance.now() - run.t0;
     let shown = null;
@@ -769,7 +776,7 @@ function runType(tw, emotion) {
       wordfxShown(sp);
     }
     if (shown && follow && box) {
-      const last = tw.chars[run.i - 1].getBoundingClientRect(), r = box.getBoundingClientRect();
+      const last = spot(tw.chars[run.i - 1]), r = box.getBoundingClientRect();
       if (last.bottom > r.bottom || last.top < r.top) { box.scrollTop += last.bottom - r.bottom; want = box.scrollTop; }
     }
     // «Бип»: у буквы помеченного слова — свой (высота, громкость, частота), у обычной — на каждый третий такт.
@@ -2524,9 +2531,10 @@ function fitBubble() {
   if (drop !== was) b.style.setProperty("--drop", `${drop}px`);
   const room = `${Math.max(120, Math.floor(r.bottom - was + drop - 4))}px`;
   if (b.style.getPropertyValue("--room") !== room) b.style.setProperty("--room", room);
-  // Слова с характером: тексту снимают обрезку, только пока облачко не упёрлось в потолок высоты (иначе текст должен листаться).
+  // Слова с характером и походка букв у текста, который помещается (say: data-fits): тексту снимают обрезку, только пока
+  // облачко не упёрлось в потолок высоты (иначе текст должен листаться).
   const tx = $("#bubbleText");
-  tx.classList.toggle("fxb", tx.dataset.fx === "1" && b.offsetHeight < parseFloat(room) - 1);
+  tx.classList.toggle("fxb", (tx.dataset.fx === "1" || tx.dataset.fits === "1") && b.offsetHeight < parseFloat(room) - 1);
 }
 setInterval(fitBubble, 250);
 new ResizeObserver(fitBubble).observe($("#bubble"));

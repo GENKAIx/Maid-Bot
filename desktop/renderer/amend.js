@@ -207,7 +207,8 @@ function amendShow(run, was, merged, r) {
   if (plans) run.warn = r.clash ? shown.split("\n").find((l) => l.startsWith("⚠ ")) ?? "" : "";
   else if (run.warn && !shown.split("\n").includes(run.warn)) shown += `\n${run.warn}`;
   box.innerHTML = planRows(tgHtml(shown));
-  box.dataset.fx = ""; // текст поправки — без слов с характером: обрезка и прокрутка как у обычного текста (fitBubble)
+  box.dataset.fx = ""; // текст поправки — без слов с характером и без печати: обрезка и прокрутка как у обычного текста (fitBubble)
+  box.dataset.fits = "";
   box.classList.remove("fxb");
   if (heard) box.prepend(heard);
   box.classList.remove("amend-fade");

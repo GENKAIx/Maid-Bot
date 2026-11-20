@@ -38,7 +38,7 @@ function makeText(box, len) {
   for (let i = 0; i < len; i++) {
     const row = Math.floor(i / 10);
     const on = new Set();
-    chars.push({ textContent: "а", classList: { add: (c) => on.add(c) }, on,
+    chars.push({ textContent: "а", classList: { add: (c) => on.add(c) }, on, closest: () => null,
       getBoundingClientRect: () => ({ top: row * 20 - box.scrollTop, bottom: row * 20 + 20 - box.scrollTop }) });
     at.push(i * 10);
   }
@@ -104,6 +104,32 @@ try {
   check(visible(), "после листания вниз печать не видна");
   advance(2000);
   check(ctx.typing === null, "длинная печать не закончилась");
+
+  // (3) 20.11.2026: облачко дёргалось при печати. Походка букв: буква впрыгивает снизу (на 12 px ниже своего места), браузер
+  // от этого считает текст выше окна. Прокрутка смотрит на слово (.gw), а не на летящую букву: текст ровно в окно — не листается.
+  b = makeBubble();
+  ctx.$ = () => b;
+  tw = makeText(b.box, 50); // 5 строк = 100 px — ровно окно
+  for (const [i, c] of tw.chars.entries()) {
+    const row = Math.floor(i / 10);
+    const word = { getBoundingClientRect: () => ({ top: row * 20 - b.box.scrollTop, bottom: row * 20 + 20 - b.box.scrollTop }) };
+    c.closest = (s) => (s === ".gw, .fw" ? word : null);
+    c.getBoundingClientRect = () => ({ top: row * 20 + 12 - b.box.scrollTop, bottom: row * 20 + 32 - b.box.scrollTop });
+  }
+  b.box.scrollHeight = 112; // выступ летящей буквы
+  const seen = new Set();
+  ctx.runType(tw, "calm");
+  for (let k = 0; k < 40; k++) { advance(16); seen.add(b.box.scrollTop); }
+  check(seen.size === 1 && seen.has(0), `текст в окно, а прокрутка дёргается за летящей буквой: ${[...seen].join(" ")}`);
+  advance(1000);
+
+  // Помещается весь текст с походкой — say ставит data-fits, fitBubble снимает обрезку (fxb): полоса прокрутки не мигает.
+  // Поправка ответа (amend.js) метку снимает: её текст — с обычной обрезкой.
+  const fit = src.match(/\nfunction fitBubble\(\)[^]*?\n\}/)?.[0] ?? "";
+  check(/tx\.dataset\.fits === "1"/.test(fit) && /toggle\("fxb"/.test(fit), "fitBubble не снимает обрезку у помещающегося текста с походкой");
+  check(/tx\.dataset\.fits = tx\.dataset\.gait && tx\.scrollHeight <= tx\.clientHeight/.test(src), "say не отмечает помещающийся текст с походкой (data-fits)");
+  const amend = fs.readFileSync(path.join(__dirname, "..", "renderer", "amend.js"), "utf8");
+  check(/box\.dataset\.fits = ""/.test(amend), "поправка ответа не снимает data-fits");
 } catch (e) {
   check(false, `тест оборвался: ${e?.stack ?? e}`);
 }
