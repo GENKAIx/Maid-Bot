@@ -1264,13 +1264,14 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 }
 
 /* «Персонализация» (Persona.tsx; «О вас» — AboutYou.tsx, «Рина» — MaidSettings.tsx), компактно с 20.11.2026: полоса «Заполнено»
-   тонкой строкой, поле — одна строка (слева название и значение, справа правка), карточки колонками без растяжения по
-   соседке (columns, а не сетка: под короткой карточкой нет пустоты). */
+   тонкой строкой, поле — одна строка (слева название и значение, справа правка), карточки — одним столбцом (так решил
+   пользователь: два столбца не нужны), шириной не больше 820 px, чтобы правка не уезжала от названия на широком экране. */
 .part-title { margin: 18px 0 0; font-size: 18px; font-weight: 750; letter-spacing: -.01em; }
-.persona .cards { display: block; columns: 2 380px; column-gap: 12px; margin-top: 10px; }
-.persona .cards > .card { break-inside: avoid; margin-bottom: 12px; padding: 12px 14px; }
+.screen.persona { max-width: 820px; }
+.persona .cards { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+.persona .cards > .card { padding: 12px 14px; }
 .persona .cards > .card .card-head { margin-bottom: 6px; }
-.you-progress { column-span: all; display: grid; grid-template-columns: auto minmax(80px, 220px) 1fr; align-items: center; gap: 4px 12px; margin: 0 0 12px; }
+.you-progress { display: grid; grid-template-columns: auto minmax(80px, 220px) 1fr; align-items: center; gap: 4px 12px; margin: 0 0 2px; }
 .you-progress p { margin: 0; }
 .you-progress .you-note { grid-column: 1 / -1; }
 .you-note.bad { color: var(--bad-ink); }
