@@ -30,6 +30,22 @@ export function cityOf(u: Pick<User, "city">): City | null {
   }
 }
 
+/** Поля «О вас» в порядке «Дальше: …» на сайте; всего их 7 — полоса «Заполнено N из 7». */
+export const YOU_FIELDS = ["city", "wake", "address", "bed", "birthday", "height", "tz"] as const;
+export type YouField = (typeof YOU_FIELDS)[number];
+
+/** users.ask (JSON): set — что человек указал сам (у подъёма, обращения и пояса есть значения по умолчанию, по ним не понять);
+ *  off — о чём Рина больше не спрашивает («Не скажу»); last — когда спрашивала (ISO). */
+export interface AskState { set: string[]; off: string[]; last: string }
+export function askOf(u: Pick<User, "ask">): AskState {
+  try {
+    const a = JSON.parse(u.ask || "{}") as Partial<AskState>;
+    return { set: Array.isArray(a.set) ? a.set.filter((x) => typeof x === "string") : [], off: Array.isArray(a.off) ? a.off.filter((x) => typeof x === "string") : [], last: typeof a.last === "string" ? a.last : "" };
+  } catch {
+    return { set: [], off: [], last: "" };
+  }
+}
+
 export const isTimeZone = (tz: string) => {
   try {
     new Intl.DateTimeFormat("ru-RU", { timeZone: tz });
@@ -91,28 +107,37 @@ export async function youView(store: Store, u: User, now = new Date()) {
   const weight = (await store.metricsRange(u.id, "2000-01-01", dayKey(now, u.tz), "weight")).at(-1);
   const traits = (await store.traitsOf(u.id)).filter((t) => t.status === "active");
   const city = cityOf(u);
+  const set = askOf(u).set;
+  const filled: Record<YouField, boolean> = {
+    city: Boolean(city), wake: set.includes("wake"), address: set.includes("address"), bed: set.includes("bed") || u.bed !== "auto",
+    birthday: Boolean(info.birthday), height: info.height != null, tz: set.includes("tz") || u.tz !== config.defaultTimezone,
+  };
   return {
     name: u.name, address: u.address as Address, call: addressWord(u),
     city, tz: u.tz, tz_offset: tzOffset(u.tz, now), tz_default: config.defaultTimezone, tz_from_city: Boolean(city && city.tz === u.tz),
     wake: u.wake, bed: u.bed, birthday: info.birthday, height: info.height,
     weight: weight ? weight.value : null,
+    filled: YOU_FIELDS.filter((k) => filled[k]),
     traits: { debuffs: traits.filter((t) => t.kind === "debuff").length, buffs: traits.filter((t) => t.kind === "buff").length },
   };
 }
 
+/** null у обращения, подъёма, отбоя и пояса — «стереть»: снова как по умолчанию. */
 export interface YouPatch {
-  address?: Address; name?: string;
+  address?: Address | null; name?: string;
   /** Новый город (из findCities) или null — стереть. Часовой пояс города ставится сам, если пояс не задан тем же запросом. */
   city?: City | null;
   tz?: string | null;
-  wake?: number; bed?: string;
+  wake?: number | null; bed?: string | null;
   birthday?: string; height?: number | null;
 }
 
 /** Записать «О вас». Возвращает, сменился ли часовой пояс (тогда напоминания о планах перекладываются заново). */
 export async function saveYou(store: Store, u: User, p: YouPatch): Promise<{ tzChanged: boolean }> {
   const patch: Partial<User> = {};
-  if (p.address !== undefined) patch.address = p.address;
+  const ask = askOf(u);
+  const mark = (k: YouField, on: boolean) => { ask.set = ask.set.filter((x) => x !== k); if (on) ask.set.push(k); };
+  if (p.address !== undefined) { patch.address = p.address ?? "master"; mark("address", p.address !== null); }
   if (p.name !== undefined) patch.name = p.name.trim().slice(0, 80);
   if (p.address === "name" && !(p.name ?? u.name).trim()) throw new Error("для обращения по имени нужно имя");
   let tz = u.tz;
@@ -133,16 +158,21 @@ export async function saveYou(store: Store, u: User, p: YouPatch): Promise<{ tzC
     const t = p.tz ?? config.defaultTimezone;
     if (!isTimeZone(t)) throw new Error("нет такого часового пояса");
     tz = t;
+    mark("tz", p.tz !== null);
   }
   if (tz !== u.tz) patch.tz = tz;
   if (p.wake !== undefined) {
-    if (!(WAKES as readonly number[]).includes(p.wake)) throw new Error(`подъём — с ${WAKES[0]}:00 до ${WAKES[WAKES.length - 1]}:00`);
-    patch.wake = p.wake;
+    if (p.wake !== null && !(WAKES as readonly number[]).includes(p.wake)) throw new Error(`подъём — с ${WAKES[0]}:00 до ${WAKES[WAKES.length - 1]}:00`);
+    patch.wake = p.wake ?? 7;
+    mark("wake", p.wake !== null);
   }
   if (p.bed !== undefined) {
-    if (!(BEDS as readonly string[]).includes(p.bed)) throw new Error("нет такого времени отбоя");
-    patch.bed = p.bed;
+    if (p.bed !== null && !(BEDS as readonly string[]).includes(p.bed)) throw new Error("нет такого времени отбоя");
+    patch.bed = p.bed ?? "auto";
+    mark("bed", p.bed !== null);
   }
+  const askText = JSON.stringify(ask);
+  if (askText !== JSON.stringify(askOf(u))) patch.ask = askText;
   if (p.birthday !== undefined || p.height !== undefined) {
     const prof: Partial<ProfileInfo> = {};
     if (p.birthday !== undefined) prof.birthday = p.birthday;

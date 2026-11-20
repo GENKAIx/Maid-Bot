@@ -1008,9 +1008,6 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .stat-name { color: var(--muted); }
 .stat-val { margin-left: auto; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-pill button.stat-val { font-size: 14px; color: var(--text); }
-.stat-edit { margin-left: auto; display: flex; gap: 6px; }
-.stat-edit input { width: 76px; padding: 3px 8px; font-size: 13.5px; }
-.stat-edit input[type="date"] { width: 140px; }
 .primary.tiny { padding: 3px 10px; font-size: 13px; }
 
 .char-sheet-auras { position: relative; display: grid; gap: 18px; padding-left: 28px; }
@@ -1261,4 +1258,47 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 .hist-more { justify-self: start; }
 @media (max-width: 640px) {
   .hist-item { grid-template-columns: 40px minmax(0, 1fr); padding: 10px 12px; }
+}
+
+/* «Персонализация → О вас» (AboutYou.tsx, 20.11.2026): части вкладки, полоса «Заполнено», строки полей с «?». */
+.part-title { margin: 22px 0 2px; font-size: 18px; font-weight: 750; letter-spacing: -.01em; }
+.cards.you { grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); }
+.cards.you > .card:first-child { grid-column: 1 / -1; }
+.you-progress { display: grid; gap: 8px; }
+.you-count { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.you-count .bad { color: var(--bad-ink); }
+.you-bar { height: 8px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+.you-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .35s ease; }
+.you-row { padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.you-row:last-child { border-bottom: none; padding-bottom: 2px; }
+.you-row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.you-ic { width: 22px; text-align: center; flex: none; }
+.you-l { font-weight: 600; }
+.you-val { margin-left: auto; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.you-v { text-align: right; color: var(--text); font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.you-v.empty { color: var(--muted); }
+.you-row.ro .you-v { color: var(--muted); }
+.you-x { padding: 2px 6px; font-size: 13px; }
+.you-row-body { padding-left: 30px; display: grid; gap: 8px; justify-items: start; }
+.you-seg { flex-wrap: wrap; }
+.you-name { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.you-height { width: 90px; }
+.you-row-body select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; outline: none; font: inherit; max-width: 100%; }
+.you-row-body select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.you-row-body input[type="date"] { width: 180px; }
+.you-city { display: grid; gap: 6px; width: min(100%, 420px); }
+.you-city-list { list-style: none; margin: 0; padding: 4px; display: grid; gap: 2px; background: var(--panel-2); border-radius: 10px; }
+.you-city-list button { width: 100%; text-align: left; border: none; background: transparent; padding: 7px 10px; border-radius: 8px; }
+.you-city-list button:hover, .you-city-list button:focus-visible { background: var(--panel); }
+.you-q { position: relative; display: inline-flex; }
+.you-q > button { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); font-size: 12px; font-weight: 700; line-height: 1; }
+.you-tip { position: absolute; z-index: 20; top: calc(100% + 8px); left: -40px; width: min(300px, calc(100vw - 48px)); padding: 12px 14px; display: none; gap: 6px;
+  background: var(--ink-bg); color: var(--on-ink); border-radius: 12px; box-shadow: var(--lift); font-size: 13px; line-height: 1.4; font-weight: 400; }
+.you-q.open .you-tip { display: grid; }
+@media (hover: hover) { .you-q:hover .you-tip, .you-q:focus-within .you-tip { display: grid; } }
+@media (max-width: 640px) {
+  .you-row-head { flex-wrap: wrap; }
+  .you-val { flex-basis: 100%; margin-left: 0; padding-left: 30px; box-sizing: border-box; }
+  .you-v { text-align: left; }
+  .you-row-body { padding-left: 0; }
 }

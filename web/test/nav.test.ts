@@ -18,21 +18,22 @@ test("порядок меню прежний: Профиль, каждый де�
   ]);
 });
 
-test("вкладки настроек: Горничная, Виджет (только в программе на ПК), Программа", () => {
-  assert.deepEqual(settingsTabs(true).map((t) => t.title), ["Горничная", "Виджет", "Программа"]);
-  assert.deepEqual(settingsTabs(false).map((t) => t.title), ["Горничная", "Программа"]);
+test("вкладки настроек: Персонализация, Виджет (только в программе на ПК), Программа", () => {
+  assert.deepEqual(settingsTabs(true).map((t) => t.title), ["Персонализация", "Виджет", "Программа"]);
+  assert.deepEqual(settingsTabs(false).map((t) => t.title), ["Персонализация", "Программа"]);
 });
 
-test("вкладка по адресу: без вкладки и с незнакомой — Горничная; Виджет вне программы — Горничная", () => {
-  assert.equal(settingsTab(undefined, true), "maid");
+test("вкладка по адресу: без вкладки и с незнакомой — Персонализация; Виджет вне программы — Персонализация", () => {
+  assert.equal(settingsTab(undefined, true), "persona");
   assert.equal(settingsTab("app", true), "app");
   assert.equal(settingsTab("widget", true), "widget");
-  assert.equal(settingsTab("widget", false), "maid");
-  assert.equal(settingsTab("что-то", true), "maid");
+  assert.equal(settingsTab("widget", false), "persona");
+  assert.equal(settingsTab("что-то", true), "persona");
 });
 
 test("старые адреса ведут на вкладки настроек (виджет на ПК открывает /widget)", () => {
-  assert.equal(oldPath("/maid"), "/settings/maid");
+  assert.equal(oldPath("/maid"), "/settings/persona");
+  assert.equal(oldPath("/settings/maid"), "/settings/persona", "вкладка «Горничная» стала «Персонализацией»");
   assert.equal(oldPath("/widget"), "/settings/widget");
   assert.equal(oldPath("/settings"), null);
   assert.equal(oldPath("/catalog"), null);

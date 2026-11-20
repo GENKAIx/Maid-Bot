@@ -22,12 +22,13 @@ export const NAV_TABS: NavTab[] = [
   { id: "settings", path: "/settings", title: "Настройки", icon: "settings", more: true },
 ];
 
-export type SettingsTabId = "maid" | "widget" | "app";
+export type SettingsTabId = "persona" | "widget" | "app";
 
-/** Вкладки «Настроек»: как пишет горничная, виджет на рабочем столе (только в программе на ПК), техническое. */
+/** Вкладки «Настроек»: Персонализация (о вас и о Рине, 20.11.2026; раньше «Горничная», id maid), виджет на рабочем столе
+ *  (только в программе на ПК), техническое. */
 export function settingsTabs(desk: boolean): { id: SettingsTabId; title: string }[] {
   return [
-    { id: "maid", title: "Горничная" },
+    { id: "persona", title: "Персонализация" },
     ...(desk ? [{ id: "widget" as const, title: "Виджет" }] : []),
     { id: "app", title: "Программа" },
   ];
@@ -35,11 +36,12 @@ export function settingsTabs(desk: boolean): { id: SettingsTabId; title: string 
 
 /** Открытая вкладка по адресу /settings/<вкладка>; без неё и с незнакомой — первая. */
 export function settingsTab(arg: string | undefined, desk: boolean): SettingsTabId {
-  return settingsTabs(desk).find((t) => t.id === arg)?.id ?? "maid";
+  return settingsTabs(desk).find((t) => t.id === arg)?.id ?? "persona";
 }
 
-/** Прежние адреса разделов, ставших вкладками: виджет на ПК и старые закладки открывают /widget и /maid. */
+/** Прежние адреса разделов, ставших вкладками: виджет на ПК и старые закладки открывают /widget и /maid, /settings/maid —
+ *  вкладка «Горничная» до 20.11.2026. */
 export function oldPath(path: string): string | null {
-  const moved: Record<string, string> = { "/maid": "/settings/maid", "/widget": "/settings/widget" };
+  const moved: Record<string, string> = { "/maid": "/settings/persona", "/settings/maid": "/settings/persona", "/widget": "/settings/widget" };
   return moved[path.replace(/\/+$/, "")] ?? null;
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { get, post } from "../api";
 import { Empty, Spinner } from "../components";
 import { shortDay } from "../format";
+import { navigate } from "../router";
 import { AuraGlyph, StatGlyph, auraIcon } from "./ProfileArt";
 
 // Профиль (GET /api/profile) — практичная карточка, как профиль в Steam: слева квадратная аватарка (своя картинка или из профиля
@@ -114,7 +115,6 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
   const [note, setNote] = useState("");
   const [steamLink, setSteamLink] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [edit, setEdit] = useState<{ key: string; value: string } | null>(null);
   const [adding, setAdding] = useState<"debuff" | "buff" | null>(null);
   const [form, setForm] = useState({ category: "allergy", title: "", note: "" });
   const file = useRef<HTMLInputElement>(null);
@@ -139,12 +139,6 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
   const save = (patch: Partial<Pick<ProfileData, "height" | "birthday" | "avatar">>) => run(() => post<ProfileData>("/api/profile", patch));
   const setStatus = (t: Trait, status: string) => run(() => post<{ text?: string; profile: ProfileData }>(`/api/traits/${t.id}`, { status }));
   const toggleAdd = (kind: "debuff" | "buff") => setAdding((a) => (a === kind ? null : kind));
-  function saveEdit() {
-    if (!edit) return;
-    if (edit.key === "height") save({ height: edit.value ? Number(edit.value) : null });
-    else save({ birthday: edit.value });
-    setEdit(null);
-  }
 
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!p) return <Spinner />;
@@ -201,21 +195,10 @@ export function Profile({ version, onChanged }: { version: number; onChanged: ()
               <li key={s.key} className="stat-pill" title={s.hint}>
                 <StatGlyph name={s.key} />
                 <span className="stat-name">{s.label}</span>
-                {edit?.key === s.key ? (
-                  <form className="stat-edit" onSubmit={(e) => { e.preventDefault(); saveEdit(); }}>
-                    {s.key === "age" ? (
-                      <input autoFocus type="date" value={edit.value} max={new Date().toISOString().slice(0, 10)} min="1900-01-01" aria-label="Дата рождения"
-                        onChange={(e) => setEdit({ key: "age", value: e.target.value })} onKeyDown={(e) => e.key === "Escape" && setEdit(null)} />
-                    ) : (
-                      <input autoFocus inputMode="numeric" value={edit.value} placeholder="см" aria-label="Рост, см"
-                        onChange={(e) => setEdit({ key: "height", value: e.target.value.replace(/\D/g, "").slice(0, 3) })}
-                        onKeyDown={(e) => e.key === "Escape" && setEdit(null)} />
-                    )}
-                    <button className="primary tiny">ОК</button>
-                  </form>
-                ) : editable(s.key) ? (
-                  <button className="stat-val link" onClick={() => setEdit({ key: s.key, value: s.key === "age" ? p.birthday : p.height ? String(p.height) : "" })}
-                    title={s.key === "age" ? "Указать дату рождения" : "Указать рост"}>{s.value}</button>
+                {/* Одно поле — одно место: день рождения и рост правятся в «Настройках → Персонализация → О вас». */}
+                {editable(s.key) ? (
+                  <button className="stat-val link" onClick={() => navigate("/settings/persona")}
+                    title={s.key === "age" ? "Дата рождения — в «Персонализации»" : "Рост — в «Персонализации»"}>{s.value}</button>
                 ) : <span className="stat-val">{s.value}</span>}
               </li>
             ))}

@@ -62,6 +62,15 @@ test("город ставит часовой пояс, стёртый город
   await saveYou(store, u, { wake: 8, bed: "23:00", address: "mistress", birthday: "1996-03-14", height: 170 });
   v = await youView(store, (await store.user(u.id))!);
   assert.deepEqual([v.wake, v.bed, v.address, v.call, v.birthday, v.height], [8, "23:00", "mistress", "хозяйка", "1996-03-14", 170]);
+  assert.deepEqual(v.filled, ["city", "wake", "address", "bed", "birthday", "height", "tz"], "всё указано — 7 из 7");
+  // Стереть подъём, обращение и пояс — снова по умолчанию и «не заполнено»; подъём 7 по умолчанию заполненным не считается.
+  await saveYou(store, (await store.user(u.id))!, { wake: null, address: null, tz: null, city: null });
+  u = (await store.user(u.id))!;
+  v = await youView(store, u);
+  assert.deepEqual([v.wake, v.address, v.tz], [7, "master", "Europe/Moscow"]);
+  assert.deepEqual(v.filled, ["bed", "birthday", "height"]);
+  await saveYou(store, u, { wake: 7 });
+  assert.ok((await youView(store, (await store.user(u.id))!)).filled.includes("wake"), "7:00, выбранные самим, — заполнено");
   await store.close();
 });
 
@@ -101,6 +110,7 @@ test("API: /api/you читает и пишет, /api/city подсказывае
     assert.equal((await call("/api/you")).status, 401);
     const v0 = (await call("/api/you", undefined, token)).json;
     assert.deepEqual([v0.address, v0.call, v0.city, v0.wake, v0.bed, v0.tz], ["master", "хозяин", null, 7, "auto", "Europe/Moscow"]);
+    assert.deepEqual(v0.filled, []);
     const found = (await call("/api/city?q=" + encodeURIComponent("Екат"), undefined, token)).json;
     assert.equal(found[0].name, "Екатеринбург");
     const v1 = (await call("/api/you", { city: found[0], address: "name", wake: 8 }, token)).json;

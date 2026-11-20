@@ -377,12 +377,12 @@ export function createApi(deps: ApiDeps) {
         lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180), tz: z.string().max(64),
       });
       const b = parseBody(z.object({
-        address: z.enum(ADDRESSES, { message: "нет такого обращения" }).optional(),
+        address: z.enum(ADDRESSES, { message: "нет такого обращения" }).nullable().optional(),
         name: z.string().max(80).optional(),
         city: CityIn.nullable().optional(),
         tz: z.string().max(64).nullable().optional(),
-        wake: z.number().int().optional(),
-        bed: z.string().max(5).optional(),
+        wake: z.number().int().nullable().optional(),
+        bed: z.string().max(5).nullable().optional(),
         birthday: z.string().max(10).optional(),
         height: z.number().nullable().optional(),
       }), await readJson(req));
