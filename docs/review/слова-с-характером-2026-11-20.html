@@ -2023,7 +2023,7 @@ WX.add({
 });
 </script>
 <script>
-/* нехотя — растяжение из ревью 19.11 («Нехотя»): слово тянется межбуквенным расстоянием и толкает соседний текст, так задумано */
+/* нехотя — растяжение из ревью 19.11 («Нехотя»): слово растягивается по буквам и сжимается обратно */
 WX.add({
   id: "str", ru: "нехотя", feel: "tired",
   about: "Слово нехотя растягивается по буквам и сжимается обратно.",
@@ -2035,11 +2035,21 @@ WX.add({
     { k: "weight", label: "Жирность", unit: "", min: 400, max: 900, step: 50, def: 650 },
     { k: "color", label: "Цвет", type: "color", def: "#7a5a2c" },
   ],
-  /* Расстояние между буквами наследуется буквами от слова, поэтому анимация стоит на самом слове. */
+  /* Буквы раздвигаются от середины слова сдвигом (transform), а не межбуквенным расстоянием: в ревью 19.11 слово толкало
+     соседний текст, а в виджете от этого каждые полторы секунды менялась ширина всего облачка. Поля у слова равны
+     наибольшему вылету крайней буквы, поэтому буквы не наезжают на соседний текст и знак за словом. --j, --c, --m ставит setup по буквам каждого слова. */
   css: `
-    & .fw { color: var(--color); font-weight: var(--weight); animation: wx-str-a var(--dur) ease-in-out infinite alternate; }
-    @keyframes wx-str-a { from { letter-spacing: 0; } to { letter-spacing: var(--wide); } }
+    & .fw { color: var(--color); font-weight: var(--weight); margin: 0 calc((var(--m, 1) - 1) * var(--wide) / 4); }
+    & .tw { animation: wx-str-a var(--dur) ease-in-out infinite alternate; }
+    @keyframes wx-str-a { from { transform: none; } to { transform: translateX(calc((var(--j, 0) - var(--c, 0)) * var(--wide) / 2)); } }
   `,
+  setup(fx, c) {
+    for (const w of c.words) {
+      const ls = [...w.querySelectorAll(".tw")];
+      w.style.setProperty("--m", ls.length);
+      ls.forEach((l, j) => { l.style.setProperty("--j", j); l.style.setProperty("--c", (ls.length - 1) / 2); });
+    }
+  },
 });
 </script>
 <script>
@@ -2204,7 +2214,7 @@ WX.add({
   id: "count", ru: "счёт", feel: "pride",
   about: "Число набегает от единицы до своего значения, а в конце вырастает и искрит, как золото.",
   sample: { text: "Зарядка — [12] дней подряд. Так держать!", emotion: "proud", pose: "proud" },
-  type: { whole: 1, pre: 160, post: 350 },
+  type: { whole: 1, pre: 160, post: 350, one: 1 },
   params: [
     { k: "step", label: "Шаг счёта", unit: "ms", min: 20, max: 300, step: 5, def: 70, hint: "больше — считает медленнее; числа до 6 идут почти втрое медленнее" },
     { k: "tick", label: "Щелчок цифры", unit: "ms", min: 40, max: 600, step: 10, def: 160, hint: "как долго новая цифра падает на место" },
@@ -2217,6 +2227,8 @@ WX.add({
   /* Сами буквы числа всегда невидимы и только держат место; видимое число рисует «::before» из data-n.
      Конечный вид (размер и свечение) стоит на «.fin» статически, рывок и дыхание — только путь к нему.
      Свечение rgb(242, 198, 97) из оригинала считается сдвигом от цвета числа. */
+  /* Эффект — только на числе от 2 (в программе пометка на другом слове просто снимается). «10 000» — одно число. */
+  ok: (word) => /^\d[\d\s]*$/.test(word) && Number(word.replace(/\s/g, "")) >= 2,
   css: `
     & .fw { margin: 0 3px; transform-origin: 50% 70%; color: var(--color); font-weight: 850; font-variant-numeric: tabular-nums; }
     & .fw .tw.on { opacity: 0; }
@@ -2228,7 +2240,10 @@ WX.add({
     @keyframes wx-count-breath { 0%, 100% { transform: scale(var(--rest)); filter: drop-shadow(0 0 2px rgb(from var(--color) calc(r + 74) calc(g + 84) calc(b + 86) / .6)); } 50% { transform: scale(calc(var(--rest) + .08)); filter: drop-shadow(0 0 5px rgb(from var(--color) calc(r + 74) calc(g + 84) calc(b + 86) / .95)); } }
   `,
   setup(fx, c) {
-    fx._n = Math.max(1, Math.min(60, parseInt(c.w.textContent, 10) || 3));
+    /* _to — само число, _n — сколько шагов: до 28 считает подряд, большее число идёт теми же 28 шагами через несколько
+       (около 2 с при шаге 70 мс), и последний шаг — соседний с итогом */
+    fx._to = Math.max(1, parseInt(String(c.w.textContent).replace(/\s/g, ""), 10) || 3);
+    fx._n = Math.min(fx._to, 28);
     /* в оригинале: 70 мс на шаг, а для чисел до 6 — 200 мс (то есть в 20/7 раза дольше) */
     fx._dt = fx._n > 6 ? c.P.step : Math.round((c.P.step * 20) / 7);
     for (const w of c.words) w.dataset.n = "";
@@ -2239,7 +2254,7 @@ WX.add({
     let k = 0;
     const tick = () => {
       k++;
-      w.dataset.n = k >= n ? end : String(k);
+      w.dataset.n = k >= n ? end : String(Math.round((fx._to * k) / n));
       w.classList.remove("tick"); void w.offsetWidth; w.classList.add("tick");
       c.tone({ f: 500 * Math.pow(2, Math.min(k, 14) / 12), d: 0.05, type: "triangle", g: 0.05 });
       if (k < n) c.later(fx._dt, tick);
@@ -2270,7 +2285,7 @@ WX.add({
     & .tw { color: var(--color); font-weight: 750; }
     & .fw { margin: 0 2px; animation: wx-pulse-beat var(--dur) ease-in-out infinite; }
     @keyframes wx-pulse-beat { 0%, 40%, 100% { transform: scale(1); } 10% { transform: scale(calc(1 + var(--amp))); } 20% { transform: scale(1); } 30% { transform: scale(calc(1 + var(--amp2))); } }
-    &.go .fw::after { content: "♥"; position: absolute; right: -4px; top: -6px; font-size: 8px; font-style: normal; color: var(--hcolor); animation: wx-pulse-heart var(--hdur) ease-out infinite; }
+    &.go .fw::after { content: "♥"; position: absolute; opacity: 0; right: -4px; top: -6px; font-size: 8px; font-style: normal; color: var(--hcolor); animation: wx-pulse-heart var(--hdur) ease-out infinite; }
     @keyframes wx-pulse-heart { 0% { transform: translate(0, 3px) scale(.3); opacity: 0; } 20% { opacity: 1; transform: translate(1px, -3px) scale(1); } 100% { transform: translate(6px, calc(var(--rise) * -1)) scale(.8) rotate(14deg); opacity: 0; } }
   `,
   /* Два глухих «тук»: в оригинале через 0.2 с при цикле 1150 мс — промежуток растёт вместе с циклом. */
@@ -2323,7 +2338,7 @@ WX.add({
   css: `
     & .tw { color: var(--color); font-weight: 700; transform-origin: 50% 0; animation: wx-drip-sag var(--dur) ease-in-out infinite; animation-delay: calc(var(--i) * var(--lag)); }
     @keyframes wx-drip-sag { 0%, 100% { transform: none; } 45%, 60% { transform: translateY(var(--sag)) scaleY(var(--stretch)); } }
-    &.go .fw.lw::after { content: ""; position: absolute; left: calc(50% - 2px); top: 88%; width: 4px; height: 6px; border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%; background: var(--dcolor); animation: wx-drip-drop var(--dur) ease-in infinite; }
+    &.go .fw.lw::after { content: ""; position: absolute; opacity: 0; left: calc(50% - 2px); top: 88%; width: 4px; height: 6px; border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%; background: var(--dcolor); animation: wx-drip-drop var(--dur) ease-in infinite; }
     @keyframes wx-drip-drop { 0%, 30% { transform: translateY(-2px) scale(.2); opacity: 0; } 45% { transform: translateY(0) scale(1); opacity: .95; } 85% { transform: translateY(var(--fall)) scale(.9, 1.15); opacity: .9; } 100% { transform: translateY(calc(var(--fall) + 4px)) scale(1.6, .3); opacity: 0; } }
   `,
 });
@@ -2360,11 +2375,11 @@ WX.add({
 /* ой — перенос «fx-jolt» из ревью 20.11 */
 WX.add({
   id: "jolt", ru: "ой", feel: "wow",
-  about: "Слово выскакивает со вспышкой и восклицательным знаком, потом изредка дёргается.",
+  about: "Слово выскакивает со вспышкой, потом изредка дёргается.",
   sample: { text: "Ой! Встреча уже [через 5 минут]!", emotion: "surprised", pose: "surprised" },
   type: { whole: 1, pre: 120, post: 380, pitch: 1.5, gain: 1.6 },
   params: [
-    { k: "dur", label: "Длина выскакивания", unit: "ms", min: 150, max: 1500, step: 10, def: 550, hint: "вспышка и знак «!» идут в том же темпе" },
+    { k: "dur", label: "Длина выскакивания", unit: "ms", min: 150, max: 1500, step: 10, def: 550, hint: "вспышка идёт в том же темпе" },
     { k: "big", label: "Насколько раздувается", unit: "", min: 1, max: 2.5, step: 0.05, def: 1.5, hint: "во сколько раз слово крупнее в прыжке" },
     { k: "stag", label: "Задержка между словами", unit: "ms", min: 0, max: 400, step: 10, def: 90 },
     { k: "period", label: "Как часто дёргается", unit: "ms", min: 800, max: 9000, step: 100, def: 3000, hint: "больше — реже" },
@@ -2372,7 +2387,7 @@ WX.add({
     { k: "color", label: "Цвет слова", type: "color", def: "#c2410c" },
     { k: "flash", label: "Цвет вспышки", type: "color", def: "#ffd43b" },
   ],
-  /* Доли 3/11, 10/11, 14/11, 18/11 — это 150, 500, 700 и 900 мс оригинала при длине 550 мс. */
+  /* Доли 14/11 и 18/11 — это 700 и 900 мс оригинала при длине 550 мс. Значка «!» над словом больше нет (20.11: висел над знаком препинания). */
   css: `
     & .fw { margin: 0 1px; isolation: isolate; }
     & .tw { color: var(--color); font-weight: 800; }
@@ -2382,8 +2397,6 @@ WX.add({
     @keyframes wx-jolt-twitch { 0%, 90%, 100% { transform: none; } 93% { transform: translateY(calc(var(--amp) * -1px)) rotate(calc(var(--amp) * -1deg)); } 96% { transform: translateY(calc(var(--amp) * .5px)) rotate(calc(var(--amp) * .75deg)); } }
     &.go .fw::before { content: ""; position: absolute; inset: -5px -7px; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--flash) 90%, transparent), transparent); opacity: 0; animation: wx-jolt-flash calc(var(--dur) * 14 / 11) ease-out both; }
     @keyframes wx-jolt-flash { from { opacity: 1; transform: scale(.4); } to { opacity: 0; transform: scale(1.7); } }
-    &.go .fw.lw::after { content: "!"; position: absolute; right: -6px; top: -8px; font-size: 11px; font-weight: 900; color: #f08c00; transform: rotate(16deg); animation: wx-jolt-bang calc(var(--dur) * 10 / 11) calc(var(--dur) * 3 / 11) cubic-bezier(.3, 1.8, .5, 1) both; }
-    @keyframes wx-jolt-bang { from { transform: scale(0) rotate(-30deg); opacity: 0; } to { transform: scale(1) rotate(16deg); opacity: 1; } }
   `,
   /* Печать ждёт дольше или меньше вместе с длиной выскакивания; при 550 мс добавка нулевая, как в оригинале. */
   hold(fx, c) { return Math.max(-(c.T.post || 0), Math.round((c.P.dur - 550) * 380 / 550)); },
@@ -2479,7 +2492,8 @@ WX.add({
   },
   onGo(fx, c) {
     c.noise({ d: 0.2, g: 0.035, hp: 2600 });
-    c.tone({ t: (c.P.wait + c.P.out * 0.75) / 1000, f: 520, f2: 880, d: 0.09, g: 0.05 });
+    /* через c.later, а не отложенным звуком: реплику сменили или облачко закрыли — тон не прозвучит */
+    c.later(c.P.wait + c.P.out * 0.75, () => c.tone({ f: 520, f2: 880, d: 0.09, g: 0.05 }));
   },
 });
 </script>
@@ -2499,6 +2513,8 @@ WX.add({
     { k: "weight", label: "Жирность", unit: "", min: 400, max: 900, step: 50, def: 650 },
   ],
   /* Стиль на самом слове-обёртке: заливка — фон, который растёт слева направо. Конечный вид — на «.go». */
+  /* заливка лежит на всей пометке, поэтому знак за словом в программе выносится наружу — иначе закрасится и он */
+  ptOut: true,
   css: `
     & { font-weight: var(--weight); padding: 0 2px; margin: 0 -2px; border-radius: 3px; background: linear-gradient(transparent var(--top), color-mix(in srgb, var(--color) var(--dense), transparent) var(--top), color-mix(in srgb, var(--color) var(--dense), transparent) calc(100% - var(--bot)), transparent calc(100% - var(--bot))) no-repeat 0 0 / 0% 100%; -webkit-box-decoration-break: clone; box-decoration-break: clone; transition: background-size var(--dur) cubic-bezier(.3, .8, .3, 1); }
     &.go { background-size: 100% 100%; }
@@ -2628,6 +2644,8 @@ WX.add({
   /* Слово занимает своё место сразу (слоги и дефисы стоят невидимыми), поэтому соседний текст не прыгает.
      Слог виден, когда получил «.hit» (по очереди из onGo) или когда на слове «.fin» (карточка и «меньше движения»).
      Черта под слогом («::after») — короткий след удара, в покое невидима. */
+  /* Только русское слово без дефиса и цифр: иначе слоги не разобрать (в программе такая пометка просто снимается). */
+  ok: (word) => /^[а-яё]+( [а-яё]+)*$/i.test(word),
   css: `
     & .fw { color: var(--color); font-weight: 800; font-size: var(--size); letter-spacing: .04em; text-transform: uppercase; }
     & .sy { display: inline-block; position: relative; transform-origin: 50% 100%; }
