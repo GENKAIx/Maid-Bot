@@ -137,7 +137,7 @@ function showMood(n) {
   if (n === mood) return;
   mood = n;
   clearTimeout(forgetTimer);
-  $("#face").src = `../assets/maid/${n}.webp`;
+  $("#face").src = maidSrc(n); // перекрашенная, если выбраны другие цвета (maidlook.js)
 }
 // «Стираю память» (forget): поднимает прибор, 3 с на линзе горит огонёк, на 84-м кадре (3,5 с) щелчок — в этот миг
 // вспышка от его линзы, потом ещё 2 с стоит с прибором. Анимация играет один раз (5,5 с).
@@ -149,7 +149,7 @@ function forgetFlash() {
   clearTimeout(forgetTimer);
   clearTimeout(zapTimer);
   const face = $("#face");
-  face.src = `../assets/maid/forget.webp?${Date.now()}`;
+  face.src = maidSrcFresh("forget");
   maid.memFlashPrep?.();
   const arm = () => {
     zapTimer = setTimeout(() => { if (mood === "forget") zapTone(); }, FORGET.click - FORGET.zap);
@@ -1976,6 +1976,7 @@ async function load() {
     const json = JSON.stringify(fresh);
     data = fresh;
     syncMarks(); // день сервера и часы идут — «через 2 часа», «завтра» в метке не устаревают (перерисовка — только если поменялись)
+    lookSync(data.maid_hair, data.maid_eyes); // цвета волос и глаз с сайта (maidlook.js)
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
     if (!online) backOnline();

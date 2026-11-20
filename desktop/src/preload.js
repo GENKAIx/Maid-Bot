@@ -43,6 +43,13 @@ contextBridge.exposeInMainWorld("maid", {
   downReady: () => ipcRenderer.send("down-ready"),
   /** Скачать и поставить новую версию программы (значок-шестерёнка в виджете); состояние приходит событием "update". */
   installUpdate: () => ipcRenderer.send("update-install"),
+  /** «Перекрасить Рину» (maidlook.js): исходники из assets и кэш перекрашенных анимаций в userData/maid-look (только виджет). */
+  look: {
+    asset: (name, keep) => ipcRenderer.invoke("look:asset", name, keep),
+    get: (set, name) => ipcRenderer.invoke("look:get", set, name),
+    put: (set, name, bytes) => ipcRenderer.invoke("look:put", set, name, bytes),
+    keep: (set) => ipcRenderer.invoke("look:keep", set),
+  },
   on: (channel, fn) => {
     if (["grab", "changed", "tracker", "quick-open", "thinking", "reply", "opacity", "down", "down-shown", "prefs", "tour", "update", "updated"].includes(channel)) ipcRenderer.on(channel, (_e, data) => fn(data));
   },

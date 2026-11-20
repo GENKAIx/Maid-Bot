@@ -802,6 +802,45 @@ function broadcast(channel, data) {
 
 // --- связь с окнами ---
 ipcMain.handle("api", (_e, method, p, body) => api(method, p, body));
+
+// «Перекрасить Рину» (renderer/maidlook.js): виджет читает анимации и маски из assets и хранит перекрашенные в
+// userData/maid-look/<ключ>/<имя>.webp — одну папку, нынешний набор (look:keep убирает остальные). Только виджету.
+const LOOK_NAME = /^[a-z0-9]{1,24}$/;
+const LOOK_SET = /^look\d{1,4}-[a-z]{1,12}-[a-z]{1,12}$/;
+const lookDir = () => path.join(app.getPath("userData"), "maid-look");
+const fromWidget = (e) => !!widget && !widget.isDestroyed() && e.sender === widget.webContents;
+const isWebp = (b) => b.length > 12 && b.toString("latin1", 0, 4) === "RIFF" && b.toString("latin1", 8, 12) === "WEBP";
+ipcMain.handle("look:asset", (e, name, keep) => {
+  if (!fromWidget(e) || !LOOK_NAME.test(String(name))) return null;
+  try { return fs.readFileSync(path.join(__dirname, "..", "assets", keep ? "maid-keep" : "maid", `${name}.webp`)); } catch { return null; }
+});
+ipcMain.handle("look:get", (e, set, name) => {
+  if (!fromWidget(e) || !LOOK_SET.test(String(set)) || !LOOK_NAME.test(String(name))) return null;
+  try { const b = fs.readFileSync(path.join(lookDir(), set, `${name}.webp`)); return isWebp(b) ? b : null; } catch { return null; }
+});
+ipcMain.handle("look:put", (e, set, name, bytes) => {
+  if (!fromWidget(e) || !LOOK_SET.test(String(set)) || !LOOK_NAME.test(String(name)) || !(bytes instanceof Uint8Array)) return false;
+  const b = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (b.length > 40_000_000 || !isWebp(b)) return false;
+  try {
+    const dir = path.join(lookDir(), set);
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `${name}.webp`);
+    fs.writeFileSync(file + ".tmp", b); // оборвалась запись — недописанный файл не выдаст себя за готовый
+    fs.renameSync(file + ".tmp", file);
+    return true;
+  } catch (err) {
+    maidLog("перекраска: не записалось", name, err?.message ?? err);
+    return false;
+  }
+});
+ipcMain.handle("look:keep", (e, set) => {
+  if (!fromWidget(e) || (set !== null && !LOOK_SET.test(String(set)))) return false;
+  try {
+    for (const d of fs.readdirSync(lookDir())) if (d !== set) fs.rmSync(path.join(lookDir(), d), { recursive: true, force: true });
+  } catch {}
+  return true;
+});
 // Раздел приложения (щелчок по карточке в облачке горничной): главное окно открывается сразу на нём.
 // «/habits?h=12» — щелчок по названию привычки в виджете: страница привычек со статистикой этой привычки.
 ipcMain.on("open-section", (_e, p) => {
