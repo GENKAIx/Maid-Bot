@@ -2531,15 +2531,19 @@ function syncLift() {
   if (collapsed) sendFold();
   syncDrawer();
 }
-// Режим «вниз»: облачко — над головой, как обычно, если над карточкой на экране хватает места под горничную и облачко;
-// у самого верха экрана — слева от карточки (CSS .stage.folded.down:not(.bubble-up)).
+// Режим «вниз»: облачко — у головы, как обычно, если оно там целиком на экране; у самого верха экрана — слева от карточки
+// (CSS .stage.folded.down:not(.bubble-up)). Меряется само облачко на месте у головы, с его настоящей высотой (до кадра отрисовки,
+// так что не мигает). 23.11.2026: раньше место прикидывалось с запасом (облачко не меньше 120 px плюс 60% роста горничной),
+// и даже короткое «…» уезжало влево от карточки, хотя у головы помещалось.
+const BUBBLE_UP_GAP = 4; // столько от верха экрана облачку должно остаться
 function placeBubble() {
   const st = $("#stage");
   const b = $("#bubble");
   if (!st.classList.contains("down")) return st.classList.remove("bubble-up");
-  const top = screenY + $("#mini").getBoundingClientRect().top - (screen.availTop ?? 0);
-  const need = Math.max(b.offsetHeight, 120) + ($("#maid").offsetHeight || 0) * 0.6 + 20;
-  st.classList.toggle("bubble-up", top >= need);
+  st.classList.add("bubble-up");
+  const drop = parseFloat(b.style.getPropertyValue("--drop")) || 0; // сдвиг fitBubble — не в счёт
+  const top = screenY + b.getBoundingClientRect().top - drop - (screen.availTop ?? 0);
+  st.classList.toggle("bubble-up", top >= BUBBLE_UP_GAP);
 }
 // Окно у верха экрана: прозрачный верх окна разрешено уводить за край (main.js, widgetBounds), а с ним уходил и верх высокого
 // облачка. Тогда облачко опускается ровно на ушедшее (может накрыть верх панели) и возвращается, когда окно ниже.
