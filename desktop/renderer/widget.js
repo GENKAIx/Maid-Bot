@@ -2603,6 +2603,8 @@ maid.on("down-shown", () => requestAnimationFrame(() => {
 let folding = null;
 function foldAnimated(on) {
   if (on === collapsed) return;
+  // Свернули — облачко закрывается (24.11.2026: оставалось висеть у карточки). Непрочитанное остаётся в значках.
+  if (on && !$("#bubble").classList.contains("hidden")) hideBubble();
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return setCollapsed(on);
   folding?.();
   const from = on ? $("#w") : $("#mini");
