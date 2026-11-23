@@ -36,7 +36,11 @@ const ctx = {
 };
 vm.createContext(ctx);
 try {
-  vm.runInContext(`${fn("bubbleAsk")}\n${fn("answeredInList")}\n${fn("askSettled")}\nthis.ask = bubbleAsk; this.ans = answeredInList; this.settled = askSettled;`, ctx);
+  const inboxSrc = fs.readFileSync(path.join(__dirname, "..", "renderer", "inbox.js"), "utf8").replace(/\r\n/g, "\n");
+  const inboxFn = (name) => inboxSrc.match(new RegExp(String.raw`\nfunction ${name}\([^]*?\n\}`))?.[0] ?? (check(false, `нет ${name} в inbox.js`), "");
+  vm.runInContext(`${inboxFn("ibPrevDay")}
+${inboxFn("habitAnswered")}
+${fn("bubbleAsk")}\n${fn("answeredInList")}\n${fn("askSettled")}\nthis.ask = bubbleAsk; this.ans = answeredInList; this.settled = askSettled;`, ctx);
   check(ctx.ask([{ text: "✅ Да", data: "habit:5:2026-11-17:done" }, { text: "Нет", data: "habit:5:2026-11-17:skipped" }]) === "h:5:2026-11-17", "вопрос о привычке не распознан");
   check(ctx.ask([{ text: "ok", data: "rate:2026-11-17:5" }]) === "", "оценка дня — не вопрос о привычке");
 
@@ -69,6 +73,17 @@ try {
   ctx.data.habits[1].status = "done";
   ctx.settled();
   check(said.length === 1, "отметили в другом месте — облачко висит");
+  // 24.11.2026: вопрос пришёл вчера в 23:00, после полуночи вчерашний день отметили в полной версии — облачко закрывается.
+  show("h:5:2026-11-16");
+  ctx.data.habits[0].yesterday = "none"; // не отмечено (или минус, поставленный в полночь сам)
+  ctx.settled();
+  check(!said.length, "вчера не отмечено — облачко закрылось");
+  ctx.data.habits[0].yesterday = "done";
+  ctx.settled();
+  check(said.length === 1 && read[0] === 41 && bubble.dataset.ask === "", "отметили вчерашний день в другом месте — облачко висит");
+  show("h:5:2026-11-15");
+  ctx.settled();
+  check(!said.length, "позавчерашний вопрос закрылся вчерашней отметкой");
   show("t:9", "");
   ctx.data.tasks = [];
   ctx.settled();

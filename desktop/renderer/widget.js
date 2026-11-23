@@ -1765,7 +1765,8 @@ function answeredInList(key) {
   const b = $("#bubble");
   const ask = b.dataset.ask ?? "";
   if (!ask || b.classList.contains("hidden")) return;
-  if (key[0] === "h" ? ask !== `${key}:${data.day}` : ask !== key) return;
+  // «h:id» — галочка в списке (сегодня); «h:id:день» — отметка за этот день пришла с данными (askSettled).
+  if (ask !== (/^h:\d+$/.test(key) ? `${key}:${data.day}` : key)) return;
   b.dataset.ask = "";
   if (b.dataset.notice) inboxRead(Number(b.dataset.notice));
   const v = lineItem("answered");
@@ -1775,7 +1776,7 @@ function answeredInList(key) {
 function askSettled() {
   const ask = $("#bubble").dataset.ask ?? "";
   let m = /^h:(\d+):(.+)$/.exec(ask);
-  if (m && m[2] === data.day && data.habits?.find((h) => h.id === Number(m[1]))?.status) return answeredInList(`h:${m[1]}`);
+  if (m && habitAnswered(Number(m[1]), m[2])) return answeredInList(ask); // и вчерашний вопрос, отмеченный за вчера
   m = /^t:(\d+)$/.exec(ask);
   if (m && !(data.tasks ?? []).some((t) => t.id === Number(m[1]))) answeredInList(ask);
 }

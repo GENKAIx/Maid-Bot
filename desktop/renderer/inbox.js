@@ -64,6 +64,16 @@ function ibPlanKey(n) {
   return /^(?:📅 Сегодня|⏰ Пора|⏰ Через [^:]+):\s*(.+)$/.exec(String(n.text ?? "").split("\n")[0])?.[1].trim() ?? "";
 }
 
+/** Привычку за этот день уже отметили (где угодно)? Сегодня — status, вчера — yesterday с сервера («none» — не отмечено или
+ *  минус, поставленный в полночь сам). 24.11.2026: вопрос, пришедший в 23:00, после полуночи висел, хотя вчерашний день отметили
+ *  в полной версии, — сверялся только сегодняшний день. */
+function habitAnswered(id, day) {
+  const h = data?.habits?.find((x) => x.id === id);
+  if (!h) return false;
+  if (day === data.day) return Boolean(h.status);
+  return day === ibPrevDay(data.day) && Boolean(h.yesterday) && h.yesterday !== "none";
+}
+
 function noticeGroup(n) {
   if (IB_KIND[n.kind]) return IB_KIND[n.kind];
   // Лежит в ящике с версии до 0.1.53 — вида нет, раздел по кнопкам и началу текста.
@@ -145,7 +155,7 @@ function inboxTidy() {
   const before = inbox.length;
   inbox = inbox.filter((n) => !n.buttons?.some((b) => {
     const m = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):/.exec(b.data ?? "");
-    return m && m[2] === data.day && data.habits.find((h) => h.id === Number(m[1]))?.status;
+    return m && habitAnswered(Number(m[1]), m[2]);
   }));
   const yesterday = ibPrevDay(data.day);
   inbox = inbox.filter((n) => noticeGroup(n) !== "alarm" || ibDay(n) >= yesterday);

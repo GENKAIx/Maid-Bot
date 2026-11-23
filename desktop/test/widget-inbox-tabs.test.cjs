@@ -71,6 +71,16 @@ t.inbox.push({ id: 61, text: "⏰ Через 1 ч: 18:00 — Врач", emotion:
 t.inboxTidy();
 check(t.inbox.filter((x) => t.ibPlanKey(x) === "18:00 — Врач").map((x) => x.id).join() === "61", "старые повторы склеены, остался последний");
 
+// Вопрос о привычке за вчера уходит из ящика, когда вчерашний день отметили где угодно (24.11.2026).
+add(80, "Читать — сегодня сделали?", at("2026-11-23", 23), { kind: "habit", buttons: [{ text: "Да", data: "habit:8:2026-11-23:done" }] });
+ctx.data.habits = [{ id: 8, status: null, yesterday: "none" }];
+t.inboxTidy();
+check(t.inbox.some((x) => x.id === 80), "вчера не отмечено — вопрос остаётся");
+ctx.data.habits[0].yesterday = "skipped";
+t.inboxTidy();
+check(!t.inbox.some((x) => x.id === 80), "вчерашний день отметили — вопрос ушёл");
+ctx.data.habits = [];
+
 // Вкладки: по умолчанию «Сегодня»; во «Вчера» — вчерашнее и привычка за вчера.
 t.openGroup("alarm");
 check(cards.tabs.map((b) => b.html.replace(/<[^>]+>/g, "")).join("|") === "Вчера 2|Сегодня 3", `вкладки: ${cards.tabs.map((b) => b.html)}`);
