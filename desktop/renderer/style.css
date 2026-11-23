@@ -142,11 +142,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .mini-plans span { flex: 1; min-width: 0; padding: 4px 7px; border-radius: 8px; background: rgba(255, 255, 255, .06); box-shadow: inset 2px 0 0 var(--c);
   font-size: 11.5px; color: #cfc9e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini-plans b { display: block; color: var(--c); font-weight: 700; font-variant-numeric: tabular-nums; }
-.mini-rate { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.mini-rate { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.mini-rate > span:first-child { white-space: nowrap; }
 .mini-stars { display: flex; }
 /* Звёзды мельче, чем в облачке: .mini-rate в начале — вес больше, чем у общих правил :is(.bubble-actions, .mini-stars) ниже по файлу. */
-.mini-rate .mini-stars button.rate-star { margin-right: -2px; width: 16px; height: 18px; cursor: pointer; }
-.mini-rate .mini-stars button.rate-star img { width: 17px; height: 17px; }
+.mini-rate .mini-stars button.rate-star { margin-right: 0; width: 18px; height: 18px; cursor: pointer; }
+.mini-rate .mini-stars button.rate-star img { width: 16px; height: 16px; }
 .mini-rate .mini-stars button.rate-star:disabled { cursor: default; }
 /* Ночь: тускнеет верх карточки (opacity самой .mini — настройка «Прозрачность»), фон темнее, вместо кольца — луна в той же кнопке
    «развернуть»; под курсором карточка чуть просыпается, строка ввода — как днём. */
