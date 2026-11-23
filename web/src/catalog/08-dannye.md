@@ -51,7 +51,7 @@ lead: Таблицы базы и адреса сервера — что где �
 
 | Группа | Адреса |
 |---|---|
-| Служебные | `/healthz`, `/webhook` (Telegram) |
+| Служебные | `/healthz`, `/webhook` (Telegram; с 24.11.2026 — только с заголовком `X-Telegram-Bot-Api-Secret-Token`, иначе 401: секрет выводится из токена бота, `webhook.ts`, и передаётся Telegram в `setWebhook` при запуске) |
 | Вход | `/api/login`, `/api/logout`, `/api/me` (строка `users` без `password_hash`, в т. ч. `maid_hair`, `maid_eyes`, и `sessions`), `/api/public` |
 | Настройки | `/api/settings` (характер — только из `PERSONAS`, иначе 400; `maid_hair`, `maid_eyes` — только id из `look.ts`, иначе 400 «нет такого цвета»; ответ — строка `users` без `password_hash`), `/api/personas`, `/api/backup` |
 | Push | `/api/push/key`, `/api/push/subscribe`, `/api/push/unsubscribe`, `/api/push/test`, `/api/push/act` |

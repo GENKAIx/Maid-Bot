@@ -14,6 +14,7 @@ import { WIDGET_UPDATES } from "./widget.ts";
 import { Push } from "./push.ts";
 import { Scheduler, type Send } from "./scheduler.ts";
 import { takeSnapshot } from "./snapshot.ts";
+import { webhookSecret } from "./webhook.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
@@ -40,7 +41,7 @@ let webhook: ((req: import("node:http").IncomingMessage, res: import("node:http"
 
 const tg = config.telegramToken ? createBot(store, pipeline, () => scheduler) : null;
 if (tg) {
-  if (config.publicUrl) webhook = webhookCallback(tg.bot, "http");
+  if (config.publicUrl) webhook = webhookCallback(tg.bot, "http", { secretToken: webhookSecret(config.telegramToken) });
 } else console.warn("[start] TELEGRAM_BOT_TOKEN не задан — бот выключен");
 
 // Уведомление уходит всюду, где пользователь есть: в Telegram и на все push-подписки браузеров.
@@ -80,7 +81,7 @@ server.listen(config.port, async () => {
   if (!tg) return;
   tg.bot.api.getMe().then((me) => (botName = me.username)).catch((e) => console.warn("[start] имя бота:", e.message));
   if (config.publicUrl) {
-    await tg.bot.api.setWebhook(`${config.publicUrl}/webhook`, { allowed_updates: WIDGET_UPDATES });
+    await tg.bot.api.setWebhook(`${config.publicUrl}/webhook`, { allowed_updates: WIDGET_UPDATES, secret_token: webhookSecret(config.telegramToken) });
     console.log("[start] бот: webhook", `${config.publicUrl}/webhook`);
   } else {
     await tg.bot.api.deleteWebhook();
