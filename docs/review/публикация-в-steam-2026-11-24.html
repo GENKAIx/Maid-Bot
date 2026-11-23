@@ -1,0 +1,479 @@
+<title>Горничная в Steam</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+<style>
+/* Раскладка: липкое оглавление слева + колонка чтения; цвета — как у прошлых ревью и виджета (style.css). Тёмная по умолчанию, есть светлая. */
+:root {
+  --bg: #161226; --panel: #221c34; --panel-2: #2c2540; --line: #3d3553;
+  --text: #f1eef8; --muted: #a8a1bd; --accent: #b79cff; --brand: #6b3fd4;
+  --ok: #4fd09a; --warn: #ffb36b; --bad: #ff8a9a; --ink-on-accent: #1d1830;
+  --f-text: "Onest", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f6f3fc; --panel: #ffffff; --panel-2: #efe9fb; --line: #dcd3f0;
+  --text: #1d1830; --muted: #625a78; --accent: #6b3fd4; --brand: #6b3fd4;
+  --ok: #138a5a; --warn: #b4600f; --bad: #c23452; --ink-on-accent: #ffffff; color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #f6f3fc; --panel: #ffffff; --panel-2: #efe9fb; --line: #dcd3f0;
+  --text: #1d1830; --muted: #625a78; --accent: #6b3fd4; --brand: #6b3fd4;
+  --ok: #138a5a; --warn: #b4600f; --bad: #c23452; --ink-on-accent: #ffffff; color-scheme: light; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 15.5px/1.6 var(--f-text); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 80px; }
+a { color: var(--accent); }
+.page { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; }
+.toc { position: sticky; top: calc(20px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+.toc b { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 10px; }
+.toc a { color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 8px; display: flex; justify-content: space-between; gap: 8px; }
+.toc a:hover, .toc a:focus-visible { background: var(--panel); color: var(--text); outline: none; }
+.toc a i { font-style: normal; font-variant-numeric: tabular-nums; color: var(--accent); }
+main { min-width: 0; display: flex; flex-direction: column; gap: 56px; }
+section { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 20px; }
+h1 { font-size: clamp(32px, 5vw, 46px); line-height: 1.1; font-weight: 800; margin: 0; text-wrap: balance; }
+h2 { font-size: clamp(24px, 3.4vw, 30px); line-height: 1.2; font-weight: 760; margin: 0; text-wrap: balance; }
+h3 { font-size: 18px; line-height: 1.3; font-weight: 700; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 72ch; }
+.lead { color: var(--muted); max-width: 72ch; }
+.hero { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+.hero .meta { color: var(--muted); font-size: 13.5px; }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.verdict { background: var(--panel); border-radius: 16px; padding: 18px; border-top: 3px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.verdict.bad { border-top-color: var(--bad); } .verdict.warn { border-top-color: var(--warn); } .verdict.ok { border-top-color: var(--ok); }
+.verdict small { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.verdict p { font-size: 14.5px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.box.note { background: var(--panel-2); border-color: transparent; }
+ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 76ch; }
+.tag { display: inline-block; font-size: 11.5px; font-weight: 650; padding: 1px 8px; border-radius: 99px; vertical-align: 2px; white-space: nowrap; }
+.tag.bad { background: color-mix(in srgb, var(--bad) 20%, transparent); color: var(--bad); }
+.tag.warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.tag.ok { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); }
+.tag.mute { background: var(--panel-2); color: var(--muted); }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+dl.gloss { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 0; }
+dl.gloss div { background: var(--panel); border-radius: 14px; padding: 14px 16px; }
+dl.gloss dt { font-weight: 700; } dl.gloss dd { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+/* Чеклист */
+.progress { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); flex-wrap: wrap; }
+.bar { flex: 1 1 200px; height: 8px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+.bar b { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.stage { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.stage header { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.stage .n { font: 800 13px var(--f-text); color: var(--ink-on-accent); background: var(--accent); border-radius: 8px; padding: 3px 9px; font-variant-numeric: tabular-nums; }
+.stage .when { color: var(--muted); font-size: 13.5px; margin-left: auto; }
+.stage .why { color: var(--muted); font-size: 14.5px; }
+.checks { display: flex; flex-direction: column; gap: 4px; }
+.check { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; align-items: start; }
+.check:hover { background: var(--panel-2); }
+.check input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--accent); cursor: pointer; }
+.check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check span { min-width: 0; } .check small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+.check:has(input:checked) > span > b { text-decoration: line-through; color: var(--muted); }
+.stage .count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; counter-reset: f; }
+.flow div { background: var(--panel); border-radius: 12px; padding: 12px 14px; font-size: 14px; border-left: 3px solid var(--accent); }
+.flow div b { display: block; font-size: 12px; color: var(--accent); letter-spacing: .05em; text-transform: uppercase; }
+code { font: 13px var(--f-mono); background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
+.src { font-size: 13.5px; color: var(--muted); } .src li { word-break: break-word; }
+.reset { align-self: flex-start; background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.reset:hover, .reset:focus-visible { color: var(--text); border-color: var(--accent); outline: none; }
+@media (max-width: 860px) { .page { grid-template-columns: 1fr; gap: 24px; } .toc { position: static; flex-direction: row; flex-wrap: wrap; } .toc b { width: 100%; margin-left: 0; } .hero { padding: 20px; } }
+@media (prefers-reduced-motion: reduce) { .bar b { transition: none; } }
+</style>
+
+<div class="page">
+<nav class="toc" aria-label="Разделы">
+  <b>Разделы</b>
+  <a href="#itog">Главное</a>
+  <a href="#stop">Три стоп-вопроса</a>
+  <a href="#slova">Словарик</a>
+  <a href="#plan">План с чеклистом <i id="tocPct">0%</i></a>
+  <a href="#moshch">Мощности и деньги</a>
+  <a href="#analitika">Аналитика</a>
+  <a href="#seichas">Заложить сейчас</a>
+  <a href="#obnov">Обновления без потерь</a>
+  <a href="#dengi">Как зарабатывать</a>
+  <a href="#nezn">Где могу ошибаться</a>
+  <a href="#src">Источники</a>
+</nav>
+
+<main>
+<section id="itog">
+  <div class="hero">
+    <span class="meta">Ревью · 24 ноября 2026 · Горничная 0.1.89</span>
+    <h1>Как вывести Горничную в Steam и не потерять ни одного человека</h1>
+    <p>Здесь собрано всё, что нужно сделать до выхода в Steam: в каком порядке, сколько это стоит, что поменять в программе уже сейчас и как потом обновлять её так, чтобы у людей ничего не пропадало. Написано простыми словами, непонятные слова объяснены в словарике.</p>
+    <p class="meta">Как собрано: я прочитал код программы и сервера, прошлые ревью и исследование рынка, а также документацию Steam, сайты хостингов, сервисов аналитики и статьи о законе о персональных данных. Ссылки — в конце.</p>
+  </div>
+  <div class="verdicts">
+    <div class="verdict bad"><small>Сначала</small><h3>Три вопроса могут остановить всё</h3><p>Как получать деньги от Steam в России, пустит ли Steam программу-помощника и где по закону хранить данные россиян. Их решаем до того, как платить 100 $.</p></div>
+    <div class="verdict warn"><small>Главная работа</small><h3>Программа пока «для своих»</h3><p>Вход только по приглашению из Telegram, нет удаления аккаунта, нет лимита на ИИ, адрес сервера — голый IP. Для чужих людей это нужно переделать.</p></div>
+    <div class="verdict warn"><small>Главный расход</small><h3>ИИ, а не сервер</h3><p>Сейчас один разбор сообщения стоит около 2 центов. При 30 сообщениях в день это ~19 $ в месяц на человека. Для Steam нужна модель в 10–50 раз дешевле и дневной лимит.</p></div>
+    <div class="verdict ok"><small>Что уже хорошо</small><h3>Фундамент есть</h3><p>Аккаунты, раздельные данные, пошаговые изменения базы, ночные копии, данные на ПК лежат в отдельной папке и переживают обновления.</p></div>
+  </div>
+  <div class="box note">
+    <h3>Короткий порядок</h3>
+    <div class="flow">
+      <div><b>1 · неделя</b>Решить три стоп-вопроса и модель денег</div>
+      <div><b>2 · 2–6 недель</b>Сделать программу готовой для чужих людей</div>
+      <div><b>3 · параллельно</b>ИП, банк, юрист, документы для Steam</div>
+      <div><b>4 · 3 недели</b>Steamworks: взнос, 21 день ожидания, страница</div>
+      <div><b>5 · 2+ недели</b>Страница «Скоро выйдет» и закрытая бета</div>
+      <div><b>6 · день X</b>Выход, потом две недели наблюдения</div>
+    </div>
+    <p class="lead">Реалистично от решения до выхода — 2–4 месяца, если работать спокойно. Быстрее всего упирается не в код, а в банк и документы.</p>
+  </div>
+</section>
+
+<section id="stop">
+  <h2>Три стоп-вопроса</h2>
+  <p class="lead">Каждый из них может сделать остальной план бессмысленным. Поэтому сначала они, и только потом взнос 100 $ и работа над страницей.</p>
+
+  <div class="box">
+    <h3>1. Как получать деньги от Steam, живя в России <span class="tag bad">может остановить</span></h3>
+    <p>Valve платит раз в месяц переводом в долларах через SWIFT. В 2022 году выплаты в Россию останавливали, потом вернули всем, кроме банков под санкциями и отключённых от SWIFT.</p>
+    <p>По неофициальному гайду разработчиков STEAMиздат (обновлён в ноябре 2026):</p>
+    <ul class="plain">
+      <li>деньги от Valve сейчас принимает только Райффайзенбанк, и только на счёт ИП или компании (ООО);</li>
+      <li>физлицу Райффайзен берёт 50% комиссии, а для самозанятых рабочего банка нет;</li>
+      <li>новым клиентам Райффайзен часто отказывал в открытии счёта (сентябрь 2026);</li>
+      <li>16 ноября ждали новый список санкций ЕС против ~50 российских банков — Райффайзен мог в него попасть, это надо перепроверить.</li>
+    </ul>
+    <p>Ещё две вещи. Заплатить сам взнос 100 $ из России, по тому же гайду, нечем: Steam не показывает способов оплаты, а VPN или чужая карта нарушают правила и могут стоить аккаунта. И с августа 2024 года США удерживают 30% с выплат жителям России, потому что налоговое соглашение приостановлено; в России налог платится отдельно.</p>
+    <p><b>Что выбрать:</b> (а) ИП + счёт в банке, который принимает Valve, — если он ещё есть на момент регистрации; (б) знакомый или компания за рубежом, кто станет издателем и будет платить вам по своему договору; (в) выпустить бесплатно и зарабатывать иначе — выплаты не нужны, но 100 $ всё равно кто-то должен оплатить. Решение за вами, и стоит один раз спросить бухгалтера про налоги.</p>
+  </div>
+
+  <div class="box">
+    <h3>2. Пустит ли Steam программу-помощника <span class="tag warn">уточнить у Valve</span></h3>
+    <p>Steam принимает в первую очередь игры. Программы, которые не игры, берут только в восьми категориях: анимация и 3D, звук и видео, дизайн, фото, обучение, финансы, инструменты для игроков и для VR. Личного помощника или ежедневника среди них нет.</p>
+    <p>Но похожие на Горничную «компаньоны на рабочем столе» в Steam есть и продаются хорошо: Desktop Mate (бесплатная, с платными персонажами), Bongo Cat, Rusty's Retirement. Они оформлены как игры — персонаж живёт у вас на экране. Горничная с анимациями, характерами, альбомом реакций, уровнями и праздниками ближе к ним, чем к ежедневнику.</p>
+    <p><b>Что сделать:</b> подавать как игру-компаньон (жанры «казуальная», «симулятор»), а описание строить вокруг Рины, а не вокруг задач. До оплаты взноса написать в поддержку Steamworks и спросить прямо. Тип «Программа» (Software) лучше не выбирать.</p>
+  </div>
+
+  <div class="box">
+    <h3>3. Где по закону хранить данные россиян <span class="tag bad">нужен юрист</span></h3>
+    <p>Горничная хранит очень личное: дневник, здоровье, деньги, что помнит о человеке, какие программы открыты на ПК. Для людей из России с 1 июля 2025 года действует жёсткое правило: такие данные нужно сначала записывать и хранить в базе на территории России. Сервер сейчас стоит в Германии.</p>
+    <ul class="plain">
+      <li>до начала работы — уведомление в Роскомнадзор (за неподачу с мая 2025 штраф ИП 30–50 тыс. ₽);</li>
+      <li>согласие на обработку данных — отдельным документом и отдельной галочкой, не внутри соглашения (с 1 сентября 2025);</li>
+      <li>сообщения уходят к ИИ в США — это передача данных за границу, а США нет в списке стран с «надёжной защитой»; как это правильно оформить, источники не говорят;</li>
+      <li>для людей из Европы — GDPR: политика конфиденциальности, выгрузка и удаление данных, возраст от 16 лет.</li>
+    </ul>
+    <p><b>Варианты:</b> (а) второй сервер в России для российских аккаунтов и российская модель ИИ для них; (б) на первом этапе не продавать в России и выйти на остальной мир; (в) один раз заплатить юристу за политику, согласие и уведомление — это обойдётся дешевле любого штрафа. Можно ли закрыть продажи в России в Steam, нужно спросить у Valve.</p>
+  </div>
+</section>
+
+<section id="slova">
+  <h2>Словарик</h2>
+  <dl class="gloss">
+    <div><dt>Сервер</dt><dd>Компьютер в интернете, на котором живёт «мозг» Горничной и хранятся данные всех людей. Программа на ПК — только окошко к нему.</dd></div>
+    <div><dt>База данных</dt><dd>Большая таблица на сервере, где лежат дела, привычки, дневник. Сейчас это один файл (SQLite), для многих людей лучше отдельная база (Postgres).</dd></div>
+    <div><dt>Сборка</dt><dd>Готовая к установке версия программы, например 0.1.89. В Steam загружают сборку, и Steam сам раздаёт её людям.</dd></div>
+    <div><dt>Миграция</dt><dd>Изменение устройства базы при обновлении: добавить колонку, новую таблицу. Самое опасное место для данных.</dd></div>
+    <div><dt>Бета-ветка</dt><dd>Отдельный «канал» в Steam: новая версия сначала только у тех, кто знает пароль. Обычные люди её не видят.</dd></div>
+    <div><dt>Токены</dt><dd>Единица, в которой ИИ считает текст и деньги: примерно ¾ слова. Платим за прочитанные и написанные токены.</dd></div>
+    <div><dt>Аналитика</dt><dd>Счётчик событий: сколько людей зашло, вернулось ли назад, чем пользуются. Без содержания сообщений.</dd></div>
+    <div><dt>Steamworks</dt><dd>Кабинет разработчика в Steam: страница магазина, загрузка сборок, цены, выплаты.</dd></div>
+  </dl>
+</section>
+
+<section id="plan">
+  <h2>План с чеклистом</h2>
+  <p class="lead">Этапы идут по порядку. Внутри этапа пункты можно делать в любом порядке. Галочки сохраняются в этом браузере — можно отмечать по ходу.</p>
+  <div class="progress"><span>Сделано <b id="done">0</b> из <b id="total">0</b></span><div class="bar"><b id="barFill"></b></div><button class="reset" id="resetChecks" type="button">Снять все галочки</button></div>
+
+  <div class="stage" data-stage>
+    <header><span class="n">Этап 1</span><h3>Решения</h3><span class="when">около недели</span></header>
+    <p class="why">Без них нельзя ни писать код, ни платить взнос.</p>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="c1-1"><span><b>Выяснить, как будут приходить деньги</b><small>Банк для ИП, издатель за рубежом или бесплатный выпуск. Перепроверить санкции на дату решения.</small></span></label>
+      <label class="check"><input type="checkbox" id="c1-2"><span><b>Спросить Valve, примут ли Горничную как игру-компаньон</b><small>Через поддержку Steamworks, до оплаты 100 $.</small></span></label>
+      <label class="check"><input type="checkbox" id="c1-3"><span><b>Решить, в каких странах выходить</b><small>Весь мир с Россией (нужен сервер в РФ и юрист) или сначала без России.</small></span></label>
+      <label class="check"><input type="checkbox" id="c1-4"><span><b>Выбрать модель денег</b><small>Варианты — в разделе «Как зарабатывать». От неё зависит лимит ИИ и что строить в программе.</small></span></label>
+      <label class="check"><input type="checkbox" id="c1-5"><span><b>Решить языки на старте</b><small>Только русский или русский + английский. Английский сильно расширяет аудиторию Steam.</small></span></label>
+    </div>
+  </div>
+
+  <div class="stage" data-stage>
+    <header><span class="n">Этап 2</span><h3>Закрыть дыры, которые опасны с чужими людьми</h3><span class="when">1–2 недели</span></header>
+    <p class="why">Пока пользуетесь вы и друзья, это терпимо. С незнакомыми людьми это утечки и чужие счета за ИИ.</p>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="c2-1"><span><b>Защитить вход Telegram-бота секретом</b><small>Сейчас любой, кто знает адрес, может притвориться вами в Telegram и создать приглашение или посмотреть список аккаунтов.</small></span></label>
+      <label class="check"><input type="checkbox" id="c2-2"><span><b>Показывать каждому только его траты на ИИ</b><small>Сейчас в настройках сайта каждый видит общие траты всех пользователей.</small></span></label>
+      <label class="check"><input type="checkbox" id="c2-3"><span><b>Дневной лимит ИИ на человека и общий потолок трат</b><small>Без него один человек или бот может за ночь потратить весь бюджет. Учёт по людям уже есть (таблица расходов), нужен сам лимит и мягкое сообщение Рины «на сегодня я устала».</small></span></label>
+      <label class="check"><input type="checkbox" id="c2-4"><span><b>Лимит на количество запросов</b><small>Сейчас ограничены только попытки входа, и счётчик сбрасывается при перезапуске сервера.</small></span></label>
+      <label class="check"><input type="checkbox" id="c2-5"><span><b>Проверить, что исходный код в GitHub не публичный</b><small>Сервер скачивает код без пароля — похоже, репозиторий открыт. В нём не должно быть ключей и адресов.</small></span></label>
+    </div>
+  </div>
+
+  <div class="stage" data-stage>
+    <header><span class="n">Этап 3</span><h3>Программа для незнакомых людей</h3><span class="when">2–6 недель — самый большой этап</span></header>
+    <p class="why">Человек из Steam ждёт: установил — работает. Без приглашений, паролей и Telegram.</p>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="c3-1"><span><b>Свой домен вместо голого IP</b><small>Адрес сервера зашит в программу (187-126-11-122.sslip.io). Если сменить хостинг, у всех людей программа перестанет работать до обновления. Домен стоит ~1000 ₽ в год и делается первым.</small></span></label>
+      <label class="check"><input type="checkbox" id="c3-2"><span><b>Вход через Steam</b><small>Steam сам подтверждает, кто это. Аккаунт создаётся при первом запуске, пароль не нужен. Вход по паролю и Telegram остаются для сайта и телефона.</small></span></label>
+      <label class="check"><input type="checkbox" id="c3-3"><span><b>Первый запуск за 2 минуты</b><small>Имя, характер Рины, часовой пояс с ПК (сейчас по умолчанию Москва), первая запись и первая галочка. Отдельной галочкой — согласие на данные.</small></span></label>
+      <label class="check"><input type="checkbox" id="c3-4"><span><b>Трекер ПК и автозапуск — спрашивать</b><small>Сейчас оба включены сразу. Трекер отправляет названия программ — это личные данные. Включать только с согласия.</small></span></label>
+      <label class="check"><input type="checkbox" id="c3-5"><span><b>Удаление аккаунта и выгрузка всех данных</b><small>Выгрузка уже есть («Скачать копию»), удаления нет. Требует и закон, и Steam-аудитория.</small></span></label>
+      <label class="check"><input type="checkbox" id="c3-6"><span><b>Политика конфиденциальности, согласие, пользовательское соглашение</b><small>Три страницы на сайте и ссылки на них в программе. Показать юристу.</small></span></label>
+      <label class="check"><input type="checkbox" id="c3-7"><span><b>Фильтр ответов ИИ</b><small>Steam требует описать, что не даёт ИИ писать незаконное. Нужны правила в инструкции Рине, проверка ответа и кнопка «пожаловаться».</small></span></label>
+      <label class="check"><input type="checkbox" id="c3-8"><span><b>Кнопка «Сообщить о проблеме»</b><small>С журналом программы, без текста сообщений. Сейчас о проблеме на чужом ПК вы не узнаете.</small></span></label>
+      <label class="check"><input type="checkbox" id="c3-9"><span><b>Тексты программы — в отдельный словарь</b><small>Даже если на старте только русский. Потом перевод на английский будет недорогим.</small></span></label>
+    </div>
+  </div>
+
+  <div class="stage" data-stage>
+    <header><span class="n">Этап 4</span><h3>Сервер на рост</h3><span class="when">1–2 недели, можно вместе с этапом 3</span></header>
+    <p class="why">Сейчас один небольшой сервер, база в одном файле, копии лежат на том же сервере и на вашем ПК.</p>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="c4-1"><span><b>Перейти на Postgres до выхода</b><small>Код уже умеет. Спокойно перейти заранее проще, чем в спешке, когда придут люди.</small></span></label>
+      <label class="check"><input type="checkbox" id="c4-2"><span><b>Копии базы в другом месте</b><small>Ночная копия в отдельное хранилище (другой хостинг), а не на тот же сервер. Раз в месяц — пробное восстановление.</small></span></label>
+      <label class="check"><input type="checkbox" id="c4-3"><span><b>Виджет спрашивает сервер реже</b><small>Сейчас каждый виджет спрашивает сервер каждые 5 секунд. 1000 человек — это ~400 запросов в секунду впустую. Лучше постоянное соединение: сервер сам говорит «есть новое».</small></span></label>
+      <label class="check"><input type="checkbox" id="c4-4"><span><b>Картинки — не в базе</b><small>Нарисованные картинки лежат внутри базы и раздувают её. Перенести в отдельное файловое хранилище.</small></span></label>
+      <label class="check"><input type="checkbox" id="c4-5"><span><b>Проверочный сервер</b><small>Копия сервера для проверки обновлений до того, как их увидят люди.</small></span></label>
+      <label class="check"><input type="checkbox" id="c4-6"><span><b>Слежение за доступностью</b><small>Сервис раз в минуту проверяет, жив ли сервер, и пишет вам в Telegram, если нет.</small></span></label>
+      <label class="check"><input type="checkbox" id="c4-7"><span><b>Нагрузочная проверка</b><small>Запустить 500–1000 «поддельных» пользователей на проверочном сервере и посмотреть, где он задохнётся.</small></span></label>
+    </div>
+  </div>
+
+  <div class="stage" data-stage>
+    <header><span class="n">Этап 5</span><h3>Деньги и документы</h3><span class="when">параллельно, 2–6 недель</span></header>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="c5-1"><span><b>Открыть ИП и счёт в банке, который принимает Valve</b><small>Или договориться с издателем.</small></span></label>
+      <label class="check"><input type="checkbox" id="c5-2"><span><b>Консультация юриста по персональным данным</b><small>Политика, согласие, уведомление в Роскомнадзор, передача сообщений ИИ за границу.</small></span></label>
+      <label class="check"><input type="checkbox" id="c5-3"><span><b>Консультация бухгалтера</b><small>Налоги ИП, удержание 30% в США, валютный контроль.</small></span></label>
+      <label class="check"><input type="checkbox" id="c5-4"><span><b>Уведомление в Роскомнадзор</b><small>Если работаете с данными россиян. До начала работы.</small></span></label>
+    </div>
+  </div>
+
+  <div class="stage" data-stage>
+    <header><span class="n">Этап 6</span><h3>Steamworks и страница магазина</h3><span class="when">от взноса до выхода минимум 3 недели</span></header>
+    <p class="why">Между оплатой взноса и выходом должен пройти 21 день, а страница «Скоро выйдет» должна провисеть минимум 2 недели. Поэтому взнос платить, как только этапы 1 и 5 решены.</p>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="c6-1"><span><b>Зарегистрироваться в Steamworks</b><small>Данные банка, налоговая анкета (W-8BEN для ИП), проверка личности. Имя владельца счёта должно совпадать с документами. Проверка 1–5 дней.</small></span></label>
+      <label class="check"><input type="checkbox" id="c6-2"><span><b>Оплатить взнос 100 $</b><small>Возвращается, когда Горничная заработает 1000 $. С этого дня идут 21 день до возможного выхода.</small></span></label>
+      <label class="check"><input type="checkbox" id="c6-3"><span><b>Картинки магазина</b><small>Обложки 920×430, 462×174, 1232×706, 748×896; для библиотеки 600×900, 3840×1240, логотип без фона; минимум 5 скриншотов 1920×1080.</small></span></label>
+      <label class="check"><input type="checkbox" id="c6-4"><span><b>Трейлер</b><small>До 1920×1080, mp4. Первые 5 секунд — Рина на рабочем столе, без логотипов.</small></span></label>
+      <label class="check"><input type="checkbox" id="c6-5"><span><b>Описание и теги</b><small>Коротко: кто такая Рина и что она делает у вас на экране. Языки, системные требования, цена.</small></span></label>
+      <label class="check"><input type="checkbox" id="c6-6"><span><b>Анкета о содержании</b><small>Отметить ИИ «во время работы» (чат с Риной) и описать фильтры; отметить, что картинки сделаны с помощью ИИ, если это так. Персонаж без откровенного — категория «для всех».</small></span></label>
+      <label class="check"><input type="checkbox" id="c6-7"><span><b>Отправить страницу на проверку</b><small>За 7 рабочих дней до желаемой даты «Скоро выйдет».</small></span></label>
+      <label class="check"><input type="checkbox" id="c6-8"><span><b>Открыть «Скоро выйдет» и собирать списки желаемого</b><small>Позвать знакомых, пост в соцсетях, короткие ролики с Риной.</small></span></label>
+    </div>
+  </div>
+
+  <div class="stage" data-stage>
+    <header><span class="n">Этап 7</span><h3>Сборка для Steam и бета</h3><span class="when">1–3 недели</span></header>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="c7-1"><span><b>Отдельная сборка для Steam без своего обновления</b><small>Сейчас программа обновляет себя сама с вашего сервера. В Steam это делает Steam — два обновляльщика будут мешать друг другу.</small></span></label>
+      <label class="check"><input type="checkbox" id="c7-2"><span><b>Подключить Steam к программе</b><small>Библиотека steamworks.js: вход через Steam, позже — достижения. Оверлей Steam выключить: он плохо работает с прозрачным окном виджета.</small></span></label>
+      <label class="check"><input type="checkbox" id="c7-3"><span><b>Та же папка данных на ПК</b><small>Настройки уже лежат в AppData и не стираются. Сборка для Steam должна пользоваться той же папкой — тогда люди с сайта ничего не потеряют.</small></span></label>
+      <label class="check"><input type="checkbox" id="c7-4"><span><b>Загрузить сборку и закрыть бету паролем</b><small>Пароль ставится до того, как сборка станет активной на ветке.</small></span></label>
+      <label class="check"><input type="checkbox" id="c7-5"><span><b>Бета на 20–50 человек, 2 недели</b><small>Друзья и подписчики. Смотреть ошибки, траты ИИ на человека и кто вернулся на следующий день.</small></span></label>
+      <label class="check"><input type="checkbox" id="c7-6"><span><b>Проверка сборки Valve</b><small>Перед этим самому запустить программу кнопкой «Играть» в Steam хотя бы на 5 минут.</small></span></label>
+    </div>
+  </div>
+
+  <div class="stage" data-stage>
+    <header><span class="n">Этап 8</span><h3>Выход и первые две недели</h3><span class="when">день X + 14 дней</span></header>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="c8-1"><span><b>Выйти не в пятницу</b><small>Вторник–среда: есть неделя, чтобы чинить.</small></span></label>
+      <label class="check"><input type="checkbox" id="c8-2"><span><b>Утром и вечером смотреть ошибки, траты и нагрузку</b><small>Первые 3 дня — каждые несколько часов.</small></span></label>
+      <label class="check"><input type="checkbox" id="c8-3"><span><b>Отвечать на отзывы и в обсуждениях</b><small>Первые отзывы сильнее всего влияют на продажи.</small></span></label>
+      <label class="check"><input type="checkbox" id="c8-4"><span><b>Исправления — маленькими обновлениями с заметкой</b><small>Крупные обновления — раз в 1–2 месяца, с анонсом за 3–4 дня.</small></span></label>
+    </div>
+  </div>
+</section>
+
+<section id="moshch">
+  <h2>Мощности и деньги на людей</h2>
+  <p class="lead">Сервер почти ничего не стоит. Деньги уходят на ИИ: каждый разговор с Риной оплачивается из вашего кармана.</p>
+  <h3>Сколько стоит ИИ</h3>
+  <p>Замер 13 ноября: один разбор сообщения на нынешней сильной модели — около 2,1 цента. Расчёт ниже — для человека, который пишет 30 сообщений в день и пользуется 20 дней в месяц.</p>
+  <div class="tbl"><table>
+    <tr><th>Модель</th><th>1 человек в месяц</th><th>100 человек</th><th>1 000 человек</th><th>10 000 человек</th></tr>
+    <tr><td>Нынешняя сильная (замер)</td><td class="num">~13–19 $</td><td class="num">~1 300–1 900 $</td><td class="num">~13–19 тыс. $</td><td class="num">не по силам</td></tr>
+    <tr><td>Средняя дешёвая (уровня GPT-4.1 mini)</td><td class="num">~0,4–0,65 $</td><td class="num">~40–65 $</td><td class="num">~400–650 $</td><td class="num">~4–6,5 тыс. $</td></tr>
+    <tr><td>Самая дешёвая (уровня GPT-5 nano)</td><td class="num">~0,1 $</td><td class="num">~10 $</td><td class="num">~100 $</td><td class="num">~1 000 $</td></tr>
+    <tr><td>Смесь: дешёвая для разбора, средняя для разговора</td><td class="num">~0,25–0,4 $</td><td class="num">~25–40 $</td><td class="num">~250–400 $</td><td class="num">~2,5–4 тыс. $</td></tr>
+  </table></div>
+  <p class="lead">Цифры для дешёвых моделей — расчёт по ценам OpenRouter, не замер. Модели, которые «думают» перед ответом, могут стоить в 2–5 раз дороже расчёта. Самые активные люди тратят в 3–5 раз больше среднего — поэтому нужен дневной лимит. Перед ценой в Steam обязательно сделать новый замер на выбранной модели.</p>
+  <div class="two">
+    <div class="box"><h3>Как сделать ИИ дешевле</h3><ul class="plain">
+      <li>Простые вещи (разобрать «завтра в 10 стоматолог») — самой дешёвой моделью, разговор — средней.</li>
+      <li>Неизменная часть инструкции Рине — в начале запроса: тогда работает кеш, и эта часть стоит на 75% дешевле.</li>
+      <li>Дневной лимит на человека и мягкий ответ Рины, когда он кончился.</li>
+      <li>Сильная модель — только в платном варианте, если он будет.</li>
+    </ul></div>
+    <div class="box"><h3>Какой нужен сервер</h3><ul class="plain">
+      <li><b>до 100 человек</b> — как сейчас: 2 ядра, 4 ГБ, ~5–10 € в месяц;</li>
+      <li><b>до 1 000</b> — 4 ядра, 8 ГБ и Postgres, ~10–20 € в месяц;</li>
+      <li><b>до 10 000</b> — 8 ядер, 16 ГБ или два сервера и отдельная база, ~50–100 € в месяц.</li>
+    </ul><p class="lead">Это оценка по опыту, а не замер. Настоящий ответ даст нагрузочная проверка на этапе 4. Сервер в России для россиян — ~1000–3000 ₽ в месяц.</p></div>
+  </div>
+  <div class="box note"><h3>Что ещё стоит денег</h3>
+  <p>Картинки по просьбе — 0,5–4 цента за штуку, голос — по минутам. Аналитика и ошибки — бесплатно на старте. Домен ~1000 ₽ в год, юрист — разово, взнос Steam — 100 $ один раз.</p></div>
+</section>
+
+<section id="analitika">
+  <h2>Аналитика: что считать и чего не трогать</h2>
+  <p class="lead">Сейчас в программе нет ни счётчиков, ни сбора ошибок. На своём ПК вы видите всё сами; на тысяче чужих ПК без аналитики вы ничего не увидите.</p>
+  <div class="two">
+    <div class="box"><h3>Что считать</h3><ul class="plain">
+      <li><b>Сколько людей заходит</b> за день и за месяц.</li>
+      <li><b>Возвращаются ли</b>: какая доля новичков пришла на 1-й, 7-й и 30-й день. Это главный показатель. В приложениях продуктивности на 30-й день остаётся 4–8% установивших.</li>
+      <li><b>Первый запуск по шагам</b>: установил → выбрал характер → первая запись → первая галочка → вернулся завтра. Где отваливаются — там чинить.</li>
+      <li><b>Чем пользуются</b>: задачи, привычки, планы, разговор, трекер, праздники.</li>
+      <li><b>Вылеты и ошибки</b>, и сколько дней проходит без них.</li>
+      <li><b>Траты на ИИ на человека</b> — уже считаются на сервере.</li>
+    </ul></div>
+    <div class="box"><h3>Чего не собирать никогда</h3><ul class="plain">
+      <li>Текст сообщений, задач, дневника.</li>
+      <li>Названия программ и игр из трекера.</li>
+      <li>Имена, почту, город — человек в аналитике только случайный номер.</li>
+    </ul><p>Пишем только сам факт: «добавил задачу», «отметил привычку». В настройках — переключатель «Помогать улучшать Горничную», и о нём сказано в политике.</p></div>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Чем</th><th>Для чего</th><th>Бесплатно</th></tr>
+    <tr><td>Aptabase</td><td>Счётчики для программ на ПК, ничего лишнего о человеке</td><td class="num">20 000 событий в месяц</td></tr>
+    <tr><td>PostHog (облако в Европе)</td><td>Счётчики, воронки, возврат людей — всё в одном</td><td class="num">1 млн событий в месяц</td></tr>
+    <tr><td>Sentry</td><td>Вылеты и ошибки программы и сервера</td><td class="num">5 000 ошибок в месяц</td></tr>
+  </table></div>
+  <p class="lead">Мой совет: Sentry для ошибок сразу, ещё до беты; для счётчиков — PostHog, а если нужен русский сервер для россиян — посчитать события на своём сервере, это несложно. Для российских пользователей аналитика тоже считается обработкой данных — показать юристу.</p>
+</section>
+
+<section id="seichas">
+  <h2>Что заложить в устройство программы уже сейчас</h2>
+  <p class="lead">Это вещи, которые дёшево сделать сейчас и очень дорого — когда пользователей уже тысячи.</p>
+  <div class="tbl"><table>
+    <tr><th>Что</th><th>Зачем простыми словами</th><th>Срочность</th></tr>
+    <tr><td>Свой домен</td><td>Адрес сервера вшит в каждую установленную программу. Сменить его потом можно только обновлением у всех.</td><td><span class="tag bad">первым</span></td></tr>
+    <tr><td>Сервер сообщает программе «минимальную версию»</td><td>Если однажды старая версия станет опасной, сервер сможет вежливо попросить обновиться. Без этого старые версии будут ломаться молча.</td><td><span class="tag bad">до выхода</span></td></tr>
+    <tr><td>Выключатели функций на сервере</td><td>Если рисование картинок сломалось или стало дорогим — выключить его у всех за минуту, без нового выпуска.</td><td><span class="tag warn">до выхода</span></td></tr>
+    <tr><td>Лимиты ИИ на человека</td><td>Защита кошелька. Учёт уже есть, нужен сам потолок.</td><td><span class="tag bad">до выхода</span></td></tr>
+    <tr><td>Аккаунт привязан к Steam</td><td>Человек не придумывает пароль и не теряет доступ. Потом можно добавить вход с телефона.</td><td><span class="tag warn">до выхода</span></td></tr>
+    <tr><td>Изменения базы — только «добавить»</td><td>Правило для всех будущих обновлений (подробно — следующий раздел). Один раз в базе уже переименовывали таблицу — после выхода так нельзя.</td><td><span class="tag bad">всегда</span></td></tr>
+    <tr><td>Постоянное соединение вместо опроса раз в 5 секунд</td><td>Сервер выдержит в разы больше людей на том же железе.</td><td><span class="tag warn">до 1 000 человек</span></td></tr>
+    <tr><td>Тексты в словаре, часовой пояс с ПК</td><td>Чтобы выход на английский и в другие страны не превратился в переписывание.</td><td><span class="tag mute">до перевода</span></td></tr>
+    <tr><td>Данные россиян — отдельно</td><td>Если будет сервер в России, программа должна уметь ходить на «свой» сервер по стране аккаунта.</td><td><span class="tag mute">по решению юриста</span></td></tr>
+    <tr><td>Картинки и файлы — вне базы</td><td>База остаётся маленькой, копии делаются быстро.</td><td><span class="tag mute">до 1 000 человек</span></td></tr>
+  </table></div>
+</section>
+
+<section id="obnov">
+  <h2>Как обновлять, чтобы ни у кого ничего не пропало</h2>
+  <p class="lead">Данные людей живут на сервере, а настройки — в папке на ПК, которую обновления не трогают. Опасны три вещи: изменение базы, несовместимость старой программы с новым сервером и плохая версия, которая разошлась всем.</p>
+  <div class="two">
+    <div class="box"><h3>Пять правил</h3><ul class="plain">
+      <li><b>В базе только добавляем.</b> Новая колонка, новая таблица — можно. Переименовать или удалить — нельзя, пока этим пользуется хоть одна старая версия. Старое убираем через месяцы, отдельным шагом.</li>
+      <li><b>Перед каждым обновлением сервера — копия базы.</b> Автоматически. И раз в месяц пробуем из неё восстановиться: копия, из которой не восстанавливались, не считается.</li>
+      <li><b>Сервер понимает и старую, и новую программу.</b> В Steam не все обновляются сразу: кто-то неделю не запускал ПК.</li>
+      <li><b>Сначала сервер, потом программа.</b> Новый сервер выкатывается и работает со старой программой; через день-два выходит новая программа.</li>
+      <li><b>Откат всегда возможен.</b> В Steam — назначить прошлую сборку активной; на сервере — вернуть прошлый код. Данные при этом остаются, потому что база только росла.</li>
+    </ul></div>
+    <div class="box"><h3>Порядок каждого выпуска</h3>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="r-1" data-routine><span><b>Тесты зелёные, проверено на проверочном сервере</b></span></label>
+        <label class="check"><input type="checkbox" id="r-2" data-routine><span><b>Копия базы сделана</b></span></label>
+        <label class="check"><input type="checkbox" id="r-3" data-routine><span><b>Сервер обновлён, старая программа работает</b></span></label>
+        <label class="check"><input type="checkbox" id="r-4" data-routine><span><b>Новая сборка на бета-ветке у вас и пары друзей 1–3 дня</b></span></label>
+        <label class="check"><input type="checkbox" id="r-5" data-routine><span><b>Сборка назначена активной для всех</b><small>Steam попросит подтверждение с телефона — это нормально.</small></span></label>
+        <label class="check"><input type="checkbox" id="r-6" data-routine><span><b>Заметка об обновлении в Steam</b><small>Что изменилось, человеческими словами.</small></span></label>
+        <label class="check"><input type="checkbox" id="r-7" data-routine><span><b>Первые часы смотреть ошибки</b><small>Всплеск — откатить сборку и разбираться спокойно.</small></span></label>
+      </div>
+      <button class="reset" id="resetRoutine" type="button">Новый выпуск — снять эти галочки</button>
+    </div>
+  </div>
+  <div class="box note"><h3>Люди с сайта и люди из Steam</h3>
+  <p>Ваш аккаунт и аккаунты друзей живут на сервере, поэтому при переходе на версию из Steam дела и дневник никуда не денутся: нужно только войти в тот же аккаунт. Настройки виджета на ПК сохранятся, если сборка для Steam будет пользоваться той же папкой в AppData. Обновление с сайта можно оставить для тех, кто ставил программу не из Steam.</p></div>
+</section>
+
+<section id="dengi">
+  <h2>Как зарабатывать: варианты</h2>
+  <p class="lead">Решения пока нет — это ваш выбор. Ниже то, что работает у похожих программ в Steam, по исследованию рынка 17 ноября.</p>
+  <div class="tbl"><table>
+    <tr><th>Вариант</th><th>Как у других</th><th>Плюсы</th><th>Минусы</th></tr>
+    <tr><td>Бесплатно + платные наряды и характеры</td><td>Desktop Mate: бесплатная, персонажи за деньги</td><td>Много установок, люди привыкли</td><td>ИИ для бесплатных — только дешёвый и с лимитом; новый наряд — перерисовать 41 анимацию</td></tr>
+    <tr><td>Разовая покупка 7–12 $</td><td>Rusty's Retirement 7 $ — 330 тыс. копий; Chill with You 12 $</td><td>Привычно для Steam, просто</td><td>ИИ стоит каждый месяц, а заплатили один раз — нужен жёсткий лимит или дешёвая модель</td></tr>
+    <tr><td>Подписка «Плюс»</td><td>Todoist, TickTick: 3–5 $ в месяц</td><td>Покрывает ИИ каждый месяц</td><td>В Steam подписки «поддерживаются не полностью»: цену можно только снижать</td></tr>
+    <tr><td>Смесь: покупка + наряды + «Плюс» на сайте</td><td>—</td><td>Гибко</td><td>Сложнее всего сделать</td></tr>
+  </table></div>
+  <p class="lead">Valve забирает 30%. Возврат денег — 14 дней, если программа работала меньше 2 часов. Виджет, который весь день на экране, наберёт 2 часа за утро.</p>
+</section>
+
+<section id="nezn">
+  <h2>Где я могу ошибаться</h2>
+  <ul class="plain">
+    <li>Про выплаты в Россию — неофициальный гайд разработчиков; Valve на этот счёт ничего не публикует. Ситуация меняется каждый месяц, перед решением проверить заново.</li>
+    <li>Какую категорию Steam даст Горничной, точно скажет только Valve.</li>
+    <li>Я не юрист. Суммы штрафов в источниках расходятся, а как законно отправлять сообщения россиян к ИИ в США, никто прямо не пишет.</li>
+    <li>Цены дешёвых моделей ИИ и мощности сервера — расчёт, не замер. Сроки этапов — оценка для спокойной работы.</li>
+    <li>Сроки проверки страницы и сборки Valve официально не называет; «3–5 рабочих дней» — опыт разработчиков.</li>
+  </ul>
+</section>
+
+<section id="src">
+  <h2>Источники</h2>
+  <ul class="plain src">
+    <li><a href="https://partner.steamgames.com/steamdirect" target="_blank" rel="noopener">Steam Direct</a> — взнос 100 $, 21 день, какие программы принимают (проверено 24.11.2026)</li>
+    <li><a href="https://partner.steamgames.com/doc/store/coming_soon" target="_blank" rel="noopener">Steamworks: страница «Скоро выйдет»</a> и <a href="https://partner.steamgames.com/doc/store/review_process" target="_blank" rel="noopener">проверка перед выходом</a></li>
+    <li><a href="https://partner.steamgames.com/doc/store/assets/standard" target="_blank" rel="noopener">Картинки магазина</a>, <a href="https://partner.steamgames.com/doc/store/assets/libraryassets" target="_blank" rel="noopener">картинки библиотеки</a>, <a href="https://partner.steamgames.com/doc/store/trailer" target="_blank" rel="noopener">трейлер</a></li>
+    <li><a href="https://partner.steamgames.com/doc/gettingstarted/contentsurvey" target="_blank" rel="noopener">Анкета о содержании и ИИ</a>; <a href="https://www.pcgamer.com/software/ai/steam-updates-ai-disclosure-form-to-specify-that-its-focused-on-ai-generated-content-that-is-consumed-by-players-not-efficiency-tools-used-behind-the-scenes/" target="_blank" rel="noopener">PC Gamer об изменении анкеты (январь 2026)</a></li>
+    <li><a href="https://partner.steamgames.com/doc/store/pricing" target="_blank" rel="noopener">Цены</a>, <a href="https://partner.steamgames.com/doc/store/pricing/subscriptions" target="_blank" rel="noopener">подписки</a>, <a href="https://store.steampowered.com/steam_refunds/" target="_blank" rel="noopener">возвраты</a>, <a href="https://partner.steamgames.com/doc/finance/payments_salesreporting/faq" target="_blank" rel="noopener">выплаты</a></li>
+    <li><a href="https://partner.steamgames.com/doc/store/application/branches" target="_blank" rel="noopener">Бета-ветки</a>, <a href="https://partner.steamgames.com/doc/store/updates" target="_blank" rel="noopener">советы Valve по обновлениям</a>, <a href="https://partner.steamgames.com/doc/webapi/isteamuserauth" target="_blank" rel="noopener">вход через Steam на сервере</a></li>
+    <li><a href="https://steam-izdat.github.io/02-russia/" target="_blank" rel="noopener">STEAMиздат: Steam и Россия</a> и <a href="https://steam-izdat.github.io/02-russia/raiffeisenbank/" target="_blank" rel="noopener">Райффайзенбанк</a> (ноябрь 2026, неофициально)</li>
+    <li><a href="https://www.irs.gov/node/3863" target="_blank" rel="noopener">IRS: приостановка налогового соглашения США и России</a> (2024)</li>
+    <li><a href="https://github.com/ceifa/steamworks.js" target="_blank" rel="noopener">steamworks.js</a> — Steam для программ на Electron</li>
+    <li><a href="https://store.steampowered.com/app/3301060/Desktop_Mate/" target="_blank" rel="noopener">Desktop Mate в Steam</a></li>
+    <li><a href="https://openrouter.ai/openai/gpt-5-nano" target="_blank" rel="noopener">OpenRouter: GPT-5 nano</a>, <a href="https://openrouter.ai/models/openai/gpt-4.1-mini-2025-04-14" target="_blank" rel="noopener">GPT-4.1 mini</a>, <a href="https://openrouter.ai/docs/guides/features/prompt-caching" target="_blank" rel="noopener">кеш</a>, <a href="https://openrouter.ai/docs/limits" target="_blank" rel="noopener">лимиты</a></li>
+    <li><a href="https://northflank.com/blog/hetzner-cloud-server-price-increases" target="_blank" rel="noopener">Цены Hetzner после июня 2026</a>, <a href="https://timeweb.com/ru/services/vps/" target="_blank" rel="noopener">Timeweb Cloud</a></li>
+    <li><a href="https://posthog.com/pricing" target="_blank" rel="noopener">PostHog</a>, <a href="https://aptabase.com/pricing" target="_blank" rel="noopener">Aptabase</a>, <a href="https://sentry.io/pricing/" target="_blank" rel="noopener">Sentry</a>, <a href="https://docs.sentry.io/platforms/javascript/guides/electron/" target="_blank" rel="noopener">Sentry для Electron</a></li>
+    <li><a href="https://www.unisender.com/ru/blog/otvetstvennost-za-personalnye-dannye-trebovaniya-k-lokalizacii/" target="_blank" rel="noopener">Локализация персональных данных и штрафы</a>, <a href="https://its.1c.ru/db/content/newscomm/src/494761.htm" target="_blank" rel="noopener">штрафы за неподачу уведомления</a>, <a href="https://kontur.ru/articles/1577" target="_blank" rel="noopener">согласие отдельным документом</a>, <a href="https://ppt.ru/columns/personalnyy-vopros/s-30-oktyabrya-deystvuet-novyy-perechen-stran-dlya-transgranichnoy-peredachi-pdn" target="_blank" rel="noopener">перечень стран для передачи данных</a></li>
+    <li><a href="https://gdpr.eu/?p=5176" target="_blank" rel="noopener">GDPR: возраст согласия</a></li>
+    <li><a href="https://www.prisma.io/docs/orm/prisma-migrate/workflows/expand-and-contract" target="_blank" rel="noopener">«Расширить и сжать» — изменения базы без поломок</a>, <a href="https://martinfowler.com/articles/feature-toggles.html" target="_blank" rel="noopener">выключатели функций</a>, <a href="https://firebase.google.com/docs/remote-config/use-cases/minimum-version" target="_blank" rel="noopener">минимальная версия программы</a></li>
+    <li>Код проекта: <code>desktop/src/updates.js</code>, <code>desktop/src/main.js</code>, <code>server/src/api.ts</code>, <code>server/src/db.ts</code>, <code>server/src/auth.ts</code>, <code>deploy/</code>; исследование рынка от 17.11.2026</li>
+  </ul>
+</section>
+</main>
+</div>
+
+<script>
+(function () {
+  var KEY = "maid.steamPlan";
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { saved = {}; }
+  var boxes = Array.prototype.slice.call(document.querySelectorAll(".check input"));
+  var planBoxes = boxes.filter(function (b) { return !b.hasAttribute("data-routine"); });
+  boxes.forEach(function (b) { b.checked = Boolean(saved[b.id]); });
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} }
+  function draw() {
+    var done = planBoxes.filter(function (b) { return b.checked; }).length;
+    var pct = planBoxes.length ? Math.round(done / planBoxes.length * 100) : 0;
+    document.getElementById("done").textContent = done;
+    document.getElementById("total").textContent = planBoxes.length;
+    document.getElementById("barFill").style.width = pct + "%";
+    document.getElementById("tocPct").textContent = pct + "%";
+    document.querySelectorAll("[data-stage]").forEach(function (st) {
+      var bs = st.querySelectorAll(".check input"), d = 0;
+      bs.forEach(function (b) { if (b.checked) d++; });
+      var c = st.querySelector(".count");
+      if (!c) { c = document.createElement("span"); c.className = "count"; st.querySelector("header").appendChild(c); }
+      c.textContent = d + " / " + bs.length;
+    });
+  }
+  boxes.forEach(function (b) { b.addEventListener("change", function () { saved[b.id] = b.checked; save(); draw(); }); });
+  function clear(list) { list.forEach(function (b) { b.checked = false; delete saved[b.id]; }); save(); draw(); }
+  document.getElementById("resetChecks").addEventListener("click", function () { clear(planBoxes); });
+  document.getElementById("resetRoutine").addEventListener("click", function () { clear(boxes.filter(function (b) { return b.hasAttribute("data-routine"); })); });
+  draw();
+})();
+</script>
