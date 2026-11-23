@@ -10,8 +10,9 @@
 // Прочитано — нажата кнопка, ✕ или курсор задержался на облачке без кнопок. Раздел письму ставит сервер (notices.kind).
 // Письма хранятся здесь же (localStorage) и переживают перезапуск; хвосты берутся из данных дня. Грузится до widget.js.
 // Напоминания (24.11.2026): у каждого свой день (вопрос про привычку — день из кнопки, остальное — когда пришло). В списке —
-// вкладки [Вчера N] [Сегодня N], если есть и то и другое; старше вчерашнего гаснет само. Внизу слева «Прочитать все» — гасит
-// открытую вкладку, 5 с можно «↩ Вернуть». ✕ на строке при наведении (на месте времени) — прочитано, ничего не отмечая.
+// вкладки [Вчера N] [Сегодня N] на месте заголовка (один день — одна вкладка); старше вчерашнего гаснет само. Внизу слева
+// «Прочитать все» — гасит открытую вкладку; маленькое облачко над списком «Прочитано: N · ↩ Вернуть» — 5 с. ✕ на строке при
+// наведении (на месте времени) — прочитано, ничего не отмечая.
 // Напоминания об одном плане («📅 Сегодня», «⏰ Через 1 ч», «⏰ Пора») склеиваются: остаётся последнее.
 
 const INBOX_KEY = "maid.inbox";
@@ -243,9 +244,12 @@ function drawIbList(items, tab) {
   tab = both ? (tab && split[tab].length ? tab : split.today.length ? "today" : "yesterday") : "";
   ibList.tab = tab;
   const shown = tab ? split[tab] : items;
-  $("#bubbleText").textContent = both ? g.title : `${g.title} · ${items.length}`;
-  const tabs = both ? `<div class="ib-tabs" role="tablist">${[["yesterday", "Вчера"], ["today", "Сегодня"]].map(([id, name]) =>
-    `<button type="button" role="tab" data-tab="${id}" aria-selected="${tab === id}" class="${tab === id ? "on" : ""}">${name} <span>${split[id].length}</span></button>`).join("")}</div>` : "";
+  // У напоминаний вместо заголовка — вкладки (24.11.2026: заголовок занимал место сверху); один день — одна вкладка.
+  const days = split ? [["yesterday", "Вчера"], ["today", "Сегодня"]].filter(([id]) => split[id].length) : [];
+  const open = tab || days[0]?.[0];
+  $("#bubbleText").textContent = split ? "" : `${g.title} · ${items.length}`;
+  const tabs = split ? `<div class="ib-tabs" role="tablist" aria-label="${g.title}">${days.map(([id, name]) =>
+    `<button type="button" role="tab" data-tab="${id}" aria-selected="${open === id}" class="${open === id ? "on" : ""}">${name} <span>${split[id].length}</span></button>`).join("")}</div>` : "";
   const x = `<span class="ib-x" data-x role="button" title="Прочитано — убрать из списка" aria-label="Прочитано">✕</span>`;
   $("#bubbleCards").innerHTML = `${tabs}<div class="ib-list">${shown.map((it) => it.tail
     ? `<button type="button" data-key="${it.key}"><b>${esc(it.tail.title)}</b><small class="ib-time">срок был ${esc(tailWhen(it.tail.due_date))}</small>${x}</button>`
@@ -284,6 +288,28 @@ function ibDismiss(it, row) {
     drawIbList(left, list.tab);
   }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220);
 }
+// Маленькое облачко над списком: «Прочитано: N · ↩ Вернуть» (24.11.2026: раньше «Вернуть» стояла кнопкой внизу, а реплики
+// «Прочитано» не было видно — её сразу сменял список другого дня). Над облачком нет места (у верха окна) — строкой в его верху.
+let ibToastTimer = 0;
+function ibToastOff() {
+  clearTimeout(ibToastTimer);
+  $("#bubble")?.querySelector(".ib-toast")?.remove();
+}
+function ibToast(count, undo) {
+  ibToastOff();
+  const b = $("#bubble");
+  const t = document.createElement("div");
+  t.className = "ib-toast";
+  t.setAttribute("role", "status");
+  t.innerHTML = `<span>✓ Прочитано: ${count}</span><button type="button">↩ Вернуть</button>`;
+  t.querySelector("button").onclick = (e) => { e.stopPropagation(); ibToastOff(); undo(); };
+  b.append(t);
+  if (b.getBoundingClientRect().top - t.offsetHeight - 8 < 0) {
+    t.classList.add("inline"); // под облачком его закрыла бы панель
+    b.prepend(t);
+  }
+  ibToastTimer = setTimeout(ibToastOff, IB_UNDO_MS);
+}
 // «Прочитать все» — открытая вкладка (или весь список, если вкладок нет); IB_UNDO_MS можно «↩ Вернуть».
 function ibReadAll() {
   const { g, tab } = ibList;
@@ -294,12 +320,11 @@ function ibReadAll() {
   saveInbox();
   saveHidden();
   drawInbox();
-  const undo = { text: "↩ Вернуть", run: () => { inbox = inboxWas; ibHidden = hiddenWas; saveInbox(); saveHidden(); drawInbox(); openGroup(g.id); } };
+  const back = () => { inbox = inboxWas; ibHidden = hiddenWas; saveInbox(); saveHidden(); drawInbox(); openGroup(g.id); };
   const rest = groupItems(g.id);
-  if (!rest.length) return say(`Прочитано: ${gone.length}.`, { ms: IB_UNDO_MS, buttons: [undo] });
-  openList(g, rest, "", [undo]);
-  const list = ibList;
-  setTimeout(() => { if (ibList === list) $("#bubbleActions")?.querySelector('[data-i="1"]')?.remove(); }, IB_UNDO_MS);
+  if (!rest.length) return say(`Прочитано: ${gone.length}.`, { ms: IB_UNDO_MS, buttons: [{ text: "↩ Вернуть", run: back }] });
+  openList(g, rest);
+  ibToast(gone.length, back);
 }
 function openItem(it) {
   if (!it) return;

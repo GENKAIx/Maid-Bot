@@ -469,6 +469,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices). Идёт экскурсия — говорит
   // только она (tour); уведомления при этом всё равно ложатся в ящик.
   if (napping || (touring && !tour)) return;
+  ibToastOff(); // «Прочитано · ↩ Вернуть» над списком (inbox.js) — только у своего списка
   const b = $("#bubble");
   delete b.dataset.quip;
   stopProposal();

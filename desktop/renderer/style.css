@@ -1008,12 +1008,21 @@ body.quick { background: transparent; }
 .ib-list b { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .ib-list small { flex: none; font-size: 11px; color: #8a849c; }
 /* 24.11.2026: вкладки «Вчера / Сегодня», ✕ на строке при наведении (на месте времени), «Прочитать все» внизу слева. */
-.ib-tabs { display: flex; gap: 6px; margin-top: 8px; }
-.ib-tabs button { flex: 1; padding: 5px 10px; border-radius: 999px; border: 1px solid #e4e1ec; background: transparent; color: #6f6984;
-  font: inherit; font-size: 12px; cursor: pointer; transition: background .12s, color .12s; }
-.ib-tabs button span { font-weight: 700; }
-.ib-tabs button:hover { background: #f0eef5; }
-.ib-tabs button.on { background: #e6e1f3; border-color: #b9b1cf; color: var(--ink); }
+/* Вкладки — на месте заголовка, прямоугольные и темнее строк (24.11.2026). */
+#bubbleText:empty + .bubble-cards { margin-top: 0; }
+.ib-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: #d9d3e8; }
+.ib-tabs button { flex: 1; padding: 5px 10px; border-radius: 6px; border: 0; background: transparent; color: #4f4866;
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .12s, color .12s; }
+.ib-tabs button span { font-weight: 800; }
+.ib-tabs button:hover { background: #cbc3df; }
+.ib-tabs button.on { background: #4b3f72; color: #fff; cursor: default; }
+/* «Прочитано: N · ↩ Вернуть» — маленькое облачко над списком (inbox.js, ibToast); у верха окна — строкой в верху облачка. */
+.ib-toast { position: absolute; right: 0; bottom: calc(100% + 6px); display: flex; align-items: center; gap: 8px; padding: 5px 6px 5px 10px;
+  border-radius: 10px; background: rgba(255, 255, 255, .97); color: var(--ink); font-size: 12px; white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .3); animation: pop .2s ease; }
+.ib-toast.inline { position: static; align-self: stretch; justify-content: space-between; margin-bottom: 6px; box-shadow: none; background: #ece7f7; animation: none; }
+.ib-toast button { padding: 3px 8px; border-radius: 6px; border: 0; background: #4b3f72; color: #fff; font: inherit; font-size: 12px; cursor: pointer; }
+.ib-toast button:hover { background: #5d4f8c; }
 .ib-list .ib-x { display: none; flex: none; width: 20px; text-align: center; font-size: 12px; line-height: 18px; color: #8a849c; border-radius: 50%; }
 .ib-list .ib-x:hover { background: #d8d1ea; color: var(--ink); }
 .ib-list button:hover .ib-time, .ib-list button:focus-visible .ib-time { display: none; }

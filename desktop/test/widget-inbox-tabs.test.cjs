@@ -26,9 +26,21 @@ const text = { textContent: "" };
 let bubbleHidden = false;
 const actions = { removed: [], querySelector: (q) => ({ classList: { add: () => {} }, remove: () => actions.removed.push(q) }) };
 const store = {}, said = [], opened = [], timers = [];
+// Облачко и маленькое облачко «Прочитано · ↩ Вернуть» над ним (ibToast): top — где облачко в окне.
+let toast = null, bubbleTop = 200;
+const toastEl = () => {
+  const cls = new Set();
+  const el = { innerHTML: "", offsetHeight: 28, classList: { add: (c) => cls.add(c) }, cls, attrs: {}, setAttribute(k, v) { el.attrs[k] = v; },
+    btn: { onclick: null }, querySelector: () => el.btn, remove: () => { if (toast === el) toast = null; } };
+  return el;
+};
+const bubbleEl = { classList: { contains: () => bubbleHidden }, append: (el) => { toast = el; }, prepend: (el) => { toast = el; el.first = true; }, querySelector: (q) => (q === ".ib-toast" ? toast : null),
+  getBoundingClientRect: () => ({ top: bubbleTop }) };
 const ctx = vm.createContext({
   localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
-  $: (q) => ({ "#bubbleCards": cards, "#bubbleText": text, "#bubbleActions": actions, "#bubble": { classList: { contains: () => bubbleHidden } } })[q] ?? null,
+  $: (q) => ({ "#bubbleCards": cards, "#bubbleText": text, "#bubbleActions": actions, "#bubble": bubbleEl })[q] ?? null,
+  document: { createElement: () => toastEl() },
+  clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].dead = true; },
   data: { day: "2026-11-24", habits: [], tasks: [{ id: 7, title: "Сдать отчёт", due_date: "2026-11-20" }] },
   say: (t, o) => { said.push({ t, o }); bubbleHidden = false; },
   hideBubble: () => { bubbleHidden = true; },
@@ -41,7 +53,7 @@ vm.runInContext(src + "\n;globalThis.t = { inboxAdd, inboxTidy, groupItems, open
 const t = ctx.t;
 const at = (d, h) => new Date(`${d}T${String(h).padStart(2, "0")}:00:00`).getTime();
 const add = (id, text, when, extra = {}) => { t.inboxAdd({ id, text, emotion: "neutral", buttons: [], kind: "plan", ...extra }); t.inbox.at(-1).at = when; };
-const flush = () => { while (timers.length) timers.shift().f(); };
+const flush = () => { for (const x of timers.splice(0)) if (!x.dead) x.f(); };
 const clickRow = (i, x = false) => cards.rows[i].onclick({ target: { closest: (q) => (q === "[data-x]" && x ? {} : null) } });
 const readAll = () => said.at(-1).o.buttons[0].run();
 
@@ -84,7 +96,7 @@ ctx.data.habits = [];
 // Вкладки: по умолчанию «Сегодня»; во «Вчера» — вчерашнее и привычка за вчера.
 t.openGroup("alarm");
 check(cards.tabs.map((b) => b.html.replace(/<[^>]+>/g, "")).join("|") === "Вчера 2|Сегодня 3", `вкладки: ${cards.tabs.map((b) => b.html)}`);
-check(cards.tabs[1].cls.has("on") && text.textContent === "Напоминания", "по умолчанию «Сегодня», заголовок без числа");
+check(cards.tabs[1].cls.has("on") && text.textContent === "", "по умолчанию «Сегодня»; заголовка нет — вместо него вкладки");
 check(said.at(-1).o.buttons[0].text === "Прочитать все", "внизу «Прочитать все»");
 check(cards.rows.length === 3 && /Сдать отчёт/.test(cards.innerHTML), "сегодня: два письма и хвост");
 cards.tabs[0].onclick();
@@ -103,8 +115,8 @@ flush();
 check(cards.rows.length === 1 && cards.tabs.length === 2, "во «Вчера» осталась одна строка");
 clickRow(0, true);
 flush();
-check(cards.rows.length === 3 && !cards.tabs.length, "остался один день — вкладок нет");
-check(/Напоминания · 3/.test(text.textContent), `заголовок с числом: ${text.textContent}`);
+check(cards.rows.length === 3 && cards.tabs.length === 1 && /Сегодня <span>3/.test(cards.tabs[0].html) && cards.tabs[0].cls.has("on"), "остался один день — одна вкладка с числом");
+check(text.textContent === "", `заголовка нет: ${text.textContent}`);
 
 // ✕ у хвоста: скрыт, пока не сменится срок.
 t.openGroup("alarm");
@@ -125,12 +137,24 @@ add(7, "⏰ Пора: 11:00 — Ещё вчерашнее", at("2026-11-23", 11)
 t.openGroup("alarm");
 check(cards.tabs.length === 2 && cards.tabs[1].cls.has("on"), "снова два дня");
 readAll();
-check(t.groupItems("alarm").length === 1 && cards.rows.length === 1 && /Ещё вчерашнее/.test(cards.innerHTML) && !cards.tabs.length, "погашена только вкладка «Сегодня»");
-const undo = said.at(-1).o.buttons[1];
-check(undo?.text === "↩ Вернуть", "есть «↩ Вернуть»");
-check(timers.at(-1)?.ms === 5000, "«Вернуть» исчезает через 5 с");
-undo.run();
+check(t.groupItems("alarm").length === 1 && cards.rows.length === 1 && /Ещё вчерашнее/.test(cards.innerHTML) && cards.tabs.length === 1, "погашена только вкладка «Сегодня»");
+check(said.at(-1).o.buttons.length === 1, "внизу только «Прочитать все» — «Вернуть» не там");
+check(toast && /Прочитано: 3/.test(toast.innerHTML) && /↩ Вернуть/.test(toast.innerHTML) && toast.attrs.role === "status" && !toast.cls.has("inline"),
+  `маленькое облачко над списком: ${toast?.innerHTML}`);
+check(timers.at(-1)?.ms === 5000, "маленькое облачко уходит через 5 с");
+toast.btn.onclick({ stopPropagation() {} });
+check(!toast, "после «Вернуть» маленькое облачко убрано");
 check(t.groupItems("alarm").length === 4, `вернула: ${t.groupItems("alarm").length}`);
+// У верха экрана над облачком места нет — маленькое облачко под ним; через 5 с уходит само.
+t.openGroup("alarm");
+bubbleTop = 10;
+readAll();
+check(toast?.cls.has("inline") && toast.first, "у верха окна — строкой в верху облачка (под ним закрыла бы панель)");
+const back = toast?.btn;
+flush();
+check(!toast, "через 5 с ушло");
+back?.onclick({ stopPropagation() {} }); // вернуть, чтобы дальше было что гасить
+bubbleTop = 200;
 // Всё погашено — короткое облачко «Прочитано» с «Вернуть».
 timers.length = 0;
 t.openGroup("alarm");
@@ -142,6 +166,10 @@ check(!t.groupItems("alarm").length, "раздел пуст");
 // Стили: ✕ на месте времени при наведении, «Прочитать все» слева.
 check(/\.ib-list button:hover \.ib-time[^{]*\{ display: none; \}/.test(css) && /\.ib-list button:hover \.ib-x[^{]*\{ display: inline-block; \}/.test(css), "✕ вместо времени при наведении");
 check(/#bubbleActions \.ib-readall \{ margin-right: auto; \}/.test(css), "«Прочитать все» слева");
+
+const widget = fs.readFileSync(path.join(root, "renderer", "widget.js"), "utf8");
+check(/function say\([^]*?if \(napping \|\| \(touring && !tour\)\) return;\r?\n  ibToastOff\(\);/.test(widget), "новая реплика убирает «Прочитано · ↩ Вернуть» чужого списка");
+check(/\.ib-tabs button\.on \{ background: #4b3f72;/.test(css) && /\.ib-toast \{ position: absolute;[^}]*bottom: calc\(100% \+ 6px\)/.test(css), "стили: тёмная вкладка, облачко над списком");
 
 console.log(bad ? `${bad} из ${n} не прошли` : `OK: ${n} проверок списка напоминаний`);
 process.exit(bad ? 1 : 0);
