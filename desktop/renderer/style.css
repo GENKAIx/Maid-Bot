@@ -1007,6 +1007,19 @@ body.quick { background: transparent; }
 .ib-list button:hover { background: #e6e1f3; border-color: #b9b1cf; }
 .ib-list b { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .ib-list small { flex: none; font-size: 11px; color: #8a849c; }
+/* 24.11.2026: вкладки «Вчера / Сегодня», ✕ на строке при наведении (на месте времени), «Прочитать все» внизу слева. */
+.ib-tabs { display: flex; gap: 6px; margin-top: 8px; }
+.ib-tabs button { flex: 1; padding: 5px 10px; border-radius: 999px; border: 1px solid #e4e1ec; background: transparent; color: #6f6984;
+  font: inherit; font-size: 12px; cursor: pointer; transition: background .12s, color .12s; }
+.ib-tabs button span { font-weight: 700; }
+.ib-tabs button:hover { background: #f0eef5; }
+.ib-tabs button.on { background: #e6e1f3; border-color: #b9b1cf; color: var(--ink); }
+.ib-list .ib-x { display: none; flex: none; width: 20px; text-align: center; font-size: 12px; line-height: 18px; color: #8a849c; border-radius: 50%; }
+.ib-list .ib-x:hover { background: #d8d1ea; color: var(--ink); }
+.ib-list button:hover .ib-time, .ib-list button:focus-visible .ib-time { display: none; }
+.ib-list button:hover .ib-x, .ib-list button:focus-visible .ib-x { display: inline-block; }
+.ib-list button.gone { opacity: 0; transform: translateX(14px); transition: opacity .2s, transform .2s; pointer-events: none; }
+#bubbleActions .ib-readall { margin-right: auto; }
 @media (prefers-reduced-motion: reduce) { .ib.new { animation: none; } }
 
 /* Сделанные задачи, режим «прятать»: строка заливается слева направо, улетает вправо, список смыкается. */

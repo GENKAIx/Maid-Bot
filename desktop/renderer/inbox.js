@@ -9,6 +9,10 @@
 // прочитано» и кнопка «Прочитать все письма» — она открывает «Историю» в полной версии и гасит значок.
 // Прочитано — нажата кнопка, ✕ или курсор задержался на облачке без кнопок. Раздел письму ставит сервер (notices.kind).
 // Письма хранятся здесь же (localStorage) и переживают перезапуск; хвосты берутся из данных дня. Грузится до widget.js.
+// Напоминания (24.11.2026): у каждого свой день (вопрос про привычку — день из кнопки, остальное — когда пришло). В списке —
+// вкладки [Вчера N] [Сегодня N], если есть и то и другое; старше вчерашнего гаснет само. Внизу слева «Прочитать все» — гасит
+// открытую вкладку, 5 с можно «↩ Вернуть». ✕ на строке при наведении (на месте времени) — прочитано, ничего не отмечая.
+// Напоминания об одном плане («📅 Сегодня», «⏰ Через 1 ч», «⏰ Пора») склеиваются: остаётся последнее.
 
 const INBOX_KEY = "maid.inbox";
 const INBOX_MAX = 20;
@@ -29,6 +33,37 @@ try {
   inbox = [];
 }
 
+const IB_HIDDEN_KEY = "maid.tailsHidden"; // хвосты, закрытые ✕ или «Прочитать все»: «id:срок» — до смены срока
+const IB_UNDO_MS = 5000;
+let ibHidden = [];
+try {
+  ibHidden = JSON.parse(localStorage.getItem(IB_HIDDEN_KEY) || "[]");
+} catch {
+  ibHidden = [];
+}
+const ibTailKey = (t) => `${t.id}:${t.due_date}`;
+function saveHidden() {
+  try { localStorage.setItem(IB_HIDDEN_KEY, JSON.stringify(ibHidden)); } catch {}
+}
+
+/** День напоминания: у вопроса про привычку — из кнопки (habit:ID:день:…), у остального — когда пришло (по часам ПК). */
+function ibDay(n) {
+  const m = n.buttons?.map((b) => /^habit:\d+:(\d{4}-\d{2}-\d{2}):/.exec(b.data ?? "")).find(Boolean);
+  if (m) return m[1];
+  const d = new Date(n.at ?? Date.now());
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function ibPrevDay(day) {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+}
+const ibToday = () => (typeof data !== "undefined" && data?.day) || ibDay({ at: Date.now() });
+/** О каком плане напоминание: «📅 Сегодня: 18:00 — X», «⏰ Через 1 ч: 18:00 — X», «⏰ Пора: 18:00 — X» → «18:00 — X»; иначе "". */
+function ibPlanKey(n) {
+  if (n.buttons?.length) return ""; // вопрос про привычку и отложенное с кнопками — не план
+  return /^(?:📅 Сегодня|⏰ Пора|⏰ Через [^:]+):\s*(.+)$/.exec(String(n.text ?? "").split("\n")[0])?.[1].trim() ?? "";
+}
+
 function noticeGroup(n) {
   if (IB_KIND[n.kind]) return IB_KIND[n.kind];
   // Лежит в ящике с версии до 0.1.53 — вида нет, раздел по кнопкам и началу текста.
@@ -43,7 +78,7 @@ function noticeGroup(n) {
 function tailsOf() {
   if (typeof data === "undefined" || !data) return [];
   return (data.tasks ?? [])
-    .filter((t) => t.due_date && t.due_date < data.day)
+    .filter((t) => t.due_date && t.due_date < data.day && !ibHidden.includes(ibTailKey(t)))
     .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.id - b.id);
 }
 function tailWhen(due) {
@@ -88,6 +123,9 @@ function saveInbox() {
 // Новое напоминание с сервера: в ящик и сразу сказать (если вы тут — прочитаете сразу).
 function inboxAdd(n) {
   if (inbox.some((x) => x.id === n.id)) return;
+  // Новое напоминание о плане — прежние о нём же («Через 1 ч» → «Пора») больше не нужны.
+  const plan = ibPlanKey(n);
+  if (plan) inbox = inbox.filter((x) => ibPlanKey(x) !== plan);
   inbox.push({ id: n.id, text: n.text, emotion: n.emotion, buttons: n.buttons ?? [], kind: n.kind ?? "", at: Date.now() });
   saveInbox();
   drawInbox(noticeGroup(n));
@@ -100,7 +138,8 @@ function inboxRead(id) {
   drawInbox();
 }
 // Данные дня обновились: привычку уже отметили (в Telegram, в окне, в списке задач) — напоминание о ней больше не нужно;
-// число хвостов под будильником тоже могло измениться.
+// число хвостов под будильником тоже могло измениться. Новый день: напоминания старше вчерашнего гаснут; повторы об одном
+// плане склеиваются (могли накопиться до 0.1.87); закрытые хвосты, которых больше нет, забываются.
 function inboxTidy() {
   if (!data?.habits) return;
   const before = inbox.length;
@@ -108,7 +147,15 @@ function inboxTidy() {
     const m = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):/.exec(b.data ?? "");
     return m && m[2] === data.day && data.habits.find((h) => h.id === Number(m[1]))?.status;
   }));
+  const yesterday = ibPrevDay(data.day);
+  inbox = inbox.filter((n) => noticeGroup(n) !== "alarm" || ibDay(n) >= yesterday);
+  const last = new Map();
+  for (const n of inbox) if (ibPlanKey(n)) last.set(ibPlanKey(n), n.id);
+  inbox = inbox.filter((n) => !ibPlanKey(n) || last.get(ibPlanKey(n)) === n.id);
   if (inbox.length !== before) saveInbox();
+  const tails = new Set((data.tasks ?? []).filter((t) => t.due_date).map(ibTailKey));
+  const kept = ibHidden.filter((k) => tails.has(k));
+  if (kept.length !== ibHidden.length) { ibHidden = kept; saveHidden(); }
   drawInbox();
 }
 
@@ -164,16 +211,85 @@ function ibLine(text) {
   return s.length > 64 ? `${s.slice(0, 62).trimEnd()}…` : s;
 }
 // Несколько оповещений в разделе — список: щелчок по строке открывает её (письмо — с его кнопками, хвост — вопрос «сделали?»).
-function openList(g, items) {
-  say(`${g.title} · ${items.length}`, { ms: 0 });
-  $("#bubbleCards").innerHTML = `<div class="ib-list">${items.map((it) => it.tail
-    ? `<button type="button" data-key="${it.key}"><b>${esc(it.tail.title)}</b><small>срок был ${esc(tailWhen(it.tail.due_date))}</small></button>`
-    : `<button type="button" data-key="${it.key}"><b>${esc(ibLine(it.notice.text))}</b><small>${new Date(it.notice.at).toTimeString().slice(0, 5)}</small></button>`).join("")}</div>`;
-  $("#bubbleCards").querySelectorAll("[data-key]").forEach((btn) => {
-    btn.onclick = () => openItem(items.find((it) => it.key === btn.dataset.key));
+// У напоминаний — вкладки «Вчера / Сегодня» (если есть оба дня); у любого списка — «Прочитать все» внизу слева и ✕ на строке.
+let ibList = null; // открытый список: { g, tab }
+/** Напоминания по дням: хвосты — сегодня (они про сейчас), остальное — по своему дню. */
+function alarmSplit(items) {
+  const today = ibToday();
+  const old = (it) => Boolean(it.notice) && ibDay(it.notice) < today;
+  return { yesterday: items.filter(old), today: items.filter((it) => !old(it)) };
+}
+function openList(g, items, tab = "", extra = []) {
+  ibList = { g, tab };
+  say(g.title, { ms: 0, buttons: [{ text: "Прочитать все", run: () => ibReadAll() }, ...extra] });
+  $("#bubbleActions")?.querySelector('[data-i="0"]')?.classList.add("ib-readall");
+  drawIbList(items, tab);
+}
+/** Нарисовать открытый список (и заново — после ✕ или смены вкладки): облачко на месте, без звука и анимации появления. */
+function drawIbList(items, tab) {
+  const { g } = ibList;
+  const split = g.id === "alarm" ? alarmSplit(items) : null;
+  const both = Boolean(split?.today.length && split.yesterday.length);
+  tab = both ? (tab && split[tab].length ? tab : split.today.length ? "today" : "yesterday") : "";
+  ibList.tab = tab;
+  const shown = tab ? split[tab] : items;
+  $("#bubbleText").textContent = both ? g.title : `${g.title} · ${items.length}`;
+  const tabs = both ? `<div class="ib-tabs" role="tablist">${[["yesterday", "Вчера"], ["today", "Сегодня"]].map(([id, name]) =>
+    `<button type="button" role="tab" data-tab="${id}" aria-selected="${tab === id}" class="${tab === id ? "on" : ""}">${name} <span>${split[id].length}</span></button>`).join("")}</div>` : "";
+  const x = `<span class="ib-x" data-x role="button" title="Прочитано — убрать из списка" aria-label="Прочитано">✕</span>`;
+  $("#bubbleCards").innerHTML = `${tabs}<div class="ib-list">${shown.map((it) => it.tail
+    ? `<button type="button" data-key="${it.key}"><b>${esc(it.tail.title)}</b><small class="ib-time">срок был ${esc(tailWhen(it.tail.due_date))}</small>${x}</button>`
+    : `<button type="button" data-key="${it.key}"><b>${esc(ibLine(it.notice.text))}</b><small class="ib-time">${new Date(it.notice.at).toTimeString().slice(0, 5)}</small>${x}</button>`).join("")}</div>`;
+  $("#bubbleCards").querySelectorAll("[data-tab]").forEach((btn) => {
+    btn.onclick = () => drawIbList(groupItems(g.id), btn.dataset.tab);
+  });
+  $("#bubbleCards").querySelectorAll(".ib-list [data-key]").forEach((btn) => {
+    btn.onclick = (ev) => {
+      const it = shown.find((y) => y.key === btn.dataset.key);
+      if (ev.target.closest("[data-x]")) return ibDismiss(it, btn);
+      openItem(it);
+    };
   });
   placeBubble();
   fitBubble();
+}
+/** Прочитано без ответа: письмо — из ящика, хвост — скрыт до смены срока. */
+function ibForget(it) {
+  if (it.notice) inbox = inbox.filter((n) => n.id !== it.notice.id);
+  else if (it.tail && !ibHidden.includes(ibTailKey(it.tail))) ibHidden.push(ibTailKey(it.tail));
+}
+// ✕ на строке: строка гаснет, список смыкается; пусто — облачко закрывается.
+function ibDismiss(it, row) {
+  if (!it || row.classList.contains("gone")) return;
+  ibForget(it);
+  saveInbox();
+  saveHidden();
+  drawInbox();
+  row.classList.add("gone");
+  const list = ibList;
+  setTimeout(() => {
+    if (ibList !== list || $("#bubble").classList.contains("hidden")) return;
+    const left = groupItems(list.g.id);
+    if (!left.length) return hideBubble();
+    drawIbList(left, list.tab);
+  }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220);
+}
+// «Прочитать все» — открытая вкладка (или весь список, если вкладок нет); IB_UNDO_MS можно «↩ Вернуть».
+function ibReadAll() {
+  const { g, tab } = ibList;
+  const items = groupItems(g.id);
+  const gone = tab ? alarmSplit(items)[tab] : items;
+  const inboxWas = inbox.slice(), hiddenWas = ibHidden.slice();
+  gone.forEach(ibForget);
+  saveInbox();
+  saveHidden();
+  drawInbox();
+  const undo = { text: "↩ Вернуть", run: () => { inbox = inboxWas; ibHidden = hiddenWas; saveInbox(); saveHidden(); drawInbox(); openGroup(g.id); } };
+  const rest = groupItems(g.id);
+  if (!rest.length) return say(`Прочитано: ${gone.length}.`, { ms: IB_UNDO_MS, buttons: [undo] });
+  openList(g, rest, "", [undo]);
+  const list = ibList;
+  setTimeout(() => { if (ibList === list) $("#bubbleActions")?.querySelector('[data-i="1"]')?.remove(); }, IB_UNDO_MS);
 }
 function openItem(it) {
   if (!it) return;
