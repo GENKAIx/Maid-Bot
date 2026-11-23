@@ -691,7 +691,7 @@ function openTaskMenu(t, li, x, y, done = () => doneTaskHere(t.id)) {
   menu.innerHTML = item("repeat", "🔁 Повторять…")
     + `<hr>`
     + item("time", "🕒 Задать время")
-    + item("move", "↪ Перенести на завтра")
+    + item("move", "↪ Перенести…")
     + item("copy", "⧉ Копия на завтра")
     + item("rename", "✎ Переименовать")
     + item("done", "✓ Сделано") + item("delete", "× Удалить задачу");
@@ -702,7 +702,7 @@ function openTaskMenu(t, li, x, y, done = () => doneTaskHere(t.id)) {
     closePlanMenu();
     if (act === "repeat") return openRepeat(t);
     if (act === "time") return openTime(t, x, y);
-    if (act === "move") return moveTask(t, next, li);
+    if (act === "move") return openMovePick(t.title, dayAfter(next, -1), x, y, (day) => moveTask(t, day, li));
     if (act === "copy") return copyTask(t, next);
     if (act === "rename") return openRename(t, li);
     if (act === "done") return done();
@@ -2139,7 +2139,7 @@ function openPlanMenu(e, li, x, y) {
     + `<hr>`
     + (e.status === "active" || !e.status ? item("time", e.time ? "🕒 Изменить время" : "🕒 Задать время") : "")
     + ((e.status === "active" || !e.status) && e.time ? item("notime", "⌀ Убрать время") : "")
-    + item("move", "↪ Перенести на завтра")
+    + item("move", "↪ Перенести…")
     + item("copy", "⧉ Копия на завтра")
     + item("rename", "✎ Переименовать")
     + (e.status === "active" || !e.status ? item("done", "✓ Состоялось") + item("cancelled", "× Убрать из планов") : "");
@@ -2152,7 +2152,7 @@ function openPlanMenu(e, li, x, y) {
     if (act === "repeat") return openRepeat(e);
     if (act === "time") return openTime(e, x, y);
     if (act === "notime") return clearPlanTime(e);
-    if (act === "move") return movePlan(e, dayAfter(e.date_iso, 1), li);
+    if (act === "move") return openMovePick(e.title, e.date_iso, x, y, (day) => movePlan(e, day, li));
     if (act === "copy") return copyPlan(e, dayAfter(e.date_iso, 1));
     if (act === "rename") return openRename(e, li);
     setPlanStatus(e.id, act, e);
@@ -2169,6 +2169,55 @@ function showPlanMenu(menu, x, y) {
   // Пока меню или окно открыто — панель планов не прячется.
   clockHover = true;
   menu.addEventListener("mouseenter", () => { clockHover = true; });
+}
+
+// --- «↪ Перенести…» у плана и задачи: на завтра, через неделю (от её дня) или на выбранную дату ---
+// from — день записи (просроченная задача — от сегодня); go(day) — сам перенос (movePlan / moveTask).
+function openMovePick(title, from, x, y, go) {
+  const item = (act, text, day) => `<button type="button" data-act="${act}">${text}${day ? ` <span>${esc(shortDay(day))}</span>` : ""}</button>`;
+  const tomorrow = dayAfter(from, 1);
+  const week = dayAfter(from, 7);
+  const menu = document.createElement("div");
+  menu.className = "pl-menu pl-move";
+  menu.innerHTML = item("tomorrow", "На завтра", tomorrow) + item("week", "Через неделю", week) + item("pick", "📅 Выбрать дату…");
+  showPlanMenu(menu, x, y);
+  menu.addEventListener("click", (ev) => {
+    const act = ev.target.closest("[data-act]")?.dataset.act;
+    if (!act) return;
+    closePlanMenu();
+    if (act === "tomorrow") return go(tomorrow);
+    if (act === "week") return go(week);
+    openMoveDate(title, from, x, y, go);
+  });
+}
+function openMoveDate(title, from, x, y, go) {
+  const box = document.createElement("div");
+  box.className = "pl-menu rp-box tm-box pl-movedate";
+  box.innerHTML = `<div class="rp-top"><b>Перенести на</b><span class="rp-name">${esc(title)}</span><button type="button" class="rp-x" data-x title="Закрыть">✕</button></div>
+    <label class="rp-row"><span>Дата</span><input type="date" data-in="day" min="${esc(data.day)}" value="${esc(dayAfter(from, 1))}"></label>
+    <div class="tm-err"></div>
+    <div class="tm-act"><span></span><button type="button" class="tm-save" data-save>Перенести</button></div>`;
+  showPlanMenu(box, x, y);
+  const input = box.querySelector('[data-in="day"]');
+  const err = box.querySelector(".tm-err");
+  setTimeout(() => input.focus(), 0);
+  const save = () => {
+    const day = input.value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { err.textContent = "Выберите дату"; return keepIn(box); }
+    if (day < data.day) { err.textContent = "Эта дата уже прошла"; return keepIn(box); }
+    if (day === from) { err.textContent = "Это тот же день"; return keepIn(box); }
+    closePlanMenu();
+    go(day);
+  };
+  box.addEventListener("click", (ev) => {
+    if (ev.target.closest("[data-x]")) return closePlanMenu();
+    if (ev.target.closest("[data-save]")) save();
+  });
+  box.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") save();
+    if (ev.key === "Escape") closePlanMenu();
+  });
+  box.addEventListener("input", () => (err.textContent = ""));
 }
 
 // --- окно времени плана (ПКМ → «Задать время») ---
