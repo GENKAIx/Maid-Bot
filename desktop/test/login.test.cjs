@@ -63,7 +63,8 @@ server.listen(0, "127.0.0.1", async () => {
     check(log.some((l) => l.includes("ECONNREFUSED")), `нет сервера: в журнале нет кода (${log})`);
     check(!log.some((l) => l.includes("secret")), "пароль попал в журнал");
 
-    // settings:login: из чужого окна — отказ; из окна настроек — адрес из формы; из виджета — адрес из настроек, а не из формы.
+    // settings:login: из чужого окна — отказ; из окна настроек — адрес из формы; из виджета — адрес из формы (поле с 23.11.2026),
+    // пустое поле — адрес из настроек.
     const login = handlers["settings:login"];
     check(/неверный запрос/.test(await errOf(login({ sender: stranger }, { server: base, login: "vasya", password: "secret" }))), "чужое окно: вход не запрещён");
     check(st.settings.token === "", "чужое окно: ключ записан");
@@ -71,9 +72,16 @@ server.listen(0, "127.0.0.1", async () => {
     check(st.settings.server === base && st.settings.token === "tok-Программа на ПК", "окно настроек: ключ или адрес не записаны");
     st.settings.token = "";
     bodies.length = 0;
-    await login({ sender: widgetWc }, { server: closed, login: "vasya", password: "secret" });
-    check(st.settings.token === "tok-Программа на ПК" && st.settings.server === base, "виджет: вход не прошёл или адрес взят из формы");
+    await login({ sender: widgetWc }, { server: "", login: "vasya", password: "secret" });
+    check(st.settings.token === "tok-Программа на ПК" && st.settings.server === base, "виджет, поле адреса пустое: вход не прошёл или адрес не из настроек");
     check(bodies.length === 1, `виджет: запросов на сервер ${bodies.length}, нужен 1 (один вход на программу)`);
+    // Новая установка с адресом для разработки: в настройках localhost, в поле виджета — настоящий адрес.
+    st.settings.server = closed;
+    st.settings.token = "";
+    await login({ sender: widgetWc }, { server: base, login: "vasya", password: "secret" });
+    check(st.settings.token === "tok-Программа на ПК" && st.settings.server === base, `виджет: адрес из поля не взят (${st.settings.server})`);
+    const wrong = await errOf(login({ sender: widgetWc }, { server: closed, login: "vasya", password: "secret" }));
+    check(/Нет связи с сервером/.test(wrong) && st.settings.server === base, "виджет: неверный адрес из поля — «нет связи», настройки не тронуты");
     check(/Неверный логин или пароль/.test(await errOf(login({ sender: widgetWc }, { login: "vasya", password: "nope" }))), "виджет: неверный пароль — не та ошибка");
 
     // Переадресация (как Caddy: http://IP → 308 → https://домен). fetch подменён: настоящий https в тесте не поднять.

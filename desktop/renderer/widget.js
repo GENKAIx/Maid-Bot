@@ -2034,31 +2034,50 @@ $("#body").addEventListener("mouseout", (e) => {
 
 let lastJson = "";
 let loadFail = ""; // почему не загрузилось — пишется под «Нет связи с сервером»
-// Вход устарел: логин и пароль в самом виджете (main.js settings:login — адрес сервера берётся из настроек).
+// Вход устарел: адрес сервера, логин и пароль в самом виджете (main.js settings:login). Адрес — из настроек; адрес для
+// разработки (localhost) не подставляется — пустое поле с подсказкой (23.11.2026: раньше поля адреса не было, и новая установка
+// с адресом localhost:3000 могла войти только через полную версию). Пока идёт вход — крутилка на кнопке и «Вхожу…» не красным,
+// не короче RELOGIN_MIN_MS, чтобы мгновенный отказ не выглядел как «ничего не произошло».
+const RELOGIN_MIN_MS = 600;
+const RELOGIN_DEV = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i;
 const reloginHtml = `<form class="relogin" id="reloginForm" autocomplete="off">
   <div class="relogin-msg">Вход устарел — войдите снова</div>
+  <input id="rlServer" placeholder="Адрес сервера из приглашения бота" autocomplete="url" spellcheck="false" title="Адрес сервера" />
   <input id="rlLogin" placeholder="Логин" autocomplete="username" spellcheck="false" />
   <input id="rlPass" type="password" placeholder="Пароль" autocomplete="current-password" />
-  <div class="relogin-row"><span class="relogin-err" id="rlErr" role="alert"></span><button type="submit" id="rlGo">Войти</button></div>
+  <div class="relogin-row"><span class="relogin-err" id="rlErr" role="alert"></span><button type="submit" id="rlGo"><i class="relogin-spin" aria-hidden="true"></i><span>Войти</span></button></div>
 </form>`;
 function bindRelogin() {
   const form = $("#reloginForm");
   // Окно «сквозное»: щелчок по форме — окну нужна клавиатура (как строке чата), ушли из формы — отдаёт.
   form.addEventListener("mousedown", () => maid.focusInput(true));
   form.addEventListener("focusout", (e) => { if (!form.contains(e.relatedTarget) && !grabbed) maid.focusInput(false); });
+  maid.settings().then((s) => {
+    const server = String(s?.server ?? "");
+    if (!$("#rlServer").value) $("#rlServer").value = RELOGIN_DEV.test(server) ? "" : server;
+  }).catch(() => {});
+  const busy = (on, text = "", bad = false) => {
+    $("#rlGo").disabled = on;
+    form.classList.toggle("busy", on);
+    $("#rlErr").textContent = text;
+    $("#rlErr").classList.toggle("ok", !bad);
+  };
   form.onsubmit = async (e) => {
     e.preventDefault();
-    const login = $("#rlLogin").value.trim(), password = $("#rlPass").value;
-    if (!login || !password) return void ($("#rlErr").textContent = "Впишите логин и пароль");
-    $("#rlGo").disabled = true;
-    $("#rlErr").textContent = "Вхожу…";
+    const server = $("#rlServer").value.trim(), login = $("#rlLogin").value.trim(), password = $("#rlPass").value;
+    if (!server) return void busy(false, "Впишите адрес сервера", true);
+    if (!login || !password) return void busy(false, "Впишите логин и пароль", true);
+    busy(true, "Вхожу…");
+    const started = Date.now();
+    const settled = () => new Promise((r) => setTimeout(r, Math.max(0, started + RELOGIN_MIN_MS - Date.now())));
     try {
-      await maid.login({ login, password });
+      await maid.login({ server, login, password });
     } catch (err) {
-      $("#rlErr").textContent = String(err?.message ?? err).replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
-      $("#rlGo").disabled = false;
+      await settled();
+      busy(false, String(err?.message ?? err).replace(/^Error invoking remote method '[^']*': (Error: )?/, ""), true);
       return;
     }
+    await settled();
     maid.focusInput(false);
     loadFail = "";
     $("#next").innerHTML = "";

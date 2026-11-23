@@ -372,6 +372,13 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .relogin input { height: 30px; padding: 0 10px; border-radius: 8px; font-size: 13px; }
 .relogin .relogin-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .relogin .relogin-err { font-size: 12px; color: #ff9aa6; }
+.relogin .relogin-err.ok { color: var(--muted); }
+.relogin #rlGo { display: inline-flex; align-items: center; gap: 6px; }
+.relogin .relogin-spin { display: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: reloginSpin .8s linear infinite; }
+.relogin.busy .relogin-spin { display: inline-block; }
+.relogin.busy #rlGo { opacity: .8; }
+@keyframes reloginSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .relogin .relogin-spin { animation-duration: 2.4s; } }
 .relogin button { width: auto; height: 28px; padding: 0 14px; border-radius: 14px; font-size: 12px; font-weight: 600; background: var(--accent); color: #fff; border: 0; }
 .relogin button:hover { filter: brightness(1.1); }
 .relogin button:disabled { opacity: .6; }

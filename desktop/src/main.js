@@ -9,8 +9,12 @@ const { addMissingGames, createTracker, foreground, localDay, MORE_GAMES, STEP_M
 const { iconKey, newIcons } = require("./icons.js");
 const { createUpdates } = require("./updates.js");
 
+// Сервер по умолчанию (23.11.2026): установленная программа сразу смотрит на настоящий сервер, в разработке — на свой.
+// Раньше у новой установки был localhost:3000, и вход из виджета (без поля адреса) всегда писал «Нет связи с сервером».
+const SERVER_DEFAULT = "https://187-126-11-122.sslip.io";
+const DEV_SERVER = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i;
 const DEFAULTS = {
-  server: "http://localhost:3000",
+  server: app.isPackaged ? SERVER_DEFAULT : "http://localhost:3000",
   token: "",
   widget: { show: true, x: null, y: null, display: null, opacity: 0.92, side: "right", size: "m", sections: { next: true, habits: true, tasks: true } },
   tracker: { enabled: true, games: ["dota2.exe", "cs2.exe", "VALORANT-Win64-Shipping.exe", "League of Legends.exe", "GenshinImpact.exe", "Minecraft.Windows.exe", ...MORE_GAMES] },
@@ -95,6 +99,12 @@ function loadSettings() {
       token();
     }
     delete settings.tokenEnc;
+    // Установленная программа с адресом для разработки (новые установки до 0.1.87) — на настоящий сервер.
+    if (app.isPackaged && DEV_SERVER.test(String(settings.server ?? ""))) {
+      maidLog("адрес сервера был для разработки:", settings.server, "→", SERVER_DEFAULT);
+      settings.server = SERVER_DEFAULT;
+      saveSettings();
+    }
     delete settings.siteTokenEnc; // до 0.1.34 у сайта был свой вход — теперь один ключ на программу
     // До 0.1.38 программам из Store и без своего значка уходил серый «программа» — разослать значки заново (icons.js).
     if ((settings.tracker.iconsVer ?? 1) < 2) {
@@ -886,12 +896,14 @@ async function loginOnServer(base, login, password, label) {
   // Адрес, на котором сервер в итоге ответил (вписали http://IP — сохраняется https-адрес, куда он перенаправил).
   return { token: data.token, origin: movedTo(base, res) ?? base };
 }
-// Вход в программу — из окна настроек (адрес, логин и пароль) или из виджета, когда вход устарел (логин и пароль; адрес — из настроек).
+// Вход в программу — из окна настроек (адрес, логин и пароль) или из виджета, когда вход устарел (адрес, логин и пароль;
+// пустой адрес в виджете — из настроек).
 // Один ключ на всю программу: открытый сайт в главном окне получает его сразу (site-login:get — при следующем открытии). Пароль не хранится.
 ipcMain.handle("settings:login", async (e, form) => {
   const fromWidget = Boolean(widget && e.sender === widget.webContents);
   if (!isSettingsPage(e.sender) && !fromWidget) throw new Error("неверный запрос");
-  const base = serverBase(String((fromWidget ? settings.server : form?.server) ?? "").trim());
+  const typed = String(form?.server ?? "").trim();
+  const base = serverBase(fromWidget && !typed ? settings.server : typed);
   if (!base) throw new Error("Адрес сервера: нужен вида https://example.com");
   const login = String(form?.login ?? "").trim();
   const password = String(form?.password ?? "");
