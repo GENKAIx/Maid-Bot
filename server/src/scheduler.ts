@@ -9,6 +9,7 @@ import {
 } from "./report.ts";
 import { escapesText } from "./escapes.ts";
 import { morningText } from "./morning.ts";
+import { rainSoon } from "./weather.ts";
 import { reminderKind, type NoticeKind } from "./notices.ts";
 import { METRICS } from "./parse.ts";
 import { findPatterns, patternText, traitButtons } from "./profile.ts";
@@ -197,6 +198,7 @@ export class Scheduler {
         await asUser(u.id, async () => {
           await this.daily(u, now);
           await this.habits(u, now);
+          if (u.weather_rain) await this.rain(u, now);
           if (this.backup && this.due(u, "03:30", now, 300) && (await this.store.once(`backup:${u.id}:${dayKey(now, u.tz)}`))) {
             await this.backup(u).catch((e) => console.error("[backup]", u.id, e));
           }
@@ -210,6 +212,12 @@ export class Scheduler {
     } finally {
       this.busy = false;
     }
+  }
+
+  /** «Предупредить о дожде за час» (weather_rain): раз в день, если дождь начнётся в ближайший час и план на улице под него попадает. */
+  private async rain(u: User, now: Date) {
+    const text = await rainSoon(this.store, u, now).catch(() => null);
+    if (text && (await this.store.once(`rain:${u.id}:${dayKey(now, u.tz)}`))) await this.safeSend(u, text, "neutral", undefined, "other");
   }
 
   private due(u: User, at: string, now: Date, late = LATE_MIN) {

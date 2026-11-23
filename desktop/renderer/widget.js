@@ -372,6 +372,7 @@ function wakeUp() {
   setTimeout(() => {
     if (napping || (pokedAwake && !news.length)) return;
     react("hello", 4500);
+    if (!news.length && wxGreet()) return; // первый подъём за день — погода вместо «С возвращением» (weather.js)
     if (!cfg.napRecap || (away < 2 * 60_000 && !news.length)) return;
     const lines = news.slice(-4).map((n) => `• ${String(n.text).split("\n")[0].replace(/<[^>]+>/g, "")}`);
     const more = news.length > 4 ? `\n…и ещё ${news.length - 4} — в ящике у головы.` : news.length ? "\nВсё это — в ящике у головы." : "";
@@ -1749,6 +1750,7 @@ function render() {
   askSettled();
   if (binTasks.size) flyTasksToBin();
   hpAfterRender(); // праздники привычек: дотянуть анимации огоньков и начать волну или салют (habitparty.js)
+  wxDraw(); // погода: плашка в шапке, значок у задетого плана, небо над панелью (weather.js)
 }
 
 // Облачко спрашивает о привычке за день («… — сегодня сделали?») или о задаче с прошедшим сроком (tails.js), а ответили не в нём:
@@ -2094,6 +2096,7 @@ async function load() {
     syncMarks(); // день сервера и часы идут — «через 2 часа», «завтра» в метке не устаревают (перерисовка — только если поменялись)
     lookSync(data.maid_hair, data.maid_eyes); // цвета волос и глаз с сайта (maidlook.js)
     daySleepSync(data); // подъём и отбой из «Персонализации»
+    wxLoad(); // погода на сегодня (weather.js): раз в полчаса или при смене дня
     setLineCall(data.call); // обращение из «Персонализации» (lines.js): «хозяйка» или имя вместо «хозяин»
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
@@ -2726,7 +2729,8 @@ async function loadCfg() {
   cfg = { opacity: w.opacity ?? 0.92, side: w.side === "center" ? "right" : w.side ?? "right", size: w.size ?? "m", sections: { ...cfg.sections, ...w.sections }, clock: dialOff(w.plans ?? "list"), dateLead: w.dateLead ?? "1", doneTasks: w.doneTasks === "hide" ? "hide" : "keep", laterTasks: w.laterTasks === "show" ? "show" : "hide", proposalWait: secs(w.proposalWait, 12), clashWait: secs(w.clashWait, 10), mute: Boolean(w.mute), typing: ["quiet", "off"].includes(w.typing) ? w.typing : "sound", typeSpeed: ["slow", "fast"].includes(w.typeSpeed) ? w.typeSpeed : "normal", accent: ACCENTS[w.accent] ? w.accent : "violet", textSize: TEXT_ZOOM[w.textSize] ? w.textSize : "m", taskCount: Number.isInteger(w.taskCount) && w.taskCount >= 1 && w.taskCount <= 500 ? w.taskCount : 100, nextCount: [1, 3, 5].includes(w.nextCount) ? w.nextCount : 3, doneHabits: w.doneHabits === "hide" ? "hide" : "dim",
     napAfter: [0, 5, 15, 30, 60].includes(w.napAfter) ? w.napAfter : 15, napNight: w.napNight !== false, napRecap: w.napRecap !== false, napFold: w.napFold !== false,
     popSound: ["chime", "off"].includes(w.popSound) ? w.popSound : "bubble", xpBar: w.xpBar === "event" ? "event" : "always",
-    fx: ["quiet", "festive"].includes(w.fx) ? w.fx : "normal" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
+    fx: ["quiet", "festive"].includes(w.fx) ? w.fx : "normal",
+    weatherMorning: w.weatherMorning !== false, weatherChip: ["day", "off"].includes(w.weatherChip) ? w.weatherChip : "noon" }; // «plans» — с тех пор, как появился список (старое «clock» не переносим: по умолчанию теперь список)
   if (w.bedtime !== undefined || w.morning !== undefined) oldSleep = { bed: w.bedtime, wake: w.morning };
   // «Звуки выключены» раньше жили в localStorage виджета — переносим в настройки один раз.
   if (w.mute === undefined && localStorage.getItem("maid.mute")) {

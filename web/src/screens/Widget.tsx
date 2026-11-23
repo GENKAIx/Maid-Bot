@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { get, post } from "../api";
 import { Card, Empty, Spinner } from "../components";
 import { navigate } from "../router";
 
@@ -13,6 +14,7 @@ export interface WidgetPrefs {
   accent?: Accent; textSize?: "s" | "m" | "l"; taskCount?: number; nextCount?: 1 | 3 | 5; doneHabits?: "dim" | "hide";
   napAfter?: 0 | 5 | 15 | 30 | 60; napNight?: boolean; napRecap?: boolean; napFold?: boolean; popSound?: Pop;
   xpBar?: "always" | "event"; fx?: "quiet" | "normal" | "festive";
+  weatherMorning?: boolean; weatherChip?: "noon" | "day" | "off";
 }
 type Pop = "bubble" | "chime" | "off";
 /** Общее программы на ПК (раньше — только в меню значка у часов). */
@@ -83,6 +85,7 @@ const DEFAULTS: Required<WidgetPrefs> = {
   plans: "list", dateLead: "1", doneTasks: "keep", laterTasks: "hide", proposalWait: 12, clashWait: 10, mute: false, typing: "sound", typeSpeed: "normal",
   accent: "violet", textSize: "m", taskCount: 100, nextCount: 3, doneHabits: "dim",
   napAfter: 15, napNight: true, napRecap: true, napFold: true, popSound: "bubble", xpBar: "always", fx: "normal",
+  weatherMorning: true, weatherChip: "noon",
 };
 const ACCENTS: [Accent, string][] = [["violet", "Сиреневый"], ["blue", "Голубой"], ["green", "Мятный"], ["pink", "Розовый"], ["amber", "Янтарный"]];
 const SECTIONS: [keyof NonNullable<WidgetPrefs["sections"]>, string][] = [["next", "Ближайший план"], ["habits", "Привычки"], ["tasks", "Задачи"]];
@@ -381,6 +384,8 @@ export function Widget() {
   const [ping, setPing] = useState(0); // выбрали что-то про облачко — показать его ещё раз со звуком
   const [ask, setAsk] = useState<"add" | "clash">("add"); // какой пример самонажатия показать
   const [gen, setGen] = useState<General | null>(null);
+  // «Предупредить о дожде за час» — настройка сервера (users.weather_rain), одна на все устройства; город — из «О вас».
+  const [wx, setWx] = useState<{ rain: boolean; city: boolean } | null>(null);
 
   useEffect(() => {
     if (!bridge) return;
@@ -390,6 +395,7 @@ export function Widget() {
       setOpacity(all.opacity);
     });
     void bridge.general?.().then(setGen).catch(() => null);
+    void get<{ weather_rain?: number; city?: string }>("/api/me").then((m) => setWx({ rain: Boolean(m.weather_rain), city: Boolean(m.city) })).catch(() => null);
   }, [bridge]);
 
   if (!bridge) return <Empty>Виджет — это программа «Горничная» на компьютере. Его настройки — в ней: раздел «Виджет» слева.</Empty>;
@@ -399,6 +405,11 @@ export function Widget() {
     setP((x) => ({ ...x!, ...patch, sections: { ...x!.sections, ...patch.sections } }));
     const r = await bridge!.saveWidget(patch).catch(() => null);
     if (!r) setMsg("Не сохранилось: перезапустите программу «Горничная».");
+  }
+  async function saveRain(rain: boolean) {
+    setWx((x) => x && { ...x, rain });
+    const r = await post<{ weather_rain?: number }>("/api/settings", { weather_rain: rain ? 1 : 0 }).catch(() => null);
+    if (!r) { setWx((x) => x && { ...x, rain: !rain }); setMsg("Не сохранилось: нет связи с сервером."); }
   }
   async function saveGen(patch: { autostart?: boolean; keys?: Partial<General["keys"]> }) {
     const r = await bridge!.saveGeneral?.(patch).catch(() => null);
@@ -551,6 +562,18 @@ export function Widget() {
             <Setting title="Рассказывать, что было" hint="Проснувшись, пересказывает, что пришло, пока вас не было"
               side={<Toggle label="Рассказывать, что было" on={p.napRecap} set={(napRecap) => save({ napRecap })} />} />
           </>}
+        </section>
+
+        <section className="wp-sec reveal">
+          <h3>Погода</h3>
+          {wx && !wx.city && <Setting title="Город не указан" hint="Погода — по городу из «Персонализации → О вас»"
+            side={<button type="button" className="link" onClick={() => navigate("/persona")}>Указать</button>} />}
+          <Setting title="Говорить о погоде утром" hint="Первая фраза после подъёма — погода и дело, которое она задевает"
+            side={<Toggle label="Говорить о погоде утром" on={p.weatherMorning} set={(weatherMorning) => save({ weatherMorning })} />} />
+          <Setting title="Погода в шапке" hint="Значок и температура рядом с датой, снег или дождь над панелью"
+            side={<Segment label="Погода в шапке" value={p.weatherChip} onPick={(weatherChip) => save({ weatherChip })} options={[["noon", "До полудня"], ["day", "Весь день"], ["off", "Нет"]]} />} />
+          {wx && <Setting title="Предупредить о дожде за час" hint="Если план на улице попадает под дождь — сообщение за час. На всех устройствах"
+            side={<Toggle label="Предупредить о дожде за час" on={wx.rain} set={(rain) => void saveRain(rain)} />} />}
         </section>
 
         {gen && <section className="wp-sec reveal">

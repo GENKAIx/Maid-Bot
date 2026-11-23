@@ -11,7 +11,8 @@ import { planEventReminders } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
 import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from "./clash.ts";
 import { addTraitFromChat, traitPrompt } from "./profile.ts";
-import { aboutOffer, findCities, type City, type YouButton } from "./you.ts";
+import { aboutOffer, cityOf, findCities, type City, type YouButton } from "./you.ts";
+import { weatherFor } from "./weather.ts";
 import { SHELVES, notesData, sameNote } from "./notes.ts";
 import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, moneyCard, noteCard, taskCard, traitCard } from "./cards.ts";
 import {
@@ -32,6 +33,9 @@ export interface Change {
   /** Запись за карточкой (ровно одна строка таблицы): по ней виджет узнаёт карточку после поправки к ответу (cards.ts). */
   ref?: { tbl: Table; id: number };
 }
+
+/** Вопрос о погоде: «какая погода?», «что с погодой сегодня», «погода». */
+export const WEATHER_ASK = /^\s*(а\s+)?((какая|какой)\s+(сегодня\s+)?(погод|прогноз)|что\s+(там\s+)?(с|по)\s+погод|погода(\s+(сегодня|на\s+сегодня))?\s*\??\s*$)/i;
 
 export interface Reply {
   text: string;
@@ -267,6 +271,16 @@ export class Pipeline {
     }
     // Новое сообщение — прежний вопрос «добавить?» без ответа закрывается (кнопки висят до следующего сообщения).
     await this.closeProposals(u, "expired");
+
+    // «Какая погода?» — погода дня по городу из «О вас» (weather.ts), без модели и без записи.
+    if (!pics && WEATHER_ASK.test(inc.text)) {
+      const wx = await weatherFor(s, u, at).catch(() => null);
+      const text = wx ? `${wx.icon} ${wx.text}`
+        : cityOf(u) ? "Не получилось узнать погоду — сервис не отвечает. Спросите чуть позже."
+        : "Скажите, из какого вы города, — тогда буду знать погоду. Город — в «Персонализации → О вас».";
+      await s.setMessage(message.id, { state: "done", reply: text });
+      return { text, emotion: (wx?.emotion ?? "neutral") as Emotion, messageId: message.id, undoable: false };
+    }
 
     if (inc.chatOnly) return this.chat(u, message, at, pics);
 

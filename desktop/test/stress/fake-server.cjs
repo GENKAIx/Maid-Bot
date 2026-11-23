@@ -257,6 +257,8 @@ function create() {
       return finish(200, srv.notices.filter((n) => n.id > after).sort((a, b) => b.id - a.id));
     }
     if (req.method === "GET" && p === "/api/events") return finish(200, []);
+    // Погода (weather.js): что задано через /__ctl {"weather": {...}}; без города — null.
+    if (req.method === "GET" && p === "/api/weather") return finish(200, { weather: srv.weather ?? null });
     let m;
     if (req.method === "POST" && (m = p.match(/^\/api\/tasks\/(\d+)$/))) {
       const id = Number(m[1]);

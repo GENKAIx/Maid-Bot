@@ -3,6 +3,7 @@ import type { LlmCall } from "./llm.ts";
 import { persona } from "./personas.ts";
 import { esc, eventLine, taskLine } from "./report.ts";
 import { humanDay } from "./time.ts";
+import { weatherFor, type WeatherView } from "./weather.ts";
 
 // Утреннее сообщение (с 15.11.2026): дата и строка про день, все планы на сегодня, задачи только на сегодня и просроченные,
 // напутствие горничной. Строку и напутствие пишет модель одним запросом; напутствие — её словами по мысли стоиков дня
@@ -86,29 +87,42 @@ const oneLine = (v: unknown) => {
   return line.length > LINE_MAX ? `${line.slice(0, LINE_MAX).replace(/\s+\S*$/, "")}…` : line;
 };
 
-/** Строка про день и напутствие от модели одним запросом (JSON). Нет модели, ошибка, не JSON — пустые строки: утро уходит
- *  без строки про день, напутствие — сама мысль дня. */
-async function dayWords(llm: LlmCall | null, u: User, today: string, thought: string, plans: string[]): Promise<{ fact: string; wish: string }> {
-  if (!llm) return { fact: "", wish: "" };
+/** Строка модели о погоде годится, только если все её числа есть в фактах прогноза: выдуманных градусов и часов не пускаем. */
+export function weatherLineOk(line: string, facts: string): boolean {
+  if (!line) return false;
+  const nums = (s: string) => (s.match(/\d+/g) ?? []).map(Number);
+  const known = new Set(nums(facts));
+  return nums(line).every((n) => known.has(n));
+}
+
+/** Строка про день, напутствие и (если есть прогноз) строка погоды — от модели одним запросом (JSON). Нет модели, ошибка, не JSON —
+ *  пустые строки: утро уходит без строки про день, напутствие — сама мысль дня, погода — фраза из заготовок (weather.ts). */
+async function dayWords(llm: LlmCall | null, u: User, today: string, thought: string, plans: string[], wx: WeatherView | null = null): Promise<{ fact: string; wish: string; weather: string }> {
+  if (!llm) return { fact: "", wish: "", weather: "" };
   try {
     const text = await llm([
       {
         role: "system",
-        content: `${persona(u.persona, u).voice}\nУтреннее сообщение хозяину на ${humanDay(today)} (${today}). Ответь JSON {"fact": "...", "wish": "..."}.\n` +
+        content: `${persona(u.persona, u).voice}\nУтреннее сообщение хозяину на ${humanDay(today)} (${today}). Ответь JSON {"fact": "...", "wish": "..."${wx ? ', "weather": "..."' : ""}}.\n` +
           `fact — одно короткое забавное предложение про этот день, не длиннее ${LINE_MAX} знаков: праздник этого дня (можно неофициальный и ` +
           `смешной), событие, случившееся в этот день в истории, или интересный факт. Пиши только то, в чём уверена. Не уверена — скажи ` +
           `что-нибудь про время года или день недели.\n` +
           `wish — напутствие на день от тебя хозяину, 1–2 предложения, не длиннее ${LINE_MAX} знаков, твоими словами и твоим голосом. Основа — ` +
           `мысль ниже (идея стоиков): перескажи её по-своему, как совет на сегодня, можно с привязкой к его планам. Не цитируй, не называй ` +
-          `философов и стоицизм.\nБез приветствия, без кавычек вокруг текста, без эмодзи в начале.`,
+          `философов и стоицизм.\n` +
+          (wx ? `weather — погода на сегодня, 1–2 предложения, не длиннее ${LINE_MAX} знаков, твоим голосом: сначала погода, потом совет ` +
+            `про одно дело, которое она задевает (если оно есть в фактах). Числа и часы — только из фактов погоды, ничего не добавляй ` +
+            `и не округляй по-своему; слово «температура» не пиши.\n` : "") +
+          `Без приветствия, без кавычек вокруг текста, без эмодзи в начале.`,
       },
-      { role: "user", content: `Мысль дня: ${thought}\nПланы на сегодня: ${plans.join("; ") || "нет"}` },
-    ], { json: true, temperature: 0.8, maxTokens: 400, kind: "summary" });
-    const o = JSON.parse(text) as { fact?: unknown; wish?: unknown };
-    return { fact: oneLine(o.fact), wish: oneLine(o.wish) };
+      { role: "user", content: `Мысль дня: ${thought}\nПланы на сегодня: ${plans.join("; ") || "нет"}${wx ? `\nПогода (факты): ${wx.facts}` : ""}` },
+    ], { json: true, temperature: 0.8, maxTokens: 500, kind: "summary" });
+    const o = JSON.parse(text) as { fact?: unknown; wish?: unknown; weather?: unknown };
+    const weather = wx ? oneLine(o.weather) : "";
+    return { fact: oneLine(o.fact), wish: oneLine(o.wish), weather: wx && weatherLineOk(weather, wx.facts) ? weather : "" };
   } catch (e) {
     console.error("[morning]", e);
-    return { fact: "", wish: "" };
+    return { fact: "", wish: "", weather: "" };
   }
 }
 
@@ -116,8 +130,12 @@ export async function morningText(store: Store, llm: LlmCall | null, u: User, to
   const parts = [`☀️ Доброе утро.\n\n<b>${humanDay(today)}</b>`];
   const evs = await store.eventsBetween(u.id, today, today);
   const thought = stoicOfDay(today).text;
-  const words = await dayWords(llm, u, today, thought, evs.map((e) => `${e.time ?? "весь день"} ${e.title}`));
+  // Погода (weather.ts): числа — из прогноза Open-Meteo, строку пишет модель тем же запросом по этим фактам. Модель не ответила или
+  // назвала число не из прогноза — фраза из заготовок (та же, что говорит виджет утром). Нет города или прогноза — строки нет.
+  const wx = await weatherFor(store, u).catch(() => null);
+  const words = await dayWords(llm, u, today, thought, evs.map((e) => `${e.time ?? "весь день"} ${e.title}`), wx);
   if (words.fact) parts.push(esc(words.fact));
+  if (wx) parts.push(`${wx.icon} ${esc(words.weather || wx.text)}`);
   parts.push(evs.length ? `\n<b>Планы</b>\n${evs.map((e) => "• " + eventLine(e)).join("\n")}` : "\nПланов на сегодня нет.");
   const tasks = (await store.openTasks(u.id)).filter((t) => t.due_date && t.due_date <= today);
   if (tasks.length) parts.push(`\n<b>Задачи</b>\n${tasks.map((t) => "• " + taskLine(t, today)).join("\n")}`);

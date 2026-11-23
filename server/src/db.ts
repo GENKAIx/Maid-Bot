@@ -392,6 +392,10 @@ ALTER TABLE users ADD COLUMN wake INTEGER NOT NULL DEFAULT 7;
 ALTER TABLE users ADD COLUMN bed TEXT NOT NULL DEFAULT 'auto';
 ALTER TABLE users ADD COLUMN ask TEXT NOT NULL DEFAULT '';
 `,
+  // Шаг 21: «Погода утром» (weather.ts) — «Предупредить о дожде за час», если план на улице попадает под дождь; по умолчанию выключено.
+  `
+ALTER TABLE users ADD COLUMN weather_rain INTEGER NOT NULL DEFAULT 0;
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -450,6 +454,8 @@ export interface User {
   bed: string;
   /** Что горничная уже спрашивала о человеке (you.ts askState): JSON или пусто. */
   ask: string;
+  /** «Предупредить о дожде за час» (weather.ts rainSoon): 1 — да. */
+  weather_rain: number;
 }
 export interface Message {
   id: number;
@@ -1493,7 +1499,7 @@ export class Store {
   /** Поставить отметку один раз; true — если её ещё не было. */
   /** Отметки «уже отправлено» (once), поставленные раньше before, — удалить: таблица иначе только растёт. Возвращает, сколько удалено. */
   pruneOnce(before: Date): Promise<number> {
-    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns"];
+    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns", "rain"];
     return this.run(
       `DELETE FROM kv WHERE value < ? AND (${kinds.map(() => "key LIKE ?").join(" OR ")})`,
       before.toISOString(), ...kinds.map((k) => `${k}:%`),

@@ -26,6 +26,7 @@ import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, tr
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, replanEvents as replanEventsOf, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
+import { moveToTomorrow, weatherFor } from "./weather.ts";
 import { ADDRESSES, addressWord, askNext, askOf, wakeAt, wakeMinOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
 
@@ -365,6 +366,8 @@ export function createApi(deps: ApiDeps) {
         // «Перекрасить Рину» (look.ts): только id из look.js виджета; Рина узнаёт свой цвет со следующего промпта.
         maid_hair: z.enum(MAID_HAIR, { message: "нет такого цвета" }).optional(),
         maid_eyes: z.enum(MAID_EYES, { message: "нет такого цвета" }).optional(),
+        // «Предупредить о дожде за час» (weather.ts rainSoon).
+        weather_rain: z.coerce.number().int().min(0).max(1).optional(),
       }), await readJson(req));
       if (b.event_reminders !== undefined) b.event_reminders = remindText(b.event_reminders);
       if ((b.habit_last ?? u.habit_last) <= (b.habit_first ?? u.habit_first)) throw new HttpError(400, "второй вопрос про привычки — позже первого");
@@ -457,6 +460,18 @@ export function createApi(deps: ApiDeps) {
       return historyOf(store, u.id, { kinds, before: Number.isFinite(before) ? before : 0, limit: Number.isFinite(limit) ? limit : 50 });
     }
     if (m === "GET" && p === "/api/today") return todayJson(store, u);
+    // Погода утром (weather.ts): фраза «погода + одно дело», значок и температура, части дня, задетый план. Нет города или
+    // прогноза — { weather: null }: утро как раньше.
+    if (m === "GET" && p === "/api/weather") return { weather: await weatherFor(store, u) };
+    // «Перенести на завтра» в опасную погоду (кнопка облачка виджета); back — «↩ Отменить», вернуть на сегодня.
+    if (m === "POST" && p === "/api/weather/move") {
+      const b = parseBody(z.object({ eventId: z.number().int(), back: z.boolean().optional() }), await readJson(req));
+      const e = await moveToTomorrow(store, u, b.eventId, Boolean(b.back));
+      if (!e) throw new HttpError(404, "нет такого плана на сегодня");
+      await replanEvents(u);
+      deps.pipeline.changed(u);
+      return { ok: true, date: e.date_iso, time: e.time };
+    }
     // Профиль как в RPG: уровень за дела, характеристики, дебафы и бафы, найденные закономерности.
     if (m === "GET" && p === "/api/profile") return profileView(store, u, today);
     if (m === "POST" && p === "/api/profile") {

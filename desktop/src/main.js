@@ -994,6 +994,8 @@ const WIDGET_PREFS = {
   popSound: oneOf("bubble", "chime", "off"),
   fx: oneOf("quiet", "normal", "festive"),
   xpBar: oneOf("always", "event"),
+  weatherMorning: (v) => typeof v === "boolean",
+  weatherChip: oneOf("noon", "day", "off"),
   sections: (v) => v && typeof v === "object" && Object.entries(v).every(([k, x]) => ["next", "habits", "tasks"].includes(k) && typeof x === "boolean"),
 };
 const widgetPrefs = () => Object.fromEntries(Object.keys(WIDGET_PREFS).filter((k) => k in settings.widget).map((k) => [k, settings.widget[k]]));

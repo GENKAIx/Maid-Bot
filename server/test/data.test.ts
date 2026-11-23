@@ -244,7 +244,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     assert.deepEqual([me.maid_hair, me.maid_eyes], ["gold", "green"]);
     // Как до шага 19: столбцов ещё нет (и столбцов шага 20), пользователи уже есть — после миграции у них свои цвета, остальное на месте.
     await store.driver.exec("ALTER TABLE users DROP COLUMN maid_hair; ALTER TABLE users DROP COLUMN maid_eyes;" +
-      " ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask;");
+      " ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask; ALTER TABLE users DROP COLUMN weather_rain;");
     await store.kvSet("schema_version", "18");
     const again = await Store.over(store.driver);
     const old = (await again.user(u.id))!;
@@ -257,7 +257,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
   test(`${kind}: «О вас» — у старых пользователей «хозяин», подъём 7, отбой сам, города нет; записанное читается`, async () => {
     const { store, u } = await setup(open);
     assert.deepEqual([u.address, u.city, u.wake, u.bed, u.ask], ["master", "", 7, "auto", ""]);
-    await store.driver.exec("ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask;");
+    await store.driver.exec("ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask; ALTER TABLE users DROP COLUMN weather_rain;");
     await store.kvSet("schema_version", "19");
     const again = await Store.over(store.driver);
     const old = (await again.user(u.id))!;
