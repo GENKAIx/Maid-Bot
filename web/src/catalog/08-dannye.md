@@ -33,7 +33,7 @@ lead: Таблицы базы и адреса сервера — что где �
 | `kv` | мелкие отметки «уже отправлено» (раз в сутки удаляются старше 60 дней — `pruneOnce`), расход токенов до таблицы `llm_usage` `llm:ГГГГ-ММ` (больше не пишется), профиль `profile:<id>` (класс — старое поле, рост, дата рождения, аватар, ссылка на профиль Steam, откуда взят аватар), попытки повтора разбора `retry:<id>` |
 
 > **Ключи.** Пароли — scrypt, ключи входа в базе только хешем (`auth.ts`). Ключ программы на ПК лежит в её `settings.json`, зашифрованный защитой Windows (`safeStorage`), и в окна не передаётся.
-| `admin_log` | журнал админки (шаг 22, `admin.ts`): `at`, `user_id`, `action` — `code` / `enter` / `wrong` / `leave`, `detail`; без текстов пользователей |
+| `admin_log` | журнал админки (шаг 22, `admin.ts`): `at`, `user_id`, `action` — `code` / `enter` / `wrong` / `leave`, `detail`; без текстов пользователей; шаг 23 — индексы отчётов админки `actions_msg`, `actions_user`, `messages_user_at` |
 
 ## Резервные копии и восстановление
 
@@ -52,7 +52,7 @@ lead: Таблицы базы и адреса сервера — что где �
 
 | Группа | Адреса |
 |---|---|
-| Админка | только админу (`isAdmin`, иначе 404): `GET /api/admin/state` (`until` — до когда вход подтверждён, `telegram`), `POST /api/admin/code` (код в Telegram; 429 — рано, 503 — бота нет), `POST /api/admin/confirm` (`{code}`), дальше — только с подтверждённым входом (иначе 403): `/api/admin/overview`, `/api/admin/log`, `POST /api/admin/leave` |
+| Админка | только админу (`isAdmin`, иначе 404): `GET /api/admin/state` (`until` — до когда вход подтверждён, `telegram`), `POST /api/admin/code` (код в Telegram; 429 — рано, 503 — бота нет), `POST /api/admin/confirm` (`{code}`), дальше — только с подтверждённым входом (иначе 403): `/api/admin/overview`, `/api/admin/users`, `/api/admin/spend?days=`, `/api/admin/audience`, `/api/admin/quality?days=`, `/api/admin/log`, `POST /api/admin/leave` (`admin-stats.ts`; только счётчики и имена) |
 | Служебные | `/healthz`, `/webhook` (Telegram; с 24.11.2026 — только с заголовком `X-Telegram-Bot-Api-Secret-Token`, иначе 401: секрет выводится из токена бота, `webhook.ts`, и передаётся Telegram в `setWebhook` при запуске) |
 | Вход | `/api/login`, `/api/logout`, `/api/me` (строка `users` без `password_hash`, в т. ч. `maid_hair`, `maid_eyes`, и `sessions`), `/api/public` |
 | Настройки | `/api/settings` (характер — только из `PERSONAS`, иначе 400; `maid_hair`, `maid_eyes` — только id из `look.ts`, иначе 400 «нет такого цвета»; ответ — строка `users` без `password_hash`), `/api/personas`, `/api/backup` |

@@ -407,6 +407,12 @@ CREATE TABLE IF NOT EXISTS admin_log (
 );
 CREATE INDEX IF NOT EXISTS admin_log_at ON admin_log (at);
 `,
+  // Шаг 23: индексы для отчётов админки (admin-stats.ts): отменённые действия по сообщению и по человеку, сообщения человека по времени.
+  `
+CREATE INDEX IF NOT EXISTS actions_msg ON actions (message_id, undone);
+CREATE INDEX IF NOT EXISTS actions_user ON actions (user_id, undone, created_at);
+CREATE INDEX IF NOT EXISTS messages_user_at ON messages (user_id, received_at);
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -688,6 +694,10 @@ export interface ActionRow {
 
 type Row = Record<string, unknown>;
 const now = () => new Date().toISOString();
+/** Админка: обращения к горничной, которые разбирает модель (без поправок к ответам), и действия без модели. */
+// Отметки привычек кнопкой в Telegram (bot.ts, source_id «mark:…»), на сайте (web) и в виджете Telegram — без модели.
+const ADMIN_AI_SQL = "(m.source IN ('telegram', 'desktop', 'app', 'iphone') AND m.source_id NOT LIKE 'correct:%' AND m.source_id NOT LIKE 'mark:%')";
+const ADMIN_MANUAL_SQL = "(m.source IN ('button', 'push', 'panel', 'web', 'telegram-widget') OR m.source_id LIKE 'mark:%')";
 
 export type Table = "diary" | "events" | "tasks" | "dates" | "memory" | "metrics" | "habits" | "habit_marks" | "money" | "traits" | "notes";
 /** Таблицы, строку которых берёт lockRow (у всех есть user_id; у отметок привычек его нет). */
@@ -1508,6 +1518,68 @@ export class Store {
   async kvGet(key: string): Promise<string | undefined> {
     return (await this.get<{ value: string }>("SELECT value FROM kv WHERE key = ?", key))?.value;
   }
+  // ——— Админка, этап 1 (admin-stats.ts): только счётчики, без текстов. Обращения к горничной — сообщения, которые разбирает
+  // модель (ADMIN_AI_SQL); «без ИИ» — отметки кнопкой, из push и правки мышью (ADMIN_MANUAL_SQL). Импорт прошлого — не в счёт.
+  /** По людям: всего, последнее, за 30 дней — всего, с ИИ, без ИИ; отменённые за 30 дней. */
+  async adminUserStats(since: string): Promise<{ user_id: number; total: number; last_at: string | null; n30: number; ai30: number; manual30: number; undone30: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT m.user_id, COUNT(*) AS total, MAX(m.received_at) AS last_at,
+         SUM(CASE WHEN m.received_at >= ? THEN 1 ELSE 0 END) AS n30,
+         SUM(CASE WHEN m.received_at >= ? AND ${ADMIN_AI_SQL} THEN 1 ELSE 0 END) AS ai30,
+         SUM(CASE WHEN m.received_at >= ? AND ${ADMIN_MANUAL_SQL} THEN 1 ELSE 0 END) AS manual30
+       FROM messages m WHERE m.source <> 'import' GROUP BY m.user_id`, since, since, since,
+    );
+    const undone = await this.all<Record<string, unknown>>(
+      "SELECT user_id, COUNT(DISTINCT message_id) AS n FROM actions WHERE undone = 1 AND created_at >= ? GROUP BY user_id", since,
+    );
+    const undoneBy = new Map(undone.map((r) => [Number(r.user_id), Number(r.n ?? 0)]));
+    return rows.map((r) => ({ user_id: Number(r.user_id), total: Number(r.total), last_at: r.last_at == null ? null : String(r.last_at), n30: Number(r.n30 ?? 0),
+      ai30: Number(r.ai30 ?? 0), manual30: Number(r.manual30 ?? 0), undone30: undoneBy.get(Number(r.user_id)) ?? 0 }));
+  }
+  /** Кто в какие дни (день по поясу человека) обращался — для активных за день/неделю/месяц, удержания и оттока. */
+  async adminActiveDays(fromDay: string): Promise<{ day: string; user_id: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT DISTINCT m.day_key AS day, m.user_id FROM messages m WHERE m.day_key >= ? AND m.source <> 'import' AND (${ADMIN_AI_SQL} OR ${ADMIN_MANUAL_SQL})
+       ORDER BY m.day_key`, fromDay,
+    );
+    return rows.map((r) => ({ day: String(r.day), user_id: Number(r.user_id) }));
+  }
+  /** Качество разбора по дням (обращения к модели): всего, сейчас не разобрано (failed), сейчас ждут ответа (clarify),
+   *  поправок к ответам, отменённых. failed/clarify — нынешнее состояние сообщения: разобранное позже из счёта уходит. */
+  async adminQuality(fromDay: string): Promise<{ day: string; requests: number; failed: number; clarify: number; corrections: number; undone: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT m.day_key AS day,
+         SUM(CASE WHEN ${ADMIN_AI_SQL} THEN 1 ELSE 0 END) AS requests,
+         SUM(CASE WHEN ${ADMIN_AI_SQL} AND m.state = 'failed' THEN 1 ELSE 0 END) AS failed,
+         SUM(CASE WHEN ${ADMIN_AI_SQL} AND m.state = 'clarify' THEN 1 ELSE 0 END) AS clarify,
+         SUM(CASE WHEN m.source_id LIKE 'correct:%' THEN 1 ELSE 0 END) AS corrections,
+         SUM(CASE WHEN ${ADMIN_AI_SQL} AND u.message_id IS NOT NULL THEN 1 ELSE 0 END) AS undone
+       FROM messages m LEFT JOIN (SELECT DISTINCT message_id FROM actions WHERE undone = 1) u ON u.message_id = m.id
+       WHERE m.day_key >= ? AND m.source <> 'import' GROUP BY m.day_key ORDER BY m.day_key`, fromDay,
+    );
+    const n = (v: unknown) => Number(v ?? 0) || 0;
+    return rows.map((r) => ({ day: String(r.day), requests: n(r.requests), failed: n(r.failed), clarify: n(r.clarify), corrections: n(r.corrections), undone: n(r.undone) }));
+  }
+  /** Откуда пишут с since: источник сообщения, сколько сообщений и сколько людей. */
+  async adminSources(since: string): Promise<{ source: string; messages: number; users: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT m.source, COUNT(*) AS messages, COUNT(DISTINCT m.user_id) AS users FROM messages m
+       WHERE m.received_at >= ? AND m.source <> 'import' GROUP BY m.source ORDER BY COUNT(*) DESC`, since,
+    );
+    return rows.map((r) => ({ source: String(r.source), messages: Number(r.messages), users: Number(r.users) }));
+  }
+  /** Расход по людям с from по to (дни UTC, как llm_usage): всего и фоновый (сводки, поиск связей — не по просьбе человека). */
+  async adminSpendByUser(from: string, to: string): Promise<{ user_id: number; calls: number; cost: number; background: number; priced: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT user_id, SUM(calls) AS calls, SUM(micro_usd) AS micro, SUM(CASE WHEN kind IN ('summary', 'patterns') THEN micro_usd ELSE 0 END) AS bg,
+         SUM(priced) AS priced FROM llm_usage WHERE day >= ? AND day <= ? GROUP BY user_id`, from, to,
+    );
+    return rows.map((r) => ({ user_id: Number(r.user_id), calls: Number(r.calls), cost: Number(r.micro) / 1e6, background: Number(r.bg ?? 0) / 1e6, priced: Number(r.priced) }));
+  }
+  /** Сколько сообщений сейчас не разобрано (state failed) с since — для тревоги владельцу. */
+  async adminFailedSince(since: string): Promise<number> {
+    return Number((await this.get<{ n: unknown }>("SELECT COUNT(*) AS n FROM messages WHERE state = 'failed' AND received_at >= ?", since))?.n ?? 0);
+  }
   async kvDel(key: string) {
     await this.run("DELETE FROM kv WHERE key = ?", key);
   }
@@ -1525,7 +1597,7 @@ export class Store {
   /** Поставить отметку один раз; true — если её ещё не было. */
   /** Отметки «уже отправлено» (once), поставленные раньше before, — удалить: таблица иначе только растёт. Возвращает, сколько удалено. */
   pruneOnce(before: Date): Promise<number> {
-    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns", "rain"];
+    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns", "rain", "alert"];
     return this.run(
       `DELETE FROM kv WHERE value < ? AND (${kinds.map(() => "key LIKE ?").join(" OR ")})`,
       before.toISOString(), ...kinds.map((k) => `${k}:%`),

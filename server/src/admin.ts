@@ -78,13 +78,6 @@ export async function leaveAdmin(store: Store, u: User, sid: string, now = new D
   await store.addAdminLog(u.id, "leave", "", now);
 }
 
-/** Обзор для каркаса: сколько людей всего и новых за 7 дней (остальное — этап 1 ревью). */
-export async function adminOverview(store: Store, now = new Date()) {
-  const week = new Date(now.getTime() - 7 * 86_400_000).toISOString();
-  const users = (await store.accounts(now.toISOString().slice(0, 7), week)).filter((x) => x.id); // id 0 — расход без человека
-  return { users: users.length, new_week: users.filter((x) => x.created_at >= week).length };
-}
-
 /** Журнал админки: кто (имя или логин, без chat id), когда, что. */
 export async function adminJournal(store: Store, limit = 100) {
   const names = new Map((await store.users()).map((x) => [x.id, x.name || x.login || `#${x.id}`]));

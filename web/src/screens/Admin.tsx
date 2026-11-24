@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, get, post } from "../api";
-import { ADMIN_ACTIONS, ADMIN_SECTIONS, adminSection } from "../admin";
+import { ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminSection } from "../admin";
+import { AdminAudience, AdminLost, AdminOverview, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
 import { navigate } from "../router";
 import "../admin.css";
 
@@ -98,7 +99,7 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           {ADMIN_SECTIONS.map((s) => (
             <a key={s.id} href={s.id === "overview" ? "/admin" : `/admin/${s.id}`} className={s.id === section ? "on" : ""}
               onClick={(e) => { e.preventDefault(); go(s.id); }}>
-              <span>{s.title}</span>{s.stage > 0 && <span className="adm-stage">этап {s.stage}</span>}
+              <span>{s.title}</span>{s.stage > ADMIN_LIVE_STAGE && <span className="adm-stage">этап {s.stage}</span>}
             </a>
           ))}
         </nav>
@@ -108,27 +109,18 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           <a className="adm-link" href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }}>← На сайт</a>
         </div>
       </aside>
+      <AdminLost.Provider value={onOut}>
       <main className="adm-main">
         <header className="adm-head"><h1>{cur.title}</h1></header>
-        {section === "overview" ? <Overview /> : section === "log" ? <Journal /> : <Soon stage={cur.stage} />}
+        {section === "overview" ? <AdminOverview />
+          : section === "users" ? <AdminUsers />
+          : section === "spend" ? <AdminSpend />
+          : section === "audience" ? <AdminAudience />
+          : section === "quality" ? <AdminQuality />
+          : section === "log" ? <Journal /> : <Soon stage={cur.stage} />}
       </main>
+      </AdminLost.Provider>
     </div>
-  );
-}
-
-function Overview() {
-  const [o, setO] = useState<{ users: number; new_week: number } | null>(null);
-  useEffect(() => { get<{ users: number; new_week: number }>("/api/admin/overview").then(setO).catch(() => {}); }, []);
-  return (
-    <>
-      <div className="adm-kpis">
-        <div className="adm-kpi"><span>Людей всего</span><b className="adm-num">{o ? o.users : "—"}</b></div>
-        <div className="adm-kpi"><span>Новых за 7 дней</span><b className="adm-num">{o ? o.new_week : "—"}</b></div>
-        <div className="adm-kpi dim"><span>Расход сегодня</span><b className="adm-num">—</b><i>этап 1</i></div>
-        <div className="adm-kpi dim"><span>Онлайн сейчас</span><b className="adm-num">—</b><i>этап 2</i></div>
-      </div>
-      <p className="adm-muted adm-note">Это каркас: доступ, вход по коду и журнал. Цифры по людям, расходам и аудитории появятся на этапе 1.</p>
-    </>
   );
 }
 

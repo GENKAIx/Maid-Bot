@@ -92,7 +92,15 @@ test("админка: код из Telegram → вход на час, тольк�
     assert.equal((await s.call("/api/admin/confirm", owner, { code: s.codes[0] })).status, 400, "код одноразовый");
     const ov = await s.call("/api/admin/overview", owner);
     assert.equal(ov.status, 200);
-    assert.deepEqual(ov.body, { users: 2, new_week: 2 });
+    assert.equal(ov.body.users, 2);
+    assert.equal(ov.body.new_week, 2);
+    for (const p of ["/api/admin/users", "/api/admin/spend?days=7", "/api/admin/audience", "/api/admin/quality?days=7"]) {
+      const r = await s.call(p, owner);
+      assert.equal(r.status, 200, p);
+      assert.equal((await s.call(p, other)).status, 403, `${p}: другое устройство без кода`);
+      const json = JSON.stringify(r.body);
+      for (const f of ["text", "reply", "prompt", "chat_id", "password_hash"]) assert.ok(!json.includes(`"${f}"`), `поле ${f} в ${p}`);
+    }
     assert.equal((await s.call("/api/admin/overview", other)).status, 403, "другое устройство — свой код");
     const log = await s.call("/api/admin/log", owner);
     assert.deepEqual((log.body as unknown as { action: string; who: string }[]).map((r) => `${r.who}:${r.action}`), ["Хозяин:enter", "Хозяин:wrong", "Хозяин:code"]);

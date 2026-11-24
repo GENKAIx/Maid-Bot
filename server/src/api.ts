@@ -5,7 +5,8 @@ import path from "node:path";
 import { z } from "zod";
 import { PERSONAS } from "./personas.ts";
 import { authByToken, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
-import { adminJournal, adminOverview, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
+import { adminJournal, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
+import { adminAudience, adminOverview, adminQualityReport, adminSpend, adminUsers } from "./admin-stats.ts";
 import type { DateRow, Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { ALBUM, albumOf, albumSee } from "./album.ts";
@@ -306,7 +307,12 @@ export function createApi(deps: ApiDeps) {
       await leaveAdmin(store, u, sid);
       return { ok: true };
     }
+    const days = Number(new URL(req.url ?? "/", "http://local").searchParams.get("days")) || 30;
     if (m === "GET" && p === "/api/admin/overview") return adminOverview(store);
+    if (m === "GET" && p === "/api/admin/users") return adminUsers(store);
+    if (m === "GET" && p === "/api/admin/spend") return adminSpend(store, days);
+    if (m === "GET" && p === "/api/admin/audience") return adminAudience(store);
+    if (m === "GET" && p === "/api/admin/quality") return adminQualityReport(store, days);
     if (m === "GET" && p === "/api/admin/log") return adminJournal(store);
     throw new HttpError(404, "нет такого адреса");
   }

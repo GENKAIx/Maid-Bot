@@ -15,6 +15,8 @@ import { Push } from "./push.ts";
 import { Scheduler, type Send } from "./scheduler.ts";
 import { takeSnapshot } from "./snapshot.ts";
 import { webhookSecret } from "./webhook.ts";
+import { adminAlerts } from "./admin-stats.ts";
+import { isAdmin } from "./auth.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
@@ -60,11 +62,17 @@ const backup = tg
       await tg.sendFile(u, backupName(u.login), data, "Резервная копия записей");
     }
   : undefined;
+// Код входа в админку сайта (admin.ts) и тревоги владельцу (admin-stats.ts) — только в Telegram, не в ленту уведомлений: её видит и виджет на ПК.
+const adminCode = tg ? async (u: User, text: string) => void (await tg.send(u, text, "neutral")) : undefined;
 scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
 // Ночной снимок всей базы (SQLite) — раз в сутки после 00:00 UTC, в snapshots/ рядом с базой (snapshot.ts).
 const snapshotDir = config.dbFile && !config.databaseUrl ? path.join(path.dirname(config.dbFile), "snapshots") : null;
 scheduler.extra = async (now) => {
   await pipeline.retryFailed((u, text, emotion) => send(u, text, emotion), now);
+  // Тревоги владельцу (admin-stats.ts): перерасход за день, всплеск неразобранных — только в Telegram админам.
+  if (adminCode) for (const text of await adminAlerts(store, now).catch((e) => (console.error("[alerts]", e), [] as string[]))) {
+    for (const u of await store.users()) if (isAdmin(u, "session")) await adminCode(u, text).catch((e) => console.error("[alerts]", e));
+  }
   if (snapshotDir && (await store.once(`snapshot:${now.toISOString().slice(0, 10)}`))) {
     await takeSnapshot(store, snapshotDir, now).then((f) => f && console.log("[snapshot]", f)).catch((e) => console.error("[snapshot]", e));
   }
@@ -75,8 +83,6 @@ const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => cons
 void pipeline.sweepProposals().catch(() => {});
 
 let botName: string | undefined;
-// Код входа в админку сайта (admin.ts) — только в Telegram, не в ленту уведомлений: её видит и виджет на ПК.
-const adminCode = tg ? async (u: User, text: string) => void (await tg.send(u, text, "neutral")) : undefined;
 const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
