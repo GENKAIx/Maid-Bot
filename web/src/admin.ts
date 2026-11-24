@@ -12,19 +12,28 @@ export const ADMIN_LIVE_STAGE = 5;
 
 export type AdminSectionId = "overview" | "analytics" | "users" | "payments" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
 
-export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number }[] = [
-  { id: "overview", title: "Обзор", stage: 0 },
-  { id: "analytics", title: "Аналитика", stage: 5 },
-  { id: "users", title: "Пользователи", stage: 1 },
-  { id: "payments", title: "Оплаты", stage: 0 },
-  { id: "spend", title: "Расходы на модель", stage: 1 },
-  { id: "audience", title: "Аудитория", stage: 1 },
-  { id: "quality", title: "Качество разбора", stage: 1 },
-  { id: "features", title: "Использование функций", stage: 3 },
-  { id: "showcase", title: "Витрина", stage: 4 },
-  { id: "health", title: "Здоровье сервера", stage: 2 },
-  { id: "log", title: "Журнал админки", stage: 0 },
+// Меню по категориям (24.11.2026): group — заголовок категории (ADMIN_GROUPS, по порядку), icon — имя в icons.tsx.
+export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Продукт", "Система"] as const;
+export type AdminGroup = (typeof ADMIN_GROUPS)[number];
+
+export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number; group: AdminGroup; icon: string }[] = [
+  { id: "overview", title: "Обзор", stage: 0, group: "Обзор", icon: "adm-home" },
+  { id: "analytics", title: "Аналитика", stage: 5, group: "Обзор", icon: "adm-chart" },
+  { id: "users", title: "Пользователи", stage: 1, group: "Люди и деньги", icon: "adm-users" },
+  { id: "payments", title: "Оплаты", stage: 0, group: "Люди и деньги", icon: "adm-star" },
+  { id: "audience", title: "Аудитория", stage: 1, group: "Люди и деньги", icon: "adm-target" },
+  { id: "spend", title: "Расходы на модель", stage: 1, group: "ИИ", icon: "adm-coins" },
+  { id: "quality", title: "Качество разбора", stage: 1, group: "ИИ", icon: "adm-check" },
+  { id: "features", title: "Использование функций", stage: 3, group: "Продукт", icon: "adm-spark" },
+  { id: "showcase", title: "Витрина", stage: 4, group: "Продукт", icon: "adm-grid" },
+  { id: "health", title: "Здоровье сервера", stage: 2, group: "Система", icon: "adm-pulse" },
+  { id: "log", title: "Журнал админки", stage: 0, group: "Система", icon: "adm-log" },
 ];
+
+/** Меню админки: категории по порядку ADMIN_GROUPS, внутри — разделы в порядке ADMIN_SECTIONS. Пустые категории не показываются. */
+export function adminNavGroups() {
+  return ADMIN_GROUPS.map((group) => ({ group, items: ADMIN_SECTIONS.filter((s) => s.group === group) })).filter((g) => g.items.length);
+}
 
 /** Раздел по адресу /admin/<раздел>; незнакомый и пустой — Обзор. */
 export function adminSection(arg: string | undefined): AdminSectionId {
@@ -370,10 +379,10 @@ export interface ParseData {
 
 /** Отчёт в меню раздела; fun и rina — заглушки этапа 2 (запросов не шлют). */
 export type AnalyticsTab = AnalyticsReportId | "fun" | "rina";
-export const ANALYTICS_REPORTS: { group: string; items: { id: AnalyticsTab; title: string; stub?: true }[] }[] = [
-  { group: "Деньги", items: [{ id: "money", title: "Обзор" }, { id: "subs", title: "Подписки" }, { id: "ai", title: "Расход на ИИ" }] },
-  { group: "Люди", items: [{ id: "act", title: "Активность" }, { id: "ret", title: "Удержание" }, { id: "fun", title: "Воронки", stub: true }] },
-  { group: "Рина и функции", items: [{ id: "feat", title: "Функции" }, { id: "rina", title: "Рина", stub: true }, { id: "parse", title: "Разбор" }] },
+export const ANALYTICS_REPORTS: { group: string; icon: string; items: { id: AnalyticsTab; title: string; stub?: true }[] }[] = [
+  { group: "Деньги", icon: "adm-coins", items: [{ id: "money", title: "Обзор" }, { id: "subs", title: "Подписки" }, { id: "ai", title: "Расход на ИИ" }] },
+  { group: "Люди", icon: "adm-users", items: [{ id: "act", title: "Активность" }, { id: "ret", title: "Удержание" }, { id: "fun", title: "Воронки", stub: true }] },
+  { group: "Рина и функции", icon: "adm-spark", items: [{ id: "feat", title: "Функции" }, { id: "rina", title: "Рина", stub: true }, { id: "parse", title: "Разбор" }] },
 ];
 /** С этого дня копятся данные для отчётов этапа 2 (Воронки, Рина). */
 export const ANALYTICS_COLLECT_SINCE = "2026-11-24";

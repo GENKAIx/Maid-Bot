@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ADM_WEEKDAYS, ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminSection, ago, CLIENT_NAMES, ERROR_NAMES, msText, ROUTE_NAMES, sortRows, uptimeText, usd } from "../src/admin.ts";
+import { adminNavGroups, ADMIN_GROUPS, ADM_WEEKDAYS, ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminSection, ago, CLIENT_NAMES, ERROR_NAMES, msText, ROUTE_NAMES, sortRows, uptimeText, usd } from "../src/admin.ts";
 
 // Этап 2: раздел «Здоровье сервера» живой; подписи клиентов, веток и ошибок; время ответа и работы сервера.
 test("админка, этап 2: «Здоровье» живое, подписи и форматы", () => {
@@ -42,4 +42,14 @@ test("админка: сортировка таблицы, деньги и «к�
   assert.equal(ago(null, now), "—");
   assert.equal(ago("2026-11-23T10:00:00Z", now), "вчера");
   assert.equal(ago("2026-11-14T12:00:00Z", now), "10 дн. назад");
+});
+
+test("меню админки: каждый раздел в своей категории, с иконкой, без пустых категорий, порядок — по ADMIN_GROUPS", async () => {
+  const { readFileSync } = await import("node:fs");
+  const icons = readFileSync(new URL("../src/icons.tsx", import.meta.url), "utf8");
+  const nav = adminNavGroups();
+  assert.deepEqual(nav.map((g) => g.group), [...ADMIN_GROUPS]);
+  assert.equal(nav.flatMap((g) => g.items).length, ADMIN_SECTIONS.length, "все разделы в меню, ни один не потерян");
+  for (const s of ADMIN_SECTIONS) assert.ok(icons.includes(`"${s.icon}":`), `иконка ${s.icon} есть в icons.tsx`);
+  assert.deepEqual(nav[0].items.map((s) => s.id), ["overview", "analytics"]);
 });

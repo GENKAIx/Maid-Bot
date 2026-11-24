@@ -9,6 +9,7 @@ import {
   type RetData, type SubsData,
 } from "../admin";
 import { AnaCohort, AnaHBars, AnaHeat, AnaLegend, AnaLine, AnaStack, ANA_C, ANA_ORDER } from "../adminCharts";
+import { Icon } from "../icons";
 import { navigate, usePath } from "../router";
 import { AdminLost, Loading } from "./AdminSections";
 
@@ -89,7 +90,7 @@ export function AdminAnalytics() {
     <div className="ana-layout">
       <nav className="ana-sub" aria-label="Отчёты">
         {ANALYTICS_REPORTS.map((g) => [
-          <small key={g.group}>{g.group}</small>,
+          <small key={g.group}><Icon name={g.icon} size={14} />{g.group}</small>,
           ...g.items.map((it) => (
             <a key={it.id} href={`/admin/analytics/${it.id}`} className={it.id === tab ? "on" : ""}
               onClick={(e) => { e.preventDefault(); navigate(`/admin/analytics/${it.id}`, true); }}>{it.title}</a>

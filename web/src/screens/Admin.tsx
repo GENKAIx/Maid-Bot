@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { ApiError, get, post } from "../api";
-import { ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminSection } from "../admin";
+import { ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminNavGroups, adminSection } from "../admin";
+import { Icon } from "../icons";
 import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, AdminPayments, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
 import { navigate } from "../router";
 import "../admin.css";
@@ -101,12 +102,16 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
       <aside className="adm-side">
         <div className="adm-brand"><img src="/icon.svg" alt="" width={22} height={22} /><span>Админка</span></div>
         <nav className="adm-nav">
-          {ADMIN_SECTIONS.map((s) => (
-            <a key={s.id} href={s.id === "overview" ? "/admin" : `/admin/${s.id}`} className={s.id === section ? "on" : ""}
-              onClick={(e) => { e.preventDefault(); go(s.id); }}>
-              <span>{s.title}</span>{s.stage > ADMIN_LIVE_STAGE && <span className="adm-stage">этап {s.stage}</span>}
-            </a>
-          ))}
+          {adminNavGroups().map((g) => [
+            <small key={g.group} className="adm-nav-group">{g.group}</small>,
+            ...g.items.map((s) => (
+              <a key={s.id} href={s.id === "overview" ? "/admin" : `/admin/${s.id}`} className={s.id === section ? "on" : ""}
+                onClick={(e) => { e.preventDefault(); go(s.id); }}>
+                <Icon name={s.icon} size={17} /><span className="adm-nav-title">{s.title}</span>
+                {s.stage > ADMIN_LIVE_STAGE && <span className="adm-stage">этап {s.stage}</span>}
+              </a>
+            )),
+          ])}
         </nav>
         <div className="adm-side-foot">
           <span className="adm-muted">Вход до <b className="adm-num">{hm(until)}</b></span>

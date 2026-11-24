@@ -51,6 +51,13 @@ body.admin-body { background: #0f1114; }
 .adm-nav a { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 8px; color: var(--a-muted); text-decoration: none; font-size: 13.5px; }
 .adm-nav a:hover { color: var(--a-text); background: var(--a-panel-2); }
 .adm-nav a.on { color: var(--a-text); background: var(--a-panel-2); box-shadow: inset 2px 0 0 var(--a-accent); }
+/* Категории меню (24.11.2026): подпись капсом, у пунктов — иконка слева, у выбранного — цветом акцента. */
+.adm-nav-group { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--a-muted); opacity: .75; padding: 14px 10px 4px; }
+.adm-nav-group:first-child { padding-top: 2px; }
+.adm-nav a { justify-content: flex-start; }
+.adm-nav a svg { flex: none; opacity: .85; }
+.adm-nav a.on svg { color: var(--a-accent); opacity: 1; }
+.adm-nav-title { flex: 1; min-width: 0; }
 .adm-stage { font-family: var(--a-mono); font-size: 10.5px; color: var(--a-muted); opacity: .75; white-space: nowrap; }
 .adm-side-foot { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 8px; font-size: 12.5px; }
 .adm-main { padding: 28px 32px 48px; min-width: 0; }
@@ -140,6 +147,7 @@ body.admin-body { background: #0f1114; }
   .adm-side { position: static; height: auto; padding: 14px 16px; gap: 12px; border-right: 0; border-bottom: 1px solid var(--a-line); }
   .adm-nav { flex-direction: row; overflow-x: auto; scrollbar-width: none; }
   .adm-nav a { flex: none; }
+  .adm-nav-group { display: none; }
   /* Переключатели (клиенты, вкладки витрины) — в несколько строк, а не вбок за экран. */
   .adm-seg-ctl { display: flex; flex-wrap: wrap; max-width: 100%; }
   .adm-stage { display: none; }
@@ -218,7 +226,8 @@ body.admin-body { background: #0f1114; }
 .admin { --a-c1: #3987e5; --a-c2: #d95926; --a-c3: #199e70; --a-c4: #c98500; --a-c5: #d55181; --a-c6: #9085e9; --a-star: #f2c14e; --a-good: #5fc59a; --a-panel-3: #22272e; --a-line-2: #313741; --a-soft: #b9bfc8; }
 .ana-layout { display: grid; grid-template-columns: 178px minmax(0, 1fr); gap: 22px; align-items: start; }
 .ana-sub { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 1px; padding: 10px 8px; border: 1px solid var(--a-line); border-radius: 12px; background: var(--a-panel); }
-.ana-sub small { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--a-muted); padding: 8px 8px 3px; }
+.ana-sub small { display: flex; align-items: center; gap: 6px; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--a-muted); padding: 8px 8px 3px; }
+.ana-sub small svg { flex: none; }
 .ana-sub a { padding: 5px 8px 5px 14px; border-radius: 7px; color: var(--a-muted); text-decoration: none; font-size: 13px; }
 .ana-sub a:hover { color: var(--a-text); }
 .ana-sub a.on { background: var(--a-panel-3); color: var(--a-text); font-weight: 600; }
