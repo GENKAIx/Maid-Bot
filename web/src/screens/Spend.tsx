@@ -91,7 +91,7 @@ export function SpendCard() {
         {unpriced > 0 && (
           <p className="muted small">У {calls(unpriced)} цены нет — провайдер её не сообщил, в сумму они не вошли. Цену присылают OpenRouter и RunPod.</p>
         )}
-        <p className="muted small">Дни считаются по UTC (Москва — с 3:00). Расход общий для всего сервера.</p>
+        <p className="muted small">Дни считаются по UTC (Москва — с 3:00). Здесь только ваш расход: ваши сообщения, сводки и напоминания для вас.</p>
       </>}
     </div>
   );

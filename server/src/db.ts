@@ -1448,11 +1448,14 @@ export class Store {
 
   // --- служебное ---
   /** Расход модели за месяц: запросов, токенов, денег. До шага 11 месяц копился в kv (llm:ГГГГ-ММ, без денег) — он прибавляется. */
-  async llmUsage(month: string): Promise<{ calls: number; input: number; output: number; cost: number; priced: number }> {
+  /** Итог месяца. userId — только расход этого человека (сайт, 24.11.2026); без него — весь сервер со старым счётчиком kv (админка, бот). */
+  async llmUsage(month: string, userId?: number): Promise<{ calls: number; input: number; output: number; cost: number; priced: number }> {
     let old = { calls: 0, input: 0, output: 0 };
-    try { old = { ...old, ...JSON.parse((await this.kvGet(`llm:${month}`)) ?? "{}") }; } catch { /* битая запись — без неё */ }
+    if (userId === undefined) try { old = { ...old, ...JSON.parse((await this.kvGet(`llm:${month}`)) ?? "{}") }; } catch { /* битая запись — без неё */ }
+    const mine = userId === undefined ? "" : " AND user_id = ?";
     const r = await this.get<Record<string, unknown>>(
-      "SELECT SUM(calls) AS calls, SUM(input) AS input, SUM(output) AS output, SUM(micro_usd) AS micro, SUM(priced) AS priced FROM llm_usage WHERE day LIKE ?", `${month}-%`,
+      `SELECT SUM(calls) AS calls, SUM(input) AS input, SUM(output) AS output, SUM(micro_usd) AS micro, SUM(priced) AS priced FROM llm_usage WHERE day LIKE ?${mine}`,
+      `${month}-%`, ...(userId === undefined ? [] : [userId]),
     );
     const n = (v: unknown) => Number(v ?? 0) || 0;
     return { calls: old.calls + n(r?.calls), input: old.input + n(r?.input), output: old.output + n(r?.output), cost: n(r?.micro) / 1e6, priced: n(r?.priced) };
@@ -1468,11 +1471,12 @@ export class Store {
       x.cost == null ? 0 : 1,
     );
   }
-  /** Расход по дням с from по to (ГГГГ-ММ-ДД, включительно), по дням и назначениям — все люди вместе. */
-  async usageDays(from: string, to: string): Promise<UsageRow[]> {
+  /** Расход по дням с from по to (ГГГГ-ММ-ДД, включительно), по дням и назначениям. userId — только этого человека, без него — все вместе. */
+  async usageDays(from: string, to: string, userId?: number): Promise<UsageRow[]> {
+    const mine = userId === undefined ? "" : " AND user_id = ?";
     const rows = await this.all<Record<string, unknown>>(
       `SELECT day, kind, model, SUM(calls) AS calls, SUM(input) AS input, SUM(output) AS output, SUM(micro_usd) AS micro_usd, SUM(priced) AS priced
-       FROM llm_usage WHERE day >= ? AND day <= ? GROUP BY day, kind, model ORDER BY day, kind, model`, from, to,
+       FROM llm_usage WHERE day >= ? AND day <= ?${mine} GROUP BY day, kind, model ORDER BY day, kind, model`, from, to, ...(userId === undefined ? [] : [userId]),
     );
     return rows.map((r) => ({
       day: String(r.day), kind: String(r.kind), model: String(r.model), calls: Number(r.calls), input: Number(r.input),

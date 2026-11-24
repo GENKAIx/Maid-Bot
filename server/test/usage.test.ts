@@ -136,11 +136,16 @@ test("разбор сообщения помечает запрос как «par
   assert.deepEqual(kinds, ["parse"]);
 });
 
-test("/api/usage: дни, назначения, итог месяца; без входа — 401", async () => {
+test("/api/usage: дни, назначения, итог месяца — только свои; без входа — 401", async () => {
   const store = await Store.open(":memory:");
   const u = await store.ensureUser("100", "Тест", "Europe/Moscow");
+  const other = await store.ensureUser("200", "Друг", "Europe/Moscow");
   await store.updateUser(u.id, { login: "owner", password_hash: await hashPassword("secret-pass-1") });
-  await store.addUsage(new Date(), { kind: "draw", model: "img", input: 0, output: 0, cost: 0.04 });
+  await store.addUsage(new Date(), { kind: "draw", model: "img", input: 0, output: 0, cost: 0.04, userId: u.id });
+  // Чужой и ничей расход (24.11.2026: раньше их видел любой вошедший) — не в его отчёте.
+  await store.addUsage(new Date(), { kind: "parse", model: "big", input: 10, output: 5, cost: 1.5, userId: other.id });
+  await store.addUsage(new Date(), { kind: "chat", model: "big", input: 10, output: 5, cost: 2 });
+  await store.kvSet(`llm:${new Date().toISOString().slice(0, 7)}`, JSON.stringify({ calls: 50, input: 1, output: 1 }));
   const server = createApi({ store, pipeline: new Pipeline(store, async () => "{}") }).listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   try {
@@ -152,6 +157,8 @@ test("/api/usage: дни, назначения, итог месяца; без в
     assert.equal(r.days.at(-1).calls, 1);
     assert.deepEqual(r.kinds.map((k: any) => k.kind), ["draw"]);
     assert.ok(Math.abs(r.month.cost - 0.04) < 1e-9);
+    assert.equal(r.month.calls, 1, "старый общий счётчик и чужие запросы — не в своём итоге");
+    assert.equal(r.total.calls, 1);
   } finally {
     server.close();
   }

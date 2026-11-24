@@ -391,10 +391,11 @@ export function createApi(deps: ApiDeps) {
       };
     }
     // Расход модели, рисования и голоса: по дням (UTC, все дни подряд — и пустые), по назначениям и моделям за эти дни, итог месяца.
+    // Только свой (24.11.2026: раньше любой вошедший видел расход всего сервера; общий — в админке).
     if (m === "GET" && p === "/api/usage") {
       const n = Math.min(90, Math.max(7, Number(q("days")) || 30));
       const utc = new Date().toISOString().slice(0, 10);
-      return usageReport(await store.usageDays(addDays(utc, 1 - n), utc), n, await store.llmUsage(utc.slice(0, 7)), utc);
+      return usageReport(await store.usageDays(addDays(utc, 1 - n), utc, u.id), n, await store.llmUsage(utc.slice(0, 7), u.id), utc);
     }
     // Выйти на другом устройстве (потерянный телефон, старый ПК).
     if (m === "POST" && p === "/api/sessions/drop") {
