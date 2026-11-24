@@ -71,6 +71,14 @@ export const FEATURES: FeatureDef[] = [
   bot("bot.invite", "/invite"),
   bot("bot.model", "/model"),
   bot("bot.accounts", "/accounts"),
+  // Подписка (billing.ts): /terms и /paysupport отвечают и незнакомцам (до фильтра) — у них счётчик не идёт.
+  bot("bot.terms", "/terms — условия"),
+  bot("bot.paysupport", "/paysupport — вопрос об оплате"),
+  bot("bot.cancel_sub", "/cancel_sub — отменить продление"),
+  bot("bot.resume_sub", "/resume_sub — возобновить продление"),
+  bot("bot.signups", "/signups — открыть или закрыть регистрацию (владелец)"),
+  bot("bot.answer", "/answer — ответ на вопрос об оплате (владелец)"),
+  bot("bot.refund", "/refund — возврат (владелец)"),
   bot("bot.widget", "Список-виджет Telegram: нажатия"),
   // Общие: то, что есть и на сайте, и в виджете, и в боте; клиент — колонкой. Ветки разбора — pipeline.ts (handle).
   common("record", "Запись через горничную"),

@@ -46,8 +46,9 @@ test("реестр: анимации альбома с кадрами и гру�
   assert.deepEqual(r.map.site.map((s) => s.id), NAV_TABS.map((t) => t.id));
   assert.equal(r.map.site.length, 15);
   assert.deepEqual(r.map.windows.map((w) => w.file).sort(), ["flash.html", "index.html", "quick.html", "widget.html"]);
-  assert.equal(r.map.bot.length, 17);
-  assert.deepEqual(r.map.bot.filter((b) => b.owner).map((b) => b.cmd), ["accounts", "invite", "model"]);
+  // 17 + подписка (24.11.2026, billing.ts): /terms, /paysupport, /cancel_sub, /resume_sub и владельцу /answer, /signups, /refund.
+  assert.equal(r.map.bot.length, 24);
+  assert.deepEqual(r.map.bot.filter((b) => b.owner).map((b) => b.cmd), ["answer", "signups", "refund", "accounts", "invite", "model"]);
   assert.ok(!r.map.bot.find((b) => b.cmd === "chatid")!.feature, "у /chatid нет счётчика");
   assert.equal(r.map.features.length, FEATURE_IDS.size);
   for (const x of [...r.map.site, ...r.map.windows, ...r.map.bot]) if (x.feature) assert.ok(FEATURE_IDS.has(x.feature), x.feature);

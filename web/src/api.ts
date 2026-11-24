@@ -12,8 +12,9 @@ export const getToken = () => {
 };
 export const setToken = (t: string) => (t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY));
 
+/** data — всё тело ответа с ошибкой: у 402 (нужна подписка) там pay_url, messageId, saved (billing.ts refusedOf). */
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public data: Record<string, unknown> = {}) {
     super(message);
   }
 }
@@ -38,11 +39,13 @@ export async function api<T = unknown>(method: "GET" | "POST" | "DELETE", path: 
     signal: AbortSignal.timeout(90_000),
   });
   const data = (await res.json().catch(() => ({}))) as { error?: string };
+  // Только 401 — выход со входа. 402 (пробная неделя или подписка кончились) вход не трогает: ключ остаётся,
+  // ошибка несёт текст и ссылку на оплату (billing.ts refusedOf).
   if (res.status === 401 && path !== "/api/login") {
     setToken("");
     onUnauthorized?.();
   }
-  if (!res.ok) throw new ApiError(res.status, data.error ?? `сервер ${res.status}`);
+  if (!res.ok) throw new ApiError(res.status, data.error ?? `сервер ${res.status}`, data && typeof data === "object" ? (data as Record<string, unknown>) : {});
   return data as T;
 }
 

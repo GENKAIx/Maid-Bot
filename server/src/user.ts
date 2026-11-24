@@ -32,8 +32,9 @@ try {
       await store.updateUser(existing.id, { login: loginName.toLowerCase(), password_hash: await hashPassword(password) });
       console.log(`Логин «${loginName}» выдан записи #${existing.id} (Telegram уже привязан).`);
     } else {
+      // Запись из командной строки заводит сам владелец — это друг: бесплатно навсегда (access.ts).
       const u = await store.createUser({
-        login: loginName, passwordHash: await hashPassword(password), name: arg("name"), tz: config.defaultTimezone, chatId: chat ?? null,
+        login: loginName, passwordHash: await hashPassword(password), name: arg("name"), tz: config.defaultTimezone, chatId: chat ?? null, plan: "friend",
       });
       console.log(`Создан #${u.id} «${u.login}».`);
     }

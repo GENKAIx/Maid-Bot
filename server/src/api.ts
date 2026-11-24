@@ -6,7 +6,7 @@ import { z } from "zod";
 import { PERSONAS } from "./personas.ts";
 import { authByToken, clientMeta, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
 import { adminJournal, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
-import { adminAudience, adminFeatures, adminHealth, adminOverview, adminQualityReport, adminSpend, adminUsers } from "./admin-stats.ts";
+import { adminAudience, adminFeatures, adminHealth, adminOverview, adminPayments, adminQualityReport, adminSpend, adminUsers } from "./admin-stats.ts";
 import { acceptUsage, countFeature, featureClient, USAGE_MAX_KEYS } from "./feature-events.ts";
 import { featureOfApi } from "./feature-list.ts";
 import type { DateRow, Store, UsageRow, User } from "./db.ts";
@@ -33,6 +33,8 @@ import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { moveToTomorrow, weatherFor } from "./weather.ts";
 import { ADDRESSES, addressWord, askNext, askOf, wakeAt, wakeMinOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES, llmErrorCode } from "./llm.ts";
+import { accessOf, accessView, RATE_AGAIN, type Refusal } from "./access.ts";
+import type { Billing } from "./billing.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -57,10 +59,13 @@ export interface ApiDeps {
   adminCode?: (u: User, text: string) => Promise<void>;
   /** Поиск города для «О вас» (тесты подставляют свой; по умолчанию — геокодер Open-Meteo). */
   cities?: (q: string) => Promise<City[]>;
+  /** Подписка Telegram Stars (billing.ts): ссылка на оплату, отмена продления, возврат из админки. Нет — 503 на /api/billing/*. */
+  billing?: Billing;
 }
 
+/** extra — ещё поля ответа рядом с error (402: pay_url, messageId). */
 class HttpError extends Error {
-  constructor(public status: number, msg: string) {
+  constructor(public status: number, msg: string, public extra?: Record<string, unknown>) {
     super(msg);
   }
 }
@@ -318,7 +323,23 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/admin/health") return adminHealth(store);
     if (m === "GET" && p === "/api/admin/features") return adminFeatures(store);
     if (m === "GET" && p === "/api/admin/log") return adminJournal(store);
+    // Оплаты (billing.ts): список без payload и полного charge_id (хвост — для сверки с Telegram), возврат — с записью в журнал.
+    if (m === "GET" && p === "/api/admin/payments") return adminPayments(store);
+    if (m === "POST" && p === "/api/admin/refund") {
+      if (!deps.billing) throw new HttpError(503, "оплата выключена");
+      const b = parseBody(z.object({ user_id: z.number().int().positive() }), await readJson(req));
+      const r = await deps.billing.refund(b.user_id, u.id);
+      if (!r.ok) throw new HttpError(409, r.text);
+      return r;
+    }
     throw new HttpError(404, "нет такого адреса");
+  }
+
+  /** ИИ закрыт (access.ts): нет пробы или подписки — 402 со ссылкой на оплату (не 401: на 401 сайт и программа разлогиниваются);
+   *  слишком часто или дневной потолок — 429. extra — что ещё отдать (messageId записанной заметки). */
+  async function refuse(u: User, why: Refusal, text: string, extra: Record<string, unknown> = {}): Promise<never> {
+    if (why === "access") throw new HttpError(402, text, { pay_url: (await deps.billing?.link(u)) ?? null, ...extra });
+    throw new HttpError(429, text, extra);
   }
 
   /** Кто сделал запрос и с какого клиента — для счётчика фич по ручкам API (feature-list.ts api), считается после удачного ответа. */
@@ -416,9 +437,27 @@ export function createApi(deps: ApiDeps) {
       const mine = tokenHash(token).slice(0, 16);
       return {
         ...me,
+        // Платный доступ (access.ts): план, срок, отменено ли продление, дней пробы — для блока «Подписка» и баннера.
+        access: accessView(pipeline.gate?.access(u) ?? accessOf(u)),
         admin: isAdmin(u, auth.via), // пункт «Админка» в меню сайта; сами данные админки — только через /api/admin/* с кодом
         sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })),
       };
+    }
+    // Подписка (billing.ts): ссылка на оплату в Telegram (сайт — window.open, программа — shell.openExternal) и отмена продления.
+    // Работают и без доступа к ИИ: иначе не оплатить.
+    if (m === "POST" && p === "/api/billing/link") {
+      // Платить не нужно (владелец, друг, подписка и так идёт) — 409 с причиной: вторая подписка списала бы звёзды дважды.
+      const why = deps.billing?.payable(u);
+      if (why) throw new HttpError(409, why);
+      const url = await deps.billing?.link(u);
+      if (!url) throw new HttpError(503, "Оплата сейчас недоступна — попробуйте чуть позже.");
+      return { url };
+    }
+    if (m === "POST" && (p === "/api/billing/cancel" || p === "/api/billing/resume")) {
+      if (!deps.billing) throw new HttpError(503, "оплата выключена");
+      const r = p.endsWith("cancel") ? await deps.billing.cancel(u) : await deps.billing.resume(u);
+      if (!r.ok) throw new HttpError(409, r.text);
+      return r;
     }
     // Расход модели, рисования и голоса: по дням (UTC, все дни подряд — и пустые), по назначениям и моделям за эти дни, итог месяца.
     // Только свой (24.11.2026: раньше любой вошедший видел расход всего сервера; общий — в админке).
@@ -1081,7 +1120,10 @@ export function createApi(deps: ApiDeps) {
       if (images.length > IMAGE_MAX_COUNT) throw new HttpError(400, `не больше ${IMAGE_MAX_COUNT} картинок`);
       const sizes = images.map((i) => Buffer.byteLength(i.data, "base64"));
       if (sizes.some((n) => n > IMAGE_MAX_BYTES) || sizes.reduce((a, n) => a + n, 0) > IMAGES_MAX_BYTES) throw new HttpError(413, "слишком большая картинка");
-      return pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: b.text, chatOnly: b.ask, images: images.length ? images : undefined, client });
+      const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: b.text, chatOnly: b.ask, images: images.length ? images : undefined, client });
+      // ИИ закрыт — текст уже записан заметкой (pipeline.ts blocked): клиенту — 402/429 с номером сообщения.
+      if (r.blocked) return refuse(u, r.blocked, r.text, { messageId: r.messageId, saved: r.undoable });
+      return r;
     }
     // Голосовое сообщение: аудио в base64 → текст → как обычная запись. heard — что услышали.
     if (m === "POST" && p === "/api/voice") {
@@ -1091,6 +1133,10 @@ export function createApi(deps: ApiDeps) {
       );
       const audio = Buffer.from(b.audio, "base64");
       if (audio.length > VOICE_MAX_BYTES) throw new HttpError(413, "слишком длинная запись");
+      // Распознавание — тоже ИИ (и платное, даже если услышали тишину): доступ, частота и потолок — до него. Частота отмечена здесь,
+      // разбор ниже второй раз её не считает (gated). saved: false — голос нигде не записан (виджет оставит его в очереди).
+      const v = await pipeline.gate?.check(u);
+      if (v && !v.ok) return refuse(u, v.why, v.why === "rate" ? RATE_AGAIN : v.text, { saved: false });
       // Клиенту — своя фраза и код сбоя, не текст ошибки: в нём бывает тело ответа провайдера (оно — только в журнале сервера).
       const heard = await transcribe(audio, b.mime).catch((e) => {
         console.error("[voice]", e);
@@ -1099,7 +1145,8 @@ export function createApi(deps: ApiDeps) {
       });
       // Слов нет — чаще всего записалась тишина: микрофон выключен (на наушниках) или выбран не тот.
       if (!heard) throw new HttpError(422, "Ничего не услышала. Проверьте свой микрофон — может, он выключен на наушниках или выбран не тот.");
-      const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: heard.slice(0, 4000), client });
+      const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: heard.slice(0, 4000), client, gated: true });
+      if (r.blocked) return refuse(u, r.blocked, r.text, { messageId: r.messageId, saved: r.undoable, heard });
       return { ...r, heard };
     }
     // Вопрос «добавить?» из ответа: action remind / add / decline, picked — отмеченные пункты. GET — его состояние
@@ -1116,7 +1163,11 @@ export function createApi(deps: ApiDeps) {
     }
     const again = p.match(/^\/api\/messages\/(\d+)\/(retry|note)$/);
     if (again && m === "POST") {
-      if (again[2] === "retry") return pipeline.retry(u, Number(again[1]), new Date(), client);
+      if (again[2] === "retry") {
+        const r = await pipeline.retry(u, Number(again[1]), new Date(), client);
+        if (r.blocked) return refuse(u, r.blocked, r.text, { messageId: r.messageId, saved: r.undoable });
+        return r;
+      }
       return { text: await pipeline.asNote(u, Number(again[1])) };
     }
     // Ответ на «Сдвинуть на …?» (план лёг на занятое время) — те же shift / keep, что у кнопок Telegram.
@@ -1140,6 +1191,7 @@ export function createApi(deps: ApiDeps) {
       );
       const r = await pipeline.correct(u, b.messageId, b.text, { sourceId: b.id ?? crypto.randomUUID() });
       if (!r) throw new HttpError(404, "нет такого ответа");
+      if (r.blocked) return refuse(u, r.blocked, r.text, { messageId: r.messageId });
       return r;
     }
     if (m === "POST" && p === "/api/icons") {
@@ -1174,7 +1226,7 @@ export function createApi(deps: ApiDeps) {
       const status = e instanceof HttpError ? e.status : 500;
       if (status === 500) console.error("[api]", e);
       if (!res.headersSent) res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ error: e instanceof HttpError ? e.message : "ошибка сервера" }));
+      res.end(JSON.stringify({ error: e instanceof HttpError ? e.message : "ошибка сервера", ...(e instanceof HttpError ? e.extra : {}) }));
     }
   });
 }

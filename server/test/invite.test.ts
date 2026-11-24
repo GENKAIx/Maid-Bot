@@ -22,8 +22,8 @@ test("приглашение: друг получает логин из @usernam
   assert.equal(got.login, "vasya_pupkin");
   assert.equal(got.user.chat_id, "222");
   assert.equal(got.user.name, "Вася");
-  assert.ok(got.password.length >= 8);
-  assert.ok(await verifyPassword(got.password, (await store.userByLogin("vasya_pupkin"))!.password_hash));
+  assert.ok(got.password!.length >= 8);
+  assert.ok(await verifyPassword(got.password!, (await store.userByLogin("vasya_pupkin"))!.password_hash));
 });
 
 test("приглашение одноразовое; чужой, просроченный код и уже свой чат — не проходят", async () => {
@@ -34,10 +34,26 @@ test("приглашение одноразовое; чужой, просроч�
   assert.equal(await redeemInvite(store, "нет-такого-кода", { id: "333", name: "Петя" }, TZ), null);
   const old = await createInvite(store, new Date("2026-11-01T12:00:00Z"));
   assert.equal(await redeemInvite(store, old, { id: "333", name: "Петя" }, TZ, new Date(Date.parse("2026-11-01T12:00:00Z") + (INVITE_DAYS + 1) * 86_400_000)), null);
-  // Уже есть запись — код не тратится, им может воспользоваться другой.
+  // Друг (бесплатно навсегда) — код не тратится, им может воспользоваться другой.
   const fresh = await createInvite(store);
-  assert.equal(await redeemInvite(store, fresh, VASYA, TZ), null);
-  assert.ok(await redeemInvite(store, fresh, { id: "333", name: "Петя" }, TZ));
+  const vasya = (await store.userByChat("222"))!;
+  await store.updateUser(vasya.id, { plan: "friend" });
+  const same = await redeemInvite(store, fresh, VASYA, TZ);
+  assert.deepEqual([same?.login, same?.until], [null, null]);
+  assert.ok((await redeemInvite(store, fresh, { id: "333", name: "Петя" }, TZ))?.login);
+});
+
+test("приглашение — подарок на 30 дней: новому проба до подарка, у кого запись есть — срок продлевается от конца прежнего", async () => {
+  const store = await Store.open(":memory:");
+  const now = new Date("2026-11-24T10:00:00Z");
+  const got = (await redeemInvite(store, await createInvite(store, now), VASYA, TZ, now))!;
+  assert.equal(got.user.plan, "trial");
+  assert.equal(got.until, new Date(now.getTime() + 30 * 86_400_000).toISOString());
+  // Второй подарок той же записи: без нового логина, срок +30 дней от конца прежнего.
+  const again = (await redeemInvite(store, await createInvite(store, now), VASYA, TZ, now))!;
+  assert.equal(again.login, null);
+  assert.equal(again.until, new Date(now.getTime() + 60 * 86_400_000).toISOString());
+  assert.equal((await store.userByChat("222"))!.access_until, again.until);
 });
 
 test("логин: занят — с числом, без @username — friend", async () => {

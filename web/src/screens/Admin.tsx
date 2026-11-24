@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { ApiError, get, post } from "../api";
 import { ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminSection } from "../admin";
-import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
+import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, AdminPayments, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
 import { navigate } from "../router";
 import "../admin.css";
 
@@ -117,6 +117,7 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
         <header className="adm-head"><h1>{cur.title}</h1></header>
         {section === "overview" ? <AdminOverview />
           : section === "users" ? <AdminUsers />
+          : section === "payments" ? <AdminPayments />
           : section === "spend" ? <AdminSpend />
           : section === "audience" ? <AdminAudience />
           : section === "quality" ? <AdminQuality />

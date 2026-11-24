@@ -95,7 +95,24 @@ export async function adminOverview(store: Store, now = new Date()) {
     spend_today: todayCost, spend_month: month.cost, spend_forecast: spendForecast, unpriced_month: month.calls - month.priced,
     requests_week: sum("requests"), failed_week: sum("failed"), clarify_week: sum("clarify"), undone_week: sum("undone"),
     online: await onlineNow(store, now),
+    // Платный доступ (billing.ts): звёзды за 30 дней без возвратов, сколько активных подписок и проб, у скольких срок кончился.
+    billing: await billingOverview(store, now),
   };
+}
+
+async function billingOverview(store: Store, now: Date) {
+  const plans = await store.planCounts(now.toISOString());
+  return { stars_30: await store.starsSince(iso(now.getTime() - 30 * DAY)), subscribers: plans.paid, trials: plans.trial, expired: plans.expired, friends: plans.friend };
+}
+
+/** Оплаты для админки: кто (имя или логин), сколько, вид, когда, до какого, возвращена ли. Без payload и chat id;
+ *  от charge_id — только хвост (сверка с Telegram). Новые сверху. */
+export async function adminPayments(store: Store, limit = 200) {
+  const who = new Map((await store.users()).map((x) => [x.id, x.name || x.login || `#${x.id}`]));
+  return (await store.adminPayments(limit)).map((p) => ({
+    user_id: p.user_id, name: who.get(p.user_id) ?? `#${p.user_id}`, amount: p.amount, currency: p.currency, kind: p.kind,
+    paid_at: p.paid_at, expires_at: p.expires_at, refunded_at: p.refunded_at, charge: `…${p.charge_id.slice(-8)}`,
+  }));
 }
 
 /** Таблица людей: когда пришёл, последнее обращение, за 30 дней — обращений, с ИИ и без, отмен; расход за 30 дней, месяц и всего. */

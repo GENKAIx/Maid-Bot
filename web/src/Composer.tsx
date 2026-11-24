@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { post } from "./api";
+import { refusedOf, refusedView } from "./billing";
 import { Recorder } from "./recorder";
 import { plainReply } from "./format";
 import { navigate } from "./router";
@@ -16,7 +17,8 @@ export function prefill(text: string) {
 export function Composer({ onChanged }: { onChanged: () => void }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [reply, setReply] = useState<{ text: string; reply?: Reply; error?: boolean } | null>(null);
+  // pay — ссылка на оплату (сервер ответил 402: пробная неделя или подписка кончились): кнопка «⭐ Оформить подписку» в ответе.
+  const [reply, setReply] = useState<Shown | null>(null);
   const timer = useRef<number>(0);
   const area = useRef<HTMLTextAreaElement>(null);
   const rec = useRef(new Recorder());
@@ -95,13 +97,13 @@ export function Composer({ onChanged }: { onChanged: () => void }) {
 ${plainReply(r.text)}`, reply: r });
       onChanged();
     } catch (err) {
-      show({ text: (err as Error).message, error: true });
+      refused(err);
     } finally {
       setBusy(false);
     }
   }
 
-  function show(r: { text: string; reply?: Reply; error?: boolean }, ms = 14000) {
+  function show(r: Shown, ms = 14000) {
     setReply(r);
     clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setReply(null), ms);
@@ -121,11 +123,26 @@ ${plainReply(r.text)}`, reply: r });
       show({ text: plainReply(r.text), reply: r });
       onChanged();
     } catch (err) {
-      show({ text: (err as Error).message, error: true });
+      refused(err);
     } finally {
       setBusy(false);
       area.current?.focus();
     }
+  }
+
+  // Ошибка записи. ИИ закрыт (402 — нет пробы или подписки; 429 — слишком часто или лимит дня): сервер уже записал текст
+  // заметкой (saved) — строка очищается, а ответ можно отменить «↩»; у 402 — кнопка оплаты, облачко не красное и висит дольше.
+  // Иначе (и голос, отклонённый до распознавания) — набранное остаётся в строке.
+  function refused(err: unknown) {
+    const no = refusedOf(err);
+    const v = refusedView(no);
+    if (v.clear) {
+      setText("");
+      setPictures([]);
+      onChanged();
+    }
+    const undo: Reply | undefined = no && v.undoId ? { text: no.text, emotion: "neutral", messageId: v.undoId, undoable: true } : undefined;
+    show({ text: (err as Error).message, error: v.error, pay: no?.payUrl ?? undefined, reply: undo }, v.ms);
   }
 
   // «Сдвинуть на …» / «Оставить» после наложения планов.
@@ -169,6 +186,7 @@ ${plainReply(r.text)}`, reply: r });
           <div className="toast-actions">
             {reply.reply?.clash?.shiftTo && <button onClick={() => clash("shift")}>➜ Сдвинуть на {reply.reply.clash.shiftTo}</button>}
             {reply.reply?.clash && <button onClick={() => clash("keep")}>Оставить</button>}
+            {reply.pay && <a className="btn pay" href={reply.pay} target="_blank" rel="noopener noreferrer">⭐ Оформить подписку</a>}
             {reply.reply?.undoable && <button onClick={undo}>↩ Отменить</button>}
             <button className="ghost" onClick={() => setReply(null)}>✕</button>
           </div>
@@ -245,6 +263,8 @@ ${plainReply(r.text)}`, reply: r });
     </div>
   );
 }
+
+type Shown = { text: string; reply?: Reply; error?: boolean; pay?: string };
 
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 function dayChip(d: string) {

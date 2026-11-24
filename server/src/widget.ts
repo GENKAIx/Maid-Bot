@@ -9,8 +9,9 @@ import { dayKey } from "./time.ts";
 // Ответ на запрос — новое состояние целиком, бот тем же кладёт его в сообщение (editMessageWidgetData).
 
 export const WIDGET_STATE_MAX = 1024;
-/** Какие обновления просить у Telegram: без widget_query нажатия в виджете до бота не дойдут. */
-export const WIDGET_UPDATES = ["message", "callback_query", "widget_query"] as unknown as ("message" | "callback_query")[];
+/** Какие обновления просить у Telegram: без widget_query нажатия в виджете до бота не дойдут, без pre_checkout_query — оплата
+ *  Stars срывается по таймауту 10 с (billing.ts). successful_payment и refunded_payment приходят как message. */
+export const WIDGET_UPDATES = ["message", "callback_query", "widget_query", "pre_checkout_query"] as unknown as ("message" | "callback_query" | "pre_checkout_query")[];
 
 /** Строка списка: [ключ "t12"/"h3", название, флаги: 1 — сделано, 2 — важная]. */
 export type WidgetItem = [string, string, number];

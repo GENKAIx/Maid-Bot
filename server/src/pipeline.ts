@@ -15,6 +15,7 @@ import { addTraitFromChat, traitPrompt } from "./profile.ts";
 import { aboutOffer, cityOf, findCities, type City, type YouButton } from "./you.ts";
 import { weatherFor } from "./weather.ts";
 import { countFeature } from "./feature-events.ts";
+import { RATE_AGAIN, type AiGate, type Refusal, type Verdict } from "./access.ts";
 import { SHELVES, notesData, sameNote } from "./notes.ts";
 import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, moneyCard, noteCard, taskCard, traitCard } from "./cards.ts";
 import {
@@ -57,6 +58,9 @@ export interface Reply {
   clash?: Clash;
   /** Нарисованная по просьбе картинка (draw.ts): показать в облачке и в переписке; id — для GET /api/drawings/:id. */
   drawing?: { id: number; mime: string; data: string; title: string };
+  /** ИИ не звали (access.ts): access — нет пробы или подписки (кнопка оплаты), rate — слишком часто, money — дневной потолок.
+   *  Текст сообщения при этом записан заметкой (undoable), само сообщение — done: фоновый повтор его не возьмёт. */
+  blocked?: Refusal;
 }
 
 /** Итог поправки к ответу (POST /api/correct, correct.ts). */
@@ -77,6 +81,8 @@ export interface CorrectReply {
   /** Поправленный план лёг на занятое время — те же кнопки, что у ответа (POST /api/clash с messageId исходного сообщения). */
   clash?: Clash;
   duplicate?: boolean;
+  /** Поправку не делали: ИИ закрыт (access.ts) — как у Reply. */
+  blocked?: Refusal;
 }
 /** Что поправка помнит о себе (parse_json её служебного сообщения) — для повтора доставки. asked — что ушло модели
  *  (поправка вместе с прошлыми «(уточнение: …)»), если она переспросила: следующая поправка — ответ на вопрос. */
@@ -215,6 +221,10 @@ export interface Incoming {
   images?: Picture[];
   /** Клиент для счётчиков фич (feature-events.ts): ставят только api.ts и bot.ts — фоновый повтор и импорт не считаются. */
   client?: string;
+  /** Фоновый повтор разбора (retryFailed): без проверки частоты (access.ts AiGate). */
+  background?: boolean;
+  /** Частоту уже отметили до этого (голосовое: перед распознаванием, bot.ts и api.ts) — второй раз не считать. */
+  gated?: boolean;
 }
 
 /** Ветка разбора → фича (feature-list.ts); упавший разбор и уточнение — не фичи. */
@@ -262,6 +272,9 @@ export class Pipeline {
 
   /** Рисовалка картинок (draw.ts); null — ключа RunPod нет, горничная честно говорит, что не рисует. */
   draw: DrawCall | null = null;
+  /** Платный доступ (access.ts): перед каждым вызовом модели по сообщению — доступ, частота, дневной потолок. null — без проверки
+   *  (тесты конвейера); index.ts ставит его всегда. */
+  gate: AiGate | null = null;
   /** Зовётся, когда у пользователя что-то поменялось (записали, отметили, отменили) — например, чтобы обновить список-виджет. */
   onChange: ((u: User) => void) | null = null;
   /** Вопрос «добавить?» закрыт (ответили, отказались, истёк) — убрать кнопки там, где он висит (Telegram).
@@ -323,6 +336,16 @@ export class Pipeline {
         : "Скажите, из какого вы города, — тогда буду знать погоду. Город — в «Персонализации → О вас».";
       await s.setMessage(message.id, { state: "done", reply: text });
       return { text, emotion: (wx?.emotion ?? "neutral") as Emotion, messageId: message.id, undoable: false };
+    }
+
+    // Платный доступ (access.ts): дальше — только модель. Нельзя — сообщение заметкой, без единого вызова модели.
+    if (this.gate) {
+      const v = await this.gate.check(u, { rate: !inc.background && !inc.gated });
+      if (!v.ok) {
+        c.route = "blocked";
+        if (v.why === "rate") return this.tooFast(u, message, v.text, Boolean(inc.chatOnly || pics));
+        return this.blocked(u, message, v, at, !inc.chatOnly && (!pics || Boolean(inc.text.trim())));
+      }
     }
 
     if (inc.chatOnly) {
@@ -468,6 +491,9 @@ export class Pipeline {
     if (!this.draw) return done("Рисовать я пока не умею: на сервере не задан ключ RunPod (RUNPOD_API_KEY) или OpenRouter (OPENROUTER_API_KEY).", "awkward");
     let pic: Picture;
     // Рисунок — тоже вызов модели у сообщения (самый дорогой): в «Дорогих сообщениях» и «По веткам» он виден.
+    // Рисунок дороже разбора: ещё раз сверить денежные потолки (частоту не считать — это то же сообщение).
+    const v = this.gate ? await this.gate.check(u, { rate: false }) : null;
+    if (v && !v.ok) return done(v.text, "worried");
     const c = msgCalls.getStore();
     if (c) c.calls++;
     try {
@@ -975,6 +1001,14 @@ export class Pipeline {
       const done = await s.transaction(async () => ((await s.claimMessage(message.id)) ? keep(reply, clarify, asked) : null));
       return done ? view(done.reply, done.o) : stored();
     };
+    // Платный доступ (access.ts): поправка — тоже модель. Нельзя — ничего не меняем, отказ остаётся итогом этой поправки.
+    if (this.gate) {
+      const v = await this.gate.check(u);
+      if (!v.ok) {
+        c.route = "blocked";
+        return { ...(await say(v.why === "rate" ? "Много сообщений подряд — повторите поправку через минуту, пожалуйста." : v.text)), blocked: v.why };
+      }
+    }
 
     const items = await answerRows(s, u.id, orig.id);
     const cands = items.filter((i) => i.alive).map((i) => i.x).filter(editable);
@@ -1163,6 +1197,41 @@ export class Pipeline {
     return `⏳ ${esc(h.title)} — хорошо, ${again ? `спрошу ещё раз в ${u.habit_last}` : "подожду"}. Не отметите до 00:00 — поставлю минус.`;
   }
 
+  /** ИИ закрыт (access.ts): текст — заметкой (если keep: не /ask и не картинка без подписи), сообщение — done с текстом отказа,
+   *  чтобы фоновый повтор (retryFailed) его не подхватил. Отменить заметку можно, как обычную запись. */
+  private async blocked(u: User, msg: Message, v: Exclude<Verdict, { ok: true }>, at: Date, keep: boolean): Promise<Reply> {
+    const s = this.store;
+    let saved = false;
+    if (keep && msg.text.trim() && !(await s.actionsOf(msg.id)).length) {
+      await s.transaction(async () => {
+        const id = await s.addDiary(u.id, msg.day_key, "notes", msg.text, msg.id);
+        await s.logAction(u.id, msg.id, "add", "diary", id);
+        const sid = await s.addDiary(u.id, msg.day_key, "summary", `[${timeOf(at, u.tz)}] ${msg.text}`, msg.id);
+        await s.logAction(u.id, msg.id, "add", "diary", sid);
+      });
+      saved = true;
+      this.changed(u);
+    }
+    const text = saved ? `${v.text}
+
+📝 Это сообщение записала заметкой.` : v.text;
+    await s.setMessage(msg.id, { state: "done", reply: text });
+    return { text, emotion: "worried", messageId: msg.id, undoable: saved, blocked: v.why };
+  }
+
+  /** Слишком часто (окно частоты, access.ts): ничего не теряем и заметкой не пишем. Текст — «не удалось» (failed): его разберёт
+   *  фоновый повтор (retryFailed, без частоты) или кнопка «Повторить». /ask и картинки не повторяются (картинки не хранятся,
+   *  разговор — по свежему поводу) — им done и просьба прислать ещё раз. */
+  private async tooFast(u: User, msg: Message, text: string, once: boolean): Promise<Reply> {
+    if (once) {
+      const again = RATE_AGAIN;
+      await this.store.setMessage(msg.id, { state: "done", reply: again });
+      return { text: again, emotion: "worried", messageId: msg.id, undoable: false };
+    }
+    await this.store.setMessage(msg.id, { state: "failed", reply: "rate" });
+    return { text, emotion: "worried", messageId: msg.id, undoable: false, failed: true };
+  }
+
   /** «Это просто заметка»: отменить разбор и записать текст целиком в заметки. */
   async asNote(u: User, messageId: number, at = new Date()): Promise<string> {
     const r = await this.asNoteOne(u, messageId, at);
@@ -1248,12 +1317,12 @@ export class Pipeline {
 
   /** «Повторить»: разобрать неудавшееся сообщение ещё раз. Картинки не хранятся — их не повторить.
    *  client — кто нажал (api.ts, bot.ts): записанное идёт в счётчики фич; фоновый повтор — без клиента, не считается. */
-  async retry(u: User, messageId: number, at = new Date(), client?: string): Promise<Reply> {
+  async retry(u: User, messageId: number, at = new Date(), client?: string, background = false): Promise<Reply> {
     const msg = await this.store.message(messageId);
     if (!msg || msg.user_id !== u.id) return { text: "Не нашла сообщение.", emotion: "neutral", messageId, undoable: false };
     if (msg.state !== "failed") return { text: "Это сообщение уже разобрано.", emotion: "neutral", messageId, undoable: false };
     if (msg.text.startsWith("📷")) return { text: "Картинку я не сохраняю — пришлите её ещё раз, пожалуйста.", emotion: "worried", messageId, undoable: false };
-    return this.handle({ user: u, source: msg.source, sourceId: msg.source_id, text: msg.text, at: new Date(msg.received_at), client });
+    return this.handle({ user: u, source: msg.source, sourceId: msg.source_id, text: msg.text, at: new Date(msg.received_at), client, background });
   }
 
   /** Фоновый повтор (раз в такт планировщика): сообщения, разбор которых упал, — через 2, 10 и 30 минут;
@@ -1264,6 +1333,8 @@ export class Pipeline {
       if (msg.reply?.startsWith(CHAT_FAILED)) continue;
       const u = await s.user(msg.user_id);
       if (!u) continue;
+      // Нет пробы или подписки (access.ts) — повтор тоже ИИ: не трогаем (сообщение остаётся неразобранным, его можно оставить заметкой).
+      if (this.gate && !this.gate.allowed(u, now)) continue;
       const key = `retry:${msg.id}`;
       const tries = Number((await s.kvGet(key)) ?? 0);
       const wait = RETRY_AFTER_MIN[Math.min(tries, RETRY_AFTER_MIN.length - 1)];
@@ -1276,7 +1347,8 @@ export class Pipeline {
         await send(u, "Картинку так и не разобрала — пришлите её ещё раз, пожалуйста.", "worried");
         continue;
       }
-      const r = await asUser(u.id, () => this.retry(u, msg.id, now)).catch(() => null);
+      const r = await asUser(u.id, () => this.retry(u, msg.id, now, undefined, true)).catch(() => null);
+      if (r?.blocked) continue; // потолок дня — сообщение уже заметкой, писать не о чем
       if (r && !r.failed) {
         await send(u, `Разобрала «${esc(short)}»:
 ${r.text}`, r.emotion);

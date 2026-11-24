@@ -161,6 +161,13 @@ export class Scheduler {
   private busy = false;
   /** Ещё работа на каждый такт (фоновый повтор разбора — Pipeline.retryFailed). */
   extra: ((now: Date) => Promise<void>) | null = null;
+  /** Платный доступ (access.ts): можно ли тратить ИИ на человека. Нельзя — утро и итог дня без слов горничной, без закономерностей;
+   *  напоминания, вопросы про привычки, даты и копия — как всегда (бесплатно). null — всем можно (тесты); index.ts ставит его всегда. */
+  aiFor: ((u: User, now: Date) => boolean) | null = null;
+  /** Модель для этого человека сейчас или null (нет ключа или нет доступа). */
+  private llmOf(u: User, now: Date): LlmCall | null {
+    return this.llm && (!this.aiFor || this.aiFor(u, now)) ? this.llm : null;
+  }
 
   /** backup — раз в сутки (03:30 по часам пользователя) отправить резервную копию, если есть куда. */
   constructor(private store: Store, private llm: LlmCall | null, private send: Send, private backup?: (u: User) => Promise<void>) {}
@@ -243,7 +250,7 @@ export class Scheduler {
     const today = dayKey(now, u.tz);
     const s = this.store;
     if (this.due(u, u.morning_time, now) && (await s.once(`morning:${u.id}:${today}`))) {
-      await this.safeSend(u, await morningText(s, this.llm, u, today), "happy", undefined, "morning");
+      await this.safeSend(u, await morningText(s, this.llmOf(u, now), u, today), "happy", undefined, "morning");
       for (const d of upcomingDates(await s.activeDates(u.id), today, 7)) {
         if ([7, 1, 0].includes(d.inDays) && (await s.once(`date:${d.row.id}:${d.on}:${d.inDays}`))) {
           await this.safeSend(u, `🎂 ${dateLine(d)}`, d.inDays === 0 ? "happy" : "neutral", undefined, "date");
@@ -260,7 +267,7 @@ export class Scheduler {
     if (this.due(u, u.evening_time, now) && (await s.once(`evening:${u.id}:${today}`))) {
       // Под итогом — вопрос голосом характера и оценка дня от 1 до 10. День уже оценён (звёздами в виджете или словами в чате) —
       // вместо вопроса его оценка и без кнопок.
-      const summary = await this.eveningText(u, today);
+      const summary = await this.eveningText(u, today, now);
       const rated = await dayRating(s, u.id, today);
       if (rated === undefined) await this.safeSend(u, `${summary}\n\n${persona(u.persona, u).rate}`, "proud", rateButtons(today), "evening");
       else await this.safeSend(u, `${summary}\n\n⭐ Оценка дня: ${rated}/10`, "proud", undefined, "evening");
@@ -276,9 +283,10 @@ export class Scheduler {
       for (const d of await habitsOfDay(s, u, y)) if (!d.status) await s.markHabit(d.habit.id, y, "skipped", null);
     }
     // Закономерности в самочувствии: раз в день днём — предложить дебаф (добавится, только если человек согласится).
-    if (this.llm && this.due(u, "13:00", now) && (await s.once(`patterns:${u.id}:${today}`))) {
+    const llm = this.llmOf(u, now);
+    if (llm && this.due(u, "13:00", now) && (await s.once(`patterns:${u.id}:${today}`))) {
       try {
-        for (const t of await findPatterns(s, this.llm, u, today)) await this.safeSend(u, patternText(t, esc), "worried", traitButtons(t.id), "note");
+        for (const t of await findPatterns(s, llm, u, today)) await this.safeSend(u, patternText(t, esc), "worried", traitButtons(t.id), "note");
       } catch (err) { console.error("[patterns]", u.id, err); }
     }
     // Повторяющиеся планы: раз в день разложить серии дальше.
@@ -291,7 +299,8 @@ export class Scheduler {
 
   /** Вечерний итог — коротко: цифры дня по пунктам («✔ 3 задачи», «🔁 привычки 3/3», «🎮 2 ч») и 2–3 предложения горничной — одна
    * неочевидная связь (по записям за неделю) и один маленький совет на завтра. Сами записи дня не пересказываем: они в «Дневнике». */
-  async eveningText(u: User, today: string): Promise<string> {
+  async eveningText(u: User, today: string, now = new Date()): Promise<string> {
+    const llm = this.llmOf(u, now);
     const s = this.store;
     const diary = diaryBySection(await s.diaryOf(u.id, today));
     const facts: string[] = [];
@@ -316,7 +325,7 @@ export class Scheduler {
       spent: moneyTotals(money).filter((t) => t.expense > 0).map((t) => `−${t.expense.toLocaleString("ru-RU")} ${t.currency}`),
     });
     const short = `${head}\n${numbers ? esc(numbers) : "Сегодня записей нет."}`;
-    if (!this.llm) return short;
+    if (!llm) return short;
     // Горничной — всё подробно (за сегодня и записи за прошлые 6 дней, чтобы видеть повторы), человеку — только её вывод.
     const todayFacts = [
       ...facts, ...act, metrics ? `Показатели: ${metrics.replace(/<[^>]+>/g, "")}` : "",
@@ -329,7 +338,7 @@ export class Scheduler {
       .map((r) => `${r.day_key} ${sectionName(r.section)}: ${r.text}`)
       .concat((await s.metricsRange(u.id, addDays(today, -6), addDays(today, -1), "rating_day")).map((m) => `${m.day_key} ${m.label}: ${m.value}${m.unit}`));
     try {
-      const words = await this.llm([
+      const words = await llm([
         {
           role: "system",
           content: `${persona(u.persona, u).voice}\nВечерний итог дня для хозяина — 2–3 коротких предложения, не длиннее ${EVENING_MAX} знаков, ` +

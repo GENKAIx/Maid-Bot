@@ -8,11 +8,12 @@
 
 export const ADMIN_LIVE_STAGE = 4;
 
-export type AdminSectionId = "overview" | "users" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
+export type AdminSectionId = "overview" | "users" | "payments" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
 
 export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number }[] = [
   { id: "overview", title: "Обзор", stage: 0 },
   { id: "users", title: "Пользователи", stage: 1 },
+  { id: "payments", title: "Оплаты", stage: 0 },
   { id: "spend", title: "Расходы на модель", stage: 1 },
   { id: "audience", title: "Аудитория", stage: 1 },
   { id: "quality", title: "Качество разбора", stage: 1 },
@@ -32,7 +33,30 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   enter: "вошёл в админку",
   wrong: "ввёл неверный код",
   leave: "вышел из админки",
+  refund: "вернул звёзды",
 };
+
+// ——— Оплаты (24.11.2026, подписка Telegram Stars: server/src/billing.ts, отчёт — admin-stats.ts adminPayments).
+export type PaymentRow = {
+  user_id: number; name: string; amount: number; currency: string; kind: string;
+  paid_at: string; expires_at: string | null; refunded_at: string | null; charge: string;
+};
+
+/** Вид оплаты (payments.kind): первая оплата подписки, продление, разовая. */
+export const PAYMENT_KINDS: Record<string, string> = { first: "Подписка", renew: "Продление", once: "Разовая" };
+
+/** Сумма: звёзды — «⭐150», другая валюта — «150 USD». */
+export function starsText(amount: number, currency = "XTR"): string {
+  return currency === "XTR" ? `⭐${amount}` : `${amount} ${currency}`;
+}
+
+/** Можно ли вернуть оплату кнопкой: не возвращена и это последняя невозвращённая у человека (сервер возвращает именно её,
+ *  billing.ts refund). rows — новые сверху, как отдаёт /api/admin/payments. */
+export function refundable(rows: PaymentRow[], i: number): boolean {
+  const p = rows[i];
+  if (!p || p.refunded_at) return false;
+  return rows.findIndex((x) => x.user_id === p.user_id && !x.refunded_at) === i;
+}
 
 /** Деньги: $0.123 → «$0.12», мелочь — с тремя знаками, ноль — «$0». */
 export function usd(v: number): string {

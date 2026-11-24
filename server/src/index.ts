@@ -18,6 +18,9 @@ import { webhookSecret } from "./webhook.ts";
 import { adminAlerts } from "./admin-stats.ts";
 import { isAdmin } from "./auth.ts";
 import { flushFeatures } from "./feature-events.ts";
+import { AiGate } from "./access.ts";
+import { Billing, billingSecret } from "./billing.ts";
+import { newcomersText } from "./invite.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
@@ -26,6 +29,9 @@ const store = await Store.open(config.databaseUrl || config.dbFile);
 console.log(`[start] база: ${config.databaseUrl ? "Postgres" : "SQLite " + config.dbFile}`);
 const pipeline = new Pipeline(store, callLlm, config.publicUrl);
 if (drawReady()) pipeline.draw = callDraw;
+// Платный доступ (access.ts): одна проверка перед ИИ — в конвейере (сообщения, поправки, повтор), планировщике, боте и API.
+const gate = new AiGate(store);
+pipeline.gate = gate;
 // «Записать в профиль?» (you.ts aboutOffer) — как уведомление с кнопками: Telegram, push, облачко виджета.
 pipeline.onAbout = (u, text, buttons) => send(u, text, "neutral", buttons, "note");
 // Расход модели, рисования и голоса — по дням и назначениям (таблица llm_usage), на сайте — «Настройки» → «Расход».
@@ -48,6 +54,8 @@ const tg = config.telegramToken ? createBot(store, pipeline, () => scheduler) : 
 if (tg) {
   if (config.publicUrl) webhook = webhookCallback(tg.bot, "http", { secretToken: webhookSecret(config.telegramToken) });
 } else console.warn("[start] TELEGRAM_BOT_TOKEN не задан — бот выключен");
+// Подписка Telegram Stars (billing.ts): без бота ссылок на оплату нет, сроки всё равно кончаются по расписанию.
+const billing = tg?.billing ?? new Billing(store, null, { secret: billingSecret(config.telegramToken || "no-bot") });
 
 // Уведомление уходит всюду, где пользователь есть: в Telegram и на все push-подписки браузеров.
 const send: Send = async (u, text, emotion, buttons, kind) => {
@@ -68,12 +76,22 @@ const backup = tg
 // Код входа в админку сайта (admin.ts) и тревоги владельцу (admin-stats.ts) — только в Telegram, не в ленту уведомлений: её видит и виджет на ПК.
 const adminCode = tg ? async (u: User, text: string) => void (await tg.send(u, text, "neutral")) : undefined;
 scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
+scheduler.aiFor = (u, now) => gate.allowed(u, now);
 // Ночной снимок всей базы (SQLite) — раз в сутки после 00:00 UTC, в snapshots/ рядом с базой (snapshot.ts).
 const snapshotDir = config.dbFile && !config.databaseUrl ? path.join(path.dirname(config.dbFile), "snapshots") : null;
 scheduler.extra = async (now) => {
   // Счётчики фич из памяти — в базу, не чаще раза в минуту (feature-events.ts).
   await flushFeatures(store, now.getTime()).catch((e) => console.error("[features]", e));
   await pipeline.retryFailed((u, text, emotion) => send(u, text, emotion), now);
+  // Раз в час: кончившиеся пробы и подписки → free с письмом и кнопкой оплаты; за 3 дня до конца отменённой — напоминание.
+  if (await store.once(`billing:${now.toISOString().slice(0, 13)}`)) await billing.expire(now).catch((e) => console.error("[billing]", e));
+  // Раз в сутки (после 06:00 UTC) — сводка владельцу о новых вместо письма о каждом (открытый бот).
+  if (adminCode && now.getUTCHours() >= 6 && (await store.once(`digest:${now.toISOString().slice(0, 10)}`))) {
+    const since = (await store.kvGet("newcomers:since")) ?? new Date(now.getTime() - 86_400_000).toISOString();
+    const text = await newcomersText(store, since).catch(() => null);
+    await store.kvSet("newcomers:since", now.toISOString());
+    if (text) for (const u of await store.users()) if (isAdmin(u, "session")) await adminCode(u, text).catch((e) => console.error("[digest]", e));
+  }
   // Тревоги владельцу (admin-stats.ts): перерасход за день, всплеск неразобранных — только в Telegram админам.
   if (adminCode) for (const text of await adminAlerts(store, now).catch((e) => (console.error("[alerts]", e), [] as string[]))) {
     for (const u of await store.users()) if (isAdmin(u, "session")) await adminCode(u, text).catch((e) => console.error("[alerts]", e));
@@ -88,7 +106,7 @@ const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => cons
 void pipeline.sweepProposals().catch(() => {});
 
 let botName: string | undefined;
-const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode });
+const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode, billing });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
   if (!tg) return;

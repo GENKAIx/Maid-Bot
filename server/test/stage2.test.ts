@@ -49,10 +49,11 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await store.addSession(tokenHash("old"), u.id, "web");
     const { message } = await store.saveMessage({ userId: u.id, source: "web", sourceId: "m1", text: "привет", dayKey: "2026-11-24" });
     await store.driver.exec("ALTER TABLE sessions DROP COLUMN client; ALTER TABLE sessions DROP COLUMN version;" +
-      " ALTER TABLE messages DROP COLUMN llm_calls; ALTER TABLE messages DROP COLUMN route; DROP TABLE presence; DROP TABLE llm_calls;");
+      " ALTER TABLE messages DROP COLUMN llm_calls; ALTER TABLE messages DROP COLUMN route; DROP TABLE presence; DROP TABLE llm_calls;" +
+      " ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled;");
     await store.kvSet("schema_version", "23");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "26");
+    assert.equal(await again.kvGet("schema_version"), "27");
     const [s] = await q<{ client: string; version: string; label: string }>(again, "SELECT client, version, label FROM sessions");
     assert.deepEqual([s.client, s.version, s.label], ["", "", "web"]);
     const m = (await again.message(message.id))!;

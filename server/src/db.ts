@@ -4,6 +4,14 @@ import { openPostgres, schemaFor, SqliteDriver, type Driver } from "./driver.ts"
 // а каждое действие пишется в actions — по ним работает «Отменить».
 // База — SQLite у себя или Postgres на Render: SQL общий, различия прячет driver.ts.
 
+/** Оценка цены вызова без цены от провайдера, доллары (config.billing.unpricedUsd) — для потолков расхода. */
+export type Unpriced = { draw: number; voice: number; other: number };
+const NO_EST: Unpriced = { draw: 0, voice: 0, other: 0 };
+/** Оценки в целых микродолларах (Postgres ждёт целое: колонка micro_usd — INTEGER). */
+const microOf = (e: Unpriced) => [e.draw, e.voice, e.other].map((x) => Math.round(x * 1e6));
+/** Добавка к micro_usd строки llm_usage за вызовы без цены (calls - priced); три параметра — оценки draw, voice, остального в микро$. */
+const UNPRICED_SQL = "(calls - priced) * (CASE kind WHEN 'draw' THEN CAST(? AS INTEGER) WHEN 'voice' THEN CAST(? AS INTEGER) ELSE CAST(? AS INTEGER) END)";
+
 /** Шаги схемы по порядку; номер последнего пройденного — kv.schema_version. Новое — только дописывать в конец. */
 const MIGRATIONS: string[] = [
   `
@@ -466,6 +474,33 @@ CREATE TABLE IF NOT EXISTS feature_events (
 );
 CREATE INDEX IF NOT EXISTS feature_events_day ON feature_events (day_key);
 `,
+  // Шаг 27: платный доступ (access.ts, billing.ts). plan: '' — не выдан, friend — бесплатно навсегда, trial — проба или подарок,
+  // paid — подписка Telegram Stars, free — срок кончился. access_until — конец пробы или оплаченного месяца (ISO).
+  // tg_user_id — кто платит в Telegram, sub_charge_id — charge_id первой оплаты подписки (для отмены продления и возврата).
+  // Все, кто уже есть в базе в момент миграции, — друзья: бесплатно навсегда. payments — каждая оплата и возврат, ключ — charge_id
+  // (повтор того же обновления Telegram ничего не меняет).
+  `
+ALTER TABLE users ADD COLUMN plan TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN access_until TEXT;
+ALTER TABLE users ADD COLUMN tg_user_id TEXT;
+ALTER TABLE users ADD COLUMN sub_charge_id TEXT;
+ALTER TABLE users ADD COLUMN sub_canceled INTEGER NOT NULL DEFAULT 0;
+UPDATE users SET plan = 'friend';
+CREATE TABLE IF NOT EXISTS payments (
+  charge_id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  tg_user_id TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  currency TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  paid_at TEXT NOT NULL,
+  expires_at TEXT,
+  refunded_at TEXT
+);
+CREATE INDEX IF NOT EXISTS payments_user ON payments (user_id, paid_at);
+CREATE INDEX IF NOT EXISTS payments_at ON payments (paid_at);
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -526,6 +561,32 @@ export interface User {
   ask: string;
   /** «Предупредить о дожде за час» (weather.ts rainSoon): 1 — да. */
   weather_rain: number;
+  /** Платный доступ (шаг 27, access.ts): '' | friend | trial | paid | free. */
+  plan: string;
+  /** Конец пробы или оплаченного месяца (ISO); null — нет срока. */
+  access_until: string | null;
+  /** Telegram id того, кто платит (обычно = chat_id). */
+  tg_user_id: string | null;
+  /** charge_id первой оплаты подписки — для editUserStarSubscription и возврата. */
+  sub_charge_id: string | null;
+  /** 1 — продление подписки отменено (доступ до access_until). */
+  sub_canceled: number;
+  /** Когда создана запись (ISO): по нему подарок по /invite отличается от пробной недели (access.ts endedOf). */
+  created_at: string;
+}
+
+/** Оплата Telegram Stars (billing.ts): kind — first | renew | once; refunded_at — когда вернули. */
+export interface PaymentRow {
+  charge_id: string;
+  user_id: number;
+  tg_user_id: string;
+  amount: number;
+  currency: string;
+  payload: string;
+  kind: string;
+  paid_at: string;
+  expires_at: string | null;
+  refunded_at: string | null;
 }
 export interface Message {
   id: number;
@@ -838,12 +899,94 @@ export class Store {
     );
     return (await this.userByChat(chatId))!;
   }
-  async createUser(u: { login: string; passwordHash: string; name?: string; tz: string; chatId?: string | null }): Promise<User> {
+  /** plan и access_until — платный доступ (access.ts): новые из бота — проба, по /invite — подарок, из командной строки — друг. */
+  async createUser(u: { login: string; passwordHash: string; name?: string; tz: string; chatId?: string | null; plan?: string; accessUntil?: string | null; at?: Date }): Promise<User> {
     const id = await this.insert(
-      "INSERT INTO users (login, password_hash, chat_id, name, tz, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-      u.login.toLowerCase(), u.passwordHash, u.chatId ?? null, u.name ?? "", u.tz, now(),
+      "INSERT INTO users (login, password_hash, chat_id, name, tz, created_at, plan, access_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      u.login.toLowerCase(), u.passwordHash, u.chatId ?? null, u.name ?? "", u.tz, (u.at ?? new Date()).toISOString(), u.plan ?? "", u.accessUntil ?? null,
     );
     return (await this.user(id))!;
+  }
+  /** Сколько учётных записей создано с since (ISO) — потолок регистраций в час (bot.ts, config.billing.signupsPerHour). */
+  async countUsersSince(since: string): Promise<number> {
+    return Number((await this.get<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE created_at >= ?", since))?.n ?? 0);
+  }
+  /** Новые с since (ISO): для сводки владельцу раз в сутки — только счёт, логин и план (без chat id и текстов). */
+  async usersCreatedSince(since: string): Promise<{ id: number; login: string | null; plan: string }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT id, login, plan FROM users WHERE created_at >= ? ORDER BY id", since);
+    return rows.map((r) => ({ id: Number(r.id), login: r.login == null ? null : String(r.login), plan: String(r.plan ?? "") }));
+  }
+  /** Кто платит этим Telegram (tg_user_id или chat_id). */
+  userByTg(tgId: string): Promise<User | undefined> {
+    return this.get<User>("SELECT * FROM users WHERE tg_user_id = ? OR chat_id = ? ORDER BY CASE WHEN tg_user_id = ? THEN 0 ELSE 1 END, id LIMIT 1", tgId, tgId, tgId);
+  }
+  /** Проба или подписка кончилась раньше before (ISO), а план ещё trial/paid — их переводит в free планировщик (billing.ts expire). */
+  usersToExpire(before: string): Promise<User[]> {
+    return this.all<User>("SELECT * FROM users WHERE plan IN ('trial', 'paid') AND access_until IS NOT NULL AND access_until < ? ORDER BY id", before);
+  }
+  /** Подписки с отменённым продлением, кончаются с from по to (ISO) — напомнить за 3 дня. */
+  canceledEndingBetween(from: string, to: string): Promise<User[]> {
+    return this.all<User>("SELECT * FROM users WHERE plan = 'paid' AND sub_canceled = 1 AND access_until >= ? AND access_until <= ? ORDER BY id", from, to);
+  }
+  /** Расход ИИ человека за день (UTC, ГГГГ-ММ-ДД), доллары — денежный потолок (access.ts). Вызов без цены (провайдер её не вернул)
+   *  идёт по оценке est (access.ts передаёт config.billing.unpricedUsd): иначе потолок его не видит. */
+  async daySpend(userId: number, day: string, est: Unpriced = NO_EST): Promise<number> {
+    const r = await this.get<{ micro: number }>(`SELECT SUM(micro_usd + ${UNPRICED_SQL}) AS micro FROM llm_usage WHERE day = ? AND user_id = ?`,
+      ...microOf(est), day, userId);
+    return Number(r?.micro ?? 0) / 1e6;
+  }
+  /** Расход всех проб за день (UTC) с той же оценкой — общий потолок проб (access.ts, config.billing.trialPoolDayUsd). */
+  async trialsDaySpend(day: string, est: Unpriced = NO_EST): Promise<number> {
+    const r = await this.get<{ micro: number }>(
+      `SELECT SUM(micro_usd + ${UNPRICED_SQL}) AS micro FROM llm_usage WHERE day = ? AND user_id IN (SELECT id FROM users WHERE plan = 'trial')`,
+      ...microOf(est), day,
+    );
+    return Number(r?.micro ?? 0) / 1e6;
+  }
+
+  // --- оплаты (billing.ts) ---
+  /** Записать оплату; false — такой charge_id уже есть (повтор обновления Telegram). */
+  async addPayment(p: Omit<PaymentRow, "refunded_at">): Promise<boolean> {
+    return (await this.run(
+      `INSERT INTO payments (charge_id, user_id, tg_user_id, amount, currency, payload, kind, paid_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (charge_id) DO NOTHING`,
+      p.charge_id, p.user_id, p.tg_user_id, p.amount, p.currency, p.payload.slice(0, 128), p.kind, p.paid_at, p.expires_at,
+    )) > 0;
+  }
+  async payment(chargeId: string): Promise<PaymentRow | undefined> {
+    const r = await this.get<PaymentRow>("SELECT * FROM payments WHERE charge_id = ?", chargeId);
+    return r && { ...r, user_id: Number(r.user_id), amount: Number(r.amount) };
+  }
+  /** Оплаты человека, новые сверху. */
+  async paymentsOf(userId: number): Promise<PaymentRow[]> {
+    const rows = await this.all<PaymentRow>("SELECT * FROM payments WHERE user_id = ? ORDER BY paid_at DESC, charge_id", userId);
+    return rows.map((r) => ({ ...r, user_id: Number(r.user_id), amount: Number(r.amount) }));
+  }
+  /** Пометить возврат; false — уже был. */
+  async setPaymentRefunded(chargeId: string, at: string): Promise<boolean> {
+    return (await this.run("UPDATE payments SET refunded_at = ? WHERE charge_id = ? AND refunded_at IS NULL", at, chargeId)) > 0;
+  }
+  /** Последние оплаты всех (админка): без payload и charge_id целиком — только хвост для сверки. */
+  async adminPayments(limit = 200): Promise<PaymentRow[]> {
+    const rows = await this.all<PaymentRow>("SELECT * FROM payments ORDER BY paid_at DESC LIMIT ?", limit);
+    return rows.map((r) => ({ ...r, user_id: Number(r.user_id), amount: Number(r.amount) }));
+  }
+  /** Звёзды с since (ISO) без возвращённых. */
+  async starsSince(since: string): Promise<number> {
+    const r = await this.get<{ n: number }>("SELECT SUM(amount) AS n FROM payments WHERE paid_at >= ? AND refunded_at IS NULL AND currency = 'XTR'", since);
+    return Number(r?.n ?? 0);
+  }
+  /** Сколько людей на каком плане (админка): активные подписки и пробы, у кого срок кончился. */
+  async planCounts(now: string): Promise<{ paid: number; trial: number; expired: number; friend: number }> {
+    const r = await this.get<Record<string, unknown>>(
+      `SELECT SUM(CASE WHEN plan = 'paid' AND access_until >= ? THEN 1 ELSE 0 END) AS paid,
+              SUM(CASE WHEN plan = 'trial' AND access_until >= ? THEN 1 ELSE 0 END) AS trial,
+              SUM(CASE WHEN plan = 'free' OR (plan IN ('trial', 'paid') AND (access_until IS NULL OR access_until < ?)) THEN 1 ELSE 0 END) AS expired,
+              SUM(CASE WHEN plan = 'friend' THEN 1 ELSE 0 END) AS friend
+       FROM users`, now, now, now,
+    );
+    const n = (v: unknown) => Number(v ?? 0) || 0;
+    return { paid: n(r?.paid), trial: n(r?.trial), expired: n(r?.expired), friend: n(r?.friend) };
   }
   async updateUser(id: number, patch: Partial<Omit<User, "id">>) {
     for (const [k, v] of Object.entries(patch)) {
@@ -1759,7 +1902,7 @@ export class Store {
   /** Поставить отметку один раз; true — если её ещё не было. */
   /** Отметки «уже отправлено» (once), поставленные раньше before, — удалить: таблица иначе только растёт. Возвращает, сколько удалено. */
   pruneOnce(before: Date): Promise<number> {
-    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns", "rain", "alert"];
+    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns", "rain", "alert", "billing", "subend", "digest"];
     return this.run(
       `DELETE FROM kv WHERE value < ? AND (${kinds.map(() => "key LIKE ?").join(" OR ")})`,
       before.toISOString(), ...kinds.map((k) => `${k}:%`),

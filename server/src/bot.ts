@@ -4,7 +4,9 @@ import { Bot, InlineKeyboard, InputFile, type Context } from "grammy";
 import { config, ROOT } from "./config.ts";
 import { issueToken, notePresence } from "./auth.ts";
 import { accountsText } from "./accounts.ts";
-import { createInvite, INVITE_DAYS, installerUrl, isMember, redeemInvite } from "./invite.ts";
+import { createInvite, INVITE_DAYS, installerUrl, isMember, redeemInvite, signUp, SIGNUPS_KV, type Invited } from "./invite.ts";
+import { accessOf, RATE_AGAIN, type Access } from "./access.ts";
+import { Billing, billingSecret, TERMS_TEXT, type StarsApi } from "./billing.ts";
 import type { Store, User } from "./db.ts";
 import { habitLine, habitsOfDay } from "./habits.ts";
 import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
@@ -28,6 +30,72 @@ export function emotionImage(personaId: string, emotion: Emotion): string | null
 
 export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Scheduler | null) {
   const bot = new Bot(config.telegramToken);
+  // Оплата (billing.ts): платежи и вопросы о них — админам (ADMIN_CHAT_IDS, пусто — первый из ALLOWED_CHAT_IDS, как в админке сайта).
+  const payAdmins = config.adminChatIds.length ? config.adminChatIds : config.allowedChatIds.slice(0, 1);
+  const billing = new Billing(store, bot.api satisfies StarsApi, { secret: billingSecret(config.telegramToken), owners: payAdmins });
+  const PRICE = config.billing.price;
+  const dmy = (iso: string | null) => (iso ?? "").slice(0, 10).split("-").reverse().join(".");
+  /** Кнопка оплаты под отказом и письмом; Telegram не дал ссылку — без кнопки. */
+  const payKeyboard = async (u: User) => {
+    const url = await billing.link(u);
+    return url ? new InlineKeyboard().url(`Оформить ⭐${PRICE}`, url) : undefined;
+  };
+  /** Строка о доступе (/start). */
+  const accessLine = (a: Access) =>
+    a.plan === "owner" || a.plan === "friend" ? "Доступ: бесплатно навсегда."
+      : a.plan === "trial" ? `Пробный доступ: осталось ${a.trialLeftDays} дн. Потом — подписка ⭐${PRICE} в месяц (/terms).`
+      : a.plan === "paid" ? `Подписка до ${dmy(a.until)}${a.canceled ? " (продление отменено)" : ""}.`
+      : `Разбор сообщений закрыт — нужна подписка ⭐${PRICE} в месяц (/terms). Просмотр записей, отметки и напоминания — бесплатно.`;
+
+  // Платежи — ДО фильтра незнакомцев: pre_checkout_query приходит без чата, successful_payment — из чата, который мог ещё не быть
+  // привязан к записи (оплатили по ссылке с сайта). Ответ на pre_checkout — за 10 с, только чтение из базы.
+  bot.on("pre_checkout_query", async (ctx) => {
+    await billing.preCheckout(ctx.preCheckoutQuery);
+  });
+  bot.on("message:successful_payment", async (ctx) => {
+    const got = await billing.paid(ctx.from, ctx.message.successful_payment);
+    if (!got) return void (await ctx.reply("Оплата пришла, но я не нашла вашу учётную запись. Напишите /paysupport — разберёмся и вернём звёзды."));
+    if (got.duplicate) return;
+    await ctx.reply(got.kind === "renew" ? `Подписка продлена до ${dmy(got.until)}. Спасибо! ✨` : `Спасибо! ✨ Подписка оформлена до ${dmy(got.until)} — пишите, я всё разберу.`);
+  });
+  bot.on("message:refunded_payment", async (ctx) => {
+    const u = await billing.refunded(ctx.message.refunded_payment);
+    if (u) await ctx.reply(`Вернула ⭐${ctx.message.refunded_payment.total_amount}. Подписка закрыта; записи остаются, просмотр и отметки — бесплатно.`);
+  });
+  // Обязательные для бота с оплатой команды — всем, даже незнакомцам.
+  bot.command("terms", (ctx) => ctx.reply(TERMS_TEXT(), { parse_mode: "HTML" }));
+  // Вопрос об оплате — админам. Только в личке и не чаще раза в 10 минут от одного человека: иначе это открытая пересылка владельцу.
+  // Ответ человеку — владелец командой /answer <tg id> <текст> (tg id есть в пересланном вопросе).
+  bot.command("paysupport", async (ctx) => {
+    if (ctx.chat.type !== "private") return ctx.reply("Вопрос об оплате напишите мне в личные сообщения: /paysupport и текст.");
+    const q = ctx.match.trim().slice(0, 1500);
+    if (!q) return ctx.reply("Напишите вопрос об оплате одним сообщением: /paysupport и текст. Например: «/paysupport списались звёзды, а доступа нет». Отвечу здесь же.");
+    if (!(await store.once(`paysupport:${ctx.from?.id ?? 0}:${Math.floor(Date.now() / 600_000)}`))) {
+      return ctx.reply("Вопрос уже передан — ответим здесь, в чате. Следующий можно отправить через 10 минут.");
+    }
+    const u = await store.userByTg(String(ctx.from?.id ?? ""));
+    const last = u ? (await store.paymentsOf(u.id))[0] : undefined;
+    const who = u ? `#${u.id} ${u.login ?? ""}` : "без учётной записи";
+    for (const a of payAdmins) {
+      await bot.api.sendMessage(a, `💬 /paysupport от ${esc(who)} (tg ${ctx.from?.id ?? "?"})` +
+        `${last ? `, последняя оплата ⭐${last.amount} ${last.paid_at.slice(0, 10)}${last.refunded_at ? " (возвращена)" : ""}` : ""}:\n${esc(q)}`, { parse_mode: "HTML" }).catch(() => {});
+    }
+    await ctx.reply("Передала вопрос. Ответим здесь, в чате, обычно в течение суток.");
+  });
+  // Владелец: ответ на /paysupport — сообщение от бота человеку по его tg id (из пересланного вопроса), в журнал admin_log.
+  bot.command("answer", async (ctx) => {
+    if (!owner(ctx) && !payAdmins.includes(String(ctx.chat.id))) return;
+    const m = /^(\d{1,15})\s+([\s\S]{1,3000})$/.exec(ctx.match.trim());
+    if (!m) return ctx.reply("Напишите так: /answer <tg id> <текст ответа> — tg id есть в пересланном вопросе /paysupport.");
+    try {
+      await bot.api.sendMessage(m[1], `💬 Ответ на ваш вопрос об оплате:\n${esc(m[2])}`, { parse_mode: "HTML" });
+    } catch (e) {
+      return ctx.reply(`Не дошло: ${esc((e as Error).message.slice(0, 120))}`, { parse_mode: "HTML" });
+    }
+    const me = await store.userByChat(String(ctx.chat.id));
+    await store.addAdminLog(me?.id ?? 0, "paysupport-answer", `tg ${m[1]}`, new Date());
+    await ctx.reply("Отправила.");
+  });
 
   // Свои — владелец (ALLOWED_CHAT_IDS) и друзья, принявшие приглашение (invite.ts).
   const allowed = (chatId: string) => isMember(store, chatId, config.allowedChatIds);
@@ -66,7 +134,8 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   }
 
   async function answer(ctx: Context, u: User, r: Reply) {
-    const markup = replyKeyboard(r);
+    // ИИ закрыт (access.ts): под отказом — кнопка оплаты (нет пробы и подписки) или ничего (частота, дневной потолок).
+    const markup = r.blocked ? (r.blocked === "access" ? await payKeyboard(u) : undefined) : replyKeyboard(r);
     // Нарисованная картинка — вместо картинки настроения.
     const img = r.drawing ? new InputFile(Buffer.from(r.drawing.data, "base64"), `drawing-${r.drawing.id}.jpg`) : emotionImage(u.persona, r.emotion);
     const sent = img && r.text.length <= 1000
@@ -91,36 +160,60 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     "Я сама разложу: дневник, планы, задачи, важные даты.\n\n" +
     "/list — список на сегодня с галочками\n/today — сегодня\n/plans — планы\n/tasks — задачи\n/dates — важные даты\n/memory — что я помню\n" +
     "/ask текст — просто поговорить\n/undo — отменить последнее\n/summary — итог дня\n/persona — характер\n" +
-    "/habits — привычки на сегодня\n/token — ключ для виджета на айфоне";
+    "/habits — привычки на сегодня\n/token — ключ для виджета на айфоне\n" +
+    "/terms — условия и подписка\n/cancel_sub — отменить продление\n/resume_sub — возобновить продление\n/paysupport — вопрос об оплате";
 
-  // Друг по приглашению: учётная запись, логин и пароль, адрес сервера и установщик; владельцу — что пришёл новый.
-  async function acceptInvite(ctx: Context, chat: string, code: string) {
+  /** Новая запись (по приглашению или /start): логин и пароль, адрес сервера и установщик, справка. */
+  async function welcome(ctx: Context, got: Invited, gift: boolean) {
     const name = ctx.from?.first_name ?? "";
-    const got = await redeemInvite(store, code, { id: chat, name, username: ctx.from?.username }, config.defaultTimezone);
-    if (!got) return void (await ctx.reply("Приглашение не подошло: оно уже использовано или устарело. Попросите новое."));
     const setup = installerUrl(config.desktopDir, config.publicUrl);
     await ctx.reply(
       `Добро пожаловать${name ? `, ${esc(name)}` : ""}! ✨\n\n` +
+        (gift ? `🎁 Вам подарок — полный доступ до ${dmy(got.until)}.\n\n`
+          : `Первые ${config.billing.trialDays} дней — полный доступ бесплатно (до ${dmy(got.until)}), потом — подписка ⭐${PRICE} в месяц. Условия — /terms.\n\n`) +
         (setup ? `<b>Программа для ПК:</b> <a href="${esc(setup)}">скачать установщик</a>\n` : "") +
         "При первом запуске впишите адрес сервера, потом войдите логином и паролем — так же и на сайте.\n\n" +
-        `Адрес сервера: <code>${esc(config.publicUrl)}</code>\nЛогин: <code>${esc(got.login)}</code>\nПароль: <code>${esc(got.password)}</code>\n` +
+        `Адрес сервера: <code>${esc(config.publicUrl)}</code>\nЛогин: <code>${esc(got.login ?? "")}</code>\nПароль: <code>${esc(got.password ?? "")}</code>\n` +
         "Пароль никому не показывайте.",
       { parse_mode: "HTML", link_preview_options: { is_disabled: true } },
     );
     await ctx.reply(HELP);
-    const who = `${name || "Без имени"}${ctx.from?.username ? ` (@${ctx.from.username})` : ""}`;
-    for (const o of config.allowedChatIds) {
-      await bot.api.sendMessage(o, `Новый друг по приглашению: ${who}, логин ${got.login}.`).catch(() => {});
-    }
   }
 
-  // Чужим — только chat id, чтобы владелец мог себя добавить, и вход по приглашению: /start <код>.
+  // Приглашение (/start <код>) — подарок на config.billing.giftDays дней: новому — запись, у кого запись есть — продление срока.
+  // О новых владельцу пишет сводка раз в сутки (index.ts, newcomersText), не по одному. false — код не подошёл.
+  async function acceptInvite(ctx: Context, chat: string, code: string): Promise<boolean> {
+    const got = await redeemInvite(store, code, { id: chat, name: ctx.from?.first_name ?? "", username: ctx.from?.username }, config.defaultTimezone);
+    if (!got) return false;
+    if (got.login) await welcome(ctx, got, true);
+    else if (!got.until) await ctx.reply("У вас и так бесплатный доступ навсегда — приглашение осталось для кого-нибудь ещё.");
+    else await ctx.reply(`🎁 Подарок принят: полный доступ до ${dmy(got.until)}.`);
+    return true;
+  }
+  // Незнакомец без приглашения: своя запись с пробой. Выключатель SIGNUPS_OPEN и потолок новых в час — в signUp (invite.ts).
+  async function signUpStranger(ctx: Context, chat: string) {
+    const got = await signUp(store, { id: chat, name: ctx.from?.first_name ?? "", username: ctx.from?.username }, config.defaultTimezone);
+    if (got === "closed") return void (await ctx.reply("Регистрация сейчас закрыта. Загляните чуть позже."));
+    if (got === "busy") {
+      // Потолок регистраций — владельцу сразу (раз в час), не ждать сводки: это может быть наплыв одноразовых аккаунтов.
+      if (await store.once(`signupsfull:${new Date().toISOString().slice(0, 13)}`)) {
+        for (const a of payAdmins) await bot.api.sendMessage(a, "⚠ Упёрлись в потолок регистраций (новых за час или сутки). Закрыть регистрацию — /signups off, открыть — /signups on.").catch(() => {});
+      }
+      return void (await ctx.reply("Сейчас очень много новых — попробуйте через час, пожалуйста."));
+    }
+    if (got) await welcome(ctx, got, false);
+  }
+
+  // Чужим — chat id (владелец добавляет себя), а в личке — /start: по приглашению (/start <код>) — подарок, без кода — проба.
   bot.use(async (ctx, next) => {
     const chat = String(ctx.chat?.id ?? "");
     if (chat && !(await allowed(chat))) {
-      const invite = /^\/start\s+(\S+)/.exec(ctx.message?.text ?? "")?.[1];
-      if (invite) await acceptInvite(ctx, chat, invite);
-      else if (ctx.message?.text?.startsWith("/chatid")) await ctx.reply(`chat id: <code>${chat}</code>`, { parse_mode: "HTML" });
+      const start = /^\/start(?:@\w+)?(?:\s+(\S+))?/.exec(ctx.message?.text ?? "");
+      if (start && ctx.chat?.type === "private") {
+        // Код не подошёл (устарел, использован) — обычная проба.
+        if (!start[1] || !(await acceptInvite(ctx, chat, start[1]))) await signUpStranger(ctx, chat);
+      } else if (ctx.message?.text?.startsWith("/chatid")) await ctx.reply(`chat id: <code>${chat}</code>`, { parse_mode: "HTML" });
+      else if (ctx.message && ctx.chat?.type === "private") await ctx.reply("Здравствуйте! Чтобы начать, нажмите /start.");
       return;
     }
     await next();
@@ -222,7 +315,39 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   bot.command("start", async (ctx) => {
     const u = await userOf(ctx);
     if (!u) return;
-    await ctx.reply(HELP);
+    // Своя запись уже есть, а пришли по приглашению — подарок продлевает срок.
+    const code = ctx.match.trim();
+    if (code && (await acceptInvite(ctx, String(ctx.chat.id), code))) return;
+    await ctx.reply(`${HELP}\n\n${accessLine(accessOf((await store.user(u.id)) ?? u))}`);
+  });
+  // Владелец: закрыть или открыть регистрацию незнакомцев (/start без приглашения) — в kv, без правки .env.
+  bot.command("signups", async (ctx) => {
+    if (!owner(ctx)) return;
+    const arg = ctx.match.trim().toLowerCase();
+    if (arg === "off") await store.kvSet(SIGNUPS_KV, "1");
+    else if (arg === "on") await store.kvDel(SIGNUPS_KV);
+    const closed = !config.billing.signupsOpen || (await store.kvGet(SIGNUPS_KV)) === "1";
+    await ctx.reply(`Регистрация новых: ${closed ? "закрыта" : "открыта"}${!config.billing.signupsOpen ? " (SIGNUPS_OPEN=0 в .env)" : ""}. /signups off — закрыть, /signups on — открыть.`);
+  });
+  // Возобновить отменённое продление — та же подписка, без второй оплаты.
+  bot.command("resume_sub", async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return;
+    await ctx.reply((await billing.resume(u)).text);
+  });
+  // Отменить продление подписки: доступ — до конца оплаченного месяца.
+  bot.command("cancel_sub", async (ctx) => {
+    const u = await userOf(ctx);
+    if (!u) return;
+    await ctx.reply((await billing.cancel(u)).text);
+  });
+  // Владелец: вернуть звёзды за последнюю оплату человека (#id — из /accounts или админки сайта), доступ снимается.
+  bot.command("refund", async (ctx) => {
+    const u = owner(ctx) ? await userOf(ctx) : null;
+    if (!u) return;
+    const id = Number(ctx.match.trim().replace(/^#/, ""));
+    if (!Number.isInteger(id) || id <= 0) return ctx.reply("Напишите так: /refund <номер пользователя>, например /refund 12.");
+    await ctx.reply((await billing.refund(id, u.id)).text);
   });
   // Владелец: кто есть, кто когда писал и сколько ушло на ИИ (accounts.ts).
   bot.command("accounts", async (ctx) => {
@@ -235,8 +360,9 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (!owner(ctx)) return;
     const code = await createInvite(store);
     await ctx.reply(
-      `Приглашение для друга — одноразовое, на ${INVITE_DAYS} дней:\nhttps://t.me/${ctx.me.username}?start=${code}\n\n` +
-        "По ссылке друг получит логин и пароль для сайта и программы на ПК и ссылку на установщик.",
+      `Приглашение для друга — одноразовое, ссылка живёт ${INVITE_DAYS} дней:\nhttps://t.me/${ctx.me.username}?start=${code}\n\n` +
+        `Это подарок: ${config.billing.giftDays} дней полного доступа. Новый человек получит логин и пароль для сайта и программы на ПК и ссылку на установщик, ` +
+        "а у кого запись уже есть — продление срока.",
       { link_preview_options: { is_disabled: true } },
     );
   });
@@ -291,6 +417,9 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const u = await userOf(ctx);
     const s = scheduler();
     if (!u || !s) return;
+    // Итог дня со словами горничной — вызов модели: частота и потолки, как у сообщения (без доступа eveningText сам идёт без модели).
+    const v = pipeline.gate && pipeline.gate.allowed(u) ? await pipeline.gate.check(u) : null;
+    if (v && !v.ok) return void (await ctx.reply(v.why === "rate" ? "Много сообщений подряд — попросите итог через минуту, пожалуйста." : v.text));
     await ctx.reply(await s.eveningText(u, dayKey(new Date(), u.tz)), { parse_mode: "HTML" });
   });
 
@@ -467,6 +596,10 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (!sttReady()) return void (await ctx.reply("Голосовые пока не понимаю: распознавание речи не настроено."));
     const media = ctx.message.voice ?? ctx.message.audio;
     if (!media || (media.file_size ?? 0) > VOICE_MAX_BYTES) return void (await ctx.reply("Слишком длинное голосовое."));
+    // Распознавание — тоже ИИ (и платное, даже если услышали тишину): доступ, частота и потолок — до него. Частота отмечена здесь,
+    // разбор ниже второй раз её не считает (gated).
+    const v = await pipeline.gate?.check(u);
+    if (v && !v.ok) return void (await ctx.reply(v.why === "rate" ? RATE_AGAIN : v.text, { reply_markup: v.why === "access" ? await payKeyboard(u) : undefined }));
     await ctx.replyWithChatAction("typing").catch(() => {});
     let heard: string;
     try {
@@ -483,7 +616,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await ctx.reply(`🎙 <i>${heard.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</i>`, { parse_mode: "HTML" });
     const r = await pipeline.handle({
       user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: heard.slice(0, 4000),
-      at: new Date(ctx.message.date * 1000), client: "telegram",
+      at: new Date(ctx.message.date * 1000), client: "telegram", gated: true,
     });
     if (!r.duplicate) await answer(ctx, u, r);
   });
@@ -515,5 +648,5 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await bot.api.sendDocument(u.chat_id, new InputFile(data, name), { caption });
   };
 
-  return { bot, send, sendFile };
+  return { bot, send, sendFile, billing };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { clientHeaders, get, getToken, post } from "../api";
+import { isPayUrl, planView, type Access } from "../billing";
 import { Card, Empty, Spinner } from "../components";
 import { currentSubscription, isIos, pushSupported, standalone, subscribe, unsubscribe } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
@@ -7,11 +8,12 @@ import { track } from "../usage";
 import { SpendCard } from "./Spend";
 import { UpdateCard } from "./Widget";
 
-// Настройки — техническое: обновление программы, тема и уведомления на этом устройстве, расход модели, вход, копия, выход.
+// Настройки — техническое: тариф (проба, подписка Telegram Stars, billing.ts), обновление программы, тема и уведомления на этом устройстве, расход модели, вход, копия, выход.
 // Как и когда пишет горничная (характер, время сообщений, напоминания, игры) — вкладка «Горничная» (MaidSettings.tsx); обе — вкладки экрана «Настройки» (SettingsTabs.tsx).
 
 interface Me {
   id: number; login: string | null; name: string; tz: string;
+  access?: Access;
   sessions: { id: string; label: string; created_at: string; last_seen: string; current?: boolean }[];
 }
 interface PushInfo { key: string; subs: { endpoint: string; label: string; created_at: string; last_ok: string | null }[] }
@@ -67,6 +69,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
     <div className="screen">
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="cards">
+        <TariffCard access={me.access} onChanged={() => void load()} />
         <UpdateCard />
         <Card title="Вид" className="reveal">
           <div className="segment" role="radiogroup" aria-label="Тема">
@@ -146,5 +149,61 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
         </Card>
       </div>
     </div>
+  );
+}
+
+/** «Тариф» (24.11.2026): план, срок, дни пробы; оплата — ссылкой на счёт в Telegram (POST /api/billing/link, берётся заранее,
+ *  чтобы браузер не счёл окно оплаты всплывающим), отмена продления — POST /api/billing/cancel (доступ остаётся до конца срока). */
+function TariffCard({ access, onChanged }: { access?: Access; onChanged: () => void }) {
+  const v = planView(access);
+  const [url, setUrl] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  // quiet — ссылка заранее, при показе: не вышло — молча (кнопка «Получить ссылку» скажет причину по нажатию).
+  async function link(quiet = false) {
+    try {
+      const r = await post<{ url?: string }>("/api/billing/link");
+      if (isPayUrl(r.url)) { setUrl(r.url); setNote(""); } else if (!quiet) setNote("Сервер прислал непонятную ссылку на оплату.");
+    } catch (e) {
+      if (!quiet) setNote((e as Error).message);
+    }
+  }
+  useEffect(() => { if (v.pay) void link(true); }, [v.pay]); // eslint-disable-line react-hooks/exhaustive-deps -- ссылка — раз на показ
+  // Оплатили в Telegram и вернулись во вкладку — перечитать тариф (иначе висит «Пробный период» и кнопка второй оплаты).
+  useEffect(() => {
+    if (!v.pay && !v.resume) return;
+    const back = () => { if (document.visibilityState === "visible") onChanged(); };
+    document.addEventListener("visibilitychange", back);
+    return () => document.removeEventListener("visibilitychange", back);
+  }, [onChanged, v.pay, v.resume]);
+  async function change(what: "cancel" | "resume") {
+    if (what === "cancel" && !confirm("Отменить продление подписки? Звёзды больше не спишутся, доступ останется до конца оплаченного срока.")) return;
+    setBusy(true);
+    try {
+      const r = await post<{ text: string }>(`/api/billing/${what}`);
+      setNote(r.text);
+      onChanged();
+    } catch (e) {
+      setNote((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card title="Тариф" className="reveal">
+      <p><b>{v.title}</b></p>
+      <p className="muted small">{v.text}</p>
+      {(v.pay || v.cancel || v.resume) && (
+        <div className="tariff-actions">
+          {v.pay && (url
+            ? <a className="btn tg" href={url} target="_blank" rel="noopener noreferrer">⭐ Оплатить в Telegram</a>
+            : <button onClick={() => void link()}>Получить ссылку на оплату</button>)}
+          {v.cancel && <button disabled={busy} onClick={() => void change("cancel")}>Отменить продление</button>}
+          {v.resume && <button disabled={busy} onClick={() => void change("resume")}>Возобновить продление</button>}
+        </div>
+      )}
+      {note && <p className="small" style={{ marginTop: 8 }} role="status">{note}</p>}
+      {v.pay && <p className="muted small" style={{ marginTop: 8 }}>Оплата — звёздами Telegram, продление раз в месяц; отменить можно в любой момент. Условия — /terms в боте.</p>}
+    </Card>
   );
 }

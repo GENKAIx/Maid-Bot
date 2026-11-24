@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { ApiError, get } from "../api";
-import { ADM_WEEKDAYS, ago, CLIENT_NAMES, dayAgo, ERROR_NAMES, featureView, msText, ROUTE_NAMES, SOURCE_NAMES, sortRows, sparkPoints, uptimeText, usd, type FeatureRow } from "../admin";
+import { ApiError, get, post } from "../api";
+import { ADM_WEEKDAYS, ago, CLIENT_NAMES, dayAgo, ERROR_NAMES, featureView, msText, PAYMENT_KINDS, refundable, ROUTE_NAMES, SOURCE_NAMES, sortRows, sparkPoints, starsText, uptimeText, usd, type FeatureRow, type PaymentRow } from "../admin";
 
 // Разделы админки этапа 1 (24.11.2026): Обзор, Пользователи, Расходы, Аудитория, Качество разбора. Данные — /api/admin/*
 // (server/src/admin-stats.ts): только счётчики и имена. Свои простые графики (AdmBars) — в цветах админки, не сайта.
 // Этап 2 (24.11.2026): онлайн сейчас, устройства человека, карта часов, версии виджета, дорогие сообщения, «Здоровье сервера».
 // Этап 3 (24.11.2026): «Использование функций» (AdminFeatures).
+// Подписка (24.11.2026): в Обзоре — звёзды за 30 дней, подписчики, пробы, кончившиеся; раздел «Оплаты» с возвратом (AdminPayments).
 
 /** Вход в админку кончился (сервер ответил 403) — Shell (Admin.tsx) перечитывает состояние и показывает ввод кода. */
 export const AdminLost = createContext<() => void>(() => {});
@@ -82,6 +83,8 @@ type Overview = {
   spend_today: number; spend_month: number; spend_forecast: number; unpriced_month: number;
   requests_week: number; failed_week: number; clarify_week: number; undone_week: number;
   online: { total: number; clients: { client: string; users: number }[] };
+  /** Подписка Telegram Stars (admin-stats.ts billingOverview); старый сервер не присылает. */
+  billing?: { stars_30: number; subscribers: number; trials: number; expired: number; friends: number };
 };
 const clientName = (c: string) => CLIENT_NAMES[c] ?? c;
 
@@ -103,6 +106,18 @@ export function AdminOverview() {
         <Kpi title="За 7 дней" value={o.active_week} />
         <Kpi title="За 30 дней" value={o.active_month} />
       </div>
+      {o.billing && (
+        <>
+          <h2 className="adm-h2">Подписка <span className="adm-muted">· Telegram Stars, без возвращённых</span></h2>
+          <div className="adm-kpis">
+            <Kpi title="Звёзд за 30 дней" value={starsText(o.billing.stars_30)} />
+            <Kpi title="Подписчиков" value={o.billing.subscribers} />
+            <Kpi title="На пробе" value={o.billing.trials} />
+            <Kpi title="Срок кончился" value={o.billing.expired} hint="ИИ выключен, данные остаются" />
+            <Kpi title="Друзья" value={o.billing.friends} hint="бесплатно навсегда" />
+          </div>
+        </>
+      )}
       <h2 className="adm-h2">Деньги <span className="adm-muted">· дни по UTC</span></h2>
       <div className="adm-kpis">
         <Kpi title="Сегодня" value={usd(o.spend_today)} />
@@ -584,6 +599,63 @@ export function AdminFeatures() {
         Только имена функций и сколько раз — без текстов. «Сервер» — считает сам (ручки, команды бота, ветки разбора); остальное присылают
         сайт и программа на ПК пачкой раз в 10 минут, поэтому свежие нажатия появляются с задержкой. Виджет начнёт присылать свои после обновления программы.
       </p>
+    </>
+  );
+}
+
+/** Оплаты (подписка Telegram Stars): кто, сколько, вид, когда, до какого; возврат — последней невозвращённой оплаты человека
+ *  с подтверждением (POST /api/admin/refund, сервер пишет в журнал админки). Полного charge_id и payload здесь нет. */
+export function AdminPayments() {
+  const [tick, setTick] = useState(0);
+  const [rows, err] = useAdmin<PaymentRow[]>(`/api/admin/payments${tick ? `?t=${tick}` : ""}`);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const lost = useContext(AdminLost);
+  if (!rows) return <Loading err={err} />;
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" }) : "—");
+  async function refund(p: PaymentRow) {
+    if (!confirm(`Вернуть ${starsText(p.amount, p.currency)} пользователю «${p.name}» (#${p.user_id})? Доступ по подписке снимется сразу.`)) return;
+    setBusy(true);
+    try {
+      const r = await post<{ text: string }>("/api/admin/refund", { user_id: p.user_id });
+      setNote(r.text);
+      setTick((t) => t + 1);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) lost();
+      else setNote((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const sum = rows.filter((p) => !p.refunded_at && p.currency === "XTR").reduce((s, p) => s + p.amount, 0);
+  return (
+    <>
+      <div className="adm-kpis">
+        <Kpi title="Оплат в списке" value={rows.length} hint="последние 200" />
+        <Kpi title="Звёзд без возвратов" value={starsText(sum)} />
+        <Kpi title="Возвращено" value={rows.filter((p) => p.refunded_at).length} />
+      </div>
+      {note && <p className="adm-muted" role="status">{note}</p>}
+      {rows.length ? (
+        <div className="adm-scroll">
+          <table className="adm-table">
+            <thead><tr><th>Когда</th><th>Человек</th><th>Вид</th><th className="num">Сумма</th><th>До</th><th>Платёж</th><th /></tr></thead>
+            <tbody>{rows.map((p, i) => (
+              <tr key={`${p.charge}${p.paid_at}`}>
+                <td className="adm-num">{when(p.paid_at)}</td>
+                <td>{p.name} <span className="adm-muted">#{p.user_id}</span></td>
+                <td>{PAYMENT_KINDS[p.kind] ?? p.kind}</td>
+                <td className="num adm-num">{starsText(p.amount, p.currency)}</td>
+                <td className="adm-num">{when(p.expires_at)}</td>
+                <td className="adm-muted adm-num">{p.charge}</td>
+                <td>{p.refunded_at
+                  ? <span className="adm-muted">возвращено {when(p.refunded_at)}</span>
+                  : refundable(rows, i) && <button className="adm-btn small" disabled={busy} onClick={() => void refund(p)}>Вернуть</button>}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      ) : <span className="adm-muted">Оплат пока не было.</span>}
     </>
   );
 }
