@@ -5,6 +5,8 @@
 const SERVER = "https://187-126-11-122.sslip.io";
 const KEY = "maid.token";
 const CACHE = "maid-today.json";
+// Версия скрипта: сервер видит её в X-Maid-Version (админка, «С чего заходят»). Меняя скрипт — поднять.
+const VERSION = "1.0.0";
 
 const C = {
   bg: new Color("#1d1b26"),
@@ -42,7 +44,7 @@ function cacheFile() {
 async function load() {
   if (!Keychain.contains(KEY)) throw new Error("Нет ключа: откройте скрипт в Scriptable и вставьте ключ из /token.");
   const req = new Request(SERVER + "/api/today");
-  req.headers = { Authorization: "Bearer " + Keychain.get(KEY) };
+  req.headers = { Authorization: "Bearer " + Keychain.get(KEY), "X-Maid-Client": "iphone", "X-Maid-Version": VERSION };
   req.timeoutInterval = 20;
   try {
     const data = await req.loadJSON();
