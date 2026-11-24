@@ -7,6 +7,8 @@ import "../admin.css";
 
 // Витрина (этап 4) — свой кусок внутри куска админки: реестр и проигрыватель грузятся, только когда её открыли.
 const AdminShowcase = lazy(() => import("./AdminShowcase").then((m) => ({ default: m.AdminShowcase })));
+// Аналитика (этап 5) — тоже свой кусок: отчёты и SVG-графики (adminCharts.tsx) грузятся, только когда её открыли.
+const AdminAnalytics = lazy(() => import("./AdminAnalytics").then((m) => ({ default: m.AdminAnalytics })));
 
 // Админка (/admin) — отдельным куском (lazy в App.tsx), всегда тёмная, без меню сайта. Доступ решает сервер (admin.ts):
 // не админу /api/admin/* отвечает 404 — здесь это «Нет такой страницы»; админу сначала нужен код из Telegram (на час,
@@ -116,6 +118,7 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
       <main className="adm-main">
         <header className="adm-head"><h1>{cur.title}</h1></header>
         {section === "overview" ? <AdminOverview />
+          : section === "analytics" ? <Suspense fallback={<span className="adm-muted">Загрузка…</span>}><AdminAnalytics /></Suspense>
           : section === "users" ? <AdminUsers />
           : section === "payments" ? <AdminPayments />
           : section === "spend" ? <AdminSpend />

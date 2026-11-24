@@ -4,14 +4,17 @@
 // Этап 3 (24.11.2026): «Использование функций» — счётчики фич (server/src/feature-events.ts, отчёт — admin-stats.ts adminFeatures).
 // Этап 4 (24.11.2026): «Витрина» — анимации с проигрывателем, эффекты, сценарии, карта функций (screens/AdminShowcase.tsx,
 // реестр web/src/registry.gen.ts пишет tools/registry/make_registry.ts).
+// Этап 5 (24.11.2026): Аналитика — отчёты с шагом и сравнением с прошлым периодом (screens/AdminAnalytics.tsx, графики — adminCharts.tsx,
+// ручка GET /api/admin/analytics — server/src/admin-analytics.ts; типы ниже — копия оттуда один в один).
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
-export const ADMIN_LIVE_STAGE = 4;
+export const ADMIN_LIVE_STAGE = 5;
 
-export type AdminSectionId = "overview" | "users" | "payments" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
+export type AdminSectionId = "overview" | "analytics" | "users" | "payments" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
 
 export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number }[] = [
   { id: "overview", title: "Обзор", stage: 0 },
+  { id: "analytics", title: "Аналитика", stage: 5 },
   { id: "users", title: "Пользователи", stage: 1 },
   { id: "payments", title: "Оплаты", stage: 0 },
   { id: "spend", title: "Расходы на модель", stage: 1 },
@@ -156,4 +159,348 @@ export function dayAgo(day: string | null, today: string): string {
   if (d === 1) return "вчера";
   if (d < 31) return `${d} дн. назад`;
   return new Date(`${day}T12:00:00Z`).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// ——— Этап 5: Аналитика (/api/admin/analytics). Типы — копия server/src/admin-analytics.ts (контракт этапа 1 аналитики).
+export type AnalyticsReportId = "money" | "subs" | "ai" | "act" | "ret" | "feat" | "parse";
+export type AnalyticsStep = "h" | "d" | "w";
+export type AnalyticsDays = 1 | 7 | 30 | 90 | 365;
+export const ANALYTICS_DAYS: AnalyticsDays[] = [1, 7, 30, 90, 365];
+/** cur — текущий период, prev — прошлый той же длины (для стрелки). null — «—». */
+export type Pair = { cur: number | null; prev: number | null };
+export type AnalyticsNote = "hour_from_calls" | "no_hourly_features" | "days_for_hours" | "latency_30d_only" | "prev_before_data";
+
+export interface AnalyticsBucket {
+  /** d: "ГГГГ-ММ-ДД"; w: первый день корзины "ГГГГ-ММ-ДД"; h: начало часа ISO UTC "2026-11-24T13:00:00.000Z". */
+  key: string;
+  /** d и w: дни включительно (from == to у d); h: ISO [from, to). */
+  from: string; to: string;
+  /** Сколько дней в корзине: d — 1, h — 1/24, w — 1..7 (первая бывает неполной). */
+  days: number;
+}
+export interface AnalyticsMeta {
+  report: AnalyticsReportId; days: AnalyticsDays; step: AnalyticsStep;
+  generated_at: string; cached: boolean;
+  /** Как разложены дни: "user" — по поясу человека, "utc" — деньги. */
+  zone: "user" | "utc";
+  /** Последний день периода (сегодня по поясу сервера или UTC — по zone). */
+  today: string;
+  period: { from: string; to: string };
+  prev: { from: string; to: string };
+  buckets: AnalyticsBucket[];
+  /** Корзины прошлого периода (та же длина; ряды prev_* — по ним). */
+  prev_buckets: AnalyticsBucket[];
+  star_usd: number;
+  since: { payments: string | null; billing_events: string | null; feature_events: string | null; gate: string | null; llm_calls: string | null; presence: string | null };
+  notes: AnalyticsNote[];
+}
+export type AnalyticsResponse =
+  | { meta: AnalyticsMeta; report: "money"; data: MoneyData }
+  | { meta: AnalyticsMeta; report: "subs"; data: SubsData }
+  | { meta: AnalyticsMeta; report: "ai"; data: AiData }
+  | { meta: AnalyticsMeta; report: "act"; data: ActData }
+  | { meta: AnalyticsMeta; report: "ret"; data: RetData }
+  | { meta: AnalyticsMeta; report: "feat"; data: FeatData }
+  | { meta: AnalyticsMeta; report: "parse"; data: ParseData };
+
+export interface MoneyData {
+  kpi: {
+    revenue_stars: Pair;        // чистая: оплаты в периоде − возвраты в периоде
+    revenue_sub_stars: Pair;    // оплаты kind first|renew (по paid_at)
+    revenue_once_stars: Pair;   // оплаты kind once
+    refunds_stars: Pair;        // сумма amount с refunded_at в периоде (положительное число)
+    revenue_micro: Pair;        // round(revenue_stars × star_usd × 1e6)
+    ai_micro: Pair;             // расход ИИ (1.6)
+    margin_micro: Pair;         // revenue_micro − ai_micro
+    active: Pair;               // 1.4
+    payers: Pair;               // различные user_id с оплатой в периоде (возвращённые не в счёт)
+    arpu_stars: Pair;           // revenue_stars / active; active=0 → null
+    arppu_stars: Pair;          // revenue_stars / payers; payers=0 → null
+    ltv_stars: Pair;            // всё время до конца окна: Σ(оплаты) − Σ(возвраты) / различные платившие
+    avg_check_stars: Pair;      // Σ amount оплат в периоде / число этих оплат; 0 оплат → null
+    payments: Pair;             // число оплат в периоде
+    ai_per_active_micro: Pair;  // ai_micro / active; active=0 → null
+  };
+  series: {
+    sub_stars: number[]; once_stars: number[];
+    refund_stars: number[];                 // положительные; рисуются ВНИЗ от нуля
+    revenue_micro: number[]; ai_micro: number[];
+    active: number[];
+    arpu_stars: (number | null)[];          // чистые звёзды корзины / активные корзины
+    ai_per_active_micro: (number | null)[]; // ai корзины / активные корзины
+  };
+}
+
+export interface SubsData {
+  price_stars: number;            // config.billing.price
+  trial_days: number;             // config.billing.trialDays
+  kpi: {
+    active_subs: Pair; trials: Pair; trials_ending_3d: Pair; autorenew: Pair; churn_risk: Pair;
+    trial_conversion: Pair;       // доля 0..1: оплатившие / решённые; решённых 0 → null
+    trial_decided: Pair;          // в когорте пробы, у кого конец + 3 дн. <= now
+    trial_pending: number;        // в когорте, у кого 3 дня ещё не прошли
+    new_subs: Pair; renewals: Pair;
+    cancels: Pair;                // billing_events kind canceled в периоде (правило since)
+    expired: Pair;                // billing_events kind expired в периоде (правило since)
+    refunds: Pair;                // payments с refunded_at в периоде (число)
+  };
+  series: {
+    new: number[]; renewed: number[];        // вверх
+    canceled: (number | null)[];             // положительные; рисуются ВНИЗ; null — корзина раньше since billing_events
+    expired: (number | null)[];              // так же, вниз
+    trial_conversion: (number | null)[];     // по корзине конца пробы
+  };
+  /** «Кто скоро решит»: до 10 строк, ближайшие сверху. */
+  soon: SubsSoonRow[];
+}
+export interface SubsSoonRow {
+  user_id: number;
+  what: "trial" | "no_renew";   // проба кончается / подписка без автопродления
+  left_days: number;            // ceil((access_until − now) / сутки), не меньше 0
+  days_with_us: number;         // floor((now − created_at) / сутки)
+  active_days_7: number;        // различные активные дни за 7 последних дней по его поясу
+  ai_micro_30: number;          // llm_usage за 30 дней UTC
+}
+
+export type AiGroup = "parse" | "talk" | "draw" | "voice" | "background" | "other";
+/** Назначения llm_usage.kind → группа (USAGE_KINDS из server/src/llm.ts). Незнакомый kind → other. */
+export const AI_GROUPS: { id: AiGroup; kinds: string[] }[] = [
+  { id: "parse", kinds: ["parse", "correct"] },
+  { id: "talk", kinds: ["chat", "answer"] },
+  { id: "draw", kinds: ["draw"] },
+  { id: "voice", kinds: ["voice"] },
+  { id: "background", kinds: ["summary", "patterns"] },
+  { id: "other", kinds: ["other"] },
+];
+export interface AiData {
+  source: "llm_usage" | "llm_calls";
+  kpi: {
+    total_micro: Pair; calls: Pair;
+    unpriced_calls: Pair;              // вызовы без цены (их расход — ноль)
+    forecast_month_micro: number | null; // Σ за 7 полных прошедших дней UTC / 7 × 30; не зависит от интервала
+    capped_users: Pair;                // различные user_id с feature gate.day_cap > 0 в днях окна
+    capped_share: Pair;                // capped_users / active; active=0 → null
+    active: Pair;
+    top_user: { user_id: number; micro: number } | null; // самый дорогой за период
+    subscribers: number;               // plan='paid' со живым сроком сейчас
+    subscriber_avg_micro: number | null;          // средний расход ИИ подписчика за период
+    subscriber_avg_revenue_micro: number | null;  // выручка подписки за период на подписчика
+  };
+  groups: { id: AiGroup; kinds: string[] }[]; // = AI_GROUPS
+  series: Record<AiGroup, number[]>;          // micro по корзинам
+  /** «Сколько людей тратят сколько» — ВСЕГДА за 30 дней UTC до сегодня, среди активных за эти 30 дней (с нулём — в первую полосу). */
+  dist: { id: "lt5c" | "5to20c" | "20to50c" | "50cto1" | "1to3" | "gt3"; from_micro: number; to_micro: number | null; users: number; share: number | null }[];
+  dist_users: number;
+  /** Модели за период: доля расхода, вызовы, главное назначение, время ответа. Сортировка по micro по убыванию. */
+  models: { model: string; micro: number; share: number | null; calls: number; top_kind: string; p50_ms: number | null; p95_ms: number | null; timed: number }[];
+  limits: { trial_day_micro: number; paid_day_micro: number; trial_pool_day_micro: number }; // из config.billing × 1e6
+}
+
+export interface ActData {
+  kpi: {
+    signups: Pair;              // users.created_at в периоде
+    requests: Pair;             // обращения к ИИ
+    manual: Pair;               // отметки кнопкой, push, правки мышью — «без ИИ»
+    active: Pair;
+    requests_per_active: Pair;  // requests / active
+    manual_per_active: Pair;    // manual / active
+    payers_share: Pair;         // (активные с оплатой XTR в периоде) / active
+  };
+  /** Источники сообщений с ИИ по убыванию объёма (telegram, desktop, app, iphone…), подписи — SOURCE_NAMES. */
+  sources: string[];
+  series: {
+    signups: number[];
+    requests: number[];
+    requests_by_source: Record<string, number[]>;
+    manual: number[];
+  };
+  /** 24 числа: среднее число сообщений (requests + manual) в местный час суток за день периода. */
+  hours: number[];
+  /** Неделя × час: минуты присутствия, сложенные по людям, ВСЕГДА за 28 дней до сегодня. Строки пн…вс, столбцы 0…23. */
+  heat: number[][];
+  heat_days: 28;
+}
+
+export interface RetData {
+  /** Цифры на «сегодня» t; prev — та же точка неделю назад (t−7), независимо от интервала. */
+  kpi: { dau: Pair; wau: Pair; mau: Pair; stickiness: Pair; gone: Pair };
+  series: {
+    active: number[];       // d — активные за день; h — за час; w — различные активные в 7-дневной корзине
+    prev_active: number[];  // то же для prev_buckets (рисуется пунктиром по индексу)
+  };
+  /** Мост MAU: prev = [t−59, t−30], cur = [t−29, t]. */
+  bridge: { prev_mau: number; stayed: number; left: number; new: number; returned: number; mau: number };
+  /** Когорты: строка — неделя регистрации, новые снизу. */
+  cohorts: { week: string; size: number; cells: ({ share: number; users: number } | null)[] }[];
+  cohort_cols: number; // число столбцов Н+0…Н+(cohort_cols−1)
+}
+
+export interface FeatData {
+  groups: Record<string, string>;   // FEATURE_GROUPS
+  since: string | null;             // MIN(day_key) feature_events
+  active: Pair;
+  kpi: { used: Pair; total: number; per_person: Pair; people: Pair; unused: Pair };
+  rows: {
+    id: string; title: string; group: string; by: "client" | "server";
+    uses: Pair; people: Pair;
+    share: Pair;                    // people / active (доля активных)
+    clients: Record<string, number>; // uses.cur по клиентам
+    spark: number[] | null;         // uses по корзинам; на шаге h — null
+  }[];                              // сортировка по uses.cur по убыванию
+  unused: string[];                 // id фич с uses.cur = 0 за интервал
+}
+
+export type ParseKind = "tasks" | "plans" | "diary" | "habits" | "money" | "other" | "talk";
+export const PARSE_KINDS: ParseKind[] = ["tasks", "plans", "diary", "habits", "money", "other", "talk"];
+export interface ParseData {
+  kpi: {
+    requests: Pair; undone: Pair; corrections: Pair; undone_share: Pair; corrections_share: Pair;
+    failed_now: number;        // сейчас, без интервала
+    failed_retry: number;      // ждут повтора
+    clarify_now: number;
+    p50_ms: Pair; p95_ms: Pair;
+  };
+  kinds: ParseKind[];          // = PARSE_KINDS
+  series: {
+    requests: number[];
+    kinds: Record<ParseKind, number[]>;
+    err_share: (number | null)[]; // (undone + corrections) / requests корзины; requests=0 → null
+  };
+}
+
+/** Отчёт в меню раздела; fun и rina — заглушки этапа 2 (запросов не шлют). */
+export type AnalyticsTab = AnalyticsReportId | "fun" | "rina";
+export const ANALYTICS_REPORTS: { group: string; items: { id: AnalyticsTab; title: string; stub?: true }[] }[] = [
+  { group: "Деньги", items: [{ id: "money", title: "Обзор" }, { id: "subs", title: "Подписки" }, { id: "ai", title: "Расход на ИИ" }] },
+  { group: "Люди", items: [{ id: "act", title: "Активность" }, { id: "ret", title: "Удержание" }, { id: "fun", title: "Воронки", stub: true }] },
+  { group: "Рина и функции", items: [{ id: "feat", title: "Функции" }, { id: "rina", title: "Рина", stub: true }, { id: "parse", title: "Разбор" }] },
+];
+/** С этого дня копятся данные для отчётов этапа 2 (Воронки, Рина). */
+export const ANALYTICS_COLLECT_SINCE = "2026-11-24";
+/** Раз в сколько обновлять открытый отчёт (только при видимой вкладке браузера). */
+export const ANALYTICS_REFRESH_MS = 60_000;
+
+/** Отчёт по адресу /admin/analytics/<отчёт>; незнакомый и пустой — «Обзор» (money). */
+export function analyticsTab(arg: string | undefined): AnalyticsTab {
+  for (const g of ANALYTICS_REPORTS) for (const it of g.items) if (it.id === arg) return it.id;
+  return "money";
+}
+
+/** Можно ли такой шаг при таком интервале (как сервер: час — до 7 дней, неделя — от 30; у 24 ч — только час, как analyticsFixStep). */
+export function analyticsStepOk(days: AnalyticsDays, step: AnalyticsStep): boolean {
+  if (days === 1) return step === "h";
+  return step === "h" ? days <= 7 : step === "w" ? days >= 30 : true;
+}
+
+/** Шаг под интервал, как fixStep макета: 24 ч — час; «час» больше 7 дней и «неделя» меньше 30 — день. */
+export function analyticsFixStep(days: AnalyticsDays, step: AnalyticsStep): AnalyticsStep {
+  if (days === 1) return "h";
+  if (step === "h" && days > 7) return "d";
+  if (step === "w" && days < 30) return "d";
+  return step;
+}
+
+/** Изменение к прошлому периоду: (cur − prev) / prev. Нет числа, prev = 0 или меньше 0,5 % — null («—»). */
+export function analyticsDelta(cur: number | null, prev: number | null): number | null {
+  if (cur == null || prev == null || prev === 0) return null;
+  const d = (cur - prev) / Math.abs(prev);
+  return Math.abs(d) < 0.005 ? null : d;
+}
+
+export const AI_GROUP_NAMES: Record<AiGroup, string> = {
+  parse: "Разбор сообщений", talk: "Разговор", draw: "Картинки", voice: "Голос", background: "Сводки и связи (фон)", other: "Другое",
+};
+export const PARSE_KIND_NAMES: Record<ParseKind, string> = {
+  tasks: "Задачи", plans: "Планы", diary: "Дневник", habits: "Привычки", money: "Деньги", other: "Другое", talk: "Разговор без записи",
+};
+export const DIST_NAMES: Record<AiData["dist"][number]["id"], string> = {
+  lt5c: "до 5¢", "5to20c": "5–20¢", "20to50c": "20–50¢", "50cto1": "50¢–1$", "1to3": "1–3$", gt3: "больше 3$",
+};
+/** Группа назначения по llm_usage.kind (незнакомое — «Другое»). */
+export const aiGroupOf = (kind: string): AiGroup => AI_GROUPS.find((g) => g.kinds.includes(kind))?.id ?? "other";
+
+/** Сноски под карточками (meta.notes). */
+export const ANALYTICS_NOTE_TEXT: Record<AnalyticsNote, string> = {
+  hour_from_calls: "на шаге «час» расход — по журналу вызовов, без дневных итогов",
+  no_hourly_features: "по часам функций нет — данные по дням",
+  days_for_hours: "цифры — за календарные дни, которые задевает окно часов",
+  latency_30d_only: "время ответа — только за последние 30 дней",
+  prev_before_data: "часть данных начали писать позже — для такого окна «—»",
+};
+
+/** Число по-русски ровно с digits знаками: запятая в дробях, тысячи через неразрывный пробел. */
+function fixedText(v: number, digits: number): string {
+  const [int, frac = ""] = Math.abs(v).toFixed(digits).split(".");
+  const g = int.length > 3 ? int.replace(/\B(?=(\d{3})+(?!\d))/g, " ") : int;
+  return frac ? `${g},${frac}` : g;
+}
+
+/** Число по-русски: запятая в дробях, тысячи через неразрывный пробел; лишние нули справа убираются. */
+export function numText(v: number | null, digits = 0): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const [g, frac = ""] = fixedText(v, digits).split(",");
+  const f = frac.replace(/0+$/, "");
+  const out = f ? `${g},${f}` : g;
+  return v < 0 && out !== "0" ? `−${out}` : out;
+}
+
+/** Деньги из micro_usd (миллионные доллара): от доллара — «$1,23», меньше — «61¢» (до 10¢ — с десятой: «0,4¢»). */
+export function microText(micro: number | null): string {
+  if (micro == null || !Number.isFinite(micro)) return "—";
+  const a = Math.abs(micro);
+  let out: string;
+  if (a === 0) out = "$0";
+  else if (a < 1_000_000) { const c = a / 10_000; out = `${numText(c, c < 10 ? 1 : 0)}¢`; }
+  else out = `$${fixedText(a / 1e6, a < 1e9 ? 2 : 0)}`;
+  return micro < 0 ? `−${out}` : out;
+}
+
+/** Доля 0..1 → «12,3%» (целые — без запятой); нет числа — «—». */
+export function shareText(share: number | null): string {
+  if (share == null || !Number.isFinite(share)) return "—";
+  return `${numText(share * 100, 1)}%`;
+}
+
+/** Стрелка изменения: «+12,3%» / «−4%». */
+export function deltaText(d: number): string {
+  return `${d > 0 ? "+" : ""}${numText(d * 100, 1)}%`;
+}
+
+const RU_MONTHS = ["янв.", "февр.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."];
+const pad2 = (n: number) => String(n).padStart(2, "0");
+/** День «ГГГГ-ММ-ДД» → «24 нояб.»; с годом — «24 нояб. 2026». */
+export function dayText(day: string, year = false): string {
+  const [y, m, d] = day.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return day;
+  return `${d} ${RU_MONTHS[m - 1]}${year ? ` ${y}` : ""}`;
+}
+
+/** Подпись корзины на оси и в подсказке: час — местным временем браузера «24.11 13:00»; день — «24 нояб.»;
+ *  неделя — первый день, у неполной — «(N дн.)». */
+export function bucketLabel(b: AnalyticsBucket, step: AnalyticsStep): string {
+  if (step === "h") {
+    const t = new Date(b.key);
+    return `${t.getDate()}.${pad2(t.getMonth() + 1)} ${pad2(t.getHours())}:00`;
+  }
+  const s = dayText(b.key);
+  return step === "w" && b.days < 7 ? `${s} (${b.days} дн.)` : s;
+}
+
+/** CSV: запятая, точка в дробях, поле с запятой, кавычкой или переводом строки — в кавычках; null — пусто; BOM в начале. */
+export function toCsv(header: string[], rows: (string | number | null)[][]): string {
+  const cell = (v: string | number | null) => {
+    if (v == null) return "";
+    const s = typeof v === "number" ? (Number.isFinite(v) ? String(v) : "") : v;
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return "﻿" + [header, ...rows].map((r) => r.map(cell).join(",")).join("\r\n");
+}
+
+/** Имя файла выгрузки: maid-<отчёт>-<таблица>-<дни>d-<ГГГГ-ММ-ДД>.csv. */
+export const csvFileName = (report: string, table: string, days: number, today: string) => `maid-${report}-${table}-${days}d-${today}.csv`;
+
+/** Ряды карточки в CSV: корзина (key), её начало и конец, дней в корзине, потом ряды (имена — с единицей). */
+export function seriesCsv(buckets: AnalyticsBucket[], cols: { name: string; values: (number | null)[] }[]): string {
+  return toCsv(["bucket", "from", "to", "days", ...cols.map((c) => c.name)],
+    buckets.map((b, i) => [b.key, b.from, b.to, +b.days.toFixed(4), ...cols.map((c) => c.values[i] ?? null)]));
 }

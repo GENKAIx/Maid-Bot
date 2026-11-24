@@ -118,6 +118,6 @@ test("карта функций: числа этапа 3 у пунктов, бе
   assert.deepEqual(u("screen.plans"), { uses30: 0, people30: 0, missing: true }, "нет в отчёте — ноль с пометкой «нет на сервере», не «не используется»");
   assert.equal(u(undefined), null, "нет фичи — нет числа");
   assert.deepEqual(usedCount(["screen.today", "screen.plans", undefined], u), { used: 1, counted: 2 });
-  assert.equal(ADMIN_LIVE_STAGE, 4);
+  assert.ok(ADMIN_LIVE_STAGE >= 4, "этап 4 живой (дальше — этап 5, Аналитика)");
   assert.ok(ADMIN_SECTIONS.find((s) => s.id === "showcase")!.stage <= ADMIN_LIVE_STAGE);
 });
