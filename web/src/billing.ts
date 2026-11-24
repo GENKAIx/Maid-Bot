@@ -5,7 +5,8 @@ import { ApiError } from "./api";
 
 /** /api/me → access (server/src/access.ts accessView). */
 export interface Access {
-  plan: "owner" | "friend" | "paid" | "trial" | "expired";
+  /** frozen — аккаунт заморожен админом (server/src/admin-account.ts): вход закрыт, сайт видит это только до выхода. */
+  plan: "owner" | "friend" | "paid" | "trial" | "expired" | "frozen";
   until: string | null;
   canceled: boolean;
   trial_left_days: number | null;
@@ -84,6 +85,7 @@ export function planView(a: Access | null | undefined, price = a?.price ?? 150):
   if (!a) return { ...no, title: "—", text: "Сервер не сообщил тариф." };
   if (a.plan === "owner") return { ...no, title: "Владелец", text: "Всё бесплатно и без ограничений." };
   if (a.plan === "friend") return { ...no, title: "Друг", text: "Бесплатно навсегда — спасибо, что с нами с самого начала." };
+  if (a.plan === "frozen") return { ...no, title: "Приостановлен", text: "Аккаунт приостановлен — записи сохранены. Вопросы — /paysupport в боте." };
   if (a.plan === "trial") {
     const n = a.trial_left_days ?? 0;
     const until = a.until ? ` (до ${dayText(a.until)})` : "";

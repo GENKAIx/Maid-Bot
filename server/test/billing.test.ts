@@ -208,13 +208,15 @@ test("админка: список оплат без payload и chat id, звё�
     assert.ok(!raw.includes("charge-secret") && !raw.includes("s1:") && !raw.includes('"77"'), "ни payload, ни charge_id целиком, ни chat id");
     const ov = (await call("/api/admin/overview")).body.billing as Record<string, number>;
     assert.deepEqual([ov.stars_30, ov.subscribers, ov.trials], [150, 1, 1]);
-    const ref = await call("/api/admin/refund", { user_id: buyer.id });
+    assert.equal((await call("/api/admin/refund", { user_id: buyer.id })).status, 400, "без причины — нет возврата");
+    assert.equal(tg.of("refund").length, 0);
+    const ref = await call("/api/admin/refund", { user_id: buyer.id, reason: "просил вернуть" });
     assert.equal(ref.status, 200);
     assert.deepEqual(tg.of("refund")[0].a, [77, "charge-secret-12345678"]);
     const log = (await call("/api/admin/log")).body as unknown as { action: string; detail: string }[];
-    assert.ok(log.some((x) => x.action === "refund" && x.detail === `#${buyer.id} ⭐150`));
+    assert.ok(log.some((x) => x.action === "refund" && x.detail === `#${buyer.id} ⭐150` && (x as { reason?: string }).reason === "просил вернуть"));
     assert.equal(((await call("/api/admin/overview")).body.billing as Record<string, number>).stars_30, 0, "возвращённые — не доход");
-    assert.equal((await call("/api/admin/refund", { user_id: buyer.id })).status, 409);
+    assert.equal((await call("/api/admin/refund", { user_id: buyer.id, reason: "ещё раз" })).status, 409);
   } finally {
     server.close();
     await store.close();

@@ -6,7 +6,7 @@ import type { Store, User } from "./db.ts";
 // Сам вход в админку подтверждается кодом из Telegram: ключ сайта лежит в localStorage, и чужой скрипт на странице мог бы
 // им воспользоваться, а код из Telegram он не увидит. Код действует ADMIN_CODE_MS, вход — ADMIN_PASS_MS, и только на том
 // устройстве (сессии), где код ввели. Всё хранится в kv: admin:code:<сессия> и admin:pass:<сессия>.
-// В ответах админки — только счётчики и имена, без текстов пользователей (тест admin.test.ts).
+// В ответах админки — только счётчики и номера аккаунтов (#id), без имён, логинов и текстов пользователей (тест admin.test.ts).
 
 export const ADMIN_CODE_MS = 10 * 60_000;
 export const ADMIN_PASS_MS = 60 * 60_000;
@@ -78,8 +78,10 @@ export async function leaveAdmin(store: Store, u: User, sid: string, now = new D
   await store.addAdminLog(u.id, "leave", "", now);
 }
 
-/** Журнал админки: кто (имя или логин, без chat id), когда, что. */
+/** Журнал админки: кто — номер аккаунта (#id; 0 — владелец из бота без записи), когда, что, параметры (detail) и причина.
+ *  Без имён и логинов (правило приватности, этап 3); Telegram id в старых строках ответа /answer скрыт. */
 export async function adminJournal(store: Store, limit = 100) {
-  const names = new Map((await store.users()).map((x) => [x.id, x.name || x.login || `#${x.id}`]));
-  return (await store.adminLog(limit)).map((r) => ({ at: r.at, who: names.get(r.user_id) ?? `#${r.user_id}`, action: r.action, detail: r.detail }));
+  return (await store.adminLog(limit)).map((r) => ({
+    at: r.at, who: r.user_id ? `#${r.user_id}` : "владелец (бот)", action: r.action, detail: r.detail.replace(/\btg \d+/g, "tg …"), reason: r.reason,
+  }));
 }

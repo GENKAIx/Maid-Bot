@@ -70,9 +70,11 @@ export async function issueToken(store: Store, userId: number, label: string, me
   return token;
 }
 
-export async function login(store: Store, loginName: string, password: string, label: string, meta?: ClientMeta): Promise<string | null> {
+/** null — неверный логин или пароль; { frozen } — пароль верный, но аккаунт заморожен (admin-account.ts): входа нет. */
+export async function login(store: Store, loginName: string, password: string, label: string, meta?: ClientMeta): Promise<string | null | { frozen: true }> {
   const u = await store.userByLogin(loginName.trim());
   if (!u || !(await verifyPassword(password, u.password_hash))) return null;
+  if (u.frozen_at) return { frozen: true };
   return issueToken(store, u.id, label, meta);
 }
 
@@ -152,6 +154,11 @@ export async function authByToken(store: Store, token: string, meta: ClientMeta 
       return undefined;
     }
     const { last_seen, session_label, session_client, ...user } = u;
+    // Заморожен (admin-account.ts; входы закрываются при заморозке, это — на случай ключа, выданного в обход): вход закрыт.
+    if (user.frozen_at) {
+      await store.dropSession(h);
+      return undefined;
+    }
     // last_seen, клиент, версию и минуту присутствия пишем не чаще раза в минуту.
     if (!opts.quiet && Date.now() - new Date(last_seen).getTime() > 60_000) {
       const known = session_client || clientFromLabel(session_label);

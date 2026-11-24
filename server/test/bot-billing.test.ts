@@ -115,7 +115,7 @@ test("бот: /paysupport — не чаще раза в 10 минут от че�
   assert.equal(s.sent().filter((c) => String(c.payload.chat_id) === OWNER).length, 1, "из группы — не пересылаем");
   await s.text(Number(OWNER), "/answer 66 Звёзды вернули");
   assert.ok(s.sent().some((c) => String(c.payload.chat_id) === "66" && /Звёзды вернули/.test(String(c.payload.text))));
-  assert.ok((await s.store.adminLog()).some((x) => x.action === "paysupport-answer" && x.detail === "tg 66"));
+  assert.ok((await s.store.adminLog()).some((x) => x.action === "paysupport-answer" && x.detail === "без учётной записи"), "в журнал — номер аккаунта или «без учётной записи», не Telegram id");
   // Не владелец — /answer молчит.
   const before = s.sent().length;
   await s.text(66, "/answer 1 привет");

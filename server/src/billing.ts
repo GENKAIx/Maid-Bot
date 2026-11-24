@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { tariffs } from "./tariffs.ts";
 import type { BillingKind, Store, User } from "./db.ts";
-import { accessOf, endedOf, endedText, GRACE_MS } from "./access.ts";
+import { accessOf, endedOf, endedText, GRACE_MS, isFrozen } from "./access.ts";
 import { esc } from "./report.ts";
 
 // Подписка Telegram Stars (24.11.2026): ⭐price в месяц, Telegram сам продлевает её каждые 30 дней (subscription_period 2592000).
@@ -92,6 +92,7 @@ export class Billing {
   payable(u: User, now = this.now()): string | null {
     const a = accessOf(u, now);
     if (a.plan === "owner" || a.plan === "friend") return "У вас и так бесплатный доступ навсегда — платить не нужно.";
+    if (isFrozen(u)) return "Аккаунт приостановлен — оплата сейчас недоступна. Вопросы — /paysupport в боте.";
     if (a.plan === "paid" && Date.parse(a.until ?? "") - now.getTime() > RENEW_WINDOW_MS) {
       return a.canceled
         ? `Подписка и так идёт до ${day(a.until!)}. Чтобы она продлевалась дальше, возобновите продление: /resume_sub в боте или в Telegram (Настройки → Мои звёзды → Подписки).`
@@ -228,12 +229,17 @@ export class Billing {
     return { ok: true, text: `Продление возобновлено: следующее списание — ${day(u.access_until ?? "")}.` };
   }
 
-  /** Возврат последней оплаты человека (владелец: /refund в боте, кнопка в админке). by — кто вернул (журнал admin_log). */
-  async refund(userId: number, by: number): Promise<{ ok: boolean; text: string }> {
+  /** Возврат последней оплаты человека (владелец: /refund в боте, кнопка в админке). by — кто вернул (журнал admin_log).
+   *  reason — причина в журнал (в админке обязательна). charge — хвост charge_id выбранной в админке оплаты («…12345678», как в
+   *  списке оплат): возвращается только последняя невозвращённая, и если выбрана другая (список устарел) — отказ без возврата. */
+  async refund(userId: number, by: number, o: { reason?: string; charge?: string } = {}): Promise<{ ok: boolean; text: string }> {
     const u = await this.store.user(userId);
     if (!u) return { ok: false, text: `Нет пользователя #${userId}.` };
     const pay = (await this.store.paymentsOf(userId)).find((x) => !x.refunded_at);
     if (!pay) return { ok: false, text: `У #${userId} нет оплат для возврата.` };
+    if (o.charge && o.charge.replace(/^…/, "") !== pay.charge_id.slice(-8)) {
+      return { ok: false, text: "Вернуть можно только последнюю невозвращённую оплату — обновите список и выберите её." };
+    }
     if (!this.api) return { ok: false, text: "Бот выключен — вернуть звёзды нельзя." };
     // Сначала — отменить продление: не проверено, закрывает ли подписку сам возврат; без этого через месяц звёзды спишутся снова.
     if (u.sub_charge_id && u.tg_user_id && !Number(u.sub_canceled)) {
@@ -244,11 +250,11 @@ export class Billing {
       await this.api.refundStarPayment(Number(pay.tg_user_id), pay.charge_id);
     } catch (e) {
       console.error("[billing] возврат", (e as Error).message);
-      await this.store.addAdminLog(by, "refund-fail", `#${userId} ⭐${pay.amount}`, this.now());
+      await this.store.addAdminLog(by, "refund-fail", `#${userId} ⭐${pay.amount}`, this.now(), o.reason ?? "");
       return { ok: false, text: `Telegram не вернул: ${(e as Error).message.slice(0, 120)}` };
     }
     await this.refunded({ currency: pay.currency, total_amount: pay.amount, invoice_payload: pay.payload, telegram_payment_charge_id: pay.charge_id });
-    await this.store.addAdminLog(by, "refund", `#${userId} ⭐${pay.amount}`, this.now());
+    await this.store.addAdminLog(by, "refund", `#${userId} ⭐${pay.amount}`, this.now(), o.reason ?? "");
     return { ok: true, text: `Вернула ⭐${pay.amount} пользователю #${userId}, доступ снят.` };
   }
 
@@ -260,11 +266,12 @@ export class Billing {
       await this.store.updateUser(u.id, { plan: "free" });
       // Что кончилось — разными видами: подписка (expired), проба (trial_ended), подарок (gift_ended); в аналитике «Истекли» — только подписка.
       await this.journal(u.id, ended === "paid" ? "expired" : ended === "gift" ? "gift_ended" : "trial_ended", null, null, now);
-      await this.notify({ ...u, plan: "free" }, `${endedText(ended, this.price)}.\nПросмотр записей, отметки и напоминания остаются бесплатно.`);
+      // Замороженному (admin-account.ts) горничная не пишет: срок кончается молча, план и журнал — как у всех.
+      if (!isFrozen(u)) await this.notify({ ...u, plan: "free" }, `${endedText(ended, this.price)}.\nПросмотр записей, отметки и напоминания остаются бесплатно.`);
     }
     // Кнопки оплаты тут нет: новая подписка поверх идущей списала бы звёзды дважды, а оплаченные дни пропали бы.
     for (const u of await this.store.canceledEndingBetween(now.toISOString(), new Date(now.getTime() + REMIND_BEFORE_MS).toISOString())) {
-      if (!(await this.store.once(`subend:${u.id}:${(u.access_until ?? "").slice(0, 10)}`))) continue;
+      if (isFrozen(u) || !(await this.store.once(`subend:${u.id}:${(u.access_until ?? "").slice(0, 10)}`))) continue;
       await this.notify(u, `Подписка закончится ${day(u.access_until ?? "")} — продление отменено. Чтобы я и дальше разбирала сообщения, ` +
         "возобновите продление: /resume_sub или в Telegram (Настройки → Мои звёзды → Подписки).", false);
     }

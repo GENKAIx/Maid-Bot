@@ -6,6 +6,7 @@ import { z } from "zod";
 import { PERSONAS } from "./personas.ts";
 import { authByToken, clientMeta, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
 import { adminJournal, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
+import { accountAction, accountCard, AccountError, accountReason, MAX_ACCOUNT_ID } from "./admin-account.ts";
 import { adminAudience, adminFeatures, adminHealth, adminOverview, adminPayments, adminQualityReport, adminSpend, adminUsers } from "./admin-stats.ts";
 import { cachedAnalytics, parseAnalyticsQuery } from "./admin-analytics.ts";
 import { acceptUsage, countFeature, countPersona, featureClient, USAGE_MAX_KEYS } from "./feature-events.ts";
@@ -34,7 +35,7 @@ import { isOpusMime, transcribe, VOICE_MAX_BYTES, voiceSeconds } from "./voice.t
 import { moveToTomorrow, weatherFor } from "./weather.ts";
 import { ADDRESSES, addressWord, askNext, askOf, wakeAt, wakeMinOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES, llmErrorCode } from "./llm.ts";
-import { accessOf, accessView, RATE_AGAIN, todayView, type Access, type Refusal } from "./access.ts";
+import { accessOf, accessView, FROZEN_TEXT, RATE_AGAIN, todayView, type Access, type Refusal } from "./access.ts";
 import type { Billing } from "./billing.ts";
 import { applyTariffs, TariffError, tariffs, tariffsView, undoTariff } from "./tariffs.ts";
 
@@ -63,6 +64,24 @@ export interface ApiDeps {
   cities?: (q: string) => Promise<City[]>;
   /** Подписка Telegram Stars (billing.ts): ссылка на оплату, отмена продления, возврат из админки. Нет — 503 на /api/billing/*. */
   billing?: Billing;
+}
+
+/** Ошибка проверки действия с аккаунтом (admin-account.ts) — в ответ с её кодом. */
+function guard<T>(fn: () => T): T {
+  try {
+    return fn();
+  } catch (e) {
+    if (e instanceof AccountError) throw new HttpError(e.status, e.message);
+    throw e;
+  }
+}
+async function guardAsync<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof AccountError) throw new HttpError(e.status, e.message);
+    throw e;
+  }
 }
 
 /** extra — ещё поля ответа рядом с error (402: pay_url, messageId). */
@@ -329,12 +348,30 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/admin/log") return adminJournal(store);
     // Оплаты (billing.ts): список без payload и полного charge_id (хвост — для сверки с Telegram), возврат — с записью в журнал.
     if (m === "GET" && p === "/api/admin/payments") return adminPayments(store);
+    // Возврат — и из «Оплат», и из карточки аккаунта (этап 3): причина обязательна (в журнал админа), charge — хвост выбранной оплаты
+    // («…12345678»): сервер возвращает только последнюю невозвращённую, выбрана другая — 409 без возврата.
     if (m === "POST" && p === "/api/admin/refund") {
       if (!deps.billing) throw new HttpError(503, "оплата выключена");
-      const b = parseBody(z.object({ user_id: z.number().int().positive() }), await readJson(req));
-      const r = await deps.billing.refund(b.user_id, u.id);
+      const b = parseBody(z.object({ user_id: z.number().int().positive().max(MAX_ACCOUNT_ID), reason: z.unknown(), charge: z.string().max(20).optional() }), await readJson(req));
+      const reason = guard(() => accountReason(b.reason));
+      const r = await deps.billing.refund(b.user_id, u.id, { reason, charge: b.charge });
       if (!r.ok) throw new HttpError(409, r.text);
       return r;
+    }
+    // Аккаунт по номеру (этап 3, admin-account.ts): GET — карточка (только числа), POST …/<действие> — продлить, подарок, лимит на
+    // сегодня, заморозить, разморозить; причина обязательна, нет такого #id — 404 (и номер больше int4 — тоже 404, а не ошибка базы).
+    const acc = /^\/api\/admin\/account\/(\d{1,12})(?:\/([a-z]+))?$/.exec(p);
+    if (acc) {
+      const id = Number(acc[1]);
+      if (id > MAX_ACCOUNT_ID) throw new HttpError(404, `нет аккаунта #${acc[1]}`);
+      if (m === "GET" && !acc[2]) return guardAsync(() => accountCard(store, id));
+      if (m === "POST" && acc[2]) {
+        const body = await readJson(req, 20_000);
+        const tell = deps.billing ? (x: User, text: string) => deps.billing!.notify(x, text, false) : undefined;
+        const cancelSub = deps.billing ? (x: User) => deps.billing!.cancel(x) : undefined;
+        return guardAsync(() => accountAction({ store, tell, cancelSub }, u, id, acc[2], body));
+      }
+      throw new HttpError(404, "нет такого адреса");
     }
     // Тарифы из базы (tariffs.ts): текущие числа, по умолчанию, история и экономика; «Применить» (причина обязательна) и откат —
     // с проверкой чисел (400), строкой истории и записью в журнал админки.
@@ -399,6 +436,10 @@ export function createApi(deps: ApiDeps) {
       const wait = gate.wait(ip, b.login);
       if (wait) throw new HttpError(429, `слишком много неудачных попыток, попробуйте через ${Math.ceil(wait / 60_000)} мин`);
       const token = await login(store, b.login, b.password, b.label ?? "web", clientMeta(req.headers));
+      if (token && typeof token === "object") {
+        gate.passed(ip, b.login);
+        throw new HttpError(403, FROZEN_TEXT);
+      }
       if (!token) {
         gate.failed(ip, b.login);
         throw new HttpError(401, "неверный логин или пароль");

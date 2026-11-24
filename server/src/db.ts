@@ -568,13 +568,21 @@ CREATE TABLE IF NOT EXISTS ai_quota (
 );
 CREATE INDEX IF NOT EXISTS ai_quota_day ON ai_quota (day_key);
 `,
+  // Шаг 33: действия с аккаунтом по номеру (этап 3 «Тарифы и управление», admin-account.ts). users.frozen_at — когда аккаунт
+  // заморозили (NULL — не заморожен): ИИ, вход и ответы бота закрыты, данные остаются. admin_log.reason — причина действия админа
+  // (обязательна у действий с аккаунтом, тарифов и возврата; у входа и кода — пусто).
+  `
+ALTER TABLE users ADD COLUMN frozen_at TEXT;
+ALTER TABLE admin_log ADD COLUMN reason TEXT NOT NULL DEFAULT '';
+`,
 ];
 
 /** Виды строк журнала подписки (billing_events, шаг 28). paid_first — первая оплата подписки, paid_once — оплата без признака
  *  подписки, renewed — продление, canceled / resumed — продление отменили / возобновили, refunded — возврат, expired — кончилась
  *  подписка, trial_ended — проба, gift_ended — подарок (планировщик перевёл в free; что кончилось — access.ts endedOf),
- *  trial_started — проба при регистрации, gift — подарок по /invite (новому или продление срока). */
-export const BILLING_KINDS = ["paid_first", "paid_once", "renewed", "canceled", "resumed", "refunded", "expired", "trial_ended", "gift_ended", "trial_started", "gift"] as const;
+ *  trial_started — проба при регистрации, gift — подарок по /invite (новому или продление срока). Из админки (admin-account.ts,
+ *  шаг 33): admin_extend — продлили срок, admin_grant — выдали подарок без оплаты (как gift, но не по /invite). */
+export const BILLING_KINDS = ["paid_first", "paid_once", "renewed", "canceled", "resumed", "refunded", "expired", "trial_ended", "gift_ended", "trial_started", "gift", "admin_extend", "admin_grant"] as const;
 /** kv: когда в этой базе начали писать журнал подписки и отказы ИИ (шаг 28) — начало данных для правила since. */
 export const COLLECT_SINCE_KEY = "analytics_collect_since";
 /** Номер шага схемы, с которого пишутся billing_events и gate.* (этап 0 аналитики). */
@@ -662,6 +670,8 @@ export interface User {
   /** Вид бесплатного срока (шаг 31, access.ts trialLenOf): длина пробы при регистрации в днях; 0 — подарок по /invite; null — запись
    *  до шага 31 (вид — по длине срока). */
   trial_len_days: number | null;
+  /** Когда аккаунт заморозил админ (шаг 33, admin-account.ts; ISO); null или нет поля — не заморожен (access.ts isFrozen). */
+  frozen_at?: string | null;
 }
 
 /** Оплата Telegram Stars (billing.ts): kind — first | renew | once; refunded_at — когда вернули. */
@@ -1056,6 +1066,16 @@ export class Store {
     );
     return r.length > 0;
   }
+  /** Прибавить n штук kind за день без предела (прибавка админа, admin-account.ts bonus). Не takeQuota с огромным пределом:
+   *  в Postgres параметр предела — INTEGER (int4), число больше 2 147 483 647 роняет запрос. */
+  async addQuota(userId: number, day: string, kind: string, n: number): Promise<void> {
+    if (n <= 0) return;
+    await this.run(
+      `INSERT INTO ai_quota (user_id, day_key, kind, n) VALUES (?, ?, ?, ?)
+       ON CONFLICT (user_id, day_key, kind) DO UPDATE SET n = ai_quota.n + excluded.n`,
+      userId, day, kind, n,
+    );
+  }
   /** Вернуть n штук (не ниже нуля). */
   async giveQuota(userId: number, day: string, kind: string, n: number): Promise<void> {
     if (n <= 0) return;
@@ -1066,6 +1086,15 @@ export class Store {
     const out = { calls: 0, draws: 0, voice_sec: 0 };
     for (const r of await this.all<Record<string, unknown>>("SELECT kind, n FROM ai_quota WHERE user_id = ? AND day_key = ?", userId, day)) {
       const k = String(r.kind);
+      if (k === "calls" || k === "draws" || k === "voice_sec") out[k] = Number(r.n) || 0;
+    }
+    return out;
+  }
+  /** Прибавка админа к лимитам на день (шаг 33, access.ts BONUS_PREFIX): строки bonus_calls, bonus_draws, bonus_voice_sec. */
+  async quotaBonus(userId: number, day: string): Promise<{ calls: number; draws: number; voice_sec: number }> {
+    const out = { calls: 0, draws: 0, voice_sec: 0 };
+    for (const r of await this.all<Record<string, unknown>>("SELECT kind, n FROM ai_quota WHERE user_id = ? AND day_key = ? AND kind IN ('bonus_calls', 'bonus_draws', 'bonus_voice_sec')", userId, day)) {
+      const k = String(r.kind).slice("bonus_".length);
       if (k === "calls" || k === "draws" || k === "voice_sec") out[k] = Number(r.n) || 0;
     }
     return out;
@@ -2042,13 +2071,55 @@ export class Store {
   async kvDel(key: string) {
     await this.run("DELETE FROM kv WHERE key = ?", key);
   }
-  /** Журнал админки (admin.ts). */
-  async addAdminLog(userId: number, action: string, detail = "", at = new Date()) {
-    await this.run("INSERT INTO admin_log (at, user_id, action, detail) VALUES (?, ?, ?, ?)", at.toISOString(), userId, action, detail.slice(0, 200));
+  /** Журнал админки (admin.ts): detail — параметры (номера аккаунтов и числа, без имён), reason — причина (шаг 33). */
+  async addAdminLog(userId: number, action: string, detail = "", at = new Date(), reason = "") {
+    await this.run("INSERT INTO admin_log (at, user_id, action, detail, reason) VALUES (?, ?, ?, ?, ?)",
+      at.toISOString(), userId, action, detail.slice(0, 200), reason.slice(0, 300));
   }
-  async adminLog(limit = 100): Promise<{ at: string; user_id: number; action: string; detail: string }[]> {
-    const rows = await this.all<Record<string, unknown>>("SELECT at, user_id, action, detail FROM admin_log ORDER BY id DESC LIMIT ?", limit);
-    return rows.map((r) => ({ at: String(r.at), user_id: Number(r.user_id), action: String(r.action), detail: String(r.detail ?? "") }));
+  /** Последние строки журнала; target — только про этот аккаунт (detail начинается с «#<номер> » или равен «#<номер>»). */
+  async adminLog(limit = 100, target?: number): Promise<{ at: string; user_id: number; action: string; detail: string; reason: string }[]> {
+    const rows = target == null
+      ? await this.all<Record<string, unknown>>("SELECT at, user_id, action, detail, reason FROM admin_log ORDER BY id DESC LIMIT ?", limit)
+      : await this.all<Record<string, unknown>>(
+        "SELECT at, user_id, action, detail, reason FROM admin_log WHERE detail = ? OR detail LIKE ? ORDER BY id DESC LIMIT ?", `#${target}`, `#${target} %`, limit,
+      );
+    return rows.map((r) => ({ at: String(r.at), user_id: Number(r.user_id), action: String(r.action), detail: String(r.detail ?? ""), reason: String(r.reason ?? "") }));
+  }
+  /** Журнал подписки одного человека, новые сверху (карточка аккаунта в админке). */
+  async billingEventsOf(userId: number, limit = 50): Promise<BillingEventRow[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT id, user_id, at, kind, charge_id, amount FROM billing_events WHERE user_id = ? ORDER BY at DESC, id DESC LIMIT ?", userId, limit,
+    );
+    return rows.map((r) => ({
+      id: Number(r.id), user_id: Number(r.user_id), at: String(r.at), kind: String(r.kind) as BillingKind,
+      charge_id: r.charge_id == null ? null : String(r.charge_id), amount: r.amount == null ? null : Number(r.amount),
+    }));
+  }
+  /** Активность одного человека по дням для карточки аккаунта — только счётчики: сообщения с ИИ и без (по его дню, как
+   *  analyticsActiveDays), минуты присутствия (его день), вызовы модели и расход (день UTC, llm_usage). Дни — fromDay..toDay. */
+  async accountDays(userId: number, fromDay: string, toDay: string): Promise<{ day: string; ai: number; manual: number; minutes: number; calls: number; micro: number }[]> {
+    const out = new Map<string, { day: string; ai: number; manual: number; minutes: number; calls: number; micro: number }>();
+    const at = (d: string) => out.get(d) ?? out.set(d, { day: d, ai: 0, manual: 0, minutes: 0, calls: 0, micro: 0 }).get(d)!;
+    for (const r of await this.all<Record<string, unknown>>(
+      `SELECT m.day_key AS day, SUM(CASE WHEN ${ADMIN_AI_SQL} THEN 1 ELSE 0 END) AS ai, SUM(CASE WHEN ${ADMIN_MANUAL_SQL} THEN 1 ELSE 0 END) AS manual
+       FROM messages m WHERE m.user_id = ? AND m.day_key >= ? AND m.day_key <= ? AND m.source <> 'import' GROUP BY m.day_key`, userId, fromDay, toDay,
+    )) Object.assign(at(String(r.day)), { ai: Number(r.ai) || 0, manual: Number(r.manual) || 0 });
+    for (const r of await this.all<Record<string, unknown>>(
+      "SELECT day_key AS day, SUM(minutes) AS n FROM presence WHERE user_id = ? AND day_key >= ? AND day_key <= ? GROUP BY day_key", userId, fromDay, toDay,
+    )) at(String(r.day)).minutes = Number(r.n) || 0;
+    for (const r of await this.all<Record<string, unknown>>(
+      "SELECT day, SUM(calls) AS calls, SUM(micro_usd) AS micro FROM llm_usage WHERE user_id = ? AND day >= ? AND day <= ? GROUP BY day", userId, fromDay, toDay,
+    )) Object.assign(at(String(r.day)), { calls: Number(r.calls) || 0, micro: Number(r.micro) || 0 });
+    return [...out.values()].sort((a, b) => a.day.localeCompare(b.day));
+  }
+  /** Входы человека для карточки: клиент, версия, когда (без меток входа и ключей). */
+  async accountSessions(userId: number): Promise<{ client: string; version: string; last_seen: string }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT client, version, last_seen FROM sessions WHERE user_id = ? ORDER BY last_seen DESC", userId);
+    return rows.map((r) => ({ client: String(r.client ?? ""), version: String(r.version ?? ""), last_seen: String(r.last_seen) }));
+  }
+  /** Закрыть все входы человека (заморозка аккаунта). Сколько закрыто. */
+  async dropSessionsOf(userId: number): Promise<number> {
+    return this.run("DELETE FROM sessions WHERE user_id = ?", userId);
   }
   // ——— Тарифы из базы (шаг 30, tariffs.ts): изменённые числа и история «Применить» / откат / /signups.
   /** Изменённые числа тарифов: key → value (JSON). Нет строки — значение по умолчанию. */

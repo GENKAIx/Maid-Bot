@@ -48,10 +48,10 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
   test(`${kind}: шаг 32 — таблица ai_quota; прибавка не выше лимита, возврат, остаток, очистка старше 40 дней`, async () => {
     const store = await open();
     try {
-      await store.driver.exec("DROP TABLE ai_quota;");
+      await store.driver.exec("DROP TABLE ai_quota; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
       await store.kvSet("schema_version", "31");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "32");
+      assert.equal(await again.kvGet("schema_version"), "33");
       assert.equal(await again.takeQuota(1, "2026-11-24", "calls", 1, 2), true);
       assert.equal(await again.takeQuota(1, "2026-11-24", "calls", 1, 2), true);
       assert.equal(await again.takeQuota(1, "2026-11-24", "calls", 1, 2), false, "третий сверх лимита 2");

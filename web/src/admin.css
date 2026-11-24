@@ -378,3 +378,26 @@ body.admin-body { background: #0f1114; }
   .adm-tf-defs dl { grid-template-columns: minmax(0, 1fr); }
   .adm-tf-plans, .adm-tf-caps { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* «Аккаунт» (этап 3 «Тарифы и управление», screens/AdminAccount.tsx): карточка по номеру и действия с причиной. */
+.adm-btn.danger { border-color: color-mix(in srgb, var(--a-bad) 55%, transparent); color: var(--a-bad); }
+.adm-btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--a-bad) 14%, transparent); }
+.adm-acc-q { width: 200px; }
+.adm-acc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 0 16px; align-items: start; }
+.adm-acc-grid .adm-panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; overflow-x: auto; }
+.adm-acc-facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+.adm-acc-facts dt { color: var(--a-muted); }
+.adm-acc-facts dd { margin: 0; }
+.adm-acc-frozen { color: var(--a-bad); font-size: 12.5px; }
+.adm-acc-acts { display: flex; flex-direction: column; }
+.adm-acc-act { padding: 10px 0; border-top: 1px solid var(--a-line); }
+.adm-acc-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.adm-acc-row em { display: block; font-style: normal; color: var(--a-muted); font-size: 12.5px; }
+.adm-acc-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.adm-acc-num { display: inline-flex; align-items: center; gap: 6px; color: var(--a-muted); font-size: 13px; }
+.adm-acc-num input { width: 80px; font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--a-line); background: var(--a-bg); color: var(--a-text); }
+.adm-acc-week td, .adm-acc-week th { padding: 4px 8px; }
+@media (max-width: 520px) {
+  .adm-acc-grid { grid-template-columns: minmax(0, 1fr); }
+  .adm-acc-q { width: 100%; }
+}

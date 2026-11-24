@@ -14,7 +14,7 @@ import { addDays, dayKey, zonedToUtc } from "./time.ts";
 /** Запас после конца срока: продление Telegram может прийти чуть позже. */
 export const GRACE_MS = 60 * 60_000;
 
-export type Plan = "owner" | "friend" | "paid" | "trial" | "expired";
+export type Plan = "owner" | "friend" | "paid" | "trial" | "expired" | "frozen";
 export interface Access {
   ok: boolean;
   plan: Plan;
@@ -42,11 +42,19 @@ export function trialLenOf(u: Pick<User, "trial_len_days" | "created_at" | "acce
   return Number.isFinite(made) && Number.isFinite(until) && until - made > (LEGACY_TRIAL_DAYS + 1) * 86_400_000 ? 0 : LEGACY_TRIAL_DAYS;
 }
 
-/** Что кончилось: подписка (была оплата подписки), подарок (trialLenOf 0) или проба. */
+/** Что кончилось: подписка (plan paid; или уже free, но была оплата подписки), подарок (trialLenOf 0) или проба. Сначала — план:
+ *  у бывшего подписчика sub_charge_id остаётся, и подарок из админки поверх (plan trial, admin-account.ts) — подарок, а не подписка. */
 export const endedOf = (u: User): Ended => {
-  if (u.plan === "paid" || u.sub_charge_id) return "paid";
+  if (u.plan === "paid") return "paid";
+  if (u.plan !== "trial" && u.sub_charge_id) return "paid";
   return trialLenOf(u) === 0 ? "gift" : "trial";
 };
+
+/** Аккаунт заморожен админом (шаг 33, admin-account.ts): ИИ, вход на сайт и в программу и ответы бота закрыты, данные остаются.
+ *  Владельца заморозить нельзя (admin-account.ts), поэтому в accessOf владелец проверяется раньше. */
+export const isFrozen = (u: Pick<User, "frozen_at">): boolean => Boolean(u.frozen_at);
+/** Что отвечают замороженному: бот на любое сообщение (bot.ts), вход на сайт (api.ts), отказ ИИ (refusalText). */
+export const FROZEN_TEXT = "Аккаунт приостановлен — я пока не отвечаю. Все записи сохранены, ничего не удалено. Вопросы — /paysupport в боте.";
 
 /** Владельцы — всегда с доступом. */
 export const ownerIds = (): string[] => [...new Set([...config.allowedChatIds, ...config.adminChatIds])];
@@ -54,6 +62,7 @@ export const ownerIds = (): string[] => [...new Set([...config.allowedChatIds, .
 export function accessOf(u: User, now = new Date(), owners = ownerIds()): Access {
   const base = { until: null, canceled: Boolean(Number(u.sub_canceled ?? 0)), trialLeftDays: null, ended: null };
   if (u.chat_id && owners.includes(String(u.chat_id))) return { ...base, ok: true, plan: "owner" };
+  if (isFrozen(u)) return { ...base, ok: false, plan: "frozen" };
   if (u.plan === "friend") return { ...base, ok: true, plan: "friend" };
   const until = u.access_until ?? null;
   const live = Boolean(until) && Date.parse(until!) + GRACE_MS > now.getTime();
@@ -102,6 +111,9 @@ export const OFF_TEXT = "Этого на вашем тарифе нет — ос
 export const DRAWS_CAP_TEXT = "Картинки на сегодня кончились — новые будут после полуночи. Остальное работает как обычно.";
 export const VOICE_CAP_TEXT = "Голосовые на сегодня кончились — новые будут после полуночи. Текстом пишите как обычно.";
 const CAP_TEXT: Partial<Record<Quota, string>> = { draws: DRAWS_CAP_TEXT, voice_sec: VOICE_CAP_TEXT };
+/** Прибавка к лимиту на один день от админа (admin-account.ts «Поднять лимит на сегодня»): строки ai_quota с видом bonus_<штука>
+ *  на день человека — завтра это другой день_key, прибавки там нет. Сами счётчики (calls, draws, voice_sec) прибавка не трогает. */
+export const BONUS_PREFIX = "bonus_";
 /** Ключ дня счётчиков (ГГГГ-ММ-ДД по поясу человека) и момент сброса — его следующая полночь (ISO). */
 export const quotaDay = (u: Pick<User, "tz">, now: Date): string => dayKey(now, u.tz);
 export const quotaResetAt = (u: Pick<User, "tz">, now: Date): string => zonedToUtc(addDays(quotaDay(u, now), 1), "00:00", u.tz).toISOString();
@@ -125,10 +137,17 @@ export interface TodayView { calls: { used: number; limit: number }; draws: { us
 export async function todayView(store: Store, u: User, a: Access, now = new Date()): Promise<TodayView | null> {
   const kind = tariffKindOf(u, a);
   if (!kind) return null;
-  const lim = limitsOf(kind);
+  const lim = await todayLimits(store, u, kind, quotaDay(u, now));
   const used = await store.quotaOf(u.id, quotaDay(u, now));
   const one = (q: Quota) => ({ used: Math.min(used[q], lim[q]), limit: lim[q] });
   return { calls: one("calls"), draws: one("draws"), voice_sec: one("voice_sec"), resets_at: quotaResetAt(u, now) };
+}
+
+/** Лимиты на день day: тариф плюс прибавка админа на этот день (BONUS_PREFIX). */
+export async function todayLimits(store: Store, u: Pick<User, "id">, kind: TariffKind, day: string, t: Readonly<TariffValues> = tariffs()): Promise<Limits> {
+  const lim = limitsOf(kind, t);
+  const plus = await store.quotaBonus(u.id, day);
+  return { calls: lim.calls + plus.calls, draws: lim.draws + plus.draws, voice_sec: lim.voice_sec + plus.voice_sec };
 }
 
 export type Refusal = "access" | "rate" | "money";
@@ -149,6 +168,7 @@ export const RATE_AGAIN = "Много сообщений подряд — при
 export function refusalText(why: Refusal, a: Access | null, price = tariffs().price): string {
   if (why === "rate") return "Много сообщений подряд — это разберу чуть позже сама (или нажмите «Повторить»).";
   if (why === "money") return "На сегодня лимит разбора исчерпан — завтра продолжу как обычно.";
+  if (a?.plan === "frozen") return FROZEN_TEXT;
   return endedText(a?.ended ?? null, price);
 }
 
@@ -216,8 +236,8 @@ export class AiGate {
       .map(([q, n]): [Quota, number] => [q, Math.max(0, Math.ceil(n ?? 0))])
       .filter(([, n]) => n > 0);
     if (!want.length) return { ok: true };
-    const lim = limitsOf(kind, t);
     const qday = quotaDay(u, now);
+    const lim = await todayLimits(this.store, u, kind, qday, t);
     const got: [Quota, number][] = [];
     for (const [q, n] of want) {
       if (!(await this.store.takeQuota(u.id, qday, q, n, lim[q]))) {

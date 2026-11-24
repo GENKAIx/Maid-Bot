@@ -5,7 +5,7 @@ import { config, ROOT } from "./config.ts";
 import { issueToken, notePresence } from "./auth.ts";
 import { accountsText } from "./accounts.ts";
 import { createInvite, INVITE_DAYS, installerUrl, isMember, redeemInvite, signUp, type Invited } from "./invite.ts";
-import { accessOf, RATE_AGAIN, type Access } from "./access.ts";
+import { accessOf, FROZEN_TEXT, isFrozen, RATE_AGAIN, type Access } from "./access.ts";
 import { Billing, billingSecret, TERMS_TEXT, type StarsApi } from "./billing.ts";
 import { setSignupsOpen, signupsEnvClosed, signupsOpenNow, tariffs } from "./tariffs.ts";
 import type { Store, User } from "./db.ts";
@@ -58,6 +58,11 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const got = await billing.paid(ctx.from, ctx.message.successful_payment);
     if (!got) return void (await ctx.reply("Оплата пришла, но я не нашла вашу учётную запись. Напишите /paysupport — разберёмся и вернём звёзды."));
     if (got.duplicate) return;
+    // Замороженному (admin-account.ts) — не «я всё разберу»: оплата записана, но бот, ИИ и вход закрыты до разморозки.
+    if (isFrozen(got.user)) {
+      return void (await ctx.reply(`Оплата получена, срок — до ${dmy(got.until)}. Но аккаунт приостановлен — я пока не отвечаю. ` +
+        "Отменить продление — /cancel_sub, вопросы и возврат — /paysupport."));
+    }
     await ctx.reply(got.kind === "renew" ? `Подписка продлена до ${dmy(got.until)}. Спасибо! ✨` : `Спасибо! ✨ Подписка оформлена до ${dmy(got.until)} — пишите, я всё разберу.`);
   });
   bot.on("message:refunded_payment", async (ctx) => {
@@ -95,7 +100,9 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
       return ctx.reply(`Не дошло: ${esc((e as Error).message.slice(0, 120))}`, { parse_mode: "HTML" });
     }
     const me = await store.userByChat(String(ctx.chat.id));
-    await store.addAdminLog(me?.id ?? 0, "paysupport-answer", `tg ${m[1]}`, new Date());
+    // В журнал — номер аккаунта, а не Telegram id (журнал админки показывает только #id).
+    const to = await store.userByTg(m[1]);
+    await store.addAdminLog(me?.id ?? 0, "paysupport-answer", to ? `#${to.id}` : "без учётной записи", new Date());
     await ctx.reply("Отправила.");
   });
 
@@ -220,6 +227,17 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     }
     await next();
   });
+  // Замороженный аккаунт (admin-account.ts): на любое сообщение — один ответ FROZEN_TEXT, на кнопку — то же всплывающим окном;
+  // ничего не разбирается и не записывается, данные остаются. /terms и /paysupport стоят выше фильтра — работают и замороженному;
+  // /cancel_sub пропускается: остановить списания звёзд человек может и в заморозке (возобновить — /resume_sub — только после неё).
+  bot.use(async (ctx, next) => {
+    const chat = String(ctx.chat?.id ?? "");
+    const u = chat ? await store.userByChat(chat) : undefined;
+    if (!u || !isFrozen(u)) return next();
+    if (/^\/cancel_sub(?:@\w+)?(?:\s|$)/.test(ctx.message?.text ?? "")) return next();
+    if (ctx.callbackQuery) return void (await ctx.answerCallbackQuery({ text: FROZEN_TEXT, show_alert: true }).catch(() => {}));
+    if (ctx.message && ctx.chat?.type === "private") await ctx.reply(FROZEN_TEXT);
+  });
   // Всё, что дальше делается по сообщению, — для этого человека: расход ИИ на его счёт (llm.ts, asUser).
   // Заодно минута присутствия «telegram» (таблица presence) — не чаще раза в минуту на человека (ограничитель в notePresence).
   bot.use(async (ctx, next) => {
@@ -252,6 +270,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const chat = String(q.chat?.id ?? q.from.id);
     if (!(await allowed(chat)) || q.type?.type !== "data") return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
     const u = await store.ensureUser(chat, "", config.defaultTimezone);
+    if (isFrozen(u)) return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
     countFeature(u, "telegram-widget", "bot.widget");
     const state = await widgetQuery(store, pipeline, u, q.data);
     await raw.answerWidgetQuery({ widget_query_id: q.id, data: state });

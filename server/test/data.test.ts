@@ -24,7 +24,7 @@ const AT = zonedToUtc("2026-11-08", "14:30", TZ);
 /** Столбцы шага 24 — убрать, когда база возвращается к более раннему шагу (иначе шаг 24 добавит их второй раз). */
 const STEP24_DROP = " ALTER TABLE sessions DROP COLUMN client; ALTER TABLE sessions DROP COLUMN version; ALTER TABLE messages DROP COLUMN llm_calls; ALTER TABLE messages DROP COLUMN route;" +
   // и столбцы шагов 27 (платный доступ, access.ts) и 31 (вид бесплатного срока) — они идут после.
-  " ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; ALTER TABLE users DROP COLUMN trial_len_days;";
+  " ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;";
 
 const BACKENDS: Record<string, () => Promise<Store>> = {
   sqlite: () => Store.open(":memory:"),

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import { AiGate, endedOf, trialLenOf } from "../src/access.ts";
+import { accountAction, accountCard, MAX_ACCOUNT_ID } from "../src/admin-account.ts";
 import { createApi } from "../src/api.ts";
 import { hashPassword } from "../src/auth.ts";
 import { Billing, signPayload, type StarsApi } from "../src/billing.ts";
@@ -35,11 +36,11 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
   test(`${kind}: шаг 30 — таблицы тарифов; выключатель /signups off из kv переезжает в tariff_settings, ключ kv удаляется`, async () => {
     const store = await open();
     try {
-      await store.driver.exec("DROP TABLE tariff_settings; DROP TABLE tariff_history; ALTER TABLE users DROP COLUMN trial_len_days;");
+      await store.driver.exec("DROP TABLE tariff_settings; DROP TABLE tariff_history; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
       await store.kvSet("schema_version", "29");
       await store.kvSet("signups:closed", "1");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "32");
+      assert.equal(await again.kvGet("schema_version"), "33");
       assert.equal(await again.kvGet("signups:closed"), undefined, "старое место удалено");
       assert.deepEqual((await again.tariffSettings()).map((r) => [r.key, r.value]), [["signupsOpen", "false"]]);
       assert.equal((await loadTariffs(again)).signupsOpen, false);
@@ -397,10 +398,10 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       const t = await store.createUser({ login: "t", passwordHash: "x", tz: TZ, plan: "trial", accessUntil: new Date(now.getTime() + 7 * DAY).toISOString(), at: now });
       const g = await store.createUser({ login: "g", passwordHash: "x", tz: TZ, plan: "trial", accessUntil: new Date(now.getTime() + 30 * DAY).toISOString(), at: now });
       await store.addBillingEvent({ user_id: g.id, kind: "gift", at: now });
-      await store.driver.exec("ALTER TABLE users DROP COLUMN trial_len_days;");
+      await store.driver.exec("ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
       await store.kvSet("schema_version", "30");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "32");
+      assert.equal(await again.kvGet("schema_version"), "33");
       assert.equal((await again.user(t.id))!.trial_len_days, null);
       assert.equal(Number((await again.user(g.id))!.trial_len_days), 0);
       assert.equal(endedOf((await again.user(g.id))!), "gift");
@@ -512,3 +513,25 @@ test("/api/me: подписка кончилась, а plan в базе ещё p
     await s.close();
   }
 });
+
+for (const [kind, open] of Object.entries(BACKENDS)) {
+  test(`${kind}: «Поднять лимит на сегодня» — прибавка пишется (на Postgres предел int4 не роняет запрос); номер на границе int4 — 404`, async () => {
+    const store = await open();
+    try {
+      await loadTariffs(store);
+      const now = new Date("2026-11-24T12:00:00Z");
+      const admin = await store.createUser({ login: "adm", passwordHash: "x", tz: TZ, at: now });
+      const u = await store.createUser({ login: "b", passwordHash: "x", tz: TZ, plan: "trial", accessUntil: new Date(now.getTime() + 5 * DAY).toISOString(), trialLenDays: 7, at: now });
+      const deps = { store, owners: () => [], clock: () => now };
+      const r = await accountAction(deps, admin, u.id, "bonus", { what: "calls", n: 20, reason: "срочный отчёт" });
+      assert.equal(r.ok, true);
+      await accountAction(deps, admin, u.id, "bonus", { what: "calls", n: 5, reason: "ещё" });
+      await accountAction(deps, admin, u.id, "bonus", { what: "voice_min", n: 2, reason: "голос" });
+      assert.deepEqual(await store.quotaBonus(u.id, "2026-11-24"), { calls: 25, draws: 0, voice_sec: 120 });
+      assert.equal((await store.adminLog(10)).filter((x) => x.action === "bonus").length, 3, "каждая прибавка — в журнале");
+      await assert.rejects(accountCard(store, MAX_ACCOUNT_ID, now, []), (e: Error & { status?: number }) => e.status === 404);
+    } finally {
+      await store.close();
+    }
+  });
+}

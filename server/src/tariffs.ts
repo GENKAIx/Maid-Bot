@@ -245,7 +245,7 @@ function save(store: Store, by: number, patch: Partial<TariffValues>, reason: st
     const set = changes.map((c) => ({ key: c.key, value: defaults[c.key] === c.to ? null : JSON.stringify(c.to) }));
     const at = now.toISOString();
     const id = await store.saveTariffs(set, { at, user_id: by, source, before_json: JSON.stringify(before), after_json: JSON.stringify(next), reason });
-    await store.addAdminLog(by, action, `#${id} ${changesText(changes)}`, now);
+    await store.addAdminLog(by, action, `#${id} ${changesText(changes)}`, now, reason);
     await loadTariffs(store, now.getTime());
     return { id, changes, values: tariffs() };
   });

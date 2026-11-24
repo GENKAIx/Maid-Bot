@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { ApiError, get, post } from "../api";
+import { navigate } from "../router";
 import { ADM_WEEKDAYS, ago, CLIENT_NAMES, dayAgo, ERROR_NAMES, featureView, msText, PAYMENT_KINDS, refundable, ROUTE_NAMES, SOURCE_NAMES, sortRows, sparkPoints, starsText, uptimeText, usd, type FeatureRow, type PaymentRow } from "../admin";
 
 // Разделы админки этапа 1 (24.11.2026): Обзор, Пользователи, Расходы, Аудитория, Качество разбора. Данные — /api/admin/*
@@ -212,6 +213,7 @@ export function AdminUsers() {
               ))}</tbody>
             </table>
           ) : <span className="adm-muted adm-small">Входов с сайта и программ нет.</span>}
+          <button className="adm-btn small" onClick={() => navigate(`/admin/account/${cur.id}`)}>Аккаунт #{cur.id}: продлить, лимит, заморозить…</button>
           <p className="adm-muted adm-small">Фоновый — сводки и поиск связей, которые горничная делает сама. Текстов сообщений админка не показывает.</p>
         </aside>
       )}
@@ -615,9 +617,12 @@ export function AdminPayments() {
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" }) : "—");
   async function refund(p: PaymentRow) {
     if (!confirm(`Вернуть ${starsText(p.amount, p.currency)} пользователю «${p.name}» (#${p.user_id})? Доступ по подписке снимется сразу.`)) return;
+    // Причина обязательна (этап 3): уходит в журнал админа.
+    const reason = (prompt("Причина возврата (обязательно, в журнал админа):") ?? "").trim();
+    if (reason.length < 3) return setNote("Возврат отменён: нужна причина — хотя бы 3 знака.");
     setBusy(true);
     try {
-      const r = await post<{ text: string }>("/api/admin/refund", { user_id: p.user_id });
+      const r = await post<{ text: string }>("/api/admin/refund", { user_id: p.user_id, charge: p.charge, reason });
       setNote(r.text);
       setTick((t) => t + 1);
     } catch (e) {

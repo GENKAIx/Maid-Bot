@@ -532,8 +532,8 @@ async function subsReport(c: Ctx): Promise<SubsData> {
     && (!p.refunded_at || Date.parse(p.refunded_at) > t)).map((p) => p.user_id)).size;
   // Когорта пробы: не друзья и не владельцы, конец пробы (создание + trialDays) — в окне; оплатил — невозвращённая оплата
   // с создания записи до конца пробы + 3 дня; решено — эти 3 дня прошли. Подарок /invite — не проба: не берём, у кого в журнале
-  // есть gift (и кто принял приглашение посреди пробы), и тех, у кого без единой оплаты срок длиннее пробы (как isTrialSpan).
-  const gifted = new Set((await c.store.billingEvents(iso(0), iso(c.nowMs + DAY))).filter((e) => e.kind === "gift").map((e) => e.user_id));
+  // есть gift или admin_grant (подарок из админки) (и кто принял подарок посреди пробы), и тех, у кого без единой оплаты срок длиннее пробы (как isTrialSpan).
+  const gifted = new Set((await c.store.billingEvents(iso(0), iso(c.nowMs + DAY))).filter((e) => e.kind === "gift" || e.kind === "admin_grant").map((e) => e.user_id));
   const payersEver = new Set(pays.filter(isPaid).map((p) => p.user_id));
   const onTrial = (u: AUser) => !gifted.has(u.id) && (payersEver.has(u.id) || isTrialSpan(u));
   const cohort = c.users.filter((u) => u.plan !== "friend" && !u.owner && Number.isFinite(Date.parse(u.created_at)) && onTrial(u)).map((u) => {

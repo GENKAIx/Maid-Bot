@@ -123,7 +123,8 @@ test("админка: код из Telegram → вход на час, тольк�
     for (const k of ["clients", "features", "unused"]) assert.ok(Array.isArray(ft[k]), `features.${k} — список`);
     assert.equal((await s.call("/api/admin/overview", other)).status, 403, "другое устройство — свой код");
     const log = await s.call("/api/admin/log", owner);
-    assert.deepEqual((log.body as unknown as { action: string; who: string }[]).map((r) => `${r.who}:${r.action}`), ["Хозяин:enter", "Хозяин:wrong", "Хозяин:code"]);
+    assert.deepEqual((log.body as unknown as { action: string; who: string }[]).map((r) => `${r.who}:${r.action}`), ["#1:enter", "#1:wrong", "#1:code"], "кто — номер аккаунта, не имя");
+    assert.ok(!JSON.stringify(log.body).includes("Хозяин") && !JSON.stringify(log.body).includes('"owner"'), "в журнале нет имён и логинов");
     // В ответах админки нет текстов пользователей и chat id.
     for (const body of [ov.body, log.body, (await s.call("/api/admin/state", owner)).body]) {
       const json = JSON.stringify(body);

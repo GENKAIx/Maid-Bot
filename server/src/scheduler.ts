@@ -363,6 +363,8 @@ export class Scheduler {
   }
 
   private async safeSend(u: User, text: string, emotion: Emotion, buttons?: Button[], kind?: NoticeKind) {
+    // Замороженному аккаунту (admin-account.ts) горничная не пишет: ни напоминаний, ни утра, ни итога дня.
+    if (u.frozen_at) return;
     try {
       await this.send(u, text, emotion, buttons, kind);
     } catch (e) {

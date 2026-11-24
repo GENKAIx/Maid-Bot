@@ -7,11 +7,13 @@
 // Тарифы (24.11.2026): «Тарифы» и «Общие потолки» — числа платного доступа из базы (web/src/tariffs.ts, screens/AdminTariffs.tsx).
 // Этап 5 (24.11.2026): Аналитика — отчёты с шагом и сравнением с прошлым периодом (screens/AdminAnalytics.tsx, графики — adminCharts.tsx,
 // ручка GET /api/admin/analytics — server/src/admin-analytics.ts; типы ниже — копия оттуда один в один).
+// Этап 3 «Тарифы и управление» (24.11.2026): «Аккаунт» — карточка по номеру и действия с причиной (screens/AdminAccount.tsx,
+// сервер — server/src/admin-account.ts); журнал админа — номера вместо имён, параметры и причина.
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
 export const ADMIN_LIVE_STAGE = 5;
 
-export type AdminSectionId = "overview" | "analytics" | "users" | "payments" | "tariffs" | "caps" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
+export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
 
 // Меню по категориям (24.11.2026): group — заголовок категории (ADMIN_GROUPS, по порядку), icon — имя в icons.tsx.
 export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Продукт", "Система"] as const;
@@ -21,6 +23,8 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number;
   { id: "overview", title: "Обзор", stage: 0, group: "Обзор", icon: "adm-home" },
   { id: "analytics", title: "Аналитика", stage: 5, group: "Обзор", icon: "adm-chart" },
   { id: "users", title: "Пользователи", stage: 1, group: "Люди и деньги", icon: "adm-users" },
+  // Аккаунт по номеру (этап 3 «Тарифы и управление», screens/AdminAccount.tsx): /admin/account/<номер>.
+  { id: "account", title: "Аккаунт", stage: 0, group: "Люди и деньги", icon: "adm-id" },
   { id: "payments", title: "Оплаты", stage: 0, group: "Люди и деньги", icon: "adm-star" },
   // Тарифы из базы (24.11.2026, screens/AdminTariffs.tsx): рядом с оплатами — это те же деньги; отдельная категория из двух пунктов
   // только раздула бы меню, а лимиты в штуках (этап 2) лягут в эти же два раздела.
@@ -51,9 +55,82 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   wrong: "ввёл неверный код",
   leave: "вышел из админки",
   refund: "вернул звёзды",
+  "refund-fail": "не смог вернуть звёзды",
   tariff: "изменил тарифы",
   tariff_undo: "вернул тарифы как было",
+  extend: "продлил срок",
+  grant: "выдал подарок",
+  bonus: "поднял лимит на сегодня",
+  freeze: "заморозил аккаунт",
+  unfreeze: "разморозил аккаунт",
+  "paysupport-answer": "ответил на вопрос об оплате",
 };
+
+// ——— Аккаунт по номеру (этап 3, GET /api/admin/account/<id>; типы — копия server/src/admin-account.ts accountCard).
+export type AccountPlan = "owner" | "friend" | "paid" | "trial" | "expired" | "frozen";
+export interface AccountUsed { used: number; limit: number; bonus: number }
+export interface AccountCard {
+  id: number; created_at: string; days_with_us: number;
+  plan: AccountPlan; kind: "trial" | "gift" | "paid" | null; until: string | null; canceled: boolean;
+  live_sub: boolean; frozen_at: string | null; protected: boolean; ended: "trial" | "gift" | "paid" | null;
+  today: { day: string; resets_at: string; calls: AccountUsed; draws: AccountUsed; voice_sec: AccountUsed; spend_usd: number; cap_usd: number } | null;
+  payments: { charge: string; amount: number; currency: string; kind: string; paid_at: string; expires_at: string | null; refunded_at: string | null; refundable: boolean }[];
+  events: { at: string; kind: string; amount: number | null }[];
+  week: { day: string; ai: number; manual: number; minutes: number; calls: number; usd: number }[];
+  devices: { client: string; version: string; last_seen: string; count: number }[];
+  last_seen: string | null;
+  log: { at: string; who: string; action: string; detail: string; reason: string }[];
+}
+
+/** Номер аккаунта из адреса /admin/account/<номер> (нет или не число — null). */
+export function accountIdOf(path: string): number | null {
+  const m = /^\/admin\/account\/#?(\d{1,12})\/?$/.exec(path);
+  return m ? Number(m[1]) : null;
+}
+/** Номер из поля «Найти»: «1042», «#1042» — 1042; иначе null. */
+export function accountQuery(q: string): number | null {
+  const m = /^\s*#?(\d{1,12})\s*$/.exec(q);
+  const n = m ? Number(m[1]) : 0;
+  return n > 0 ? n : null;
+}
+
+/** Журнал подписки (billing_events.kind, server/src/db.ts BILLING_KINDS) по-человечески. */
+export const BILLING_EVENT_NAMES: Record<string, string> = {
+  paid_first: "Первая оплата подписки", paid_once: "Разовая оплата", renewed: "Продление", canceled: "Отменил продление", resumed: "Возобновил продление",
+  refunded: "Возврат звёзд", expired: "Подписка кончилась", trial_ended: "Проба кончилась", gift_ended: "Подарок кончился",
+  trial_started: "Проба при регистрации", gift: "Подарок по приглашению", admin_extend: "Админ продлил срок", admin_grant: "Админ выдал подарок",
+};
+
+/** Тариф в карточке: «Подписка до 01.12.2026», «Подарок до …», «Проба до …», «Друг», «Заморожен», «Срок кончился (подписка)». */
+export function accountPlanText(c: Pick<AccountCard, "plan" | "kind" | "until" | "canceled" | "ended">): string {
+  const until = c.until ? new Date(c.until).toLocaleDateString("ru-RU") : "—";
+  if (c.plan === "owner") return "Владелец — без сроков и лимитов";
+  if (c.plan === "friend") return "Друг — бесплатно навсегда";
+  if (c.plan === "frozen") return "Заморожен";
+  if (c.plan === "paid") return `Подписка до ${until}${c.canceled ? " (продление отменено)" : ""}`;
+  if (c.plan === "trial") return `${c.kind === "gift" ? "Подарок" : "Проба"} до ${until}`;
+  return `Срок кончился${c.ended ? ` (${c.ended === "paid" ? "подписка" : c.ended === "gift" ? "подарок" : "проба"})` : ""}${c.until ? `, ${until}` : ""}`;
+}
+
+/** «Сегодня» в карточке: «37 из 400 (+20)»; голос — в минутах. */
+export function usedText(u: AccountUsed, voice = false): string {
+  const k = (n: number) => (voice ? Math.floor(n / 60) : n);
+  return `${k(u.used)} из ${k(u.limit)}${u.bonus ? ` (+${k(u.bonus)})` : ""}${voice ? " мин" : ""}`;
+}
+
+/** Что можно сделать с аккаунтом (кнопки карточки): продлить и подарить — не другу, не владельцу и не замороженному (сначала
+ *  разморозить); подарок — не поверх идущей оплаченной подписки (и с отменённым продлением тоже); лимит — только с тарифом;
+ *  заморозить — не защищённого и не уже замороженного. Сервер проверяет то же самое. */
+export function accountCan(c: Pick<AccountCard, "plan" | "kind" | "live_sub" | "frozen_at" | "protected">) {
+  const free = c.plan === "owner" || c.plan === "friend" || c.protected;
+  return {
+    extend: !free && !c.frozen_at,
+    grant: !free && !c.frozen_at && !c.live_sub && c.plan !== "paid",
+    bonus: Boolean(c.kind),
+    freeze: !c.protected && !c.frozen_at,
+    unfreeze: Boolean(c.frozen_at),
+  };
+}
 
 // ——— Оплаты (24.11.2026, подписка Telegram Stars: server/src/billing.ts, отчёт — admin-stats.ts adminPayments).
 export type PaymentRow = {

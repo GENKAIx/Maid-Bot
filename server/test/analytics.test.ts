@@ -611,7 +611,7 @@ test("запросы к messages — с границей времени и по 
       }
     }
     assert.ok(checked >= seen.length, "план разобран у каждого запроса");
-    assert.equal(await store.kvGet("schema_version"), "32", "шаг 29 — индекс messages_day, шаг 30 — тарифы из базы, шаг 31 — вид бесплатного срока, шаг 32 — лимиты в штуках");
+    assert.equal(await store.kvGet("schema_version"), "33", "шаг 29 — индекс messages_day, шаг 30 — тарифы из базы, шаг 31 — вид бесплатного срока, шаг 32 — лимиты в штуках, шаг 33 — заморозка и причина в журнале админа");
   } finally {
     await store.close();
   }

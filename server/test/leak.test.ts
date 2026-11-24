@@ -114,10 +114,10 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await add("b", "failed", `${CHAT_FAILED}Error: LLM 400: ${SECRET}`);
     await add("c", "done", "Записала.");
     // Столбцы шага 27 (платный доступ) — убрать: миграция с шага 24 добавит их снова.
-    await store.driver.exec("ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; ALTER TABLE users DROP COLUMN trial_len_days;");
+    await store.driver.exec("ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
     await store.kvSet("schema_version", "24");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "32");
+    assert.equal(await again.kvGet("schema_version"), "33");
     assert.deepEqual((await replies(again)).map((r) => r.reply), ["other", `${CHAT_FAILED}other`, "Записала."]);
     await again.close();
   });

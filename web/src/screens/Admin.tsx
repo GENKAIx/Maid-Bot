@@ -4,6 +4,7 @@ import { ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminNavGroups, adminS
 import { Icon } from "../icons";
 import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, AdminPayments, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
 import { AdminTariffs } from "./AdminTariffs";
+import { AdminAccount } from "./AdminAccount";
 import { navigate } from "../router";
 import "../admin.css";
 
@@ -17,7 +18,8 @@ const AdminAnalytics = lazy(() => import("./AdminAnalytics").then((m) => ({ defa
 // только на этом устройстве). Ревью — docs/review/админка-2026-11-24.html; каркас — 24.11.2026.
 
 type State = { until: string | null; telegram: boolean };
-type LogRow = { at: string; who: string; action: string; detail: string };
+/** Строка журнала админа (server/src/admin.ts adminJournal): who — номер аккаунта (#id), detail — параметры, reason — причина. */
+type LogRow = { at: string; who: string; action: string; detail: string; reason?: string };
 
 const hm = (iso: string) => new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 const dt = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -126,6 +128,7 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
         {section === "overview" ? <AdminOverview />
           : section === "analytics" ? <Suspense fallback={<span className="adm-muted">Загрузка…</span>}><AdminAnalytics /></Suspense>
           : section === "users" ? <AdminUsers />
+          : section === "account" ? <AdminAccount />
           : section === "payments" ? <AdminPayments />
           : section === "tariffs" ? <AdminTariffs key="plans" part="plans" />
           : section === "caps" ? <AdminTariffs key="caps" part="caps" />
@@ -148,14 +151,19 @@ function Journal() {
   if (!rows) return <span className="adm-muted">Загрузка…</span>;
   if (!rows.length) return <span className="adm-muted">Пока пусто.</span>;
   return (
-    <table className="adm-table">
-      <thead><tr><th>Когда</th><th>Кто</th><th>Что</th></tr></thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i}><td className="adm-num">{dt(r.at)}</td><td>{r.who}</td><td>{ADMIN_ACTIONS[r.action] ?? r.action}{r.detail ? ` · ${r.detail}` : ""}</td></tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="adm-scroll">
+      <table className="adm-table">
+        <thead><tr><th>Когда</th><th>Кто</th><th>Что</th><th>Параметры</th><th>Причина</th></tr></thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td className="adm-num">{dt(r.at)}</td><td className="adm-num">{r.who}</td><td>{ADMIN_ACTIONS[r.action] ?? r.action}</td>
+              <td className="adm-muted adm-num">{r.detail || "—"}</td><td>{r.reason || <span className="adm-muted">—</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
