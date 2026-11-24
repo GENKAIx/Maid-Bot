@@ -38,6 +38,8 @@ import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BY
 import { accessOf, accessView, FROZEN_TEXT, RATE_AGAIN, todayView, type Access, type Refusal } from "./access.ts";
 import type { Billing } from "./billing.ts";
 import { applyTariffs, TariffError, tariffs, tariffsView, undoTariff } from "./tariffs.ts";
+import { AlertError, Alerts } from "./alerts.ts";
+import { DbCopies, DbCopyBusy } from "./snapshot.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -64,6 +66,10 @@ export interface ApiDeps {
   cities?: (q: string) => Promise<City[]>;
   /** Подписка Telegram Stars (billing.ts): ссылка на оплату, отмена продления, возврат из админки. Нет — 503 на /api/billing/*. */
   billing?: Billing;
+  /** Оповещения владельцу (alerts.ts); нет — свои, с письмом через adminCode всем админам (тесты). */
+  alerts?: Alerts;
+  /** Ночные копии базы (snapshot.ts); нет — без папки снимков (раздел покажет «не настроено»). */
+  copies?: DbCopies;
 }
 
 /** Ошибка проверки действия с аккаунтом (admin-account.ts) — в ответ с её кодом. */
@@ -279,6 +285,14 @@ export function clientIp(req: http.IncomingMessage): string {
 
 export function createApi(deps: ApiDeps) {
   const { store, pipeline } = deps;
+  const alerts = deps.alerts ?? new Alerts(store, {
+    notify: async (text) => {
+      let n = 0;
+      if (deps.adminCode) for (const x of await store.users()) if (isAdmin(x, "session")) await deps.adminCode(x, text).then(() => n++, () => {});
+      return n;
+    },
+  });
+  const copies = deps.copies ?? new DbCopies(store, { dir: null });
   const gate = deps.loginGate ?? new LoginGate();
 
   const replanEvents = (u: User) => replanEventsOf(store, u);
@@ -384,6 +398,38 @@ export function createApi(deps: ApiDeps) {
         return { id: r.id, changes: r.changes, values: r.values };
       } catch (e) {
         if (e instanceof TariffError) throw new HttpError(e.status, e.message);
+        throw e;
+      }
+    }
+    // Оповещения (этап 4, alerts.ts): правила, история, изменение правила (причина обязательна, в журнал админа), «Проверить сейчас»
+    // и «Тестовое оповещение» — тоже с причиной.
+    if (m === "GET" && p === "/api/admin/alerts") return alerts.view();
+    if (m === "POST" && p.startsWith("/api/admin/alerts/")) {
+      const b = (await readJson(req, 20_000)) as Record<string, unknown> | null;
+      try {
+        if (p === "/api/admin/alerts/rule") return await alerts.update(u.id, b);
+        if (p === "/api/admin/alerts/check") return await alerts.checkNow(u.id, b?.reason);
+        if (p === "/api/admin/alerts/test") return await alerts.test(u.id, b?.reason);
+      } catch (e) {
+        if (e instanceof AlertError) throw new HttpError(e.status, e.message);
+        throw e;
+      }
+      throw new HttpError(404, "нет такого адреса");
+    }
+    // Копии базы (этап 4, snapshot.ts DbCopies): последние копии и проверки; «Сделать копию сейчас» и «Проверить восстановление» — с
+    // причиной, в журнал админа; одна копия за раз (409).
+    if (m === "GET" && p === "/api/admin/backups") return copies.view();
+    if (m === "POST" && (p === "/api/admin/backups/run" || p === "/api/admin/backups/verify")) {
+      const b = (await readJson(req, 20_000)) as Record<string, unknown> | null;
+      const reason = guard(() => accountReason(b?.reason));
+      const verify = p.endsWith("verify");
+      try {
+        const r = verify ? await copies.verify(new Date(), u.id) : await copies.run(new Date(), u.id);
+        const what = r.status === "skip" ? "пропущено" : verify ? `${r.status}: ${r.file}` : `${r.status}: ${r.file}, ${r.bytes} Б, в Telegram ${r.sent ? "ушла" : "нет"}`;
+        await store.addAdminLog(u.id, verify ? "backup_verify" : "backup_run", what, new Date(), reason);
+        return { result: r, ...(await copies.view()) };
+      } catch (e) {
+        if (e instanceof DbCopyBusy) throw new HttpError(409, e.message);
         throw e;
       }
     }

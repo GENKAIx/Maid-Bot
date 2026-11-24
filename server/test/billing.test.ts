@@ -98,7 +98,9 @@ test("оплата: первая → paid до даты Telegram; повтор �
   me = (await store.user(u.id))!;
   assert.deepEqual([me.access_until, me.sub_charge_id], [iso(exp2 * 1000), "ch1"], "charge_id подписки — от первой оплаты");
   assert.equal((await store.paymentsOf(u.id)).length, 2);
-  assert.ok(tg.of("send").some((x) => x.a[0] === "900" && /Продление/.test(String(x.a[1]))), "владельцу — короткое письмо");
+  // Владельцу об оплатах теперь пишет правило payment (alerts.ts) по журналу подписки — одним письмом и без логина.
+  assert.ok(!tg.of("send").some((x) => x.a[0] === "900"), "Billing сам владельцу об оплате не пишет");
+  assert.deepEqual((await store.billingEventsSince(["paid_first", "renewed"], "0000")).n, 2, "обе оплаты — в журнале для правила");
   // Друг оплатил — оплата записана, план прежний.
   const f = await store.createUser({ login: "fr", passwordHash: "x", tz: TZ, chatId: "33", plan: "friend" });
   await billing.paid({ id: 33 }, { ...pay, invoice_payload: signPayload(SECRET, f.id), telegram_payment_charge_id: "ch3" });

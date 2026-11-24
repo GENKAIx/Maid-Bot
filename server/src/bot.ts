@@ -190,7 +190,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   }
 
   // Приглашение (/start <код>) — подарок на giftDays дней (тарифы): новому — запись, у кого запись есть — продление срока.
-  // О новых владельцу пишет сводка раз в сутки (index.ts, newcomersText), не по одному. false — код не подошёл.
+  // О новых владельцу пишет сводка раз в сутки (правило newcomers в alerts.ts), не по одному. false — код не подошёл.
   async function acceptInvite(ctx: Context, chat: string, code: string): Promise<boolean> {
     const got = await redeemInvite(store, code, { id: chat, name: ctx.from?.first_name ?? "", username: ctx.from?.username }, config.defaultTimezone);
     if (!got) return false;
@@ -203,13 +203,8 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   async function signUpStranger(ctx: Context, chat: string) {
     const got = await signUp(store, { id: chat, name: ctx.from?.first_name ?? "", username: ctx.from?.username }, config.defaultTimezone);
     if (got === "closed") return void (await ctx.reply("Регистрация сейчас закрыта. Загляните чуть позже."));
-    if (got === "busy") {
-      // Потолок регистраций — владельцу сразу (раз в час), не ждать сводки: это может быть наплыв одноразовых аккаунтов.
-      if (await store.once(`signupsfull:${new Date().toISOString().slice(0, 13)}`)) {
-        for (const a of payAdmins) await bot.api.sendMessage(a, "⚠ Упёрлись в потолок регистраций (новых за час или сутки). Закрыть регистрацию — /signups off, открыть — /signups on.").catch(() => {});
-      }
-      return void (await ctx.reply("Сейчас очень много новых — попробуйте через час, пожалуйста."));
-    }
+    // Потолок регистраций владельцу пишет правило signup_cap (alerts.ts) — с числами и «снова ниже потолка».
+    if (got === "busy") return void (await ctx.reply("Сейчас очень много новых — попробуйте через час, пожалуйста."));
     if (got) await welcome(ctx, got, false);
   }
 

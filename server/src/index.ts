@@ -13,14 +13,13 @@ import { callDraw, drawReady } from "./draw.ts";
 import { WIDGET_UPDATES } from "./widget.ts";
 import { Push } from "./push.ts";
 import { Scheduler, type Send } from "./scheduler.ts";
-import { takeSnapshot } from "./snapshot.ts";
+import { DbCopies, dbFileBytes, sendEach } from "./snapshot.ts";
 import { webhookSecret } from "./webhook.ts";
-import { adminAlerts } from "./admin-stats.ts";
+import { Alerts, noteSendFailure } from "./alerts.ts";
 import { isAdmin } from "./auth.ts";
 import { flushFeatures } from "./feature-events.ts";
 import { AiGate } from "./access.ts";
 import { Billing, billingSecret } from "./billing.ts";
-import { newcomersText } from "./invite.ts";
 import { installLogRedaction } from "./log-redact.ts";
 import { loadTariffs, watchTariffs } from "./tariffs.ts";
 
@@ -71,7 +70,8 @@ const send: Send = async (u, text, emotion, buttons, kind) => {
   await store.addNotice(u.id, text, emotion, buttons?.length ? JSON.stringify(buttons) : "", kind ?? "");
   await store.pruneNotices(u.id, NOTICES_KEEP);
   const jobs: Promise<unknown>[] = [push.send(u, text, emotion, buttons)];
-  if (tg && u.chat_id) jobs.push(tg.send(u, text, emotion, buttons));
+  // Сбой отправки в Telegram — в счёт правила send_fail (alerts.ts; «бот заблокирован» не в счёт) и дальше, как раньше.
+  if (tg && u.chat_id) jobs.push(tg.send(u, text, emotion, buttons).catch((e) => { noteSendFailure(e); throw e; }));
   await Promise.all(jobs);
 };
 // Резервная копия раз в сутки — в Telegram (если бот есть); в приложении — «Скачать копию».
@@ -82,32 +82,45 @@ const backup = tg
       await tg.sendFile(u, backupName(u.login), data, "Резервная копия записей");
     }
   : undefined;
-// Код входа в админку сайта (admin.ts) и тревоги владельцу (admin-stats.ts) — только в Telegram, не в ленту уведомлений: её видит и виджет на ПК.
-const adminCode = tg ? async (u: User, text: string) => void (await tg.send(u, text, "neutral")) : undefined;
+// Код входа в админку сайта (admin.ts) и оповещения владельцу (alerts.ts) — только в Telegram, не в ленту уведомлений: её видит и виджет на ПК.
+const adminCode = tg ? async (u: User, text: string) => void (await tg.send(u, text, "neutral").catch((e) => { noteSendFailure(e); throw e; })) : undefined;
+/** Все админы (isAdmin) с Telegram — получатели оповещений и ночной копии базы. */
+const owners = async () => (await store.users()).filter((u) => isAdmin(u, "session"));
+// Оповещения владельцу по порогам (alerts.ts): правила в базе, проверка раз в 5 минут из такта планировщика.
+const alerts = new Alerts(store, {
+  notify: async (text) => {
+    let n = 0;
+    if (adminCode) for (const u of await owners()) await adminCode(u, text).then(() => n++, (e) => console.error("[alerts]", e));
+    return n;
+  },
+  dbBytes: () => (config.databaseUrl ? null : dbFileBytes(config.dbFile)),
+  webhookErrorAt: tg && config.publicUrl ? async () => ((await tg.bot.api.getWebhookInfo()).last_error_date ?? 0) * 1000 || null : undefined,
+});
+// Ночная копия всей базы (snapshot.ts): 04:00 по поясу владельца, снимок в snapshots/ рядом с базой, сжатый — владельцу в Telegram.
+const snapshotDir = config.dbFile && !config.databaseUrl ? path.join(path.dirname(config.dbFile), "snapshots") : null;
+const copies = new DbCopies(store, {
+  dir: snapshotDir,
+  dbFile: config.databaseUrl ? null : config.dbFile,
+  send: tg
+    ? async (name, data, caption) => sendEach((await owners()).filter((u) => u.chat_id), (u) => tg.sendFile(u, name, data, caption))
+    : undefined,
+});
 scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
 scheduler.aiFor = (u, now) => gate.allowed(u, now);
-// Ночной снимок всей базы (SQLite) — раз в сутки после 00:00 UTC, в snapshots/ рядом с базой (snapshot.ts).
-const snapshotDir = config.dbFile && !config.databaseUrl ? path.join(path.dirname(config.dbFile), "snapshots") : null;
 scheduler.extra = async (now) => {
   // Счётчики фич из памяти — в базу, не чаще раза в минуту (feature-events.ts).
   await flushFeatures(store, now.getTime()).catch((e) => console.error("[features]", e));
   await pipeline.retryFailed((u, text, emotion) => send(u, text, emotion), now);
   // Раз в час: кончившиеся пробы и подписки → free с письмом и кнопкой оплаты; за 3 дня до конца отменённой — напоминание.
   if (await store.once(`billing:${now.toISOString().slice(0, 13)}`)) await billing.expire(now).catch((e) => console.error("[billing]", e));
-  // Раз в сутки (после 06:00 UTC) — сводка владельцу о новых вместо письма о каждом (открытый бот).
-  if (adminCode && now.getUTCHours() >= 6 && (await store.once(`digest:${now.toISOString().slice(0, 10)}`))) {
-    const since = (await store.kvGet("newcomers:since")) ?? new Date(now.getTime() - 86_400_000).toISOString();
-    const text = await newcomersText(store, since).catch(() => null);
-    await store.kvSet("newcomers:since", now.toISOString());
-    if (text) for (const u of await store.users()) if (isAdmin(u, "session")) await adminCode(u, text).catch((e) => console.error("[digest]", e));
+  // Ночная копия — до проверки правил: неудача сразу попадает в правило backup.
+  const tz = (await owners())[0]?.tz ?? config.defaultTimezone;
+  if (await copies.due(now, tz)) {
+    const r = await copies.run(now).catch((e) => (console.error("[snapshot]", e), null));
+    if (r) console.log("[snapshot]", r.status, r.file, r.problem || r.note || "");
   }
-  // Тревоги владельцу (admin-stats.ts): перерасход за день, всплеск неразобранных — только в Telegram админам.
-  if (adminCode) for (const text of await adminAlerts(store, now).catch((e) => (console.error("[alerts]", e), [] as string[]))) {
-    for (const u of await store.users()) if (isAdmin(u, "session")) await adminCode(u, text).catch((e) => console.error("[alerts]", e));
-  }
-  if (snapshotDir && (await store.once(`snapshot:${now.toISOString().slice(0, 10)}`))) {
-    await takeSnapshot(store, snapshotDir, now).then((f) => f && console.log("[snapshot]", f)).catch((e) => console.error("[snapshot]", e));
-  }
+  // Оповещения владельцу (alerts.ts): раз в 5 минут, сводка новичков — раз в сутки после 06:00 UTC.
+  await alerts.check(now).catch((e) => console.error("[alerts]", e));
 };
 scheduler.start();
 // Вопросы «добавить?» без ответа дольше суток — закрыть (ничего не создают).
@@ -115,7 +128,7 @@ const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => cons
 void pipeline.sweepProposals().catch(() => {});
 
 let botName: string | undefined;
-const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode, billing });
+const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode, billing, alerts, copies });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
   if (!tg) return;

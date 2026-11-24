@@ -175,7 +175,7 @@ export class Billing {
     await this.store.updateUser(u.id, patch);
     await this.journal(u.id, kind === "first" ? "paid_first" : kind === "renew" ? "renewed" : "paid_once", p.telegram_payment_charge_id, p.total_amount);
     await this.store.kvDel(`paylink:${u.id}`);
-    await this.toOwners(`⭐ ${kind === "renew" ? "Продление" : "Оплата"}: ${esc(u.login ?? `#${u.id}`)}, ⭐${p.total_amount}, до ${day(until)}.`);
+    // Владельцу об оплатах пишет правило payment (alerts.ts) — по журналу billing_events, одним письмом, без логинов.
     return { user: (await this.store.user(u.id))!, kind, duplicate: false, until };
   }
 

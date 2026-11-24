@@ -401,3 +401,15 @@ body.admin-body { background: #0f1114; }
   .adm-acc-grid { grid-template-columns: minmax(0, 1fr); }
   .adm-acc-q { width: 100%; }
 }
+/* Этап 4 «Тарифы и управление» (24.11.2026): «Оповещения» и «Копии базы» (screens/AdminAlerts.tsx). */
+.adm-al-acts { display: flex; flex-direction: column; gap: 10px; }
+.adm-al-reason { width: 100%; max-width: 520px; box-sizing: border-box; }
+.adm-al-rules td { vertical-align: top; }
+.adm-al-num { display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; white-space: nowrap; }
+.adm-al-num input { width: 72px; text-align: right; }
+.adm-al-n { width: 64px; text-align: right; }
+.adm-al-rules input.err { border-color: var(--a-bad); }
+.adm-al-ch { background: var(--a-panel-2); }
+.adm-al-st { font-size: 12.5px; white-space: nowrap; }
+.adm-al-st.ok { color: var(--a-good); } .adm-al-st.bad { color: var(--a-bad); } .adm-al-st.warn { color: var(--a-warn); } .adm-al-st.mute { color: var(--a-muted); }
+.adm-al-text { font-size: 12.5px; min-width: 240px; white-space: pre-line; }

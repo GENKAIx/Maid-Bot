@@ -9,11 +9,13 @@
 // ручка GET /api/admin/analytics — server/src/admin-analytics.ts; типы ниже — копия оттуда один в один).
 // Этап 3 «Тарифы и управление» (24.11.2026): «Аккаунт» — карточка по номеру и действия с причиной (screens/AdminAccount.tsx,
 // сервер — server/src/admin-account.ts); журнал админа — номера вместо имён, параметры и причина.
+// Этап 4 «Тарифы и управление» (24.11.2026): «Оповещения» — правила по порогам владельцу в Telegram (server/src/alerts.ts) и
+// «Копии базы» — ночная копия, отправка в Telegram, проверка восстановления (server/src/snapshot.ts DbCopies); screens/AdminAlerts.tsx.
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
 export const ADMIN_LIVE_STAGE = 5;
 
-export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
+export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "alerts" | "backups" | "log";
 
 // Меню по категориям (24.11.2026): group — заголовок категории (ADMIN_GROUPS, по порядку), icon — имя в icons.tsx.
 export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Продукт", "Система"] as const;
@@ -36,6 +38,9 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number;
   { id: "features", title: "Использование функций", stage: 3, group: "Продукт", icon: "adm-spark" },
   { id: "showcase", title: "Витрина", stage: 4, group: "Продукт", icon: "adm-grid" },
   { id: "health", title: "Здоровье сервера", stage: 2, group: "Система", icon: "adm-pulse" },
+  // Этап 4 «Тарифы и управление»: в «Системе» — рядом со здоровьем сервера, о котором оповещения и пишут.
+  { id: "alerts", title: "Оповещения", stage: 0, group: "Система", icon: "adm-bell" },
+  { id: "backups", title: "Копии базы", stage: 0, group: "Система", icon: "adm-db" },
   { id: "log", title: "Журнал админки", stage: 0, group: "Система", icon: "adm-log" },
 ];
 
@@ -64,7 +69,81 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   freeze: "заморозил аккаунт",
   unfreeze: "разморозил аккаунт",
   "paysupport-answer": "ответил на вопрос об оплате",
+  alert_rule: "изменил правило оповещений",
+  alert_test: "отправил тестовое оповещение",
+  alert_check: "проверил оповещения вручную",
+  backup_run: "сделал копию базы",
+  backup_verify: "проверил восстановление копии",
 };
+
+// ——— Оповещения (этап 4, GET /api/admin/alerts; типы — копия server/src/alerts.ts Alerts.view).
+export interface AlertRule {
+  id: string; title: string; unit: string; kind: "state" | "event" | "daily"; hint: string; recover: boolean; window: boolean;
+  min: number; max: number; int: boolean; enabled: boolean; threshold: number; window_min: number; every_min: number;
+  /** 0 — норма, 1 — сработало, письмо придержано антиспамом, 2 — сработало, письмо ушло. */
+  firing: number; last_sent: string | null; last_value: number | null; updated_at: string;
+}
+export interface AlertLogRow { at: string; rule: string; kind: string; value: number | null; text: string; sent: boolean }
+export interface AlertsData { check_every_min: number; rules: AlertRule[]; history: AlertLogRow[] }
+
+/** Что было в истории оповещений (alert_log.kind). */
+export const ALERT_LOG_KINDS: Record<string, string> = {
+  fire: "сработало", repeat: "всё ещё", ok: "снова норма", held: "придержано антиспамом", test: "тест",
+};
+
+/** Состояние правила одной фразой: «тревога», «тревога, письмо придержано», «норма», «выключено». */
+export function alertState(r: Pick<AlertRule, "enabled" | "firing">): { text: string; tone: "bad" | "warn" | "ok" | "mute" } {
+  if (!r.enabled) return { text: "выключено", tone: "mute" };
+  if (r.firing === 2) return { text: "тревога", tone: "bad" };
+  if (r.firing === 1) return { text: "тревога, письмо придержано", tone: "warn" };
+  return { text: "норма", tone: "ok" };
+}
+
+/** Последнее измеренное значение с единицей правила: «$4.20», «12%», «3 шт.»; нет — «—». */
+export function alertValueText(r: Pick<AlertRule, "unit" | "last_value">): string {
+  const v = r.last_value;
+  if (v == null) return "—";
+  if (r.unit === "$") return `$${v.toFixed(2)}`;
+  const n = Number.isInteger(v) ? String(v) : v.toFixed(1);
+  return r.unit === "%" ? `${n}%` : `${n} ${r.unit}`;
+}
+
+/** Проверка порога в поле: null — подходит, иначе почему нет (те же границы, что на сервере). */
+export function alertThresholdError(r: Pick<AlertRule, "min" | "max" | "int">, text: string): string | null {
+  const v = Number(text.replace(",", "."));
+  if (!text.trim() || !Number.isFinite(v)) return "нужно число";
+  if (r.int && !Number.isInteger(v)) return "целое число";
+  if (v < r.min || v > r.max) return `от ${r.min} до ${r.max}`;
+  return null;
+}
+
+// ——— Копии базы (этап 4, GET /api/admin/backups; типы — копия server/src/snapshot.ts DbCopies.view).
+export interface DbCopy {
+  at: string; kind: "copy" | "verify"; status: "ok" | "fail" | "skip" | "warn"; file: string; bytes: number; gz_bytes: number;
+  sent: number; problem: string; note: string; by_user: number; ms: number;
+}
+export interface BackupsData {
+  mode: "sqlite" | "postgres" | "off"; at: string; keep: number; telegram: boolean; max_send_bytes: number; db_bytes: number | null;
+  local: { file: string; bytes: number; at: string }[]; copies: DbCopy[]; verifies: DbCopy[];
+}
+
+/** Размер: «512 Б», «3,4 КБ», «12,3 МБ», «184 МБ». */
+export function bytesText(n: number | null): string {
+  if (n == null) return "—";
+  if (n < 1024) return `${n} Б`;
+  const [v, u] = n < 1024 * 1024 ? [n / 1024, "КБ"] : n < 1024 ** 3 ? [n / 1024 / 1024, "МБ"] : [n / 1024 ** 3, "ГБ"];
+  return `${v.toFixed(v < 10 ? 1 : 0).replace(".", ",")} ${u}`;
+}
+
+/** Итог копии или проверки одной фразой и тоном. */
+export function copyStatus(c: Pick<DbCopy, "kind" | "status" | "problem" | "sent">): { text: string; tone: "bad" | "warn" | "ok" | "mute" } {
+  if (c.status === "skip") return { text: "пропущено", tone: "mute" };
+  if (c.status === "fail") return { text: c.kind === "verify" ? "не поднимается" : "не снялась", tone: "bad" };
+  if (c.status === "warn") return { text: "поднимается, числа расходятся", tone: "warn" };
+  if (c.kind === "verify") return { text: "поднимается", tone: "ok" };
+  if (c.problem) return { text: "на сервере, в Telegram не ушла", tone: "warn" };
+  return { text: c.sent ? "на сервере и в Telegram" : "только на сервере", tone: c.sent ? "ok" : "warn" };
+}
 
 // ——— Аккаунт по номеру (этап 3, GET /api/admin/account/<id>; типы — копия server/src/admin-account.ts accountCard).
 export type AccountPlan = "owner" | "friend" | "paid" | "trial" | "expired" | "frozen";

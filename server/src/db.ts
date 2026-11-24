@@ -575,6 +575,51 @@ CREATE INDEX IF NOT EXISTS ai_quota_day ON ai_quota (day_key);
 ALTER TABLE users ADD COLUMN frozen_at TEXT;
 ALTER TABLE admin_log ADD COLUMN reason TEXT NOT NULL DEFAULT '';
 `,
+  // Шаг 34: оповещения владельцу и ночная копия базы (этап 4 «Тарифы и управление», alerts.ts и snapshot.ts). alert_rules — правило
+  // по порогу (id — ALERT_SPECS): вкл/выкл, порог, окно и «не чаще раза в» минут; firing — 0 норма, 1 сработало без письма
+  // (антиспам), 2 сработало и письмо ушло; mark — до какого момента учтены события (оплаты, возвраты). Строки по умолчанию дописывает
+  // alerts.ts при первом чтении (порог расхода зависит от тарифов). alert_log — каждое срабатывание, повтор, «снова норма» и тест:
+  // только числа (текст письма собран сервером, без имён и текстов людей). db_copies — ночные копии и проверки восстановления.
+  `
+CREATE TABLE IF NOT EXISTS alert_rules (
+  id TEXT PRIMARY KEY,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  threshold {real} NOT NULL,
+  window_min INTEGER NOT NULL DEFAULT 60,
+  every_min INTEGER NOT NULL DEFAULT 60,
+  firing INTEGER NOT NULL DEFAULT 0,
+  last_sent TEXT,
+  last_value {real},
+  mark TEXT,
+  updated_at TEXT NOT NULL,
+  updated_by INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS alert_log (
+  id {pk},
+  at TEXT NOT NULL,
+  rule TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  value {real},
+  text TEXT NOT NULL DEFAULT '',
+  sent INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS alert_log_at ON alert_log (at);
+CREATE TABLE IF NOT EXISTS db_copies (
+  id {pk},
+  at TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  status TEXT NOT NULL,
+  file TEXT NOT NULL DEFAULT '',
+  bytes BIGINT NOT NULL DEFAULT 0,
+  gz_bytes BIGINT NOT NULL DEFAULT 0,
+  sent INTEGER NOT NULL DEFAULT 0,
+  problem TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  by_user INTEGER NOT NULL DEFAULT 0,
+  ms INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS db_copies_at ON db_copies (kind, at);
+`,
 ];
 
 /** Виды строк журнала подписки (billing_events, шаг 28). paid_first — первая оплата подписки, paid_once — оплата без признака
@@ -589,6 +634,18 @@ export const COLLECT_SINCE_KEY = "analytics_collect_since";
 const COLLECT_STEP = 28;
 export type BillingKind = (typeof BILLING_KINDS)[number];
 export interface BillingEventRow { id: number; user_id: number; at: string; kind: BillingKind; charge_id: string | null; amount: number | null }
+
+/** Правило оповещения (шаг 34, alerts.ts): firing — 0 норма, 1 сработало без письма (антиспам), 2 сработало и письмо ушло. */
+export interface AlertRuleRow {
+  id: string; enabled: number; threshold: number; window_min: number; every_min: number;
+  firing: number; last_sent: string | null; last_value: number | null; mark: string | null; updated_at: string; updated_by: number;
+}
+/** Ночная копия (kind copy: status ok | fail | skip) или проверка восстановления (kind verify: ok | warn | fail). problem — что не так
+ *  (пусто — всё хорошо), sent — копия ушла владельцу в Telegram. Без имён и текстов людей. */
+export interface DbCopyRow {
+  id: number; at: string; kind: "copy" | "verify"; status: "ok" | "fail" | "skip" | "warn"; file: string; bytes: number; gz_bytes: number;
+  sent: number; problem: string; note: string; by_user: number; ms: number;
+}
 
 /** Строка истории тарифов (шаг 30): before_json / after_json — все числа тарифов до и после (JSON), source — admin | undo | bot. */
 export interface TariffHistoryRow { id: number; at: string; user_id: number; source: string; before_json: string; after_json: string; reason: string }
@@ -2180,12 +2237,16 @@ export class Store {
     );
   }
   /** Раз в сутки: минуты присутствия и счётчики фич старше 400 дней (по day_key; присутствие — с 24.11.2026, раньше 90: годовые
-   *  когорты удержания), журнал попыток модели старше 30 дней, счётчики лимитов в штуках (ai_quota) старше 40 дней. */
+   *  когорты удержания), журнал попыток модели старше 30 дней, счётчики лимитов в штуках (ai_quota) старше 40 дней, журнал
+   *  оповещений и копий базы старше 180 дней. */
   async pruneStats(at: Date) {
     await this.run("DELETE FROM presence WHERE day_key < ?", new Date(at.getTime() - 400 * 86_400_000).toISOString().slice(0, 10));
     await this.run("DELETE FROM llm_calls WHERE at < ?", new Date(at.getTime() - 30 * 86_400_000).toISOString());
     await this.run("DELETE FROM feature_events WHERE day_key < ?", new Date(at.getTime() - 400 * 86_400_000).toISOString().slice(0, 10));
     await this.run("DELETE FROM ai_quota WHERE day_key < ?", new Date(at.getTime() - 40 * 86_400_000).toISOString().slice(0, 10));
+    // Журнал оповещений и копий базы (шаг 34) — 180 дней.
+    await this.run("DELETE FROM alert_log WHERE at < ?", new Date(at.getTime() - 180 * 86_400_000).toISOString());
+    await this.run("DELETE FROM db_copies WHERE at < ?", new Date(at.getTime() - 180 * 86_400_000).toISOString());
   }
   // ——— Счётчики фич (этап 3 админки, feature-events.ts): пачка из памяти — одной транзакцией.
   /** Прибавить счёт к строкам человек × день × клиент × фича. */
@@ -2350,6 +2411,70 @@ export class Store {
       fromDay, toDay, ...features,
     );
     return rows.map((r) => ({ feature: String(r.feature), user_id: Number(r.user_id) }));
+  }
+  // ——— Оповещения владельцу (шаг 34, alerts.ts): правила, их состояние и журнал срабатываний — только числа.
+  async alertRules(): Promise<AlertRuleRow[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT * FROM alert_rules ORDER BY id");
+    return rows.map((r) => ({
+      id: String(r.id), enabled: Number(r.enabled) ? 1 : 0, threshold: Number(r.threshold), window_min: Number(r.window_min), every_min: Number(r.every_min),
+      firing: Number(r.firing ?? 0), last_sent: r.last_sent == null ? null : String(r.last_sent), last_value: r.last_value == null ? null : Number(r.last_value),
+      mark: r.mark == null ? null : String(r.mark), updated_at: String(r.updated_at ?? ""), updated_by: Number(r.updated_by ?? 0),
+    }));
+  }
+  /** Дописать недостающие правила (значения по умолчанию); существующие не трогает. */
+  async seedAlertRules(rows: Pick<AlertRuleRow, "id" | "enabled" | "threshold" | "window_min" | "every_min" | "mark">[], at = new Date()) {
+    for (const r of rows) {
+      await this.run(
+        "INSERT INTO alert_rules (id, enabled, threshold, window_min, every_min, mark, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING",
+        r.id, r.enabled, r.threshold, r.window_min, r.every_min, r.mark, at.toISOString(),
+      );
+    }
+  }
+  /** Поменять поля правила (только перечисленные колонки). */
+  async updateAlertRule(id: string, patch: Partial<Omit<AlertRuleRow, "id">>) {
+    const cols = (["enabled", "threshold", "window_min", "every_min", "firing", "last_sent", "last_value", "mark", "updated_at", "updated_by"] as const).filter((k) => k in patch);
+    if (!cols.length) return;
+    await this.run(`UPDATE alert_rules SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`, ...cols.map((c) => patch[c] ?? null), id);
+  }
+  async addAlertLog(e: { at: Date; rule: string; kind: string; value: number | null; text: string; sent: boolean }) {
+    await this.run("INSERT INTO alert_log (at, rule, kind, value, text, sent) VALUES (?, ?, ?, ?, ?, ?)",
+      e.at.toISOString(), e.rule, e.kind, e.value != null && Number.isFinite(e.value) ? e.value : null, e.text.slice(0, 600), e.sent ? 1 : 0);
+  }
+  async alertLog(limit = 100): Promise<{ at: string; rule: string; kind: string; value: number | null; text: string; sent: boolean }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT at, rule, kind, value, text, sent FROM alert_log ORDER BY id DESC LIMIT ?", limit);
+    return rows.map((r) => ({ at: String(r.at), rule: String(r.rule), kind: String(r.kind), value: r.value == null ? null : Number(r.value), text: String(r.text ?? ""), sent: Boolean(Number(r.sent)) }));
+  }
+  /** Попытки модели с since: всего и с ошибкой (правило «доля ошибок ИИ»). */
+  async alertLlmCalls(since: string): Promise<{ calls: number; errors: number }> {
+    const r = await this.get<Record<string, unknown>>("SELECT COUNT(*) AS calls, SUM(CASE WHEN error_code <> '' THEN 1 ELSE 0 END) AS errors FROM llm_calls WHERE at >= ?", since);
+    return { calls: Number(r?.calls ?? 0), errors: Number(r?.errors ?? 0) };
+  }
+  /** События журнала подписки этих видов позже since: сколько и сумма звёзд (правила «возврат», «оплата»). */
+  async billingEventsSince(kinds: readonly BillingKind[], since: string): Promise<{ n: number; stars: number }> {
+    const r = await this.get<Record<string, unknown>>(
+      `SELECT COUNT(*) AS n, SUM(COALESCE(amount, 0)) AS stars FROM billing_events WHERE at > ? AND kind IN (${kinds.map(() => "?").join(", ")})`, since, ...kinds,
+    );
+    return { n: Number(r?.n ?? 0), stars: Number(r?.stars ?? 0) };
+  }
+  // ——— Копии базы (шаг 34, snapshot.ts): ночные копии (kind copy) и проверки восстановления (kind verify).
+  async addDbCopy(e: Omit<DbCopyRow, "id">): Promise<void> {
+    await this.run(
+      "INSERT INTO db_copies (at, kind, status, file, bytes, gz_bytes, sent, problem, note, by_user, ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      e.at, e.kind, e.status, e.file, e.bytes, e.gz_bytes, e.sent, e.problem.slice(0, 300), e.note.slice(0, 300), e.by_user, e.ms,
+    );
+  }
+  async dbCopies(kind: "copy" | "verify", limit = 20): Promise<DbCopyRow[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT * FROM db_copies WHERE kind = ? ORDER BY at DESC, id DESC LIMIT ?", kind, limit);
+    return rows.map((r) => ({
+      id: Number(r.id), at: String(r.at), kind: String(r.kind) as DbCopyRow["kind"], status: String(r.status) as DbCopyRow["status"], file: String(r.file ?? ""),
+      bytes: Number(r.bytes ?? 0), gz_bytes: Number(r.gz_bytes ?? 0), sent: Number(r.sent ?? 0), problem: String(r.problem ?? ""), note: String(r.note ?? ""),
+      by_user: Number(r.by_user ?? 0), ms: Number(r.ms ?? 0),
+    }));
+  }
+  /** Сколько строк в главных таблицах — сверка копии с живой базой (проверка восстановления). */
+  async rowCounts(): Promise<{ users: number; messages: number }> {
+    const n = async (t: "users" | "messages") => Number((await this.get<{ n: unknown }>(`SELECT COUNT(*) AS n FROM ${t}`))?.n ?? 0);
+    return { users: await n("users"), messages: await n("messages") };
   }
   /** Команда без разбора результата (снимок базы: VACUUM INTO). */
   async raw(sql: string, ...args: unknown[]): Promise<void> {

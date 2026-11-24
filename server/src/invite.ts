@@ -125,10 +125,11 @@ export function installerUrl(desktopDir: string, publicUrl: string): string | nu
   }
 }
 
-/** Сводка владельцу о новых (раз в сутки, index.ts): сколько и логины — без chat id и текстов. Новых нет — null. */
-export async function newcomersText(store: Store, since: string): Promise<string | null> {
+/** Сводка владельцу о новых (раз в сутки, правило newcomers в alerts.ts): сколько и номера аккаунтов — без логинов, имён и chat id
+ *  (этап 4: письма владельцу — только числа и #id). Новых нет — null. */
+export async function newcomersText(store: Store, since: string): Promise<{ n: number; text: string } | null> {
   const rows = await store.usersCreatedSince(since);
   if (!rows.length) return null;
-  const names = rows.slice(0, 30).map((r) => r.login ?? `#${r.id}`).join(", ");
-  return `🆕 Новых за сутки: ${rows.length} — ${names}${rows.length > 30 ? "…" : ""}`;
+  const ids = rows.slice(0, 30).map((r) => `#${r.id}`).join(", ");
+  return { n: rows.length, text: `🆕 Новых за сутки: ${rows.length} — ${ids}${rows.length > 30 ? "…" : ""}` };
 }

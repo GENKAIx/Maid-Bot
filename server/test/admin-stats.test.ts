@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { adminAlerts, adminAudience, adminHealth, adminOverview, adminQualityReport, adminSpend, adminUsers, ADMIN_ALERT_FAILED, cmpVersion, quantile } from "../src/admin-stats.ts";
+import { adminAudience, adminHealth, adminOverview, adminQualityReport, adminSpend, adminUsers, cmpVersion, quantile } from "../src/admin-stats.ts";
 import { authByToken, notePresence, resetSeen, tokenHash } from "../src/auth.ts";
 import { config } from "../src/config.ts";
 import { Store } from "../src/db.ts";
@@ -109,26 +109,7 @@ for (const [name, open] of Object.entries(BACKENDS)) {
   });
 }
 
-test("тревоги владельцу: перерасход и неразобранные — по одному разу", async () => {
-  const store = await Store.open(":memory:");
-  try {
-    const u = await store.ensureUser("1001", "Аня", TZ);
-    for (let i = 1; i <= 14; i++) await store.addUsage(new Date(NOW.getTime() - i * 86_400_000), { kind: "parse", model: "m", input: 1, output: 1, cost: 0.1, userId: u.id });
-    assert.deepEqual(await adminAlerts(store, NOW), [], "обычный день — тихо");
-    await store.addUsage(NOW, { kind: "parse", model: "m", input: 1, output: 1, cost: 0.9, userId: u.id });
-    for (let i = 0; i < ADMIN_ALERT_FAILED; i++) {
-      const { message } = await store.saveMessage({ userId: u.id, source: "telegram", sourceId: `f${i}`, text: "x", dayKey: dayKey(NOW, TZ), at: new Date(NOW.getTime() - 10 * 60_000) });
-      await store.setMessage(message.id, { state: "failed" });
-    }
-    const first = await adminAlerts(store, NOW);
-    assert.equal(first.length, 2);
-    assert.match(first[0], /Расход модели сегодня: \$0\.90/);
-    assert.match(first[1], /не разобрано сообщений: 3/);
-    assert.deepEqual(await adminAlerts(store, NOW), [], "второй раз в тот же день и час — молчит");
-  } finally {
-    await store.close();
-  }
-});
+// Тревоги владельцу (перерасход, неразобранные) — правила alerts.ts, проверка — test/alerts.test.ts.
 
 test("прогноз расхода: среднее за 7 полных дней, сегодняшний неполный день не занижает", async () => {
   const store = await Store.open(":memory:");

@@ -5,6 +5,7 @@ import { Icon } from "../icons";
 import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, AdminPayments, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
 import { AdminTariffs } from "./AdminTariffs";
 import { AdminAccount } from "./AdminAccount";
+import { AdminAlerts, AdminBackups } from "./AdminAlerts";
 import { navigate } from "../router";
 import "../admin.css";
 
@@ -136,6 +137,8 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           : section === "audience" ? <AdminAudience />
           : section === "quality" ? <AdminQuality />
           : section === "health" ? <AdminHealth />
+          : section === "alerts" ? <AdminAlerts />
+          : section === "backups" ? <AdminBackups />
           : section === "features" ? <AdminFeatures />
           : section === "showcase" ? <Suspense fallback={<span className="adm-muted">Загрузка…</span>}><AdminShowcase /></Suspense>
           : section === "log" ? <Journal /> : <Soon stage={cur.stage} />}

@@ -333,26 +333,3 @@ export async function adminFeatures(store: Store, now = new Date()) {
     unused: features.filter((f) => !f.all.uses30).map((f) => f.id),
   };
 }
-
-// ——— Тревоги владельцу в Telegram (scheduler.extra, раз в такт). Один раз на событие (store.once): перерасход за день —
-// раз в сутки, всплеск неразобранных — раз в час. Пороги: расход дня больше ADMIN_ALERT_SPEND_X × среднего за 14 дней
-// и не меньше ADMIN_ALERT_SPEND_MIN долларов; неразобранных за час — ADMIN_ALERT_FAILED и больше.
-export const ADMIN_ALERT_SPEND_X = 3;
-export const ADMIN_ALERT_SPEND_MIN = 0.5;
-export const ADMIN_ALERT_FAILED = 3;
-
-export async function adminAlerts(store: Store, now = new Date()): Promise<string[]> {
-  const out: string[] = [];
-  const utc = utcDay(now);
-  const rows = await store.usageDays(addDays(utc, -14), utc);
-  const todayCost = rows.filter((r) => r.day === utc).reduce((s, r) => s + r.cost, 0);
-  const avg = rows.filter((r) => r.day !== utc).reduce((s, r) => s + r.cost, 0) / 14;
-  if (todayCost >= ADMIN_ALERT_SPEND_MIN && todayCost > ADMIN_ALERT_SPEND_X * avg && (await store.once(`alert:spend:${utc}`))) {
-    out.push(`⚠️ Расход модели сегодня: $${todayCost.toFixed(2)} — в ${avg ? (todayCost / avg).toFixed(1) : "∞"} раза больше обычного ($${avg.toFixed(2)} в день за 2 недели). Подробности — админка → Расходы.`);
-  }
-  const failed = await store.adminFailedSince(iso(now.getTime() - 60 * 60_000));
-  if (failed >= ADMIN_ALERT_FAILED && (await store.once(`alert:failed:${iso(now.getTime()).slice(0, 13)}`))) {
-    out.push(`⚠️ За последний час не разобрано сообщений: ${failed}. Модель или сеть сбоят — админка → Обзор.`);
-  }
-  return out;
-}
