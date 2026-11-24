@@ -449,7 +449,7 @@ export function AdminHealth() {
       <div className="adm-kpis">
         <Kpi title="Ошибок модели за сутки" value={sum("errors_day")} hint={rate(sum("errors_day"), sum("day"))} warn={sum("errors_day") > 0} />
         <Kpi title="За 7 дней" value={sum("errors_week")} hint={rate(sum("errors_week"), sum("week"))} />
-        <Kpi title="Сообщений в ошибке" value={h.messages.failed} hint={`за сутки, ещё в повторах: ${h.messages.failed24}`} warn={h.messages.failed24 > 0} />
+        <Kpi title="Сообщений в ошибке" value={h.messages.failed} hint={`из них за сутки (ещё повторяются): ${h.messages.failed24}`} warn={h.messages.failed24 > 0} />
         <Kpi title="Ждут уточнения" value={h.messages.clarify} />
         <Kpi title="Напоминаний просрочено" value={h.reminders.n} hint={h.reminders.oldest ? `самое старое — ${ago(h.reminders.oldest)}` : "ждут дольше 2 минут"} warn={h.reminders.n > 0} />
         <Kpi title="Сервер работает" value={uptimeText(h.uptime_sec)} hint={`версия ${h.version} · собран ${h.built_at === "—" ? "—" : ago(h.built_at)}`} />
