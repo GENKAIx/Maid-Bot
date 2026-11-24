@@ -50,10 +50,10 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
   test(`${kind}: шаг 28 — таблица журнала подписки; запись, выборка за [from, to), незнакомый вид — ошибка`, async () => {
     const store = await open();
     try {
-      await store.driver.exec("DROP TABLE billing_events;");
+      await store.driver.exec("DROP TABLE billing_events; ALTER TABLE users DROP COLUMN trial_len_days;");
       await store.kvSet("schema_version", "27");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "29");
+      assert.equal(await again.kvGet("schema_version"), "31");
       const t = Date.parse("2026-11-24T12:00:00Z");
       await again.addBillingEvent({ user_id: 5, kind: "trial_started", at: new Date(t) });
       await again.addBillingEvent({ user_id: 5, kind: "paid_first", at: new Date(t + DAY), charge_id: "ch1", amount: 150 });

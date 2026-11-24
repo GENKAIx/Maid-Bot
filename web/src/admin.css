@@ -318,3 +318,59 @@ body.admin-body { background: #0f1114; }
   .ana-heat { grid-template-columns: 20px repeat(24, minmax(0, 1fr)); gap: 1px; font-size: 9px; }
   .ana-heat > div { height: 14px; }
 }
+
+/* Тарифы и Общие потолки (24.11.2026, screens/AdminTariffs.tsx): поля с единицами, изменённые — жёлтым, ошибки — красным,
+   плашка «Применить / Сбросить» прилипает к низу, предупреждения — полосой слева. */
+.adm-tf { display: flex; flex-direction: column; gap: 16px; padding-bottom: 8px; }
+.adm-tf-lead { margin: 0; font-size: 13px; }
+.adm-tf .good { color: #6fcf97; }
+.adm-tf .bad { color: var(--a-bad); }
+.adm-tf-plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.adm-tf-caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.adm-tf-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--a-line); border-radius: 12px; background: var(--a-panel); min-width: 0; }
+.adm-tf-card h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.adm-tf-card p { margin: 0; }
+.adm-tf-price { font-size: 22px; font-weight: 600; }
+.adm-tf-price small { font-size: 12px; font-weight: 400; }
+.adm-tf-fields { display: flex; flex-direction: column; gap: 10px; }
+.adm-tf-field { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 4px 10px; align-items: center; }
+.adm-tf-label { font-size: 13px; }
+.adm-tf-label em { display: block; font-style: normal; font-size: 11.5px; color: var(--a-muted); }
+.adm-tf-num { display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--a-line); border-radius: 8px; background: var(--a-bg); }
+.adm-tf-num input { width: 100%; min-width: 0; padding: 8px 0; border: 0; background: none; color: var(--a-text); font: inherit; font-family: var(--a-mono); text-align: right; outline: none; }
+.adm-tf-num i { font-style: normal; font-size: 11.5px; color: var(--a-muted); white-space: nowrap; }
+.adm-tf-num:focus-within { border-color: var(--a-accent); }
+.adm-tf-num.ch, .adm-tf-toggle.ch { border-color: #c98500; box-shadow: 0 0 0 1px #c98500 inset; }
+.adm-tf-num.err { border-color: var(--a-bad); }
+.adm-tf-ferr { grid-column: 1 / -1; font-size: 12px; }
+.adm-tf-toggle { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--a-line); border-radius: 8px; cursor: pointer; }
+.adm-tf-gift { padding: 8px 10px; border-radius: 8px; background: var(--a-panel-2); }
+.adm-tf-econ { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 10px; border-top: 1px solid var(--a-line); }
+.adm-tf-econ span { display: block; font-size: 11.5px; color: var(--a-muted); }
+.adm-tf-econ b { font-size: 15px; font-weight: 600; }
+.adm-tf-flags { display: flex; flex-direction: column; gap: 8px; }
+.adm-tf-flag { display: flex; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--a-line); border-left: 3px solid var(--a-accent); background: var(--a-panel); font-size: 13px; }
+.adm-tf-flag b { flex: none; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; background: var(--a-panel-2); }
+.adm-tf-flag.bad { border-left-color: var(--a-bad); }
+.adm-tf-flag.warn { border-left-color: #c98500; }
+.adm-tf-meter { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: 12.5px; }
+.adm-tf-meter > div { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--a-panel-2); overflow: hidden; }
+.adm-tf-meter b { display: block; height: 100%; background: var(--a-accent); }
+.adm-tf-meter b.warn { background: #c98500; }
+.adm-tf-meter b.bad { background: var(--a-bad); }
+.adm-tf-defs { font-size: 12.5px; color: var(--a-muted); }
+.adm-tf-defs summary { cursor: pointer; }
+.adm-tf-defs dl { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 6px 12px; margin: 10px 0 0; }
+.adm-tf-defs dt { color: var(--a-text); }
+.adm-tf-defs dd { margin: 0; }
+.adm-tf-hist td { vertical-align: top; }
+.adm-tf-undo { display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
+.adm-tf-reason { font: inherit; font-size: 13px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--a-line); background: var(--a-bg); color: var(--a-text); outline: none; }
+.adm-tf-reason:focus { border-color: var(--a-accent); }
+.adm-tf-draft { position: sticky; bottom: 12px; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid #c98500; border-radius: 12px; background: var(--a-panel-2); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); z-index: 2; }
+.adm-tf-draft ul { margin: 0; padding-left: 18px; font-size: 13px; }
+@media (max-width: 520px) {
+  .adm-tf-field { grid-template-columns: minmax(0, 1fr); }
+  .adm-tf-defs dl { grid-template-columns: minmax(0, 1fr); }
+  .adm-tf-plans, .adm-tf-caps { grid-template-columns: minmax(0, 1fr); }
+}

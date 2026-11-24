@@ -4,13 +4,14 @@
 // Этап 3 (24.11.2026): «Использование функций» — счётчики фич (server/src/feature-events.ts, отчёт — admin-stats.ts adminFeatures).
 // Этап 4 (24.11.2026): «Витрина» — анимации с проигрывателем, эффекты, сценарии, карта функций (screens/AdminShowcase.tsx,
 // реестр web/src/registry.gen.ts пишет tools/registry/make_registry.ts).
+// Тарифы (24.11.2026): «Тарифы» и «Общие потолки» — числа платного доступа из базы (web/src/tariffs.ts, screens/AdminTariffs.tsx).
 // Этап 5 (24.11.2026): Аналитика — отчёты с шагом и сравнением с прошлым периодом (screens/AdminAnalytics.tsx, графики — adminCharts.tsx,
 // ручка GET /api/admin/analytics — server/src/admin-analytics.ts; типы ниже — копия оттуда один в один).
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
 export const ADMIN_LIVE_STAGE = 5;
 
-export type AdminSectionId = "overview" | "analytics" | "users" | "payments" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
+export type AdminSectionId = "overview" | "analytics" | "users" | "payments" | "tariffs" | "caps" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
 
 // Меню по категориям (24.11.2026): group — заголовок категории (ADMIN_GROUPS, по порядку), icon — имя в icons.tsx.
 export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Продукт", "Система"] as const;
@@ -21,6 +22,10 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number;
   { id: "analytics", title: "Аналитика", stage: 5, group: "Обзор", icon: "adm-chart" },
   { id: "users", title: "Пользователи", stage: 1, group: "Люди и деньги", icon: "adm-users" },
   { id: "payments", title: "Оплаты", stage: 0, group: "Люди и деньги", icon: "adm-star" },
+  // Тарифы из базы (24.11.2026, screens/AdminTariffs.tsx): рядом с оплатами — это те же деньги; отдельная категория из двух пунктов
+  // только раздула бы меню, а лимиты в штуках (этап 2) лягут в эти же два раздела.
+  { id: "tariffs", title: "Тарифы", stage: 0, group: "Люди и деньги", icon: "adm-tag" },
+  { id: "caps", title: "Общие потолки", stage: 0, group: "Люди и деньги", icon: "adm-gauge" },
   { id: "audience", title: "Аудитория", stage: 1, group: "Люди и деньги", icon: "adm-target" },
   { id: "spend", title: "Расходы на модель", stage: 1, group: "ИИ", icon: "adm-coins" },
   { id: "quality", title: "Качество разбора", stage: 1, group: "ИИ", icon: "adm-check" },
@@ -46,6 +51,8 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   wrong: "ввёл неверный код",
   leave: "вышел из админки",
   refund: "вернул звёзды",
+  tariff: "изменил тарифы",
+  tariff_undo: "вернул тарифы как было",
 };
 
 // ——— Оплаты (24.11.2026, подписка Telegram Stars: server/src/billing.ts, отчёт — admin-stats.ts adminPayments).
@@ -241,8 +248,8 @@ export interface MoneyData {
 }
 
 export interface SubsData {
-  price_stars: number;            // config.billing.price
-  trial_days: number;             // config.billing.trialDays
+  price_stars: number;            // tariffs().price (server/src/tariffs.ts)
+  trial_days: number;             // tariffs().trialDays
   kpi: {
     active_subs: Pair; trials: Pair; trials_ending_3d: Pair; autorenew: Pair; churn_risk: Pair;
     trial_conversion: Pair;       // доля 0..1: оплатившие / решённые; решённых 0 → null
@@ -302,7 +309,7 @@ export interface AiData {
   dist_users: number;
   /** Модели за период: доля расхода, вызовы, главное назначение, время ответа. Сортировка по micro по убыванию. */
   models: { model: string; micro: number; share: number | null; calls: number; top_kind: string; p50_ms: number | null; p95_ms: number | null; timed: number }[];
-  limits: { trial_day_micro: number; paid_day_micro: number; trial_pool_day_micro: number }; // из config.billing × 1e6
+  limits: { trial_day_micro: number; paid_day_micro: number; trial_pool_day_micro: number }; // из тарифов (server/src/tariffs.ts) × 1e6
 }
 
 export interface ActData {

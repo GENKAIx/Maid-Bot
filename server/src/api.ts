@@ -34,8 +34,9 @@ import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { moveToTomorrow, weatherFor } from "./weather.ts";
 import { ADDRESSES, addressWord, askNext, askOf, wakeAt, wakeMinOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES, llmErrorCode } from "./llm.ts";
-import { accessOf, accessView, RATE_AGAIN, type Refusal } from "./access.ts";
+import { accessOf, accessView, RATE_AGAIN, type Access, type Refusal } from "./access.ts";
 import type { Billing } from "./billing.ts";
+import { applyTariffs, TariffError, tariffs, tariffsView, undoTariff } from "./tariffs.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -335,6 +336,20 @@ export function createApi(deps: ApiDeps) {
       if (!r.ok) throw new HttpError(409, r.text);
       return r;
     }
+    // Тарифы из базы (tariffs.ts): текущие числа, по умолчанию, история и экономика; «Применить» (причина обязательна) и откат —
+    // с проверкой чисел (400), строкой истории и записью в журнал админки.
+    if (m === "GET" && p === "/api/admin/tariffs") return tariffsView(store);
+    if (m === "POST" && (p === "/api/admin/tariffs" || p === "/api/admin/tariffs/undo")) {
+      const b = await readJson(req, 20_000);
+      const o = (b && typeof b === "object" ? b : {}) as { values?: unknown; reason?: unknown; id?: unknown };
+      try {
+        const r = p.endsWith("undo") ? await undoTariff(store, u.id, o.id, o.reason) : await applyTariffs(store, u.id, o.values, o.reason);
+        return { id: r.id, changes: r.changes, values: r.values };
+      } catch (e) {
+        if (e instanceof TariffError) throw new HttpError(e.status, e.message);
+        throw e;
+      }
+    }
     throw new HttpError(404, "нет такого адреса");
   }
 
@@ -343,6 +358,14 @@ export function createApi(deps: ApiDeps) {
   async function refuse(u: User, why: Refusal, text: string, extra: Record<string, unknown> = {}): Promise<never> {
     if (why === "access") throw new HttpError(402, text, { pay_url: (await deps.billing?.link(u)) ?? null, ...extra });
     throw new HttpError(429, text, extra);
+  }
+
+  /** Цена подписки в блоке «Тариф» (/api/me): у идущей подписки — её цена при оформлении (Telegram продлевает по ней), у остальных —
+   *  нынешняя цена новых счетов (tariffs.ts). Идёт ли подписка — по действующему плану a (accessOf), не по plan в базе: срок кончился,
+   *  а планировщик ещё не перевёл в free — кнопка «Оформить» ведёт на счёт по нынешней цене, её и показать. */
+  async function priceOf(u: User, a: Access): Promise<number> {
+    const first = a.plan === "paid" && u.sub_charge_id ? await store.payment(u.sub_charge_id) : undefined;
+    return first && first.currency === "XTR" && !first.refunded_at ? first.amount : tariffs().price;
   }
 
   /** Кто сделал запрос и с какого клиента — для счётчика фич по ручкам API (feature-list.ts api), считается после удачного ответа. */
@@ -438,10 +461,11 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/me") {
       const { password_hash: _, ...me } = u;
       const mine = tokenHash(token).slice(0, 16);
+      const a = pipeline.gate?.access(u) ?? accessOf(u);
       return {
         ...me,
         // Платный доступ (access.ts): план, срок, отменено ли продление, дней пробы — для блока «Подписка» и баннера.
-        access: accessView(pipeline.gate?.access(u) ?? accessOf(u)),
+        access: { ...accessView(a), price: await priceOf(u, a) },
         admin: isAdmin(u, auth.via), // пункт «Админка» в меню сайта; сами данные админки — только через /api/admin/* с кодом
         sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })),
       };

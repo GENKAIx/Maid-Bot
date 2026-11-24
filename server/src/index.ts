@@ -22,6 +22,7 @@ import { AiGate } from "./access.ts";
 import { Billing, billingSecret } from "./billing.ts";
 import { newcomersText } from "./invite.ts";
 import { installLogRedaction } from "./log-redact.ts";
+import { loadTariffs, watchTariffs } from "./tariffs.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
@@ -32,6 +33,9 @@ installLogRedaction([config.telegramToken, config.llm.apiKey, config.stt.apiKey,
 
 const store = await Store.open(config.databaseUrl || config.dbFile);
 console.log(`[start] база: ${config.databaseUrl ? "Postgres" : "SQLite " + config.dbFile}`);
+// Тарифы из базы (tariffs.ts): прочитать сейчас и перечитывать раз в минуту — админка меняет их без выкладки.
+await loadTariffs(store);
+watchTariffs(store);
 const pipeline = new Pipeline(store, callLlm, config.publicUrl);
 if (drawReady()) pipeline.draw = callDraw;
 // Платный доступ (access.ts): одна проверка перед ИИ — в конвейере (сообщения, поправки, повтор), планировщике, боте и API.

@@ -1,6 +1,7 @@
 import { config } from "./config.ts";
 import type { Store, User } from "./db.ts";
 import { countFeature } from "./feature-events.ts";
+import { tariffs, unpricedOf } from "./tariffs.ts";
 
 // Платный доступ (24.11.2026): одна проверка «можно ли тратить ИИ на этого человека» для бота, сайта, конвейера и планировщика.
 // Бесплатно навсегда — всё без модели: просмотр своих данных, кнопки и отметки, ручные правки, push-кнопки, напоминания и вопросы
@@ -27,12 +28,23 @@ export interface Access {
 }
 export type Ended = "trial" | "gift" | "paid";
 
-/** Подарок по /invite хранится как trial, но срок у него длиннее пробы: от создания записи дальше trialDays + 1 дня. */
-export const endedOf = (u: User): Ended => {
-  if (u.plan === "paid" || u.sub_charge_id) return "paid";
+/** Проба у записей до шага 31 — всегда 7 дней: до тарифов из базы её не меняли. */
+export const LEGACY_TRIAL_DAYS = 7;
+
+/** Вид бесплатного срока (plan trial): длина пробы в днях при выдаче; 0 — подарок по /invite. Записан при выдаче
+ *  (users.trial_len_days, шаг 31), поэтому смена тарифа trialDays в админке не меняет смысл уже выданных сроков. Записи до шага 31
+ *  (null) — по длине срока: от создания записи дальше прежней пробы + 1 дня — подарок. */
+export function trialLenOf(u: Pick<User, "trial_len_days" | "created_at" | "access_until">): number {
+  if (u.trial_len_days != null) return Number(u.trial_len_days);
   const made = Date.parse(u.created_at ?? "");
   const until = Date.parse(u.access_until ?? "");
-  return Number.isFinite(made) && Number.isFinite(until) && until - made > (config.billing.trialDays + 1) * 86_400_000 ? "gift" : "trial";
+  return Number.isFinite(made) && Number.isFinite(until) && until - made > (LEGACY_TRIAL_DAYS + 1) * 86_400_000 ? 0 : LEGACY_TRIAL_DAYS;
+}
+
+/** Что кончилось: подписка (была оплата подписки), подарок (trialLenOf 0) или проба. */
+export const endedOf = (u: User): Ended => {
+  if (u.plan === "paid" || u.sub_charge_id) return "paid";
+  return trialLenOf(u) === 0 ? "gift" : "trial";
 };
 
 /** Владельцы — всегда с доступом. */
@@ -58,7 +70,7 @@ export type Refusal = "access" | "rate" | "money";
 export type Verdict = { ok: true } | { ok: false; why: Refusal; text: string };
 
 /** Срок кончился (отказ ИИ и письмо планировщика): пробная неделя — словами пользователя; подарок и подписка — свои первые слова. */
-export function endedText(e: Ended | null, price = config.billing.price): string {
+export function endedText(e: Ended | null, price = tariffs().price): string {
   const what = e === "gift" ? "Подарочный доступ закончился" : e === "paid" ? "Подписка закончилась" : "Пробная неделя закончилась";
   return `${what} — я сохранила всё, что было. Чтобы я снова разбирала сообщения, оформите подписку ⭐${price} в месяц`;
 }
@@ -68,7 +80,7 @@ export const RATE_AGAIN = "Много сообщений подряд — при
 
 /** Тексты отказа. access и money — сообщение записывается заметкой (pipeline.ts blocked); rate — сообщение «не удалось»,
  *  его разберёт фоновый повтор. */
-export function refusalText(why: Refusal, a: Access | null, price = config.billing.price): string {
+export function refusalText(why: Refusal, a: Access | null, price = tariffs().price): string {
   if (why === "rate") return "Много сообщений подряд — это разберу чуть позже сама (или нажмите «Повторить»).";
   if (why === "money") return "На сегодня лимит разбора исчерпан — завтра продолжу как обычно.";
   return endedText(a?.ended ?? null, price);
@@ -120,18 +132,19 @@ export class AiGate {
     if (a.plan === "owner" || a.plan === "friend") return { ok: true };
     if (o.rate !== false && !this.take(u.id, now.getTime())) return no("rate", "burst", a);
     const day = now.toISOString().slice(0, 10);
-    const est = config.billing.unpricedUsd;
-    const cap = a.plan === "paid" ? (this.opts.paidDayUsd ?? config.billing.paidDayUsd) : (this.opts.trialDayUsd ?? config.billing.trialDayUsd);
+    const t = tariffs();
+    const est = unpricedOf(t);
+    const cap = a.plan === "paid" ? (this.opts.paidDayUsd ?? t.paidDayUsd) : (this.opts.trialDayUsd ?? t.trialDayUsd);
     if ((await this.store.daySpend(u.id, day, est)) >= cap) return no("money", "day_cap", a);
-    if (a.plan === "trial" && (await this.store.trialsDaySpend(day, est)) >= (this.opts.trialPoolDayUsd ?? config.billing.trialPoolDayUsd)) {
+    if (a.plan === "trial" && (await this.store.trialsDaySpend(day, est)) >= (this.opts.trialPoolDayUsd ?? t.trialPoolDayUsd)) {
       return no("money", "trial_pool", a);
     }
     return { ok: true };
   }
   /** Окно частоты: есть место — вызов отмечен (синхронно), нет — false. */
   private take(id: number, t: number): boolean {
-    const win = this.opts.windowMs ?? config.billing.aiWindowMs;
-    const burst = this.opts.burst ?? config.billing.aiBurst;
+    const win = this.opts.windowMs ?? tariffs().aiWindowMs;
+    const burst = this.opts.burst ?? tariffs().aiBurst;
     const list = (this.calls.get(id) ?? []).filter((x) => t - x < win);
     if (list.length >= burst) return void this.calls.set(id, list), false;
     list.push(t);

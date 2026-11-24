@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { config } from "./config.ts";
+import { tariffs } from "./tariffs.ts";
 import type { BillingKind, Store, User } from "./db.ts";
 import { accessOf, endedOf, endedText, GRACE_MS } from "./access.ts";
 import { esc } from "./report.ts";
@@ -64,6 +64,7 @@ export interface Refunded { currency: string; total_amount: number; invoice_payl
 
 export interface BillingOptions {
   secret: string;
+  /** Цена для тестов; без неё — текущая из тарифов (tariffs.ts price), читается на каждый счёт. */
   price?: number;
   /** Кому писать о платежах (владельцы); пусто — никому. */
   owners?: string[];
@@ -73,9 +74,11 @@ export interface BillingOptions {
 const day = (iso: string) => iso.slice(0, 10).split("-").reverse().join(".");
 
 export class Billing {
-  private price: number;
-  constructor(private store: Store, private api: StarsApi | null, private opts: BillingOptions) {
-    this.price = opts.price ?? config.billing.price;
+  constructor(private store: Store, private api: StarsApi | null, private opts: BillingOptions) {}
+  /** Цена нового счёта — текущая из тарифов: новая цена действует на новые счета, уже оформленную подписку Telegram продлевает
+   *  по цене при оформлении. */
+  private get price(): number {
+    return this.opts.price ?? tariffs().price;
   }
   private now() {
     return this.opts.clock?.() ?? new Date();
@@ -102,15 +105,16 @@ export class Billing {
     if (!this.api || this.payable(u)) return null;
     const now = this.now().getTime();
     try {
-      const saved = JSON.parse((await this.store.kvGet(`paylink:${u.id}`)) ?? "null") as { url: string; at: number } | null;
-      if (saved && now - saved.at < LINK_TTL_MS) return saved.url;
+      // Ссылка помнит свою цену: цену поменяли в админке (tariffs.ts) — старая ссылка не годится, нужна новая.
+      const saved = JSON.parse((await this.store.kvGet(`paylink:${u.id}`)) ?? "null") as { url: string; at: number; price?: number } | null;
+      if (saved && now - saved.at < LINK_TTL_MS && (saved.price ?? this.price) === this.price) return saved.url;
     } catch { /* битая запись — новая ссылка */ }
     try {
       const url = await this.api.createInvoiceLink(
         "Горничная · месяц", "Разбор сообщений, ответы, голос и фото — в боте, на сайте и в программе на ПК. Продлевается каждый месяц.",
         signPayload(this.opts.secret, u.id), "", "XTR", [{ label: "Подписка на месяц", amount: this.price }], { subscription_period: SUB_PERIOD_SEC },
       );
-      await this.store.kvSet(`paylink:${u.id}`, JSON.stringify({ url, at: now }));
+      await this.store.kvSet(`paylink:${u.id}`, JSON.stringify({ url, at: now, price: this.price }));
       return url;
     } catch (e) {
       console.error("[billing] ссылка", (e as Error).message);
@@ -129,6 +133,8 @@ export class Billing {
     const id = readPayload(this.opts.secret, q.invoice_payload);
     const u = id ? await this.store.user(id) : undefined;
     if (!u) return { ok: false, error: "Счёт устарел — откройте оплату заново из бота или с сайта." };
+    // Только нынешняя цена: продление оформленной подписки идёт без pre_checkout_query (сразу successful_payment с is_recurring),
+    // а старая ссылка на оплату бессрочна — принимать по ней старую сумму значило бы продавать новую подписку по прежней цене.
     if (q.currency !== "XTR" || q.total_amount !== this.price) return { ok: false, error: "Цена изменилась — откройте оплату заново." };
     const why = this.payable(u);
     if (why) return { ok: false, error: why };
@@ -291,7 +297,7 @@ export class Billing {
 }
 
 /** Условия (/terms; на сайте — тот же текст). */
-export const TERMS_TEXT = (price = config.billing.price, trialDays = config.billing.trialDays) =>
+export const TERMS_TEXT = (price = tariffs().price, trialDays = tariffs().trialDays) =>
   "<b>Условия «Горничной»</b>\n\n" +
   `• Что продаётся: подписка на месяц — горничная разбирает сообщения, отвечает, понимает голос и фото в боте, на сайте и в программе на ПК. Цена — ⭐${price} (Telegram Stars) за 30 дней.\n` +
   `• Новым — ${trialDays} дней полного доступа бесплатно.\n` +

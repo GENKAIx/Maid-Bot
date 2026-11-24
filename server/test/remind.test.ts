@@ -107,7 +107,7 @@ test("шаг 12 базы: ночное время вечернего итога 
     "ALTER TABLE users DROP COLUMN maid_hair; ALTER TABLE users DROP COLUMN maid_eyes; " +
     "ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask; ALTER TABLE users DROP COLUMN weather_rain; " +
     "ALTER TABLE sessions DROP COLUMN client; ALTER TABLE sessions DROP COLUMN version; ALTER TABLE messages DROP COLUMN llm_calls; ALTER TABLE messages DROP COLUMN route;" +
-    " ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled;");
+    " ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; ALTER TABLE users DROP COLUMN trial_len_days;");
   await store.kvSet("schema_version", "11");
   await store.close();
   store = await Store.open(file);

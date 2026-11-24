@@ -13,6 +13,7 @@ import { COLLECT_SINCE_KEY, Store } from "../src/db.ts";
 import { PgDriver } from "../src/driver.ts";
 import { FEATURES, FUNCTIONS } from "../src/feature-list.ts";
 import { Pipeline } from "../src/pipeline.ts";
+import { overrideTariffs } from "../src/tariffs.ts";
 import { addDays, dayKey } from "../src/time.ts";
 
 // Аналитика, этап 1 (24.11.2026, docs/review/аналитика-макет-2026-11-24.html): GET /api/admin/analytics — семь отчётов на SQLite
@@ -32,7 +33,7 @@ const H = 3_600_000, DAY = 86_400_000;
 const SECRET = "секретный текст сообщения";
 const OWNER_CHAT = "1001";
 config.defaultTimezone = TZ;
-config.billing.starUsd = 0.013;
+overrideTariffs({ starUsd: 0.013 }); // курс ⭐→$ не из .env (STAR_USD)
 config.allowedChatIds.splice(0, Infinity, OWNER_CHAT);
 config.adminChatIds.splice(0, Infinity);
 
@@ -608,7 +609,7 @@ test("запросы к messages — с границей времени и по 
       }
     }
     assert.ok(checked >= seen.length, "план разобран у каждого запроса");
-    assert.equal(await store.kvGet("schema_version"), "29", "шаг 29 — индекс messages_day");
+    assert.equal(await store.kvGet("schema_version"), "31", "шаг 29 — индекс messages_day, шаг 30 — тарифы из базы, шаг 31 — вид бесплатного срока");
   } finally {
     await store.close();
   }

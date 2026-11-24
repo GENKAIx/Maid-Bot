@@ -2,14 +2,14 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { hashPassword } from "./auth.ts";
-import { config } from "./config.ts";
+import { signupsOpenNow, tariffs } from "./tariffs.ts";
 import type { BillingKind, Store, User } from "./db.ts";
 
 // Приглашения друзей через бота. Владелец (chat id из ALLOWED_CHAT_IDS) пишет /invite — получает ссылку
 // t.me/<бот>?start=<код>; код одноразовый, живёт INVITE_DAYS дней (kv «invite:<код>» → до-когда или «used»).
-// С 24.11.2026 (платный доступ, access.ts) приглашение — подарок на config.billing.giftDays дней (plan trial): новому создаётся
+// С 24.11.2026 (платный доступ, access.ts) приглашение — подарок на giftDays дней (тарифы, tariffs.ts) (plan trial): новому создаётся
 // учётная запись с логином и случайным паролем (для сайта и программы на ПК), тому, у кого запись уже есть, — срок продлевается.
-// Незнакомец может прийти и без приглашения: /start — своя запись с пробой на config.billing.trialDays дней (signUp).
+// Незнакомец может прийти и без приглашения: /start — своя запись с пробой на trialDays дней (signUp).
 // Свой для бота — владелец или тот, у кого есть запись с этим чатом; тратить ли на него ИИ — решает access.ts.
 
 export const INVITE_DAYS = 7;
@@ -39,7 +39,7 @@ export async function redeemInvite(
   chat: { id: string; name: string; username?: string },
   tz: string,
   now = new Date(),
-  giftDays = config.billing.giftDays,
+  giftDays = tariffs().giftDays,
 ): Promise<Invited | null> {
   if (!/^[\w-]{6,64}$/.test(code)) return null;
   const until = await store.kvGet(`invite:${code}`);
@@ -50,19 +50,17 @@ export async function redeemInvite(
   if (had) {
     const from = Math.max(now.getTime(), had.access_until ? Date.parse(had.access_until) : 0);
     const gift = plusDays(new Date(from), giftDays);
-    await store.updateUser(had.id, { plan: had.plan === "paid" ? "paid" : "trial", access_until: gift });
+    // trial_len_days 0 — теперь это подарок (и в письме об окончании, и в аналитике), даже если принят посреди пробы.
+    await store.updateUser(had.id, { plan: had.plan === "paid" ? "paid" : "trial", access_until: gift, trial_len_days: 0 });
     await journal(store, had.id, "gift", now);
     return { user: (await store.user(had.id))!, login: null, password: null, until: gift };
   }
-  return newAccount(store, chat, tz, plusDays(now, giftDays), now, "gift");
+  return newAccount(store, chat, tz, plusDays(now, giftDays), now, "gift", 0);
 }
 
-/** Почему не вышло зарегистрироваться: регистрация выключена (SIGNUPS_OPEN=0 или владелец написал /signups off) или за час
- *  или сутки уже много новых. */
+/** Почему не вышло зарегистрироваться: регистрация выключена (тариф signupsOpen: /signups off в боте или «Общие потолки» в админке;
+ *  SIGNUPS_OPEN=0 в .env — поверх, signupsOpenNow) или за час или сутки уже много новых. */
 export type SignUpRefusal = "closed" | "busy";
-
-/** Выключатель владельца (/signups off в боте) — в kv, чтобы закрыть регистрацию без правки .env. */
-export const SIGNUPS_KV = "signups:closed";
 
 /** Незнакомец написал /start: запись с пробой на trialDays дней. Запись уже есть — null. Потолки — perHour новых за час
  *  и perDay за сутки (на весь сервер). */
@@ -71,13 +69,13 @@ export async function signUp(
   chat: { id: string; name: string; username?: string },
   tz: string,
   now = new Date(),
-  o = { open: config.billing.signupsOpen, perHour: config.billing.signupsPerHour, perDay: config.billing.signupsPerDay, trialDays: config.billing.trialDays },
+  o = { open: signupsOpenNow(), perHour: tariffs().signupsPerHour, perDay: tariffs().signupsPerDay, trialDays: tariffs().trialDays },
 ): Promise<Invited | SignUpRefusal | null> {
   if (await store.userByChat(chat.id)) return null;
-  if (!o.open || (await store.kvGet(SIGNUPS_KV)) === "1") return "closed";
+  if (!o.open) return "closed";
   if ((await store.countUsersSince(new Date(now.getTime() - 3600_000).toISOString())) >= o.perHour) return "busy";
   if ((await store.countUsersSince(new Date(now.getTime() - 86_400_000).toISOString())) >= o.perDay) return "busy";
-  return newAccount(store, chat, tz, plusDays(now, o.trialDays), now, "trial_started");
+  return newAccount(store, chat, tz, plusDays(now, o.trialDays), now, "trial_started", o.trialDays);
 }
 
 /** Журнал подписки (billing_events, шаг 28): проба при регистрации и подарок. Сбой журнала — в лог, запись человека остаётся. */
@@ -89,13 +87,14 @@ async function journal(store: Store, userId: number, kind: BillingKind, at: Date
   }
 }
 
+/** trialLen — вид срока (users.trial_len_days, access.ts trialLenOf): длина пробы в днях; 0 — подарок. */
 async function newAccount(
-  store: Store, chat: { id: string; name: string; username?: string }, tz: string, until: string, now: Date, kind: "gift" | "trial_started",
+  store: Store, chat: { id: string; name: string; username?: string }, tz: string, until: string, now: Date, kind: "gift" | "trial_started", trialLen: number,
 ): Promise<Invited> {
   const login = await freeLogin(store, chat.username);
   const password = crypto.randomBytes(9).toString("base64url").slice(0, 10);
   const user = await store.createUser({
-    login, passwordHash: await hashPassword(password), name: chat.name, tz, chatId: chat.id, plan: "trial", accessUntil: until, at: now,
+    login, passwordHash: await hashPassword(password), name: chat.name, tz, chatId: chat.id, plan: "trial", accessUntil: until, at: now, trialLenDays: trialLen,
   });
   await journal(store, user.id, kind, now);
   return { user, login, password, until };

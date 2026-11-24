@@ -4,7 +4,7 @@ import { openPostgres, schemaFor, SqliteDriver, type Driver } from "./driver.ts"
 // а каждое действие пишется в actions — по ним работает «Отменить».
 // База — SQLite у себя или Postgres на Render: SQL общий, различия прячет driver.ts.
 
-/** Оценка цены вызова без цены от провайдера, доллары (config.billing.unpricedUsd) — для потолков расхода. */
+/** Оценка цены вызова без цены от провайдера, доллары (tariffs.ts unpricedOf) — для потолков расхода. */
 export type Unpriced = { draw: number; voice: number; other: number };
 const NO_EST: Unpriced = { draw: 0, voice: 0, other: 0 };
 /** Оценки в целых микродолларах (Postgres ждёт целое: колонка micro_usd — INTEGER). */
@@ -521,6 +521,40 @@ CREATE INDEX IF NOT EXISTS billing_events_user ON billing_events (user_id, at);
   `
 CREATE INDEX IF NOT EXISTS messages_day ON messages (day_key);
 `,
+  // Шаг 30: тарифы из базы (tariffs.ts, этап 1 макета docs/review/тарифы-и-управление-макет-2026-11-24.html). tariff_settings —
+  // только изменённые числа (key — поле TARIFF_SPEC, value — JSON); нет строки — берётся значение по умолчанию (прежние числа
+  // config.billing, SIGNUPS_OPEN и STAR_USD из .env). tariff_history — каждое «Применить», откат и /signups в боте: кто (user_id
+  // админа, 0 — владелец из бота без записи), когда, все числа до и после (JSON), причина. Выключатель /signups off жил в kv
+  // signups:closed — переносится в tariff_settings.signupsOpen, ключ kv удаляется (одно место вместо двух).
+  `
+CREATE TABLE IF NOT EXISTS tariff_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  updated_by INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS tariff_history (
+  id {pk},
+  at TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  source TEXT NOT NULL,
+  before_json TEXT NOT NULL,
+  after_json TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS tariff_history_at ON tariff_history (at);
+INSERT INTO tariff_settings (key, value, updated_at, updated_by)
+  SELECT 'signupsOpen', 'false', '', 0 FROM kv WHERE key = 'signups:closed' AND value = '1';
+DELETE FROM kv WHERE key = 'signups:closed';
+`,
+  // Шаг 31: вид бесплатного срока — явно (access.ts trialLenOf), а не по длине срока и нынешнему тарифу trialDays (его теперь меняют
+  // в админке — уже выданные сроки меняли бы смысл). trial_len_days — длина пробы при регистрации в днях, 0 — подарок по /invite
+  // (и принятый посреди пробы). NULL — записи до шага 31: вид по длине срока с прежней пробой 7 дней (до тарифов из базы её не
+  // меняли). У кого в журнале подписки есть подарок (billing_events gift) — сразу 0.
+  `
+ALTER TABLE users ADD COLUMN trial_len_days INTEGER;
+UPDATE users SET trial_len_days = 0 WHERE id IN (SELECT user_id FROM billing_events WHERE kind = 'gift');
+`,
 ];
 
 /** Виды строк журнала подписки (billing_events, шаг 28). paid_first — первая оплата подписки, paid_once — оплата без признака
@@ -534,6 +568,13 @@ export const COLLECT_SINCE_KEY = "analytics_collect_since";
 const COLLECT_STEP = 28;
 export type BillingKind = (typeof BILLING_KINDS)[number];
 export interface BillingEventRow { id: number; user_id: number; at: string; kind: BillingKind; charge_id: string | null; amount: number | null }
+
+/** Строка истории тарифов (шаг 30): before_json / after_json — все числа тарифов до и после (JSON), source — admin | undo | bot. */
+export interface TariffHistoryRow { id: number; at: string; user_id: number; source: string; before_json: string; after_json: string; reason: string }
+const tariffRow = (r: Record<string, unknown>): TariffHistoryRow => ({
+  id: Number(r.id), at: String(r.at), user_id: Number(r.user_id), source: String(r.source),
+  before_json: String(r.before_json), after_json: String(r.after_json), reason: String(r.reason ?? ""),
+});
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
 export interface AccountRow {
@@ -603,8 +644,11 @@ export interface User {
   sub_charge_id: string | null;
   /** 1 — продление подписки отменено (доступ до access_until). */
   sub_canceled: number;
-  /** Когда создана запись (ISO): по нему подарок по /invite отличается от пробной недели (access.ts endedOf). */
+  /** Когда создана запись (ISO): у записей до шага 31 по нему подарок по /invite отличается от пробной недели (access.ts trialLenOf). */
   created_at: string;
+  /** Вид бесплатного срока (шаг 31, access.ts trialLenOf): длина пробы при регистрации в днях; 0 — подарок по /invite; null — запись
+   *  до шага 31 (вид — по длине срока). */
+  trial_len_days: number | null;
 }
 
 /** Оплата Telegram Stars (billing.ts): kind — first | renew | once; refunded_at — когда вернули. */
@@ -937,14 +981,19 @@ export class Store {
     return (await this.userByChat(chatId))!;
   }
   /** plan и access_until — платный доступ (access.ts): новые из бота — проба, по /invite — подарок, из командной строки — друг. */
-  async createUser(u: { login: string; passwordHash: string; name?: string; tz: string; chatId?: string | null; plan?: string; accessUntil?: string | null; at?: Date }): Promise<User> {
+  async createUser(u: {
+    login: string; passwordHash: string; name?: string; tz: string; chatId?: string | null; plan?: string; accessUntil?: string | null; at?: Date;
+    /** Вид бесплатного срока (users.trial_len_days): длина пробы в днях, 0 — подарок. */
+    trialLenDays?: number | null;
+  }): Promise<User> {
     const id = await this.insert(
-      "INSERT INTO users (login, password_hash, chat_id, name, tz, created_at, plan, access_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO users (login, password_hash, chat_id, name, tz, created_at, plan, access_until, trial_len_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       u.login.toLowerCase(), u.passwordHash, u.chatId ?? null, u.name ?? "", u.tz, (u.at ?? new Date()).toISOString(), u.plan ?? "", u.accessUntil ?? null,
+      u.trialLenDays ?? null,
     );
     return (await this.user(id))!;
   }
-  /** Сколько учётных записей создано с since (ISO) — потолок регистраций в час (bot.ts, config.billing.signupsPerHour). */
+  /** Сколько учётных записей создано с since (ISO) — потолок регистраций в час (invite.ts signUp, тариф signupsPerHour). */
   async countUsersSince(since: string): Promise<number> {
     return Number((await this.get<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE created_at >= ?", since))?.n ?? 0);
   }
@@ -966,13 +1015,13 @@ export class Store {
     return this.all<User>("SELECT * FROM users WHERE plan = 'paid' AND sub_canceled = 1 AND access_until >= ? AND access_until <= ? ORDER BY id", from, to);
   }
   /** Расход ИИ человека за день (UTC, ГГГГ-ММ-ДД), доллары — денежный потолок (access.ts). Вызов без цены (провайдер её не вернул)
-   *  идёт по оценке est (access.ts передаёт config.billing.unpricedUsd): иначе потолок его не видит. */
+   *  идёт по оценке est (access.ts передаёт tariffs.ts unpricedOf): иначе потолок его не видит. */
   async daySpend(userId: number, day: string, est: Unpriced = NO_EST): Promise<number> {
     const r = await this.get<{ micro: number }>(`SELECT SUM(micro_usd + ${UNPRICED_SQL}) AS micro FROM llm_usage WHERE day = ? AND user_id = ?`,
       ...microOf(est), day, userId);
     return Number(r?.micro ?? 0) / 1e6;
   }
-  /** Расход всех проб за день (UTC) с той же оценкой — общий потолок проб (access.ts, config.billing.trialPoolDayUsd). */
+  /** Расход всех проб за день (UTC) с той же оценкой — общий потолок проб (access.ts, тариф trialPoolDayUsd). */
   async trialsDaySpend(day: string, est: Unpriced = NO_EST): Promise<number> {
     const r = await this.get<{ micro: number }>(
       `SELECT SUM(micro_usd + ${UNPRICED_SQL}) AS micro FROM llm_usage WHERE day = ? AND user_id IN (SELECT id FROM users WHERE plan = 'trial')`,
@@ -1951,6 +2000,52 @@ export class Store {
     const rows = await this.all<Record<string, unknown>>("SELECT at, user_id, action, detail FROM admin_log ORDER BY id DESC LIMIT ?", limit);
     return rows.map((r) => ({ at: String(r.at), user_id: Number(r.user_id), action: String(r.action), detail: String(r.detail ?? "") }));
   }
+  // ——— Тарифы из базы (шаг 30, tariffs.ts): изменённые числа и история «Применить» / откат / /signups.
+  /** Изменённые числа тарифов: key → value (JSON). Нет строки — значение по умолчанию. */
+  async tariffSettings(): Promise<{ key: string; value: string }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT key, value FROM tariff_settings ORDER BY key");
+    return rows.map((r) => ({ key: String(r.key), value: String(r.value) }));
+  }
+  /** Записать числа и строку истории одним разом: value — JSON, null — убрать строку (снова по умолчанию). Номер строки истории. */
+  async saveTariffs(set: { key: string; value: string | null }[], h: Omit<TariffHistoryRow, "id">): Promise<number> {
+    return this.driver.tx(async () => {
+      for (const x of set) {
+        if (x.value === null) await this.run("DELETE FROM tariff_settings WHERE key = ?", x.key);
+        else {
+          await this.run(
+            "INSERT INTO tariff_settings (key, value, updated_at, updated_by) VALUES (?, ?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by",
+            x.key, x.value, h.at, h.user_id,
+          );
+        }
+      }
+      return this.insert(
+        "INSERT INTO tariff_history (at, user_id, source, before_json, after_json, reason) VALUES (?, ?, ?, ?, ?, ?)",
+        h.at, h.user_id, h.source, h.before_json, h.after_json, h.reason.slice(0, 300),
+      );
+    });
+  }
+  /** История тарифов, новые сверху. */
+  async tariffHistory(limit = 50): Promise<TariffHistoryRow[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT * FROM tariff_history ORDER BY id DESC LIMIT ?", limit);
+    return rows.map(tariffRow);
+  }
+  async tariffHistoryRow(id: number): Promise<TariffHistoryRow | undefined> {
+    const r = await this.get<Record<string, unknown>>("SELECT * FROM tariff_history WHERE id = ?", id);
+    return r ? tariffRow(r) : undefined;
+  }
+  /** Расход ИИ по людям и дням (UTC) с day >= since — у тех, чей план сейчас plans (экономика тарифа, tariffs.ts): человек × день → микро$
+   *  с оценкой est за вызовы без цены, как у потолков. */
+  async planDaySpend(since: string, plans: string[], est: Unpriced = NO_EST): Promise<{ user_id: number; plan: string; day: string; micro: number }[]> {
+    if (!plans.length) return [];
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT u.user_id AS user_id, p.plan AS plan, u.day AS day, SUM(u.micro_usd + ${UNPRICED_SQL}) AS micro
+       FROM llm_usage u JOIN users p ON p.id = u.user_id
+       WHERE u.day >= ? AND p.plan IN (${plans.map(() => "?").join(", ")})
+       GROUP BY u.user_id, p.plan, u.day`,
+      ...microOf(est), since, ...plans,
+    );
+    return rows.map((r) => ({ user_id: Number(r.user_id), plan: String(r.plan), day: String(r.day), micro: Number(r.micro ?? 0) }));
+  }
   async kvSet(key: string, value: string) {
     await this.run("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", key, value);
   }
@@ -2045,11 +2140,12 @@ export class Store {
     return { payments: s(r?.payments), billing_events: early(s(r?.billing_events)), feature_events: s(r?.feature_events), gate: early(s(r?.gate)), llm_calls: s(r?.llm_calls), presence: s(r?.presence) };
   }
   /** Люди для аналитики: пояс, когда пришли, план и срок. owner — chat id среди owners (сам chat id наружу не идёт). */
-  async analyticsUsers(owners: string[]): Promise<{ id: number; tz: string; created_at: string; plan: string; access_until: string | null; sub_canceled: number; owner: boolean }[]> {
-    const rows = await this.all<Record<string, unknown>>("SELECT id, tz, created_at, plan, access_until, sub_canceled, chat_id FROM users ORDER BY id");
+  async analyticsUsers(owners: string[]): Promise<{ id: number; tz: string; created_at: string; plan: string; access_until: string | null; sub_canceled: number; trial_len_days: number | null; owner: boolean }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT id, tz, created_at, plan, access_until, sub_canceled, trial_len_days, chat_id FROM users ORDER BY id");
     return rows.map((r) => ({
       id: Number(r.id), tz: String(r.tz ?? ""), created_at: String(r.created_at ?? ""), plan: String(r.plan ?? ""),
       access_until: r.access_until == null ? null : String(r.access_until), sub_canceled: Number(r.sub_canceled ?? 0) || 0,
+      trial_len_days: r.trial_len_days == null ? null : Number(r.trial_len_days),
       owner: r.chat_id != null && owners.includes(String(r.chat_id)),
     }));
   }

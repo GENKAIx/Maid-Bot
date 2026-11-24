@@ -12,6 +12,7 @@ import { signUp } from "../src/invite.ts";
 import type { LlmCall } from "../src/llm.ts";
 import { Pipeline, RETRY_AFTER_MIN } from "../src/pipeline.ts";
 import { Scheduler } from "../src/scheduler.ts";
+import { setSignupsOpen } from "../src/tariffs.ts";
 import { zonedToUtc } from "../src/time.ts";
 
 // Платный доступ (24.11.2026, access.ts): одна проверка перед ИИ. Без пробы и подписки модель не зовётся нигде — сообщение
@@ -64,10 +65,10 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     const store = await open();
     const old = await store.ensureUser("1", "Старый", TZ);
     await store.driver.exec("ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id;" +
-      " ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; DROP TABLE payments;");
+      " ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; DROP TABLE payments; ALTER TABLE users DROP COLUMN trial_len_days;");
     await store.kvSet("schema_version", "26");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "29");
+    assert.equal(await again.kvGet("schema_version"), "31");
     const was = (await again.user(old.id))!;
     assert.deepEqual([was.plan, was.access_until, Number(was.sub_canceled), was.name], ["friend", null, 0, "Старый"]);
     assert.equal(accessOf(was, new Date(), []).ok, true);
@@ -249,8 +250,10 @@ test("регистрация незнакомца: проба на 7 дней; �
   assert.equal(await signUp(store, { id: "13", name: "В" }, TZ, now, o), "busy", "за час уже двое");
   assert.ok(typeof (await signUp(store, { id: "13", name: "В" }, TZ, new Date(now.getTime() + 3601_000), o)) === "object", "через час — можно");
   assert.equal(await signUp(store, { id: "14", name: "Г" }, TZ, new Date(now.getTime() + 7300_000), o), "busy", "за сутки уже трое");
-  await store.kvSet("signups:closed", "1");
-  assert.equal(await signUp(store, { id: "15", name: "Д" }, TZ, new Date(now.getTime() + 2 * DAY), o), "closed", "владелец закрыл (/signups off)");
+  // Без o — текущие тарифы (tariffs.ts): владелец закрыл регистрацию (/signups off или админка) — «закрыто».
+  await setSignupsOpen(store, 0, false);
+  assert.equal(await signUp(store, { id: "15", name: "Д" }, TZ, new Date(now.getTime() + 2 * DAY)), "closed", "владелец закрыл (/signups off)");
+  await setSignupsOpen(store, 0, true);
   await store.close();
 });
 
@@ -284,7 +287,7 @@ test("API без доступа: 402 со ссылкой на оплату (не
     assert.equal(voice.body.saved, false, "голос нигде не записан — виджет оставит его в очереди");
     const me = await call("/api/me");
     assert.equal(me.status, 200, "ключ не стёрт: /api/me работает");
-    assert.deepEqual(Object.keys(me.body.access as object).sort(), ["canceled", "plan", "trial_left_days", "until"]);
+    assert.deepEqual(Object.keys(me.body.access as object).sort(), ["canceled", "plan", "price", "trial_left_days", "until"]);
     assert.equal((me.body.access as { plan: string }).plan, "expired");
     assert.equal((await call("/api/today")).status, 200, "просмотр своих данных — бесплатно");
     const link = await call("/api/billing/link", {});

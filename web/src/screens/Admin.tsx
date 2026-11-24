@@ -3,6 +3,7 @@ import { ApiError, get, post } from "../api";
 import { ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminNavGroups, adminSection } from "../admin";
 import { Icon } from "../icons";
 import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, AdminPayments, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
+import { AdminTariffs } from "./AdminTariffs";
 import { navigate } from "../router";
 import "../admin.css";
 
@@ -126,6 +127,8 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           : section === "analytics" ? <Suspense fallback={<span className="adm-muted">Загрузка…</span>}><AdminAnalytics /></Suspense>
           : section === "users" ? <AdminUsers />
           : section === "payments" ? <AdminPayments />
+          : section === "tariffs" ? <AdminTariffs key="plans" part="plans" />
+          : section === "caps" ? <AdminTariffs key="caps" part="caps" />
           : section === "spend" ? <AdminSpend />
           : section === "audience" ? <AdminAudience />
           : section === "quality" ? <AdminQuality />

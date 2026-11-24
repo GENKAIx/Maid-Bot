@@ -128,12 +128,17 @@ test("бот: /signups off закрывает регистрацию без .env
   const s = await stand();
   await s.text(Number(OWNER), "/signups off");
   assert.match(String(s.sent().at(-1)!.payload.text), /закрыта/);
+  // Одно место (тарифы из базы, tariffs.ts): выключатель — в tariff_settings, kv signups:closed больше не пишется.
+  assert.deepEqual((await s.store.tariffSettings()).map((r) => [r.key, r.value]), [["signupsOpen", "false"]]);
+  assert.equal(await s.store.kvGet("signups:closed"), undefined);
+  assert.equal((await s.store.tariffHistory())[0]?.source, "bot");
   await s.text(70, "/start");
   assert.equal(await s.store.userByChat("70"), undefined);
   assert.match(String(s.sent().at(-1)!.payload.text), /Регистрация сейчас закрыта/);
   await s.text(Number(OWNER), "/signups on");
   await s.text(70, "/start");
   assert.equal((await s.store.userByChat("70"))?.plan, "trial");
+  assert.deepEqual(await s.store.tariffSettings(), [], "снова по умолчанию");
   await s.store.close();
 });
 

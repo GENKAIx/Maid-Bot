@@ -4,9 +4,10 @@ import { Bot, InlineKeyboard, InputFile, type Context } from "grammy";
 import { config, ROOT } from "./config.ts";
 import { issueToken, notePresence } from "./auth.ts";
 import { accountsText } from "./accounts.ts";
-import { createInvite, INVITE_DAYS, installerUrl, isMember, redeemInvite, signUp, SIGNUPS_KV, type Invited } from "./invite.ts";
+import { createInvite, INVITE_DAYS, installerUrl, isMember, redeemInvite, signUp, type Invited } from "./invite.ts";
 import { accessOf, RATE_AGAIN, type Access } from "./access.ts";
 import { Billing, billingSecret, TERMS_TEXT, type StarsApi } from "./billing.ts";
+import { setSignupsOpen, signupsEnvClosed, signupsOpenNow, tariffs } from "./tariffs.ts";
 import type { Store, User } from "./db.ts";
 import { habitLine, habitsOfDay } from "./habits.ts";
 import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
@@ -33,19 +34,20 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   // Оплата (billing.ts): платежи и вопросы о них — админам (ADMIN_CHAT_IDS, пусто — первый из ALLOWED_CHAT_IDS, как в админке сайта).
   const payAdmins = config.adminChatIds.length ? config.adminChatIds : config.allowedChatIds.slice(0, 1);
   const billing = new Billing(store, bot.api satisfies StarsApi, { secret: billingSecret(config.telegramToken), owners: payAdmins });
-  const PRICE = config.billing.price;
+  // Цена — текущая из тарифов (tariffs.ts): поменяли в админке — бот пишет новую сразу.
+  const price = () => tariffs().price;
   const dmy = (iso: string | null) => (iso ?? "").slice(0, 10).split("-").reverse().join(".");
   /** Кнопка оплаты под отказом и письмом; Telegram не дал ссылку — без кнопки. */
   const payKeyboard = async (u: User) => {
     const url = await billing.link(u);
-    return url ? new InlineKeyboard().url(`Оформить ⭐${PRICE}`, url) : undefined;
+    return url ? new InlineKeyboard().url(`Оформить ⭐${price()}`, url) : undefined;
   };
   /** Строка о доступе (/start). */
   const accessLine = (a: Access) =>
     a.plan === "owner" || a.plan === "friend" ? "Доступ: бесплатно навсегда."
-      : a.plan === "trial" ? `Пробный доступ: осталось ${a.trialLeftDays} дн. Потом — подписка ⭐${PRICE} в месяц (/terms).`
+      : a.plan === "trial" ? `Пробный доступ: осталось ${a.trialLeftDays} дн. Потом — подписка ⭐${price()} в месяц (/terms).`
       : a.plan === "paid" ? `Подписка до ${dmy(a.until)}${a.canceled ? " (продление отменено)" : ""}.`
-      : `Разбор сообщений закрыт — нужна подписка ⭐${PRICE} в месяц (/terms). Просмотр записей, отметки и напоминания — бесплатно.`;
+      : `Разбор сообщений закрыт — нужна подписка ⭐${price()} в месяц (/terms). Просмотр записей, отметки и напоминания — бесплатно.`;
 
   // Платежи — ДО фильтра незнакомцев: pre_checkout_query приходит без чата, successful_payment — из чата, который мог ещё не быть
   // привязан к записи (оплатили по ссылке с сайта). Ответ на pre_checkout — за 10 с, только чтение из базы.
@@ -170,7 +172,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await ctx.reply(
       `Добро пожаловать${name ? `, ${esc(name)}` : ""}! ✨\n\n` +
         (gift ? `🎁 Вам подарок — полный доступ до ${dmy(got.until)}.\n\n`
-          : `Первые ${config.billing.trialDays} дней — полный доступ бесплатно (до ${dmy(got.until)}), потом — подписка ⭐${PRICE} в месяц. Условия — /terms.\n\n`) +
+          : `Первые ${tariffs().trialDays} дней — полный доступ бесплатно (до ${dmy(got.until)}), потом — подписка ⭐${price()} в месяц. Условия — /terms.\n\n`) +
         (setup ? `<b>Программа для ПК:</b> <a href="${esc(setup)}">скачать установщик</a>\n` : "") +
         "При первом запуске впишите адрес сервера, потом войдите логином и паролем — так же и на сайте.\n\n" +
         `Адрес сервера: <code>${esc(config.publicUrl)}</code>\nЛогин: <code>${esc(got.login ?? "")}</code>\nПароль: <code>${esc(got.password ?? "")}</code>\n` +
@@ -180,7 +182,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await ctx.reply(HELP);
   }
 
-  // Приглашение (/start <код>) — подарок на config.billing.giftDays дней: новому — запись, у кого запись есть — продление срока.
+  // Приглашение (/start <код>) — подарок на giftDays дней (тарифы): новому — запись, у кого запись есть — продление срока.
   // О новых владельцу пишет сводка раз в сутки (index.ts, newcomersText), не по одному. false — код не подошёл.
   async function acceptInvite(ctx: Context, chat: string, code: string): Promise<boolean> {
     const got = await redeemInvite(store, code, { id: chat, name: ctx.from?.first_name ?? "", username: ctx.from?.username }, config.defaultTimezone);
@@ -324,10 +326,11 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   bot.command("signups", async (ctx) => {
     if (!owner(ctx)) return;
     const arg = ctx.match.trim().toLowerCase();
-    if (arg === "off") await store.kvSet(SIGNUPS_KV, "1");
-    else if (arg === "on") await store.kvDel(SIGNUPS_KV);
-    const closed = !config.billing.signupsOpen || (await store.kvGet(SIGNUPS_KV)) === "1";
-    await ctx.reply(`Регистрация новых: ${closed ? "закрыта" : "открыта"}${!config.billing.signupsOpen ? " (SIGNUPS_OPEN=0 в .env)" : ""}. /signups off — закрыть, /signups on — открыть.`);
+    // Тот же выключатель, что «Общие потолки» в админке (тариф signupsOpen, tariffs.ts): с историей и в журнал админки.
+    if (arg === "off" || arg === "on") await setSignupsOpen(store, (await store.userByChat(String(ctx.chat.id)))?.id ?? 0, arg === "on");
+    // SIGNUPS_OPEN=0 в .env закрывает поверх тарифа — сказать об этом, иначе «/signups on» выглядел бы сломанным.
+    const env = signupsEnvClosed() ? " (SIGNUPS_OPEN=0 в .env сервера — закрыта, что бы ни стояло здесь)" : "";
+    await ctx.reply(`Регистрация новых: ${signupsOpenNow() ? "открыта" : "закрыта"}${env}. /signups off — закрыть, /signups on — открыть (или в админке сайта → «Общие потолки»).`);
   });
   // Возобновить отменённое продление — та же подписка, без второй оплаты.
   bot.command("resume_sub", async (ctx) => {
@@ -361,7 +364,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const code = await createInvite(store);
     await ctx.reply(
       `Приглашение для друга — одноразовое, ссылка живёт ${INVITE_DAYS} дней:\nhttps://t.me/${ctx.me.username}?start=${code}\n\n` +
-        `Это подарок: ${config.billing.giftDays} дней полного доступа. Новый человек получит логин и пароль для сайта и программы на ПК и ссылку на установщик, ` +
+        `Это подарок: ${tariffs().giftDays} дней полного доступа. Новый человек получит логин и пароль для сайта и программы на ПК и ссылку на установщик, ` +
         "а у кого запись уже есть — продление срока.",
       { link_preview_options: { is_disabled: true } },
     );

@@ -9,6 +9,9 @@ export interface Access {
   until: string | null;
   canceled: boolean;
   trial_left_days: number | null;
+  /** Цена подписки в звёздах (сервер api.ts priceOf): у идущей подписки — её цена при оформлении, у остальных — цена новых счетов
+   *  (тарифы из базы, server/src/tariffs.ts). Старый сервер не присылает — 150. */
+  price?: number;
 }
 
 /** Ссылка на оплату — только https://t.me/… (счёт Telegram Stars); любую другую не открываем. */
@@ -53,7 +56,7 @@ export interface PlanView { title: string; text: string; pay: boolean; cancel: b
 /** Что показать в блоке «Тариф»: название, пояснение, нужна ли кнопка оплаты, «Отменить продление» и «Возобновить продление».
  *  Отменённую подписку оплатой заново не предлагаем, пока она идёт (вторая подписка списала бы звёзды дважды, сервер её и не
  *  примет — billing.ts payable), — её возобновляют (та же подписка, POST /api/billing/resume). */
-export function planView(a: Access | null | undefined, price = 150): PlanView {
+export function planView(a: Access | null | undefined, price = a?.price ?? 150): PlanView {
   const no = { pay: false, cancel: false, resume: false };
   if (!a) return { ...no, title: "—", text: "Сервер не сообщил тариф." };
   if (a.plan === "owner") return { ...no, title: "Владелец", text: "Всё бесплатно и без ограничений." };

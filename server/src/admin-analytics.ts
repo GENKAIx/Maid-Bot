@@ -4,7 +4,8 @@ import { HttpError } from "./api.ts";
 import { quantile } from "./admin-stats.ts";
 import { CHAT_FAILED } from "./pipeline.ts";
 import { config } from "./config.ts";
-import { ownerIds } from "./access.ts";
+import { LEGACY_TRIAL_DAYS, ownerIds, trialLenOf } from "./access.ts";
+import { tariffs } from "./tariffs.ts";
 import { FEATURE_GROUPS, FUNCTIONS } from "./feature-list.ts";
 
 // Аналитика, этап 1 (24.11.2026, docs/review/аналитика-макет-2026-11-24.html): GET /api/admin/analytics?report=&days=&step=.
@@ -85,11 +86,11 @@ export interface MoneyData {
 }
 
 export interface SubsData {
-  price_stars: number;            // config.billing.price
-  trial_days: number;             // config.billing.trialDays
+  price_stars: number;            // tariffs().price
+  trial_days: number;             // tariffs().trialDays
   kpi: {
     active_subs: Pair;            // cur: plan='paid' AND access_until >= now (как planCounts). prev: на начало периода по payments: различные user_id, у которых есть оплата first|renew|once с paid_at <= T < expires_at и не возвращённая к T
-    trials: Pair;                 // cur: plan='trial' AND access_until >= now AND (access_until − created_at) <= (trialDays+1) дн. (подарок /invite — не проба, см. endedOf). prev: null
+    trials: Pair;                 // cur: plan='trial' AND access_until >= now AND это проба, не подарок /invite (вид срока при выдаче — access.ts trialLenOf). prev: null
     trials_ending_3d: Pair;       // те же пробы с access_until <= now+3 дн.; prev: null
     autorenew: Pair;              // plan='paid', срок жив, sub_canceled=0; prev: null
     churn_risk: Pair;             // plan='paid', срок жив, sub_canceled=1; prev: null
@@ -151,7 +152,7 @@ export interface AiData {
   dist_users: number;
   /** Модели за период: доля расхода, вызовы, главное назначение, время ответа. Сортировка по micro по убыванию. */
   models: { model: string; micro: number; share: number | null; calls: number; top_kind: string; p50_ms: number | null; p95_ms: number | null; timed: number }[];
-  limits: { trial_day_micro: number; paid_day_micro: number; trial_pool_day_micro: number }; // из config.billing × 1e6
+  limits: { trial_day_micro: number; paid_day_micro: number; trial_pool_day_micro: number }; // из тарифов (tariffs.ts) × 1e6
 }
 
 export interface ActData {
@@ -461,7 +462,7 @@ function ltv(w: Win, pays: APay[]): number | null {
   return who.size ? total / who.size : null;
 }
 
-const starMicro = (stars: number | null) => (stars == null ? null : Math.round(stars * config.billing.starUsd * 1e6));
+const starMicro = (stars: number | null) => (stars == null ? null : Math.round(stars * tariffs().starUsd * 1e6));
 
 // ——— Отчёты
 
@@ -514,11 +515,8 @@ async function moneyReport(c: Ctx): Promise<MoneyData> {
   };
 }
 
-/** Проба по пробной неделе, не подарок /invite (access.ts endedOf): от создания записи до конца — не дольше trialDays + 1 дня. */
-const isTrialSpan = (u: AUser) => {
-  const made = Date.parse(u.created_at), until = Date.parse(u.access_until ?? "");
-  return Number.isFinite(made) && Number.isFinite(until) && until - made <= (config.billing.trialDays + 1) * DAY;
-};
+/** Проба, не подарок /invite (access.ts trialLenOf): вид срока записан при выдаче, смена тарифа trialDays его не меняет. */
+const isTrialSpan = (u: AUser) => trialLenOf(u) > 0;
 
 async function subsReport(c: Ctx): Promise<SubsData> {
   const nowIso = c.now.toISOString();
@@ -539,7 +537,8 @@ async function subsReport(c: Ctx): Promise<SubsData> {
   const payersEver = new Set(pays.filter(isPaid).map((p) => p.user_id));
   const onTrial = (u: AUser) => !gifted.has(u.id) && (payersEver.has(u.id) || isTrialSpan(u));
   const cohort = c.users.filter((u) => u.plan !== "friend" && !u.owner && Number.isFinite(Date.parse(u.created_at)) && onTrial(u)).map((u) => {
-    const made = Date.parse(u.created_at), end = made + config.billing.trialDays * DAY;
+    // Конец пробы — по её длине при выдаче (у записей до шага 31 — прежние 7 дней), не по нынешнему тарифу.
+    const made = Date.parse(u.created_at), end = made + (u.trial_len_days || LEGACY_TRIAL_DAYS) * DAY;
     const paidIt = pays.some((p) => p.user_id === u.id && !p.refunded_at && Date.parse(p.paid_at) >= made && Date.parse(p.paid_at) <= end + 3 * DAY);
     return { end, decided: end + 3 * DAY <= c.nowMs, paid: paidIt };
   });
@@ -593,8 +592,8 @@ async function subsReport(c: Ctx): Promise<SubsData> {
     });
   }
   return {
-    price_stars: config.billing.price,
-    trial_days: config.billing.trialDays,
+    price_stars: tariffs().price,
+    trial_days: tariffs().trialDays,
     kpi: {
       active_subs: { cur: paid.length, prev: subsAt(c.cur.fromMs) },
       trials: { cur: trials.length, prev: null },
@@ -718,9 +717,9 @@ async function aiReport(c: Ctx): Promise<AiData> {
       };
     }).sort((a, b) => b.micro - a.micro || b.calls - a.calls || a.model.localeCompare(b.model)),
     limits: {
-      trial_day_micro: Math.round(config.billing.trialDayUsd * 1e6),
-      paid_day_micro: Math.round(config.billing.paidDayUsd * 1e6),
-      trial_pool_day_micro: Math.round(config.billing.trialPoolDayUsd * 1e6),
+      trial_day_micro: Math.round(tariffs().trialDayUsd * 1e6),
+      paid_day_micro: Math.round(tariffs().paidDayUsd * 1e6),
+      trial_pool_day_micro: Math.round(tariffs().trialPoolDayUsd * 1e6),
     },
   };
 }
@@ -1007,7 +1006,7 @@ export async function analyticsReport(store: Store, q: AnalyticsQuery, now = new
   const meta: AnalyticsMeta = {
     report: q.report, days: q.days, step: q.step, generated_at: now.toISOString(), cached: false, zone, today,
     period: periodOf(cur), prev: periodOf(prev), buckets: cur.buckets, prev_buckets: prev.buckets,
-    star_usd: config.billing.starUsd, since, notes: [...c.notes],
+    star_usd: tariffs().starUsd, since, notes: [...c.notes],
   };
   return { meta, report: q.report, data } as AnalyticsResponse;
 }
