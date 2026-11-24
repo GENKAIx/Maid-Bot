@@ -9,6 +9,22 @@ export const sttReady = () => Boolean(config.stt.apiKey);
 /** Самая длинная запись, которую принимаем (байты аудио). */
 export const VOICE_MAX_BYTES = 5_000_000;
 
+/** Байт в секунду записи виджета и сайта: оба пишут Opus с audioBitsPerSecond 32 000 (desktop/renderer/voice.js, web/src/recorder.ts). */
+export const VOICE_BYTES_PER_SEC = 4000;
+/** Больше байт в секунду почти не бывает (128 кбит/с, mp3 и AAC): названная клиентом длительность не может быть короче размер / это. */
+export const VOICE_MAX_BYTES_PER_SEC = 16_000;
+/** Секунды голоса для лимита в штуках (access.ts), вверх до целых, не меньше 1. Длительность от клиента (сайт, Telegram
+ *  voice.duration) — но не короче, чем записалось бы при 128 кбит/с (занизить её сильно нельзя); не прислал (виджет 0.1.92) — по
+ *  размеру при 32 кбит/с, как пишут виджет и сайт. opus — запись наших клиентов (/api/voice, webm и ogg): они пишут 32 кбит/с,
+ *  поэтому и названная длительность не короче размера при 32 кбит/с (иначе sec: 0 засчитывал бы вчетверо меньше). */
+export function voiceSeconds(bytes: number, sec?: number | null, opus = false): number {
+  const b = Math.max(0, bytes);
+  if (sec == null || !Number.isFinite(sec)) return Math.max(1, Math.ceil(b / VOICE_BYTES_PER_SEC));
+  return Math.max(1, Math.ceil(Math.max(0, sec)), Math.ceil(b / (opus ? VOICE_BYTES_PER_SEC : VOICE_MAX_BYTES_PER_SEC)));
+}
+/** Запись в Opus (webm, ogg) — так пишут сайт и виджет. */
+export const isOpusMime = (mime: string) => /^audio\/(webm|ogg)/i.test(mime.trim());
+
 const EXT: Record<string, string> = {
   "audio/webm": "webm",
   "audio/ogg": "ogg",

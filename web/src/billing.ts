@@ -12,7 +12,12 @@ export interface Access {
   /** Цена подписки в звёздах (сервер api.ts priceOf): у идущей подписки — её цена при оформлении, у остальных — цена новых счетов
    *  (тарифы из базы, server/src/tariffs.ts). Старый сервер не присылает — 150. */
   price?: number;
+  /** Остаток лимитов в штуках на сегодня (server/src/access.ts todayView): запросы, картинки, секунды голоса и время сброса —
+   *  полночь по поясу человека. Друзья, владелец и без доступа — null; старый сервер — нет поля. */
+  today?: Today | null;
 }
+export interface Today { calls: Used; draws: Used; voice_sec: Used; resets_at: string }
+interface Used { used: number; limit: number }
 
 /** Ссылка на оплату — только https://t.me/… (счёт Telegram Stars); любую другую не открываем. */
 export const isPayUrl = (u: unknown): u is string => typeof u === "string" && u.length <= 512 && /^https:\/\/t\.me\/\S+$/.test(u);
@@ -50,6 +55,24 @@ export function refusedView(no: Refused | null): { clear: boolean; error: boolea
 
 const dayText = (iso: string) => new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 const daysWord = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? "день" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "дня" : "дней");
+
+const plural = (n: number, one: string, few: string, many: string) =>
+  n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
+
+/** Остаток на сегодня простыми словами для блока «Тариф»: «Сегодня осталось: 48 запросов из 60, 3 картинки из 3, 10 мин голоса
+ *  из 10. Обновится в 00:00.» Лимит 0 — «картинок на тарифе нет». Нет данных — null. */
+export function todayText(t: Today | null | undefined): string | null {
+  if (!t) return null;
+  const left = (u: Used) => Math.max(0, u.limit - u.used);
+  const part = (u: Used, word: (n: number) => string, none: string) => (u.limit === 0 ? none : `${left(u)} ${word(left(u))} из ${u.limit}`);
+  const calls = part(t.calls, (n) => plural(n, "запрос", "запроса", "запросов"), "запросов к ИИ на тарифе нет");
+  const draws = part(t.draws, (n) => plural(n, "картинка", "картинки", "картинок"), "картинок на тарифе нет");
+  const vl = Math.floor(t.voice_sec.limit / 60), vleft = Math.floor(left(t.voice_sec) / 60);
+  const voice = t.voice_sec.limit === 0 ? "голоса на тарифе нет" : `${vleft} мин голоса из ${vl}`;
+  const at = new Date(t.resets_at);
+  const when = Number.isFinite(at.getTime()) ? ` Обновится ${at.toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.` : "";
+  return `Сегодня осталось: ${calls}, ${draws}, ${voice}.${when}`;
+}
 
 export interface PlanView { title: string; text: string; pay: boolean; cancel: boolean; resume: boolean }
 

@@ -1,4 +1,5 @@
-// Запись голоса для /api/voice (как desktop/renderer/voice.js): start → stop даёт { audio (base64), mime } или null.
+// Запись голоса для /api/voice (как desktop/renderer/voice.js): start → stop даёт { audio (base64), mime, sec } или null.
+// sec — длительность записи в секундах: сервер считает по ней минуты голоса в лимите (server/src/voice.ts voiceSeconds).
 // Пока идёт запись, wave(canvas) рисует волну громкости — новые столбики справа.
 
 const MAX_MS = 120_000;
@@ -71,9 +72,10 @@ export class Recorder {
     });
   }
 
-  async stop(): Promise<{ audio: string; mime: string } | null> {
+  async stop(): Promise<{ audio: string; mime: string; sec: number } | null> {
     if (!this.rec) return null;
-    const short = Date.now() - this.startedAt < MIN_MS;
+    const ms = Date.now() - this.startedAt;
+    const short = ms < MIN_MS;
     const blob = await this.finish();
     if (short || !blob.size) return null;
     const audio = await new Promise<string>((resolve, reject) => {
@@ -82,7 +84,7 @@ export class Recorder {
       fr.onerror = () => reject(fr.error);
       fr.readAsDataURL(blob);
     });
-    return { audio, mime: blob.type };
+    return { audio, mime: blob.type, sec: Math.round(ms / 100) / 10 };
   }
 
   async cancel() {

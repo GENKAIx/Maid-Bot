@@ -555,6 +555,19 @@ DELETE FROM kv WHERE key = 'signups:closed';
 ALTER TABLE users ADD COLUMN trial_len_days INTEGER;
 UPDATE users SET trial_len_days = 0 WHERE id IN (SELECT user_id FROM billing_events WHERE kind = 'gift');
 `,
+  // Шаг 32: лимиты в штуках (этап 2 тарифов, access.ts AiGate). ai_quota — человек × день (по его поясу) × что (calls — обращения
+  // к ИИ, draws — рисунки, voice_sec — секунды голоса) → сколько взято. Прибавка атомарная и не выше лимита (takeQuota); хранится
+  // 40 дней (pruneStats). Без текстов.
+  `
+CREATE TABLE IF NOT EXISTS ai_quota (
+  user_id INTEGER NOT NULL,
+  day_key TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  n INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day_key, kind)
+);
+CREATE INDEX IF NOT EXISTS ai_quota_day ON ai_quota (day_key);
+`,
 ];
 
 /** Виды строк журнала подписки (billing_events, шаг 28). paid_first — первая оплата подписки, paid_once — оплата без признака
@@ -1030,6 +1043,39 @@ export class Store {
     return Number(r?.micro ?? 0) / 1e6;
   }
 
+  // --- лимиты в штуках (шаг 32, access.ts) ---
+  /** Взять n штук kind за день day, если вместе с уже взятым выходит не больше limit: одна команда «вставить или прибавить, если
+   *  влезает» — одновременные запросы лимит не превышают. true — взято. */
+  async takeQuota(userId: number, day: string, kind: string, n: number, limit: number): Promise<boolean> {
+    if (n <= 0) return true;
+    if (n > limit) return false;
+    const r = await this.all<{ n: number }>(
+      `INSERT INTO ai_quota (user_id, day_key, kind, n) VALUES (?, ?, ?, ?)
+       ON CONFLICT (user_id, day_key, kind) DO UPDATE SET n = ai_quota.n + excluded.n WHERE ai_quota.n + excluded.n <= ? RETURNING n`,
+      userId, day, kind, n, limit,
+    );
+    return r.length > 0;
+  }
+  /** Вернуть n штук (не ниже нуля). */
+  async giveQuota(userId: number, day: string, kind: string, n: number): Promise<void> {
+    if (n <= 0) return;
+    await this.run("UPDATE ai_quota SET n = CASE WHEN n > ? THEN n - ? ELSE 0 END WHERE user_id = ? AND day_key = ? AND kind = ?", n, n, userId, day, kind);
+  }
+  /** Сколько взято за день: calls, draws, voice_sec (нет строки — 0). */
+  async quotaOf(userId: number, day: string): Promise<{ calls: number; draws: number; voice_sec: number }> {
+    const out = { calls: 0, draws: 0, voice_sec: 0 };
+    for (const r of await this.all<Record<string, unknown>>("SELECT kind, n FROM ai_quota WHERE user_id = ? AND day_key = ?", userId, day)) {
+      const k = String(r.kind);
+      if (k === "calls" || k === "draws" || k === "voice_sec") out[k] = Number(r.n) || 0;
+    }
+    return out;
+  }
+  /** Все счётчики с day_key >= since (экономика тарифа в админке, tariffs.ts): человек × день × что → сколько. */
+  async quotaRows(since: string): Promise<{ user_id: number; day: string; kind: string; n: number }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT user_id, day_key, kind, n FROM ai_quota WHERE day_key >= ?", since);
+    return rows.map((r) => ({ user_id: Number(r.user_id), day: String(r.day_key), kind: String(r.kind), n: Number(r.n) || 0 }));
+  }
+
   // --- оплаты (billing.ts) ---
   /** Записать оплату; false — такой charge_id уже есть (повтор обновления Telegram). */
   async addPayment(p: Omit<PaymentRow, "refunded_at">): Promise<boolean> {
@@ -1159,6 +1205,10 @@ export class Store {
   }
   message(id: number): Promise<Message | undefined> {
     return this.get<Message>("SELECT * FROM messages WHERE id = ?", id);
+  }
+  /** Сообщение по id источника (повтор доставки — до списания лимита, pipeline.ts delivered). */
+  messageBySource(userId: number, source: string, sourceId: string): Promise<Message | undefined> {
+    return this.get<Message>("SELECT * FROM messages WHERE user_id = ? AND source = ? AND source_id = ?", userId, source, sourceId);
   }
   /** Прибавить вызовы модели к сообщению и запомнить ветку (пустая ветка прежнюю не затирает). */
   async addMessageCalls(id: number, calls: number, route: string) {
@@ -2059,11 +2109,12 @@ export class Store {
     );
   }
   /** Раз в сутки: минуты присутствия и счётчики фич старше 400 дней (по day_key; присутствие — с 24.11.2026, раньше 90: годовые
-   *  когорты удержания), журнал попыток модели старше 30 дней. */
+   *  когорты удержания), журнал попыток модели старше 30 дней, счётчики лимитов в штуках (ai_quota) старше 40 дней. */
   async pruneStats(at: Date) {
     await this.run("DELETE FROM presence WHERE day_key < ?", new Date(at.getTime() - 400 * 86_400_000).toISOString().slice(0, 10));
     await this.run("DELETE FROM llm_calls WHERE at < ?", new Date(at.getTime() - 30 * 86_400_000).toISOString());
     await this.run("DELETE FROM feature_events WHERE day_key < ?", new Date(at.getTime() - 400 * 86_400_000).toISOString().slice(0, 10));
+    await this.run("DELETE FROM ai_quota WHERE day_key < ?", new Date(at.getTime() - 40 * 86_400_000).toISOString().slice(0, 10));
   }
   // ——— Счётчики фич (этап 3 админки, feature-events.ts): пачка из памяти — одной транзакцией.
   /** Прибавить счёт к строкам человек × день × клиент × фича. */

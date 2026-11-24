@@ -3,9 +3,9 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ADMIN_ACTIONS, ADMIN_SECTIONS, adminNavGroups, adminSection } from "../src/admin.ts";
-import { planView } from "../src/billing.ts";
+import { planView, todayText } from "../src/billing.ts";
 import {
-  changeText, checkTariffValue, fromInput, money, PART_KEYS, TARIFF_KEYS, tariffDiff, tariffWarnings, toInput, undoPreview, type TariffsData,
+  changeText, checkTariffValue, fromInput, money, PART_KEYS, TARIFF_KEYS, tariffDiff, tariffWarnings, toInput, undoPreview, worstDay, type TariffsData,
   type TariffValues,
 } from "../src/tariffs.ts";
 import { TariffsPage, UndoPreview } from "../src/screens/AdminTariffs.tsx";
@@ -15,7 +15,11 @@ import { TariffsPage, UndoPreview } from "../src/screens/AdminTariffs.tsx";
 
 const DEF: TariffValues = {
   price: 150, trialDays: 7, giftDays: 30, signupsOpen: true, signupsPerHour: 30, signupsPerDay: 150, aiBurst: 10, aiWindowMs: 60_000,
-  trialDayUsd: 0.3, paidDayUsd: 1.5, trialPoolDayUsd: 10, unpricedDrawUsd: 0.03, unpricedVoiceUsd: 0.005, unpricedOtherUsd: 0.003, starUsd: 0.013,
+  trialDayUsd: 0.3, paidDayUsd: 0.5, trialPoolDayUsd: 10, unpricedDrawUsd: 0.03, unpricedVoiceUsd: 0.005, unpricedOtherUsd: 0.003, starUsd: 0.013,
+  trialCalls: 60, trialDraws: 3, trialVoiceMin: 10, paidCalls: 400, paidDraws: 20, paidVoiceMin: 60,
+  giftDayUsd: 0.3, giftCalls: 60, giftDraws: 3, giftVoiceMin: 10,
+  limitText: "На сегодня мои силы кончились — продолжу завтра утром. Хотите больше — в подписке лимит выше.",
+  paidLimitText: "На сегодня мои силы кончились — продолжу завтра утром.",
 };
 const none = { people: 0, spenders: 0, avg_month_usd: null, worst_month_usd: null, worst_day_usd: null, capped_days: 0 };
 const DATA: TariffsData = {
@@ -50,17 +54,25 @@ test("поля: окно частоты в секундах ↔ миллисек
   assert.deepEqual([...PART_KEYS.plans, ...PART_KEYS.caps].sort(), [...TARIFF_KEYS].sort(), "каждое поле — ровно в одном разделе");
 });
 
-test("изменения и предупреждения: потолок подписки больше выручки, новая цена — только для новых, подарок по лимитам пробы", () => {
+test("изменения и предупреждения: худший случай подписки больше выручки, новая цена — только для новых", () => {
   const d = { ...DEF, price: 200 };
   assert.deepEqual(tariffDiff(d, DEF), [{ key: "price", from: 150, to: 200 }]);
   assert.equal(changeText({ key: "price", from: 150, to: 200 }), "Подписка: цена: 150 ⭐ / 30 дн. → 200 ⭐ / 30 дн.");
   assert.equal(changeText({ key: "aiWindowMs", from: 60_000, to: 30_000 }), "Окно частоты: 60 с → 30 с");
+  // Длинный текст, правка после 60-го знака: в «было → стало» видно, что поменялось (не «тот же текст… → тот же текст…»).
+  const lim = "На сегодня мои силы кончились — продолжу завтра утром. Хотите больше — в подписке лимит выше.";
+  const t = changeText({ key: "limitText", from: lim, to: lim.replace("в подписке лимит выше", "оформите подписку") });
+  const [was, now] = t.split(" → ");
+  assert.notEqual(was.replace(/^[^:]+: /, ""), now, t);
+  assert.match(was, /в подписке лимит выше/);
+  assert.match(now, /оформите подписку/);
+  assert.equal(changeText({ key: "limitText", from: "Коротко.", to: "Иначе." }), "Текст при упоре в лимит (проба и подарок): «Коротко.» → «Иначе.»");
   const w = tariffWarnings(d, DEF, "plans");
-  // $1.50 × 30 = $45 > 200 ⭐ × $0.013 = $2.60 — при нынешних числах это правда.
+  // Средних цен нет — худший случай по предохранителю: $0.50 × 30 = $15 > 200 ⭐ × $0.013 = $2.60.
   assert.equal(w[0].kind, "bad");
-  assert.match(w[0].text, /\$45\.00.*\$2\.60/);
+  assert.match(w[0].text, /\$15\.00.*предохранитель.*\$2\.60/);
   assert.ok(w.some((x) => /только для новых счетов/.test(x.text)));
-  assert.ok(w.some((x) => /Подарок по \/invite сейчас живёт по лимитам пробы/.test(x.text)));
+  assert.ok(!w.some((x) => /живёт по лимитам пробы/.test(x.text)), "подарок — свой тариф, пометки нет");
   assert.ok(!tariffWarnings({ ...DEF, paidDayUsd: 0.05 }, DEF, "plans").some((x) => x.kind === "bad"), "потолок $1.50 за месяц < выручки — без красного");
   const c = tariffWarnings({ ...DEF, signupsOpen: false, signupsPerDay: 10, trialPoolDayUsd: 0.1 }, DEF, "caps");
   assert.equal(c.length, 3);
@@ -134,4 +146,57 @@ test("«Вернуть как было»: перед откатом видно, 
   const html = renderToStaticMarkup(createElement(UndoPreview, { h: history[2], data: { ...DATA, values, history } }));
   for (const s of ["Станет:", "Подписка: цена: 200 ⭐ / 30 дн. → 120 ⭐ / 30 дн.", "Остальные числа не меняются", "#4"]) assert.ok(html.includes(s), s);
   assert.ok(!html.includes("Регистрация новых"), "поле другой строки в откат не попадает");
+});
+
+// ——— Этап 2 (24.11.2026): лимиты в штуках, подарок — свой тариф, тексты при упоре, худший случай по средним ценам, остаток на сайте.
+
+test("«Тарифы»: у пробы, подписки и подарка — запросы, картинки, голос и денежный предохранитель; подарок — своя карточка", () => {
+  const html = page("plans", undefined, { ...DATA, economy: { ...DATA.economy, gift: { ...none, people: 2, quota_days: 1 } } });
+  for (const s of ["Запросов к ИИ в день", "Картинок в день", "Голоса в день", "Денежный предохранитель", "шт.", "мин", "Дней у лимита шт."]) assert.ok(html.includes(s), s);
+  assert.equal(html.split(">Запросов к ИИ в день<").length - 1, 3, "у трёх тарифов");
+  assert.ok(!html.includes("Лимиты — как у пробы"), "пометки «живёт по лимитам пробы» нет");
+  assert.ok(!html.includes("считаются вместе с пробой"));
+  assert.ok(html.includes("приглашённые владельцем · 2 чел."), "у подарка свои люди");
+  assert.ok(html.includes("(предохр.)"), "средних цен нет — худший случай по предохранителю");
+});
+
+test("худший случай: по лимитам в штуках и средним ценам, но не выше предохранителя; нет цены у нужной штуки — по предохранителю", () => {
+  const prices = { call_usd: 0.001, draw_usd: 0.01, voice_min_usd: 0.002 };
+  // Подписка: 400 × 0.001 + 20 × 0.01 + 60 × 0.002 = 0.72 > 0.5 — упирается в предохранитель.
+  assert.deepEqual(worstDay(DEF, "paid", prices), { usd: 0.5, by: "cap" });
+  // Проба: 60 × 0.001 + 3 × 0.01 + 10 × 0.002 = 0.11 < 0.3.
+  const t = worstDay(DEF, "trial", prices);
+  assert.equal(t.by, "limits");
+  assert.ok(Math.abs(t.usd - 0.11) < 1e-9);
+  assert.deepEqual(worstDay(DEF, "trial", { ...prices, draw_usd: null }), { usd: 0.3, by: "cap" }, "цены картинки нет");
+  assert.deepEqual(worstDay({ ...DEF, trialDraws: 0 }, "trial", { ...prices, draw_usd: null }).by, "limits", "картинок 0 — их цена не нужна");
+  const cheap = { ...DEF, paidCalls: 100, paidDraws: 5, paidVoiceMin: 10 }; // 0.1 + 0.05 + 0.02 = $0.17/день → $5.10 > $1.95 (150 ⭐)
+  const w = tariffWarnings(cheap, cheap, "plans", false, prices);
+  assert.equal(w[0].kind, "bad");
+  assert.match(w[0].text, /\$5\.10: человек каждый день выбирает все лимиты в штуках/);
+  assert.ok(!tariffWarnings({ ...cheap, paidCalls: 10, paidDraws: 1, paidVoiceMin: 0 }, cheap, "plans", false, prices).some((x) => x.kind === "bad"), "$0.02/день × 30 < выручки");
+  assert.ok(tariffWarnings({ ...DEF, giftCalls: 0 }, DEF, "plans").some((x) => /у подарка — 0/.test(x.text)), "0 запросов — ИИ закрыт совсем");
+});
+
+test("«Общие потолки»: карточка «Что увидит человек, когда лимит кончился» — два текста, изменение в плашке, негодный текст — ошибка", () => {
+  const html = page("caps");
+  assert.ok(html.includes("Что увидит человек, когда лимит кончился"));
+  assert.ok(html.includes("Хотите больше — в подписке лимит выше."));
+  assert.equal(html.split("<textarea").length - 1, 2);
+  const ch = page("caps", { paidLimitText: "Отдохну до утра." });
+  assert.ok(ch.includes("Не применено: 1"));
+  assert.ok(ch.includes("Текст при упоре в лимит (подписка): «На сегодня мои силы кончились — продолжу завтра утром.» → «Отдохну до утра.»"));
+  assert.ok(page("caps", { limitText: "a <b>" }).includes("limitText: без знаков &lt; &gt; &amp;"));
+  assert.deepEqual(fromInput("limitText", "  Устала.  "), { value: "Устала.", error: null }, "пробелы по краям — прочь");
+  assert.match(fromInput("limitText", "   ").error!, /напишите текст/);
+  assert.ok(!page("plans").includes("Что увидит человек"), "тексты — в «Общих потолках»");
+});
+
+test("блок «Тариф» на сайте: остаток на сегодня простыми словами; друзья и старый сервер — без строки", () => {
+  const t = { calls: { used: 12, limit: 60 }, draws: { used: 1, limit: 3 }, voice_sec: { used: 130, limit: 600 }, resets_at: "2026-11-24T21:00:00.000Z" };
+  assert.match(todayText(t)!, /^Сегодня осталось: 48 запросов из 60, 2 картинки из 3, 7 мин голоса из 10\. Обновится /);
+  assert.match(todayText({ ...t, draws: { used: 0, limit: 0 }, calls: { used: 60, limit: 60 } })!, /0 запросов из 60, картинок на тарифе нет/);
+  assert.match(todayText({ ...t, calls: { used: 59, limit: 60 } })!, /1 запрос из 60/);
+  assert.equal(todayText(null), null);
+  assert.equal(todayText(undefined), null);
 });

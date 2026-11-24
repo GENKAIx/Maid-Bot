@@ -15,7 +15,7 @@ import { addTraitFromChat, traitPrompt } from "./profile.ts";
 import { aboutOffer, cityOf, findCities, type City, type YouButton } from "./you.ts";
 import { weatherFor } from "./weather.ts";
 import { countFeature } from "./feature-events.ts";
-import { RATE_AGAIN, type AiGate, type Refusal, type Verdict } from "./access.ts";
+import { RATE_AGAIN, type AiGate, type Refusal, type Taken, type Verdict } from "./access.ts";
 import { SHELVES, notesData, sameNote } from "./notes.ts";
 import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, moneyCard, noteCard, taskCard, traitCard } from "./cards.ts";
 import {
@@ -292,7 +292,34 @@ export class Pipeline {
     try { this.onChange?.(u); } catch (e) { console.error("[pipeline] onChange", e); }
   }
 
+  /** Запросы, которые сейчас в работе, по ключу (человек, источник, id). Повтор доставки, пришедший, пока первый ещё идёт (виджет
+   *  не дождался ответа, Telegram прислал обновление ещё раз), не берёт второй раз лимит и не зовёт модель: ждёт первый и
+   *  получает его итог (again: true). Только в памяти процесса — сервер один. */
+  private running = new Map<string, Promise<unknown>>();
+  async inFlight<T>(key: string, fn: () => Promise<T>): Promise<{ value: T; again: boolean }> {
+    const busy = this.running.get(key);
+    if (busy) return { value: (await busy) as T, again: true };
+    const job = fn();
+    this.running.set(key, job);
+    try {
+      return { value: await job, again: false };
+    } finally {
+      this.running.delete(key);
+    }
+  }
+  /** Уже разобранное сообщение с этим id (повтор доставки): прежний ответ — до списания лимита и до платного распознавания
+   *  голоса (api.ts, bot.ts). heard — текст сообщения (что услышали). Нет или ещё не готово — null. */
+  async delivered(u: User, source: string, sourceId: string): Promise<(Reply & { heard: string }) | null> {
+    const m = await this.store.messageBySource(u.id, source, sourceId);
+    if (!m || m.state !== "done") return null;
+    return { text: m.reply ?? persona(u.persona, u).saved[0], emotion: "neutral", messageId: m.id, undoable: false, duplicate: true, heard: m.text };
+  }
+
   async handle(inc: Incoming): Promise<Reply> {
+    const { value, again } = await this.inFlight(`msg:${inc.user.id}:${inc.source}:${inc.sourceId}`, () => this.handleNew(inc));
+    return again ? { ...value, duplicate: true } : value;
+  }
+  private async handleNew(inc: Incoming): Promise<Reply> {
     let route = "";
     const r = await this.counted(async (c) => {
       try { return await this.handleOne(inc, c); } finally { route = c.missed ? "" : c.route; }
@@ -324,6 +351,15 @@ export class Pipeline {
       return { text: message.reply ?? p.saved[0], emotion: "neutral", messageId: message.id, undoable: false, duplicate: true };
     }
     c.id = message.id;
+    // Запрос к ИИ, взятый за это обращение (access.ts): модель не ответила — возвращается, а сообщение помечается «запрос
+    // не взят» (owe:<id>), чтобы фоновый повтор взял его сам. failed-сообщение поэтому никогда не держит взятый запрос.
+    let taken: Taken | undefined;
+    const giveBack = async () => {
+      if (!taken || !this.gate) return;
+      await this.gate.refund(u, taken);
+      taken = undefined;
+      await s.kvSet(`owe:${message.id}`, "1");
+    };
     // Новое сообщение — прежний вопрос «добавить?» без ответа закрывается (кнопки висят до следующего сообщения).
     await this.closeProposals(u, "expired");
 
@@ -340,7 +376,16 @@ export class Pipeline {
 
     // Платный доступ (access.ts): дальше — только модель. Нельзя — сообщение заметкой, без единого вызова модели.
     if (this.gate) {
-      const v = await this.gate.check(u, { rate: !inc.background && !inc.gated, client: inc.background ? undefined : inc.client });
+      // Лимит в штуках (access.ts): обращение человека — один запрос к ИИ; голосовое (gated) уже взяло свой запрос вместе с
+      // секундами до распознавания. Фоновый повтор — не в счёт, если запрос уже взят (упало голосовое); не взят (отказ по частоте —
+      // reply «rate», или запрос вернули после сбоя модели — owe) — фон берёт его сам, упор — заметкой (blocked), как у человека.
+      const human = !inc.background && !inc.gated;
+      const owed = Boolean(inc.background && !inc.gated && (message.reply === "rate" || (await s.kvGet(`owe:${message.id}`))));
+      const v = await this.gate.check(u, { rate: human, client: inc.background ? undefined : inc.client, take: human || owed ? { calls: 1 } : undefined });
+      if (v.ok) {
+        taken = v.taken;
+        if (owed) await s.kvDel(`owe:${message.id}`);
+      }
       if (!v.ok) {
         c.route = "blocked";
         if (v.why === "rate") return this.tooFast(u, message, v.text, Boolean(inc.chatOnly || pics));
@@ -350,7 +395,7 @@ export class Pipeline {
 
     if (inc.chatOnly) {
       c.route = "chat";
-      return this.chat(u, message, at, pics);
+      return this.chat(u, message, at, pics, giveBack);
     }
     // Разбор не дошёл до ветки (упал) — останется «parse».
     c.route = "parse";
@@ -392,6 +437,7 @@ export class Pipeline {
     } catch (e) {
       // В базу — только код сбоя (llmErrorCode): тело ответа провайдера остаётся в журнале сервера.
       await s.setMessage(message.id, { state: "failed", reply: llmErrorCode(e) });
+      await giveBack();
       console.error("[parse]", e);
       return { text: p.failed, emotion: "worried", messageId: message.id, undoable: false, failed: true };
     }
@@ -416,7 +462,7 @@ export class Pipeline {
     // Вопрос про саму картинку («что это?») — отвечаем по ней, а не по записям.
     if (parsed.question && pics) {
       c.route = "chat";
-      return this.chat(u, message, at, pics);
+      return this.chat(u, message, at, pics, giveBack);
     }
 
     if (parsed.question) {
@@ -492,13 +538,16 @@ export class Pipeline {
     let pic: Picture;
     // Рисунок — тоже вызов модели у сообщения (самый дорогой): в «Дорогих сообщениях» и «По веткам» он виден.
     // Рисунок дороже разбора: ещё раз сверить денежные потолки (частоту не считать — это то же сообщение).
-    const v = this.gate ? await this.gate.check(u, { rate: false, client }) : null;
+    // Лимит картинок в день (access.ts): сам запрос сообщения уже взят в разборе — здесь только рисунок.
+    const v = this.gate ? await this.gate.check(u, { rate: false, client, take: { draws: 1 } }) : null;
     if (v && !v.ok) return done(v.text, "worried");
     const c = msgCalls.getStore();
     if (c) c.calls++;
     try {
       pic = await this.draw(d.prompt);
     } catch (e) {
+      // Человек ничего не получил — картинка возвращается (как у голоса при сбое распознавания).
+      if (v?.ok) await this.gate?.refund(u, v.taken);
       console.error("[draw]", e);
       missBranch();
       return done(`Не вышло нарисовать${d.title ? ` «${esc(d.title)}»` : ""} — художник не ответил. Попробуйте ещё раз чуть позже.`, "worried");
@@ -956,7 +1005,8 @@ export class Pipeline {
    *  в истории разговора), журнал — под исходным сообщением: отдельно поправка не отменяется. null — нет такого ответа.
    *  Повтор с тем же sourceId возвращает прежний итог без второй записи. */
   async correct(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date; client?: string }): Promise<CorrectReply | null> {
-    return this.counted((c) => this.correctOne(u, messageId, text, opts, c));
+    const { value, again } = await this.inFlight(`correct:${u.id}:${messageId}:${opts.sourceId}`, () => this.counted((c) => this.correctOne(u, messageId, text, opts, c)));
+    return again && value ? { ...value, duplicate: true } : value;
   }
   /** Вызовы модели поправки считаются на её служебное сообщение (ветка «correct»). */
   private async correctOne(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date; client?: string }, c: MsgCalls): Promise<CorrectReply | null> {
@@ -1001,15 +1051,6 @@ export class Pipeline {
       const done = await s.transaction(async () => ((await s.claimMessage(message.id)) ? keep(reply, clarify, asked) : null));
       return done ? view(done.reply, done.o) : stored();
     };
-    // Платный доступ (access.ts): поправка — тоже модель. Нельзя — ничего не меняем, отказ остаётся итогом этой поправки.
-    if (this.gate) {
-      const v = await this.gate.check(u, { client: opts.client });
-      if (!v.ok) {
-        c.route = "blocked";
-        return { ...(await say(v.why === "rate" ? "Много сообщений подряд — повторите поправку через минуту, пожалуйста." : v.text)), blocked: v.why };
-      }
-    }
-
     const items = await answerRows(s, u.id, orig.id);
     const cands = items.filter((i) => i.alive).map((i) => i.x).filter(editable);
     if (!cands.length) {
@@ -1022,6 +1063,18 @@ export class Pipeline {
       const other = items.some((i) => i.alive) || acts.some((a) => a.tbl === "habits" || a.tbl === "habit_marks" || a.tbl === "memory" || a.tbl === "traits");
       return say(other ? "Эти записи поправкой не поменять (привычки, отметки, память, профиль). Нажмите «↩ Отменить» и скажите заново, как нужно."
         : items.length ? "Записей этого ответа уже нет — поправлять нечего." : "В этом ответе нет записей — поправлять нечего.");
+    }
+
+    // Платный доступ (access.ts): поправка — тоже модель. Нельзя — ничего не меняем, отказ остаётся итогом этой поправки.
+    // Проверка — здесь, перед моделью: честные ответы выше («поправлять нечего», «уже отменено») модель не зовут и запроса не берут.
+    let taken: Taken | undefined;
+    if (this.gate) {
+      const v = await this.gate.check(u, { client: opts.client, take: { calls: 1 } });
+      if (!v.ok) {
+        c.route = "blocked";
+        return { ...(await say(v.why === "rate" ? "Много сообщений подряд — повторите поправку через минуту, пожалуйста." : v.text)), blocked: v.why };
+      }
+      taken = v.taken;
     }
 
     // Прошлая поправка этого ответа кончилась вопросом («В 7 утра или вечера?») — эта, скорее всего, ответ на него: модель
@@ -1055,6 +1108,7 @@ export class Pipeline {
       // Не done: повтор с тем же id спросит модель снова. Не failed: фоновый повтор разбора её не подхватит.
       // Одним условным запросом, а не «прочитать и записать»: тот же id мог уже записать другой запрос — тогда его итог.
       console.error("[correct]", e);
+      await this.gate?.refund(u, taken); // модель не ответила — человек ничего не получил
       const failed = "Не получилось разобрать поправку — ничего не поменяла. Попробуйте ещё раз.";
       if (!(await s.replyUnlessDone(message.id, failed))) return stored();
       return view(failed, { changed: [], clarify: false, emotion: "worried" });
@@ -1301,7 +1355,8 @@ export class Pipeline {
     return esc(out.trim().replace(/\s*\n\s*/g, " "));
   }
 
-  private async chat(u: User, msg: Message, at: Date, images?: Picture[]): Promise<Reply> {
+  /** giveBack — вернуть запрос, взятый за это обращение (handleOne): модель не ответила — человек ничего не получил. */
+  private async chat(u: User, msg: Message, at: Date, images?: Picture[], giveBack?: () => Promise<void>): Promise<Reply> {
     const p = persona(u.persona, u);
     try {
       const text = await this.talkText(u, msg, at, images);
@@ -1311,6 +1366,7 @@ export class Pipeline {
       console.error("[chat]", e);
       missBranch();
       await this.store.setMessage(msg.id, { state: "failed", reply: `${CHAT_FAILED}${llmErrorCode(e)}` });
+      await giveBack?.();
       return { text: p.failed, emotion: "worried", messageId: msg.id, undoable: false };
     }
   }

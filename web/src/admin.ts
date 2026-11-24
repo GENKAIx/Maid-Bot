@@ -294,7 +294,7 @@ export interface AiData {
     total_micro: Pair; calls: Pair;
     unpriced_calls: Pair;              // вызовы без цены (их расход — ноль)
     forecast_month_micro: number | null; // Σ за 7 полных прошедших дней UTC / 7 × 30; не зависит от интервала
-    capped_users: Pair;                // различные user_id с feature gate.day_cap > 0 в днях окна
+    capped_users: Pair;                // различные user_id с gate.day_cap / calls_cap / draws_cap / voice_cap > 0 в днях окна
     capped_share: Pair;                // capped_users / active; active=0 → null
     active: Pair;
     top_user: { user_id: number; micro: number } | null; // самый дорогой за период

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { clientHeaders, get, getToken, post } from "../api";
-import { isPayUrl, planView, type Access } from "../billing";
+import { isPayUrl, planView, todayText, type Access } from "../billing";
 import { Card, Empty, Spinner } from "../components";
 import { currentSubscription, isIos, pushSupported, standalone, subscribe, unsubscribe } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
@@ -193,6 +193,7 @@ function TariffCard({ access, onChanged }: { access?: Access; onChanged: () => v
     <Card title="Тариф" className="reveal">
       <p><b>{v.title}</b></p>
       <p className="muted small">{v.text}</p>
+      {todayText(access?.today) && <p className="small" style={{ marginTop: 6 }}>{todayText(access?.today)}</p>}
       {(v.pay || v.cancel || v.resume) && (
         <div className="tariff-actions">
           {v.pay && (url

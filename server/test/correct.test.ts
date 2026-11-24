@@ -538,7 +538,9 @@ test("поле, которого у записи нет, — вопрос, а н
   assert.ok((await store.actionsOf(r.messageId)).every((a) => a.kind === "add"), "ни одной поправки в журнале");
 });
 
-test("два одновременных запроса с одним id — модель спросили оба, а записала поправку одна", async () => {
+// Повтор, пришедший, пока первый ждёт модель, ждёт первый (pipeline.inFlight): модель и лимит — один раз (ревью 24.11.2026; раньше
+// модель спрашивали оба, а записывал один — claimMessage, он и сейчас держит запись итога).
+test("два одновременных запроса с одним id — модель спросили один раз, записала поправку одна", async () => {
   const store = await Store.open(":memory:");
   const u = await store.ensureUser("100", "Тест", TZ);
   let release!: () => void;
@@ -547,7 +549,7 @@ test("два одновременных запроса с одним id — мо
   let asked = 0;
   const llm: LlmCall = async (messages) => {
     if (!messages[0].content.includes("поправляет один твой ответ")) return JSON.stringify(meeting());
-    if (++asked === 2) release();
+    if (++asked === 1) setTimeout(release, 20);
     await gate;
     return JSON.stringify({ edits: [{ ref: "r1", set: { time: "17:00" } }], reply: "Перенесла." });
   };
@@ -557,7 +559,7 @@ test("два одновременных запроса с одним id — мо
     pipe.correct(u, r.messageId, "не в 15, а в 17", { sourceId: "same", at: AT }),
     pipe.correct(u, r.messageId, "не в 15, а в 17", { sourceId: "same", at: AT }),
   ]);
-  assert.equal(asked, 2, "оба дошли до модели");
+  assert.equal(asked, 1, "до модели дошёл один");
   assert.equal((await store.actionsOf(r.messageId)).filter((x) => x.kind === "edit").length, 1, "одна запись в журнале");
   assert.deepEqual([a!.duplicate, b!.duplicate].filter(Boolean), [true], "второй получил итог первого");
   assert.equal(a!.text, b!.text);
@@ -797,6 +799,9 @@ test("сбой модели у одного из двух запросов с т
     return JSON.stringify({ edits: [{ ref: "r1", set: { time: "17:00" } }], reply: "Перенесла." });
   };
   const pipe = new Pipeline(store, llm);
+  // Второй запрос — от другого конвейера над той же базой (как второй процесс сервера): в одном процессе повтор с тем же id
+  // ждал бы первый (pipeline.inFlight), а здесь проверяется защита в самой базе.
+  const other = new Pipeline(store, llm);
   const r = await pipe.handle({ user: u, source: "telegram", sourceId: "1", text: "завтра в 15 встреча с Петей", at: AT });
   const id = r.changes![0].ref!.id;
   // Второй запрос с тем же id записывает поправку между сбоем первого и записью его ответа (в Postgres — отдельные
@@ -809,7 +814,7 @@ test("сбой модели у одного из двух запросов с т
     st[name] = async (msgId, patch) => {
       const reply = typeof patch === "string" ? patch : (patch as { reply?: string } | undefined)?.reply;
       if (!race.other && /Не получилось разобрать поправку/.test(reply ?? "")) {
-        race.other = pipe.correct(u, r.messageId, "не в 15, а в 17", { sourceId: "same", at: AT });
+        race.other = other.correct(u, r.messageId, "не в 15, а в 17", { sourceId: "same", at: AT });
         await race.other;
       }
       return was(msgId, patch);

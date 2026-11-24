@@ -1,3 +1,4 @@
+import { carryQuota } from "./access.ts";
 import { config } from "./config.ts";
 import type { Store, User } from "./db.ts";
 import { profileInfo, saveProfile, type ProfileInfo } from "./profile.ts";
@@ -209,6 +210,8 @@ export async function saveYou(store: Store, u: User, p: YouPatch): Promise<{ tzC
     await saveProfile(store, u.id, prof);
   }
   if (Object.keys(patch).length) await store.updateUser(u.id, patch);
+  // Лимиты в штуках (access.ts): новый пояс с другой датой не открывает свежий день счётчиков.
+  if (tz !== u.tz) await carryQuota(store, u.id, u.tz, tz);
   return { tzChanged: tz !== u.tz };
 }
 

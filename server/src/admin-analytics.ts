@@ -137,7 +137,7 @@ export interface AiData {
     total_micro: Pair; calls: Pair;
     unpriced_calls: Pair;              // llm_usage: calls − priced (у них цена 0 — честно показать); на h — llm_calls с micro_usd=0 и error_code=''
     forecast_month_micro: number | null; // Σ за 7 полных прошедших дней UTC / 7 × 30; не зависит от интервала
-    capped_users: Pair;                // различные user_id с feature gate.day_cap > 0 в днях окна (правило since по meta.since.gate)
+    capped_users: Pair;                // различные user_id с gate.day_cap / calls_cap / draws_cap / voice_cap > 0 в днях окна (правило since по meta.since.gate)
     capped_share: Pair;                // capped_users / active; active=0 → null
     active: Pair;
     top_user: { user_id: number; micro: number } | null; // самый дорогой за период (user_id > 0)
@@ -632,6 +632,9 @@ const DIST: { id: AiData["dist"][number]["id"]; from: number; to: number | null 
   { id: "50cto1", from: 500_000, to: 1_000_000 }, { id: "1to3", from: 1_000_000, to: 3_000_000 }, { id: "gt3", from: 3_000_000, to: null },
 ];
 
+/** Отказы «упёрся в лимит»: денежный потолок и лимиты в штуках. */
+export const CAP_FEATURES = ["gate.day_cap", "gate.calls_cap", "gate.draws_cap", "gate.voice_cap"];
+
 async function aiReport(c: Ctx): Promise<AiData> {
   const ai = await aiRows(c);
   const act = await activeSets(c);
@@ -640,10 +643,11 @@ async function aiReport(c: Ctx): Promise<AiData> {
   const curRows = inWin(c.cur), prevRows = inWin(c.prev);
   const R = (w: Win) => (w === c.cur ? curRows : prevRows);
   const tot = (w: Win, f: (r: AiRow) => number) => (aiOk(c, w) ? R(w).reduce((s, r) => s + f(r), 0) : null);
-  // Упёрлись в свой дневной потолок: счётчик gate.day_cap (с 24.11.2026) за дни окна.
+  // Упёрлись в лимит: свой дневной денежный потолок (gate.day_cap, с 24.11.2026) или лимит в штуках (gate.calls_cap / draws_cap /
+  // voice_cap, этап 2 тарифов) за дни окна — различные люди.
   if (c.q.step === "h") c.notes.add("days_for_hours");
   const caps = new Map<Win, number>();
-  for (const w of [c.cur, c.prev]) caps.set(w, (await c.store.analyticsFeatureUsers(w.fromDay, lastDay(w), ["gate.day_cap"])).length);
+  for (const w of [c.cur, c.prev]) caps.set(w, new Set((await c.store.analyticsFeatureUsers(w.fromDay, lastDay(w), CAP_FEATURES)).map((r) => r.user_id)).size);
   const capped = (w: Win) => gated(c, w, c.since.gate, () => caps.get(w)!);
   // Самый дорогой за период.
   const byUser = new Map<number, number>();

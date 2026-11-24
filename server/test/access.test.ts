@@ -68,7 +68,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       " ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; DROP TABLE payments; ALTER TABLE users DROP COLUMN trial_len_days;");
     await store.kvSet("schema_version", "26");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "31");
+    assert.equal(await again.kvGet("schema_version"), "32");
     const was = (await again.user(old.id))!;
     assert.deepEqual([was.plan, was.access_until, Number(was.sub_canceled), was.name], ["friend", null, 0, "Старый"]);
     assert.equal(accessOf(was, new Date(), []).ok, true);
@@ -190,6 +190,10 @@ test("конвейер без доступа: модель не зовётся, 
   // /ask без доступа — без заметки (это вопрос, не запись), но тоже done.
   const ask = await pipe.handle({ user: u, source: "telegram", sourceId: "2", text: "как дела?", chatOnly: true, at });
   assert.deepEqual([ask.blocked, ask.undoable], ["access", false]);
+  // Поправка к ответу — тоже ИИ (до отмены: у отменённого ответа поправка честно отвечает «поправлять нечего» без модели и без проверки).
+  const c = await pipe.correct(u, r.messageId, "не молоко, а кефир", { sourceId: "c1" });
+  assert.equal(c?.blocked, "access");
+  assert.equal(calls.length, 0);
   // Отменить заметку можно, как обычную запись.
   await pipe.undo(u, r.messageId);
   assert.equal((await store.diaryRange(u.id, "0000-01-01", "9999-12-31")).filter((d) => d.section === "notes").length, 0);
@@ -201,10 +205,6 @@ test("конвейер без доступа: модель не зовётся, 
   assert.equal(calls.length, 0);
   assert.equal((await store.message(message.id))!.state, "failed");
   assert.deepEqual(sent, []);
-  // Поправка к ответу — тоже ИИ.
-  const c = await pipe.correct(u, r.messageId, "не молоко, а кефир", { sourceId: "c1" });
-  assert.equal(c?.blocked, "access");
-  assert.equal(calls.length, 0);
   // Проба продлена (подарок) — снова разбирает.
   await store.updateUser(u.id, { access_until: iso(Date.now() + DAY) });
   const ok = await pipe.handle({ user: (await store.user(u.id))!, source: "telegram", sourceId: "4", text: "купить хлеб", at });
@@ -287,7 +287,8 @@ test("API без доступа: 402 со ссылкой на оплату (не
     assert.equal(voice.body.saved, false, "голос нигде не записан — виджет оставит его в очереди");
     const me = await call("/api/me");
     assert.equal(me.status, 200, "ключ не стёрт: /api/me работает");
-    assert.deepEqual(Object.keys(me.body.access as object).sort(), ["canceled", "plan", "price", "trial_left_days", "until"]);
+    assert.deepEqual(Object.keys(me.body.access as object).sort(), ["canceled", "plan", "price", "today", "trial_left_days", "until"]);
+    assert.equal((me.body.access as { today: unknown }).today, null, "без доступа — остатка лимитов нет");
     assert.equal((me.body.access as { plan: string }).plan, "expired");
     assert.equal((await call("/api/today")).status, 200, "просмотр своих данных — бесплатно");
     const link = await call("/api/billing/link", {});

@@ -336,6 +336,8 @@ test("ai: шаг d — llm_usage, шаг h — llm_calls; время ответ�
     await store.addLlmCall(ago(0, 2), { kind: "draw", model: "pic", ms: 8000, cost: null, userId: u2 });
     await store.addFeatureCounts([
       { user_id: u1, day_key: T, client: "telegram", feature: "gate.day_cap", count: 2 },
+      // Тот же человек упёрся и в лимит в штуках — в «Упёрлись в лимит» он один (различные люди).
+      { user_id: u1, day_key: T, client: "web", feature: "gate.calls_cap", count: 1 },
       { user_id: u2, day_key: addDays(T, -1), client: "web", feature: "gate.burst", count: 1 },
     ]);
     const d7 = await run(store, "ai", 7, "d");
@@ -363,7 +365,7 @@ test("ai: шаг d — llm_usage, шаг h — llm_calls; время ответ�
     assert.equal(a.dist_users, 3);
     assert.deepEqual(a.dist.map((x: { users: number }) => x.users), [2, 0, 1, 0, 0, 0], "с нулём — в первую полосу");
     assert.equal(a.dist[0].share, 2 / 3);
-    assert.deepEqual(a.limits, { trial_day_micro: 300_000, paid_day_micro: 1_500_000, trial_pool_day_micro: 10_000_000 });
+    assert.deepEqual(a.limits, { trial_day_micro: 300_000, paid_day_micro: 500_000, trial_pool_day_micro: 10_000_000 });
     // Один день — внутри счётчиков gate.*.
     const one = data(await run(store, "ai", 1, "d")).kpi;
     assert.deepEqual(one.capped_users, { cur: 1, prev: 0 });
@@ -609,7 +611,7 @@ test("запросы к messages — с границей времени и по 
       }
     }
     assert.ok(checked >= seen.length, "план разобран у каждого запроса");
-    assert.equal(await store.kvGet("schema_version"), "31", "шаг 29 — индекс messages_day, шаг 30 — тарифы из базы, шаг 31 — вид бесплатного срока");
+    assert.equal(await store.kvGet("schema_version"), "32", "шаг 29 — индекс messages_day, шаг 30 — тарифы из базы, шаг 31 — вид бесплатного срока, шаг 32 — лимиты в штуках");
   } finally {
     await store.close();
   }
@@ -667,8 +669,8 @@ test("правило since: журнал подписки и отказы ИИ �
     const subs1 = data(await run(store, "subs", 1, "d"));
     assert.deepEqual(subs1.kpi.cancels, { cur: 0, prev: 0 }, "пустой журнал — 0");
     assert.deepEqual(subs1.kpi.expired, { cur: 0, prev: 0 });
-    // Первый отказ позже начала записи — окна с 20.11 всё равно считаются.
-    await store.addFeatureCounts([{ user_id: u, day_key: T, client: "web", feature: "gate.day_cap", count: 1 }]);
+    // Первый отказ позже начала записи — окна с 20.11 всё равно считаются. Упор в лимит в штуках (голос) — тоже «упёрся в лимит».
+    await store.addFeatureCounts([{ user_id: u, day_key: T, client: "web", feature: "gate.voice_cap", count: 1 }]);
     const ai3 = data(await run(store, "ai", 1, "d")).kpi;
     assert.deepEqual(ai3.capped_users, { cur: 1, prev: 0 });
     assert.equal((await store.analyticsSince()).gate, "2026-11-20T08:00:00.000Z", "раньшее из отметки и первой записи");

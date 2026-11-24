@@ -39,7 +39,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       await store.kvSet("schema_version", "29");
       await store.kvSet("signups:closed", "1");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "31");
+      assert.equal(await again.kvGet("schema_version"), "32");
       assert.equal(await again.kvGet("signups:closed"), undefined, "старое место удалено");
       assert.deepEqual((await again.tariffSettings()).map((r) => [r.key, r.value]), [["signupsOpen", "false"]]);
       assert.equal((await loadTariffs(again)).signupsOpen, false);
@@ -70,10 +70,15 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
   });
 }
 
-test("значения по умолчанию — ровно прежние config.billing; STAR_USD из .env — по умолчанию, SIGNUPS_OPEN=0 — поверх тарифа", () => {
+test("значения по умолчанию — прежние config.billing и согласованные лимиты этапа 2; STAR_USD из .env — по умолчанию, SIGNUPS_OPEN=0 — поверх тарифа", () => {
   assert.deepEqual(tariffDefaults({}), {
     price: 150, trialDays: 7, giftDays: 30, signupsOpen: true, signupsPerHour: 30, signupsPerDay: 150, aiBurst: 10, aiWindowMs: 60_000,
-    trialDayUsd: 0.3, paidDayUsd: 1.5, trialPoolDayUsd: 10, unpricedDrawUsd: 0.03, unpricedVoiceUsd: 0.005, unpricedOtherUsd: 0.003, starUsd: 0.013,
+    // Денежный предохранитель подписки — 0.5 $/день (этап 2, было 1.5).
+    trialDayUsd: 0.3, paidDayUsd: 0.5, trialPoolDayUsd: 10, unpricedDrawUsd: 0.03, unpricedVoiceUsd: 0.005, unpricedOtherUsd: 0.003, starUsd: 0.013,
+    trialCalls: 60, trialDraws: 3, trialVoiceMin: 10, paidCalls: 400, paidDraws: 20, paidVoiceMin: 60,
+    giftDayUsd: 0.3, giftCalls: 60, giftDraws: 3, giftVoiceMin: 10,
+    limitText: "На сегодня мои силы кончились — продолжу завтра утром. Хотите больше — в подписке лимит выше.",
+    paidLimitText: "На сегодня мои силы кончились — продолжу завтра утром.",
   });
   assert.equal(tariffDefaults({ SIGNUPS_OPEN: "0" }).signupsOpen, true, "смысл строки tariff_settings не зависит от .env");
   assert.equal(signupsEnvClosed({ SIGNUPS_OPEN: "0" }), true);
@@ -255,7 +260,7 @@ test("ручки /api/admin/tariffs: не админ — 404, без кода �
     assert.equal((await s.call("/api/admin/confirm", owner, { code: s.codes[0] })).status, 200);
     const g = await s.call("/api/admin/tariffs", owner);
     assert.equal(g.status, 200);
-    assert.deepEqual(Object.keys(g.body).sort(), ["defaults", "economy", "env_closed", "history", "now", "overridden", "reload_ms", "values"]);
+    assert.deepEqual(Object.keys(g.body).sort(), ["defaults", "economy", "env_closed", "history", "now", "overridden", "reload_ms", "unit_prices", "values"]);
     assert.equal(g.body.env_closed, false);
     assert.deepEqual(g.body.values, tariffDefaults());
     assert.deepEqual(g.body.overridden, []);
@@ -296,7 +301,8 @@ test("экономика тарифа в админке: из llm_usage за 30 
   await loadTariffs(store);
   const now = new Date("2026-11-24T12:00:00Z");
   const empty = await tariffsView(store, now);
-  assert.deepEqual(empty.economy.paid, { people: 0, spenders: 0, avg_month_usd: null, worst_month_usd: null, worst_day_usd: null, capped_days: 0 });
+  assert.deepEqual(empty.economy.paid, { people: 0, spenders: 0, avg_month_usd: null, worst_month_usd: null, worst_day_usd: null, capped_days: 0, quota_days: 0 });
+  assert.deepEqual(empty.unit_prices, { call_usd: null, draw_usd: null, voice_min_usd: null }, "штук ещё не было — средних цен нет");
   const until = new Date(now.getTime() + 10 * DAY).toISOString();
   const a = await store.createUser({ login: "a", passwordHash: "x", tz: TZ, plan: "paid", accessUntil: until });
   await store.createUser({ login: "b", passwordHash: "x", tz: TZ, plan: "paid", accessUntil: until });
@@ -309,7 +315,7 @@ test("экономика тарифа в админке: из llm_usage за 30 
   assert.equal(v.economy.paid.avg_month_usd, 1, "$2 на двоих");
   assert.equal(v.economy.paid.worst_month_usd, 2);
   assert.equal(v.economy.paid.worst_day_usd, 1.6);
-  assert.equal(v.economy.paid.capped_days, 1, "день $1.60 при потолке $1.50");
+  assert.equal(v.economy.paid.capped_days, 1, "день $1.60 при потолке $0.50 (а $0.40 — ниже)");
   assert.equal(v.economy.trial.avg_month_usd, null);
   await store.close();
 });
@@ -394,7 +400,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       await store.driver.exec("ALTER TABLE users DROP COLUMN trial_len_days;");
       await store.kvSet("schema_version", "30");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "31");
+      assert.equal(await again.kvGet("schema_version"), "32");
       assert.equal((await again.user(t.id))!.trial_len_days, null);
       assert.equal(Number((await again.user(g.id))!.trial_len_days), 0);
       assert.equal(endedOf((await again.user(g.id))!), "gift");
@@ -479,7 +485,7 @@ test("экономика тарифа: в расходе только те, кт
     for (let i = 0; i < 20; i++) await spend((await store.createUser({ login: `x${i}`, passwordHash: "x", tz: TZ, plan: "trial", accessUntil: gone })).id, "2026-11-15", 0.3);
     await spend((await store.createUser({ login: "own", passwordHash: "x", tz: TZ, chatId: "900", plan: "trial", accessUntil: live })).id, "2026-11-22", 5);
     const e = (await tariffsView(store, now)).economy.trial;
-    assert.deepEqual(e, { people: 1, spenders: 1, avg_month_usd: 0.2, worst_month_usd: 0.2, worst_day_usd: 0.2, capped_days: 0 });
+    assert.deepEqual(e, { people: 1, spenders: 1, avg_month_usd: 0.2, worst_month_usd: 0.2, worst_day_usd: 0.2, capped_days: 0, quota_days: 0 });
   } finally {
     config.allowedChatIds.splice(0, Infinity, ...keep.allowed);
     config.adminChatIds.splice(0, Infinity, ...keep.admin);

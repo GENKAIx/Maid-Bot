@@ -30,11 +30,11 @@ import { moneyTotals, upcomingDates, yearKnown } from "./report.ts";
 import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, replanEvents as replanEventsOf, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
-import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
+import { isOpusMime, transcribe, VOICE_MAX_BYTES, voiceSeconds } from "./voice.ts";
 import { moveToTomorrow, weatherFor } from "./weather.ts";
 import { ADDRESSES, addressWord, askNext, askOf, wakeAt, wakeMinOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
 import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES, llmErrorCode } from "./llm.ts";
-import { accessOf, accessView, RATE_AGAIN, type Access, type Refusal } from "./access.ts";
+import { accessOf, accessView, RATE_AGAIN, todayView, type Access, type Refusal } from "./access.ts";
 import type { Billing } from "./billing.ts";
 import { applyTariffs, TariffError, tariffs, tariffsView, undoTariff } from "./tariffs.ts";
 
@@ -464,8 +464,9 @@ export function createApi(deps: ApiDeps) {
       const a = pipeline.gate?.access(u) ?? accessOf(u);
       return {
         ...me,
-        // Платный доступ (access.ts): план, срок, отменено ли продление, дней пробы — для блока «Подписка» и баннера.
-        access: { ...accessView(a), price: await priceOf(u, a) },
+        // Платный доступ (access.ts): план, срок, отменено ли продление, дней пробы — для блока «Подписка» и баннера; today — остаток
+        // лимитов в штуках на сегодня и время сброса (друзья, владелец и без доступа — null: без лимита или ИИ закрыт).
+        access: { ...accessView(a), price: await priceOf(u, a), today: await todayView(store, u, a) },
         admin: isAdmin(u, auth.via), // пункт «Админка» в меню сайта; сами данные админки — только через /api/admin/* с кодом
         sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })),
       };
@@ -1157,26 +1158,40 @@ export function createApi(deps: ApiDeps) {
     // Голосовое сообщение: аудио в base64 → текст → как обычная запись. heard — что услышали.
     if (m === "POST" && p === "/api/voice") {
       const b = parseBody(
-        z.object({ audio: z.string().min(1), mime: z.string().max(80).default("audio/webm"), id: z.string().max(80).optional() }),
+        z.object({
+          audio: z.string().min(1), mime: z.string().max(80).default("audio/webm"), id: z.string().max(80).optional(),
+          // Длительность записи в секундах (сайт присылает с 24.11.2026; виджет 0.1.92 — нет: тогда по размеру, voice.ts voiceSeconds).
+          sec: z.number().min(0).max(3600).optional(),
+        }),
         await readJson(req, Math.ceil(VOICE_MAX_BYTES * 1.4)),
       );
       const audio = Buffer.from(b.audio, "base64");
       if (audio.length > VOICE_MAX_BYTES) throw new HttpError(413, "слишком длинная запись");
-      // Распознавание — тоже ИИ (и платное, даже если услышали тишину): доступ, частота и потолок — до него. Частота отмечена здесь,
-      // разбор ниже второй раз её не считает (gated). saved: false — голос нигде не записан (виджет оставит его в очереди).
-      const v = await pipeline.gate?.check(u, { client });
-      if (v && !v.ok) return refuse(u, v.why, v.why === "rate" ? RATE_AGAIN : v.text, { saved: false });
-      // Клиенту — своя фраза и код сбоя, не текст ошибки: в нём бывает тело ответа провайдера (оно — только в журнале сервера).
-      const heard = await transcribe(audio, b.mime).catch((e) => {
-        console.error("[voice]", e);
-        const code = llmErrorCode(e);
-        throw new HttpError(502, code === "no_key" ? "распознавание речи не настроено на сервере" : `не получилось распознать голос (${code}), попробуйте ещё раз`);
+      // Повтор доставки (виджет не дождался ответа и шлёт тот же id): уже разобранное — прежний ответ, без второго списания и без
+      // второго платного распознавания; ещё идёт — ждём его итог (pipeline.inFlight).
+      const sourceId = b.id ?? crypto.randomUUID();
+      const known = await pipeline.delivered(u, "desktop", sourceId);
+      if (known) return known;
+      const { value, again } = await pipeline.inFlight(`voice:${u.id}:desktop:${sourceId}`, async () => {
+        // Распознавание — тоже ИИ (и платное, даже если услышали тишину): доступ, частота и потолок — до него. Частота отмечена здесь,
+        // разбор ниже второй раз её не считает (gated). saved: false — голос нигде не записан (виджет оставит его в очереди).
+        // Лимит в штуках (access.ts): голосовое — один запрос к ИИ и его секунды; сбой распознавания — взятое возвращается.
+        const v = await pipeline.gate?.check(u, { client, take: { calls: 1, voiceSec: voiceSeconds(audio.length, b.sec, isOpusMime(b.mime)) } });
+        if (v && !v.ok) return refuse(u, v.why, v.why === "rate" ? RATE_AGAIN : v.text, { saved: false });
+        // Клиенту — своя фраза и код сбоя, не текст ошибки: в нём бывает тело ответа провайдера (оно — только в журнале сервера).
+        const heard = await transcribe(audio, b.mime).catch(async (e) => {
+          if (v?.ok) await pipeline.gate?.refund(u, v.taken);
+          console.error("[voice]", e);
+          const code = llmErrorCode(e);
+          throw new HttpError(502, code === "no_key" ? "распознавание речи не настроено на сервере" : `не получилось распознать голос (${code}), попробуйте ещё раз`);
+        });
+        // Слов нет — чаще всего записалась тишина: микрофон выключен (на наушниках) или выбран не тот.
+        if (!heard) throw new HttpError(422, "Ничего не услышала. Проверьте свой микрофон — может, он выключен на наушниках или выбран не тот.");
+        const r = await pipeline.handle({ user: u, source: "desktop", sourceId, text: heard.slice(0, 4000), client, gated: true });
+        if (r.blocked) return refuse(u, r.blocked, r.text, { messageId: r.messageId, saved: r.undoable, heard });
+        return { ...r, heard };
       });
-      // Слов нет — чаще всего записалась тишина: микрофон выключен (на наушниках) или выбран не тот.
-      if (!heard) throw new HttpError(422, "Ничего не услышала. Проверьте свой микрофон — может, он выключен на наушниках или выбран не тот.");
-      const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: heard.slice(0, 4000), client, gated: true });
-      if (r.blocked) return refuse(u, r.blocked, r.text, { messageId: r.messageId, saved: r.undoable, heard });
-      return { ...r, heard };
+      return again ? { ...value, duplicate: true } : value;
     }
     // Вопрос «добавить?» из ответа: action remind / add / decline, picked — отмеченные пункты. GET — его состояние
     // (приложение убирает кнопки, если ответили в Telegram).

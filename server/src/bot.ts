@@ -17,7 +17,7 @@ import { RATE, rateDay, replanEvents, type Scheduler, type Send } from "./schedu
 import { dayKey } from "./time.ts";
 import { decideTrait } from "./profile.ts";
 import { youButton } from "./you.ts";
-import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
+import { sttReady, transcribe, VOICE_MAX_BYTES, voiceSeconds } from "./voice.ts";
 import { activeModel, asUser, IMAGE_MAX_BYTES, IMAGE_TYPES, isOpenRouter, LITE_MODEL, setLiteModel } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
 import { countFeature, countPersona } from "./feature-events.ts";
@@ -421,7 +421,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const s = scheduler();
     if (!u || !s) return;
     // Итог дня со словами горничной — вызов модели: частота и потолки, как у сообщения (без доступа eveningText сам идёт без модели).
-    const v = pipeline.gate && pipeline.gate.allowed(u) ? await pipeline.gate.check(u, { client: "telegram" }) : null;
+    const v = pipeline.gate && pipeline.gate.allowed(u) ? await pipeline.gate.check(u, { client: "telegram", take: { calls: 1 } }) : null;
     if (v && !v.ok) return void (await ctx.reply(v.why === "rate" ? "Много сообщений подряд — попросите итог через минуту, пожалуйста." : v.text));
     await ctx.reply(await s.eveningText(u, dayKey(new Date(), u.tz)), { parse_mode: "HTML" });
   });
@@ -600,29 +600,37 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (!sttReady()) return void (await ctx.reply("Голосовые пока не понимаю: распознавание речи не настроено."));
     const media = ctx.message.voice ?? ctx.message.audio;
     if (!media || (media.file_size ?? 0) > VOICE_MAX_BYTES) return void (await ctx.reply("Слишком длинное голосовое."));
-    // Распознавание — тоже ИИ (и платное, даже если услышали тишину): доступ, частота и потолок — до него. Частота отмечена здесь,
-    // разбор ниже второй раз её не считает (gated).
-    const v = await pipeline.gate?.check(u, { client: "telegram" });
-    if (v && !v.ok) return void (await ctx.reply(v.why === "rate" ? RATE_AGAIN : v.text, { reply_markup: v.why === "access" ? await payKeyboard(u) : undefined }));
-    await ctx.replyWithChatAction("typing").catch(() => {});
-    let heard: string;
-    try {
-      const file = await ctx.api.getFile(media.file_id);
-      const res = await fetch(`https://api.telegram.org/file/bot${config.telegramToken}/${file.file_path}`, { signal: AbortSignal.timeout(30_000) });
-      if (!res.ok) throw new Error(`файл ${res.status}`);
-      heard = await transcribe(Buffer.from(await res.arrayBuffer()), media.mime_type ?? "audio/ogg");
-    } catch (e) {
-      console.error("[bot] voice", e);
-      return void (await ctx.reply("Не получилось распознать голосовое, попробуй ещё раз."));
-    }
-    if (!heard) return void (await ctx.reply("Ничего не расслышала."));
-    countFeature(u, "telegram", "voice"); // распознано — тогда и в счёт (сбой и тишина — нет)
-    await ctx.reply(`🎙 <i>${heard.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</i>`, { parse_mode: "HTML" });
-    const r = await pipeline.handle({
-      user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: heard.slice(0, 4000),
-      at: new Date(ctx.message.date * 1000), client: "telegram", gated: true,
+    // Повтор доставки того же голосового (Telegram прислал обновление ещё раз): уже разобранное и то, что ещё идёт, — без второго
+    // списания и второго распознавания (pipeline.delivered, pipeline.inFlight).
+    const sourceId = String(ctx.message.message_id);
+    if (await pipeline.delivered(u, "telegram", sourceId)) return;
+    await pipeline.inFlight(`voice:${u.id}:telegram:${sourceId}`, async () => {
+      // Распознавание — тоже ИИ (и платное, даже если услышали тишину): доступ, частота и потолок — до него. Частота отмечена здесь,
+      // разбор ниже второй раз её не считает (gated).
+      // Лимит в штуках (access.ts): голосовое — один запрос к ИИ и его секунды (voice.duration от Telegram; нет — по размеру).
+      const v = await pipeline.gate?.check(u, { client: "telegram", take: { calls: 1, voiceSec: voiceSeconds(media.file_size ?? 0, media.duration) } });
+      if (v && !v.ok) return void (await ctx.reply(v.why === "rate" ? RATE_AGAIN : v.text, { reply_markup: v.why === "access" ? await payKeyboard(u) : undefined }));
+      await ctx.replyWithChatAction("typing").catch(() => {});
+      let heard: string;
+      try {
+        const file = await ctx.api.getFile(media.file_id);
+        const res = await fetch(`https://api.telegram.org/file/bot${config.telegramToken}/${file.file_path}`, { signal: AbortSignal.timeout(30_000) });
+        if (!res.ok) throw new Error(`файл ${res.status}`);
+        heard = await transcribe(Buffer.from(await res.arrayBuffer()), media.mime_type ?? "audio/ogg");
+      } catch (e) {
+        if (v?.ok) await pipeline.gate?.refund(u, v.taken);
+        console.error("[bot] voice", e);
+        return void (await ctx.reply("Не получилось распознать голосовое, попробуй ещё раз."));
+      }
+      if (!heard) return void (await ctx.reply("Ничего не расслышала."));
+      countFeature(u, "telegram", "voice"); // распознано — тогда и в счёт (сбой и тишина — нет)
+      await ctx.reply(`🎙 <i>${heard.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</i>`, { parse_mode: "HTML" });
+      const r = await pipeline.handle({
+        user: u, source: "telegram", sourceId, text: heard.slice(0, 4000),
+        at: new Date(ctx.message.date * 1000), client: "telegram", gated: true,
+      });
+      if (!r.duplicate) await answer(ctx, u, r);
     });
-    if (!r.duplicate) await answer(ctx, u, r);
   });
 
   bot.catch((e) => console.error("[bot]", e.error));

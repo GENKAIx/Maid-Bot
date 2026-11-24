@@ -1,5 +1,5 @@
 import "./config.ts"; // .env — в process.env до чтения значений по умолчанию
-import { accessOf, ownerIds } from "./access.ts";
+import { accessOf, limitsOf, ownerIds, tariffKindOf, type TariffKind } from "./access.ts";
 import type { Store } from "./db.ts";
 
 // Тарифы из базы (24.11.2026, этап 1 макета docs/review/тарифы-и-управление-макет-2026-11-24.html). Числа платного доступа —
@@ -16,11 +16,18 @@ export const TARIFF_RELOAD_MS = 60_000;
 
 export type TariffKey =
   | "price" | "trialDays" | "giftDays" | "signupsOpen" | "signupsPerHour" | "signupsPerDay" | "aiBurst" | "aiWindowMs"
-  | "trialDayUsd" | "paidDayUsd" | "trialPoolDayUsd" | "unpricedDrawUsd" | "unpricedVoiceUsd" | "unpricedOtherUsd" | "starUsd";
-export type TariffValues = { [K in TariffKey]: K extends "signupsOpen" ? boolean : number };
-export type TariffSpec = { kind: "int" | "num" | "bool"; min?: number; max?: number };
+  | "trialDayUsd" | "paidDayUsd" | "trialPoolDayUsd" | "unpricedDrawUsd" | "unpricedVoiceUsd" | "unpricedOtherUsd" | "starUsd"
+  | "trialCalls" | "trialDraws" | "trialVoiceMin" | "paidCalls" | "paidDraws" | "paidVoiceMin"
+  | "giftDayUsd" | "giftCalls" | "giftDraws" | "giftVoiceMin" | "limitText" | "paidLimitText";
+/** Поля-тексты (kind text): что увидит человек при упоре в лимит в штуках. */
+export type TariffTextKey = "limitText" | "paidLimitText";
+export type TariffValue = number | boolean | string;
+export type TariffValues = { [K in TariffKey]: K extends "signupsOpen" ? boolean : K extends TariffTextKey ? string : number };
+/** text — строка: min и max — длина в знаках (после обрезки пробелов по краям — не пустая). */
+export type TariffSpec = { kind: "int" | "num" | "bool" | "text"; min?: number; max?: number };
 
-/** Что можно менять и в каких границах: int — целое, num — дробное (не больше 4 знаков после запятой), bool — да/нет. */
+/** Что можно менять и в каких границах: int — целое, num — дробное (не больше 4 знаков после запятой), bool — да/нет,
+ *  text — строка (длина min…max, без < > & — текст уходит и в HTML-ответ бота — и без управляющих знаков, кроме перевода строки). */
 export const TARIFF_SPEC: Record<TariffKey, TariffSpec> = {
   /** Цена подписки в звёздах (XTR) за месяц. Уже оформленную подписку Telegram продлевает по цене при оформлении. */
   price: { kind: "int", min: 1, max: 10_000 },
@@ -48,8 +55,29 @@ export const TARIFF_SPEC: Record<TariffKey, TariffSpec> = {
   unpricedOtherUsd: { kind: "num", min: 0, max: 100 },
   /** Сколько $ разработчик получает за 1 ⭐ (оценка) — только аналитика и экономика тарифа. */
   starUsd: { kind: "num", min: 0, max: 1 },
+  /** Лимиты в штуках на человека в день (этап 2, сброс в полночь по поясу человека, access.ts AiGate и таблица ai_quota):
+   *  запросы к ИИ (обращения человека: сообщение, голосовое, фото, /ask, поправка, «Повторить», /summary), картинки (рисунки
+   *  «нарисуй…»), голос — минуты распознанного аудио. 0 — функция на тарифе недоступна (не «без лимита»). */
+  trialCalls: { kind: "int", min: 0, max: 100_000 },
+  trialDraws: { kind: "int", min: 0, max: 100_000 },
+  trialVoiceMin: { kind: "int", min: 0, max: 100_000 },
+  paidCalls: { kind: "int", min: 0, max: 100_000 },
+  paidDraws: { kind: "int", min: 0, max: 100_000 },
+  paidVoiceMin: { kind: "int", min: 0, max: 100_000 },
+  /** Подарок по /invite — свой тариф (users.trial_len_days = 0, access.ts trialLenOf): денежный потолок и лимиты в штуках. */
+  giftDayUsd: { kind: "num", min: 0.01, max: 100 },
+  giftCalls: { kind: "int", min: 0, max: 100_000 },
+  giftDraws: { kind: "int", min: 0, max: 100_000 },
+  giftVoiceMin: { kind: "int", min: 0, max: 100_000 },
+  /** Что увидит человек, когда лимит в штуках кончился: проба и подарок (с выходом — подпиской) и подписчик (без фразы про подписку). */
+  limitText: { kind: "text", min: 1, max: 300 },
+  paidLimitText: { kind: "text", min: 1, max: 300 },
 };
 export const TARIFF_KEYS = Object.keys(TARIFF_SPEC) as TariffKey[];
+
+/** Тексты при упоре в лимит в штуках по умолчанию (макет: карточка «Что увидит человек, когда лимит кончился»). */
+export const LIMIT_TEXT = "На сегодня мои силы кончились — продолжу завтра утром. Хотите больше — в подписке лимит выше.";
+export const PAID_LIMIT_TEXT = "На сегодня мои силы кончились — продолжу завтра утром.";
 
 /** Значения по умолчанию — прежние числа config.billing; STAR_USD из .env — значение по умолчанию курса. Регистрация по умолчанию
  *  открыта всегда (смысл строки tariff_settings не зависит от .env); SIGNUPS_OPEN=0 — аварийный выключатель поверх (signupsOpenNow). */
@@ -59,9 +87,15 @@ export function tariffDefaults(env: Record<string, string | undefined> = process
     signupsOpen: true,
     signupsPerHour: 30, signupsPerDay: 150,
     aiBurst: 10, aiWindowMs: 60_000,
-    trialDayUsd: 0.3, paidDayUsd: 1.5, trialPoolDayUsd: 10,
+    trialDayUsd: 0.3, paidDayUsd: 0.5, trialPoolDayUsd: 10,
     unpricedDrawUsd: 0.03, unpricedVoiceUsd: 0.005, unpricedOtherUsd: 0.003,
     starUsd: Number(env.STAR_USD?.trim() || "0.013") || 0.013,
+    // Этап 2 (числа согласованы 24.11.2026): проба 60 запросов, 3 картинки, 10 мин голоса; подписка 400 · 20 · 60 (её денежный
+    // потолок снижен с 1.5 до 0.5 $/день); подарок — свой тариф, по умолчанию как проба.
+    trialCalls: 60, trialDraws: 3, trialVoiceMin: 10,
+    paidCalls: 400, paidDraws: 20, paidVoiceMin: 60,
+    giftDayUsd: 0.3, giftCalls: 60, giftDraws: 3, giftVoiceMin: 10,
+    limitText: LIMIT_TEXT, paidLimitText: PAID_LIMIT_TEXT,
   };
 }
 
@@ -74,6 +108,15 @@ export function checkTariffValue(key: string, v: unknown): string | null {
   const s = Object.hasOwn(TARIFF_SPEC, key) ? TARIFF_SPEC[key as TariffKey] : undefined;
   if (!s) return `неизвестное поле ${key}`;
   if (s.kind === "bool") return typeof v === "boolean" ? null : `${key}: нужно да или нет`;
+  if (s.kind === "text") {
+    if (typeof v !== "string") return `${key}: нужен текст`;
+    if (v.trim().length < (s.min ?? 0)) return `${key}: напишите текст`;
+    if (v.length > (s.max ?? Infinity)) return `${key}: не длиннее ${s.max} знаков`;
+    if (/[<>&]/.test(v)) return `${key}: без знаков < > &`;
+    // eslint-disable-next-line no-control-regex -- управляющие знаки и есть то, что ищем
+    if (/[\u0000-\u0009\u000b-\u001f\u007f]/.test(v)) return `${key}: без служебных знаков`;
+    return null;
+  }
   if (typeof v !== "number" || !Number.isFinite(v)) return `${key}: нужно число`;
   if (s.kind === "int" && !Number.isInteger(v)) return `${key}: нужно целое число`;
   if (s.kind === "num" && Math.abs(v * 1e4 - Math.round(v * 1e4)) > 1e-6) return `${key}: не больше 4 знаков после запятой`;
@@ -114,7 +157,7 @@ export const unpricedOf = (t: Readonly<TariffValues> = live) => ({ draw: t.unpri
 
 /** Числа из строк tariff_settings поверх значений по умолчанию; битая или негодная строка — пропускается (в лог). */
 function merge(rows: { key: string; value: string }[], base = tariffDefaults()): TariffValues {
-  const out = { ...base } as Record<TariffKey, number | boolean>;
+  const out = { ...base } as Record<TariffKey, TariffValue>;
   for (const r of rows) {
     let v: unknown;
     try { v = JSON.parse(r.value); } catch { v = undefined; }
@@ -122,7 +165,7 @@ function merge(rows: { key: string; value: string }[], base = tariffDefaults()):
       console.error("[tariffs] пропущена строка", r.key);
       continue;
     }
-    out[r.key as TariffKey] = v as number | boolean;
+    out[r.key as TariffKey] = v as TariffValue;
   }
   return out as TariffValues;
 }
@@ -157,13 +200,14 @@ export class TariffError extends Error {
 }
 
 export type TariffSource = "admin" | "undo" | "bot";
-export interface TariffChange { key: TariffKey; from: number | boolean; to: number | boolean }
+export interface TariffChange { key: TariffKey; from: TariffValue; to: TariffValue }
 
 const changesOf = (before: TariffValues, after: TariffValues): TariffChange[] =>
   TARIFF_KEYS.filter((k) => before[k] !== after[k]).map((k) => ({ key: k, from: before[k], to: after[k] }));
 
-/** Подпись для журнала админки (admin_log.detail, до 200 знаков): «price 150→200, trialDays 7→5». */
-const changesText = (c: TariffChange[]) => c.map((x) => `${x.key} ${x.from}→${x.to}`).join(", ");
+/** Подпись для журнала админки (admin_log.detail, до 200 знаков): «price 150→200, trialDays 7→5»; текст — «limitText изменён»
+ *  (сам текст — в истории тарифов, в журнал не влезет). */
+const changesText = (c: TariffChange[]) => c.map((x) => (typeof x.to === "string" ? `${x.key} изменён` : `${x.key} ${x.from}→${x.to}`)).join(", ");
 
 /** Изменения тарифов на этом процессе — по одному: следующее начинается, когда прошлое записано и перечитано. */
 let saveLock: Promise<unknown> = Promise.resolve();
@@ -252,10 +296,14 @@ export function setSignupsOpen(store: Store, by: number, open: boolean, now = ne
 // ——— Что показать в админке (GET /api/admin/tariffs): только числа и номера аккаунтов, без имён и текстов людей.
 
 const DAY = 86_400_000;
-/** Экономика тарифа за 30 дней по llm_usage у тех, кто сейчас на этом плане (accessOf: срок идёт, без владельцев) — те же люди и
- *  в расходе, и в числе людей: среднее и худшее на человека, дни у денежного потолка.
- *  Нет людей или расхода — null (на сайте «—», ничего не выдумываем). Подарок по /invite хранится как проба — в trial. */
-export interface PlanEconomy { people: number; spenders: number; avg_month_usd: number | null; worst_month_usd: number | null; worst_day_usd: number | null; capped_days: number }
+/** Экономика тарифа за 30 дней по llm_usage у тех, кто сейчас на этом тарифе (accessOf + tariffKindOf: срок идёт, без владельцев;
+ *  подарок — по users.trial_len_days = 0) — те же люди и в расходе, и в числе людей: среднее и худшее на человека, дни у денежного
+ *  потолка (capped_days) и дни, когда человек выбрал хоть один лимит в штуках целиком (quota_days, ai_quota, по нынешним лимитам).
+ *  Нет людей или расхода — null (на сайте «—», ничего не выдумываем). */
+export interface PlanEconomy { people: number; spenders: number; avg_month_usd: number | null; worst_month_usd: number | null; worst_day_usd: number | null; capped_days: number; quota_days: number }
+/** Средняя цена единицы лимита за 30 дней: обращение к ИИ (всё, кроме рисунков и голоса), рисунок, минута голоса — расход llm_usage
+ *  в дни со счётчиками ai_quota, делённый на взятые штуки. Штук ещё не было — null («—»). */
+export interface UnitPrices { call_usd: number | null; draw_usd: number | null; voice_min_usd: number | null }
 
 export async function tariffsView(store: Store, now = new Date()) {
   const t = tariffs();
@@ -263,27 +311,30 @@ export async function tariffsView(store: Store, now = new Date()) {
   const today = now.toISOString().slice(0, 10);
   const since = new Date(now.getTime() - 29 * DAY).toISOString().slice(0, 10);
   const owners = ownerIds();
-  const ids = { trial: new Set<number>(), paid: new Set<number>() };
+  const ids: Record<TariffKind, Set<number>> = { trial: new Set(), gift: new Set(), paid: new Set() };
   for (const u of await store.users()) {
-    const a = accessOf(u, now, owners);
-    if (a.plan === "trial" || a.plan === "paid") ids[a.plan].add(u.id);
+    const kind = tariffKindOf(u, accessOf(u, now, owners));
+    if (kind) ids[kind].add(u.id);
   }
-  const people = { trial: ids.trial.size, paid: ids.paid.size };
   const rows = await store.planDaySpend(since, ["trial", "paid"], est);
-  const economy = (plan: "trial" | "paid"): PlanEconomy => {
+  const quota = await store.quotaRows(since);
+  const economy = (plan: TariffKind): PlanEconomy => {
     // Только те, кого посчитали в people: кончившийся срок с прежним plan в базе и владельцы в расход не попадают.
     const mine = rows.filter((r) => ids[plan].has(r.user_id));
-    const cap = (plan === "paid" ? t.paidDayUsd : t.trialDayUsd) * 1e6;
+    const cap = (plan === "paid" ? t.paidDayUsd : plan === "gift" ? t.giftDayUsd : t.trialDayUsd) * 1e6;
+    const lim = limitsOf(plan, t);
     const byUser = new Map<number, number>();
     for (const r of mine) byUser.set(r.user_id, (byUser.get(r.user_id) ?? 0) + r.micro);
-    const n = people[plan];
+    const n = ids[plan].size;
     const sum = [...byUser.values()].reduce((s, v) => s + v, 0);
+    const full = new Set(quota.filter((q) => ids[plan].has(q.user_id) && (lim[q.kind as keyof typeof lim] ?? 0) > 0 && q.n >= lim[q.kind as keyof typeof lim]).map((q) => `${q.user_id}:${q.day}`));
     return {
       people: n, spenders: byUser.size,
       avg_month_usd: n && mine.length ? sum / n / 1e6 : null,
       worst_month_usd: byUser.size ? Math.max(...byUser.values()) / 1e6 : null,
       worst_day_usd: mine.length ? Math.max(...mine.map((r) => r.micro)) / 1e6 : null,
       capped_days: mine.filter((r) => r.micro >= cap).length,
+      quota_days: full.size,
     };
   };
   const history = (await store.tariffHistory(50)).map((h) => {
@@ -298,11 +349,32 @@ export async function tariffsView(store: Store, now = new Date()) {
     /** SIGNUPS_OPEN=0 в .env: регистрация закрыта поверх тарифа (на сайте — предупреждение). */
     env_closed: signupsEnvClosed(),
     history,
-    economy: { trial: economy("trial"), paid: economy("paid") },
+    economy: { trial: economy("trial"), paid: economy("paid"), gift: economy("gift") },
+    unit_prices: unitPrices(quota, await store.analyticsUsage(since, today), est),
     now: {
       trial_pool_today_usd: await store.trialsDaySpend(today, est),
       signups_hour: await store.countUsersSince(new Date(now.getTime() - 3600_000).toISOString()),
       signups_day: await store.countUsersSince(new Date(now.getTime() - DAY).toISOString()),
     },
   };
+}
+
+/** Средние цены единиц лимита: только дни человека, в которые есть счётчики ai_quota (день счётчика — по поясу человека, расхода —
+ *  UTC; за 30 дней расхождение на краях мало). Вызов без цены — по оценке est, как у потолков. */
+export function unitPrices(
+  quota: { user_id: number; day: string; kind: string; n: number }[],
+  usage: { day: string; user_id: number; kind: string; calls: number; priced: number; micro: number }[],
+  est: { draw: number; voice: number; other: number },
+): UnitPrices {
+  const days = new Set(quota.map((q) => `${q.user_id}:${q.day}`));
+  const took = { calls: 0, draws: 0, voice_sec: 0 } as Record<string, number>;
+  for (const q of quota) if (q.kind in took) took[q.kind] += q.n;
+  const spent = { other: 0, draw: 0, voice: 0 };
+  for (const r of usage) {
+    if (!days.has(`${r.user_id}:${r.day}`)) continue;
+    const k = r.kind === "draw" ? "draw" : r.kind === "voice" ? "voice" : "other";
+    spent[k] += r.micro + (r.calls - r.priced) * Math.round(est[k] * 1e6);
+  }
+  const per = (micro: number, n: number) => (n > 0 ? micro / n / 1e6 : null);
+  return { call_usd: per(spent.other, took.calls), draw_usd: per(spent.draw, took.draws), voice_min_usd: per(spent.voice, took.voice_sec / 60) };
 }
