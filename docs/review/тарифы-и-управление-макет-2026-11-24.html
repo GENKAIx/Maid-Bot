@@ -1,0 +1,748 @@
+<title>Тарифы и управление</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+<style>
+/* Макет продуктовой аналитики для админки Горничной. Цвета — как у админки (web/src/admin.css): всегда тёмная. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1013; --panel: #15181d; --panel-2: #1b1f25; --panel-3: #22272e;
+  --line: #262b33; --line-2: #313741; --text: #e4e7eb; --soft: #b9bfc8; --muted: #8a93a0;
+  --accent: #9b8cff; --ok: #5fc59a; --warn: #d9a45b; --bad: #e0727f;
+  /* серии графиков: проверены на поверхности #15181d (dataviz validate_palette, dark) */
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+  --star: #f2c14e;
+  --f: "Onest", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.5 var(--f);
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+button { font: inherit; color: inherit; }
+.shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 100vh; }
+/* левое меню админки */
+.side { background: #0b0d10; border-right: 1px solid var(--line); padding: 16px 10px; position: sticky; top: 0; height: 100vh; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.brand { font-weight: 800; font-size: 15px; padding: 2px 10px 14px; }
+.brand span { color: var(--muted); font-weight: 500; }
+.side small { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding: 12px 10px 4px; }
+.side a { color: var(--soft); text-decoration: none; padding: 6px 10px; border-radius: 8px; font-size: 13.5px; display: flex; gap: 8px; align-items: center; }
+.side a:hover { background: var(--panel); }
+.side a.on { background: var(--panel-2); color: var(--text); font-weight: 600; }
+.side a .nw { margin-left: auto; font-size: 10px; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 99px; padding: 0 6px; }
+.main { min-width: 0; padding: 26px max(16px, 2.2vw) 60px; }
+.top { display: flex; flex-direction: column; gap: 6px; max-width: 900px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; font-weight: 750; letter-spacing: -.01em; }
+h2 { font-size: 17px; margin: 0; font-weight: 700; }
+h3 { font-size: 13.5px; margin: 0; font-weight: 650; }
+.lead { color: var(--muted); font-size: 13.5px; margin: 0; max-width: 880px; }
+.mock { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.src { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line-2); font-size: 11.5px; white-space: nowrap; }
+.src::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.src.have { color: var(--ok); } .src.calc { color: var(--s1); } .src.new { color: var(--warn); }
+.toggle { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 12.5px; }
+.toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.layout { display: grid; grid-template-columns: 178px minmax(0, 1fr); gap: 22px; margin-top: 22px; align-items: start; }
+.sub { position: sticky; top: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 8px; display: flex; flex-direction: column; gap: 1px; }
+.sub small { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding: 8px 8px 3px; }
+.sub button { text-align: left; background: none; border: 0; border-radius: 7px; padding: 5px 8px 5px 14px; color: var(--muted); cursor: pointer; font-size: 13px; }
+.sub button:hover { color: var(--text); }
+.sub button.on { background: var(--panel-3); color: var(--text); font-weight: 600; }
+.content { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; position: relative; }
+.card > .d, .block > .d { color: var(--muted); font-size: 12.5px; margin: 3px 0 0; }
+/* параметры отчёта */
+.params { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 3px; gap: 3px; margin-top: 6px; flex-wrap: wrap; }
+.seg button { flex: 1; background: none; border: 0; border-radius: 7px; padding: 5px 10px; color: var(--muted); cursor: pointer; font-size: 12.5px; white-space: nowrap; }
+.seg button.on { background: var(--panel-3); color: var(--text); font-weight: 600; box-shadow: 0 0 0 1px var(--line-2); }
+.seg button:disabled { opacity: .35; cursor: default; }
+.lbl { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.meta { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 10px; font-size: 11.5px; color: var(--muted); display: flex; gap: 6px 16px; flex-wrap: wrap; }
+.meta b { color: var(--soft); font-weight: 600; }
+.block { display: flex; flex-direction: column; gap: 12px; }
+.block > header { display: flex; flex-direction: column; gap: 2px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; position: relative; min-width: 0; }
+.kpi .k { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.kpi .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.kpi .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kpi .v .st { color: var(--star); font-size: 18px; }
+.kpi .h { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.dl { font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dl.up { color: var(--ok); } .dl.down { color: var(--bad); } .dl.flat { color: var(--muted); }
+.dl.up::before { content: "↑ "; } .dl.down::before { content: "↓ "; }
+.kpi .badge, .card .badge { position: absolute; top: 10px; right: 10px; display: none; }
+.showsrc .badge { display: inline-flex; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 12px; }
+.chart { width: 100%; height: 210px; margin-top: 10px; position: relative; }
+.chart.tall { height: 260px; }
+.chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--soft); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: #0b0d10; border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 130px; box-shadow: 0 8px 24px rgba(0,0,0,.45); display: none; }
+.tip b { display: block; margin-bottom: 4px; font-weight: 650; }
+.tip div { display: flex; justify-content: space-between; gap: 14px; color: var(--soft); }
+.tip div span:last-child { color: var(--text); font-variant-numeric: tabular-nums; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+details.defs { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; font-size: 12.5px; color: var(--soft); }
+details.defs summary { cursor: pointer; font-weight: 600; color: var(--text); }
+details.defs dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 2px; }
+details.defs dt { color: var(--text); font-weight: 600; } details.defs dd { margin: 0; color: var(--muted); }
+.bridge { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 10px; }
+.bridge .k { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bridge .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tbl { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; }
+.cohort td.c { text-align: center; padding: 0; border: 2px solid var(--panel); border-radius: 4px; font-size: 11.5px; height: 28px; min-width: 52px; }
+.funnel { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; align-items: center; }
+.funnel .st { height: 30px; border-radius: 6px; background: color-mix(in srgb, var(--s1) 70%, var(--panel)); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; font-size: 12px; min-width: 210px; gap: 10px; cursor: default; }
+.funnel .st span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.funnel .st small { color: rgba(255,255,255,.75); }
+.drop { font-size: 11px; color: var(--bad); }
+.days { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.days .r { display: grid; grid-template-columns: 70px minmax(0, 1fr) 110px; gap: 10px; align-items: center; font-size: 12px; }
+.days .bar { height: 22px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+.days .bar b { display: block; height: 100%; background: var(--s3); border-radius: 0 5px 5px 0; }
+.days .r span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--soft); }
+.ladder { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.ladder .r { display: grid; grid-template-columns: 44px minmax(0, 1fr) 60px; gap: 10px; align-items: center; font-size: 12px; }
+.ladder .bar { height: 18px; position: relative; }
+.ladder .bar b { display: block; height: 100%; background: var(--s6); border-radius: 0 5px 5px 0; }
+.ladder .r > span:first-child { color: var(--muted); text-align: right; }
+.ladder .r > span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--soft); }
+.hbars { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
+.hbars .r { display: grid; grid-template-columns: minmax(110px, 190px) minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: 12.5px; }
+.hbars .r > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--soft); }
+.hbars .bar { height: 16px; } .hbars .bar b { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--s1); }
+.hbars .r > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.heat { display: grid; grid-template-columns: 26px repeat(24, minmax(0, 1fr)); gap: 2px; margin-top: 12px; font-size: 10.5px; color: var(--muted); }
+.heat div { height: 20px; border-radius: 3px; }
+.heat .hl { height: auto; text-align: center; }
+.note { font-size: 12px; color: var(--muted); }
+.plan td:nth-child(2) { white-space: normal; min-width: 260px; }
+.plan td:first-child { white-space: normal; min-width: 160px; font-weight: 600; }
+.why { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.why .card p { margin: 6px 0 0; color: var(--soft); font-size: 13px; }
+@media (max-width: 980px) { .shell { grid-template-columns: 1fr; } .side { display: none; } .layout { grid-template-columns: 1fr; } .sub { position: static; flex-direction: row; flex-wrap: wrap; } .sub small { width: 100%; } .params { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } .kpis { grid-template-columns: 1fr 1fr; } .kpi .v { font-size: 20px; } .days .r { grid-template-columns: 56px minmax(0,1fr) 84px; } .hbars .r { grid-template-columns: 100px minmax(0,1fr) 54px; } }
+/* ——— дополнения для макета «Тарифы и управление» */
+.btn { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12.5px; white-space: nowrap; }
+.btn:hover { border-color: #46505c; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #14121f; font-weight: 650; }
+.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line-2)); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.pc { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; position: relative; }
+.pc .badge { position: absolute; top: 10px; right: 10px; display: none; }
+.showsrc .pc .badge { display: inline-flex; }
+.pc.off { opacity: .72; border-style: dashed; }
+.pc header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.pc .who { font-size: 11.5px; color: var(--muted); }
+.pc .price { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.pc .price .st { color: var(--star); font-size: 17px; }
+.pc .price small { font-size: 12px; color: var(--muted); font-weight: 500; }
+.fl { display: grid; grid-template-columns: minmax(0, 1fr) 108px; gap: 6px 10px; align-items: center; font-size: 12.5px; }
+.fl > span { color: var(--soft); }
+.fl > span em { font-style: normal; color: var(--muted); font-size: 11px; display: block; line-height: 1.3; }
+.fl hr { grid-column: 1 / -1; border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100%; }
+.num { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+.num input { width: 100%; min-width: 0; background: none; border: 0; color: var(--text); font: inherit; font-variant-numeric: tabular-nums; padding: 5px 4px 5px 8px; text-align: right; }
+.num input:focus { outline: none; }
+.num:focus-within { border-color: var(--accent); }
+.num i { font-style: normal; color: var(--muted); font-size: 11px; padding-right: 7px; white-space: nowrap; }
+.num.ch { border-color: var(--warn); }
+.tg { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12.5px; color: var(--soft); user-select: none; }
+.tg input { appearance: none; width: 30px; height: 17px; border-radius: 99px; background: var(--line-2); position: relative; cursor: pointer; margin: 0; flex: none; transition: background .15s; }
+.tg input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #cfd4da; transition: transform .15s; }
+.tg input:checked { background: var(--accent); }
+.tg input:checked::after { transform: translateX(13px); background: #fff; }
+.tg input:focus-visible, .num input:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feats { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.econ { border-top: 1px solid var(--line); padding-top: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.econ .k { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.econ .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.good { color: var(--ok); } .badc { color: var(--bad); } .warnc { color: var(--warn); }
+.flag { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); color: var(--soft); }
+.flag.bad { background: color-mix(in srgb, var(--bad) 10%, transparent); border-color: color-mix(in srgb, var(--bad) 32%, transparent); }
+.flag.info { background: color-mix(in srgb, var(--s1) 9%, transparent); border-color: color-mix(in srgb, var(--s1) 30%, transparent); }
+.flag b { color: var(--text); }
+.flag .ic { flex: none; font-weight: 800; width: 16px; text-align: center; }
+.draft { position: sticky; bottom: 12px; z-index: 5; background: #11141a; border: 1px solid var(--accent); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.draft ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--soft); }
+.draft ul b { color: var(--text); font-weight: 600; }
+.meter { height: 8px; background: var(--panel-3); border-radius: 99px; overflow: hidden; margin-top: 6px; }
+.meter b { display: block; height: 100%; border-radius: 99px; background: var(--s1); }
+.mrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 12.5px; }
+.mrow span:last-child { font-variant-numeric: tabular-nums; color: var(--soft); }
+.mrow .meter { grid-column: 1 / -1; margin-top: 2px; }
+.stack { display: flex; height: 26px; border-radius: 6px; overflow: hidden; gap: 2px; margin-top: 12px; }
+.stack b { display: flex; align-items: center; padding-left: 8px; font-size: 11.5px; color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; }
+.status { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line-2); white-space: nowrap; }
+.status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status.ok { color: var(--ok); } .status.warn { color: var(--warn); } .status.bad { color: var(--bad); } .status.mute { color: var(--muted); }
+.acc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 12px; }
+.search { display: flex; gap: 8px; }
+.search .num { flex: 1; } .search .num input { text-align: left; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; font-size: 12.5px; margin-top: 10px; }
+.facts dt { color: var(--muted); } .facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.act { display: flex; flex-direction: column; gap: 8px; }
+.act .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.act .row:last-child { border-bottom: 0; }
+.act .row em { display: block; font-style: normal; color: var(--muted); font-size: 11.5px; }
+.inline { display: none; grid-column: 1 / -1; background: var(--panel-2); border-radius: 8px; padding: 10px; gap: 8px; flex-direction: column; }
+.inline.open { display: flex; }
+.inline .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.txt { width: 100%; background: var(--bg); border: 1px solid var(--line-2); border-radius: 7px; color: var(--text); font: inherit; font-size: 12.5px; padding: 6px 8px; }
+.txt:focus { outline: none; border-color: var(--accent); }
+select.txt { appearance: auto; }
+.done { font-size: 12px; color: var(--ok); }
+.bubble { background: #f6efe3; color: #3b2f27; border-radius: 14px 14px 14px 4px; padding: 10px 13px; font-size: 13px; max-width: 300px; box-shadow: 0 6px 16px rgba(0,0,0,.35); }
+.bubble b { display: block; font-size: 11px; color: #9a6f56; margin-bottom: 3px; letter-spacing: .02em; }
+.range { width: 100%; accent-color: var(--accent); }
+.calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 16px; }
+.calc label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--soft); }
+.ft td:first-child { font-weight: 600; }
+.ft td.w { white-space: normal; min-width: 180px; color: var(--muted); }
+@media (max-width: 980px) { .acc { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .fl { grid-template-columns: minmax(0, 1fr) 96px; } .econ { grid-template-columns: 1fr 1fr; } .inline .two { grid-template-columns: 1fr; } .draft { bottom: 6px; } }
+</style>
+
+<div class="shell">
+<nav class="side" aria-label="Админка">
+  <div class="brand">Горничная <span>админка</span></div>
+  <small>Сейчас есть</small>
+  <a href="#">Обзор</a><a href="#">Пользователи</a><a href="#">Расходы</a><a href="#">Аудитория</a>
+  <a href="#">Качество разбора</a><a href="#">Здоровье сервера</a><a href="#">Использование функций</a><a href="#">Витрина</a><a href="#">Аналитика</a><a href="#">Журнал</a>
+  <small>Будет</small>
+  <a href="#" data-go="plans">Тарифы и лимиты <span class="nw">макет</span></a>
+  <a href="#" data-go="account">Управление <span class="nw">макет</span></a>
+  <a href="#" data-go="releases">Надёжность <span class="nw">макет</span></a>
+  <a href="#" data-go="tickets">Связь с людьми <span class="nw">макет</span></a>
+  <a href="#" data-go="forecast">Прогноз <span class="nw">макет</span></a>
+</nav>
+
+<div class="main">
+  <div class="top">
+    <h1>Тарифы и управление</h1>
+    <p class="lead">Макет того, чего в админке ещё нет. Главное — раздел «Тарифы»: цена, срок и лимиты ИИ меняются прямо здесь, без правки кода и выкладки. Справа сразу видно, сколько принесёт и сколько будет стоить тариф с новыми числами. Ниже — управление аккаунтами, оповещения, выпуски, падения, копии базы и прогноз. Цифры выдуманы для ~400 человек, но стартовые числа тарифов — настоящие, из <code>server/src/config.ts</code>.</p>
+    <div class="mock">
+      <span class="src have">работает сейчас (зашито в коде)</span><span class="src calc">посчитать из того, что есть</span><span class="src new">нужно сделать</span>
+      <button class="toggle" id="srcToggle" type="button" aria-pressed="false">Показать на карточках, откуда данные</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sub" aria-label="Разделы">
+      <small>Тарифы</small>
+      <button data-tab="plans" class="on">Тарифы</button>
+      <button data-tab="caps">Общие потолки</button>
+      <button data-tab="promo">Промокоды</button>
+      <button data-tab="hist">История изменений</button>
+      <small>Управление</small>
+      <button data-tab="account">Аккаунт</button>
+      <button data-tab="alerts">Оповещения</button>
+      <button data-tab="flags">Переключатели</button>
+      <button data-tab="audit">Журнал админа</button>
+      <small>Надёжность</small>
+      <button data-tab="releases">Выпуски виджета</button>
+      <button data-tab="crashes">Падения</button>
+      <button data-tab="backups">Копии базы</button>
+      <small>Связь с людьми</small>
+      <button data-tab="tickets">Обращения</button>
+      <button data-tab="news">Объявления</button>
+      <small>Деньги</small>
+      <button data-tab="forecast">Прогноз</button>
+      <small>Как сделать</small>
+      <button data-tab="plan">План работ</button>
+    </nav>
+    <div class="content" id="view"></div>
+  </div>
+</div>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+<script>
+(function () {
+  "use strict";
+  var C = { s1: "#3987e5", s2: "#d95926", s3: "#199e70", s4: "#c98500", s5: "#d55181", s6: "#9085e9", grid: "#262b33", axis: "#8a93a0", star: "#f2c14e" };
+  var charts = [];
+  var tip = document.getElementById("tip");
+  function showTip(e, title, rows) {
+    tip.innerHTML = "<b>" + title + "</b>" + rows.map(function (r) { return "<div><span>" + (r[2] ? '<i style="background:' + r[2] + '"></i>' : "") + r[0] + "</span><span>" + r[1] + "</span></div>"; }).join("");
+    tip.style.display = "block";
+    var x = e.clientX + 14, y = e.clientY + 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    if (x + w > innerWidth - 8) x = e.clientX - w - 14;
+    if (y + h > innerHeight - 8) y = e.clientY - h - 14;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  function hideTip() { tip.style.display = "none"; }
+  function niceMax(m) { if (m <= 0) return 1; var p = Math.pow(10, Math.floor(Math.log10(m))), f = m / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
+  function ns(tag, attrs) { var el = document.createElementNS("http://www.w3.org/2000/svg", tag); for (var k in attrs) el.setAttribute(k, attrs[k]); return el; }
+  function axisFmt(v) { return v >= 1000 ? fmt(v / 1000, v % 1000 ? 1 : 0) + "k" : fmt(v, v < 10 && v % 1 ? 1 : 0); }
+
+  // kind: "line" | "bar" (stack), series: [{name,color,values}], opts: {fmt, min}
+  function draw(id, kind, labs, ser, opts) { charts.push([id, kind, labs, ser, opts || {}]); }
+  function render(c) {
+    var el = document.getElementById(c[0]); if (!el) return;
+    var kind = c[1], labs = c[2], ser = c[3], o = c[4];
+    var W = el.clientWidth, H = el.clientHeight, L = 40, Rr = 8, T = 8, B = 22;
+    var pw = W - L - Rr, ph = H - T - B, n = labs.length;
+    var vf = o.fmt || function (v) { return fmt(v, v < 10 && v % 1 ? 1 : 0); };
+    var minV = o.min || 0, maxV = 0;
+    if (kind === "bar") { for (var i = 0; i < n; i++) { var pos = 0, neg = 0; ser.forEach(function (s) { var v = s.values[i]; if (v >= 0) pos += v; else neg += v; }); maxV = Math.max(maxV, pos); minV = Math.min(minV, neg); } }
+    else ser.forEach(function (s) { s.values.forEach(function (v) { maxV = Math.max(maxV, v); }); });
+    maxV = niceMax(maxV); if (minV < 0) minV = -niceMax(-minV);
+    var y = function (v) { return T + ph - (v - minV) / (maxV - minV) * ph; };
+    var svg = ns("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": o.label || "" });
+    for (var g = 0; g <= 4; g++) {
+      var gv = minV + (maxV - minV) * g / 4, gy = y(gv);
+      svg.appendChild(ns("line", { x1: L, x2: W - Rr, y1: gy, y2: gy, stroke: gv === 0 && minV < 0 ? "#3a414c" : C.grid, "stroke-dasharray": gv === 0 ? "" : "2 4" }));
+      var t = ns("text", { x: L - 6, y: gy + 3.5, "text-anchor": "end", fill: C.axis, "font-size": 10.5 }); t.textContent = axisFmt(gv); svg.appendChild(t);
+    }
+    svg.appendChild(ns("line", { x1: L, x2: W - Rr, y1: y(Math.max(0, minV)), y2: y(Math.max(0, minV)), stroke: "#3a414c" }));
+    var bw = pw / n, xs = function (i) { return L + bw * i + bw / 2; };
+    var tickEvery = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(pw / 70))));
+    for (var i2 = 0; i2 < n; i2 += tickEvery) { var tx = ns("text", { x: xs(i2), y: H - 5, "text-anchor": "middle", fill: C.axis, "font-size": 10.5 }); tx.textContent = labs[i2]; svg.appendChild(tx); }
+    if (kind === "bar") {
+      var barW = Math.max(1.5, Math.min(26, bw - 2));
+      for (var b = 0; b < n; b++) {
+        var up = 0, dn = 0;
+        ser.forEach(function (s, si) {
+          var v = s.values[b]; if (!v) return;
+          var y0 = v >= 0 ? y(up) : y(dn), y1 = v >= 0 ? y(up + v) : y(dn + v);
+          if (v >= 0) up += v; else dn += v;
+          var top = Math.min(y0, y1), h = Math.max(.5, Math.abs(y1 - y0) - (ser.length > 1 ? 1 : 0));
+          svg.appendChild(ns("rect", { x: xs(b) - barW / 2, y: top + (v >= 0 && ser.length > 1 && si > 0 ? 0 : 0), width: barW, height: h, rx: Math.min(3, barW / 3), fill: s.color }));
+        });
+      }
+    } else {
+      ser.forEach(function (s) {
+        var d = s.values.map(function (v, i) { return (i ? "L" : "M") + xs(i).toFixed(1) + " " + y(v).toFixed(1); }).join(" ");
+        if (s.area) svg.appendChild(ns("path", { d: d + " L" + xs(n - 1) + " " + y(0) + " L" + xs(0) + " " + y(0) + "Z", fill: s.color, "fill-opacity": .12 }));
+        svg.appendChild(ns("path", { d: d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-dasharray": s.dash ? "5 4" : "" }));
+      });
+    }
+    var cross = ns("line", { y1: T, y2: T + ph, stroke: "#5a6270", "stroke-width": 1, visibility: "hidden" }); svg.appendChild(cross);
+    var dots = ser.map(function (s) { var d = ns("circle", { r: 4.5, fill: s.color, stroke: "#15181d", "stroke-width": 2, visibility: "hidden" }); svg.appendChild(d); return d; });
+    var hit = ns("rect", { x: L, y: T, width: pw, height: ph, fill: "transparent" }); svg.appendChild(hit);
+    hit.addEventListener("mousemove", function (e) {
+      var r = svg.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width;
+      var i = Math.max(0, Math.min(n - 1, Math.floor((mx - L) / bw)));
+      cross.setAttribute("x1", xs(i)); cross.setAttribute("x2", xs(i)); cross.setAttribute("visibility", "visible");
+      if (kind === "line") dots.forEach(function (d, si) { d.setAttribute("cx", xs(i)); d.setAttribute("cy", y(ser[si].values[i])); d.setAttribute("visibility", "visible"); });
+      var rows = ser.map(function (s) { return [s.name, vf(s.values[i]), s.color]; });
+      if (kind === "bar" && ser.length > 1) rows.push(["Всего", vf(sum(ser.map(function (s) { return s.values[i]; })))]);
+      showTip(e, labs[i], rows);
+    });
+    hit.addEventListener("mouseleave", function () { cross.setAttribute("visibility", "hidden"); dots.forEach(function (d) { d.setAttribute("visibility", "hidden"); }); hideTip(); });
+    el.innerHTML = ""; el.appendChild(svg);
+  }
+  function renderAll() { charts.forEach(render); }
+  var rt; addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(renderAll, 120); });
+  // ——— общие помощники (графики выше взяты из макета аналитики)
+  var STAR_USD = 0.013;           // config.billing.starUsd — сколько $ разработчик получает за 1 ⭐ (оценка)
+  var COST = { call: 0.0008, draw: 0.03, voiceMin: 0.006 }; // средняя цена: вызов разбора/разговора, картинка, минута голоса
+  function sum(a) { return a.reduce(function (s, v) { return s + v; }, 0); }
+  function fmt(v, d) { return v.toLocaleString("ru-RU", { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d || 0 }); }
+  function usd(v) { return (v < 0 ? "−$" : "$") + fmt(Math.abs(v), Math.abs(v) < 10 ? 2 : 0); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  var SRC = { have: "работает сейчас (зашито в коде)", calc: "посчитать из того, что есть", "new": "нужно сделать" };
+  function badge(src) { return src ? '<span class="src ' + src + ' badge" title="' + SRC[src] + '">' + { have: "есть", calc: "посчитать", "new": "сделать" }[src] + "</span>" : ""; }
+  function kpi(k, v, h, src) { return '<div class="kpi">' + badge(src) + '<span class="k">' + k + '</span><div class="row"><span class="v">' + v + '</span></div><span class="h">' + h + "</span></div>"; }
+  function block(title, desc, inner) { return '<section class="block"><header><h2>' + title + '</h2><p class="d">' + desc + "</p></header>" + inner + "</section>"; }
+  function card(title, desc, inner, src) { return '<div class="card">' + badge(src) + "<h3>" + title + "</h3>" + (desc ? '<p class="d">' + desc + "</p>" : "") + inner + "</div>"; }
+  function flag(kind, ic, html) { return '<div class="flag ' + (kind || "") + '"><span class="ic">' + ic + "</span><span>" + html + "</span></div>"; }
+  function st(kind, text) { return '<span class="status ' + kind + '">' + text + "</span>"; }
+  function table(head, rows, cls) {
+    return '<div class="tbl"><table class="' + (cls || "") + '"><thead><tr>' + head.map(function (h) { return h.charAt(0) === ">" ? '<th class="n">' + h.slice(1) + "</th>" : "<th>" + h + "</th>"; }).join("") +
+      "</tr></thead><tbody>" + rows.map(function (r) { return "<tr>" + r.map(function (c, i) { return head[i] && head[i].charAt(0) === ">" ? '<td class="n">' + c + "</td>" : "<td>" + c + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>";
+  }
+  function num(id, val, unit, opts) {
+    opts = opts || {};
+    return '<label class="num' + (opts.ch ? " ch" : "") + '"><input type="number" inputmode="decimal" data-f="' + id + '" value="' + val + '" min="0" step="' + (opts.step || 1) + '"' + (opts.dis ? " disabled" : "") + ' aria-label="' + (opts.label || id) + '"><i>' + (unit || "") + "</i></label>";
+  }
+  function tg(attr, on, text) { return '<label class="tg"><input type="checkbox" ' + attr + (on ? " checked" : "") + "><span>" + text + "</span></label>"; }
+
+  // ——— состояние макета (только в этом браузере)
+  var BASE_PLANS = [
+    { id: "trial", name: "Проба", who: "каждому новому после /start", on: true, price: 0, days: 7, dayUsd: 0.3, calls: 60, draws: 3, voice: 10, burst: 10,
+      feats: { parse: 1, chat: 1, draw: 1, voice: 1 }, users: 64, avgCalls: 22, avgDraws: 0.5, avgVoice: 1.5, src: "have" },
+    { id: "paid", name: "Подписка", who: "оплатили звёздами в Telegram", on: true, price: 150, days: 30, dayUsd: 1.5, calls: 400, draws: 20, voice: 60, burst: 10,
+      feats: { parse: 1, chat: 1, draw: 1, voice: 1 }, users: 118, avgCalls: 38, avgDraws: 0.5, avgVoice: 1, src: "have" },
+    { id: "gift", name: "Подарок по /invite", who: "приглашённые владельцем", on: true, price: 0, days: 30, dayUsd: 0.3, calls: 60, draws: 3, voice: 10, burst: 10,
+      feats: { parse: 1, chat: 1, draw: 1, voice: 1 }, users: 12, avgCalls: 30, avgDraws: 0.6, avgVoice: 2, src: "have" },
+    { id: "plus", name: "Плюс", who: "черновик: для тех, кому мало подписки", on: false, price: 350, days: 30, dayUsd: 3, calls: 1000, draws: 60, voice: 180, burst: 20,
+      feats: { parse: 1, chat: 1, draw: 1, voice: 1 }, users: 0, avgCalls: 70, avgDraws: 2, avgVoice: 8, src: "new" }
+  ];
+  var BASE_CAPS = { pool: 10, perHour: 30, perDay: 150, open: true, window: 60, showLeft: true,
+    msgLimit: "На сегодня мои силы кончились — продолжу завтра утром. Хотите больше — в подписке лимит выше." };
+  var FEATS = [["parse", "Разбор сообщений"], ["chat", "Разговор"], ["draw", "Картинки"], ["voice", "Голос"]];
+  var FIELDS = { price: ["Цена", "⭐"], days: ["Срок", "дн."], calls: ["Запросов к ИИ в день", "шт."], draws: ["Картинок в день", "шт."], voice: ["Голоса в день", "мин"],
+    burst: ["Частота", "в мин"], dayUsd: ["Денежный предохранитель", "$/день"], pool: ["Общий потолок проб", "$/день"], perHour: ["Регистраций в час", ""], perDay: ["Регистраций в сутки", ""], window: ["Окно частоты", "с"] };
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  var S = { tab: "plans", plans: clone(BASE_PLANS), applied: clone(BASE_PLANS), caps: clone(BASE_CAPS), appliedCaps: clone(BASE_CAPS), hist: [], promos: null, acc: [], news: [], fc: null, flags: null, rollout: 25, paused: false };
+  try { var saved = JSON.parse(localStorage.getItem("maid.tariffsMock") || "{}"); for (var k in saved) if (k in S) S[k] = saved[k]; } catch (e) {}
+  function save() { try { localStorage.setItem("maid.tariffsMock", JSON.stringify(S)); } catch (e) {} }
+  if (!S.promos) S.promos = [
+    { code: "RINA30", gives: "+30 дней подписки", used: 14, max: 50, until: "31.12.2026", on: true },
+    { code: "STREAM7", gives: "+7 дней пробы", used: 41, max: 100, until: "10.12.2026", on: true },
+    { code: "BETA", gives: "+14 дней подписки", used: 20, max: 20, until: "01.11.2026", on: false }
+  ];
+  if (!S.fc) S.fc = { growth: 20, conv: 18, churn: 9, price: 150, server: 12 };
+  if (!S.flags) S.flags = [
+    { name: "Картинки", who: "all", pct: 100, note: "самая дорогая функция: $0,03 за картинку" },
+    { name: "Голос", who: "all", pct: 100, note: "" },
+    { name: "Праздники Рины", who: "all", pct: 100, note: "вышло в 0.1.92" },
+    { name: "Новая экскурсия первого запуска", who: "pct", pct: 30, note: "сравнить, дольше ли остаются новые" },
+    { name: "Сводки за неделю", who: "friends", pct: 0, note: "проверяют друзья" }
+  ];
+
+  // ——— экономика тарифа: средний и худший расход, кто упирается в лимит
+  function econ(p) {
+    var calls = Math.min(p.avgCalls, p.calls), draws = p.feats.draw ? Math.min(p.avgDraws, p.draws) : 0, voice = p.feats.voice ? Math.min(p.avgVoice, p.voice) : 0;
+    var avgDay = Math.min(p.dayUsd, calls * COST.call + draws * COST.draw + voice * COST.voiceMin);
+    var worstDay = Math.min(p.dayUsd, p.calls * COST.call + (p.feats.draw ? p.draws * COST.draw : 0) + (p.feats.voice ? p.voice * COST.voiceMin : 0));
+    var perMonth = 30;
+    var rev = p.price * STAR_USD * (30 / Math.max(1, p.days));
+    var hit = Math.exp(-p.calls / (p.avgCalls * 1.15)); // доля людей, упирающихся в лимит запросов за день
+    return { avgMonth: avgDay * perMonth, worstMonth: worstDay * perMonth, rev: rev, margin: rev - avgDay * perMonth, hitPeople: p.users * hit, trialCost: avgDay * p.days, worstDay: worstDay };
+  }
+  function diffs() {
+    var out = [];
+    S.plans.forEach(function (p, i) {
+      var a = S.applied[i];
+      ["price", "days", "calls", "draws", "voice", "burst", "dayUsd"].forEach(function (f) { if (+p[f] !== +a[f]) out.push({ plan: p, f: f, from: a[f], to: p[f] }); });
+      FEATS.forEach(function (ft) { if (!!p.feats[ft[0]] !== !!a.feats[ft[0]]) out.push({ plan: p, f: "feat", name: ft[1], from: a.feats[ft[0]] ? "вкл" : "выкл", to: p.feats[ft[0]] ? "вкл" : "выкл" }); });
+      if (p.on !== a.on) out.push({ plan: p, f: "on", from: a.on ? "включён" : "выключен", to: p.on ? "включён" : "выключен" });
+    });
+    ["pool", "perHour", "perDay", "window"].forEach(function (f) { if (+S.caps[f] !== +S.appliedCaps[f]) out.push({ plan: null, f: f, from: S.appliedCaps[f], to: S.caps[f] }); });
+    if (S.caps.open !== S.appliedCaps.open) out.push({ plan: null, f: "open", from: S.appliedCaps.open ? "открыта" : "закрыта", to: S.caps.open ? "открыта" : "закрыта" });
+    if (S.caps.showLeft !== S.appliedCaps.showLeft) out.push({ plan: null, f: "showLeft", from: S.appliedCaps.showLeft ? "да" : "нет", to: S.caps.showLeft ? "да" : "нет" });
+    if (S.caps.msgLimit !== S.appliedCaps.msgLimit) out.push({ plan: null, f: "msgLimit", from: "старый текст", to: "новый текст" });
+    return out;
+  }
+  function diffText(d) {
+    var where = d.plan ? d.plan.name + ": " : "Общее: ";
+    var names = { feat: d.name, on: "тариф", open: "регистрация", showLeft: "показывать остаток в виджете", msgLimit: "сообщение при упоре в лимит" };
+    var nm = names[d.f] || FIELDS[d.f][0], unit = FIELDS[d.f] ? " " + FIELDS[d.f][1] : "";
+    return where + "<b>" + nm + "</b> " + d.from + (typeof d.from === "number" || /^[\d.]+$/.test(d.from) ? unit : "") + " → <b>" + d.to + (typeof d.to === "number" || /^[\d.]+$/.test(d.to) ? unit : "") + "</b>";
+  }
+
+  // ——— разделы
+  var V = {};
+  V.plans = function () {
+    var live = S.plans.filter(function (p) { return p.on; });
+    var paid = S.plans[1], e = econ(paid), et = econ(S.plans[0]);
+    var conv = 0.18;
+    var top = '<div class="kpis">' +
+      kpi("Подписка приносит", usd(e.rev), "в месяц с человека: " + paid.price + " ⭐ × $" + STAR_USD + " (оценка из настройки)", "calc") +
+      kpi("Средний расход ИИ", usd(e.avgMonth), "в месяц на подписчика при нынешних привычках", "calc") +
+      kpi("Остаётся с подписчика", '<span class="' + (e.margin >= 0 ? "good" : "badc") + '">' + usd(e.margin) + "</span>", "без сервера и налогов; " + fmt(Math.max(0, e.margin / Math.max(.01, e.rev) * 100)) + "% от выручки", "calc") +
+      kpi("Одна проба стоит", usd(et.trialCost), "за " + S.plans[0].days + " дней; при переходе в подписку " + conv * 100 + "% один подписчик обходится в " + usd(et.trialCost / conv), "calc") + "</div>";
+    var warn = [];
+    if (e.worstMonth > e.rev * 3) warn.push(flag("bad", "!", "<b>Худший случай по подписке — " + usd(e.worstMonth) + " в месяц</b> (человек каждый день выбирает все лимиты), а платит он " + usd(e.rev) + ". Сейчас таких мало, но это главная дыра: потолок стоит в долларах в день, и он выше месячной выручки. Лимиты в штуках ниже — способ закрыть её понятно для человека."));
+    if (S.plans[2].dayUsd === S.plans[0].dayUsd && S.plans[2].calls === S.plans[0].calls) warn.push(flag("info", "i", "<b>Подарок сейчас живёт по лимитам пробы</b>: в базе он хранится как проба, только срок длиннее (<code>access.ts</code>). Здесь у него свои ручки — если нужно, дайте приглашённым лимиты подписки."));
+    if (paid.price !== S.applied[1].price) warn.push(flag("", "★", "<b>Цена меняется только для новых подписок.</b> Подписку в звёздах продлевает сам Telegram по той цене, что была при оформлении (по документации Bot API — проверить на живой оплате). Тем, кто уже подписан, старая цена держится, пока они не отменят подписку."));
+    var cards = '<div class="plans">' + S.plans.map(function (p, i) {
+      var a = S.applied[i], x = econ(p), free = !p.price && p.id !== "plus";
+      function f(id, step, dis) { return num(i + "." + id, p[id], FIELDS[id][1], { step: step, ch: +p[id] !== +a[id], dis: dis, label: p.name + ": " + FIELDS[id][0] }); }
+      return '<div class="pc' + (p.on ? "" : " off") + '">' + badge(p.src) +
+        "<header><div><h3>" + p.name + '</h3><div class="who">' + p.who + " · " + (p.users ? fmt(p.users) + " чел." : "пока никого") + '</div></div></header>' +
+        '<div class="price">' + (free ? "Бесплатно" : fmt(p.price) + ' <span class="st">★</span> <small>за ' + p.days + " дн. ≈ " + usd(p.price * STAR_USD) + "</small>") + "</div>" +
+        (p.id === "plus" ? tg('data-on="' + i + '"', p.on, p.on ? "Тариф показывается людям" : "Тариф выключен — люди его не видят") : "") +
+        '<div class="fl">' +
+          "<span>Цена</span>" + f("price", 10, free) +
+          "<span>Срок</span>" + f("days", 1) + "<hr>" +
+          "<span>Запросов к ИИ в день<em>разбор и разговор; видно человеку</em></span>" + f("calls", 10) +
+          "<span>Картинок в день</span>" + f("draws", 1, !p.feats.draw) +
+          "<span>Голоса в день</span>" + f("voice", 5, !p.feats.voice) +
+          "<span>Частота<em>не больше запросов в минуту</em></span>" + f("burst", 1) +
+          "<span>Денежный предохранитель<em>скрытый потолок, если что-то пошло не так</em></span>" + f("dayUsd", .1) +
+        "</div>" +
+        '<div class="feats">' + FEATS.map(function (ft) { return tg('data-feat="' + i + "." + ft[0] + '"', p.feats[ft[0]], ft[1]); }).join("") + "</div>" +
+        '<div class="econ"><div><div class="k">' + (free ? "Стоит в месяц" : "Приносит") + '</div><div class="v">' + (free ? usd(x.avgMonth) : usd(x.rev)) + '</div></div>' +
+          '<div><div class="k">' + (free ? "Худший случай" : "Остаётся") + '</div><div class="v ' + (free ? "" : x.margin >= 0 ? "good" : "badc") + '">' + (free ? usd(x.worstMonth) : usd(x.margin)) + "</div></div>" +
+          '<div><div class="k">Упираются в лимит</div><div class="v">' + (p.users ? "~" + fmt(x.hitPeople, x.hitPeople < 10 ? 1 : 0) : "—") + '</div></div></div>' +
+        "</div>";
+    }).join("") + "</div>";
+    var friends = card("Друзья и владелец", "9 человек. Без лимитов и без оплаты — так в коде сейчас; ручек здесь нет специально.", "", "have");
+    var defsHtml = '<details class="defs"><summary>Как считаются цифры на карточках</summary><dl>' +
+      "<dt>Приносит</dt><dd>цена × " + STAR_USD + " $ за звезду (оценка, после комиссий), пересчитано на 30 дней</dd>" +
+      "<dt>Средний расход</dt><dd>привычки людей на этом тарифе (средние запросы, картинки, голос в день) × средняя цена вызова, но не больше лимитов; в настоящей админке — из llm_calls за 30 дней</dd>" +
+      "<dt>Худший случай</dt><dd>человек каждый день выбирает все лимиты целиком</dd>" +
+      "<dt>Упираются в лимит</dt><dd>сколько человек в обычный день дойдут до лимита запросов при новых числах</dd>" +
+      "<dt>Цена вызова</dt><dd>разбор/разговор $" + COST.call + ", картинка $" + COST.draw + ", минута голоса $" + COST.voiceMin + " (средние из llm_calls)</dd></dl></details>";
+    return block("Тарифы", "Каждая ручка меняет поведение сервера сразу после «Применить», без выкладки. Изменённые поля подсвечены жёлтым, итог — в плашке внизу.", top + warn.join("") + cards + friends + defsHtml);
+  };
+  V.caps = function () {
+    var c = S.caps, a = S.appliedCaps;
+    function f(id, step) { return num("caps." + id, c[id], FIELDS[id][1], { step: step, ch: +c[id] !== +a[id], label: FIELDS[id][0] }); }
+    var meters = [["Расход всех проб сегодня", 3.4, c.pool, usd], ["Регистраций за этот час", 4, c.perHour, fmt], ["Регистраций за сутки", 23, c.perDay, fmt]];
+    return block("Общие потолки", "Защита всего сервера, а не одного человека: наплыв одноразовых аккаунтов не съест бюджет.",
+      '<div class="grid2">' +
+      card("Ручки", "Сейчас эти числа зашиты в config.ts — меняются только выкладкой.", '<div class="fl" style="margin-top:12px">' +
+        "<span>Общий потолок проб<em>все пробы вместе за день (UTC)</em></span>" + f("pool", 1) +
+        "<span>Регистраций в час</span>" + f("perHour", 5) +
+        "<span>Регистраций в сутки</span>" + f("perDay", 10) +
+        "<span>Окно частоты<em>за сколько секунд считается «в минуту»</em></span>" + f("window", 10) + "<hr>" +
+        "<span>Регистрация новых</span><span>" + tg('data-cap="open"', c.open, c.open ? "открыта" : "закрыта") + "</span>" +
+        "<span>Показывать остаток в виджете<em>«осталось 12 картинок на сегодня»</em></span><span>" + tg('data-cap="showLeft"', c.showLeft, c.showLeft ? "да" : "нет") + "</span></div>", "have") +
+      card("Сейчас", "Насколько заполнены потолки — обновляется раз в минуту.", '<div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">' + meters.map(function (m) {
+        var p = Math.min(100, m[1] / Math.max(1, m[2]) * 100);
+        return '<div class="mrow"><span>' + m[0] + "</span><span>" + m[3](m[1]) + " из " + m[3](+m[2]) + '</span><div class="meter"><b style="width:' + p + "%;background:" + (p > 80 ? "var(--bad)" : p > 60 ? "var(--warn)" : "var(--s1)") + '"></b></div></div>';
+      }).join("") + "</div>", "calc") + "</div>" +
+      card("Что увидит человек, когда лимит кончился", "Текст Рины. Без цифр расхода — только по-человечески и с выходом.", '<textarea class="txt" data-cap="msgLimit" rows="3" style="margin-top:10px">' + esc(c.msgLimit) + "</textarea>", "new"));
+  };
+  V.promo = function () {
+    return block("Промокоды", "Звёздную подписку нельзя продать со скидкой, поэтому промокод дарит дни: как /invite, только для многих сразу и с лимитом.",
+      card("Коды", "", table(["Код", "Что даёт", ">Использовано", "До", "Статус", ""], S.promos.map(function (p, i) {
+        return ["<code>" + esc(p.code) + "</code>", esc(p.gives), p.used + " / " + p.max, p.until, p.on && p.used < p.max ? st("ok", "работает") : st("mute", p.used >= p.max ? "кончился" : "выключен"),
+          '<button class="btn" data-promo="' + i + '">' + (p.on ? "Выключить" : "Включить") + "</button>"];
+      })), "new") +
+      card("Новый код", "", '<div class="calc" style="margin-top:10px">' +
+        '<label>Код<input class="txt" id="pcode" value="SPRING" maxlength="20"></label>' +
+        '<label>Что даёт<select class="txt" id="pgive"><option>+7 дней пробы</option><option selected>+30 дней подписки</option><option>+14 дней подписки</option></select></label>' +
+        '<label>Сколько раз<input class="txt" id="pmax" type="number" value="100" min="1"></label>' +
+        '<label>До<input class="txt" id="puntil" value="31.01.2027"></label></div><div class="btns" style="margin-top:10px"><button class="btn primary" id="padd">Создать</button><span class="note">Один человек — один код. Оплаченную подписку код не продлевает поверх, а добавляет дни после её конца.</span></div>', "new"));
+  };
+  V.hist = function () {
+    var rows = S.hist.slice().reverse().concat([
+      { when: "24.11.2026 13:10", who: "владелец", what: "Подписка: цена 150 ⭐ (запуск оплаты)", n: 0 },
+      { when: "20.11.2026 09:02", who: "владелец", what: "Проба: денежный предохранитель $0,30/день", n: 41 }
+    ]);
+    return block("История изменений тарифов", "Каждое «Применить» — строка здесь. Любую можно вернуть одной кнопкой: сервер снова возьмёт прежние числа.",
+      card("Изменения", "", table(["Когда", "Кто", "Что", ">Задело людей", ""], rows.map(function (r, i) {
+        return [r.when, r.who, r.what, fmt(r.n), i < S.hist.length ? '<button class="btn" data-undo="' + (S.hist.length - 1 - i) + '">Вернуть как было</button>' : '<span class="note">—</span>'];
+      })), "new"));
+  };
+  V.account = function () {
+    var acts = [
+      ["extend", "Продлить срок", "добавить дни к пробе, подарку или подписке", '<div class="two"><input class="txt" type="number" value="7" min="1" aria-label="Дней"><select class="txt"><option>к текущему сроку</option><option>с сегодняшнего дня</option></select></div>'],
+      ["give", "Выдать подписку", "без оплаты, на срок; помечается как подарок", '<div class="two"><input class="txt" type="number" value="30" min="1" aria-label="Дней"><select class="txt"><option>Подписка</option><option>Плюс</option></select></div>'],
+      ["limit", "Поднять лимит на сегодня", "если человек упёрся, а дело срочное", '<div class="two"><input class="txt" type="number" value="100" min="1" aria-label="Запросов"><select class="txt"><option>запросов</option><option>картинок</option></select></div>'],
+      ["refund", "Вернуть звёзды", "за последний платёж: 150 ⭐ от 01.11.2026; доступ сразу закончится", ""],
+      ["freeze", "Заморозить аккаунт", "Рина перестаёт отвечать, данные остаются; можно разморозить", ""]
+    ];
+    return block("Аккаунт", "Всё по номеру аккаунта. Тексты сообщений, чаты и названия программ админка не показывает — только счётчики.",
+      '<div class="acc">' +
+      card("Найти", "Номер из раздела «Пользователи» или из сообщения человека.", '<div class="search" style="margin-top:10px"><label class="num"><input id="accq" value="1042" aria-label="Номер аккаунта"></label><button class="btn">Найти</button></div>' +
+        '<dl class="facts"><dt>Номер</dt><dd>#1042</dd><dt>Тариф</dt><dd>Подписка до 01.12.2026 ' + st("ok", "идёт") + "</dd><dt>С нами</dt><dd>с 03.10.2026, 52 дня</dd>" +
+        "<dt>Сегодня</dt><dd>37 из 400 запросов · 2 из 20 картинок · $0,05 из $1,50</dd><dt>За 30 дней</dt><dd>$1,48 на ИИ · 1 платёж 150 ⭐</dd>" +
+        "<dt>Устройства</dt><dd>виджет 0.1.92, айфон</dd><dt>Был в сети</dt><dd>12 минут назад</dd><dt>Обращения</dt><dd>1, закрыто</dd></dl>", "calc") +
+      card("Действия", "Каждое просит причину и попадает в журнал админа. Человеку Рина пишет, что произошло.", '<div class="act">' + acts.map(function (a, i) {
+        return '<div class="row"><span>' + a[1] + "<em>" + a[2] + '</em></span><button class="btn' + (a[0] === "freeze" || a[0] === "refund" ? " danger" : "") + '" data-open="' + i + '">' + a[1].split(" ")[0] + "…</button>" +
+          '<div class="inline" id="in' + i + '">' + a[3] + '<input class="txt" placeholder="Причина (обязательно): например, «сбой оплаты 24.11»" aria-label="Причина"><div class="btns"><button class="btn ' + (a[0] === "freeze" || a[0] === "refund" ? "danger" : "primary") + '" data-do="' + i + '">Подтвердить</button><button class="btn" data-open="' + i + '">Отмена</button></div></div></div>';
+      }).join("") + '</div><div id="accdone"></div>', "new") + "</div>" +
+      (S.acc.length ? card("Сделано в этом макете", "", table(["Когда", "Действие", "Причина"], S.acc.map(function (r) { return [r.when, r.what, esc(r.why)]; }))) : ""));
+  };
+  V.alerts = function () {
+    var rules = [
+      ["Расход на ИИ за день выше", "15", "$", "вчера, 22:40", true],
+      ["Общий потолок проб заполнен на", "80", "%", "не было", true],
+      ["Ошибок сервера за 10 минут больше", "2", "%", "20.11, 03:12", true],
+      ["Сервер не отвечает дольше", "2", "мин", "не было", true],
+      ["Оплата звёздами не прошла", "1", "раз", "не было", true],
+      ["Регистраций за час больше", "25", "", "не было", true],
+      ["Падений виджета на версии больше", "1", "на 100 запусков", "сегодня, 11:05", true],
+      ["Последняя копия базы старше", "26", "ч", "не было", true],
+      ["Человек упёрся в денежный предохранитель", "1", "раз", "вчера, 19:14", false]
+    ];
+    return block("Оповещения", "Админка сама пишет владельцу в Telegram, когда что-то идёт не так, — не нужно заходить и проверять.",
+      card("Правила", "Ночью (00:00–08:00) приходят только красные: сервер упал, ошибки, оплата.", table(["Вкл", "Когда писать", ">Порог", "Последний раз"], rules.map(function (r, i) {
+        return [tg('aria-label="' + r[0] + '"', r[4], ""), r[0], '<span style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-end"><label class="num" style="width:72px"><input type="number" value="' + r[1] + '" aria-label="Порог"></label><span class="note">' + r[2] + "</span></span>", r[3]];
+      })), "new") +
+      card("Последние оповещения", "Так сообщение выглядит в Telegram.", table(["Когда", "Что", "Статус"], [
+        ["сегодня, 11:05", "Виджет 0.1.92: 1,4 падения на 100 запусков (было 0,3). Выпуск приостановлен на 25%.", st("warn", "смотрю")],
+        ["вчера, 22:40", "Расход на ИИ за день $15,80 при пороге $15. Больше всех: #1187 — $1,50 (упёрся в предохранитель).", st("ok", "разобрано")],
+        ["20.11, 03:12", "Ошибок сервера 4% за 10 минут: OpenRouter отвечал 502. Через 6 минут прошло само.", st("ok", "прошло")]
+      ]), "new"));
+  };
+  V.flags = function () {
+    return block("Переключатели функций", "Включить функцию части людей без новой версии виджета: сначала друзьям, потом 10%, потом всем. Сломалась — выключить за секунду.",
+      card("Функции", "Проценты считаются по номеру аккаунта, поэтому один и тот же человек не прыгает туда-обратно.", table(["Функция", "Кому", ">Доля", "Заметка"], S.flags.map(function (f, i) {
+        return [f.name, '<select class="txt" data-flag="' + i + '" style="width:auto"><option value="all"' + (f.who === "all" ? " selected" : "") + '>всем</option><option value="pct"' + (f.who === "pct" ? " selected" : "") + '>доле людей</option><option value="friends"' + (f.who === "friends" ? " selected" : "") + '>только друзьям</option><option value="off"' + (f.who === "off" ? " selected" : "") + ">никому</option></select>",
+          f.who === "pct" ? '<span style="display:inline-flex;gap:8px;align-items:center"><input class="range" type="range" min="1" max="99" value="' + f.pct + '" data-pct="' + i + '" style="width:110px" aria-label="Доля"><b>' + f.pct + "%</b></span>" : f.who === "all" ? "100%" : f.who === "friends" ? "9 чел." : "0%", '<span class="note">' + f.note + "</span>"];
+      }), "ft"), "new"));
+  };
+  V.audit = function () {
+    var rows = S.acc.map(function (r) { return [r.when, "владелец", r.what, esc(r.why)]; }).reverse().concat(S.hist.slice().reverse().map(function (h) { return [h.when, "владелец", h.what, "—"]; })).concat([
+      ["24.11.2026 13:10", "владелец", "Тарифы: подписка 150 ⭐", "запуск оплаты"],
+      ["23.11.2026 18:41", "владелец", "#1187: продлить пробу на 7 дней", "не успел попробовать из-за сбоя"],
+      ["22.11.2026 10:05", "владелец", "Регистрация закрыта на 2 часа", "наплыв из одного канала"]
+    ]);
+    return block("Журнал действий администратора", "Кто, когда и зачем поменял тариф, выдал подписку или поднял лимит. Нужен, когда помогать начнёт кто-то ещё.",
+      card("Действия", "", table(["Когда", "Кто", "Что", "Причина"], rows), "new"));
+  };
+  V.releases = function () {
+    var vers = [["0.1.92", 38, C.s1], ["0.1.91", 34, C.s3], ["0.1.90", 15, C.s4], ["старше", 13, C.s6]];
+    return block("Выпуски виджета", "Сколько людей на какой версии и не стало ли хуже после выпуска.",
+      '<div class="kpis">' + kpi("На последней версии", "38%", "0.1.92 вышла сегодня; за сутки обновляется ~40%", "new") + kpi("Падений на 100 запусков", '<span class="warnc">1,4</span>', "у 0.1.92; у 0.1.91 — 0,3", "new") + kpi("Старше месяца", "13%", "этих людей стоит позвать обновиться", "new") + "</div>" +
+      card("Версии у людей", "По последнему входу каждого виджета за 7 дней.", '<div class="stack">' + vers.map(function (v) { return '<b style="width:' + v[1] + "%;background:" + v[2] + '">' + v[0] + " · " + v[1] + "%</b>"; }).join("") + "</div>" +
+        legend(vers.map(function (v) { return [v[0] + " — " + v[1] + "%", v[2]]; })), "calc") +
+      '<div class="grid2">' +
+      card("Поэтапный выпуск 0.1.92", "Обновление получает только часть людей; если падений больше обычного — выпуск сам встаёт на паузу.", '<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px"><div class="mrow"><span>Получают обновление</span><span><b id="rollv">' + S.rollout + '%</b></span></div><input class="range" type="range" min="5" max="100" step="5" value="' + S.rollout + '" id="roll" aria-label="Доля выпуска">' +
+        (S.paused ? flag("bad", "‖", "<b>Выпуск на паузе</b> — сработало оповещение о падениях. Новые люди остаются на 0.1.91.") : flag("info", "i", "Выпуск идёт. Пауза включится сама, если падений станет больше 1 на 100 запусков.")) +
+        '<div class="btns"><button class="btn' + (S.paused ? " primary" : " danger") + '" id="pause">' + (S.paused ? "Продолжить выпуск" : "Поставить на паузу") + '</button><button class="btn">Откатить на 0.1.91</button></div></div>', "new") +
+      card("По версиям", "", table(["Версия", ">Людей", ">Запусков", ">Падений на 100", ""], [
+        ["0.1.92", "151", "612", '<span class="warnc">1,4</span>', st("warn", "пауза на 25%")], ["0.1.91", "136", "2 940", "0,3", st("ok", "норма")], ["0.1.90", "60", "1 210", "0,4", st("ok", "норма")], ["0.1.89 и старше", "52", "980", "0,9", st("mute", "старые")]
+      ]), "new") + "</div>");
+  };
+  V.crashes = function () {
+    return block("Падения виджета", "Виджет сам присылает, где упал: тип ошибки и место в коде. Ни текстов, ни названий программ.",
+      card("Сгруппировано по месту", "Одинаковые падения склеены в одну строку.", table(["Ошибка", "Где", "Версии", ">Раз", ">Людей", "Впервые", "Статус"], [
+        ["TypeError: cannot read 'x'", "renderer/habitparty.js:212", "0.1.92", "9", "7", "сегодня", st("bad", "новое")],
+        ["Окно не нашлось после сна", "main/window.js:88", "0.1.90–0.1.92", "14", "11", "02.11", st("warn", "известно")],
+        ["Нет связи с сервером > 30 с", "renderer/net.js:41", "все", "31", "22", "давно", st("mute", "не ошибка")],
+        ["Нехватка памяти при анимации", "renderer/sprite.js:150", "0.1.89", "3", "2", "15.10", st("ok", "исправлено в 0.1.90")]
+      ]), "new"));
+  };
+  V.backups = function () {
+    return block("Копии базы", "Без копии один сбой диска на сервере стирает всё: подписки, привычки, историю.",
+      '<div class="kpis">' + kpi("Последняя копия", "сегодня, 04:00", "раз в сутки; хранится 14 дней", "new") + kpi("Размер", "184 МБ", "+3 МБ за неделю", "new") + kpi("Где лежит", "второе место", "не на том же сервере, что база", "new") + kpi("Восстановление проверено", '<span class="warnc">ни разу</span>', "копия, которую не пробовали поднять, — не копия", "new") + "</div>" +
+      card("Последние копии", "", table(["Когда", ">Размер", "Проверка", ""], [
+        ["24.11.2026 04:00", "184 МБ", st("ok", "файл целый"), '<button class="btn">Скачать</button>'], ["23.11.2026 04:00", "183 МБ", st("ok", "файл целый"), '<button class="btn">Скачать</button>'], ["22.11.2026 04:00", "183 МБ", st("ok", "файл целый"), '<button class="btn">Скачать</button>']
+      ]) + '<div class="btns" style="margin-top:10px"><button class="btn primary">Проверить восстановление</button><span class="note">Поднимает копию во временную базу рядом и сверяет число записей. Настоящую базу не трогает.</span></div>', "new"));
+  };
+  V.tickets = function () {
+    return block("Обращения", "В виджете — кнопка «Сообщить о проблеме». Человек сам выбирает тему и пишет текст; текст приходит владельцу в Telegram, здесь — только счётчики и статус.",
+      '<div class="kpis">' + kpi("Открыто", "4", "старшее ждёт 2 дня", "new") + kpi("За 7 дней", "11", "+3 к прошлой неделе", "new") + kpi("Ответ в среднем", "5 ч", "цель — в тот же день", "new") + "</div>" +
+      card("Последние", "", table(["#", "Аккаунт", "Тема", "Версия", "Тариф", "Ждёт", "Статус"], [
+        ["58", "#1201", "Оплата", "0.1.92", "Проба", "2 ч", st("bad", "открыто")], ["57", "#1042", "Рина не отвечает", "0.1.91", "Подписка", "1 д", st("warn", "в работе")],
+        ["56", "#0977", "Окно пропало", "0.1.90", "Подписка", "2 д", st("warn", "в работе")], ["55", "#1150", "Идея", "0.1.92", "Проба", "—", st("ok", "закрыто")]
+      ]), "new"));
+  };
+  V.news = function () {
+    var last = S.news.length ? S.news[S.news.length - 1].text : "Сегодня в 3:00 по Москве обновляю сервер — минут на десять я задумаюсь.";
+    return block("Объявления", "Короткое сообщение всем или части людей — Рина скажет его в виджете один раз. Для важного, не для рекламы.",
+      '<div class="grid2">' +
+      card("Новое объявление", "", '<div class="calc" style="margin-top:10px;grid-template-columns:1fr"><label>Текст (до 160 знаков)<textarea class="txt" id="ntext" rows="3" maxlength="160">' + esc(last) + "</textarea></label>" +
+        '<div class="calc"><label>Кому<select class="txt" id="nwho"><option>всем</option><option>на версии старше 0.1.91</option><option>на пробе</option><option>подписчикам</option></select></label><label>Когда<select class="txt" id="nwhen"><option>сразу</option><option>завтра в 10:00</option></select></label></div></div>' +
+        '<div class="btns" style="margin-top:10px"><button class="btn primary" id="nsend">Отправить</button><span class="note" id="nhint">Увидят примерно 399 человек</span></div>', "new") +
+      card("Как увидят", "Пузырь Рины в виджете.", '<div style="margin-top:14px"><div class="bubble"><b>Рина</b><span id="nprev">' + esc(last) + "</span></div></div>") + "</div>" +
+      (S.news.length ? card("Отправлено", "", table(["Когда", "Кому", "Текст"], S.news.slice().reverse().map(function (n) { return [n.when, n.who, esc(n.text)]; }))) : ""));
+  };
+  V.forecast = function () {
+    var f = S.fc, months = [], rev = [], cost = [], users = 400, subs = 118, paid = S.plans[1], e = econ(paid);
+    var trialCost = econ(S.plans[0]).trialCost;
+    for (var m = 0; m < 12; m++) {
+      var newcomers = users * f.growth / 100;
+      subs = subs * (1 - f.churn / 100) + newcomers * f.conv / 100;
+      users += newcomers;
+      rev.push(subs * f.price * STAR_USD);
+      cost.push(subs * e.avgMonth + newcomers * trialCost + f.server + users * 0.004);
+      var d = new Date(2026, 11 + m, 1); months.push(["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"][d.getMonth()] + " " + String(d.getFullYear()).slice(2));
+    }
+    draw("c-fc", "line", months, [{ name: "Выручка, $", color: C.s3, values: rev, area: true }, { name: "Расходы, $", color: C.s2, values: cost }], { fmt: usd });
+    var profit = rev.map(function (v, i) { return v - cost[i]; });
+    draw("c-fp", "bar", months, [{ name: "Остаётся, $", color: C.s1, values: profit }], { fmt: usd });
+    var be = -1; for (var j = 11; j >= 0 && profit[j] > 0; j--) be = j; // с какого месяца и до конца года в плюсе
+    return block("Прогноз на год", "Что будет при нынешнем росте. Подвиньте числа — график пересчитается. Расход на подписчика берётся из раздела «Тарифы».",
+      card("Допущения", "", '<div class="calc" style="margin-top:10px">' +
+        '<label>Новых в месяц, % от всех<input class="txt" type="number" data-fc="growth" value="' + f.growth + '" min="0"></label>' +
+        '<label>Из пробы в подписку, %<input class="txt" type="number" data-fc="conv" value="' + f.conv + '" min="0" max="100"></label>' +
+        '<label>Отменяют подписку в месяц, %<input class="txt" type="number" data-fc="churn" value="' + f.churn + '" min="0" max="100"></label>' +
+        '<label>Цена подписки, ⭐<input class="txt" type="number" data-fc="price" value="' + f.price + '" min="1" step="10"></label>' +
+        '<label>Сервер в месяц, $<input class="txt" type="number" data-fc="server" value="' + f.server + '" min="0"></label></div>', "calc") +
+      '<div class="kpis">' + kpi("Подписчиков через год", fmt(subs), "сейчас 118", "calc") + kpi("Выручка в последний месяц", usd(rev[11]), "расходы " + usd(cost[11]) + ", остаётся " + usd(profit[11]), "calc") +
+        kpi("Выходим в плюс", be < 0 ? '<span class="badc">не выходим</span>' : be === 0 ? '<span class="good">уже</span>' : months[be], be < 0 ? "поднимите цену, конверсию или снизьте лимиты" : "выручка выше всех расходов", "calc") + "</div>" +
+      card("Выручка и расходы по месяцам", "Расходы = ИИ подписчиков + пробы новых + сервер.", '<div class="chart tall" id="c-fc"></div>' + legend([["Выручка", C.s3], ["Расходы", C.s2]])) +
+      card("Сколько остаётся каждый месяц", "Выручка минус расходы. Ниже нуля — месяц в минус.", '<div class="chart" id="c-fp"></div>'));
+  };
+  V.plan = function () {
+    return block("План работ", "Порядок: сначала то, что защищает деньги и данные, потом удобства.",
+      card("Этапы", "", table(["Этап", "Что сделать", "Почему сейчас"], [
+        ["1. Тарифы из базы", "Числа из config.billing переезжают в таблицу tariffs (значения по умолчанию — те же). Сервер читает их раз в минуту; раздел «Тарифы» и «Общие потолки» с плашкой «Применить» и историей; проверка чисел на сервере (не ноль, не меньше нуля).", "Закрывает главную дыру: менять лимиты без выкладки"],
+        ["2. Лимиты в штуках", "Счётчики запросов, картинок и минут голоса на человека в день; денежный потолок остаётся предохранителем. Остаток — в ответе /api/me для виджета.", "Человеку понятно, сколько осталось; худший случай ограничен"],
+        ["3. Аккаунт и журнал", "Действия по номеру: продлить, выдать, поднять лимит, вернуть звёзды (refundStarPayment уже есть), заморозить. Каждое — с причиной в журнал.", "Без этого любую жалобу решать правкой базы"],
+        ["4. Оповещения и копии", "Правила по порогам → сообщение владельцу в Telegram; ночная копия базы на второе место и кнопка проверки восстановления.", "Узнать о беде раньше людей; не потерять всё"],
+        ["5. Выпуски и падения", "Виджет шлёт тип ошибки и место; поэтапный выпуск через stagingPercentage в latest.yml (electron-updater это умеет); авто-пауза.", "Плохой выпуск видно за час"],
+        ["6. Остальное", "Переключатели функций, промокоды, обращения, объявления, прогноз.", "Удобства, когда людей станет больше"]
+      ], "plan"), "new"));
+  };
+  function legend(items) { return '<div class="legend">' + items.map(function (it) { return '<span><i style="background:' + it[1] + '"></i>' + it[0] + "</span>"; }).join("") + "</div>"; }
+
+  // ——— отрисовка и события
+  var view = document.getElementById("view");
+  var TAB_OF = { plans: "plans", account: "account", releases: "releases", tickets: "tickets", forecast: "forecast" };
+  function stamp() { var d = new Date(); return pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear() + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function draftBar() {
+    if (S.tab !== "plans" && S.tab !== "caps") return "";
+    var d = diffs(); if (!d.length) return "";
+    var touched = 0, seen = {};
+    d.forEach(function (x) { if (x.plan && !seen[x.plan.id]) { seen[x.plan.id] = 1; touched += x.plan.users; } else if (!x.plan && !seen.all) { seen.all = 1; touched = 399; } });
+    return '<div class="draft" role="region" aria-label="Несохранённые изменения"><div><b>Не применено: ' + d.length + "</b> · заденет ~" + fmt(Math.min(399, touched)) + " чел.</div><ul>" + d.map(function (x) { return "<li>" + diffText(x) + "</li>"; }).join("") +
+      '</ul><div class="btns"><button class="btn primary" id="apply">Применить</button><button class="btn" id="reset">Сбросить</button><span class="note">Сервер возьмёт новые числа в течение минуты. Людям, у кого лимит стал меньше, Рина скажет об этом заранее.</span></div></div>';
+  }
+  function go(keepFocus) {
+    var act = document.activeElement, key = act && act.dataset ? (act.dataset.f || act.dataset.fc) : null, pos = null;
+    try { if (key && act.selectionStart != null) pos = act.selectionStart; } catch (e) {}
+    charts = [];
+    document.querySelectorAll(".sub button").forEach(function (b) { b.classList.toggle("on", b.dataset.tab === S.tab); });
+    document.querySelectorAll(".side a[data-go]").forEach(function (a) { a.classList.toggle("on", TAB_OF[a.dataset.go] && groupOf(S.tab) === groupOf(a.dataset.go)); });
+    view.innerHTML = V[S.tab]() + draftBar();
+    renderAll(); save();
+    if (keepFocus && key) { var el = view.querySelector('[data-f="' + key + '"],[data-fc="' + key + '"]'); if (el) { el.focus(); try { if (pos != null) el.setSelectionRange(pos, pos); } catch (e) {} } }
+  }
+  function groupOf(t) { return { plans: 1, caps: 1, promo: 1, hist: 1, account: 2, alerts: 2, flags: 2, audit: 2, releases: 3, crashes: 3, backups: 3, tickets: 4, news: 4, forecast: 5, plan: 6 }[t]; }
+  view.addEventListener("input", function (e) {
+    var t = e.target, d = t.dataset;
+    if (d.cap === "msgLimit") { S.caps.msgLimit = t.value; save(); var bar = view.querySelector(".draft"); if (!bar !== !diffs().length) { var p = t.selectionStart; go(); var ta = view.querySelector('[data-cap="msgLimit"]'); ta.focus(); ta.setSelectionRange(p, p); } }
+    else if (d.pct) { S.flags[+d.pct].pct = +t.value; t.nextElementSibling.textContent = t.value + "%"; save(); }
+    else if (t.id === "roll") { S.rollout = +t.value; document.getElementById("rollv").textContent = t.value + "%"; save(); }
+    else if (t.id === "ntext") document.getElementById("nprev").textContent = t.value;
+  });
+  view.addEventListener("change", function (e) {
+    var t = e.target, d = t.dataset;
+    if (d.f || d.fc) {
+      var v = parseFloat(t.value); if (!isFinite(v) || v < 0) { t.value = d.f ? "" : t.value; return; }
+      if (d.fc) S.fc[d.fc] = v; else { var parts = d.f.split("."); if (parts[0] === "caps") S.caps[parts[1]] = v; else S.plans[+parts[0]][parts[1]] = v; }
+      setTimeout(function () { go(true); }, 0); // после того как фокус перешёл к следующему полю
+    }
+    else if (d.feat) { var p = d.feat.split("."); S.plans[+p[0]].feats[p[1]] = t.checked ? 1 : 0; go(); }
+    else if (d.on) { S.plans[+d.on].on = t.checked; go(); }
+    else if (d.cap === "open" || d.cap === "showLeft") { S.caps[d.cap] = t.checked; go(); }
+    else if (d.flag) { S.flags[+d.flag].who = t.value; if (t.value === "pct" && !S.flags[+d.flag].pct) S.flags[+d.flag].pct = 10; go(); }
+    else if (t.id === "nwho") document.getElementById("nhint").textContent = "Увидят примерно " + { "всем": 399, "на версии старше 0.1.91": 112, "на пробе": 64, "подписчикам": 118 }[t.value] + " человек";
+  });
+  view.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var d = b.dataset;
+    if (b.id === "apply") {
+      var df = diffs(), n = 0, seen = {};
+      df.forEach(function (x) { if (x.plan && !seen[x.plan.id]) { seen[x.plan.id] = 1; n += x.plan.users; } if (!x.plan) n = 399; });
+      S.hist.push({ when: stamp(), who: "владелец", what: df.map(function (x) { return diffText(x).replace(/<[^>]+>/g, ""); }).join("; "), n: Math.min(399, n), before: { plans: clone(S.applied), caps: clone(S.appliedCaps) } });
+      S.applied = clone(S.plans); S.appliedCaps = clone(S.caps); go();
+    } else if (b.id === "reset") { S.plans = clone(S.applied); S.caps = clone(S.appliedCaps); go(); }
+    else if (d.undo != null) {
+      var h = S.hist[+d.undo]; S.applied = clone(h.before.plans); S.appliedCaps = clone(h.before.caps); S.plans = clone(h.before.plans); S.caps = clone(h.before.caps);
+      S.hist.push({ when: stamp(), who: "владелец", what: "Вернул как было до " + h.when, n: h.n, before: { plans: clone(S.applied), caps: clone(S.appliedCaps) } }); go();
+    } else if (d.promo != null) { S.promos[+d.promo].on = !S.promos[+d.promo].on; go(); }
+    else if (b.id === "padd") {
+      var code = (document.getElementById("pcode").value || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+      if (!code) return;
+      S.promos.unshift({ code: code, gives: document.getElementById("pgive").value, used: 0, max: Math.max(1, +document.getElementById("pmax").value || 1), until: document.getElementById("puntil").value, on: true }); go();
+    } else if (d.open != null) { document.getElementById("in" + d.open).classList.toggle("open"); }
+    else if (d["do"] != null) {
+      var box = document.getElementById("in" + d["do"]), why = box.querySelector('input[aria-label="Причина"]');
+      if (!why.value.trim()) { why.focus(); why.style.borderColor = "var(--bad)"; return; }
+      var names = ["Продлить срок", "Выдать подписку", "Поднять лимит на сегодня", "Вернуть звёзды", "Заморозить аккаунт"];
+      var extra = box.querySelector('input[type="number"]');
+      S.acc.push({ when: stamp(), what: "#1042: " + names[+d["do"]].toLowerCase() + (extra ? " — " + extra.value : ""), why: why.value.trim() }); go();
+      document.getElementById("accdone").innerHTML = '<p class="done">Готово. Записано в журнал админа, Рина сообщила человеку.</p>';
+    } else if (b.id === "pause") { S.paused = !S.paused; go(); }
+    else if (b.id === "nsend") { var tx = document.getElementById("ntext").value.trim(); if (!tx) return; S.news.push({ when: stamp(), who: document.getElementById("nwho").value, text: tx }); go(); }
+  });
+  document.querySelectorAll(".sub button").forEach(function (b) { b.addEventListener("click", function () { S.tab = b.dataset.tab; go(); window.scrollTo({ top: 0 }); }); });
+  document.querySelectorAll(".side a[data-go]").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); S.tab = a.dataset.go; go(); window.scrollTo({ top: 0 }); }); });
+  var srcT = document.getElementById("srcToggle");
+  srcT.addEventListener("click", function () { var on = srcT.getAttribute("aria-pressed") !== "true"; srcT.setAttribute("aria-pressed", String(on)); document.getElementById("view").classList.toggle("showsrc", on); });
+  if (!V[S.tab]) S.tab = "plans";
+  go();
+})();
+</script>
