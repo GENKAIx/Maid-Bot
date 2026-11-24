@@ -124,6 +124,14 @@ export async function noteDesktopDay(store: Store, u: Pick<User, "id" | "tz">, v
   await store.markDesktopDay(u.id, day, version, 0).catch((e) => console.error("[desktop-days]", e));
 }
 
+/** Аккаунт удалён (admin-account.ts): забыть ограничитель, отметки дня и счёт мест этого человека. */
+export function forgetCrashUser(userId: number) {
+  lastBatch.delete(userId);
+  for (const k of seenToday) if (k.endsWith(`	${userId}`)) seenToday.delete(k);
+  for (const k of daySeen.keys()) if (k.startsWith(`${userId}	`)) daySeen.delete(k);
+  for (const k of dayUse.keys()) if (k.startsWith(`${userId}	`)) dayUse.delete(k);
+}
+
 /** Для тестов: забыть ограничитель и отметки. */
 export function resetCrashes() {
   lastBatch.clear();

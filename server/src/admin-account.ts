@@ -4,6 +4,10 @@ import {
   accessOf, BONUS_PREFIX, dayCapOf, endedOf, GRACE_MS, isFrozen, ownerIds, quotaDay, quotaResetAt, tariffKindOf, todayLimits, trialLenOf,
   type Quota,
 } from "./access.ts";
+import { resetAnalyticsCache } from "./admin-analytics.ts";
+import { forgetPresence } from "./auth.ts";
+import { forgetCrashUser } from "./crashes.ts";
+import { forgetFeatureUser } from "./feature-events.ts";
 import { tariffs, unpricedOf } from "./tariffs.ts";
 import { addDays, dayKey } from "./time.ts";
 
@@ -24,6 +28,15 @@ import { addDays, dayKey } from "./time.ts";
 //    не удаляются. Идущая подписка Telegram при заморозке отменяется (Billing.cancel: продление выключено, журнал canceled), при
 //    разморозке человеку — как возобновить (/resume_sub). Продлить и подарить замороженному нельзя (409): сначала разморозить.
 //    Владельца (ADMIN_CHAT_IDS, ALLOWED_CHAT_IDS) и самого себя заморозить нельзя.
+//  • delete — удалить аккаунт насовсем (тестовые аккаунты: проверить регистрацию заново с того же Telegram). Кроме причины — confirm:
+//    номер аккаунта, набранный вручную (цифры, можно с «#»; не совпал — 400). Владельца, админа и самого себя — нельзя (403). Идущая
+//    подписка — сперва отменить продление, как при заморозке; не вышло — 409, удаление не начинается (после него Telegram id и
+//    charge_id стёрты, и отменить подписку с сервера уже нечем). Всё — одной транзакцией (Store.deleteAccount: строки человека во
+//    всех таблицах, его ключи kv — и отметки /paysupport по Telegram id, оплаты и журнал подписки — отвязать на номер −id, расход
+//    модели — на 0), строка журнала админа — в той же транзакции; сбой — откат всего, строка delete-fail (и «продление отменено»,
+//    если отменилось) и 500 админу, письма нет. Память сервера про номер (частота ИИ, присутствие, счётчики фич и падений, кэш
+//    аналитики) — забыть; через SWEEP_AFTER_MS — Store.sweepOrphans: убрать то, что дописали начатые до удаления дела. Письмо
+//    человеку — после удаления, только в Telegram (tellChat; ленты уже нет). Отменить нельзя: вернуть — только из ночной копии базы.
 // Возврат звёзд — не здесь: POST /api/admin/refund (Billing.refund) с причиной и хвостом выбранной оплаты.
 // Человеку о продлении, подарке, прибавке и заморозке — короткое письмо (tell: Telegram, если привязан, и лента уведомлений).
 
@@ -39,11 +52,13 @@ export const MAX_ACCOUNT_ID = 2_147_483_647;
 /** Наибольшая прибавка за одно действие «Поднять лимит на сегодня». */
 export const BONUS_MAX = { calls: 1000, draws: 100, voice_min: 120 } as const;
 export type BonusWhat = keyof typeof BONUS_MAX;
-export const ACCOUNT_ACTIONS = ["extend", "grant", "bonus", "freeze", "unfreeze"] as const;
+/** Через сколько после удаления ещё раз убрать хвосты удалённого (Store.sweepOrphans). */
+export const SWEEP_AFTER_MS = 120_000;
+export const ACCOUNT_ACTIONS = ["extend", "grant", "bonus", "freeze", "unfreeze", "delete"] as const;
 export type AccountAction = (typeof ACCOUNT_ACTIONS)[number];
 
 /** Строки журнала админа про один аккаунт (карточка): действия отсюда и возврат звёзд. */
-const ACCOUNT_LOG = new Set<string>([...ACCOUNT_ACTIONS, "refund", "refund-fail", "ticket_answer", "ticket_status"]);
+const ACCOUNT_LOG = new Set<string>([...ACCOUNT_ACTIONS, "refund", "refund-fail", "delete-fail", "ticket_answer", "ticket_status"]);
 
 export interface AccountDeps {
   store: Store;
@@ -53,6 +68,10 @@ export interface AccountDeps {
   cancelSub?: (u: User) => Promise<{ ok: boolean; text: string }>;
   owners?: () => string[];
   clock?: () => Date;
+  /** Письмо только в Telegram, по chat_id (без ленты) — удалённому: его записи users и ленты уже нет. */
+  tellChat?: (chatId: string, text: string) => Promise<void>;
+  /** Забыть номер в памяти, которой у этого модуля нет (частота ИИ у AiGate) — после удаления аккаунта. */
+  forget?: (id: number) => void;
 }
 
 const DAY = 86_400_000;
@@ -183,7 +202,54 @@ export async function accountAction(deps: AccountDeps, by: User, id: number, act
     }
   };
   const free = u.plan === "friend" || isOwner(u, owners);
+  /** Идёт подписка — отменить продление (заморозка и удаление): canceled, failed или "" (подписки нет). */
+  const stopRenewal = async (): Promise<"" | "canceled" | "failed"> => {
+    if (!(u.sub_charge_id && !Number(u.sub_canceled) && liveTerm(u, now))) return "";
+    const r = deps.cancelSub ? await deps.cancelSub(u).catch((e: Error) => ({ ok: false, text: e.message })) : { ok: false, text: "оплата выключена" };
+    return r.ok ? "canceled" : "failed";
+  };
   let text: string;
+
+  if (action === "delete") {
+    if (u.id === by.id || isOwner(u, owners)) throw new AccountError(403, "владельца и админа удалить нельзя");
+    // Номер — цифрами, по желанию с «#» (как поле на сайте, accountQuery): «01042» — это #1042.
+    const typed = typeof b.confirm === "number" ? String(b.confirm) : typeof b.confirm === "string" ? b.confirm.trim().replace(/^#/, "") : "";
+    if (!/^\d{1,12}$/.test(typed) || Number(typed) !== u.id) throw new AccountError(400, `наберите номер аккаунта (${u.id}) — так видно, что удаляете тот самый`);
+    // Продление не отменилось — не удалять: после удаления Telegram id и charge_id стёрты, отменить подписку с сервера уже нечем.
+    const sub = await stopRenewal();
+    if (sub === "failed") {
+      throw new AccountError(409, "сначала отмените продление подписки: Telegram не ответил (или оплата выключена) — повторите позже, аккаунт не удалён");
+    }
+    const chat = u.chat_id ? String(u.chat_id) : "";
+    let r: { deleted: number; detached: number };
+    try {
+      r = await store.deleteAccount(u.id, (n) =>
+        log("delete", `удалён аккаунт, строк удалено: ${n.deleted}, отвязано (деньги): ${n.detached}${sub === "canceled" ? ", продление отменено" : ""}`));
+    } catch (e) {
+      // Откат: аккаунт на месте, письма не было. Продление (если было) уже отменено — это в журнал и админу.
+      console.error("[account] удаление", (e as Error).message);
+      await store.addAdminLog(by.id, "delete-fail", `#${u.id} удаление не прошло${sub === "canceled" ? ", продление отменено" : ""}`, now, reason)
+        .catch((x: Error) => console.error("[account] журнал", x.message));
+      throw new AccountError(500, `Удаление #${u.id} не прошло (ошибка базы), аккаунт на месте.` +
+        (sub === "canceled" ? " Продление подписки Telegram при этом уже отменено." : ""));
+    }
+    forgetPresence(u.id);
+    forgetFeatureUser(u.id);
+    forgetCrashUser(u.id);
+    deps.forget?.(u.id);
+    resetAnalyticsCache();
+    // Что дописали уже начатые дела (ответ модели, обход планировщика, пачка счётчиков) — убрать ещё раз чуть позже.
+    const sweep = setTimeout(() => void store.sweepOrphans().catch((e: Error) => console.error("[account] хвосты", e.message)), SWEEP_AFTER_MS);
+    sweep.unref?.();
+    // Письмо — после удаления и только в Telegram (лента удалена вместе со всем): не удалилось — письма нет.
+    if (chat && deps.tellChat) {
+      await deps.tellChat(chat, "Аккаунт удалён администратором — все записи стёрты. Чтобы начать заново, напишите /start.")
+        .catch((e: Error) => console.error("[account] письмо", e.message));
+    }
+    text = `Аккаунт #${u.id} удалён: строк ${r.deleted}, оплат и расхода отвязано ${r.detached}.` +
+      (sub === "canceled" ? " Продление подписки Telegram отменено." : "");
+    return { ok: true, text, deleted: u.id, card: null };
+  }
 
   if (action === "extend" || action === "grant") {
     const days = intIn(b.days, 1, ACCOUNT_DAYS_MAX, "дней");
@@ -229,11 +295,7 @@ export async function accountAction(deps: AccountDeps, by: User, id: number, act
     if (isFrozen(u)) throw new AccountError(409, `#${u.id} уже заморожен`);
     // Продление подписки Telegram — отменить: иначе звёзды списываются каждый месяц, а доступ закрыт. Не вышло (Telegram не
     // ответил, бот выключен) — заморозка всё равно идёт, админу — предупреждение, человеку — как отменить самому.
-    let sub = "";
-    if (u.sub_charge_id && !Number(u.sub_canceled) && liveTerm(u, now)) {
-      const r = deps.cancelSub ? await deps.cancelSub(u).catch((e: Error) => ({ ok: false, text: e.message })) : { ok: false, text: "оплата выключена" };
-      sub = r.ok ? "canceled" : "failed";
-    }
+    const sub = await stopRenewal();
     await store.updateUser(u.id, { frozen_at: now.toISOString() });
     const closed = await store.dropSessionsOf(u.id);
     await log("freeze", `входов закрыто: ${closed}${sub === "canceled" ? ", продление отменено" : sub === "failed" ? ", продление НЕ отменено" : ""}`);

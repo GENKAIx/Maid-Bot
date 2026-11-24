@@ -103,6 +103,14 @@ export async function flushFeatures(store: Store, now = Date.now(), force = fals
   return rows.length;
 }
 
+/** Аккаунт удалён (admin-account.ts): его счёт из памяти не пишется в базу (иначе flushFeatures вернул бы строки удалённого), и
+ *  ограничители пачек — забыть. */
+export function forgetFeatureUser(userId: number) {
+  for (const k of pending.keys()) if (k.startsWith(`${userId}	`)) pending.delete(k);
+  for (const k of lastBatch.keys()) if (k.startsWith(`${userId} `)) lastBatch.delete(k);
+  for (const k of dayUsed.keys()) if (k.startsWith(`${userId}	`)) dayUsed.delete(k);
+}
+
 /** Для тестов: забыть память счётчиков и ограничителя. */
 export function resetFeatureEvents() {
   pending.clear();

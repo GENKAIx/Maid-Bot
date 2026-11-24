@@ -217,6 +217,8 @@ export class Scheduler {
         await this.store.pruneOnce(new Date(now.getTime() - 60 * 86_400_000)).catch((e) => console.error("[prune]", e));
         // И статистику админки по сроку: присутствие — 90 дней, журнал попыток модели — 30.
         await this.store.pruneStats(now).catch((e) => console.error("[prune stats]", e));
+        // Хвосты удалённых аккаунтов (Store.sweepOrphans): что дописали начатые до удаления дела.
+        await this.store.sweepOrphans().catch((e) => console.error("[prune gone]", e));
       }
     } finally {
       this.busy = false;

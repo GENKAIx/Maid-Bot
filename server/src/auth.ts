@@ -63,6 +63,11 @@ export async function notePresence(store: Store, user: User, client: string, at 
     .catch((e) => console.error("[presence]", e));
 }
 
+/** Забыть минуты присутствия человека (аккаунт удалён, admin-account.ts). */
+export function forgetPresence(userId: number) {
+  for (const k of presenceSeen.keys()) if (k.startsWith(`${userId} `)) presenceSeen.delete(k);
+}
+
 /** Новый ключ входа для устройства. Сам ключ показывается один раз. */
 export async function issueToken(store: Store, userId: number, label: string, meta?: ClientMeta): Promise<string> {
   const token = crypto.randomBytes(32).toString("base64url");

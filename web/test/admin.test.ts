@@ -66,9 +66,10 @@ test("админка, этап 3: «Аккаунт» — номер из адр�
   assert.equal(accountIdOf("/admin/users"), null);
   assert.equal(accountQuery(" #1042 "), 1042);
   assert.equal(accountQuery("1042"), 1042);
+  assert.equal(accountQuery("01042"), 1042, "ведущий ноль — тот же номер: сервер (admin-account.ts delete) сверяет так же");
   assert.equal(accountQuery("0"), null);
   assert.equal(accountQuery("Аня"), null, "по имени не ищем — только номер");
-  for (const a of ["extend", "grant", "bonus", "freeze", "unfreeze", "refund", "refund-fail", "tariff", "paysupport-answer"]) assert.ok(ADMIN_ACTIONS[a], a);
+  for (const a of ["extend", "grant", "bonus", "freeze", "unfreeze", "refund", "refund-fail", "delete", "delete-fail", "tariff", "paysupport-answer"]) assert.ok(ADMIN_ACTIONS[a], a);
   for (const k of ["paid_first", "paid_once", "renewed", "canceled", "resumed", "refunded", "expired", "trial_ended", "gift_ended", "trial_started", "gift", "admin_extend", "admin_grant"]) {
     assert.ok(BILLING_EVENT_NAMES[k], k);
   }
@@ -81,10 +82,10 @@ test("админка, этап 3: «Аккаунт» — номер из адр�
   assert.equal(usedText({ used: 37, limit: 420, bonus: 20 }), "37 из 420 (+20)");
   assert.equal(usedText({ used: 120, limit: 600, bonus: 0 }, true), "2 из 10 мин");
   const card = { plan: "trial", kind: "trial", live_sub: false, frozen_at: null, protected: false } as const;
-  assert.deepEqual(accountCan(card), { extend: true, grant: true, bonus: true, freeze: true, unfreeze: false });
+  assert.deepEqual(accountCan(card), { extend: true, grant: true, bonus: true, freeze: true, unfreeze: false, delete: true });
   assert.equal(accountCan({ ...card, plan: "paid", kind: "paid", live_sub: true }).grant, false, "поверх оплаченной подписки подарок не выдать");
-  assert.deepEqual(accountCan({ ...card, plan: "owner", kind: null, protected: true }), { extend: false, grant: false, bonus: false, freeze: false, unfreeze: false });
-  assert.deepEqual(accountCan({ ...card, plan: "frozen", kind: null, frozen_at: "2026-11-24T00:00:00Z" }), { extend: false, grant: false, bonus: false, freeze: false, unfreeze: true }, "замороженному — сначала разморозить");
+  assert.deepEqual(accountCan({ ...card, plan: "owner", kind: null, protected: true }), { extend: false, grant: false, bonus: false, freeze: false, unfreeze: false, delete: false }, "владельца и админа удалить нельзя");
+  assert.deepEqual(accountCan({ ...card, plan: "frozen", kind: null, frozen_at: "2026-11-24T00:00:00Z" }), { extend: false, grant: false, bonus: false, freeze: false, unfreeze: true, delete: true }, "замороженному — сначала разморозить; удалить можно");
   assert.equal(accountCan({ ...card, plan: "paid", kind: "paid", live_sub: false }).grant, false, "подписка с отменённым продлением ещё идёт — подарок не выдать");
   const v = planView({ plan: "frozen", until: null, canceled: false, trial_left_days: null });
   assert.deepEqual([v.title, v.pay, v.cancel, v.resume], ["Приостановлен", false, false, false], "замороженному не предлагаем оплату");
@@ -110,4 +111,26 @@ test("админка, этап 3: карточка аккаунта рисует
     assert.ok(html.includes(want), `нет «${want}»`);
   }
   assert.ok(!html.includes("Разморозить"), "не заморожен — кнопки «Разморозить» нет");
+  assert.ok(html.includes("Удалить аккаунт") && html.includes("Удалить…"), "последняя строка действий — «Удалить аккаунт…»");
+});
+
+test("админка: «Удалить аккаунт» — диалог с причиной и номером, предупреждение; у владельца выключено; после — «Аккаунт #N удалён»", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { Actions, AccountGone } = await import("../src/screens/AdminAccount.tsx");
+  const card = {
+    id: 1042, created_at: "2026-10-03T10:00:00Z", days_with_us: 52, plan: "trial", kind: "trial", until: "2026-12-01T00:00:00Z", canceled: false,
+    live_sub: true, frozen_at: null, protected: false, ended: null, today: null, payments: [], events: [], week: [], devices: [], last_seen: null, log: [],
+  };
+  const dialog = renderToStaticMarkup(createElement(Actions, { card: card as never, onCard: () => {}, open: "delete" }));
+  for (const want of ["Отменить нельзя — вернуть можно только из ночной копии базы", "Наберите номер аккаунта", "Причина", "Удалить навсегда", "Продление подписки Telegram отменится"]) {
+    assert.ok(dialog.includes(want), `нет «${want}»`);
+  }
+  assert.match(dialog, /<button type="submit" class="adm-btn danger" disabled="">\s*Удалить навсегда/, "пока номер не набран — кнопка выключена");
+  assert.ok(dialog.indexOf("Заморозить аккаунт") < dialog.indexOf("Удалить аккаунт"), "удаление — последней строкой");
+  const owner = renderToStaticMarkup(createElement(Actions, { card: { ...card, plan: "owner", kind: null, protected: true, live_sub: false } as never, onCard: () => {} }));
+  assert.ok(owner.includes("владельца и админа удалить нельзя"));
+  assert.match(owner, /<button class="adm-btn small danger" disabled="" title="Владельца и админа удалить нельзя">Удалить…<\/button>/);
+  const gone = renderToStaticMarkup(createElement(AccountGone, { id: 1042, text: "Аккаунт #1042 удалён: строк 10." }));
+  assert.ok(gone.includes("Аккаунт #1042 удалён"));
 });

@@ -648,14 +648,15 @@ export function AdminPayments() {
             <tbody>{rows.map((p, i) => (
               <tr key={`${p.charge}${p.paid_at}`}>
                 <td className="adm-num">{when(p.paid_at)}</td>
-                <td>{p.name} <span className="adm-muted">#{p.user_id}</span></td>
+                {/* Номер −N — оплата удалённого аккаунта #N (деньги остаются в отчётах, человека нет): без номера и без возврата. */}
+                <td>{p.name}{p.user_id > 0 && <> <span className="adm-muted">#{p.user_id}</span></>}</td>
                 <td>{PAYMENT_KINDS[p.kind] ?? p.kind}</td>
                 <td className="num adm-num">{starsText(p.amount, p.currency)}</td>
                 <td className="adm-num">{when(p.expires_at)}</td>
                 <td className="adm-muted adm-num">{p.charge}</td>
                 <td>{p.refunded_at
                   ? <span className="adm-muted">возвращено {when(p.refunded_at)}</span>
-                  : refundable(rows, i) && <button className="adm-btn small" disabled={busy} onClick={() => void refund(p)}>Вернуть</button>}</td>
+                  : p.user_id > 0 && refundable(rows, i) && <button className="adm-btn small" disabled={busy} onClick={() => void refund(p)}>Вернуть</button>}</td>
               </tr>
             ))}</tbody>
           </table>

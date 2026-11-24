@@ -82,6 +82,8 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   bonus: "поднял лимит на сегодня",
   freeze: "заморозил аккаунт",
   unfreeze: "разморозил аккаунт",
+  delete: "удалил аккаунт",
+  "delete-fail": "не смог удалить аккаунт",
   "paysupport-answer": "ответил на вопрос об оплате",
   alert_rule: "изменил правило оповещений",
   alert_test: "отправил тестовое оповещение",
@@ -376,7 +378,8 @@ export function usedText(u: AccountUsed, voice = false): string {
 
 /** Что можно сделать с аккаунтом (кнопки карточки): продлить и подарить — не другу, не владельцу и не замороженному (сначала
  *  разморозить); подарок — не поверх идущей оплаченной подписки (и с отменённым продлением тоже); лимит — только с тарифом;
- *  заморозить — не защищённого и не уже замороженного. Сервер проверяет то же самое. */
+ *  заморозить — не защищённого и не уже замороженного; удалить — любого, кроме владельца и админа (замороженного тоже).
+ *  Сервер проверяет то же самое. */
 export function accountCan(c: Pick<AccountCard, "plan" | "kind" | "live_sub" | "frozen_at" | "protected">) {
   const free = c.plan === "owner" || c.plan === "friend" || c.protected;
   return {
@@ -385,6 +388,7 @@ export function accountCan(c: Pick<AccountCard, "plan" | "kind" | "live_sub" | "
     bonus: Boolean(c.kind),
     freeze: !c.protected && !c.frozen_at,
     unfreeze: Boolean(c.frozen_at),
+    delete: !c.protected,
   };
 }
 

@@ -110,7 +110,8 @@ async function billingOverview(store: Store, now: Date) {
 export async function adminPayments(store: Store, limit = 200) {
   const who = new Map((await store.users()).map((x) => [x.id, x.name || x.login || `#${x.id}`]));
   return (await store.adminPayments(limit)).map((p) => ({
-    user_id: p.user_id, name: who.get(p.user_id) ?? `#${p.user_id}`, amount: p.amount, currency: p.currency, kind: p.kind,
+    // Номер −N — оплата удалённого аккаунта #N (Store.deleteAccount отвязывает деньги от человека).
+    user_id: p.user_id, name: p.user_id < 0 ? `удалён #${-p.user_id}` : (who.get(p.user_id) ?? `#${p.user_id}`), amount: p.amount, currency: p.currency, kind: p.kind,
     paid_at: p.paid_at, expires_at: p.expires_at, refunded_at: p.refunded_at, charge: `…${p.charge_id.slice(-8)}`,
   }));
 }

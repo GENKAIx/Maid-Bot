@@ -290,6 +290,14 @@ export class Billing {
     return { feed, telegram };
   }
 
+  /** Письмо только в Telegram по чату, без ленты и кнопки оплаты — удалённому аккаунту (admin-account.ts delete): записи уже нет.
+   *  Бот выключен — false. */
+  async tellChat(chatId: string, text: string): Promise<boolean> {
+    if (!this.api || !chatId) return false;
+    return this.api.sendMessage(chatId, esc(text), { parse_mode: "HTML", link_preview_options: { is_disabled: true } })
+      .then(() => true, (e) => (console.error("[billing] письмо", (e as Error).message), false));
+  }
+
   /** Строка журнала подписки (billing_events, шаг 28; аналитика). Сбой записи журнала — в лог, оплату и отмену не роняет. */
   private async journal(userId: number, kind: BillingKind, chargeId: string | null = null, amount: number | null = null, at = this.now()) {
     try {

@@ -9,14 +9,15 @@ import { AdminLost, Loading } from "./AdminSections";
 
 // «Аккаунт» (этап 3 «Тарифы и управление», 24.11.2026; макет docs/review/тарифы-и-управление-макет-2026-11-24.html, вкладка «Аккаунт»).
 // Всё по номеру: карточка — только числа (тариф, срок, остаток лимитов сегодня, оплаты, журнал подписки, активность за 7 дней,
-// устройства); действия — продлить, подарок, лимит на сегодня, вернуть звёзды, заморозить/разморозить. Каждое просит причину;
-// сервер (server/src/admin-account.ts, возврат — POST /api/admin/refund) проверяет всё сам и пишет в журнал админа.
+// устройства); действия — продлить, подарок, лимит на сегодня, вернуть звёзды, заморозить/разморозить, удалить. Каждое просит причину;
+// сервер (server/src/admin-account.ts, возврат — POST /api/admin/refund) проверяет всё сам и пишет в журнал админа. «Удалить» (в макете
+// его нет — добавлено 24.11.2026 для тестовых аккаунтов) ещё просит набрать номер аккаунта вручную; после — «Аккаунт #N удалён».
 
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" }) : "—");
 const dayShort = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" });
 const clientName = (c: string) => CLIENT_NAMES[c] ?? (c || "старый клиент");
 
-type Act = "extend" | "grant" | "bonus" | "refund" | "freeze" | "unfreeze";
+type Act = "extend" | "grant" | "bonus" | "refund" | "freeze" | "unfreeze" | "delete";
 const ACTS: { id: Act; title: string; hint: string; danger?: boolean }[] = [
   { id: "extend", title: "Продлить срок", hint: "добавить дни к пробе, подарку или подписке; кончившийся — от сегодня" },
   { id: "grant", title: "Выдать подарок", hint: "доступ без оплаты на срок, тариф «Подарок» (как приглашение /invite); не подписка" },
@@ -24,6 +25,7 @@ const ACTS: { id: Act; title: string; hint: string; danger?: boolean }[] = [
   { id: "refund", title: "Вернуть звёзды", hint: "последнюю оплату; доступ по подписке снимется сразу", danger: true },
   { id: "freeze", title: "Заморозить аккаунт", hint: "Рина перестаёт отвечать, входы закрываются, данные остаются", danger: true },
   { id: "unfreeze", title: "Разморозить", hint: "снова ИИ и вход; на сайте и в программе человек войдёт заново" },
+  { id: "delete", title: "Удалить аккаунт", hint: "насовсем: все записи человека; оплаты остаются в отчётах без него. С того же Telegram можно зарегистрироваться заново", danger: true },
 ];
 
 export function AdminAccount() {
@@ -31,9 +33,10 @@ export function AdminAccount() {
   const [q, setQ] = useState(id ? String(id) : "");
   const [card, setCard] = useState<AccountCard | null>(null);
   const [err, setErr] = useState("");
+  const [gone, setGone] = useState<{ id: number; text: string } | null>(null);
   const lost = useContext(AdminLost);
   useEffect(() => {
-    if (!id) return;
+    if (!id || gone?.id === id) return;
     let alive = true;
     setCard(null);
     setErr("");
@@ -43,7 +46,7 @@ export function AdminAccount() {
       else setErr(e instanceof ApiError && e.status === 404 ? `Аккаунта #${id} нет.` : (e as Error).message || "не загрузилось");
     });
     return () => { alive = false; };
-  }, [id, lost]);
+  }, [id, lost, gone]);
   const find = () => {
     const n = accountQuery(q);
     if (!n) return setErr("Номер аккаунта — число, например 1042.");
@@ -57,13 +60,24 @@ export function AdminAccount() {
         <button className="adm-btn primary" type="submit">Найти</button>
         <span className="adm-muted adm-small">Номер — из «Пользователей» или из сообщения человека. Имён, текстов и чатов здесь нет — только числа.</span>
       </form>
-      {!id ? null : !card ? (err ? <span className="adm-err" role="alert">{err}</span> : <Loading />) : <AccountCardView card={card} onCard={setCard} />}
+      {!id ? null : gone?.id === id ? <AccountGone {...gone} /> : !card ? (err ? <span className="adm-err" role="alert">{err}</span> : <Loading />)
+        : <AccountCardView card={card} onCard={setCard} onDeleted={(text) => { setCard(null); setGone({ id: card.id, text }); }} />}
     </div>
   );
 }
 
+/** Вместо карточки после удаления: номера больше нет. */
+export function AccountGone({ id, text }: { id: number; text: string }) {
+  return (
+    <section className="adm-panel" role="status">
+      <b>Аккаунт #{id} удалён</b>
+      <span className="adm-muted">{text} Записано в журнал админа. С того же Telegram человек может зарегистрироваться заново (/start) — с новым номером.</span>
+    </section>
+  );
+}
+
 /** Карточка и действия (отдельно — для проверки рендера, web/test/admin.test.ts). */
-export function AccountCardView({ card: c, onCard }: { card: AccountCard; onCard: (c: AccountCard) => void }) {
+export function AccountCardView({ card: c, onCard, onDeleted }: { card: AccountCard; onCard: (c: AccountCard) => void; onDeleted?: (text: string) => void }) {
   const t = c.today;
   const week = c.week.reduce((s, d) => ({ ai: s.ai + d.ai, manual: s.manual + d.manual, minutes: s.minutes + d.minutes, usd: s.usd + d.usd }), { ai: 0, manual: 0, minutes: 0, usd: 0 });
   return (
@@ -93,7 +107,7 @@ export function AccountCardView({ card: c, onCard }: { card: AccountCard; onCard
         </table>
         <p className="adm-muted adm-small">Сообщения и минуты — по дню человека, вызовы и деньги — по дню UTC.</p>
       </section>
-      <Actions card={c} onCard={onCard} />
+      <Actions card={c} onCard={onCard} onDeleted={onDeleted} />
       <section className="adm-panel">
         <b>Оплаты</b>
         {c.payments.length ? (
@@ -129,22 +143,27 @@ export function AccountCardView({ card: c, onCard }: { card: AccountCard; onCard
   );
 }
 
-function Actions({ card: c, onCard }: { card: AccountCard; onCard: (c: AccountCard) => void }) {
-  const [open, setOpen] = useState<Act | null>(null);
+/** Действия карточки; open — какое раскрыто сразу (проверка рендера диалога, web/test/admin.test.ts). */
+export function Actions({ card: c, onCard, onDeleted, open: open0 = null }: { card: AccountCard; onCard: (c: AccountCard) => void; onDeleted?: (text: string) => void; open?: Act | null }) {
+  const [open, setOpen] = useState<Act | null>(open0);
   const [days, setDays] = useState("7");
   const [n, setN] = useState("20");
   const [what, setWhat] = useState<"calls" | "draws" | "voice_min">("calls");
   const [reason, setReason] = useState("");
+  const [typed, setTyped] = useState("");
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const lost = useContext(AdminLost);
   const can = { ...accountCan(c), refund: c.payments.some((p) => p.refundable) };
   const pay = c.payments.find((p) => p.refundable);
-  const toggle = (a: Act) => { setOpen(open === a ? null : a); setReason(""); setNote(null); setDays(a === "grant" ? "30" : "7"); };
+  const toggle = (a: Act) => { setOpen(open === a ? null : a); setReason(""); setTyped(""); setNote(null); setDays(a === "grant" ? "30" : "7"); };
+  /** «Удалить»: номер набран вручную и совпал («1042» или «#1042»). */
+  const typedOk = accountQuery(typed) === c.id;
   async function run(a: Act) {
     if (reason.trim().length < 3) return setNote({ ok: false, text: "Напишите причину — хотя бы 3 знака." });
     if (a === "refund" && pay && !confirm(`Вернуть ${starsText(pay.amount, pay.currency)} аккаунту #${c.id}? Доступ по подписке снимется сразу.`)) return;
     if (a === "freeze" && !confirm(`Заморозить #${c.id}? Входы закроются, Рина перестанет отвечать. Данные останутся.`)) return;
+    if (a === "delete" && !typedOk) return setNote({ ok: false, text: `Наберите номер аккаунта — ${c.id}.` });
     setBusy(true);
     setNote(null);
     try {
@@ -153,8 +172,10 @@ function Actions({ card: c, onCard }: { card: AccountCard; onCard: (c: AccountCa
         onCard(await get<AccountCard>(`/api/admin/account/${c.id}`));
         setNote({ ok: true, text: r.text });
       } else {
-        const body = a === "extend" || a === "grant" ? { days: Number(days), reason } : a === "bonus" ? { what, n: Number(n), reason } : { reason };
-        const r = await post<{ text: string; card: AccountCard }>(`/api/admin/account/${c.id}/${a}`, body);
+        const body = a === "extend" || a === "grant" ? { days: Number(days), reason } : a === "bonus" ? { what, n: Number(n), reason }
+          : a === "delete" ? { reason, confirm: typed.trim() } : { reason };
+        const r = await post<{ text: string; card: AccountCard | null }>(`/api/admin/account/${c.id}/${a}`, body);
+        if (a === "delete" || !r.card) return onDeleted?.(r.text);
         onCard(r.card);
         setNote({ ok: true, text: `${r.text} Записано в журнал админа.` });
       }
@@ -170,14 +191,15 @@ function Actions({ card: c, onCard }: { card: AccountCard; onCard: (c: AccountCa
   return (
     <section className="adm-panel">
       <b>Действия</b>
-      <span className="adm-muted adm-small">Каждое просит причину и попадает в журнал админа. О продлении, подарке, лимите и заморозке Рина пишет человеку.</span>
+      <span className="adm-muted adm-small">Каждое просит причину и попадает в журнал админа. О продлении, подарке, лимите, заморозке и удалении Рина пишет человеку.</span>
       <div className="adm-acc-acts">
         {ACTS.filter((a) => (a.id === "unfreeze" ? can.unfreeze : a.id !== "freeze" || !c.frozen_at)).map((a) => (
           <div key={a.id} className="adm-acc-act">
             <div className="adm-acc-row">
-              <span>{a.title}<em>{a.id === "refund" && pay ? `${starsText(pay.amount, pay.currency)} от ${date(pay.paid_at)} (${pay.charge}); доступ сразу закончится` : a.hint}</em></span>
+              <span>{a.title}<em>{a.id === "refund" && pay ? `${starsText(pay.amount, pay.currency)} от ${date(pay.paid_at)} (${pay.charge}); доступ сразу закончится`
+                : a.id === "delete" && !can.delete ? "владельца и админа удалить нельзя" : a.hint}</em></span>
               <button className={`adm-btn small ${a.danger ? "danger" : ""}`} disabled={!can[a.id] || busy} onClick={() => toggle(a.id)}
-                title={can[a.id] ? undefined : "Для этого аккаунта недоступно"}>{open === a.id ? "Отмена" : `${a.title.split(" ")[0]}…`}</button>
+                title={can[a.id] ? undefined : a.id === "delete" ? "Владельца и админа удалить нельзя" : "Для этого аккаунта недоступно"}>{open === a.id ? "Отмена" : `${a.title.split(" ")[0]}…`}</button>
             </div>
             {open === a.id && (
               <form className="adm-acc-form" onSubmit={(e) => { e.preventDefault(); void run(a.id); }}>
@@ -201,9 +223,21 @@ function Actions({ card: c, onCard }: { card: AccountCard; onCard: (c: AccountCa
                   </div>
                 )}
                 {a.id === "freeze" && c.live_sub && <p className="adm-muted adm-small">Продление подписки Telegram при заморозке отменится — звёзды больше не спишутся; оплаченный срок останется. После разморозки человек возобновит его сам (/resume_sub).</p>}
+                {a.id === "delete" && (
+                  <p className="adm-err adm-small" role="note">
+                    Отменить нельзя — вернуть можно только из ночной копии базы. Удалятся все записи #{c.id}: дневник, планы, задачи, привычки,
+                    входы, лента, обращения. Оплаты и расход останутся в отчётах — без человека.{c.live_sub ? " Продление подписки Telegram отменится." : ""}
+                  </p>
+                )}
                 <input className="adm-tf-reason" placeholder="Причина (обязательно): например, «сбой оплаты 24.11»" aria-label="Причина" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
+                {a.id === "delete" && (
+                  <input className="adm-tf-reason" inputMode="numeric" autoComplete="off" placeholder={`Наберите номер аккаунта: ${c.id}`} aria-label="Наберите номер аккаунта"
+                    value={typed} onChange={(e) => setTyped(e.target.value)} onPaste={(e) => e.preventDefault()} />
+                )}
                 <div className="adm-row">
-                  <button type="submit" className={`adm-btn ${a.danger ? "danger" : "primary"}`} disabled={busy || reason.trim().length < 3}>Подтвердить</button>
+                  <button type="submit" className={`adm-btn ${a.danger ? "danger" : "primary"}`} disabled={busy || reason.trim().length < 3 || (a.id === "delete" && !typedOk)}>
+                    {a.id === "delete" ? "Удалить навсегда" : "Подтвердить"}
+                  </button>
                 </div>
               </form>
             )}

@@ -109,11 +109,11 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   // Свои — владелец (ALLOWED_CHAT_IDS) и друзья, принявшие приглашение (invite.ts).
   const allowed = (chatId: string) => isMember(store, chatId, config.allowedChatIds);
   const owner = (ctx: Context) => config.allowedChatIds.includes(String(ctx.chat?.id ?? ""));
-  const userOf = async (ctx: Context): Promise<User | null> => {
-    const chat = String(ctx.chat?.id ?? "");
-    if (!chat || !(await allowed(chat))) return null;
-    return store.ensureUser(chat, ctx.from?.first_name ?? "", config.defaultTimezone);
-  };
+  // Запись заводится сама только владельцу; остальным — та, что есть (одним запросом): аккаунт могли удалить между фильтром
+  // «свой» и этим местом, и ensureUser завёл бы запись без пробы, мимо signUp — /start потом не дал бы пробу.
+  const memberUser = async (chat: string, name: string): Promise<User | null> =>
+    !chat ? null : config.allowedChatIds.includes(chat) ? store.ensureUser(chat, name, config.defaultTimezone) : (await store.userByChat(chat)) ?? null;
+  const userOf = (ctx: Context): Promise<User | null> => memberUser(String(ctx.chat?.id ?? ""), ctx.from?.first_name ?? "");
 
   const undoRow = (kb: InlineKeyboard, messageId: number) => kb.text("↩ Отменить", `undo:${messageId}`).text("📝 Это просто заметка", `note:${messageId}`);
   const replyKeyboard = (r: Reply) => {
@@ -263,9 +263,8 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const q = (ctx.update as { widget_query?: WidgetQueryUpdate }).widget_query;
     if (!q) return next();
     const chat = String(q.chat?.id ?? q.from.id);
-    if (!(await allowed(chat)) || q.type?.type !== "data") return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
-    const u = await store.ensureUser(chat, "", config.defaultTimezone);
-    if (isFrozen(u)) return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
+    const u = q.type?.type === "data" ? await memberUser(chat, "") : null;
+    if (!u || isFrozen(u)) return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
     countFeature(u, "telegram-widget", "bot.widget");
     const state = await widgetQuery(store, pipeline, u, q.data);
     await raw.answerWidgetQuery({ widget_query_id: q.id, data: state });

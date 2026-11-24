@@ -1074,6 +1074,30 @@ export type Table = "diary" | "events" | "tasks" | "dates" | "memory" | "metrics
 /** Таблицы, строку которых берёт lockRow (у всех есть user_id; у отметок привычек его нет). */
 const LOCKABLE = ["messages", "diary", "events", "tasks", "dates", "memory", "metrics", "habits", "money", "traits", "notes"];
 
+// ——— Удаление аккаунта (admin-account.ts, действие delete). Каждая таблица со столбцом user_id — в одном из трёх списков ниже;
+// server/test/account-delete.test.ts читает схему (все таблицы с user_id) и падает, если новая таблица ни в одном списке.
+/** Строки человека, которые удаляются целиком (habit_marks — через habits, у неё user_id нет). */
+export const ACCOUNT_TABLES = [
+  "sessions", "messages", "diary", "events", "tasks", "dates", "memory", "metrics", "habits", "money", "reminders", "activity", "actions",
+  "push_subs", "notices", "app_icons", "proposals", "clash_kept", "traits", "drawings", "notes", "presence", "feature_events", "ai_quota",
+  "desktop_days", "promo_uses", "support_tickets", "announcement_seen",
+] as const;
+/** Деньги остаются, но отвязываются от человека — суммы и счёт людей в отчётах не меняются: оплаты и журнал подписки — на номер −id
+ *  (отрицательных у живых нет; разные удалённые — разные плательщики), Telegram id плательщика в payments стирается; расход модели
+ *  (llm_usage, llm_calls) — на 0, «без человека», как записи до учёта по людям (строки llm_usage одного дня складываются). */
+export const ACCOUNT_DETACH_TABLES = ["payments", "billing_events", "llm_usage", "llm_calls"] as const;
+/** user_id здесь — админ, сделавший действие (не тот, о ком оно); админа удалить нельзя — строки не трогаются. Строки журнала админа
+ *  про удалённого («#N …» в detail) тоже остаются: там только номер. */
+export const ACCOUNT_ACTOR_TABLES = ["admin_log", "tariff_history"] as const;
+/** Ключи kv с номером человека: ровно «<префикс>:<id>» и «<префикс>:<id>:…». series:<id>:<день> — раскладка серий человека, а
+ *  series:<план>:laid — по номеру плана (ниже, по строкам events): у первых хвост — день, «laid» не трогается. */
+export const USER_KV_EXACT = ["album", "paylink", "widget", "cheer", "profile", "persona-first"] as const;
+export const USER_KV_PREFIX = [
+  "game", "subend", "backup", "rain", "morning", "tomorrow", "evening", "escapes", "habitMinus", "patterns", "series", "youoffer", "wx:snow",
+] as const;
+/** Наибольший номер удалённого аккаунта (SQLite: новый номер — больше него, Store.newUserId). */
+export const USERS_GONE_KEY = "users:gone_max";
+
 export class Store {
   private constructor(readonly driver: Driver) {}
 
@@ -1132,6 +1156,14 @@ export class Store {
   }
 
   // --- пользователи ---
+  /** Номер новой записи в SQLite — явно, больше всех живых и удалённых (kv USERS_GONE_KEY): SQLite без AUTOINCREMENT отдаёт
+   *  MAX(id) + 1, и удалённый последним номер достался бы новому человеку — вместе со строками журнала админа «#N» и отвязанными
+   *  оплатами. Одной командой INSERT (не SELECT, потом INSERT) — два одновременных входа не возьмут один номер. В Postgres номер
+   *  выдаёт IDENTITY, он не повторяется — колонку не трогаем. */
+  private newUserId(): [string, string] {
+    if (this.driver.dialect !== "sqlite") return ["", ""];
+    return ["id, ", `(SELECT MAX(n) + 1 FROM (SELECT COALESCE(MAX(id), 0) AS n FROM users UNION ALL SELECT CAST(value AS INTEGER) FROM kv WHERE key = '${USERS_GONE_KEY}')), `];
+  }
   userByChat(chatId: string): Promise<User | undefined> {
     return this.get<User>("SELECT * FROM users WHERE chat_id = ?", chatId);
   }
@@ -1148,8 +1180,9 @@ export class Store {
   async ensureUser(chatId: string, name: string, tz: string): Promise<User> {
     const u = await this.userByChat(chatId);
     if (u) return u;
+    const [idCol, idVal] = this.newUserId();
     await this.run(
-      "INSERT INTO users (chat_id, name, tz, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (chat_id) DO NOTHING",
+      `INSERT INTO users (${idCol}chat_id, name, tz, created_at) VALUES (${idVal}?, ?, ?, ?) ON CONFLICT (chat_id) DO NOTHING`,
       chatId, name, tz, now(),
     );
     return (await this.userByChat(chatId))!;
@@ -1160,8 +1193,9 @@ export class Store {
     /** Вид бесплатного срока (users.trial_len_days): длина пробы в днях, 0 — подарок. */
     trialLenDays?: number | null;
   }): Promise<User> {
+    const [idCol, idVal] = this.newUserId();
     const id = await this.insert(
-      "INSERT INTO users (login, password_hash, chat_id, name, tz, created_at, plan, access_until, trial_len_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      `INSERT INTO users (${idCol}login, password_hash, chat_id, name, tz, created_at, plan, access_until, trial_len_days) VALUES (${idVal}?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       u.login.toLowerCase(), u.passwordHash, u.chatId ?? null, u.name ?? "", u.tz, (u.at ?? new Date()).toISOString(), u.plan ?? "", u.accessUntil ?? null,
       u.trialLenDays ?? null,
     );
@@ -2276,6 +2310,103 @@ export class Store {
   async dropSessionsOf(userId: number): Promise<number> {
     return this.run("DELETE FROM sessions WHERE user_id = ?", userId);
   }
+  /** Удалить человека id (админка, admin-account.ts delete) одной транзакцией: ключи kv с его номером и номерами его строк, все
+   *  строки ACCOUNT_TABLES (и отметки его привычек), деньги — отвязать (ACCOUNT_DETACH_TABLES), потом саму запись users. Сбой на
+   *  любом шаге — откат всего. deleted — сколько строк удалено, detached — сколько отвязано; extra — в той же транзакции после
+   *  (строка журнала админа: не записалась — не удалено ничего). */
+  async deleteAccount(id: number, extra: ((n: { deleted: number; detached: number }) => Promise<void>) | null = null): Promise<{ deleted: number; detached: number }> {
+    return this.transaction(async () => {
+      let deleted = 0, detached = 0;
+      const del = async (sql: string, ...args: unknown[]) => { deleted += await this.run(sql, ...args); };
+      // Отметка /paysupport (bot.ts) — по Telegram id, не по номеру: взять его, пока запись users есть (в личке chat_id = tg id).
+      const me = await this.get<{ chat_id: unknown; tg_user_id: unknown }>("SELECT chat_id, tg_user_id FROM users WHERE id = ?", id);
+      for (const t of new Set([me?.tg_user_id, me?.chat_id].map((x) => String(x ?? "")).filter(Boolean))) await del("DELETE FROM kv WHERE key LIKE ?", `paysupport:${t}:%`);
+      // kv по строкам человека — пока строки есть: долг разбора и повтор (по сообщению), раскладка серии (по плану), отметки
+      // «уже напомнила» о датах и привычках (по строке).
+      await del(
+        `DELETE FROM kv WHERE key IN (SELECT ('owe:' || id) FROM messages WHERE user_id = ?) OR key IN (SELECT ('retry:' || id) FROM messages WHERE user_id = ?)
+          OR key IN (SELECT ('series:' || id || ':laid') FROM events WHERE user_id = ?)
+          OR EXISTS (SELECT 1 FROM dates d WHERE d.user_id = ? AND kv.key LIKE ('date:' || d.id || ':%'))
+          OR EXISTS (SELECT 1 FROM habits h WHERE h.user_id = ? AND kv.key LIKE ('habit:' || h.id || ':%'))`,
+        id, id, id, id, id,
+      );
+      const exact = USER_KV_EXACT.map((p) => `${p}:${id}`);
+      await del(`DELETE FROM kv WHERE key IN (${exact.map(() => "?").join(", ")})`, ...exact);
+      for (const p of USER_KV_PREFIX) await del("DELETE FROM kv WHERE key LIKE ? AND key NOT LIKE '%:laid'", `${p}:${id}:%`);
+      await del("DELETE FROM habit_marks WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)", id);
+      for (const t of ACCOUNT_TABLES) await del(`DELETE FROM ${t} WHERE user_id = ?`, id);
+      detached += await this.run("UPDATE payments SET user_id = ?, tg_user_id = '' WHERE user_id = ?", -id, id);
+      detached += await this.run("UPDATE billing_events SET user_id = ? WHERE user_id = ?", -id, id);
+      detached += await this.run(
+        `INSERT INTO llm_usage (day, user_id, kind, model, calls, input, output, micro_usd, priced)
+          SELECT day, 0, kind, model, calls, input, output, micro_usd, priced FROM llm_usage WHERE user_id = ?
+          ON CONFLICT (day, user_id, kind, model) DO UPDATE SET calls = llm_usage.calls + excluded.calls, input = llm_usage.input + excluded.input,
+            output = llm_usage.output + excluded.output, micro_usd = llm_usage.micro_usd + excluded.micro_usd, priced = llm_usage.priced + excluded.priced`,
+        id,
+      );
+      await this.run("DELETE FROM llm_usage WHERE user_id = ?", id);
+      detached += await this.run("UPDATE llm_calls SET user_id = 0 WHERE user_id = ?", id);
+      deleted += await this.run("DELETE FROM users WHERE id = ?", id);
+      const gone = Number((await this.kvGet(USERS_GONE_KEY)) ?? 0);
+      if (id > gone) await this.kvSet(USERS_GONE_KEY, String(id));
+      if (extra) await extra({ deleted, detached });
+      return { deleted, detached };
+    });
+  }
+  /** Хвосты удалённых (номер ≤ USERS_GONE_KEY, записи users нет): то, что дописали уже начатые до удаления дела — разбор сообщения
+   *  после ответа модели, обход планировщика по старому списку, пачка счётчиков фич. Удаляются так же, как в deleteAccount: строки
+   *  ACCOUNT_TABLES, отметки привычек, ключи kv с номером человека и номерами его строк (и долги разбора по уже удалённым
+   *  сообщениям); деньги — отвязать (оплаты и журнал подписки — на −id, расход модели — на 0). Зовётся через 2 минуты после
+   *  удаления (admin-account.ts) и раз в сутки (scheduler.ts). Удалений не было — ничего. Сколько строк убрано и отвязано. */
+  async sweepOrphans(): Promise<number> {
+    const max = Number((await this.kvGet(USERS_GONE_KEY)) ?? 0);
+    if (!(max > 0)) return 0;
+    // Ключи kv — до списка живых: ключ нового человека появляется только после его записи users.
+    const exact = new Set<string>(USER_KV_EXACT);
+    const userKeys = await this.all<{ key: string }>(
+      `SELECT key FROM kv WHERE ${[...USER_KV_EXACT, ...USER_KV_PREFIX, "owe", "retry"].map(() => "key LIKE ?").join(" OR ")}`,
+      ...[...USER_KV_EXACT, ...USER_KV_PREFIX, "owe", "retry"].map((p) => `${p}:%`),
+    );
+    const live = new Set((await this.all<{ id: number }>("SELECT id FROM users")).map((r) => Number(r.id)));
+    const msgs = new Set((await this.all<{ id: number }>("SELECT id FROM messages")).map((r) => Number(r.id)));
+    const gone = (n: number) => n > 0 && n <= max && !live.has(n);
+    const stale: string[] = [];
+    for (const { key } of userKeys) {
+      if (/^(owe|retry):\d+$/.test(key)) {
+        if (!msgs.has(Number(key.slice(key.indexOf(":") + 1)))) stale.push(key);
+        continue;
+      }
+      for (const p of [...USER_KV_EXACT, ...USER_KV_PREFIX]) {
+        if (!key.startsWith(`${p}:`)) continue;
+        const m = /^(\d+)(:.*)?$/.exec(key.slice(p.length + 1));
+        if (m && (exact.has(p) ? !m[2] : Boolean(m[2]) && !m[2].endsWith(":laid")) && gone(Number(m[1]))) stale.push(key);
+      }
+    }
+    return this.transaction(async () => {
+      let n = 0;
+      const orphan = (t: string) => `${t}.user_id > 0 AND ${t}.user_id <= ${max} AND NOT EXISTS (SELECT 1 FROM users WHERE users.id = ${t}.user_id)`;
+      for (const k of stale) n += await this.run("DELETE FROM kv WHERE key = ?", k);
+      n += await this.run(
+        `DELETE FROM kv WHERE key IN (SELECT ('owe:' || id) FROM messages WHERE ${orphan("messages")}) OR key IN (SELECT ('retry:' || id) FROM messages WHERE ${orphan("messages")})
+          OR key IN (SELECT ('series:' || id || ':laid') FROM events WHERE ${orphan("events")})
+          OR EXISTS (SELECT 1 FROM dates WHERE ${orphan("dates")} AND kv.key LIKE ('date:' || dates.id || ':%'))
+          OR EXISTS (SELECT 1 FROM habits WHERE ${orphan("habits")} AND kv.key LIKE ('habit:' || habits.id || ':%'))`,
+      );
+      n += await this.run(`DELETE FROM habit_marks WHERE habit_id IN (SELECT id FROM habits WHERE ${orphan("habits")})`);
+      for (const t of ACCOUNT_TABLES) n += await this.run(`DELETE FROM ${t} WHERE ${orphan(t)}`);
+      n += await this.run(`UPDATE payments SET user_id = -user_id, tg_user_id = '' WHERE ${orphan("payments")}`);
+      n += await this.run(`UPDATE billing_events SET user_id = -user_id WHERE ${orphan("billing_events")}`);
+      n += await this.run(
+        `INSERT INTO llm_usage (day, user_id, kind, model, calls, input, output, micro_usd, priced)
+          SELECT day, 0, kind, model, SUM(calls), SUM(input), SUM(output), SUM(micro_usd), SUM(priced) FROM llm_usage WHERE ${orphan("llm_usage")} GROUP BY day, kind, model
+          ON CONFLICT (day, user_id, kind, model) DO UPDATE SET calls = llm_usage.calls + excluded.calls, input = llm_usage.input + excluded.input,
+            output = llm_usage.output + excluded.output, micro_usd = llm_usage.micro_usd + excluded.micro_usd, priced = llm_usage.priced + excluded.priced`,
+      );
+      await this.run(`DELETE FROM llm_usage WHERE ${orphan("llm_usage")}`);
+      n += await this.run(`UPDATE llm_calls SET user_id = 0 WHERE ${orphan("llm_calls")}`);
+      return n;
+    });
+  }
   // ——— Тарифы из базы (шаг 30, tariffs.ts): изменённые числа и история «Применить» / откат / /signups.
   /** Изменённые числа тарифов: key → value (JSON). Нет строки — значение по умолчанию. */
   async tariffSettings(): Promise<{ key: string; value: string }[]> {
@@ -2328,7 +2459,7 @@ export class Store {
   /** Поставить отметку один раз; true — если её ещё не было. */
   /** Отметки «уже отправлено» (once), поставленные раньше before, — удалить: таблица иначе только растёт. Возвращает, сколько удалено. */
   pruneOnce(before: Date): Promise<number> {
-    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns", "rain", "alert", "billing", "subend", "digest"];
+    const kinds = ["habit", "backup", "game", "morning", "date", "tomorrow", "evening", "escapes", "series", "prune", "snapshot", "patterns", "rain", "alert", "billing", "subend", "digest", "paysupport"];
     return this.run(
       `DELETE FROM kv WHERE value < ? AND (${kinds.map(() => "key LIKE ?").join(" OR ")})`,
       before.toISOString(), ...kinds.map((k) => `${k}:%`),

@@ -201,6 +201,10 @@ export interface GateOptions {
 export class AiGate {
   private calls = new Map<number, number[]>();
   constructor(private store: Store, private opts: GateOptions = {}) {}
+  /** Аккаунт удалён (admin-account.ts): забыть его частоту. */
+  forget(userId: number) {
+    this.calls.delete(userId);
+  }
 
   private now() {
     return this.opts.clock?.() ?? new Date();

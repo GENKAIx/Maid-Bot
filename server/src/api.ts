@@ -407,7 +407,9 @@ export function createApi(deps: ApiDeps) {
         const body = await readJson(req, 20_000);
         const tell = deps.billing ? (x: User, text: string) => deps.billing!.notify(x, text, false).then(() => {}) : undefined;
         const cancelSub = deps.billing ? (x: User) => deps.billing!.cancel(x) : undefined;
-        return guardAsync(() => accountAction({ store, tell, cancelSub }, u, id, acc[2], body));
+        const tellChat = deps.billing ? (chat: string, text: string) => deps.billing!.tellChat(chat, text).then(() => {}) : undefined;
+        const forget = (x: number) => deps.pipeline.gate?.forget(x);
+        return guardAsync(() => accountAction({ store, tell, tellChat, cancelSub, forget }, u, id, acc[2], body));
       }
       throw new HttpError(404, "нет такого адреса");
     }

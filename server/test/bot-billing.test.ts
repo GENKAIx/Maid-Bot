@@ -150,3 +150,27 @@ test("бот: альбом из трёх фото на пробе — все т�
   assert.ok(!s.sent().some((c) => /Много сообщений подряд/.test(String(c.payload.text ?? c.payload.caption))));
   await s.store.close();
 });
+
+test("бот: аккаунт удалили между фильтром «свой» и разбором — запись без пробы не заводится, /start даёт пробу", async () => {
+  const s = await stand();
+  const u = await s.store.createUser({ login: "gone", passwordHash: "x", tz: "Europe/Moscow", chatId: "88", plan: "trial", accessUntil: new Date(Date.now() + 86_400_000).toISOString(), trialLenDays: 7 });
+  // Взгляд из userOf (bot.ts) ещё видит запись, а удаление коммитится сразу после него.
+  const orig = s.store.userByChat.bind(s.store);
+  let raced = false;
+  s.store.userByChat = (chat: string) => {
+    const inUserOf = /userOf/.test(new Error().stack ?? "");
+    return orig(chat).then(async (r) => {
+      if (chat === "88" && inUserOf && !raced) { raced = true; await s.store.deleteAccount(u.id); }
+      return r;
+    });
+  };
+  await s.text(88, "купить хлеб");
+  s.store.userByChat = orig;
+  assert.ok(raced);
+  assert.equal(await s.store.userByChat("88"), undefined, "полуживой записи (план '', без пробы) нет");
+  await s.text(88, "/start");
+  const nu = (await s.store.userByChat("88"))!;
+  assert.deepEqual([nu.plan, nu.id > u.id], ["trial", true], "регистрация заново — с пробой");
+  assert.deepEqual((await s.store.billingEventsOf(nu.id)).map((e) => e.kind), ["trial_started"]);
+  await s.store.close();
+});
