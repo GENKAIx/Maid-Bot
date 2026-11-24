@@ -1,9 +1,12 @@
 // Админка сайта (/admin) без React: разделы и подписи журнала. Ревью — docs/review/админка-2026-11-24.html.
 // Каркас (24.11.2026): Обзор и Журнал; этап 1 (24.11.2026): Пользователи, Расходы, Аудитория, Качество разбора — на готовых данных.
 // Этап 2 (24.11.2026): онлайн, устройства, карта часов, версии виджета, дорогие сообщения и раздел «Здоровье сервера».
+// Этап 3 (24.11.2026): «Использование функций» — счётчики фич (server/src/feature-events.ts, отчёт — admin-stats.ts adminFeatures).
+// Этап 4 (24.11.2026): «Витрина» — анимации с проигрывателем, эффекты, сценарии, карта функций (screens/AdminShowcase.tsx,
+// реестр web/src/registry.gen.ts пишет tools/registry/make_registry.ts).
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
-export const ADMIN_LIVE_STAGE = 2;
+export const ADMIN_LIVE_STAGE = 4;
 
 export type AdminSectionId = "overview" | "users" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "log";
 
@@ -14,7 +17,7 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number 
   { id: "audience", title: "Аудитория", stage: 1 },
   { id: "quality", title: "Качество разбора", stage: 1 },
   { id: "features", title: "Использование функций", stage: 3 },
-  { id: "showcase", title: "Витрина анимаций", stage: 4 },
+  { id: "showcase", title: "Витрина", stage: 4 },
   { id: "health", title: "Здоровье сервера", stage: 2 },
   { id: "log", title: "Журнал админки", stage: 0 },
 ];
@@ -55,7 +58,7 @@ export const SOURCE_NAMES: Record<string, string> = {
 /** Клиент входа (заголовок X-Maid-Client; у старых — по метке входа, server/src/auth.ts). */
 export const CLIENT_NAMES: Record<string, string> = {
   web: "Сайт", desktop: "Программа на ПК", "desktop-key": "Ключ ПК (сервер)", widget: "Виджет на ПК", quick: "Быстрая запись", iphone: "Айфон",
-  "telegram-widget": "Виджет Telegram", telegram: "Telegram", other: "Другое",
+  "telegram-widget": "Виджет Telegram", telegram: "Telegram", push: "Push-уведомления", other: "Другое",
 };
 
 /** Ветка разбора сообщения (messages.route, server/src/pipeline.ts). */
@@ -97,4 +100,36 @@ export function sortRows<T extends Record<string, unknown>>(rows: T[], key: keyo
     const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "ru");
     return desc ? -c : c;
   });
+}
+
+// ——— Этап 3: использование функций (/api/admin/features).
+export type FeatureStat = { uses30: number; people30: number; weeks: number[]; last: string | null };
+export type FeatureRow = { id: string; title: string; group: string; by: "client" | "server"; all: FeatureStat; clients: Record<string, FeatureStat> };
+export const FEATURE_WEEKS = 8;
+const noStat = (): FeatureStat => ({ uses30: 0, people30: 0, weeks: Array<number>(FEATURE_WEEKS).fill(0), last: null });
+
+/** Строки под фильтр: группа и клиент («all» — все); у строки — счёт выбранного клиента и плоские поля для сортировки. */
+export function featureView(rows: FeatureRow[], group: string, client: string) {
+  return rows.filter((r) => group === "all" || r.group === group).map((r) => {
+    const s = client === "all" ? r.all : r.clients[client] ?? noStat();
+    return { id: r.id, title: r.title, group: r.group, by: r.by, uses30: s.uses30, people30: s.people30, weeks: s.weeks,
+      trend: s.weeks.reduce((a, b) => a + b, 0), last: s.last ?? "" };
+  });
+}
+
+/** Линия тренда по неделям в прямоугольнике w×h (точки для <polyline>); всё по нулям — линия по низу. */
+export function sparkPoints(weeks: number[], w: number, h: number): string {
+  const max = Math.max(1, ...weeks);
+  const step = weeks.length > 1 ? w / (weeks.length - 1) : 0;
+  return weeks.map((v, i) => `${+(i * step).toFixed(1)},${+(h - 1 - (v / max) * (h - 2)).toFixed(1)}`).join(" ");
+}
+
+/** День последнего использования (ГГГГ-ММ-ДД, по поясу человека) относительно «сегодня» админки. */
+export function dayAgo(day: string | null, today: string): string {
+  if (!day) return "никогда";
+  const d = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000);
+  if (d <= 0) return "сегодня";
+  if (d === 1) return "вчера";
+  if (d < 31) return `${d} дн. назад`;
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
 }

@@ -49,7 +49,7 @@ test("админка: не админ, ключ ПК — 404 и admin=false; а�
     assert.equal((await s.call("/api/me", owner)).body.admin, true);
     assert.equal((await s.call("/api/me", friend)).body.admin, false);
     assert.equal((await s.call("/api/me", "desk-test-key")).body.admin, false, "DESKTOP_TOKEN — тот же владелец, но не админ");
-    for (const p of ["/api/admin/state", "/api/admin/overview", "/api/admin/log", "/api/admin/whatever"]) {
+    for (const p of ["/api/admin/state", "/api/admin/overview", "/api/admin/log", "/api/admin/features", "/api/admin/whatever"]) {
       assert.equal((await s.call(p, friend)).status, 404, `друг: ${p}`);
       assert.equal((await s.call(p, "desk-test-key")).status, 404, `ключ ПК: ${p}`);
     }
@@ -95,7 +95,7 @@ test("админка: код из Telegram → вход на час, тольк�
     assert.equal(ov.body.users, 2);
     assert.equal(ov.body.new_week, 2);
     assert.equal((ov.body.online as { total: number }).total, 1, "этап 2: онлайн — владелец (два его входа — один человек)");
-    for (const p of ["/api/admin/users", "/api/admin/spend?days=7", "/api/admin/audience", "/api/admin/quality?days=7", "/api/admin/health"]) {
+    for (const p of ["/api/admin/users", "/api/admin/spend?days=7", "/api/admin/audience", "/api/admin/quality?days=7", "/api/admin/health", "/api/admin/features"]) {
       const r = await s.call(p, owner);
       assert.equal(r.status, 200, p);
       assert.equal((await s.call(p, other)).status, 403, `${p}: другое устройство без кода`);
@@ -118,6 +118,9 @@ test("админка: код из Telegram → вход на час, тольк�
     const sp = await keys("/api/admin/spend?days=7", ["heavy", "routes"]);
     for (const k of ["heavy", "routes"]) assert.ok(Array.isArray(sp[k]), `spend.${k} — список`);
     assert.ok(Array.isArray((ov.body.online as { clients: unknown }).clients), "overview.online.clients — список");
+    // Этап 3: использование фич (AdminSections.tsx: Features).
+    const ft = await keys("/api/admin/features", ["today", "since", "groups", "clients", "features", "unused"]);
+    for (const k of ["clients", "features", "unused"]) assert.ok(Array.isArray(ft[k]), `features.${k} — список`);
     assert.equal((await s.call("/api/admin/overview", other)).status, 403, "другое устройство — свой код");
     const log = await s.call("/api/admin/log", owner);
     assert.deepEqual((log.body as unknown as { action: string; who: string }[]).map((r) => `${r.who}:${r.action}`), ["Хозяин:enter", "Хозяин:wrong", "Хозяин:code"]);

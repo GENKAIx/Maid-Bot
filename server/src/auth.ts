@@ -42,7 +42,7 @@ export function clientFromLabel(label: string): string {
   return "other";
 }
 /** Окна программы на ПК (виджет, быстрая запись) — одна программа: вход и присутствие пишутся как «desktop». */
-const familyOf = (client: string) => (client === "widget" || client === "quick" ? "desktop" : client);
+export const familyOf = (client: string) => (client === "widget" || client === "quick" ? "desktop" : client);
 /** Что записать входу из заголовков. Сайт в главном окне программы ходит с её ключом и шлёт «web» и версию сайта:
  *  вход программы остаётся «desktop», версия сайта ему не пишется (иначе клиент и версия скачут между сайтом и программой). */
 function sessionMeta(known: string, meta: ClientMeta): ClientMeta {
@@ -140,8 +140,9 @@ export function resetSeen() {
   presenceSeen.clear();
 }
 
-/** Кто пришёл с этим ключом и как вошёл. meta — клиент и версия из заголовков (пусто — неизвестно). */
-export async function authByToken(store: Store, token: string, meta: ClientMeta = { client: "", version: "" }): Promise<{ user: User; via: Via } | undefined> {
+/** Кто пришёл с этим ключом и как вошёл. meta — клиент и версия из заголовков (пусто — неизвестно).
+ *  quiet — служебный запрос (пачка счётчиков фич): ни last_seen, ни минуты присутствия — человека может уже не быть. */
+export async function authByToken(store: Store, token: string, meta: ClientMeta = { client: "", version: "" }, opts: { quiet?: boolean } = {}): Promise<{ user: User; via: Via } | undefined> {
   if (!token) return undefined;
   const h = tokenHash(token);
   const u = await store.sessionUser(h);
@@ -152,7 +153,7 @@ export async function authByToken(store: Store, token: string, meta: ClientMeta 
     }
     const { last_seen, session_label, session_client, ...user } = u;
     // last_seen, клиент, версию и минуту присутствия пишем не чаще раза в минуту.
-    if (Date.now() - new Date(last_seen).getTime() > 60_000) {
+    if (!opts.quiet && Date.now() - new Date(last_seen).getTime() > 60_000) {
       const known = session_client || clientFromLabel(session_label);
       const m = sessionMeta(known, meta);
       await store.touchSession(h, m.client, m.version);
@@ -166,7 +167,7 @@ export async function authByToken(store: Store, token: string, meta: ClientMeta 
     if (!user) return undefined;
     const seen = desktopSeen.get(user.id);
     const t = Date.now();
-    if (!seen || t - seen.at > 60_000) {
+    if (!opts.quiet && (!seen || t - seen.at > 60_000)) {
       // Ключ лежит в программе на ПК: «desktop», версия сайта из её главного окна не пишется (sessionMeta).
       const m = sessionMeta("desktop", meta);
       desktopSeen.set(user.id, { at: t, version: m.version || seen?.version || "" });

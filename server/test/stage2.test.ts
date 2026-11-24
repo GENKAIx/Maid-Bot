@@ -52,7 +52,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       " ALTER TABLE messages DROP COLUMN llm_calls; ALTER TABLE messages DROP COLUMN route; DROP TABLE presence; DROP TABLE llm_calls;");
     await store.kvSet("schema_version", "23");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "24");
+    assert.equal(await again.kvGet("schema_version"), "26");
     const [s] = await q<{ client: string; version: string; label: string }>(again, "SELECT client, version, label FROM sessions");
     assert.deepEqual([s.client, s.version, s.label], ["", "", "web"]);
     const m = (await again.message(message.id))!;

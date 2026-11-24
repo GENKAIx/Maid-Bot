@@ -3,6 +3,7 @@ import { DayPie } from "../charts";
 import { demoLength, FEATURES, frameAt, type Demo, type Feature, type Frame, type Row } from "../features";
 import { dur } from "../format";
 import { navigate } from "../router";
+import { track } from "../usage";
 
 // Раздел «Возможности»: фичи сверху вниз. У каждой — название, зачем она, живой пример «с горничной» (копия виджета) и, где есть,
 // второй (копия панели дня, чат Telegram, поиск, круг статистики) и кнопка «▶ Показать».
@@ -207,7 +208,7 @@ function FeatureCard({ f }: { f: Feature }) {
           <h3>{f.title}</h3>
           <p>{f.text}</p>
         </div>
-        <button className="fx-play" onClick={play} disabled={playing}>{playing ? "Идёт…" : "▶ Показать"}</button>
+        <button className="fx-play" onClick={() => { track("site.feature_demo"); play(); }} disabled={playing}>{playing ? "Идёт…" : "▶ Показать"}</button>
       </header>
       <div className={`fx-demos${f.manual ? " two" : ""}`}>
         <figure>

@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "registry": "tsx ../tools/registry/make_registry.ts"
   },
   "dependencies": {
     "@fontsource-variable/onest": "^5.3.1",

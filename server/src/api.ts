@@ -6,7 +6,9 @@ import { z } from "zod";
 import { PERSONAS } from "./personas.ts";
 import { authByToken, clientMeta, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
 import { adminJournal, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
-import { adminAudience, adminHealth, adminOverview, adminQualityReport, adminSpend, adminUsers } from "./admin-stats.ts";
+import { adminAudience, adminFeatures, adminHealth, adminOverview, adminQualityReport, adminSpend, adminUsers } from "./admin-stats.ts";
+import { acceptUsage, countFeature, featureClient, USAGE_MAX_KEYS } from "./feature-events.ts";
+import { featureOfApi } from "./feature-list.ts";
 import type { DateRow, Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { ALBUM, albumOf, albumSee } from "./album.ts";
@@ -30,7 +32,7 @@ import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedT
 import { transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { moveToTomorrow, weatherFor } from "./weather.ts";
 import { ADDRESSES, addressWord, askNext, askOf, wakeAt, wakeMinOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
-import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES } from "./llm.ts";
+import { enterUser, IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, IMAGE_TYPES, IMAGES_MAX_BYTES, llmErrorCode } from "./llm.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -314,9 +316,13 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/admin/audience") return adminAudience(store);
     if (m === "GET" && p === "/api/admin/quality") return adminQualityReport(store, days);
     if (m === "GET" && p === "/api/admin/health") return adminHealth(store);
+    if (m === "GET" && p === "/api/admin/features") return adminFeatures(store);
     if (m === "GET" && p === "/api/admin/log") return adminJournal(store);
     throw new HttpError(404, "нет такого адреса");
   }
+
+  /** Кто сделал запрос и с какого клиента — для счётчика фич по ручкам API (feature-list.ts api), считается после удачного ответа. */
+  const askedBy = new WeakMap<http.IncomingMessage, { user: User; client: string }>();
 
   async function route(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? "/", "http://local");
@@ -365,21 +371,37 @@ export function createApi(deps: ApiDeps) {
       if (!a) throw new HttpError(403, "кнопка устарела");
       const owner = await store.user(a.userId);
       if (!owner) throw new HttpError(404, "нет пользователя");
-      return { text: await runButton(owner, a.data, a.all) };
+      const text = await runButton(owner, a.data, a.all);
+      countFeature(owner, "push", "push.act"); // кнопка сработала — тогда и в счёт
+      return { text };
     }
 
     const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
     // Клиент и версия — из заголовков X-Maid-Client / X-Maid-Version по белому списку (auth.ts clientMeta); IP не храним.
-    const auth = await authByToken(store, token, clientMeta(req.headers));
+    // Пачка счётчиков уходит и из фоновой вкладки, и при выходе — присутствия она не отмечает (auth.ts quiet).
+    const auth = await authByToken(store, token, clientMeta(req.headers), { quiet: m === "POST" && p === "/api/events/usage" });
     if (!auth) throw new HttpError(401, "нужен вход (логин и пароль) или ключ");
     const u = auth.user;
     enterUser(u.id); // расход ИИ в этом запросе — на счёт этого человека
+    // Клиент для счётчиков фич: виджет и быстрая запись — «desktop», без заголовка — «other» (feature-events.ts).
+    const client = featureClient(clientMeta(req.headers).client);
+    askedBy.set(req, { user: u, client });
     if (p.startsWith("/api/admin/")) {
       // Не админу (и админу, вошедшему по DESKTOP_TOKEN) — как будто адреса нет.
       if (!isAdmin(u, auth.via)) throw new HttpError(404, "нет такого адреса");
       return adminApi(u, tokenHash(token).slice(0, 16), m, p, req);
     }
 
+    // Счётчики фич от клиента (этап 3 админки): { client?, counts: { фича: сколько } } раз в 10 минут и при уходе со страницы.
+    // Клиент — по заголовку X-Maid-Client (нет — из тела, тоже по белому списку); чаще раза в минуту — 429 (feature-events.ts).
+    if (m === "POST" && p === "/api/events/usage") {
+      const b = parseBody(z.object({ client: z.string().max(40).optional(), counts: z.record(z.string().max(60), z.number()) }), await readJson(req, 20_000));
+      if (Object.keys(b.counts).length > USAGE_MAX_KEYS) throw new HttpError(400, `не больше ${USAGE_MAX_KEYS} фич в пачке`);
+      const from = clientMeta(req.headers).client || clientMeta({ "x-maid-client": b.client }).client;
+      const r = acceptUsage(u, from, b.counts);
+      if (!r.ok) throw new HttpError(429, `счётчики — не чаще раза в минуту, через ${r.wait} с`);
+      return r;
+    }
     if (m === "POST" && p === "/api/logout") {
       await store.dropSession(tokenHash(token));
       return { ok: true };
@@ -1059,7 +1081,7 @@ export function createApi(deps: ApiDeps) {
       if (images.length > IMAGE_MAX_COUNT) throw new HttpError(400, `не больше ${IMAGE_MAX_COUNT} картинок`);
       const sizes = images.map((i) => Buffer.byteLength(i.data, "base64"));
       if (sizes.some((n) => n > IMAGE_MAX_BYTES) || sizes.reduce((a, n) => a + n, 0) > IMAGES_MAX_BYTES) throw new HttpError(413, "слишком большая картинка");
-      return pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: b.text, chatOnly: b.ask, images: images.length ? images : undefined });
+      return pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: b.text, chatOnly: b.ask, images: images.length ? images : undefined, client });
     }
     // Голосовое сообщение: аудио в base64 → текст → как обычная запись. heard — что услышали.
     if (m === "POST" && p === "/api/voice") {
@@ -1069,12 +1091,15 @@ export function createApi(deps: ApiDeps) {
       );
       const audio = Buffer.from(b.audio, "base64");
       if (audio.length > VOICE_MAX_BYTES) throw new HttpError(413, "слишком длинная запись");
+      // Клиенту — своя фраза и код сбоя, не текст ошибки: в нём бывает тело ответа провайдера (оно — только в журнале сервера).
       const heard = await transcribe(audio, b.mime).catch((e) => {
-        throw new HttpError(502, `не получилось распознать: ${(e as Error).message}`);
+        console.error("[voice]", e);
+        const code = llmErrorCode(e);
+        throw new HttpError(502, code === "no_key" ? "распознавание речи не настроено на сервере" : `не получилось распознать голос (${code}), попробуйте ещё раз`);
       });
       // Слов нет — чаще всего записалась тишина: микрофон выключен (на наушниках) или выбран не тот.
       if (!heard) throw new HttpError(422, "Ничего не услышала. Проверьте свой микрофон — может, он выключен на наушниках или выбран не тот.");
-      const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: heard.slice(0, 4000) });
+      const r = await pipeline.handle({ user: u, source: "desktop", sourceId: b.id ?? crypto.randomUUID(), text: heard.slice(0, 4000), client });
       return { ...r, heard };
     }
     // Вопрос «добавить?» из ответа: action remind / add / decline, picked — отмеченные пункты. GET — его состояние
@@ -1091,7 +1116,7 @@ export function createApi(deps: ApiDeps) {
     }
     const again = p.match(/^\/api\/messages\/(\d+)\/(retry|note)$/);
     if (again && m === "POST") {
-      if (again[2] === "retry") return pipeline.retry(u, Number(again[1]));
+      if (again[2] === "retry") return pipeline.retry(u, Number(again[1]), new Date(), client);
       return { text: await pipeline.asNote(u, Number(again[1])) };
     }
     // Ответ на «Сдвинуть на …?» (план лёг на занятое время) — те же shift / keep, что у кнопок Telegram.
@@ -1136,6 +1161,12 @@ export function createApi(deps: ApiDeps) {
   return http.createServer(async (req, res) => {
     try {
       const out = await route(req, res);
+      // Удачный запрос к ручке-фиче — ещё одно использование (в памяти, в базу — пачкой раз в минуту). Повтор того же
+      // сообщения (/api/input, /api/voice с прежним id после обрыва связи: разбор ответил duplicate) — не в счёт.
+      const who = askedBy.get(req);
+      const used = who && featureOfApi(req.method ?? "GET", new URL(req.url ?? "/", "http://local").pathname);
+      const again = typeof out === "object" && out !== null && "messageId" in out && (out as { duplicate?: boolean }).duplicate === true;
+      if (who && used && !again) countFeature(who.user, who.client, used);
       if (out === undefined) return;
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(out));

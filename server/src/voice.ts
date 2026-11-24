@@ -19,7 +19,7 @@ const EXT: Record<string, string> = {
 };
 
 export async function transcribe(audio: Buffer, mime: string): Promise<string> {
-  if (!config.stt.apiKey) throw new Error("распознавание речи не настроено (нет ключа)");
+  if (!config.stt.apiKey) throw Object.assign(new Error("распознавание речи не настроено (нет ключа)"), { code: "no_key" });
   const type = mime.split(";")[0].trim().toLowerCase();
   const form = new FormData();
   form.append("file", new Blob([new Uint8Array(audio)], { type: type || "audio/webm" }), `voice.${EXT[type] ?? "webm"}`);

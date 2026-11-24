@@ -4,6 +4,7 @@ import { usageReport } from "./api.ts";
 import { clientFromLabel, desktopTokenSeen, SESSION_IDLE_DAYS } from "./auth.ts";
 import { CHAT_FAILED } from "./pipeline.ts";
 import { config } from "./config.ts";
+import { FEATURE_GROUPS, FEATURE_IDS, FEATURES } from "./feature-list.ts";
 
 // Админка, этап 1 (24.11.2026, docs/review/админка-2026-11-24.html): отчёты на данных, которые уже есть в базе.
 // Только счётчики, имена и логины — без текстов сообщений и chat id. Обращения к горничной — сообщения, разобранные моделью
@@ -263,6 +264,57 @@ export async function adminQualityReport(store: Store, days: number, now = new D
   const total = series.reduce((s, r) => ({ requests: s.requests + r.requests, failed: s.failed + r.failed, clarify: s.clarify + r.clarify, corrections: s.corrections + r.corrections, undone: s.undone + r.undone }),
     { requests: 0, failed: 0, clarify: 0, corrections: 0, undone: 0 });
   return { series, total };
+}
+
+/** Этап 3 (24.11.2026): использование фич по счётчикам feature_events. По каждой фиче из белого списка (feature-list.ts) —
+ *  всего и по клиентам: раз за 30 дней, людей за 30 дней, 8 недель по 7 дней (последняя — 7 дней до сегодня), последний день.
+ *  Дни — по поясу человека, «сегодня» — по поясу сервера. unused — фичи без единого раза за 30 дней. Без текстов и chat id. */
+export const ADMIN_FEATURE_WEEKS = 8;
+export async function adminFeatures(store: Store, now = new Date()) {
+  const t = today(now);
+  const tMs = Date.parse(`${t}T00:00:00Z`);
+  const since30 = addDays(t, -29);
+  type Stat = { uses30: number; people30: number; weeks: number[]; last: string | null };
+  const blank = (): Stat & { who: Set<number> } => ({ uses30: 0, people30: 0, weeks: Array<number>(ADMIN_FEATURE_WEEKS).fill(0), last: null, who: new Set() });
+  const stats = new Map<string, Map<string, ReturnType<typeof blank>>>(); // фича → клиент («» — все) → счёт
+  const statOf = (feature: string, client: string) => {
+    const m = stats.get(feature) ?? stats.set(feature, new Map()).get(feature)!;
+    return m.get(client) ?? m.set(client, blank()).get(client)!;
+  };
+  const clients = new Map<string, { uses30: number; who: Set<number> }>();
+  // Имена, убранные из списка, в отчёт не идут (в базе доживают свой срок).
+  for (const r of await store.adminFeatureRows(addDays(t, 1 - 7 * ADMIN_FEATURE_WEEKS))) {
+    if (!FEATURE_IDS.has(r.feature)) continue;
+    const ago = Math.max(0, Math.round((tMs - Date.parse(`${r.day}T00:00:00Z`)) / DAY));
+    const w = ADMIN_FEATURE_WEEKS - 1 - Math.floor(ago / 7);
+    for (const s of [statOf(r.feature, ""), statOf(r.feature, r.client)]) {
+      if (w >= 0) s.weeks[w] += r.count;
+      if (r.day >= since30) { s.uses30 += r.count; s.who.add(r.user_id); }
+    }
+    if (r.day >= since30) {
+      const c = clients.get(r.client) ?? clients.set(r.client, { uses30: 0, who: new Set() }).get(r.client)!;
+      c.uses30 += r.count;
+      c.who.add(r.user_id);
+    }
+  }
+  let since: string | null = null;
+  for (const r of await store.adminFeatureLast()) {
+    if (!FEATURE_IDS.has(r.feature)) continue;
+    for (const s of [statOf(r.feature, ""), statOf(r.feature, r.client)]) if (!s.last || r.last > s.last) s.last = r.last;
+    if (!since || r.first < since) since = r.first;
+  }
+  const out = (s: ReturnType<typeof blank>): Stat => ({ uses30: s.uses30, people30: s.who.size, weeks: s.weeks, last: s.last });
+  const features = FEATURES.map((f) => {
+    const m = stats.get(f.id);
+    const by = Object.fromEntries([...(m ?? [])].filter(([c]) => c).map(([c, s]) => [c, out(s)]));
+    return { id: f.id, title: f.title, group: f.group, by: f.by, all: out(m?.get("") ?? blank()), clients: by };
+  });
+  return {
+    today: t, since, groups: FEATURE_GROUPS,
+    clients: [...clients].map(([client, c]) => ({ client, uses30: c.uses30, people30: c.who.size })).sort((a, b) => b.uses30 - a.uses30),
+    features,
+    unused: features.filter((f) => !f.all.uses30).map((f) => f.id),
+  };
 }
 
 // ——— Тревоги владельцу в Telegram (scheduler.extra, раз в такт). Один раз на событие (store.once): перерасход за день —

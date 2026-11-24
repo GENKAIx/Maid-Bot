@@ -1,16 +1,17 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { ApiError, get } from "../api";
-import { ADM_WEEKDAYS, ago, CLIENT_NAMES, ERROR_NAMES, msText, ROUTE_NAMES, SOURCE_NAMES, sortRows, uptimeText, usd } from "../admin";
+import { ADM_WEEKDAYS, ago, CLIENT_NAMES, dayAgo, ERROR_NAMES, featureView, msText, ROUTE_NAMES, SOURCE_NAMES, sortRows, sparkPoints, uptimeText, usd, type FeatureRow } from "../admin";
 
 // Разделы админки этапа 1 (24.11.2026): Обзор, Пользователи, Расходы, Аудитория, Качество разбора. Данные — /api/admin/*
 // (server/src/admin-stats.ts): только счётчики и имена. Свои простые графики (AdmBars) — в цветах админки, не сайта.
 // Этап 2 (24.11.2026): онлайн сейчас, устройства человека, карта часов, версии виджета, дорогие сообщения, «Здоровье сервера».
+// Этап 3 (24.11.2026): «Использование функций» (AdminFeatures).
 
 /** Вход в админку кончился (сервер ответил 403) — Shell (Admin.tsx) перечитывает состояние и показывает ввод кода. */
 export const AdminLost = createContext<() => void>(() => {});
 
 /** Данные раздела и текст ошибки, если не загрузились (сеть, 500, тайм-аут). */
-function useAdmin<T>(path: string): [T | null, string] {
+export function useAdmin<T>(path: string): [T | null, string] {
   const [v, setV] = useState<T | null>(null);
   const [err, setErr] = useState("");
   const lost = useContext(AdminLost);
@@ -28,7 +29,7 @@ function useAdmin<T>(path: string): [T | null, string] {
   return [v, err];
 }
 
-const Loading = ({ err }: { err?: string }) =>
+export const Loading = ({ err }: { err?: string }) =>
   err ? <span className="adm-err" role="alert">Не загрузилось: {err}</span> : <span className="adm-muted">Загрузка…</span>;
 const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 
@@ -486,6 +487,102 @@ export function AdminHealth() {
       <p className="adm-muted adm-small">
         Попытка — один запрос к провайдеру: повтор после 429 или 5xx и запасная модель считаются отдельно. Текстов ответов провайдера журнал
         не хранит — только код. Просроченное напоминание — ждёт отправки дольше 2 минут: такт планировщика (раз в 30 с) стоит или падает.
+      </p>
+    </>
+  );
+}
+
+// ——— Этап 3 (24.11.2026): использование функций по счётчикам feature_events (server/src/admin-stats.ts adminFeatures).
+type FeaturesReport = {
+  today: string; since: string | null; groups: Record<string, string>;
+  clients: { client: string; uses30: number; people30: number }[]; features: FeatureRow[]; unused: string[];
+};
+type FeatureLine = ReturnType<typeof featureView>[number];
+const FEATURE_COLS: { key: keyof FeatureLine; title: string; num?: boolean; hint?: string }[] = [
+  { key: "title", title: "Функция" },
+  { key: "group", title: "Где" },
+  { key: "uses30", title: "Раз / 30 дн.", num: true },
+  { key: "people30", title: "Людей", num: true, hint: "сколько разных людей за 30 дней" },
+  { key: "trend", title: "8 недель", num: true, hint: "по 7 дней, последняя — до сегодня; сортировка — по сумме" },
+  { key: "last", title: "Последний раз", num: true },
+];
+
+function Spark({ weeks }: { weeks: number[] }) {
+  const w = 72, h = 18;
+  return (
+    <svg className="adm-spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-label={`по неделям: ${weeks.join(", ")}`}>
+      <polyline points={sparkPoints(weeks, w, h)} fill="none" />
+    </svg>
+  );
+}
+
+export function AdminFeatures() {
+  const [r, err] = useAdmin<FeaturesReport>("/api/admin/features");
+  const [group, setGroup] = useState("all");
+  const [client, setClient] = useState("all");
+  const [sort, setSort] = useState<{ key: keyof FeatureLine; desc: boolean }>({ key: "uses30", desc: true });
+  if (!r) return <Loading err={err} />;
+  const rows = featureView(r.features, group, client);
+  const used = sortRows(rows.filter((x) => x.uses30), sort.key, sort.desc);
+  const unused = rows.filter((x) => !x.uses30);
+  const groupName = (g: string) => r.groups[g] ?? g;
+  return (
+    <>
+      <div className="adm-kpis">
+        {r.clients.map((c) => <Kpi key={c.client} title={clientName(c.client)} value={c.uses30} hint={`людей: ${c.people30} · раз за 30 дней`} />)}
+        {!r.clients.length && <Kpi title="За 30 дней" value={0} hint="счётчиков пока нет" />}
+      </div>
+      <div className="adm-toolbar">
+        <div className="adm-seg-ctl" role="tablist" aria-label="Где">
+          {[["all", "Все"], ...Object.entries(r.groups)].map(([id, t]) => (
+            <button key={id} role="tab" aria-selected={group === id} className={group === id ? "on" : ""} onClick={() => setGroup(id)}>{t}</button>
+          ))}
+        </div>
+        <div className="adm-seg-ctl" role="tablist" aria-label="Клиент">
+          {["all", ...r.clients.map((c) => c.client)].map((id) => (
+            <button key={id} role="tab" aria-selected={client === id} className={client === id ? "on" : ""} onClick={() => setClient(id)}>{id === "all" ? "Все клиенты" : clientName(id)}</button>
+          ))}
+        </div>
+        <span className="adm-muted adm-small">{r.since ? `счётчики с ${dayLabel(r.since)}` : "счётчиков ещё нет"} · дни — по поясу человека</span>
+      </div>
+      <div className="adm-scroll">
+        <table className="adm-table adm-feat">
+          <thead>
+            <tr>{FEATURE_COLS.map((c) => (
+              <th key={c.key} title={c.hint} className={c.num ? "num" : ""} aria-sort={sort.key === c.key ? (sort.desc ? "descending" : "ascending") : "none"}>
+                <button onClick={() => setSort({ key: c.key, desc: sort.key === c.key ? !sort.desc : Boolean(c.num) })}>
+                  {c.title}{sort.key === c.key ? (sort.desc ? " ↓" : " ↑") : ""}
+                </button>
+              </th>
+            ))}</tr>
+          </thead>
+          <tbody>
+            {used.map((x) => (
+              <tr key={x.id}>
+                <td>{x.title} <span className="adm-muted adm-num adm-small">{x.id}</span></td>
+                <td>{groupName(x.group)}{x.by === "server" && <span className="adm-muted adm-small" title="считает сервер сам, без помощи клиента"> · сервер</span>}</td>
+                <td className="num adm-num">{x.uses30}</td>
+                <td className="num adm-num">{x.people30}</td>
+                <td className="num"><Spark weeks={x.weeks} /></td>
+                <td className="num adm-num">{dayAgo(x.last || null, r.today)}</td>
+              </tr>
+            ))}
+            {!used.length && <tr><td colSpan={FEATURE_COLS.length} className="adm-muted">За 30 дней — ни одной функции под этот фильтр.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <h2 className="adm-h2">Не использовались 30 дней <span className="adm-muted">· {unused.length}</span></h2>
+      <div className="adm-unused">
+        {unused.map((x) => (
+          <span key={x.id} className="adm-chip" title={x.id}>
+            {x.title} <span className="adm-muted adm-num">{x.last ? dayAgo(x.last, r.today) : "никогда"}</span>
+          </span>
+        ))}
+        {!unused.length && <span className="adm-muted">Всеми пользовались.</span>}
+      </div>
+      <p className="adm-muted adm-small adm-note">
+        Только имена функций и сколько раз — без текстов. «Сервер» — считает сам (ручки, команды бота, ветки разбора); остальное присылают
+        сайт и программа на ПК пачкой раз в 10 минут, поэтому свежие нажатия появляются с задержкой. Виджет начнёт присылать свои после обновления программы.
       </p>
     </>
   );

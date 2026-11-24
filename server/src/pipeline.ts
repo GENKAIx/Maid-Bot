@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { MarkRow, Message, ProposalRow, Store, Table, User } from "./db.ts";
 import type { LlmCall, Picture } from "./llm.ts";
 import type { DrawCall } from "./draw.ts";
-import { asUser, extractJson } from "./llm.ts";
+import { asUser, extractJson, llmErrorCode } from "./llm.ts";
 import { buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
 import { scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
@@ -14,6 +14,7 @@ import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from 
 import { addTraitFromChat, traitPrompt } from "./profile.ts";
 import { aboutOffer, cityOf, findCities, type City, type YouButton } from "./you.ts";
 import { weatherFor } from "./weather.ts";
+import { countFeature } from "./feature-events.ts";
 import { SHELVES, notesData, sameNote } from "./notes.ts";
 import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, moneyCard, noteCard, taskCard, traitCard } from "./cards.ts";
 import {
@@ -154,7 +155,7 @@ export const TALK_RULES =
   "делись своим мнением и впечатлением, можешь задать встречный вопрос по теме разговора. Не сворачивай на дела, задачи и планы, " +
   "если собеседник сам о них не говорит. 1–4 предложения, без списков.";
 
-/** Признак неудачи разговора (/ask) в reply — такие не повторяются разбором. */
+/** Признак неудачи разговора (/ask) в reply — такие не повторяются разбором. После него — код сбоя (llmErrorCode), не текст ошибки. */
 export const CHAT_FAILED = "chat:";
 
 /** Вопрос «добавить?» с пунктами-галочками. Кнопки: remind (если есть) — завести с напоминанием, add — просто в список, «Не надо». */
@@ -212,7 +213,12 @@ export interface Incoming {
   chatOnly?: boolean;
   /** Картинки (чеки, билеты, скриншоты); text тогда — подпись к ним, может быть пустой. */
   images?: Picture[];
+  /** Клиент для счётчиков фич (feature-events.ts): ставят только api.ts и bot.ts — фоновый повтор и импорт не считаются. */
+  client?: string;
 }
+
+/** Ветка разбора → фича (feature-list.ts); упавший разбор и уточнение — не фичи. */
+const ROUTE_FEATURES: Record<string, string> = { weather: "weather_ask", chat: "chat", draw: "draw", answer: "answer", talk: "talk", apply: "record" };
 
 /** Что модели сказать о картинке — рядом с подписью. */
 const pictureNote = (n: number) =>
@@ -228,7 +234,9 @@ export const pictureText = (caption: string, n = 1) => {
 
 /** Сколько логических вызовов модели ушло на сообщение (messages.llm_calls) и по какой ветке оно прошло (messages.route).
  *  Повторы и запасная модель внутри callLlm — один вызов; попытки по отдельности — в журнале llm_calls (llm.ts). */
-interface MsgCalls { id: number; calls: number; route: string }
+interface MsgCalls { id: number; calls: number; route: string; missed?: boolean }
+/** Ветка не удалась (модель или художник не ответили) — в счётчики фич она не идёт (handle). */
+const missBranch = () => { const c = msgCalls.getStore(); if (c) c.missed = true; };
 const msgCalls = new AsyncLocalStorage<MsgCalls>();
 
 export class Pipeline {
@@ -272,8 +280,18 @@ export class Pipeline {
   }
 
   async handle(inc: Incoming): Promise<Reply> {
-    const r = await this.counted((c) => this.handleOne(inc, c));
+    let route = "";
+    const r = await this.counted(async (c) => {
+      try { return await this.handleOne(inc, c); } finally { route = c.missed ? "" : c.route; }
+    });
     if (!r.duplicate && (r.undoable || r.changes?.length)) this.changed(inc.user);
+    // Счётчики фич: ветка, что записано (по виду карточки, раз на сообщение), картинка. Повтор доставки и упавшая ветка — не в счёт.
+    if (inc.client && !r.duplicate) {
+      const use = (f: string) => countFeature(inc.user, inc.client!, f, 1, inc.at);
+      if (ROUTE_FEATURES[route]) use(ROUTE_FEATURES[route]);
+      for (const k of new Set((r.changes ?? []).map((x) => x.kind))) use(`rec.${k}`);
+      if (inc.images?.length) use("photo");
+    }
     return r;
   }
 
@@ -349,7 +367,8 @@ export class Pipeline {
       }
       parsed = normalize(json, { today, now: ctx.now, text: inc.text });
     } catch (e) {
-      await s.setMessage(message.id, { state: "failed", reply: String(e) });
+      // В базу — только код сбоя (llmErrorCode): тело ответа провайдера остаётся в журнале сервера.
+      await s.setMessage(message.id, { state: "failed", reply: llmErrorCode(e) });
       console.error("[parse]", e);
       return { text: p.failed, emotion: "worried", messageId: message.id, undoable: false, failed: true };
     }
@@ -393,7 +412,7 @@ export class Pipeline {
     // С горничной разговаривают — ответ разговором (как /ask), записанное — строками под ним; не вышло — короткая реплика.
     // Разговор знает, что из сообщения уже записано, — иначе отвечал «записывать не стану», а запись была.
     const talk = parsed.talk
-      ? await this.talkText(u, message, at, undefined, lines.map((l) => l.replace(/<[^>]+>/g, ""))).catch((e) => void console.error("[talk]", e))
+      ? await this.talkText(u, message, at, undefined, lines.map((l) => l.replace(/<[^>]+>/g, ""))).catch((e) => { console.error("[talk]", e); missBranch(); })
       : undefined;
     const head = talk || (parsed.reply ? esc(parsed.reply) : pick(p.saved, message.id));
     const body = lines.length ? "\n" + lines.join("\n") : "";
@@ -455,6 +474,7 @@ export class Pipeline {
       pic = await this.draw(d.prompt);
     } catch (e) {
       console.error("[draw]", e);
+      missBranch();
       return done(`Не вышло нарисовать${d.title ? ` «${esc(d.title)}»` : ""} — художник не ответил. Попробуйте ещё раз чуть позже.`, "worried");
     }
     const id = await s.addDrawing({ user_id: u.id, message_id: message.id, prompt: d.prompt, title: d.title, mime: pic.mime, data: pic.data });
@@ -1191,6 +1211,7 @@ export class Pipeline {
       return linkDays(esc(wholeSentences(text) || text), this.publicUrl, today);
     } catch (e) {
       console.error("[answer]", e);
+      missBranch();
       return { text: persona(u.persona, u).failed, days: [] };
     }
   }
@@ -1219,18 +1240,20 @@ export class Pipeline {
       return { text, emotion: "neutral", messageId: msg.id, undoable: false };
     } catch (e) {
       console.error("[chat]", e);
-      await this.store.setMessage(msg.id, { state: "failed", reply: `${CHAT_FAILED}${String(e)}` });
+      missBranch();
+      await this.store.setMessage(msg.id, { state: "failed", reply: `${CHAT_FAILED}${llmErrorCode(e)}` });
       return { text: p.failed, emotion: "worried", messageId: msg.id, undoable: false };
     }
   }
 
-  /** «Повторить»: разобрать неудавшееся сообщение ещё раз. Картинки не хранятся — их не повторить. */
-  async retry(u: User, messageId: number, at = new Date()): Promise<Reply> {
+  /** «Повторить»: разобрать неудавшееся сообщение ещё раз. Картинки не хранятся — их не повторить.
+   *  client — кто нажал (api.ts, bot.ts): записанное идёт в счётчики фич; фоновый повтор — без клиента, не считается. */
+  async retry(u: User, messageId: number, at = new Date(), client?: string): Promise<Reply> {
     const msg = await this.store.message(messageId);
     if (!msg || msg.user_id !== u.id) return { text: "Не нашла сообщение.", emotion: "neutral", messageId, undoable: false };
     if (msg.state !== "failed") return { text: "Это сообщение уже разобрано.", emotion: "neutral", messageId, undoable: false };
     if (msg.text.startsWith("📷")) return { text: "Картинку я не сохраняю — пришлите её ещё раз, пожалуйста.", emotion: "worried", messageId, undoable: false };
-    return this.handle({ user: u, source: msg.source, sourceId: msg.source_id, text: msg.text, at: new Date(msg.received_at) });
+    return this.handle({ user: u, source: msg.source, sourceId: msg.source_id, text: msg.text, at: new Date(msg.received_at), client });
   }
 
   /** Фоновый повтор (раз в такт планировщика): сообщения, разбор которых упал, — через 2, 10 и 30 минут;

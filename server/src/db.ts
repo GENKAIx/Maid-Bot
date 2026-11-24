@@ -447,6 +447,25 @@ CREATE INDEX IF NOT EXISTS llm_calls_at ON llm_calls (at);
 CREATE INDEX IF NOT EXISTS messages_at ON messages (received_at);
 CREATE INDEX IF NOT EXISTS messages_state ON messages (state);
 `,
+  // Шаг 25: у упавших сообщений в reply лежал текст ошибки целиком — с телом ответа провайдера. Теперь там код сбоя
+  // (llmErrorCode); старые тексты стираются в 'other', признак упавшего разговора 'chat:' (CHAT_FAILED в pipeline.ts) остаётся.
+  `
+UPDATE messages SET reply = CASE WHEN reply LIKE 'chat:%' THEN 'chat:other' ELSE 'other' END
+  WHERE state = 'failed' AND reply IS NOT NULL AND reply <> '';
+`,
+  // Шаг 26: этап 3 админки — счётчики фич (feature-events.ts): человек × день (по его поясу) × клиент × фича → сколько раз.
+  // Имена — из белого списка feature-list.ts, без текстов. Хранится 400 дней (pruneStats).
+  `
+CREATE TABLE IF NOT EXISTS feature_events (
+  user_id INTEGER NOT NULL,
+  day_key TEXT NOT NULL,
+  client TEXT NOT NULL,
+  feature TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day_key, client, feature)
+);
+CREATE INDEX IF NOT EXISTS feature_events_day ON feature_events (day_key);
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -1746,10 +1765,39 @@ export class Store {
       before.toISOString(), ...kinds.map((k) => `${k}:%`),
     );
   }
-  /** Раз в сутки: минуты присутствия старше 90 дней (по day_key) и журнал попыток модели старше 30 дней. */
+  /** Раз в сутки: минуты присутствия старше 90 дней (по day_key), журнал попыток модели старше 30 дней, счётчики фич старше 400. */
   async pruneStats(at: Date) {
     await this.run("DELETE FROM presence WHERE day_key < ?", new Date(at.getTime() - 90 * 86_400_000).toISOString().slice(0, 10));
     await this.run("DELETE FROM llm_calls WHERE at < ?", new Date(at.getTime() - 30 * 86_400_000).toISOString());
+    await this.run("DELETE FROM feature_events WHERE day_key < ?", new Date(at.getTime() - 400 * 86_400_000).toISOString().slice(0, 10));
+  }
+  // ——— Счётчики фич (этап 3 админки, feature-events.ts): пачка из памяти — одной транзакцией.
+  /** Прибавить счёт к строкам человек × день × клиент × фича. */
+  async addFeatureCounts(rows: { user_id: number; day_key: string; client: string; feature: string; count: number }[]) {
+    if (!rows.length) return;
+    await this.transaction(async () => {
+      for (const r of rows) {
+        await this.run(
+          `INSERT INTO feature_events (user_id, day_key, client, feature, count) VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT (user_id, day_key, client, feature) DO UPDATE SET count = feature_events.count + excluded.count`,
+          r.user_id, r.day_key, r.client.slice(0, 20), r.feature.slice(0, 60), r.count,
+        );
+      }
+    });
+  }
+  /** Счётчики фич с fromDay: по фиче, клиенту, человеку и дню (недели и «людей» считает admin-stats.ts). */
+  async adminFeatureRows(fromDay: string): Promise<{ feature: string; client: string; user_id: number; day: string; count: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT feature, client, user_id, day_key AS day, count FROM feature_events WHERE day_key >= ?", fromDay,
+    );
+    return rows.map((r) => ({ feature: String(r.feature), client: String(r.client), user_id: Number(r.user_id), day: String(r.day), count: Number(r.count) }));
+  }
+  /** Первый и последний день счётчика фичи по клиентам — за всё хранимое время (последний раз и «данные с»). */
+  async adminFeatureLast(): Promise<{ feature: string; client: string; first: string; last: string }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT feature, client, MIN(day_key) AS first, MAX(day_key) AS last FROM feature_events GROUP BY feature, client",
+    );
+    return rows.map((r) => ({ feature: String(r.feature), client: String(r.client), first: String(r.first), last: String(r.last) }));
   }
   /** Команда без разбора результата (снимок базы: VACUUM INTO). */
   async raw(sql: string, ...args: unknown[]): Promise<void> {

@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { ApiError, get, post } from "../api";
 import { ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminSection } from "../admin";
-import { AdminAudience, AdminHealth, AdminLost, AdminOverview, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
+import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
 import { navigate } from "../router";
 import "../admin.css";
+
+// Витрина (этап 4) — свой кусок внутри куска админки: реестр и проигрыватель грузятся, только когда её открыли.
+const AdminShowcase = lazy(() => import("./AdminShowcase").then((m) => ({ default: m.AdminShowcase })));
 
 // Админка (/admin) — отдельным куском (lazy в App.tsx), всегда тёмная, без меню сайта. Доступ решает сервер (admin.ts):
 // не админу /api/admin/* отвечает 404 — здесь это «Нет такой страницы»; админу сначала нужен код из Telegram (на час,
@@ -118,6 +121,8 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           : section === "audience" ? <AdminAudience />
           : section === "quality" ? <AdminQuality />
           : section === "health" ? <AdminHealth />
+          : section === "features" ? <AdminFeatures />
+          : section === "showcase" ? <Suspense fallback={<span className="adm-muted">Загрузка…</span>}><AdminShowcase /></Suspense>
           : section === "log" ? <Journal /> : <Soon stage={cur.stage} />}
       </main>
       </AdminLost.Provider>

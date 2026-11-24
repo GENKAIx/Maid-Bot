@@ -17,6 +17,7 @@ import { youButton } from "./you.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { activeModel, asUser, IMAGE_MAX_BYTES, IMAGE_TYPES, isOpenRouter, LITE_MODEL, setLiteModel } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
+import { countFeature } from "./feature-events.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
 
@@ -130,8 +131,22 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const chat = String(ctx.chat?.id ?? "");
     const u = chat ? await store.userByChat(chat) : undefined;
     if (u) void notePresence(store, u, "telegram");
+    if (u) countBot(u, ctx);
     return u ? asUser(u.id, next) : next();
   });
+  /** Счётчики фич (feature-events.ts): команда, кнопка под сообщением (голосовое — после распознавания, ниже). Незнакомое имя
+   *  белый список отбросит. */
+  const BUTTON_FEATURES: Record<string, string> = {
+    habit: "habit.mark", trait: "trait.edit", you: "you.button", rate: "rate", prop: "proposal", clash: "clash",
+    retry: "retry", undo: "undo", note: "as_note", persona: "bot.persona", model: "bot.model",
+  };
+  function countBot(u: User, ctx: Context) {
+    const cmd = /^\/([a-z_]+)(@\w+)?(\s|$)/i.exec(ctx.message?.text ?? "")?.[1]?.toLowerCase();
+    // /list считает сам список (showList) — и по команде, и по слову «список».
+    if (cmd && cmd !== "list") countFeature(u, "telegram", `bot.${cmd}`);
+    const button = BUTTON_FEATURES[(ctx.callbackQuery?.data ?? "").split(":")[0]];
+    if (button) countFeature(u, "telegram", button);
+  }
 
   // Виджет «Список на сегодня» (Bot API 10.4). grammy этих методов и обновлений ещё не знает — вызываем напрямую.
   type WidgetQueryUpdate = { id: string; from: { id: number }; chat?: { id: number }; message_id?: number; data: string; type?: { type: string } };
@@ -142,6 +157,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const chat = String(q.chat?.id ?? q.from.id);
     if (!(await allowed(chat)) || q.type?.type !== "data") return void (await raw.answerWidgetQuery({ widget_query_id: q.id }).catch(() => {}));
     const u = await store.ensureUser(chat, "", config.defaultTimezone);
+    countFeature(u, "telegram-widget", "bot.widget");
     const state = await widgetQuery(store, pipeline, u, q.data);
     await raw.answerWidgetQuery({ widget_query_id: q.id, data: state });
     if (q.chat && q.message_id) await raw.editMessageWidgetData({ chat_id: q.chat.id, message_id: q.message_id, chat_data: state }).catch(() => {});
@@ -150,6 +166,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
   // Последний присланный список живой: бот обновляет его после каждого изменения (kv widget:<id> = {chat, msg}).
   const widgetKey = (u: User) => `widget:${u.id}`;
   async function showList(ctx: Context, u: User) {
+    countFeature(u, "telegram", "bot.list");
     try {
       const m = (await raw.sendWidget({
         chat_id: ctx.chat!.id, html: WIDGET_HTML, caption: WIDGET_CAPTION, allow_queries: true, chat_data: await widgetState(store, u),
@@ -289,7 +306,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const text = ctx.match.trim();
     if (!text) return ctx.reply("Напишите после /ask, о чём поговорить.");
     await ctx.replyWithChatAction("typing");
-    await answer(ctx, u, await pipeline.handle({ user: u, source: "telegram", sourceId: String(ctx.message.message_id), text, chatOnly: true }));
+    await answer(ctx, u, await pipeline.handle({ user: u, source: "telegram", sourceId: String(ctx.message.message_id), text, chatOnly: true, client: "telegram" }));
   });
 
   bot.command("persona", async (ctx) => {
@@ -383,7 +400,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (!u) return ctx.answerCallbackQuery();
     await ctx.answerCallbackQuery({ text: "Пробую ещё раз…" });
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
-    const r = await pipeline.retry(u, Number(ctx.match[1]));
+    const r = await pipeline.retry(u, Number(ctx.match[1]), new Date(), "telegram");
     await answer(ctx, u, r);
   });
 
@@ -410,7 +427,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await ctx.replyWithChatAction("typing").catch(() => {});
     const r = await pipeline.handle({
       user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: ctx.message.text,
-      at: new Date(ctx.message.date * 1000),
+      at: new Date(ctx.message.date * 1000), client: "telegram",
     });
     if (!r.duplicate) await answer(ctx, u, r);
   });
@@ -438,7 +455,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const r = await pipeline.handle({
       user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: (ctx.message.caption ?? "").slice(0, 4000),
       images: [{ data, mime: photo ? "image/jpeg" : doc!.mime_type! }],
-      at: new Date(ctx.message.date * 1000),
+      at: new Date(ctx.message.date * 1000), client: "telegram",
     });
     if (!r.duplicate) await answer(ctx, u, r);
   });
@@ -462,10 +479,11 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
       return void (await ctx.reply("Не получилось распознать голосовое, попробуй ещё раз."));
     }
     if (!heard) return void (await ctx.reply("Ничего не расслышала."));
+    countFeature(u, "telegram", "voice"); // распознано — тогда и в счёт (сбой и тишина — нет)
     await ctx.reply(`🎙 <i>${heard.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</i>`, { parse_mode: "HTML" });
     const r = await pipeline.handle({
       user: u, source: "telegram", sourceId: String(ctx.message.message_id), text: heard.slice(0, 4000),
-      at: new Date(ctx.message.date * 1000),
+      at: new Date(ctx.message.date * 1000), client: "telegram",
     });
     if (!r.duplicate) await answer(ctx, u, r);
   });

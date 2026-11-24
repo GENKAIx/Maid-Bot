@@ -21,6 +21,7 @@ import { Search } from "./screens/Search";
 import { Trash } from "./screens/Trash";
 import { Features } from "./screens/Features";
 import { Icon } from "./icons";
+import { dropUsage, logoutUsage, screenFeature, startUsage, track } from "./usage";
 
 // Каталог для разработки — отдельным куском: обычным экранам его тексты не нужны.
 const Catalog = lazy(() => import("./screens/Catalog").then((m) => ({ default: m.Catalog })));
@@ -62,8 +63,15 @@ export function App() {
   }, [authed]);
 
   useEffect(() => {
-    whenUnauthorized(() => setAuthed(false));
+    whenUnauthorized(() => { dropUsage(); setAuthed(false); });
   }, []);
+  // Счётчики фич для админки (usage.ts): открытый экран — раз на переход (прежний адрес — по новому, куда его сменят);
+  // пачка на сервер раз в 10 минут и при уходе со страницы.
+  useEffect(() => (authed ? startUsage() : undefined), [authed]);
+  useEffect(() => {
+    const f = authed && tab !== "admin" ? screenFeature(path) : null;
+    if (f) track(f);
+  }, [authed, tab]); // eslint-disable-line react-hooks/exhaustive-deps -- раз на экран, не на каждый адрес внутри него
   // Вернулись в приложение (вкладка снова видна) — обновить.
   useEffect(() => {
     const on = () => document.visibilityState === "visible" && onChanged();
@@ -77,6 +85,7 @@ export function App() {
       const typing = e.target instanceof HTMLElement && e.target.closest("input, textarea, [contenteditable]");
       if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") || (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey)) {
         e.preventDefault();
+        track("site.hotkey_search");
         navigate("/search");
       }
     };
@@ -89,6 +98,7 @@ export function App() {
   if (tab === "admin") return <Suspense fallback={null}><Admin section={arg} /></Suspense>;
 
   async function logout() {
+    await logoutUsage(); // пока ключ ещё действует; не ушедшее — выбросить
     await post("/api/logout").catch(() => {});
     setToken("");
     setAuthed(false);

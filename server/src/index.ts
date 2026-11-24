@@ -17,6 +17,7 @@ import { takeSnapshot } from "./snapshot.ts";
 import { webhookSecret } from "./webhook.ts";
 import { adminAlerts } from "./admin-stats.ts";
 import { isAdmin } from "./auth.ts";
+import { flushFeatures } from "./feature-events.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
@@ -70,6 +71,8 @@ scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
 // Ночной снимок всей базы (SQLite) — раз в сутки после 00:00 UTC, в snapshots/ рядом с базой (snapshot.ts).
 const snapshotDir = config.dbFile && !config.databaseUrl ? path.join(path.dirname(config.dbFile), "snapshots") : null;
 scheduler.extra = async (now) => {
+  // Счётчики фич из памяти — в базу, не чаще раза в минуту (feature-events.ts).
+  await flushFeatures(store, now.getTime()).catch((e) => console.error("[features]", e));
   await pipeline.retryFailed((u, text, emotion) => send(u, text, emotion), now);
   // Тревоги владельцу (admin-stats.ts): перерасход за день, всплеск неразобранных — только в Telegram админам.
   if (adminCode) for (const text of await adminAlerts(store, now).catch((e) => (console.error("[alerts]", e), [] as string[]))) {
@@ -103,7 +106,13 @@ const shutdown = async () => {
   scheduler?.stop();
   clearInterval(sweep);
   if (tg && !config.publicUrl) await tg.bot.stop();
-  server.close();
+  // Запросы, что ещё идут, досчитывают свои счётчики фич — ждём их не дольше 3 с, потом пишем пачку и закрываем базу.
+  await new Promise<void>((done) => {
+    const t = setTimeout(done, 3000);
+    server.close(() => (clearTimeout(t), done()));
+    server.closeIdleConnections();
+  });
+  await flushFeatures(store, Date.now(), true).catch((e) => console.error("[features]", e));
   await store.close();
   process.exit(0);
 };
