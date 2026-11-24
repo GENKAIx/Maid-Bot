@@ -1,6 +1,6 @@
 // Один вход на программу (main.js: site-login:get / site-login:keep) — без Electron: сайт в главном окне получает ключ программы;
 // вошли на сайте — это ключ программы; вышли на сайте — программа тоже выходит (виджет покажет форму); чужие окна — отказ;
-// смена входа выбрасывает несданный счёт фич виджета (usage.drop).
+// смена входа выбрасывает несданный счёт фич виджета (usage.drop) и несданные падения (crashes.drop, этап 5).
 const fs = require("fs");
 const src = fs.readFileSync(process.argv[2] ?? require("path").join(__dirname, "../src/main.js"), "utf8");
 const cut = (from, to) => src.slice(src.indexOf(from), src.indexOf(to, src.indexOf(from)));
@@ -10,15 +10,16 @@ let bad = 0, n = 0;
 const check = (ok, m) => { n++; if (!ok) { bad++; console.log("FAIL", m); } };
 const handlers = {}, log = [];
 const app = { id: "app" }, stranger = { id: "widget" };
-const st = { saved: 0, changed: 0, dropped: 0 };
+const st = { saved: 0, changed: 0, dropped: 0, crashDropped: 0 };
 const settings = { server: "https://maid.example", token: "tok-prog" };
 const box = new Function(
-  "ipcMain", "fromApp", "token", "settings", "maidLog", "saveSettings", "refreshTray", "broadcast", "usage",
+  "ipcMain", "fromApp", "token", "settings", "maidLog", "saveSettings", "refreshTray", "broadcast", "usage", "crashes",
   "let loginStale = false, tokenEnc = '';" + code + "; return { get stale() { return loginStale; }, setEnc(v) { tokenEnc = v; } };",
 )(
   { on: (name, fn) => (handlers[name] = fn) }, (e) => e.sender === app, () => settings.token, settings,
   (...a) => log.push(a.join(" ")), () => st.saved++, () => {}, (ch) => ch === "changed" && st.changed++,
   { drop: () => st.dropped++ },
+  { drop: () => st.crashDropped++ },
 );
 // Как в Electron: ответ окну уходит при первом присваивании returnValue, дальше присваивания не доходят.
 const get = (sender) => {
@@ -38,6 +39,7 @@ try {
   check(settings.token === "tok-site" && st.saved === 1 && st.changed === 1, "вход на сайте не стал ключом программы");
   check(log.some((l) => l.includes("вошли на сайте")), "вход на сайте: нет записи в журнале");
   check(st.dropped === 1, "вход другим ключом: несданный счёт фич не выброшен");
+  check(st.crashDropped === 1, "вход другим ключом: несданные падения не выброшены");
   keep(stranger, "");
   check(settings.token === "tok-site", "чужое окно смогло выйти из программы");
   keep(app, "x".repeat(5000));

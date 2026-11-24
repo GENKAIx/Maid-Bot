@@ -78,10 +78,14 @@ export async function leaveAdmin(store: Store, u: User, sid: string, now = new D
   await store.addAdminLog(u.id, "leave", "", now);
 }
 
-/** Журнал админки: кто — номер аккаунта (#id; 0 — владелец из бота без записи), когда, что, параметры (detail) и причина.
- *  Без имён и логинов (правило приватности, этап 3); Telegram id в старых строках ответа /answer скрыт. */
+/** Действия, которые сервер делает сам (user_id 0): начало выпуска по новому latest.yml и автопауза (releases.ts, этап 5). */
+export const SERVER_ACTIONS = new Set(["release_start", "release_autopause"]);
+
+/** Журнал админки: кто — номер аккаунта (#id; 0 — владелец из бота без записи или сам сервер), когда, что, параметры (detail) и
+ *  причина. Без имён и логинов (правило приватности, этап 3); Telegram id в старых строках ответа /answer скрыт. */
 export async function adminJournal(store: Store, limit = 100) {
   return (await store.adminLog(limit)).map((r) => ({
-    at: r.at, who: r.user_id ? `#${r.user_id}` : "владелец (бот)", action: r.action, detail: r.detail.replace(/\btg \d+/g, "tg …"), reason: r.reason,
+    at: r.at, who: r.user_id ? `#${r.user_id}` : SERVER_ACTIONS.has(r.action) ? "сервер (сам)" : "владелец (бот)", action: r.action,
+    detail: r.detail.replace(/\btg \d+/g, "tg …"), reason: r.reason,
   }));
 }

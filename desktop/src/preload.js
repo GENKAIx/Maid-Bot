@@ -47,6 +47,8 @@ contextBridge.exposeInMainWorld("maid", {
   installUpdate: () => ipcRenderer.send("update-install"),
   /** Счётчик фичи для админки (main.js → usage.js): только имя из белого списка, без данных. */
   track: (name) => ipcRenderer.send("usage", name),
+  /** Ошибка окна для админки «Падения» (renderer/common.js → main.js → crashes.js): main оставит только тип, место и отпечаток. */
+  crash: (e) => ipcRenderer.send("crash", { name: String(e?.name ?? "").slice(0, 60), message: String(e?.message ?? "").slice(0, 500), stack: String(e?.stack ?? "").slice(0, 4000) }),
   /** «Перекрасить Рину» (maidlook.js): исходники из assets и кэш перекрашенных анимаций в userData/maid-look (только виджет). */
   look: {
     asset: (name, keep) => ipcRenderer.invoke("look:asset", name, keep),

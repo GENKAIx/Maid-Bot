@@ -68,7 +68,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       " ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; DROP TABLE payments; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
     await store.kvSet("schema_version", "26");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "34");
+    assert.equal(await again.kvGet("schema_version"), "35");
     const was = (await again.user(old.id))!;
     assert.deepEqual([was.plan, was.access_until, Number(was.sub_canceled), was.name], ["friend", null, 0, "Старый"]);
     assert.equal(accessOf(was, new Date(), []).ok, true);

@@ -1,5 +1,21 @@
 // Общее для окон: короткие помощники и перевод ответа сервера в простой текст.
 
+// Ошибки окна — в падения для админки (preload maid.crash → main.js → src/crashes.js: только тип, место в коде и отпечаток, без
+// текста). Первым в окне, чтобы ловить и ошибки следующих скриптов. Окно без maid (старый preload) — молча.
+(() => {
+  const report = (err, fallback) => {
+    try {
+      const e = err && typeof err === "object" ? err : null;
+      window.maid?.crash?.({ name: e?.name ?? (err == null ? "Error" : "NonError"), message: e?.message ?? String(err ?? fallback ?? ""), stack: e?.stack ?? "" });
+    } catch { /* сообщить не вышло — не мешаем окну */ }
+  };
+  window.addEventListener("error", (ev) => {
+    if (!ev.error && ev.target && ev.target !== window) return; // не загрузилась картинка или звук — это не падение кода
+    report(ev.error ?? { name: "Error", message: ev.message, stack: ev.filename ? `    at ${ev.filename}:${ev.lineno}:${ev.colno}` : "" });
+  });
+  window.addEventListener("unhandledrejection", (ev) => report(ev.reason, "unhandledrejection"));
+})();
+
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 /** Ответ бота приходит в HTML Telegram — показываем только b/i/code. */

@@ -620,6 +620,32 @@ CREATE TABLE IF NOT EXISTS db_copies (
 );
 CREATE INDEX IF NOT EXISTS db_copies_at ON db_copies (kind, at);
 `,
+  // Шаг 35: падения виджета и поэтапный выпуск (этап 5 «Тарифы и управление», crashes.ts и releases.ts). crash_events — день (по
+  // поясу человека) × версия × процесс × тип ошибки × место в коде × отпечаток сообщения → сколько раз и у скольких людей (users —
+  // число, список людей не хранится). Ни текста ошибки, ни путей ПК. desktop_days — человек × день × версия программы: был ли он с
+  // этой версией и сколько раз она у него падала; из неё — доля людей с падением по версии (база — люди этой версии за окно, а не
+  // последняя версия входа: сессия помнит только нынешнюю). Обе — 90 дней (pruneStats). Настройка выпуска — kv «desktop:release».
+  `
+CREATE TABLE IF NOT EXISTS crash_events (
+  day_key TEXT NOT NULL,
+  version TEXT NOT NULL,
+  process TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  place TEXT NOT NULL,
+  fingerprint TEXT NOT NULL DEFAULT '',
+  count INTEGER NOT NULL DEFAULT 0,
+  users INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day_key, version, process, kind, place, fingerprint)
+);
+CREATE TABLE IF NOT EXISTS desktop_days (
+  user_id INTEGER NOT NULL,
+  day_key TEXT NOT NULL,
+  version TEXT NOT NULL,
+  crashes INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day_key, version)
+);
+CREATE INDEX IF NOT EXISTS desktop_days_day ON desktop_days (day_key, version);
+`,
 ];
 
 /** Виды строк журнала подписки (billing_events, шаг 28). paid_first — первая оплата подписки, paid_once — оплата без признака
@@ -634,6 +660,11 @@ export const COLLECT_SINCE_KEY = "analytics_collect_since";
 const COLLECT_STEP = 28;
 export type BillingKind = (typeof BILLING_KINDS)[number];
 export interface BillingEventRow { id: number; user_id: number; at: string; kind: BillingKind; charge_id: string | null; amount: number | null }
+
+/** Строка падений виджета (шаг 35, crashes.ts): users — сколько людей (впервые за день с этим ключом), не их список. */
+export interface CrashEventRow { day_key: string; version: string; process: string; kind: string; place: string; fingerprint: string; count: number; users: number }
+/** Сколько дней хранятся падения и дни программы по версиям (шаг 35). */
+export const CRASH_KEEP_DAYS = 90;
 
 /** Правило оповещения (шаг 34, alerts.ts): firing — 0 норма, 1 сработало без письма (антиспам), 2 сработало и письмо ушло. */
 export interface AlertRuleRow {
@@ -2247,6 +2278,61 @@ export class Store {
     // Журнал оповещений и копий базы (шаг 34) — 180 дней.
     await this.run("DELETE FROM alert_log WHERE at < ?", new Date(at.getTime() - 180 * 86_400_000).toISOString());
     await this.run("DELETE FROM db_copies WHERE at < ?", new Date(at.getTime() - 180 * 86_400_000).toISOString());
+    // Падения виджета и дни программы по версиям (шаг 35) — 90 дней.
+    const crashDay = new Date(at.getTime() - CRASH_KEEP_DAYS * 86_400_000).toISOString().slice(0, 10);
+    await this.run("DELETE FROM crash_events WHERE day_key < ?", crashDay);
+    await this.run("DELETE FROM desktop_days WHERE day_key < ?", crashDay);
+  }
+  // ——— Падения виджета и версии программы по дням (шаг 35, crashes.ts).
+  /** Человек был в этот день с этой версией программы; crashes — сколько падений прибавить (0 — просто был). */
+  async markDesktopDay(userId: number, day: string, version: string, crashes = 0) {
+    await this.run(
+      `INSERT INTO desktop_days (user_id, day_key, version, crashes) VALUES (?, ?, ?, ?)
+       ON CONFLICT (user_id, day_key, version) DO UPDATE SET crashes = desktop_days.crashes + excluded.crashes`,
+      userId, day, version.slice(0, 20), crashes,
+    );
+  }
+  /** Прибавить падения к строкам день × версия × процесс × тип × место × отпечаток (одной транзакцией). */
+  async addCrashEvents(rows: CrashEventRow[]) {
+    if (!rows.length) return;
+    await this.transaction(async () => {
+      for (const r of rows) {
+        await this.run(
+          `INSERT INTO crash_events (day_key, version, process, kind, place, fingerprint, count, users) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT (day_key, version, process, kind, place, fingerprint)
+           DO UPDATE SET count = crash_events.count + excluded.count, users = crash_events.users + excluded.users`,
+          r.day_key, r.version, r.process, r.kind, r.place, r.fingerprint, r.count, r.users,
+        );
+      }
+    });
+  }
+  /** По версиям с fromDay: людей с этой версией, из них с падением, падений всего. */
+  async crashVersions(fromDay: string): Promise<{ version: string; active: number; crashed: number; crashes: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT version, COUNT(DISTINCT user_id) AS active, COUNT(DISTINCT CASE WHEN crashes > 0 THEN user_id END) AS crashed,
+        SUM(crashes) AS crashes FROM desktop_days WHERE day_key >= ? GROUP BY version`, fromDay,
+    );
+    return rows.map((r) => ({ version: String(r.version), active: Number(r.active), crashed: Number(r.crashed ?? 0), crashes: Number(r.crashes ?? 0) }));
+  }
+  /** По дням с fromDay (все версии): людей с программой, из них с падением, падений. */
+  async crashDays(fromDay: string): Promise<{ day: string; active: number; crashed: number; crashes: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT day_key AS day, COUNT(DISTINCT user_id) AS active, COUNT(DISTINCT CASE WHEN crashes > 0 THEN user_id END) AS crashed,
+        SUM(crashes) AS crashes FROM desktop_days WHERE day_key >= ? GROUP BY day_key ORDER BY day_key`, fromDay,
+    );
+    return rows.map((r) => ({ day: String(r.day), active: Number(r.active), crashed: Number(r.crashed ?? 0), crashes: Number(r.crashes ?? 0) }));
+  }
+  /** Места падений с fromDay: по версии, процессу, типу, месту и отпечатку — сколько раз, у скольких людей (сумма по дням), первый и
+   *  последний день. */
+  async crashPlaces(fromDay: string): Promise<{ version: string; process: string; kind: string; place: string; fingerprint: string; count: number; users: number; first: string; last: string }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT version, process, kind, place, fingerprint, SUM(count) AS n, SUM(users) AS users, MIN(day_key) AS first, MAX(day_key) AS last
+       FROM crash_events WHERE day_key >= ? GROUP BY version, process, kind, place, fingerprint ORDER BY SUM(count) DESC LIMIT 1000`, fromDay,
+    );
+    return rows.map((r) => ({
+      version: String(r.version), process: String(r.process), kind: String(r.kind), place: String(r.place), fingerprint: String(r.fingerprint),
+      count: Number(r.n), users: Number(r.users), first: String(r.first), last: String(r.last),
+    }));
   }
   // ——— Счётчики фич (этап 3 админки, feature-events.ts): пачка из памяти — одной транзакцией.
   /** Прибавить счёт к строкам человек × день × клиент × фича. */

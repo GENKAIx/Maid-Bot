@@ -40,6 +40,8 @@ import type { Billing } from "./billing.ts";
 import { applyTariffs, TariffError, tariffs, tariffsView, undoTariff } from "./tariffs.ts";
 import { AlertError, Alerts } from "./alerts.ts";
 import { DbCopies, DbCopyBusy } from "./snapshot.ts";
+import { acceptCrashes, adminCrashes, CRASH_MAX_ITEMS, noteDesktopDay } from "./crashes.ts";
+import { changeRelease, ReleaseError, releasesView, servedYml, ymlVersion } from "./releases.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -230,8 +232,9 @@ async function serveStatic(dir: string, pathname: string, res: http.ServerRespon
 }
 
 /** Обновление программы для ПК: только latest.yml и установщики из папки, без подпапок и без index.html.
- *  Открыто без входа — в установщике нет ничего личного, а программа проверяет обновления до входа. */
-export async function serveDesktop(dir: string, pathname: string, res: http.ServerResponse): Promise<boolean> {
+ *  Открыто без входа — в установщике нет ничего личного, а программа проверяет обновления до входа.
+ *  yml — что отдать вместо latest.yml с диска (поэтапный выпуск, releases.ts servedYml: процент из настройки); файл не меняется. */
+export async function serveDesktop(dir: string, pathname: string, res: http.ServerResponse, yml?: (text: string) => Promise<string>): Promise<boolean> {
   const name = pathname.slice("/desktop/".length);
   if (!dir || !/^(latest\.yml|[\w.-]+\.exe)$/.test(name) || name.startsWith(".")) return false;
   const file = path.join(dir, name);
@@ -242,6 +245,12 @@ export async function serveDesktop(dir: string, pathname: string, res: http.Serv
     const now = /^Gornichnaya-Setup(-[\w.-]+)?\.exe$/.test(name) ? await latestExe(dir) : null;
     if (!now || now === name) return false;
     res.writeHead(302, { Location: `/desktop/${encodeURIComponent(now)}`, "Cache-Control": "no-cache" }).end();
+    return true;
+  }
+  if (name === "latest.yml" && yml) {
+    const body = Buffer.from(await yml(await fs.promises.readFile(file, "utf8")), "utf8");
+    res.writeHead(200, { "Content-Type": "text/yaml; charset=utf-8", "Content-Length": body.length, "Cache-Control": "no-cache" });
+    res.end(body);
     return true;
   }
   res.writeHead(200, {
@@ -433,7 +442,36 @@ export function createApi(deps: ApiDeps) {
         throw e;
       }
     }
+    // Падения программы на ПК (этап 5, crashes.ts): по версиям, места, по дням (?days=, до 90). Только числа.
+    if (m === "GET" && p === "/api/admin/crashes") return adminCrashes(store, days);
+    // Поэтапный выпуск (этап 5, releases.ts): настройка, что в latest.yml, люди по версиям; POST — процент или пауза с причиной.
+    if (m === "GET" && p === "/api/admin/releases") return releasesView(store, await desktopYml());
+    if (m === "POST" && p === "/api/admin/releases") {
+      const b = await readJson(req, 20_000);
+      try {
+        await changeRelease(store, u.id, b);
+      } catch (e) {
+        if (e instanceof ReleaseError) throw new HttpError(e.status, e.message);
+        throw e;
+      }
+      return releasesView(store, await desktopYml());
+    }
     throw new HttpError(404, "нет такого адреса");
+  }
+
+  /** latest.yml из папки обновлений (как есть) или null — нет папки или файла. */
+  const desktopYml = async () => (deps.desktopDir ? fs.promises.readFile(path.join(deps.desktopDir, "latest.yml"), "utf8").catch(() => null) : null);
+  /** Выпущенная версия программы (из latest.yml; перечитывается, только когда файл изменился) — падения и дни программы новее неё
+   *  не принимаются (crashes.ts versionOk). Нет файла — null (сверять не с чем). */
+  let knownYml: { stamp: string; version: string | null } | null = null;
+  async function knownDesktopVersion(): Promise<string | null> {
+    if (!deps.desktopDir) return null;
+    const file = path.join(deps.desktopDir, "latest.yml");
+    const st = await fs.promises.stat(file).catch(() => null);
+    if (!st?.isFile()) return null;
+    const stamp = `${st.mtimeMs}:${st.size}`;
+    if (knownYml?.stamp !== stamp) knownYml = { stamp, version: ymlVersion(await fs.promises.readFile(file, "utf8").catch(() => "")) };
+    return knownYml.version;
   }
 
   /** ИИ закрыт (access.ts): нет пробы или подписки — 402 со ссылкой на оплату (не 401: на 401 сайт и программа разлогиниваются);
@@ -466,7 +504,7 @@ export function createApi(deps: ApiDeps) {
     }
     if (!p.startsWith("/api/")) {
       if (p.startsWith("/desktop/")) {
-        if (m === "GET" && (await serveDesktop(deps.desktopDir ?? "", p, res))) return undefined;
+        if (m === "GET" && (await serveDesktop(deps.desktopDir ?? "", p, res, (t) => servedYml(store, t).catch((e) => (console.error("[release]", e), t))))) return undefined;
         throw new HttpError(404, "нет такого файла");
       }
       if (m === "GET" && (await serveStatic(deps.webDir ?? "", p, res))) return undefined;
@@ -513,13 +551,16 @@ export function createApi(deps: ApiDeps) {
     const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
     // Клиент и версия — из заголовков X-Maid-Client / X-Maid-Version по белому списку (auth.ts clientMeta); IP не храним.
     // Пачка счётчиков уходит и из фоновой вкладки, и при выходе — присутствия она не отмечает (auth.ts quiet).
-    const auth = await authByToken(store, token, clientMeta(req.headers), { quiet: m === "POST" && p === "/api/events/usage" });
+    const quiet = m === "POST" && (p === "/api/events/usage" || p === "/api/events/crash");
+    const auth = await authByToken(store, token, clientMeta(req.headers), { quiet });
     if (!auth) throw new HttpError(401, "нужен вход (логин и пароль) или ключ");
     const u = auth.user;
     enterUser(u.id); // расход ИИ в этом запросе — на счёт этого человека
     // Клиент для счётчиков фич: виджет и быстрая запись — «desktop», без заголовка — «other» (feature-events.ts).
     const client = featureClient(clientMeta(req.headers).client);
     askedBy.set(req, { user: u, client });
+    // Программа на ПК этой версии была у человека сегодня (crashes.ts desktop_days): база доли людей с падением по версии.
+    if (client === "desktop") await noteDesktopDay(store, u, clientMeta(req.headers).version, new Date(), await knownDesktopVersion());
     if (p.startsWith("/api/admin/")) {
       // Не админу (и админу, вошедшему по DESKTOP_TOKEN) — как будто адреса нет.
       if (!isAdmin(u, auth.via)) throw new HttpError(404, "нет такого адреса");
@@ -534,6 +575,15 @@ export function createApi(deps: ApiDeps) {
       const from = clientMeta(req.headers).client || clientMeta({ "x-maid-client": b.client }).client;
       const r = acceptUsage(u, from, b.counts);
       if (!r.ok) throw new HttpError(429, `счётчики — не чаще раза в минуту, через ${r.wait} с`);
+      return r;
+    }
+    // Падения программы на ПК (этап 5, crashes.ts): { items: [{ version, process, kind, place, fp, count }] } раз в 10 минут и при
+    // выходе. Только эти поля и по белому списку (остальное — и текст ошибки, если пришлют, — не берётся); больше CRASH_MAX_ITEMS — 400,
+    // чаще раза в минуту — 429.
+    if (m === "POST" && p === "/api/events/crash") {
+      const b = parseBody(z.object({ items: z.array(z.unknown()).max(CRASH_MAX_ITEMS, `не больше ${CRASH_MAX_ITEMS} записей в пачке`) }), await readJson(req, 50_000));
+      const r = await acceptCrashes(store, u, b.items, Date.now(), await knownDesktopVersion());
+      if (!r.ok) throw new HttpError(429, `падения — не чаще раза в минуту, через ${r.wait} с`);
       return r;
     }
     if (m === "POST" && p === "/api/logout") {

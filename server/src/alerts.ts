@@ -1,6 +1,7 @@
 import { config } from "./config.ts";
 import type { AlertRuleRow, BillingKind, Store } from "./db.ts";
 import { newcomersText } from "./invite.ts";
+import { autoPause, crashRatio, readRelease, RELEASE_CRASH_DAYS, RELEASE_CRASH_MIN_USERS, releaseCrashes, releaseDone } from "./releases.ts";
 import { tariffs } from "./tariffs.ts";
 import { addDays } from "./time.ts";
 
@@ -24,7 +25,7 @@ export const NEWCOMERS_HOUR_UTC = 6;
 
 export type AlertRuleId =
   | "spend_day" | "spend_spike" | "llm_errors" | "failed_msgs" | "send_fail" | "webhook" | "signup_cap"
-  | "refund" | "payment" | "backup" | "db_size" | "newcomers";
+  | "refund" | "payment" | "backup" | "db_size" | "newcomers" | "release_crash";
 
 /** state — условие по числу сейчас; event — события с отметки (сколько накопилось); daily — сводка раз в сутки. */
 export interface AlertSpec {
@@ -69,6 +70,10 @@ export function alertSpecs(): AlertSpec[] {
       enabled: true, threshold: 500, window_min: 60, every_min: 1440, hint: "файл SQLite с журналом; сжатая копия больше 50 МБ в Telegram не влезет" }),
     spec({ id: "newcomers", title: "Сводка новых за сутки — от", unit: "чел.", kind: "daily", recover: false, window: false,
       enabled: true, threshold: 1, window_min: 1440, every_min: 1440, hint: `раз в сутки после ${String(NEWCOMERS_HOUR_UTC).padStart(2, "0")}:00 UTC, номера аккаунтов` }),
+    // Этап 5: падения новой версии программы на ПК (releases.ts). Сработало — выпуск сам встаёт на паузу (один раз на версию).
+    spec({ id: "release_crash", title: "Падения новой версии программы — больше прошлой в", unit: "раз", kind: "state", recover: true, window: false, int: false, min: 1.1, max: 100,
+      enabled: true, threshold: 2, window_min: RELEASE_CRASH_DAYS * 1440, every_min: 360,
+      hint: `доля людей с падением за ${RELEASE_CRASH_DAYS} дн., не меньше ${RELEASE_CRASH_MIN_USERS} человек; сработало — выпуск сам на паузу (раз на версию)` }),
   ];
 }
 export const ALERT_IDS = alertSpecs().map((s) => s.id);
@@ -220,6 +225,28 @@ export class Alerts {
       }
       case "newcomers":
         return { value: null, hit: false, text: "" };
+      case "release_crash": {
+        const rel = await readRelease(this.store);
+        if (!rel?.prev || releaseDone(rel, now)) return { value: null, hit: false, text: "" };
+        const c = await releaseCrashes(this.store, rel, now);
+        // Сравнивать не с чем (прошлая не шлёт падений, на ней мало людей) — молчим, а не «в бесконечность раз» (releases.ts crashRatio).
+        const { x } = crashRatio(c.cur, c.prev);
+        if (x == null) return { value: null, hit: false, text: "" };
+        const hit = c.cur.crashed >= RELEASE_CRASH_MIN_USERS && x >= t;
+        const pct = (v: number) => `${(v * 100).toFixed(1).replace(".", ",")}%`;
+        const was = c.prev ? `${pct(c.prevShare)} на ${rel.prev} (${c.prev.crashed} из ${c.prev.active})` : `на ${rel.prev} данных нет`;
+        let text = `⚠️ Программа ${rel.version} падает чаще: у ${pct(c.curShare)} людей (${c.cur.crashed} из ${c.cur.active}) против ${was} за ${RELEASE_CRASH_DAYS} дн.`;
+        if (hit) {
+          const paused = await autoPause(this.store, `падения ${pct(c.curShare)} против ${pct(c.prevShare)} (порог — в ${num(t)} раза)`, now);
+          const r2 = await readRelease(this.store);
+          text += paused ? " Выпуск поставлен на паузу — новые люди её не получат." : r2?.paused ? " Выпуск на паузе." : " Выпуск идёт (его продолжили вручную).";
+          text += " Подробности — «Падения» и «Выпуски».";
+        }
+        return {
+          value: Math.round(x * 100) / 100, hit, text,
+          ok: `✅ Падения ${rel.version} снова ниже порога: ${pct(c.curShare)} людей против ${pct(c.prevShare)} на ${rel.prev}. Выпуск сам не продолжается — «Выпуски».`,
+        };
+      }
     }
   }
 

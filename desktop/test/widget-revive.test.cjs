@@ -22,9 +22,11 @@ const widget = {
 };
 const timers = [];
 const saves = [];
-const api = new Function("app", "powerMonitor", "screen", "widget", "maidLog", "widgetBounds", "setTimeout", "counter",
+const gone = []; // падения процессов для админки (crashes.js, этап 5)
+const api = new Function("app", "powerMonitor", "screen", "widget", "maidLog", "widgetBounds", "setTimeout", "counter", "crashes", "quitting",
   code + "; return { reviveWidget, watchWidget };");
-const A = api(app, powerMonitor, screen, widget, (...a) => log.push(a.join(" ")), () => ({ x: 1490, y: 280, width: 420, height: 760 }), (f) => timers.push(f), { save: () => saves.push(1) });
+const A = api(app, powerMonitor, screen, widget, (...a) => log.push(a.join(" ")), () => ({ x: 1490, y: 280, width: 420, height: 760 }), (f) => timers.push(f), { save: () => saves.push(1) },
+  { gone: (p, r) => gone.push(`${p}:${r}`) }, false);
 A.watchWidget();
 const reset = () => { log.length = 0; calls.length = 0; };
 
@@ -33,9 +35,11 @@ reset();
 app.emit("child-process-gone", {}, { type: "GPU", reason: "crashed", exitCode: -1 });
 check(calls.includes("reload"), "сбой видеочасти: страница не перезагружена");
 check(log.some((l) => l.includes("GPU crashed")), "сбой видеочасти: нет записи в журнале");
+check(gone.at(-1) === "gpu:crashed", `сбой видеочасти — в падения: ${gone.at(-1)}`);
 reset();
 app.emit("child-process-gone", {}, { type: "Utility", reason: "crashed", exitCode: 1 });
 check(!calls.includes("reload") && log.length === 1, "сбой другого процесса: лишняя перезагрузка или нет записи");
+check(gone.at(-1) === "utility:crashed", "сбой служебного процесса — в падения");
 reset();
 app.emit("child-process-gone", {}, { type: "GPU", reason: "clean-exit", exitCode: 0 });
 check(!calls.includes("reload"), "видеочасть закрылась штатно — перезагружать не надо");

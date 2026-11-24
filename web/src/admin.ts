@@ -11,11 +11,13 @@
 // сервер — server/src/admin-account.ts); журнал админа — номера вместо имён, параметры и причина.
 // Этап 4 «Тарифы и управление» (24.11.2026): «Оповещения» — правила по порогам владельцу в Telegram (server/src/alerts.ts) и
 // «Копии базы» — ночная копия, отправка в Telegram, проверка восстановления (server/src/snapshot.ts DbCopies); screens/AdminAlerts.tsx.
+// Этап 5 «Тарифы и управление» (24.11.2026): «Выпуски» — поэтапный выпуск программы на ПК (server/src/releases.ts) и «Падения» —
+// падения программы по версиям и местам (server/src/crashes.ts); screens/AdminReleases.tsx.
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
 export const ADMIN_LIVE_STAGE = 5;
 
-export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "alerts" | "backups" | "log";
+export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "alerts" | "releases" | "crashes" | "backups" | "log";
 
 // Меню по категориям (24.11.2026): group — заголовок категории (ADMIN_GROUPS, по порядку), icon — имя в icons.tsx.
 export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Продукт", "Система"] as const;
@@ -40,6 +42,9 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number;
   { id: "health", title: "Здоровье сервера", stage: 2, group: "Система", icon: "adm-pulse" },
   // Этап 4 «Тарифы и управление»: в «Системе» — рядом со здоровьем сервера, о котором оповещения и пишут.
   { id: "alerts", title: "Оповещения", stage: 0, group: "Система", icon: "adm-bell" },
+  // Этап 5: выпуск и падения программы на ПК — рядом с оповещениями (автопауза — их правило release_crash).
+  { id: "releases", title: "Выпуски", stage: 0, group: "Система", icon: "adm-rocket" },
+  { id: "crashes", title: "Падения", stage: 0, group: "Система", icon: "adm-bug" },
   { id: "backups", title: "Копии базы", stage: 0, group: "Система", icon: "adm-db" },
   { id: "log", title: "Журнал админки", stage: 0, group: "Система", icon: "adm-log" },
 ];
@@ -74,7 +79,75 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   alert_check: "проверил оповещения вручную",
   backup_run: "сделал копию базы",
   backup_verify: "проверил восстановление копии",
+  release_start: "начал выпуск новой версии",
+  release_percent: "изменил долю выпуска",
+  release_pause: "поставил выпуск на паузу",
+  release_resume: "продолжил выпуск",
+  release_autopause: "поставил выпуск на паузу из-за падений",
 };
+
+// ——— Выпуски и падения (этап 5; типы — копия server/src/releases.ts releasesView и server/src/crashes.ts adminCrashes).
+export interface ReleaseInfo {
+  version: string; percent: number; paused: boolean; started_at: string; prev: string; auto_paused_at: string | null; updated_at: string; by: number;
+}
+export interface ReleasesData {
+  release: ReleaseInfo | null; file_version: string | null; served: number | null; start_percent: number; min_users: number; crash_days: number;
+  versions: { version: string; active: number; share_people: number; crashed: number; crash_share: number }[];
+  crash: { version: string; active: number; crashed: number; share: number; prev: { version: string; active: number; crashed: number; share: number } | null } | null;
+}
+export interface CrashPlace { process: string; kind: string; place: string; fingerprint: string; count: number; users: number; first: string; last: string; fresh: boolean }
+export interface CrashVersion {
+  version: string; active: number; crashed: number; crashes: number; share: number;
+  prev: { version: string; active: number; crashed: number; share: number } | null; top: CrashPlace[];
+}
+export interface CrashesData { days: number; from: string; versions: CrashVersion[]; series: { day: string; active: number; crashed: number; crashes: number }[]; keep_days: number }
+
+/** Процессы программы (server/src/crashes.ts CRASH_PROCESSES) по-человечески. */
+export const CRASH_PROCESS_NAMES: Record<string, string> = {
+  main: "главный процесс", widget: "виджет", quick: "быстрая запись", window: "главное окно", gpu: "видеочасть", utility: "служебный", child: "другой процесс",
+};
+
+/** Копии server/src/releases.ts: сравнение с прошлой — только если на ней не меньше стольких людей и она шлёт падения (не старше). */
+export const RELEASE_CRASH_MIN_PREV = 20;
+export const CRASH_FIRST_VERSION = "0.1.93";
+const olderVersion = (a: string, b: string) => {
+  const x = a.split(".").map(Number), y = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+  return false;
+};
+
+/** Сравнение доли падений с прошлой версией: «в 3,0 раза чаще», «реже», «как у прошлой», «прошлой нет». Как автопауза на сервере
+ *  (releases.ts crashRatio): прошлая не шлёт падений или на ней меньше RELEASE_CRASH_MIN_PREV людей — не сравнивается; у прошлой
+ *  0 падений — её доля берётся не ниже 1/людей. */
+export function crashCompare(cur: { share: number; active: number }, prev: { share: number; active: number; version?: string } | null): { text: string; tone: "bad" | "warn" | "ok" | "mute" } {
+  if (!prev || !prev.active) return { text: "прошлой версии нет", tone: "mute" };
+  if (prev.version && olderVersion(prev.version, CRASH_FIRST_VERSION)) return { text: "прошлая версия падений не присылает", tone: "mute" };
+  if (prev.active < RELEASE_CRASH_MIN_PREV) return { text: `на прошлой мало людей (${prev.active}) — не сравнить`, tone: "mute" };
+  if (!cur.active) return { text: "людей ещё нет", tone: "mute" };
+  const x = cur.share / Math.max(prev.share, 1 / prev.active);
+  if (prev.share === 0) return cur.share === 0 ? { text: "падений нет, как и у прошлой", tone: "ok" } : { text: "у прошлой падений не было", tone: x >= 2 ? "bad" : "warn" };
+  if (x >= 2) return { text: `в ${x.toFixed(1).replace(".", ",")} раза чаще прошлой`, tone: "bad" };
+  if (x > 1.2) return { text: `чаще прошлой (×${x.toFixed(1).replace(".", ",")})`, tone: "warn" };
+  if (x < 0.8) return { text: "реже прошлой", tone: "ok" };
+  return { text: "как у прошлой", tone: "ok" };
+}
+
+/** Состояние выпуска одной фразой: «на паузе (автопауза)», «идёт: 20%», «всем». */
+export function releaseState(r: Pick<ReleaseInfo, "paused" | "percent" | "auto_paused_at"> | null): { text: string; tone: "bad" | "warn" | "ok" | "mute" } {
+  if (!r) return { text: "выпусков ещё не было", tone: "mute" };
+  if (r.paused) return { text: r.auto_paused_at ? "на паузе — сработала автопауза" : "на паузе", tone: "bad" };
+  if (r.percent >= 100) return { text: "всем", tone: "ok" };
+  return { text: `идёт: ${r.percent}% людей`, tone: "warn" };
+}
+
+/** Проверка процента в поле: null — подходит (целое 1…100), иначе почему нет. */
+export function percentError(text: string): string | null {
+  const v = Number(text.trim());
+  if (!text.trim() || !Number.isFinite(v)) return "нужно число";
+  if (!Number.isInteger(v)) return "целое число";
+  if (v < 1 || v > 100) return "от 1 до 100";
+  return null;
+}
 
 // ——— Оповещения (этап 4, GET /api/admin/alerts; типы — копия server/src/alerts.ts Alerts.view).
 export interface AlertRule {

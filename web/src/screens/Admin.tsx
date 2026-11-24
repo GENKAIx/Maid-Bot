@@ -6,6 +6,7 @@ import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, Ad
 import { AdminTariffs } from "./AdminTariffs";
 import { AdminAccount } from "./AdminAccount";
 import { AdminAlerts, AdminBackups } from "./AdminAlerts";
+import { AdminCrashes, AdminReleases } from "./AdminReleases";
 import { navigate } from "../router";
 import "../admin.css";
 
@@ -138,6 +139,8 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           : section === "quality" ? <AdminQuality />
           : section === "health" ? <AdminHealth />
           : section === "alerts" ? <AdminAlerts />
+          : section === "releases" ? <AdminReleases />
+          : section === "crashes" ? <AdminCrashes />
           : section === "backups" ? <AdminBackups />
           : section === "features" ? <AdminFeatures />
           : section === "showcase" ? <Suspense fallback={<span className="adm-muted">Загрузка…</span>}><AdminShowcase /></Suspense>

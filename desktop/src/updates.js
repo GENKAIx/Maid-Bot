@@ -1,6 +1,9 @@
 // Обновление программы по кнопке (сайт → «Виджет» → «Программа», и пункт в меню значка у часов).
 // electron-updater берёт latest.yml и установщик с сервера горничной (/desktop/, их выкладывает tools/release-desktop.py)
 // и ставит новую версию тихо (/S): программа закрывается, ставится и запускается снова; ключ и настройки остаются.
+// Поэтапный выпуск (этап 5, server/src/releases.ts): сервер дописывает в latest.yml stagingPercentage, electron-updater сам сравнивает
+// его со своим stagingUserId (userData/.updaterId). Не попал в долю (или выпуск на паузе, 0%) — для него это «update-not-available»,
+// то есть «последняя версия»; поля нет — обновление видят все (проверено в test/crashes.test.cjs на коде electron-updater).
 const { app } = require("electron");
 
 // Состояние для страницы: status — idle | checking | latest | available | downloading | ready | error | dev.

@@ -9,6 +9,7 @@ const { addMissingGames, createTracker, foreground, localDay, MORE_GAMES, STEP_M
 const { iconKey, newIcons } = require("./icons.js");
 const { createUpdates } = require("./updates.js");
 const { createUsage, USAGE_EVERY_MS } = require("./usage.js");
+const { createCrashes, CRASH_EVERY_MS } = require("./crashes.js");
 
 // Сервер по умолчанию (23.11.2026): установленная программа сразу смотрит на настоящий сервер, в разработке — на свой.
 // Раньше у новой установки был localhost:3000, и вход из виджета (без поля адреса) всегда писал «Нет связи с сервером».
@@ -706,6 +707,7 @@ function reviveWidget(why) {
 function watchWidget() {
   app.on("child-process-gone", (_e, d) => {
     maidLog("сбой процесса:", d.type, d.reason, d.exitCode);
+    if (!quitting) crashes?.gone(d.type === "GPU" ? "gpu" : d.type === "Utility" ? "utility" : "child", d.reason);
     // Видеочасть упала — прозрачное окно больше не рисуется; страница виджета загружается заново.
     if (d.type === "GPU" && d.reason !== "clean-exit" && widget && !widget.isDestroyed()) widget.reload();
   });
@@ -866,6 +868,20 @@ let usage = null;
 const countUse = (name) => usage?.count(name);
 ipcMain.on("usage", (e, name) => { if (clientOfWin(e.sender) !== "desktop") countUse(name); });
 const sendUsage = (body) => (token() ? api("POST", "/api/events/usage", body, false, "widget") : Promise.reject(new Error("нет входа")));
+
+// Падения для админки «Падения» (crashes.js): тип, место в коде, процесс, версия, отпечаток — без текста ошибки и путей ПК.
+// Окно шлёт свою ошибку (renderer/common.js → preload maid.crash); принимаем только от своих окон и только эти поля.
+let crashes = null;
+const crashProc = (wc) => {
+  const c = clientOfWin(wc);
+  return c === "widget" || c === "quick" ? c : "window";
+};
+const sendCrashes = (body) => (token() ? api("POST", "/api/events/crash", body, false, "widget") : Promise.reject(new Error("нет входа")));
+const short = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
+ipcMain.on("crash", (e, x) => {
+  if (!x || typeof x !== "object" || BrowserWindow.fromWebContents(e.sender) == null) return;
+  crashes?.error({ name: short(x.name, 60), message: short(x.message, 500), stack: short(x.stack, 4000) }, crashProc(e.sender));
+});
 
 // «Перекрасить Рину» (renderer/maidlook.js): виджет читает анимации и маски из assets и хранит перекрашенные в
 // userData/maid-look/<ключ>/<имя>.webp — одну папку, нынешний набор (look:keep убирает остальные). Только виджету.
@@ -1030,6 +1046,7 @@ ipcMain.on("site-login:keep", (e, t) => {
   }
   tokenEnc = "";
   usage?.drop(); // несданный счёт виджета — прежнего входа, под новым ключом ему не место (usage.js)
+  crashes?.drop(); // и падения — тоже (crashes.js)
   saveSettings();
   refreshTray();
   broadcast("changed", null);
@@ -1132,6 +1149,7 @@ const updates = createUpdates({
   // Окна закрываем сами: при закрытии окно дописывает своё хранилище, а у установщика — убить процесс.
   beforeInstall: async () => {
     await usage?.atQuit(); // счётчики — до закрытия: установщик закрывает программу жёстко
+    await crashes?.atQuit();
     quitting = true;
     session.defaultSession.flushStorageData();
     await session.defaultSession.cookies.flushStore();
@@ -1186,9 +1204,12 @@ ipcMain.on("thinking", (_e, on) => widget?.webContents.send("thinking", on));
 ipcMain.on("reply", (_e, r) => widget?.webContents.send("reply", r));
 ipcMain.on("notify", (_e, title, body) => new Notification({ title, body }).show());
 
-// Ошибки главного процесса — в журнал: без этого сбой запуска (виджет не появился) не оставлял следа.
-process.on("uncaughtException", (e) => maidLog("ошибка:", e?.stack ?? e));
-process.on("unhandledRejection", (e) => maidLog("ошибка (обещание):", e?.stack ?? e));
+// Ошибки главного процесса — в журнал (без этого сбой запуска не оставлял следа) и в падения для админки (crashes.js: только тип,
+// место и отпечаток). До whenReady падения ещё не создано — такие ошибки только в журнал.
+process.on("uncaughtException", (e) => { maidLog("ошибка:", e?.stack ?? e); crashes?.error(e, "main"); });
+process.on("unhandledRejection", (e) => { maidLog("ошибка (обещание):", e?.stack ?? e); crashes?.error(e, "main"); });
+// Окно упало целиком (виджет, быстрая запись, главное): причина — в падения; виджет сам перезагружается (createWidget).
+app.on("render-process-gone", (_e, wc, d) => { if (!quitting) crashes?.gone(crashProc(wc), d?.reason); });
 const afterUpdate = process.argv.includes("--updated");
 // Обновилась ли программа с прошлого запуска: версия прошлого запуска (settings.lastVersion) старее нынешней — она и есть «с какой»;
 // lastVersion ещё нет (поставлена до 0.1.58) — по флагу --updated от установщика, «с какой» неизвестно (""); иначе null — молчит.
@@ -1226,6 +1247,8 @@ app.whenReady().then(() => {
   usage = createUsage({ send: sendUsage, file: path.join(app.getPath("userData"), "usage.json"), log: maidLog });
   countUse("widget.start");
   setInterval(() => void usage.flush(), USAGE_EVERY_MS);
+  crashes = createCrashes({ send: sendCrashes, file: path.join(app.getPath("userData"), "crashes.json"), appDir: path.join(__dirname, ".."), version: app.getVersion(), log: maidLog });
+  setInterval(() => void crashes.flush(), CRASH_EVERY_MS);
   tray = new Tray(icon().isEmpty() ? nativeImage.createEmpty() : icon().resize({ width: 16, height: 16 }));
   tray.setToolTip("Горничная");
   tray.on("click", () => showMain());
@@ -1249,13 +1272,14 @@ app.on("window-all-closed", (e) => e.preventDefault?.());
 // Выход: сначала последняя пачка счётчиков (не дольше USAGE_QUIT_MS, остаток — в файл), потом выход по-настоящему.
 let usageQuit = false;
 app.on("before-quit", (e) => {
-  if (usageQuit || !usage?.pending()) return;
+  if (usageQuit || !(usage?.pending() || crashes?.pending())) return;
   usageQuit = true;
   e.preventDefault();
-  void usage.atQuit().finally(() => app.quit());
+  void Promise.all([usage?.atQuit(), crashes?.atQuit()]).finally(() => app.quit());
 });
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   counter?.save();
   usage?.save();
+  crashes?.save();
 });

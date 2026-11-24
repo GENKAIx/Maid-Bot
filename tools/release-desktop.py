@@ -5,8 +5,13 @@
     python tools/release-desktop.py            # 0.1.0 → 0.1.1
     python tools/release-desktop.py 0.2.0      # свой номер
     python tools/release-desktop.py --no-upload  # только собрать
+    python tools/release-desktop.py --percent=100  # сразу всем (по умолчанию — поэтапно, с 20%)
 
 Сервер отдаёт файлы из /data/desktop контейнера maid (server/src/api.ts, serveDesktop).
+
+Поэтапный выпуск (server/src/releases.ts): в latest.yml пишется stagingPercentage (по умолчанию 20) — с какой доли начать.
+Сервер, увидев новую версию, начинает выпуск с этого процента, дальше процент и паузу меняют в админке «Выпуски» (файл на
+диске не трогается: процент подставляется при отдаче). Если падений больше, чем у прошлой версии, выпуск сам встаёт на паузу.
 """
 import json
 import os
@@ -21,6 +26,7 @@ PKG = DESKTOP / "package.json"
 SSH = ["ssh", "-i", str(Path.home() / ".ssh" / "maid_vps"), "-o", "BatchMode=yes", "-o", "ConnectTimeout=20"]
 HOST = "root@187.126.11.122"
 REMOTE = "/srv/desktop-release"
+START_PERCENT = 20  # server/src/releases.ts RELEASE_START_PERCENT
 
 
 def bump(v: str) -> str:
@@ -28,9 +34,28 @@ def bump(v: str) -> str:
     return f"{a}.{b}.{c + 1}"
 
 
+def with_staging(yml: str, percent: int) -> str:
+    """latest.yml со строкой stagingPercentage (прежняя убирается). 100 пишется явно: без строки сервер начал бы новую версию
+    с RELEASE_START_PERCENT (server/src/releases.ts releaseFor), а при отдаче строку 100 он сам убирает."""
+    lines = [x for x in yml.splitlines() if not x.startswith("stagingPercentage:")]
+    lines.append(f"stagingPercentage: {percent}")
+    return "\n".join(lines) + "\n"
+
+
+def percent_arg() -> int:
+    for a in sys.argv[1:]:
+        if a.startswith("--percent="):
+            v = a.split("=", 1)[1]
+            if not v.isdigit() or not 1 <= int(v) <= 100:
+                sys.exit(f"--percent — целое от 1 до 100, а не «{v}»")
+            return int(v)
+    return START_PERCENT
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     upload = "--no-upload" not in sys.argv
+    percent = percent_arg()
     pkg = json.loads(PKG.read_text(encoding="utf-8"))
     old = pkg["version"]
     new = args[0] if args else bump(old)
@@ -55,6 +80,8 @@ def main() -> None:
         sys.exit(f"Нет {exe.name} или latest.yml в {dist}")
     if f"version: {new}" not in yml.read_text(encoding="utf-8"):
         sys.exit("latest.yml не от этой сборки")
+    yml.write_bytes(with_staging(yml.read_text(encoding="utf-8"), percent).encode("utf-8"))
+    print(f"Выпуск: {'сразу всем' if percent >= 100 else f'поэтапно, начнём с {percent}% (дальше — админка «Выпуски»)'}")
     print(f"Собрано: {exe} ({exe.stat().st_size // 1_000_000} МБ)")
     if not upload:
         return
