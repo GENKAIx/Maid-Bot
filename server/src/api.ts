@@ -4,7 +4,8 @@ import http from "node:http";
 import path from "node:path";
 import { z } from "zod";
 import { PERSONAS } from "./personas.ts";
-import { login, LoginGate, tokenHash, userByToken } from "./auth.ts";
+import { authByToken, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
+import { adminJournal, adminOverview, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
 import type { DateRow, Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { ALBUM, albumOf, albumSee } from "./album.ts";
@@ -49,6 +50,8 @@ export interface ApiDeps {
   botName?: () => string | undefined;
   /** Счётчик неудачных входов (тесты подставляют свой). */
   loginGate?: LoginGate;
+  /** Куда слать код входа в админку (admin.ts): Telegram владельца; нет — вход в админку недоступен (503). */
+  adminCode?: (u: User, text: string) => Promise<void>;
   /** Поиск города для «О вас» (тесты подставляют свой; по умолчанию — геокодер Open-Meteo). */
   cities?: (q: string) => Promise<City[]>;
 }
@@ -144,6 +147,19 @@ const MIME: Record<string, string> = {
   ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8",
 };
 
+/** Политика безопасности страницы (24.11.2026, к админке): скрипты — только свои файлы и встроенные блоки этой страницы
+ *  (по хешу), чужих адресов нет — внедрённый скрипт не запустится и не отправит данные наружу (connect-src 'self').
+ *  Стили — свои и style="…" (React), картинки и звук — свои, data: и blob: (рисунки, запись голоса). */
+export function pageCsp(html: string): string {
+  const hashes = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)]
+    .map((m) => `'sha256-${crypto.createHash("sha256").update(m[1]).digest("base64")}'`);
+  return [
+    "default-src 'self'", `script-src 'self' ${hashes.join(" ")}`.trim(), "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:", "media-src 'self' data: blob:", "font-src 'self' data:", "connect-src 'self'",
+    "worker-src 'self'", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'",
+  ].join("; ");
+}
+
 /** Собранное веб-приложение из папки: файл по пути, иначе index.html (адреса экранов — внутри приложения). */
 async function serveStatic(dir: string, pathname: string, res: http.ServerResponse): Promise<boolean> {
   if (!dir) return false;
@@ -163,6 +179,12 @@ async function serveStatic(dir: string, pathname: string, res: http.ServerRespon
   }
   const ext = path.extname(file).toLowerCase();
   const immutable = /\/assets\//.test(file.replace(/\\/g, "/"));
+  if (ext === ".html") {
+    const html = await fs.promises.readFile(file);
+    res.writeHead(200, { "Content-Type": MIME[ext], "Content-Length": html.length, "Cache-Control": "no-cache", "Content-Security-Policy": pageCsp(html.toString("utf8")) });
+    res.end(html);
+    return true;
+  }
   res.writeHead(200, {
     "Content-Type": MIME[ext] ?? "application/octet-stream",
     "Content-Length": st.size,
@@ -263,6 +285,32 @@ export function createApi(deps: ApiDeps) {
     throw new HttpError(400, "неизвестная кнопка");
   }
 
+  /** /api/admin/* (admin.ts): состояние и вход по коду — сразу, остальное — только после подтверждённого кода. sid — эта сессия. */
+  async function adminApi(u: User, sid: string, m: string, p: string, req: http.IncomingMessage) {
+    if (m === "GET" && p === "/api/admin/state") return { until: await adminUntil(store, sid), telegram: Boolean(deps.adminCode) };
+    if (m === "POST" && p === "/api/admin/code") {
+      if (!deps.adminCode) throw new HttpError(503, "бот выключен — код некуда прислать");
+      const r = await issueAdminCode(store, u, sid, deps.adminCode);
+      if (r.wait) throw new HttpError(429, `новый код — через ${r.wait} с`);
+      return { sent: true };
+    }
+    if (m === "POST" && p === "/api/admin/confirm") {
+      const b = parseBody(z.object({ code: z.string().trim().regex(/^\d{6}$/, "код — 6 цифр") }), await readJson(req));
+      const r = await confirmAdminCode(store, u, sid, b.code);
+      if (r.ok) return { until: r.until };
+      const msg = { none: "сначала попросите код", expired: "код устарел — попросите новый", locked: "слишком много попыток — попросите новый код", wrong: `неверный код, осталось попыток: ${r.left}` }[r.why];
+      throw new HttpError(400, msg);
+    }
+    if (!(await adminUntil(store, sid))) throw new HttpError(403, "вход в админку не подтверждён");
+    if (m === "POST" && p === "/api/admin/leave") {
+      await leaveAdmin(store, u, sid);
+      return { ok: true };
+    }
+    if (m === "GET" && p === "/api/admin/overview") return adminOverview(store);
+    if (m === "GET" && p === "/api/admin/log") return adminJournal(store);
+    throw new HttpError(404, "нет такого адреса");
+  }
+
   async function route(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? "/", "http://local");
     const p = url.pathname;
@@ -314,9 +362,15 @@ export function createApi(deps: ApiDeps) {
     }
 
     const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
-    const u = await userByToken(store, token);
-    if (!u) throw new HttpError(401, "нужен вход (логин и пароль) или ключ");
+    const auth = await authByToken(store, token);
+    if (!auth) throw new HttpError(401, "нужен вход (логин и пароль) или ключ");
+    const u = auth.user;
     enterUser(u.id); // расход ИИ в этом запросе — на счёт этого человека
+    if (p.startsWith("/api/admin/")) {
+      // Не админу (и админу, вошедшему по DESKTOP_TOKEN) — как будто адреса нет.
+      if (!isAdmin(u, auth.via)) throw new HttpError(404, "нет такого адреса");
+      return adminApi(u, tokenHash(token).slice(0, 16), m, p, req);
+    }
 
     if (m === "POST" && p === "/api/logout") {
       await store.dropSession(tokenHash(token));
@@ -332,6 +386,7 @@ export function createApi(deps: ApiDeps) {
       const mine = tokenHash(token).slice(0, 16);
       return {
         ...me,
+        admin: isAdmin(u, auth.via), // пункт «Админка» в меню сайта; сами данные админки — только через /api/admin/* с кодом
         sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })),
       };
     }

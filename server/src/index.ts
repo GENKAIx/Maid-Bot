@@ -75,7 +75,9 @@ const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => cons
 void pipeline.sweepProposals().catch(() => {});
 
 let botName: string | undefined;
-const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName });
+// Код входа в админку сайта (admin.ts) — только в Telegram, не в ленту уведомлений: её видит и виджет на ПК.
+const adminCode = tg ? async (u: User, text: string) => void (await tg.send(u, text, "neutral")) : undefined;
+const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
   if (!tg) return;

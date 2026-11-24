@@ -24,6 +24,8 @@ import { Icon } from "./icons";
 
 // Каталог для разработки — отдельным куском: обычным экранам его тексты не нужны.
 const Catalog = lazy(() => import("./screens/Catalog").then((m) => ({ default: m.Catalog })));
+// Админка — тоже отдельным куском и на весь экран, без меню сайта (screens/Admin.tsx; доступ решает сервер).
+const Admin = lazy(() => import("./screens/Admin").then((m) => ({ default: m.Admin })));
 
 // Каркас: вход, навигация (слева на ПК; снизу на телефоне — четыре экрана и «Ещё»), экран, строка ввода.
 // version растёт после каждой записи — экраны перечитывают данные.
@@ -50,6 +52,15 @@ export function App() {
     return () => { alive = false; };
   }, [authed, version]);
 
+  // Пункт «Админка» в меню — только админу (/api/me → admin); данные админки сервер всё равно отдаёт только админу с кодом.
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    get<{ admin?: boolean }>("/api/me").then((m) => alive && setAdmin(m.admin === true)).catch(() => {});
+    return () => { alive = false; };
+  }, [authed]);
+
   useEffect(() => {
     whenUnauthorized(() => setAuthed(false));
   }, []);
@@ -74,6 +85,8 @@ export function App() {
   }, []);
 
   if (!authed) return <Login onDone={() => { setAuthed(true); onChanged(); }} />;
+
+  if (tab === "admin") return <Suspense fallback={null}><Admin section={arg} /></Suspense>;
 
   async function logout() {
     await post("/api/logout").catch(() => {});
@@ -131,12 +144,18 @@ export function App() {
           <span className="nav-icon"><Icon name="more" /></span><span>Ещё</span>
         </button>
         <div className="spacer" />
+        {admin && (
+          <a className="nav-item nav-admin" href="/admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}>
+            <span className="nav-icon"><Icon name="profile" /></span><span>Админка</span>
+          </a>
+        )}
       </nav>
       {more && (
         <div className="sheet-back" onClick={() => setMore(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             {find}
             {TABS.filter((t) => t.more).map(grouped)}
+            {admin && <a className="nav-item" href="/admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}><span className="nav-icon"><Icon name="profile" /></span><span>Админка</span></a>}
           </div>
         </div>
       )}

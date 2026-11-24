@@ -27,6 +27,12 @@ export const config = {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
+  /** Кто входит в админку сайта (/admin, admin.ts). Пусто — первый из ALLOWED_CHAT_IDS (тот же владелец, что у DESKTOP_TOKEN):
+   *  если в ALLOWED_CHAT_IDS несколько человек, админом становится только первый, остальные — лишь через этот список. */
+  adminChatIds: env("ADMIN_CHAT_IDS")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
   publicUrl: env("PUBLIC_URL").replace(/\/$/, ""),
   llm: {
     baseUrl: env("LLM_BASE_URL", "https://api.openai.com/v1").replace(/\/$/, ""),

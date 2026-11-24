@@ -76,8 +76,23 @@ export class LoginGate {
 
 const safeEq = (a: string, b: string) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
+/** Как вошёл: по ключу сессии (логин и пароль) или по запасному DESKTOP_TOKEN из .env. */
+export type Via = "session" | "desktop";
+
 /** Кто пришёл с этим ключом. DESKTOP_TOKEN из .env — запасной ключ первого пользователя. */
 export async function userByToken(store: Store, token: string): Promise<User | undefined> {
+  return (await authByToken(store, token))?.user;
+}
+
+/** Админ сайта (24.11.2026, docs/review/админка-2026-11-24.html): chat id из ADMIN_CHAT_IDS (пусто — первый из ALLOWED_CHAT_IDS)
+ *  и вход по сессии. Запасной DESKTOP_TOKEN подставляет того же владельца, но в админку не пускает: ключ лежит в программе на ПК. */
+export function isAdmin(u: User, via: Via): boolean {
+  const admins = config.adminChatIds.length ? config.adminChatIds : config.allowedChatIds.slice(0, 1);
+  return via === "session" && Boolean(u.chat_id) && admins.includes(String(u.chat_id));
+}
+
+/** Кто пришёл с этим ключом и как вошёл. */
+export async function authByToken(store: Store, token: string): Promise<{ user: User; via: Via } | undefined> {
   if (!token) return undefined;
   const h = tokenHash(token);
   const u = await store.sessionUser(h);
@@ -89,11 +104,12 @@ export async function userByToken(store: Store, token: string): Promise<User | u
     // last_seen обновляем не чаще раза в минуту.
     if (Date.now() - new Date(u.last_seen).getTime() > 60_000) await store.touchSession(h);
     const { last_seen: _, ...user } = u;
-    return user;
+    return { user, via: "session" };
   }
   if (config.desktopToken && safeEq(token, config.desktopToken)) {
     const owner = config.allowedChatIds[0];
-    return owner ? store.ensureUser(owner, "", config.defaultTimezone) : (await store.users())[0];
+    const user = owner ? await store.ensureUser(owner, "", config.defaultTimezone) : (await store.users())[0];
+    return user ? { user, via: "desktop" } : undefined;
   }
   return undefined;
 }

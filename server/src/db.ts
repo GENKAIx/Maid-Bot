@@ -396,6 +396,17 @@ ALTER TABLE users ADD COLUMN ask TEXT NOT NULL DEFAULT '';
   `
 ALTER TABLE users ADD COLUMN weather_rain INTEGER NOT NULL DEFAULT 0;
 `,
+  // Шаг 22: журнал действий в админке сайта (admin.ts): запросил код, вошёл, неверный код, вышел. Без текстов пользователей.
+  `
+CREATE TABLE IF NOT EXISTS admin_log (
+  id {pk},
+  at TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  action TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS admin_log_at ON admin_log (at);
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -1492,6 +1503,17 @@ export class Store {
   }
   async kvGet(key: string): Promise<string | undefined> {
     return (await this.get<{ value: string }>("SELECT value FROM kv WHERE key = ?", key))?.value;
+  }
+  async kvDel(key: string) {
+    await this.run("DELETE FROM kv WHERE key = ?", key);
+  }
+  /** Журнал админки (admin.ts). */
+  async addAdminLog(userId: number, action: string, detail = "", at = new Date()) {
+    await this.run("INSERT INTO admin_log (at, user_id, action, detail) VALUES (?, ?, ?, ?)", at.toISOString(), userId, action, detail.slice(0, 200));
+  }
+  async adminLog(limit = 100): Promise<{ at: string; user_id: number; action: string; detail: string }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT at, user_id, action, detail FROM admin_log ORDER BY id DESC LIMIT ?", limit);
+    return rows.map((r) => ({ at: String(r.at), user_id: Number(r.user_id), action: String(r.action), detail: String(r.detail ?? "") }));
   }
   async kvSet(key: string, value: string) {
     await this.run("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", key, value);
