@@ -96,6 +96,8 @@ export const config = {
     trialPoolDayUsd: 10,
     /** Цена вызова, если провайдер её не вернул (прямой OpenAI, Groq, RunPod), доллары — для потолков (db.ts daySpend). */
     unpricedUsd: { draw: 0.03, voice: 0.005, other: 0.003 },
+    /** Сколько $ разработчик получает за 1 ⭐ (оценка), только для аналитики (admin-analytics.ts): выручка в $ и маржа. */
+    starUsd: Number(env("STAR_USD", "0.013")) || 0.013,
   },
 };
 

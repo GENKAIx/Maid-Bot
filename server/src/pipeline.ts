@@ -340,7 +340,7 @@ export class Pipeline {
 
     // Платный доступ (access.ts): дальше — только модель. Нельзя — сообщение заметкой, без единого вызова модели.
     if (this.gate) {
-      const v = await this.gate.check(u, { rate: !inc.background && !inc.gated });
+      const v = await this.gate.check(u, { rate: !inc.background && !inc.gated, client: inc.background ? undefined : inc.client });
       if (!v.ok) {
         c.route = "blocked";
         if (v.why === "rate") return this.tooFast(u, message, v.text, Boolean(inc.chatOnly || pics));
@@ -410,7 +410,7 @@ export class Pipeline {
     // Просьба нарисовать — рисуем, ничего не записываем.
     if (parsed.draw) {
       c.route = "draw";
-      return this.drawFor(u, message, parsed);
+      return this.drawFor(u, message, parsed, inc.background ? undefined : inc.client);
     }
 
     // Вопрос про саму картинку («что это?») — отвечаем по ней, а не по записям.
@@ -481,7 +481,7 @@ export class Pipeline {
   }
 
   /** «Нарисуй …»: картинка от RunPod сохраняется (drawings) и уходит в ответ. Без ключа или при сбое — сказать словами. */
-  private async drawFor(u: User, message: Message, parsed: Parsed): Promise<Reply> {
+  private async drawFor(u: User, message: Message, parsed: Parsed, client?: string): Promise<Reply> {
     const s = this.store;
     const d = parsed.draw!;
     const done = async (text: string, emotion: Emotion, drawing?: Reply["drawing"]): Promise<Reply> => {
@@ -492,7 +492,7 @@ export class Pipeline {
     let pic: Picture;
     // Рисунок — тоже вызов модели у сообщения (самый дорогой): в «Дорогих сообщениях» и «По веткам» он виден.
     // Рисунок дороже разбора: ещё раз сверить денежные потолки (частоту не считать — это то же сообщение).
-    const v = this.gate ? await this.gate.check(u, { rate: false }) : null;
+    const v = this.gate ? await this.gate.check(u, { rate: false, client }) : null;
     if (v && !v.ok) return done(v.text, "worried");
     const c = msgCalls.getStore();
     if (c) c.calls++;
@@ -955,11 +955,11 @@ export class Pipeline {
    *  Не через handle: открытые вопросы и ждущее уточнение не трогаются. Сама поправка — служебное сообщение (текст и ответ —
    *  в истории разговора), журнал — под исходным сообщением: отдельно поправка не отменяется. null — нет такого ответа.
    *  Повтор с тем же sourceId возвращает прежний итог без второй записи. */
-  async correct(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date }): Promise<CorrectReply | null> {
+  async correct(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date; client?: string }): Promise<CorrectReply | null> {
     return this.counted((c) => this.correctOne(u, messageId, text, opts, c));
   }
   /** Вызовы модели поправки считаются на её служебное сообщение (ветка «correct»). */
-  private async correctOne(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date }, c: MsgCalls): Promise<CorrectReply | null> {
+  private async correctOne(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date; client?: string }, c: MsgCalls): Promise<CorrectReply | null> {
     const s = this.store;
     const at = opts.at ?? new Date();
     const p = persona(u.persona, u);
@@ -1003,7 +1003,7 @@ export class Pipeline {
     };
     // Платный доступ (access.ts): поправка — тоже модель. Нельзя — ничего не меняем, отказ остаётся итогом этой поправки.
     if (this.gate) {
-      const v = await this.gate.check(u);
+      const v = await this.gate.check(u, { client: opts.client });
       if (!v.ok) {
         c.route = "blocked";
         return { ...(await say(v.why === "rate" ? "Много сообщений подряд — повторите поправку через минуту, пожалуйста." : v.text)), blocked: v.why };

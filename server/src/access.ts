@@ -1,5 +1,6 @@
 import { config } from "./config.ts";
 import type { Store, User } from "./db.ts";
+import { countFeature } from "./feature-events.ts";
 
 // Платный доступ (24.11.2026): одна проверка «можно ли тратить ИИ на этого человека» для бота, сайта, конвейера и планировщика.
 // Бесплатно навсегда — всё без модели: просмотр своих данных, кнопки и отметки, ручные правки, push-кнопки, напоминания и вопросы
@@ -73,6 +74,10 @@ export function refusalText(why: Refusal, a: Access | null, price = config.billi
   return endedText(a?.ended ?? null, price);
 }
 
+/** Почему не пустили к модели — счётчик фич gate.<причина> (feature-list.ts, группа «Доступ»): no_access — нет доступа (проба,
+ *  подарок или подписка кончились), burst — слишком часто, day_cap — свой дневной потолок расхода, trial_pool — общий потолок проб. */
+export type GateReason = "no_access" | "burst" | "day_cap" | "trial_pool";
+
 export interface GateOptions {
   owners?: () => string[];
   clock?: () => Date;
@@ -101,19 +106,25 @@ export class AiGate {
   allowed(u: User, now = this.now()): boolean {
     return this.access(u, now).ok;
   }
-  /** rate: false — без частоты (фоновый повтор; разбор голосового — частоту отметили до распознавания). */
-  async check(u: User, o: { rate?: boolean } = {}): Promise<Verdict> {
+  /** rate: false — без частоты (фоновый повтор; разбор голосового — частоту отметили до распознавания).
+   *  client — клиент запроса человека (сайт, виджет, бот…): отказ идёт в счётчик gate.<причина>. Без client (фоновый повтор,
+   *  планировщик) — не считается: человек этого отказа не видел. */
+  async check(u: User, o: { rate?: boolean; client?: string } = {}): Promise<Verdict> {
     const now = this.now();
+    const no = (why: Refusal, reason: GateReason, a: Access): Verdict => {
+      if (o.client) countFeature(u, o.client, `gate.${reason}`, 1, now);
+      return { ok: false, why, text: refusalText(why, a) };
+    };
     const a = this.access(u, now);
-    if (!a.ok) return { ok: false, why: "access", text: refusalText("access", a) };
+    if (!a.ok) return no("access", "no_access", a);
     if (a.plan === "owner" || a.plan === "friend") return { ok: true };
-    if (o.rate !== false && !this.take(u.id, now.getTime())) return { ok: false, why: "rate", text: refusalText("rate", a) };
+    if (o.rate !== false && !this.take(u.id, now.getTime())) return no("rate", "burst", a);
     const day = now.toISOString().slice(0, 10);
     const est = config.billing.unpricedUsd;
     const cap = a.plan === "paid" ? (this.opts.paidDayUsd ?? config.billing.paidDayUsd) : (this.opts.trialDayUsd ?? config.billing.trialDayUsd);
-    if ((await this.store.daySpend(u.id, day, est)) >= cap) return { ok: false, why: "money", text: refusalText("money", a) };
+    if ((await this.store.daySpend(u.id, day, est)) >= cap) return no("money", "day_cap", a);
     if (a.plan === "trial" && (await this.store.trialsDaySpend(day, est)) >= (this.opts.trialPoolDayUsd ?? config.billing.trialPoolDayUsd)) {
-      return { ok: false, why: "money", text: refusalText("money", a) };
+      return no("money", "trial_pool", a);
     }
     return { ok: true };
   }

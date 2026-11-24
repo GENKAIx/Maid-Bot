@@ -501,7 +501,39 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS payments_user ON payments (user_id, paid_at);
 CREATE INDEX IF NOT EXISTS payments_at ON payments (paid_at);
 `,
+  // Шаг 28: журнал подписки (аналитика, этап 0 «начать записывать», docs/review/аналитика-макет-2026-11-24.html): каждое событие
+  // доступа — отдельной строкой с временем. kind — BILLING_KINDS: paid_first, paid_once, renewed, canceled, resumed, refunded,
+  // expired, trial_ended, gift_ended, trial_started, gift. charge_id и amount (звёзды) — только у оплат и возвратов. Без текстов и
+  // Telegram id. Не чистится. Когда шаг пройден, в kv analytics_collect_since — момент начала записи (правило since, admin-analytics.ts).
+  `
+CREATE TABLE IF NOT EXISTS billing_events (
+  id {pk},
+  user_id INTEGER NOT NULL,
+  at TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  charge_id TEXT,
+  amount INTEGER
+);
+CREATE INDEX IF NOT EXISTS billing_events_at ON billing_events (at);
+CREATE INDEX IF NOT EXISTS billing_events_user ON billing_events (user_id, at);
+`,
+  // Шаг 29: аналитика, этап 1 (admin-analytics.ts) — отчёты по всем людям идут по дню (messages.day_key, по поясу человека).
+  `
+CREATE INDEX IF NOT EXISTS messages_day ON messages (day_key);
+`,
 ];
+
+/** Виды строк журнала подписки (billing_events, шаг 28). paid_first — первая оплата подписки, paid_once — оплата без признака
+ *  подписки, renewed — продление, canceled / resumed — продление отменили / возобновили, refunded — возврат, expired — кончилась
+ *  подписка, trial_ended — проба, gift_ended — подарок (планировщик перевёл в free; что кончилось — access.ts endedOf),
+ *  trial_started — проба при регистрации, gift — подарок по /invite (новому или продление срока). */
+export const BILLING_KINDS = ["paid_first", "paid_once", "renewed", "canceled", "resumed", "refunded", "expired", "trial_ended", "gift_ended", "trial_started", "gift"] as const;
+/** kv: когда в этой базе начали писать журнал подписки и отказы ИИ (шаг 28) — начало данных для правила since. */
+export const COLLECT_SINCE_KEY = "analytics_collect_since";
+/** Номер шага схемы, с которого пишутся billing_events и gate.* (этап 0 аналитики). */
+const COLLECT_STEP = 28;
+export type BillingKind = (typeof BILLING_KINDS)[number];
+export interface BillingEventRow { id: number; user_id: number; at: string; kind: BillingKind; charge_id: string | null; amount: number | null }
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
 export interface AccountRow {
@@ -815,6 +847,10 @@ const now = () => new Date().toISOString();
 // Отметки привычек кнопкой в Telegram (bot.ts, source_id «mark:…»), на сайте (web) и в виджете Telegram — без модели.
 const ADMIN_AI_SQL = "(m.source IN ('telegram', 'desktop', 'app', 'iphone') AND m.source_id NOT LIKE 'correct:%' AND m.source_id NOT LIKE 'mark:%')";
 const ADMIN_MANUAL_SQL = "(m.source IN ('button', 'push', 'panel', 'web', 'telegram-widget') OR m.source_id LIKE 'mark:%')";
+/** Окно выборки сообщений для аналитики: дни по поясу человека (messages.day_key, включительно) или моменты [fromIso, toIso). */
+export type AnalyticsRange = { fromDay: string; toDay: string } | { fromIso: string; toIso: string };
+const rangeSql = (r: AnalyticsRange): [string, string, string] =>
+  "fromDay" in r ? ["m.day_key >= ? AND m.day_key <= ?", r.fromDay, r.toDay] : ["m.received_at >= ? AND m.received_at < ?", r.fromIso, r.toIso];
 
 export type Table = "diary" | "events" | "tasks" | "dates" | "memory" | "metrics" | "habits" | "habit_marks" | "money" | "traits" | "notes";
 /** Таблицы, строку которых берёт lockRow (у всех есть user_id; у отметок привычек его нет). */
@@ -845,6 +881,7 @@ export class Store {
       await this.driver.tx(async () => {
         await this.driver.exec(schemaFor(this.driver.dialect, step));
         await this.kvSet("schema_version", String(v + 1));
+        if (v + 1 === COLLECT_STEP) await this.kvSet(COLLECT_SINCE_KEY, now());
       });
       v++;
     }
@@ -965,6 +1002,24 @@ export class Store {
   /** Пометить возврат; false — уже был. */
   async setPaymentRefunded(chargeId: string, at: string): Promise<boolean> {
     return (await this.run("UPDATE payments SET refunded_at = ? WHERE charge_id = ? AND refunded_at IS NULL", at, chargeId)) > 0;
+  }
+  /** Строка журнала подписки (шаг 28). Незнакомый вид — ошибка (опечатка в коде, а не данные). */
+  async addBillingEvent(e: { user_id: number; kind: BillingKind; at?: Date; charge_id?: string | null; amount?: number | null }) {
+    if (!BILLING_KINDS.includes(e.kind)) throw new Error(`bad billing kind ${e.kind}`);
+    await this.run(
+      "INSERT INTO billing_events (user_id, at, kind, charge_id, amount) VALUES (?, ?, ?, ?, ?)",
+      e.user_id, (e.at ?? new Date()).toISOString(), e.kind, e.charge_id ?? null, e.amount ?? null,
+    );
+  }
+  /** Журнал подписки за [from, to) (ISO), по времени. */
+  async billingEvents(from: string, to: string): Promise<BillingEventRow[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT id, user_id, at, kind, charge_id, amount FROM billing_events WHERE at >= ? AND at < ? ORDER BY at, id", from, to,
+    );
+    return rows.map((r) => ({
+      id: Number(r.id), user_id: Number(r.user_id), at: String(r.at), kind: String(r.kind) as BillingKind,
+      charge_id: r.charge_id == null ? null : String(r.charge_id), amount: r.amount == null ? null : Number(r.amount),
+    }));
   }
   /** Последние оплаты всех (админка): без payload и charge_id целиком — только хвост для сверки. */
   async adminPayments(limit = 200): Promise<PaymentRow[]> {
@@ -1908,9 +1963,10 @@ export class Store {
       before.toISOString(), ...kinds.map((k) => `${k}:%`),
     );
   }
-  /** Раз в сутки: минуты присутствия старше 90 дней (по day_key), журнал попыток модели старше 30 дней, счётчики фич старше 400. */
+  /** Раз в сутки: минуты присутствия и счётчики фич старше 400 дней (по day_key; присутствие — с 24.11.2026, раньше 90: годовые
+   *  когорты удержания), журнал попыток модели старше 30 дней. */
   async pruneStats(at: Date) {
-    await this.run("DELETE FROM presence WHERE day_key < ?", new Date(at.getTime() - 90 * 86_400_000).toISOString().slice(0, 10));
+    await this.run("DELETE FROM presence WHERE day_key < ?", new Date(at.getTime() - 400 * 86_400_000).toISOString().slice(0, 10));
     await this.run("DELETE FROM llm_calls WHERE at < ?", new Date(at.getTime() - 30 * 86_400_000).toISOString());
     await this.run("DELETE FROM feature_events WHERE day_key < ?", new Date(at.getTime() - 400 * 86_400_000).toISOString().slice(0, 10));
   }
@@ -1941,6 +1997,141 @@ export class Store {
       "SELECT feature, client, MIN(day_key) AS first, MAX(day_key) AS last FROM feature_events GROUP BY feature, client",
     );
     return rows.map((r) => ({ feature: String(r.feature), client: String(r.client), first: String(r.first), last: String(r.last) }));
+  }
+  // ——— Аналитика, этап 1 (admin-analytics.ts): выборки с границами времени, только счётчики и номера аккаунтов (без текстов,
+  // имён, chat id). «Активный» — одно определение на все отчёты: сообщение с ИИ или без (отметка кнопкой, push, правка мышью;
+  // без импорта и поправок к ответам) или минута присутствия с любого клиента.
+  /** Кто в какие дни (по поясу человека) был активен с fromDay по toDay включительно: сообщения (как adminActiveDays) ∪ присутствие. */
+  async analyticsActiveDays(fromDay: string, toDay: string): Promise<{ day: string; user_id: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT m.day_key AS day, m.user_id FROM messages m
+         WHERE m.day_key >= ? AND m.day_key <= ? AND m.source <> 'import' AND (${ADMIN_AI_SQL} OR ${ADMIN_MANUAL_SQL})
+       UNION
+       SELECT day_key AS day, user_id FROM presence WHERE day_key >= ? AND day_key <= ? AND minutes > 0`,
+      fromDay, toDay, fromDay, toDay,
+    );
+    return rows.map((r) => ({ day: String(r.day), user_id: Number(r.user_id) }));
+  }
+  /** Для шага «час» за [fromIso, toIso): сообщения по часу UTC (hour — «ГГГГ-ММ-ДДTЧЧ») и присутствие за дни на сутки шире
+   *  (местные день и час — в UTC переводит admin-analytics.ts по поясу человека). */
+  async analyticsActiveHours(fromIso: string, toIso: string): Promise<{ messages: { hour: string; user_id: number }[]; presence: { user_id: number; day: string; hour: number }[] }> {
+    const msgs = await this.all<Record<string, unknown>>(
+      `SELECT DISTINCT substr(m.received_at, 1, 13) AS hr, m.user_id FROM messages m
+       WHERE m.received_at >= ? AND m.received_at < ? AND m.source <> 'import' AND (${ADMIN_AI_SQL} OR ${ADMIN_MANUAL_SQL})`,
+      fromIso, toIso,
+    );
+    const day = (iso: string, d: number) => new Date(Date.parse(iso.slice(0, 10) + "T00:00:00Z") + d * 86_400_000).toISOString().slice(0, 10);
+    const pres = await this.all<Record<string, unknown>>(
+      "SELECT user_id, day_key AS day, hour FROM presence WHERE day_key >= ? AND day_key <= ? AND minutes > 0",
+      day(fromIso, -1), day(toIso, 1),
+    );
+    return {
+      messages: msgs.map((r) => ({ hour: String(r.hr), user_id: Number(r.user_id) })),
+      presence: pres.map((r) => ({ user_id: Number(r.user_id), day: String(r.day), hour: Number(r.hour) })),
+    };
+  }
+  /** Начало данных каждого источника аналитики (ISO или день; пустая таблица — null). gate — счётчики gate.*. Журнал подписки и
+   *  отказы ИИ пишутся только по событию, поэтому у них начало — раньшее из первой записи и kv analytics_collect_since (когда
+   *  база прошла шаг 28): пустой журнал после этого — честный ноль, а не «нет данных». */
+  async analyticsSince(): Promise<{ payments: string | null; billing_events: string | null; feature_events: string | null; gate: string | null; llm_calls: string | null; presence: string | null }> {
+    const r = await this.get<Record<string, unknown>>(
+      `SELECT (SELECT MIN(paid_at) FROM payments) AS payments, (SELECT MIN(at) FROM billing_events) AS billing_events,
+         (SELECT MIN(day_key) FROM feature_events) AS feature_events, (SELECT MIN(day_key) FROM feature_events WHERE feature LIKE 'gate.%') AS gate,
+         (SELECT MIN(at) FROM llm_calls) AS llm_calls, (SELECT MIN(day_key) FROM presence) AS presence`,
+    );
+    const s = (v: unknown) => (v == null ? null : String(v));
+    const mark = (await this.kvGet(COLLECT_SINCE_KEY)) ?? null;
+    const early = (v: string | null) => (v == null ? mark : mark == null ? v : v.slice(0, 10) <= mark.slice(0, 10) ? v : mark);
+    return { payments: s(r?.payments), billing_events: early(s(r?.billing_events)), feature_events: s(r?.feature_events), gate: early(s(r?.gate)), llm_calls: s(r?.llm_calls), presence: s(r?.presence) };
+  }
+  /** Люди для аналитики: пояс, когда пришли, план и срок. owner — chat id среди owners (сам chat id наружу не идёт). */
+  async analyticsUsers(owners: string[]): Promise<{ id: number; tz: string; created_at: string; plan: string; access_until: string | null; sub_canceled: number; owner: boolean }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT id, tz, created_at, plan, access_until, sub_canceled, chat_id FROM users ORDER BY id");
+    return rows.map((r) => ({
+      id: Number(r.id), tz: String(r.tz ?? ""), created_at: String(r.created_at ?? ""), plan: String(r.plan ?? ""),
+      access_until: r.access_until == null ? null : String(r.access_until), sub_canceled: Number(r.sub_canceled ?? 0) || 0,
+      owner: r.chat_id != null && owners.includes(String(r.chat_id)),
+    }));
+  }
+  /** Оплаты звёздами (XTR) с paid_at раньше beforeIso: человек, сумма, вид, сроки, возврат. Без payload, charge_id и Telegram id. */
+  async analyticsPayments(beforeIso: string): Promise<{ user_id: number; amount: number; kind: string; paid_at: string; expires_at: string | null; refunded_at: string | null }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT user_id, amount, kind, paid_at, expires_at, refunded_at FROM payments WHERE paid_at < ? AND currency = 'XTR' ORDER BY paid_at", beforeIso,
+    );
+    return rows.map((r) => ({
+      user_id: Number(r.user_id), amount: Number(r.amount) || 0, kind: String(r.kind), paid_at: String(r.paid_at),
+      expires_at: r.expires_at == null ? null : String(r.expires_at), refunded_at: r.refunded_at == null ? null : String(r.refunded_at),
+    }));
+  }
+  /** Расход модели с fromDay по toDay (дни UTC, включительно): строки день × человек × назначение × модель, деньги — micro$. */
+  async analyticsUsage(fromDay: string, toDay: string): Promise<{ day: string; user_id: number; kind: string; model: string; calls: number; priced: number; micro: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT day, user_id, kind, model, calls, priced, micro_usd FROM llm_usage WHERE day >= ? AND day <= ?", fromDay, toDay,
+    );
+    return rows.map((r) => ({
+      day: String(r.day), user_id: Number(r.user_id), kind: String(r.kind), model: String(r.model),
+      calls: Number(r.calls) || 0, priced: Number(r.priced) || 0, micro: Number(r.micro_usd) || 0,
+    }));
+  }
+  /** Попытки модели за [fromIso, toIso) из журнала llm_calls (хранится 30 дней): время, человек, назначение, модель, мс, micro$, удачна ли. */
+  async analyticsCalls(fromIso: string, toIso: string): Promise<{ at: string; user_id: number; kind: string; model: string; ms: number; micro: number; ok: boolean }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT at, user_id, kind, model, ms, micro_usd, error_code FROM llm_calls WHERE at >= ? AND at < ?", fromIso, toIso,
+    );
+    return rows.map((r) => ({
+      at: String(r.at), user_id: Number(r.user_id), kind: String(r.kind), model: String(r.model), ms: Number(r.ms) || 0,
+      micro: Number(r.micro_usd) || 0, ok: String(r.error_code ?? "") === "",
+    }));
+  }
+  /** Сообщения за дни (по поясу человека, включительно) или за [fromIso, toIso) — сводно по дню × часу UTC × человеку × источнику:
+   *  с ИИ (ADMIN_AI_SQL), без ИИ (ADMIN_MANUAL_SQL), из них с ИИ и с отменой, поправки к ответам. Импорт не в счёт. */
+  async analyticsMessages(r: AnalyticsRange): Promise<{ day: string; hour: string; user_id: number; source: string; ai: number; manual: number; undone: number; corrections: number }[]> {
+    const [where, from, to] = rangeSql(r);
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT m.day_key AS day, substr(m.received_at, 1, 13) AS hr, m.user_id, m.source,
+         SUM(CASE WHEN ${ADMIN_AI_SQL} THEN 1 ELSE 0 END) AS ai,
+         SUM(CASE WHEN ${ADMIN_MANUAL_SQL} THEN 1 ELSE 0 END) AS manual,
+         SUM(CASE WHEN ${ADMIN_AI_SQL} AND EXISTS (SELECT 1 FROM actions a WHERE a.message_id = m.id AND a.undone = 1) THEN 1 ELSE 0 END) AS undone,
+         SUM(CASE WHEN m.source_id LIKE 'correct:%' THEN 1 ELSE 0 END) AS corrections
+       FROM messages m WHERE ${where} AND m.source <> 'import'
+       GROUP BY m.day_key, substr(m.received_at, 1, 13), m.user_id, m.source`, from, to,
+    );
+    const n = (v: unknown) => Number(v ?? 0) || 0;
+    return rows.map((x) => ({ day: String(x.day), hour: String(x.hr), user_id: Number(x.user_id), source: String(x.source), ai: n(x.ai), manual: n(x.manual), undone: n(x.undone), corrections: n(x.corrections) }));
+  }
+  /** Виды записей у сообщений с ИИ (по actions.tbl, разные сообщения × вид): tasks, plans, diary, habits, money, other; без действий — talk. */
+  async analyticsParseKinds(r: AnalyticsRange): Promise<{ day: string; hour: string; kind: string; n: number }[]> {
+    const [where, from, to] = rangeSql(r);
+    const kind = `CASE WHEN a.tbl IS NULL THEN 'talk' WHEN a.tbl = 'tasks' THEN 'tasks' WHEN a.tbl = 'events' THEN 'plans' WHEN a.tbl = 'diary' THEN 'diary'
+      WHEN a.tbl IN ('habits', 'habit_marks') THEN 'habits' WHEN a.tbl = 'money' THEN 'money' ELSE 'other' END`;
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT m.day_key AS day, substr(m.received_at, 1, 13) AS hr, ${kind} AS pkind, COUNT(DISTINCT m.id) AS n
+       FROM messages m LEFT JOIN actions a ON a.message_id = m.id
+       WHERE ${where} AND ${ADMIN_AI_SQL}
+       GROUP BY m.day_key, substr(m.received_at, 1, 13), ${kind}`, from, to,
+    );
+    return rows.map((x) => ({ day: String(x.day), hour: String(x.hr), kind: String(x.pkind), n: Number(x.n) || 0 }));
+  }
+  /** Счётчики фич features с fromDay по toDay включительно (день — по поясу человека), сведённые в SQL по фиче × клиенту × дню:
+   *  сколько раз. Людей здесь нет — их даёт analyticsFeatureUsers (за год сырых строк в JS не тянем: выборка синхронная). */
+  async analyticsFeatureSums(fromDay: string, toDay: string, features: string[]): Promise<{ feature: string; client: string; day: string; uses: number }[]> {
+    if (!features.length) return [];
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT feature, client, day_key AS day, SUM(count) AS uses FROM feature_events
+       WHERE day_key >= ? AND day_key <= ? AND feature IN (${features.map(() => "?").join(", ")}) GROUP BY feature, client, day_key`,
+      fromDay, toDay, ...features,
+    );
+    return rows.map((r) => ({ feature: String(r.feature), client: String(r.client), day: String(r.day), uses: Number(r.uses) || 0 }));
+  }
+  /** Кто трогал какие фичи features с fromDay по toDay включительно: различные пары фича × человек с count > 0. */
+  async analyticsFeatureUsers(fromDay: string, toDay: string, features: string[]): Promise<{ feature: string; user_id: number }[]> {
+    if (!features.length) return [];
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT feature, user_id FROM feature_events
+       WHERE day_key >= ? AND day_key <= ? AND count > 0 AND feature IN (${features.map(() => "?").join(", ")}) GROUP BY feature, user_id`,
+      fromDay, toDay, ...features,
+    );
+    return rows.map((r) => ({ feature: String(r.feature), user_id: Number(r.user_id) }));
   }
   /** Команда без разбора результата (снимок базы: VACUUM INTO). */
   async raw(sql: string, ...args: unknown[]): Promise<void> {

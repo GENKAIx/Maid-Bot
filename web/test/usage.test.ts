@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
-import { CLIENT_FEATURES, FEATURES } from "../../server/src/feature-list.ts";
+import { CLIENT_FEATURES, FEATURES, REACT_NAMES } from "../../server/src/feature-list.ts";
+import { ALBUM_CARDS } from "../src/album.ts";
 import { dayAgo, featureView, sparkPoints, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, CLIENT_NAMES, type FeatureRow } from "../src/admin.ts";
 import { NAV_TABS } from "../src/nav.ts";
 import { screenFeature, usageCounter, usageSent, USAGE_MAX_COUNT, type UsageKeep } from "../src/usage.ts";
@@ -158,4 +159,11 @@ test("админка, этап 3: раздел живой; фильтр по г�
   assert.equal(dayAgo("2026-11-23", "2026-11-24"), "вчера");
   assert.equal(dayAgo("2026-11-14", "2026-11-24"), "10 дн. назад");
   assert.match(dayAgo("2026-09-01", "2026-11-24"), /2026/);
+});
+
+test("счётчики реакций Рины (этап 0 аналитики): названия в белом списке сервера = названия карточек альбома сайта", () => {
+  assert.deepEqual(Object.fromEntries(ALBUM_CARDS.map((c) => [c.id, c.name])), REACT_NAMES);
+  for (const c of ALBUM_CARDS.filter((x) => x.id !== "idle")) {
+    assert.equal(FEATURES.find((f) => f.id === `maid.react.${c.id}`)?.title, `Реакция «${c.name}»`, c.id);
+  }
 });

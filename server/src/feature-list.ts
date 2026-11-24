@@ -5,9 +5,17 @@
 // ветка разбора), такие имена от клиентов не принимаются, иначе посчитались бы дважды. api — ручка, по которой сервер считает
 // («POST /api/tasks/:id», :id — число); у остальных серверных — место в коде в комментарии строки.
 // Только имена и счётчики: ни текстов, ни chat id. Новая фича — строка сюда и вызов в нужном месте.
+// Этап 0 аналитики (docs/review/аналитика-макет-2026-11-24.html, «начать записывать»): группы «Доступ» (отказы ИИ, access.ts),
+// «Первый запуск» (выбор характера — сервер, экскурсия виджета — программа на ПК) и «Рина» (реакции, обида, праздники — программа
+// на ПК). Имена экскурсии и реакций собираются из списков ниже (шаги tour.js, анимации ALBUM) — программа шлёт их тоже из копии
+// (desktop/src/usage.js), desktop/test/usage.test.cjs сверяет.
 
-export type FeatureGroup = "site" | "widget" | "bot" | "common";
-export const FEATURE_GROUPS: Record<FeatureGroup, string> = { site: "Сайт", widget: "Виджет", bot: "Бот", common: "Общие" };
+import { ALBUM } from "./album.ts";
+
+export type FeatureGroup = "site" | "widget" | "bot" | "common" | "access" | "onboarding" | "rina";
+export const FEATURE_GROUPS: Record<FeatureGroup, string> = {
+  site: "Сайт", widget: "Виджет", bot: "Бот", common: "Общие", access: "Доступ", onboarding: "Первый запуск", rina: "Рина",
+};
 
 export interface FeatureDef { id: string; title: string; group: FeatureGroup; by: "client" | "server"; api?: string }
 
@@ -15,6 +23,29 @@ const site = (id: string, title: string): FeatureDef => ({ id, title, group: "si
 const widget = (id: string, title: string): FeatureDef => ({ id, title, group: "widget", by: "client" });
 const bot = (id: string, title: string): FeatureDef => ({ id, title, group: "bot", by: "server" });
 const common = (id: string, title: string, api?: string): FeatureDef => ({ id, title, group: "common", by: "server", ...(api ? { api } : {}) });
+const gate = (id: string, title: string): FeatureDef => ({ id, title, group: "access", by: "server" });
+const onboarding = (id: string, title: string, by: "client" | "server"): FeatureDef => ({ id, title, group: "onboarding", by });
+const rina = (id: string, title: string): FeatureDef => ({ id, title, group: "rina", by: "client" });
+
+/** Шаги экскурсии виджета (desktop/renderer/tour.js, TOUR_STEPS) по порядку: id → как назвать в админке. */
+export const TOUR_STEP_NAMES: [string, string][] = [
+  ["hello", "Привет"], ["input", "Строка ввода"], ["mic", "Микрофон"], ["clip", "Картинка"], ["history", "Последние ответы"],
+  ["next", "Ближайшие планы"], ["list", "Привычки и задачи"], ["head", "Шапка виджета"], ["maid", "Сама горничная"],
+  ["profile", "Знакомство"], ["end", "Готово"],
+];
+/** Названия анимаций — как в альбоме сайта (web/src/album.ts, ALBUM_CARDS; сверяет web/test/showcase.test.ts). «Ждёт» (idle) —
+ *  основа, к ней она возвращается после каждой реакции: в счёт реакций не идёт. */
+export const REACT_NAMES: Record<(typeof ALBUM)[number], string> = {
+  idle: "Ждёт", think: "Думает", sleep: "Спит", offline: "Нет связи", remind: "Колокольчик", angry: "Недовольна", clean: "Метёт",
+  hello: "Машет", happy: "Радуется", proud: "Гордится", write: "Пишет", done: "Галочка", streak: "Серия", sad: "Грустит",
+  worried: "Тревожится", surprised: "Удивлена", neutral: "Спокойна", listen: "Слушает", tea: "Пьёт чай", bow: "Кланяется",
+  excited: "В восторге", smitten: "Смущена", giggle: "Хихикает", gasp: "«Ой!»", smug: "Довольна собой", refuse: "Отказ",
+  forget: "Стирает память", think2: "Задумалась", analysis: "Изучает отчёт", list: "Свиток", present: "«Вот!»", letter: "Письмо",
+  salute: "«Есть!»", thumbsup: "Палец вверх", wrench: "Починила", deadpan: "«Ну да…»", facepalm: "Рука на лице", pout: "Дуется",
+  shy: "Засмущалась", shh: "«Тсс»", bedtime: "«Марш спать»",
+};
+/** Анимации, показы которых считаются (maid.react.<имя>): весь альбом, кроме основы «Ждёт». */
+export const REACT_MOODS = ALBUM.filter((m) => m !== "idle");
 
 export const FEATURES: FeatureDef[] = [
   // Сайт: открытые экраны (App.tsx, по адресу) и действия, которых сервер не видит.
@@ -54,6 +85,29 @@ export const FEATURES: FeatureDef[] = [
   widget("widget.weather", "Плашка погоды"),
   widget("widget.drag", "Перетаскивание виджета"),
   widget("widget.update", "Обновление программы по кнопке"),
+  // Первый запуск. Характер — сервер (выбор в боте — bot.ts, кнопка persona:<id>; на сайте — POST /api/settings с другим
+  // характером; countPersona в feature-events.ts). Экскурсия при первом запуске — программа на ПК (tour.js; по просьбе из меню —
+  // не сюда, а в widget.tour): начало, каждый показанный шаг, дошли до конца или закрыли раньше.
+  onboarding("onboarding.persona", "Выбор характера Рины", "server"),
+  onboarding("onboarding.persona.first", "Первый выбор характера у человека", "server"),
+  onboarding("onboarding.tour.start", "Экскурсия при первом запуске: начали", "client"),
+  ...TOUR_STEP_NAMES.map(([id, t]) => onboarding(`onboarding.tour.step.${id}`, `Экскурсия: шаг «${t}»`, "client")),
+  onboarding("onboarding.tour.done", "Экскурсия: дошли до конца", "client"),
+  onboarding("onboarding.tour.skip", "Экскурсия: закрыли раньше конца", "client"),
+  // Рина в виджете (программа на ПК): какая анимация показалась (widget.js showMood, смена картинки), обида на тычки (fun.js,
+  // 10-й тычок подряд; сами тычки — widget.poke), праздники (habitparty.js, course.js, xp.js).
+  ...REACT_MOODS.map((m) => rina(`maid.react.${m}`, `Реакция «${REACT_NAMES[m]}»`)),
+  rina("maid.sulk", "Обиделась на тычки"),
+  rina("maid.party.flame", "Праздник: огонёк взрослеет (рубеж серии 7/30/100)"),
+  rina("maid.party.wave", "Праздник: волна по отметкам"),
+  rina("maid.party.salute", "Праздник: салют из искр"),
+  rina("maid.party.course", "Праздник: курс пройден"),
+  rina("maid.party.level", "Праздник: новый уровень опыта"),
+  // Доступ (access.ts, AiGate.check): человек попросил ИИ, а его не пустили — по причине. Фоновые повторы и планировщик — не в счёт.
+  gate("gate.no_access", "Отказ ИИ: нет доступа (проба, подарок или подписка кончились)"),
+  gate("gate.burst", "Отказ ИИ: слишком часто"),
+  gate("gate.day_cap", "Отказ ИИ: свой дневной потолок расхода"),
+  gate("gate.trial_pool", "Отказ ИИ: общий дневной потолок проб"),
   // Бот: команды (bot.ts, общий обработчик перед командами).
   bot("bot.start", "/start"),
   bot("bot.list", "/list и «список» — список-виджет"),
@@ -146,6 +200,10 @@ export const FEATURES: FeatureDef[] = [
 ];
 
 export const FEATURE_IDS = new Set(FEATURES.map((f) => f.id));
+/** Группы-функции (отчёт «Функции» аналитики, admin-analytics.ts): отказы ИИ (access), экскурсия (onboarding) и реакции и праздники
+ *  Рины (rina) — не функции, у них свои отчёты («Расход на ИИ», «Воронки», «Рина»). */
+export const FUNCTION_GROUPS: FeatureGroup[] = ["site", "widget", "bot", "common"];
+export const FUNCTIONS = FEATURES.filter((f) => FUNCTION_GROUPS.includes(f.group));
 /** Имена, которые принимаются от клиентов (POST /api/events/usage). */
 export const CLIENT_FEATURES = new Set(FEATURES.filter((f) => f.by === "client").map((f) => f.id));
 

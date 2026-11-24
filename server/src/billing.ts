@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { config } from "./config.ts";
-import type { Store, User } from "./db.ts";
+import type { BillingKind, Store, User } from "./db.ts";
 import { accessOf, endedOf, endedText, GRACE_MS } from "./access.ts";
 import { esc } from "./report.ts";
 
@@ -166,6 +166,7 @@ export class Billing {
     patch.sub_canceled = 0;
     if (kind === "first" || !u.sub_charge_id) patch.sub_charge_id = p.telegram_payment_charge_id;
     await this.store.updateUser(u.id, patch);
+    await this.journal(u.id, kind === "first" ? "paid_first" : kind === "renew" ? "renewed" : "paid_once", p.telegram_payment_charge_id, p.total_amount);
     await this.store.kvDel(`paylink:${u.id}`);
     await this.toOwners(`⭐ ${kind === "renew" ? "Продление" : "Оплата"}: ${esc(u.login ?? `#${u.id}`)}, ⭐${p.total_amount}, до ${day(until)}.`);
     return { user: (await this.store.user(u.id))!, kind, duplicate: false, until };
@@ -177,6 +178,7 @@ export class Billing {
     if (!pay) return null;
     const now = this.now().toISOString();
     if (!(await this.store.setPaymentRefunded(pay.charge_id, now))) return null;
+    await this.journal(pay.user_id, "refunded", pay.charge_id, pay.amount);
     const u = await this.store.user(pay.user_id);
     if (!u) return null;
     if (u.plan === "paid") await this.store.updateUser(u.id, { plan: "free", access_until: now, sub_canceled: 1 });
@@ -200,6 +202,7 @@ export class Billing {
       return { ok: false, text: "Telegram не ответил — попробуйте позже или отмените в настройках Telegram (Мои звёзды → Подписки)." };
     }
     await this.store.updateUser(u.id, { sub_canceled: 1 });
+    await this.journal(u.id, "canceled");
     return { ok: true, text: `Продление отменено. Доступ остаётся до ${day(u.access_until ?? "")}, звёзды больше не спишутся.` };
   }
 
@@ -215,6 +218,7 @@ export class Billing {
       return { ok: false, text: "Telegram не ответил — попробуйте позже или возобновите в настройках Telegram (Мои звёзды → Подписки)." };
     }
     await this.store.updateUser(u.id, { sub_canceled: 0 });
+    await this.journal(u.id, "resumed");
     return { ok: true, text: `Продление возобновлено: следующее списание — ${day(u.access_until ?? "")}.` };
   }
 
@@ -248,6 +252,8 @@ export class Billing {
     for (const u of await this.store.usersToExpire(new Date(now.getTime() - GRACE_MS).toISOString())) {
       const ended = endedOf(u);
       await this.store.updateUser(u.id, { plan: "free" });
+      // Что кончилось — разными видами: подписка (expired), проба (trial_ended), подарок (gift_ended); в аналитике «Истекли» — только подписка.
+      await this.journal(u.id, ended === "paid" ? "expired" : ended === "gift" ? "gift_ended" : "trial_ended", null, null, now);
       await this.notify({ ...u, plan: "free" }, `${endedText(ended, this.price)}.\nПросмотр записей, отметки и напоминания остаются бесплатно.`);
     }
     // Кнопки оплаты тут нет: новая подписка поверх идущей списала бы звёзды дважды, а оплаченные дни пропали бы.
@@ -267,6 +273,15 @@ export class Billing {
       parse_mode: "HTML", link_preview_options: { is_disabled: true },
       ...(url ? { reply_markup: { inline_keyboard: [[{ text: `Оформить ⭐${this.price}`, url }]] } } : {}),
     }).catch((e) => console.error("[billing] письмо", (e as Error).message));
+  }
+
+  /** Строка журнала подписки (billing_events, шаг 28; аналитика). Сбой записи журнала — в лог, оплату и отмену не роняет. */
+  private async journal(userId: number, kind: BillingKind, chargeId: string | null = null, amount: number | null = null, at = this.now()) {
+    try {
+      await this.store.addBillingEvent({ user_id: userId, kind, at, charge_id: chargeId, amount });
+    } catch (e) {
+      console.error("[billing] журнал", (e as Error).message);
+    }
   }
 
   private async toOwners(text: string) {

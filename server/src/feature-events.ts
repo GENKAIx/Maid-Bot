@@ -32,6 +32,14 @@ export function countFeature(u: Pick<User, "id" | "tz">, client: string, feature
   pending.set(key, (pending.get(key) ?? 0) + Math.floor(n));
 }
 
+/** Выбор характера Рины (бот — кнопка, сайт — POST /api/settings с другим характером): onboarding.persona — каждый выбор,
+ *  onboarding.persona.first — первый у человека (отметка kv «persona-first:<id>», не чистится). Кто выбирал до 24.11.2026 (до
+ *  счётчика), у того первым посчитается первый выбор после. */
+export async function countPersona(store: Pick<Store, "once">, u: Pick<User, "id" | "tz">, client: string, at = new Date()) {
+  countFeature(u, client, "onboarding.persona", 1, at);
+  if (await store.once(`persona-first:${u.id}`)) countFeature(u, client, "onboarding.persona.first", 1, at);
+}
+
 /** Пачка от клиента: не чаще раза в USAGE_BATCH_MS на человека и клиента (чаще — 429, клиент оставляет счёт у себя и пришлёт
  *  со следующей пачкой); фич в пачке — до USAGE_MAX_KEYS (больше — 400); счёт фичи — 1…USAGE_MAX_COUNT (больше — срезается).
  *  Незнакомые имена и те, что сервер считает сам, отбрасываются молча (старый клиент не должен падать). */

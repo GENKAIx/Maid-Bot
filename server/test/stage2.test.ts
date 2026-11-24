@@ -53,7 +53,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       " ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled;");
     await store.kvSet("schema_version", "23");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "27");
+    assert.equal(await again.kvGet("schema_version"), "29");
     const [s] = await q<{ client: string; version: string; label: string }>(again, "SELECT client, version, label FROM sessions");
     assert.deepEqual([s.client, s.version, s.label], ["", "", "web"]);
     const m = (await again.message(message.id))!;
@@ -129,12 +129,14 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     assert.deepEqual([Number(m.llm_calls), m.route], [3, "clarify"]);
     await store.addLlmCall(new Date(NOW.getTime() - 31 * 86_400_000), { kind: "parse", model: "m", ms: 5, cost: null, error: "timeout" });
     await store.addLlmCall(new Date(NOW.getTime() - 29 * 86_400_000), { kind: "parse", model: "m", ms: 5, cost: 0.002 });
-    await store.bumpPresence(u.id, "2026-08-25", 10, "web"); // 91 день
-    await store.bumpPresence(u.id, "2026-08-27", 10, "web"); // 89 дней
+    // Присутствие с 24.11.2026 хранится 400 дней (было 90): годовые когорты удержания.
+    await store.bumpPresence(u.id, "2025-10-19", 10, "web"); // 401 день
+    await store.bumpPresence(u.id, "2025-10-21", 10, "web"); // 399 дней
+    await store.bumpPresence(u.id, "2026-08-25", 10, "web"); // 91 день — раньше удалялся
     await store.pruneStats(NOW);
     const calls = await q<{ micro_usd: number; error_code: string }>(store, "SELECT micro_usd, error_code FROM llm_calls");
     assert.deepEqual(calls.map((c) => [Number(c.micro_usd), c.error_code]), [[2000, ""]]);
-    assert.deepEqual((await presence(store)).map((x) => x.day_key), ["2026-08-27"]);
+    assert.deepEqual((await presence(store)).map((x) => x.day_key).sort(), ["2025-10-21", "2026-08-25"]);
     await store.close();
   });
 

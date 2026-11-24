@@ -19,7 +19,7 @@ import { youButton } from "./you.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES } from "./voice.ts";
 import { activeModel, asUser, IMAGE_MAX_BYTES, IMAGE_TYPES, isOpenRouter, LITE_MODEL, setLiteModel } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
-import { countFeature } from "./feature-events.ts";
+import { countFeature, countPersona } from "./feature-events.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
 
@@ -418,7 +418,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const s = scheduler();
     if (!u || !s) return;
     // Итог дня со словами горничной — вызов модели: частота и потолки, как у сообщения (без доступа eveningText сам идёт без модели).
-    const v = pipeline.gate && pipeline.gate.allowed(u) ? await pipeline.gate.check(u) : null;
+    const v = pipeline.gate && pipeline.gate.allowed(u) ? await pipeline.gate.check(u, { client: "telegram" }) : null;
     if (v && !v.ok) return void (await ctx.reply(v.why === "rate" ? "Много сообщений подряд — попросите итог через минуту, пожалуйста." : v.text));
     await ctx.reply(await s.eveningText(u, dayKey(new Date(), u.tz)), { parse_mode: "HTML" });
   });
@@ -541,6 +541,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (kind === "persona") {
       if (!PERSONAS[arg]) return ctx.answerCallbackQuery();
       await store.updateUser(u.id, { persona: arg });
+      await countPersona(store, u, "telegram");
       text = `Теперь я — ${PERSONAS[arg].name.toLowerCase()}.`;
     } else if (kind === "undo") text = await pipeline.undo(u, Number(arg));
     else text = await pipeline.asNote(u, Number(arg));
@@ -598,7 +599,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     if (!media || (media.file_size ?? 0) > VOICE_MAX_BYTES) return void (await ctx.reply("Слишком длинное голосовое."));
     // Распознавание — тоже ИИ (и платное, даже если услышали тишину): доступ, частота и потолок — до него. Частота отмечена здесь,
     // разбор ниже второй раз её не считает (gated).
-    const v = await pipeline.gate?.check(u);
+    const v = await pipeline.gate?.check(u, { client: "telegram" });
     if (v && !v.ok) return void (await ctx.reply(v.why === "rate" ? RATE_AGAIN : v.text, { reply_markup: v.why === "access" ? await payKeyboard(u) : undefined }));
     await ctx.replyWithChatAction("typing").catch(() => {});
     let heard: string;

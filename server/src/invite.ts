@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { hashPassword } from "./auth.ts";
 import { config } from "./config.ts";
-import type { Store, User } from "./db.ts";
+import type { BillingKind, Store, User } from "./db.ts";
 
 // Приглашения друзей через бота. Владелец (chat id из ALLOWED_CHAT_IDS) пишет /invite — получает ссылку
 // t.me/<бот>?start=<код>; код одноразовый, живёт INVITE_DAYS дней (kv «invite:<код>» → до-когда или «used»).
@@ -51,9 +51,10 @@ export async function redeemInvite(
     const from = Math.max(now.getTime(), had.access_until ? Date.parse(had.access_until) : 0);
     const gift = plusDays(new Date(from), giftDays);
     await store.updateUser(had.id, { plan: had.plan === "paid" ? "paid" : "trial", access_until: gift });
+    await journal(store, had.id, "gift", now);
     return { user: (await store.user(had.id))!, login: null, password: null, until: gift };
   }
-  return newAccount(store, chat, tz, plusDays(now, giftDays), now);
+  return newAccount(store, chat, tz, plusDays(now, giftDays), now, "gift");
 }
 
 /** Почему не вышло зарегистрироваться: регистрация выключена (SIGNUPS_OPEN=0 или владелец написал /signups off) или за час
@@ -76,15 +77,27 @@ export async function signUp(
   if (!o.open || (await store.kvGet(SIGNUPS_KV)) === "1") return "closed";
   if ((await store.countUsersSince(new Date(now.getTime() - 3600_000).toISOString())) >= o.perHour) return "busy";
   if ((await store.countUsersSince(new Date(now.getTime() - 86_400_000).toISOString())) >= o.perDay) return "busy";
-  return newAccount(store, chat, tz, plusDays(now, o.trialDays), now);
+  return newAccount(store, chat, tz, plusDays(now, o.trialDays), now, "trial_started");
 }
 
-async function newAccount(store: Store, chat: { id: string; name: string; username?: string }, tz: string, until: string, now: Date): Promise<Invited> {
+/** Журнал подписки (billing_events, шаг 28): проба при регистрации и подарок. Сбой журнала — в лог, запись человека остаётся. */
+async function journal(store: Store, userId: number, kind: BillingKind, at: Date) {
+  try {
+    await store.addBillingEvent({ user_id: userId, kind, at });
+  } catch (e) {
+    console.error("[invite] журнал", (e as Error).message);
+  }
+}
+
+async function newAccount(
+  store: Store, chat: { id: string; name: string; username?: string }, tz: string, until: string, now: Date, kind: "gift" | "trial_started",
+): Promise<Invited> {
   const login = await freeLogin(store, chat.username);
   const password = crypto.randomBytes(9).toString("base64url").slice(0, 10);
   const user = await store.createUser({
     login, passwordHash: await hashPassword(password), name: chat.name, tz, chatId: chat.id, plan: "trial", accessUntil: until, at: now,
   });
+  await journal(store, user.id, kind, now);
   return { user, login, password, until };
 }
 

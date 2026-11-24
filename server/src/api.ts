@@ -7,7 +7,8 @@ import { PERSONAS } from "./personas.ts";
 import { authByToken, clientMeta, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
 import { adminJournal, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
 import { adminAudience, adminFeatures, adminHealth, adminOverview, adminPayments, adminQualityReport, adminSpend, adminUsers } from "./admin-stats.ts";
-import { acceptUsage, countFeature, featureClient, USAGE_MAX_KEYS } from "./feature-events.ts";
+import { cachedAnalytics, parseAnalyticsQuery } from "./admin-analytics.ts";
+import { acceptUsage, countFeature, countPersona, featureClient, USAGE_MAX_KEYS } from "./feature-events.ts";
 import { featureOfApi } from "./feature-list.ts";
 import type { DateRow, Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
@@ -64,7 +65,7 @@ export interface ApiDeps {
 }
 
 /** extra — ещё поля ответа рядом с error (402: pay_url, messageId). */
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(public status: number, msg: string, public extra?: Record<string, unknown>) {
     super(msg);
   }
@@ -322,6 +323,8 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/admin/quality") return adminQualityReport(store, days);
     if (m === "GET" && p === "/api/admin/health") return adminHealth(store);
     if (m === "GET" && p === "/api/admin/features") return adminFeatures(store);
+    // Аналитика (этап 1, admin-analytics.ts): ?report=&days=&step=, неверные — 400; ответ считается раз в 60 с (кэш в памяти).
+    if (m === "GET" && p === "/api/admin/analytics") return cachedAnalytics(store, parseAnalyticsQuery(req.url));
     if (m === "GET" && p === "/api/admin/log") return adminJournal(store);
     // Оплаты (billing.ts): список без payload и полного charge_id (хвост — для сверки с Telegram), возврат — с записью в журнал.
     if (m === "GET" && p === "/api/admin/payments") return adminPayments(store);
@@ -497,6 +500,8 @@ export function createApi(deps: ApiDeps) {
       if (b.event_reminders !== undefined) b.event_reminders = remindText(b.event_reminders);
       if ((b.habit_last ?? u.habit_last) <= (b.habit_first ?? u.habit_first)) throw new HttpError(400, "второй вопрос про привычки — позже первого");
       await store.updateUser(u.id, b);
+      // Выбрали другой характер — счётчик первого запуска (onboarding.persona, feature-events.ts).
+      if (b.persona !== undefined && b.persona !== u.persona) await countPersona(store, u, client);
       const fresh = (await store.user(u.id))!;
       // Сменили, когда напоминать, — напоминания о будущих планах перекладываются заново.
       if (["event_reminders", "event_lead_min", "morning_time"].some((k) => k in b && b[k as keyof typeof b] !== u[k as keyof User])) await replanEvents(fresh);
@@ -1135,7 +1140,7 @@ export function createApi(deps: ApiDeps) {
       if (audio.length > VOICE_MAX_BYTES) throw new HttpError(413, "слишком длинная запись");
       // Распознавание — тоже ИИ (и платное, даже если услышали тишину): доступ, частота и потолок — до него. Частота отмечена здесь,
       // разбор ниже второй раз её не считает (gated). saved: false — голос нигде не записан (виджет оставит его в очереди).
-      const v = await pipeline.gate?.check(u);
+      const v = await pipeline.gate?.check(u, { client });
       if (v && !v.ok) return refuse(u, v.why, v.why === "rate" ? RATE_AGAIN : v.text, { saved: false });
       // Клиенту — своя фраза и код сбоя, не текст ошибки: в нём бывает тело ответа провайдера (оно — только в журнале сервера).
       const heard = await transcribe(audio, b.mime).catch((e) => {
@@ -1189,7 +1194,7 @@ export function createApi(deps: ApiDeps) {
         z.object({ messageId: z.number().int(), text: z.string().trim().min(1).max(500), id: z.string().min(1).max(80).optional() }),
         await readJson(req),
       );
-      const r = await pipeline.correct(u, b.messageId, b.text, { sourceId: b.id ?? crypto.randomUUID() });
+      const r = await pipeline.correct(u, b.messageId, b.text, { sourceId: b.id ?? crypto.randomUUID(), client });
       if (!r) throw new HttpError(404, "нет такого ответа");
       if (r.blocked) return refuse(u, r.blocked, r.text, { messageId: r.messageId });
       return r;
