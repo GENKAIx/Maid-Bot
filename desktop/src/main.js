@@ -170,9 +170,12 @@ function movedTo(base, res) {
   } catch { return null; }
 }
 
+/** Кто спрашивает: окно программы (desktop / widget / quick) и её версия — для статистики админки (server/src/auth.ts: clientMeta). */
+const maidHeaders = (client = "desktop") => ({ "X-Maid-Client": client, "X-Maid-Version": app.getVersion() });
+
 /** Паузы между повторами запроса без ответа сервера: всего ~10 с — столько длится перезапуск сервера при выкладке. */
 const API_RETRY_MS = [700, 1400, 2800, 5000];
-async function api(method, p, body, moved = false) {
+async function api(method, p, body, moved = false, client = "desktop") {
   if (!token()) {
     if (tokenEnc) throw new Error("Ключ ещё не расшифровался (защита Windows) — пробую снова.");
     // Входа нет (вышли на сайте или ещё не входили) — виджет показывает свою форму входа, как при устаревшем.
@@ -188,7 +191,7 @@ async function api(method, p, body, moved = false) {
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) throw new Error("неверный запрос");
   const opts = {
     method,
-    headers: { Authorization: `Bearer ${settings.token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${settings.token}`, "Content-Type": "application/json", ...maidHeaders(client) },
     body: body ? JSON.stringify(body) : undefined,
   };
   // Соединение иногда рвётся (VPN, сон компьютера, перезапуск сервера при выкладке) — «fetch failed» без ответа сервера.
@@ -214,7 +217,7 @@ async function api(method, p, body, moved = false) {
     maidLog("сервер переехал:", base, "→", to);
     settings.server = to;
     saveSettings();
-    return api(method, p, body, true);
+    return api(method, p, body, true, client);
   }
   const data = await res.json().catch(() => ({}));
   // Сервер не принял ключ (вышли на сайте, устройство удалено, аккаунта нет): это не обрыв связи — нужен вход заново.
@@ -811,7 +814,10 @@ function broadcast(channel, data) {
 }
 
 // --- связь с окнами ---
-ipcMain.handle("api", (_e, method, p, body) => api(method, p, body));
+// Клиент — по окну, которое спросило: виджет, быстрая запись; остальное (и фоновые запросы) — desktop.
+const clientOfWin = (wc) =>
+  (widget && !widget.isDestroyed() && wc === widget.webContents ? "widget" : quick && !quick.isDestroyed() && wc === quick.webContents ? "quick" : "desktop");
+ipcMain.handle("api", (e, method, p, body) => api(method, p, body, false, clientOfWin(e.sender)));
 
 // «Перекрасить Рину» (renderer/maidlook.js): виджет читает анимации и маски из assets и хранит перекрашенные в
 // userData/maid-look/<ключ>/<имя>.webp — одну папку, нынешний набор (look:keep убирает остальные). Только виджету.
@@ -880,7 +886,7 @@ async function loginOnServer(base, login, password, label) {
   let res;
   try {
     res = await fetch(new URL("/api/login", base), {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", ...maidHeaders() },
       body: JSON.stringify({ login, password, label }), signal: AbortSignal.timeout(30_000),
     });
   } catch (e) {

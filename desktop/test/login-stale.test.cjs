@@ -11,7 +11,9 @@ let bad = 0, n = 0;
 const check = (ok, m) => { n++; if (!ok) { bad++; console.log("FAIL", m); } };
 const log = [];
 let accept = false;
+const hdrs = [];
 const server = http.createServer((req, res) => {
+  hdrs.push({ client: req.headers["x-maid-client"], version: req.headers["x-maid-version"] });
   res.setHeader("Content-Type", "application/json");
   if (accept && req.headers.authorization === "Bearer good") return res.end(JSON.stringify({ day: "2026-11-14" }));
   res.writeHead(401).end(JSON.stringify({ error: "нужен вход (логин и пароль) или ключ" }));
@@ -21,8 +23,9 @@ server.listen(0, "127.0.0.1", async () => {
   const base = `http://127.0.0.1:${server.address().port}`;
   const settings = { token: "good", server: base };
   let saved = 0;
-  const A = new Function("settings", "token", "tokenEnc", "serverBase", "maidLog", "saveSettings",
-    code + "; return { api, stale: () => loginStale };")(settings, () => settings.token, "", () => new URL(settings.server).origin, (...a) => log.push(a.join(" ")), () => saved++);
+  const A = new Function("settings", "token", "tokenEnc", "serverBase", "maidLog", "saveSettings", "app",
+    code + "; return { api, stale: () => loginStale };")(settings, () => settings.token, "", () => new URL(settings.server).origin, (...a) => log.push(a.join(" ")), () => saved++,
+    { getVersion: () => "0.1.89" });
   const errOf = (p) => p.then(() => "", (e) => e.message);
   try {
     check(!A.stale(), "сначала признака нет");
@@ -35,6 +38,10 @@ server.listen(0, "127.0.0.1", async () => {
     const d = await A.api("GET", "/api/today");
     check(d.day === "2026-11-14", "ключ принят: нет данных");
     check(!A.stale(), "ключ принят: признак не снят");
+    // Кто спрашивает (статистика админки): по умолчанию desktop, окно виджета — widget; версия — app.getVersion().
+    check(hdrs.at(-1).client === "desktop" && hdrs.at(-1).version === "0.1.89", `заголовки X-Maid-*: ${JSON.stringify(hdrs.at(-1))}`);
+    await A.api("GET", "/api/today", undefined, false, "widget");
+    check(hdrs.at(-1).client === "widget", `окно виджета: X-Maid-Client ${hdrs.at(-1).client}`);
 
     // Переадресация на https (http://IP → https://домен): fetch подменён — ответ «перенаправлен, 401 без ключа», потом 200 с ключом.
     const realFetch = globalThis.fetch;

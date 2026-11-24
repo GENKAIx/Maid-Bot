@@ -208,7 +208,8 @@ function create() {
     for await (const c of req) raw += c;
     let body = null;
     try { body = raw ? JSON.parse(raw) : null; } catch { /* не JSON */ }
-    const rec = { method: req.method, path: p, auth: req.headers.authorization ?? "", body, at: Date.now(), handled: false };
+    const rec = { method: req.method, path: p, auth: req.headers.authorization ?? "", client: req.headers["x-maid-client"] ?? "",
+      version: req.headers["x-maid-version"] ?? "", body, at: Date.now(), handled: false };
     srv.log.push(rec);
     const json = (code, obj) => { res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(obj)); };
 

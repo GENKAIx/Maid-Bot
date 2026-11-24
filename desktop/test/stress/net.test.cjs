@@ -17,10 +17,15 @@ async function rig(t, opts = {}) {
 }
 
 test("сервер работает: данные приходят, ключ уходит в запросе", async (t) => {
-  const { srv, api } = await rig(t);
+  const { srv, h, api } = await rig(t);
   const d = await api("GET", "/api/today");
   assert.equal(d.tasks.length, 4);
   assert.equal(srv.log.at(-1).auth, "Bearer good-key");
+  // Кто спрашивает (статистика админки): окно виджета — widget, другое окно — desktop; версия — app.getVersion() стенда.
+  assert.equal(srv.log.at(-1).client, "widget");
+  assert.equal(srv.log.at(-1).version, "0.0.0-stress");
+  await h.invoke("api", ["GET", "/api/today"], null);
+  assert.equal(srv.log.at(-1).client, "desktop");
 });
 
 test("сервер выключен: пять попыток за ~10 с, «нет связи с сервером», запись в журнале", async (t) => {

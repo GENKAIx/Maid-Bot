@@ -17,12 +17,12 @@ const handlers = {};
 const settingsPage = { id: "settings" }, widgetWc = { id: "widget" }, stranger = { id: "site" };
 const st = { settings: { server: "", token: "" }, saved: 0 };
 const { loginOnServer } = new Function(
-  "maidLog", "ipcMain", "isSettingsPage", "widget", "settings", "serverBase", "canEncrypt", "safeStorage", "saveSettings", "refreshTray", "broadcast", "shown", "mainWin",
+  "maidLog", "ipcMain", "isSettingsPage", "widget", "settings", "serverBase", "canEncrypt", "safeStorage", "saveSettings", "refreshTray", "broadcast", "shown", "mainWin", "app",
   code + "; return { loginOnServer };",
 )(
   (...a) => log.push(a.join(" ")), { handle: (name, fn) => (handlers[name] = fn) }, (wc) => wc === settingsPage, { webContents: widgetWc }, st.settings,
   (s) => { try { const u = new URL(String(s)); return /^https?:$/.test(u.protocol) ? u.origin : null; } catch { return null; } },
-  () => false, null, () => st.saved++, () => {}, () => {}, () => ({ ok: true }), null,
+  () => false, null, () => st.saved++, () => {}, () => {}, () => ({ ok: true }), null, { getVersion: () => "0.1.89" },
 );
 
 const bodies = [];
@@ -31,7 +31,7 @@ const server = http.createServer((req, res) => {
   req.on("data", (c) => (raw += c));
   req.on("end", () => {
     const b = JSON.parse(raw || "{}");
-    bodies.push({ path: req.url, ...b });
+    bodies.push({ path: req.url, ...b, client: req.headers["x-maid-client"], version: req.headers["x-maid-version"] });
     res.setHeader("Content-Type", "application/json");
     if (b.login === "boom") return res.writeHead(500).end(JSON.stringify({ error: "ошибка сервера" }));
     if (b.login === "many") return res.writeHead(429).end(JSON.stringify({ error: "слишком много неудачных попыток, попробуйте через 5 мин" }));
@@ -48,6 +48,7 @@ server.listen(0, "127.0.0.1", async () => {
     const t = await loginOnServer(base, "vasya", "secret", "Программа на ПК");
     check(t.token === "tok-Программа на ПК" && t.origin === base, `верный пароль: ключ ${JSON.stringify(t)}`);
     check(bodies[0].path === "/api/login" && bodies[0].label === "Программа на ПК", "запрос не на /api/login или без подписи");
+    check(bodies[0].client === "desktop" && bodies[0].version === "0.1.89", `вход без X-Maid-*: ${bodies[0].client} ${bodies[0].version}`);
     check(/Неверный логин или пароль/.test(await errOf(loginOnServer(base, "vasya", "wrong", "x"))), "неверный пароль: не та ошибка");
     check(/Сервер: слишком много/.test(await errOf(loginOnServer(base, "many", "x", "x"))), "429: нет текста сервера");
     check(/Сервер: ошибка сервера/.test(await errOf(loginOnServer(base, "boom", "x", "x"))), "500: нет текста сервера");
