@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { ApiError, get } from "../api";
-import { ago, SOURCE_NAMES, sortRows, usd } from "../admin";
+import { ADM_WEEKDAYS, ago, CLIENT_NAMES, ERROR_NAMES, msText, ROUTE_NAMES, SOURCE_NAMES, sortRows, uptimeText, usd } from "../admin";
 
 // Разделы админки этапа 1 (24.11.2026): Обзор, Пользователи, Расходы, Аудитория, Качество разбора. Данные — /api/admin/*
 // (server/src/admin-stats.ts): только счётчики и имена. Свои простые графики (AdmBars) — в цветах админки, не сайта.
+// Этап 2 (24.11.2026): онлайн сейчас, устройства человека, карта часов, версии виджета, дорогие сообщения, «Здоровье сервера».
 
 /** Вход в админку кончился (сервер ответил 403) — Shell (Admin.tsx) перечитывает состояние и показывает ввод кода. */
 export const AdminLost = createContext<() => void>(() => {});
@@ -79,7 +80,9 @@ type Overview = {
   users: number; new_week: number; active_day: number; active_week: number; active_month: number;
   spend_today: number; spend_month: number; spend_forecast: number; unpriced_month: number;
   requests_week: number; failed_week: number; clarify_week: number; undone_week: number;
+  online: { total: number; clients: { client: string; users: number }[] };
 };
+const clientName = (c: string) => CLIENT_NAMES[c] ?? c;
 
 export function AdminOverview() {
   const [o, err] = useAdmin<Overview>("/api/admin/overview");
@@ -87,6 +90,11 @@ export function AdminOverview() {
   const pct = (n: number) => (o.requests_week ? `${Math.round((n / o.requests_week) * 100)}%` : "—");
   return (
     <>
+      <h2 className="adm-h2">Онлайн сейчас <span className="adm-muted">· сайт, айфон и ПК — за 5 минут; Telegram — за этот час; включая вас</span></h2>
+      <div className="adm-kpis">
+        <Kpi title="Всего" value={o.online.total} />
+        {o.online.clients.map((c) => <Kpi key={c.client} title={clientName(c.client)} value={c.users} />)}
+      </div>
       <h2 className="adm-h2">Люди</h2>
       <div className="adm-kpis">
         <Kpi title="Всего" value={o.users} hint={`новых за 7 дней: ${o.new_week}`} />
@@ -114,14 +122,15 @@ export function AdminOverview() {
 type UserRow = {
   id: number; name: string; login: string | null; created_at: string; last_at: string | null; total: number; n30: number;
   ai30: number; manual30: number; undone30: number; cost30: number; background30: number; cost_month: number; cost_total: number;
+  devices: { client: string; version: string; last_seen: string; count: number }[];
 };
 const USER_COLS: { key: keyof UserRow; title: string; num?: boolean; hint?: string }[] = [
   { key: "name", title: "Человек" },
   { key: "created_at", title: "С нами с" },
   { key: "last_at", title: "Последнее" },
   { key: "n30", title: "За 30 дн.", num: true, hint: "обращений и отметок" },
-  { key: "ai30", title: "С ИИ", num: true, hint: "разобрано моделью" },
-  { key: "manual30", title: "Без ИИ", num: true, hint: "кнопки, push, правки мышью" },
+  { key: "ai30", title: "С ИИ", num: true, hint: "модель вызывалась (до этапа 2 — по источнику сообщения)" },
+  { key: "manual30", title: "Без ИИ", num: true, hint: "без вызова модели: кнопки, push, правки мышью, погода" },
   { key: "cost30", title: "Расход 30 дн.", num: true },
   { key: "cost_total", title: "Всего", num: true },
 ];
@@ -175,6 +184,18 @@ export function AdminUsers() {
             <dt>В этом месяце</dt><dd className="adm-num">{usd(cur.cost_month)}</dd>
             <dt>За всё время</dt><dd className="adm-num">{usd(cur.cost_total)}</dd>
           </dl>
+          <b className="adm-small">Устройства</b>
+          {cur.devices.length ? (
+            <table className="adm-table adm-devices">
+              <tbody>{cur.devices.map((d) => (
+                <tr key={`${d.client} ${d.version}`}>
+                  <td>{clientName(d.client)}{d.count > 1 && <span className="adm-muted"> ×{d.count}</span>}</td>
+                  <td className="adm-num">{d.version || <span className="adm-muted">—</span>}</td>
+                  <td className="adm-num num">{ago(d.last_seen)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          ) : <span className="adm-muted adm-small">Входов с сайта и программ нет.</span>}
           <p className="adm-muted adm-small">Фоновый — сводки и поиск связей, которые горничная делает сама. Текстов сообщений админка не показывает.</p>
         </aside>
       )}
@@ -186,7 +207,9 @@ type Sum = { calls: number; input: number; output: number; cost: number; priced:
 type SpendReport = {
   days: (Sum & { day: string; kinds: Record<string, number> })[]; total: Sum; month: Sum; forecast: number;
   kinds: (Sum & { kind: string })[]; models: (Sum & { model: string })[]; byUser: { user_id: number; name: string; calls: number; cost: number; background: number }[];
+  heavy: { name: string; at: string; source: string; route: string; calls: number }[]; routes: { route: string; messages: number; calls: number }[];
 };
+const routeName = (r: string) => ROUTE_NAMES[r] ?? r;
 const KIND_NAMES: Record<string, string> = {
   parse: "Разбор", answer: "Ответы", chat: "Разговор", summary: "Сводки", patterns: "Связи", draw: "Рисование", voice: "Голос", correct: "Поправки", other: "Другое",
 };
@@ -234,6 +257,34 @@ export function AdminSpend() {
         ))}
         {!list.length && <span className="adm-muted">Расхода за период нет.</span>}
       </div>
+      <div className="adm-two">
+        <div>
+          <h2 className="adm-h2">Дорогие сообщения <span className="adm-muted">· больше всего вызовов модели, без текста</span></h2>
+          {r.heavy.length ? (
+            <table className="adm-table">
+              <thead><tr><th>Кто</th><th>Когда</th><th>Ветка</th><th className="num">Вызовов</th></tr></thead>
+              <tbody>{r.heavy.map((m, i) => (
+                <tr key={i}><td>{m.name}</td><td className="adm-num">{ago(m.at)}</td><td>{routeName(m.route)} <span className="adm-muted">· {SOURCE_NAMES[m.source] ?? m.source}</span></td><td className="num adm-num">{m.calls}</td></tr>
+              ))}</tbody>
+            </table>
+          ) : <span className="adm-muted">Пока пусто.</span>}
+        </div>
+        <div>
+          <h2 className="adm-h2">По веткам разбора</h2>
+          {r.routes.length ? (
+            <table className="adm-table">
+              <thead><tr><th>Ветка</th><th className="num">Сообщений</th><th className="num">Вызовов</th></tr></thead>
+              <tbody>{r.routes.map((x) => (
+                <tr key={x.route}><td>{routeName(x.route)}</td><td className="num adm-num">{x.messages}</td><td className="num adm-num">{x.calls}</td></tr>
+              ))}</tbody>
+            </table>
+          ) : <span className="adm-muted">Пока пусто.</span>}
+        </div>
+      </div>
+      <p className="adm-muted adm-small">
+        Вызовы считаются с этапа 2: повтор доставки и запасная модель — один вызов, переспрос модели — ещё один. Цены у отдельного сообщения нет:
+        журнал попыток модели с сообщениями не связан, поэтому деньги — только по людям и назначениям выше.
+      </p>
     </>
   );
 }
@@ -242,7 +293,28 @@ type Audience = {
   today: string; series: { day: string; dau: number; wau: number; mau: number }[];
   cohorts: { week: string; size: number; weeks: (number | null)[] }[];
   gone: { user_id: number; name: string; last_day: string }[]; sources: { source: string; messages: number; users: number }[];
+  heat: number[][]; versions: { version: string; devices: number; users: number }[]; clients: { client: string; users: number; minutes: number }[];
 };
+
+/** Карта «день недели × час»: яркость — минуты с запросами (сводно по всем людям). */
+function AdmHeat({ heat }: { heat: number[][] }) {
+  const max = Math.max(1, ...heat.flat());
+  return (
+    <div className="adm-scroll">
+      <table className="adm-hours">
+        <thead><tr><th />{Array.from({ length: 24 }, (_, h) => <th key={h}>{h % 3 === 0 ? h : ""}</th>)}</tr></thead>
+        <tbody>
+          {heat.map((row, d) => (
+            <tr key={d}>
+              <th>{ADM_WEEKDAYS[d]}</th>
+              {row.map((v, h) => <td key={h} title={`${ADM_WEEKDAYS[d]}, ${h}:00 — ${v} мин.`} style={{ ["--v" as string]: String(v / max) }} />)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export function AdminAudience() {
   const [a, err] = useAdmin<Audience>("/api/admin/audience");
@@ -291,7 +363,33 @@ export function AdminAudience() {
           </table>
         </div>
       </div>
-      <p className="adm-muted adm-small">Онлайн сейчас и версии виджета появятся на этапе 2: для них сервер начнёт записывать, кто и с чего заходит.</p>
+      <h2 className="adm-h2">Когда заходят <span className="adm-muted">· 28 дней, минуты с запросами, сложенные по людям и клиентам (с двух клиентов сразу — дважды), час — по поясу каждого</span></h2>
+      <div className="adm-panel"><AdmHeat heat={a.heat} /></div>
+      <div className="adm-two">
+        <div>
+          <h2 className="adm-h2">С чего заходят <span className="adm-muted">· 7 дней</span></h2>
+          {a.clients.length ? (
+            <table className="adm-table">
+              <thead><tr><th>Клиент</th><th className="num">Людей</th><th className="num">Минут</th></tr></thead>
+              <tbody>{a.clients.map((c) => <tr key={c.client}><td>{clientName(c.client)}</td><td className="num adm-num">{c.users}</td><td className="num adm-num">{c.minutes}</td></tr>)}</tbody>
+            </table>
+          ) : <span className="adm-muted">Пока пусто.</span>}
+        </div>
+        <div>
+          <h2 className="adm-h2">Версии программы на ПК <span className="adm-muted">· входы за 30 дней</span></h2>
+          {a.versions.length ? (
+            <table className="adm-table">
+              <thead><tr><th>Версия</th><th className="num">Устройств</th><th className="num">Людей</th></tr></thead>
+              <tbody>{a.versions.map((v) => <tr key={v.version}><td className="adm-num">{v.version || <span className="adm-muted">не сообщает</span>}</td><td className="num adm-num">{v.devices}</td><td className="num adm-num">{v.users}</td></tr>)}</tbody>
+            </table>
+          ) : <span className="adm-muted">Пока пусто.</span>}
+        </div>
+      </div>
+      <p className="adm-muted adm-small">
+        Минуты — минуты, в которые были запросы (одна в минуту на человека и клиент), а не время в сети. У программы на ПК это время,
+        пока она запущена: виджет сам спрашивает сервер каждые 5 секунд. Просмотр админки тоже считается. Клиент и версию присылают новые программы (заголовки X-Maid-*); старые
+        «не сообщают», клиент у них угадан по метке входа. Ключ ПК из настроек сервера (DESKTOP_TOKEN) помнится только до перезапуска.
+      </p>
     </>
   );
 }
@@ -325,6 +423,69 @@ export function AdminQuality() {
         Считаются только обращения к модели. «Сейчас в ошибке» и «Ждут ответа» — нынешнее состояние сообщения: разобранное позже из счёта
         уходит (после повторов через 2, 10 и 30 минут ошибка уходит в заметки), поэтому за прошлые дни эти числа меньше, чем было в тот день.
         «Отменено» — сообщения, у которых нажали «↩ Отменить» или «Это просто заметка».
+      </p>
+    </>
+  );
+}
+
+type Pct = { n: number; p50: number | null; p95: number | null };
+type Health = {
+  kinds: { kind: string; day: number; week: number; errors_day: number; errors_week: number }[];
+  errors: { kind: string; code: string; day: number; week: number }[];
+  models: { model: string; day: Pct; week: Pct }[];
+  messages: { failed: number; clarify: number; failed24: number };
+  reminders: { n: number; oldest: string | null };
+  uptime_sec: number; version: string; built_at: string;
+};
+
+/** Здоровье сервера (этап 2): модель (каждая попытка — журнал llm_calls, 30 дней), застрявшие сообщения, напоминания, версия. */
+export function AdminHealth() {
+  const [h, err] = useAdmin<Health>("/api/admin/health");
+  if (!h) return <Loading err={err} />;
+  const sum = (k: "day" | "week" | "errors_day" | "errors_week") => h.kinds.reduce((s, x) => s + x[k], 0);
+  const rate = (e: number, n: number) => (n ? `${((e / n) * 100).toFixed(1)}% попыток` : "попыток не было");
+  return (
+    <>
+      <div className="adm-kpis">
+        <Kpi title="Ошибок модели за сутки" value={sum("errors_day")} hint={rate(sum("errors_day"), sum("day"))} warn={sum("errors_day") > 0} />
+        <Kpi title="За 7 дней" value={sum("errors_week")} hint={rate(sum("errors_week"), sum("week"))} />
+        <Kpi title="Сообщений в ошибке" value={h.messages.failed} hint={`за сутки, ещё в повторах: ${h.messages.failed24}`} warn={h.messages.failed24 > 0} />
+        <Kpi title="Ждут уточнения" value={h.messages.clarify} />
+        <Kpi title="Напоминаний просрочено" value={h.reminders.n} hint={h.reminders.oldest ? `самое старое — ${ago(h.reminders.oldest)}` : "ждут дольше 2 минут"} warn={h.reminders.n > 0} />
+        <Kpi title="Сервер работает" value={uptimeText(h.uptime_sec)} hint={`версия ${h.version} · собран ${h.built_at === "—" ? "—" : ago(h.built_at)}`} />
+      </div>
+      <div className="adm-two">
+        <div>
+          <h2 className="adm-h2">Ошибки модели <span className="adm-muted">· по коду и назначению</span></h2>
+          {h.errors.length ? (
+            <table className="adm-table">
+              <thead><tr><th>Ошибка</th><th>На что</th><th className="num">Сутки</th><th className="num">7 дней</th></tr></thead>
+              <tbody>{h.errors.map((e) => (
+                <tr key={`${e.kind} ${e.code}`}><td>{ERROR_NAMES[e.code] ?? e.code}</td><td>{KIND_NAMES[e.kind] ?? e.kind}</td><td className="num adm-num">{e.day}</td><td className="num adm-num">{e.week}</td></tr>
+              ))}</tbody>
+            </table>
+          ) : <span className="adm-muted">Ошибок за 7 дней нет.</span>}
+        </div>
+        <div>
+          <h2 className="adm-h2">Время ответа <span className="adm-muted">· удачные попытки, p50 / p95</span></h2>
+          {h.models.length ? (
+            <table className="adm-table">
+              <thead><tr><th>Модель</th><th className="num">Сутки</th><th className="num">7 дней</th><th className="num">Попыток</th></tr></thead>
+              <tbody>{h.models.map((m) => (
+                <tr key={m.model}>
+                  <td>{m.model}</td>
+                  <td className="num adm-num">{msText(m.day.p50)} / {msText(m.day.p95)}</td>
+                  <td className="num adm-num">{msText(m.week.p50)} / {msText(m.week.p95)}</td>
+                  <td className="num adm-num">{m.week.n}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          ) : <span className="adm-muted">Ответов за 7 дней нет.</span>}
+        </div>
+      </div>
+      <p className="adm-muted adm-small">
+        Попытка — один запрос к провайдеру: повтор после 429 или 5xx и запасная модель считаются отдельно. Текстов ответов провайдера журнал
+        не хранит — только код. Просроченное напоминание — ждёт отправки дольше 2 минут: такт планировщика (раз в 30 с) стоит или падает.
       </p>
     </>
   );

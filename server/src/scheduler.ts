@@ -208,6 +208,8 @@ export class Scheduler {
       // Раз в сутки — убрать отметки «уже отправлено» старше 60 дней.
       if (await this.store.once(`prune:${now.toISOString().slice(0, 10)}`)) {
         await this.store.pruneOnce(new Date(now.getTime() - 60 * 86_400_000)).catch((e) => console.error("[prune]", e));
+        // И статистику админки по сроку: присутствие — 90 дней, журнал попыток модели — 30.
+        await this.store.pruneStats(now).catch((e) => console.error("[prune stats]", e));
       }
     } finally {
       this.busy = false;

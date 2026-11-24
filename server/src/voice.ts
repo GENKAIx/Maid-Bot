@@ -1,5 +1,5 @@
 import { config } from "./config.ts";
-import { reportUsage, usageCost } from "./llm.ts";
+import { llmErrorCode, reportCall, reportUsage, usageCost } from "./llm.ts";
 
 // Распознавание речи: OpenAI-совместимый /audio/transcriptions (OpenAI, Groq, локальный whisper-сервер).
 // По умолчанию — тот же адрес и ключ, что у LLM; свой задаётся STT_BASE_URL / STT_API_KEY / STT_MODEL.
@@ -28,6 +28,7 @@ export async function transcribe(audio: Buffer, mime: string): Promise<string> {
   form.append("response_format", "json");
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
+    const t0 = performance.now();
     try {
       const res = await fetch(`${config.stt.baseUrl}/audio/transcriptions`, {
         method: "POST",
@@ -35,13 +36,16 @@ export async function transcribe(audio: Buffer, mime: string): Promise<string> {
         body: form,
         signal: AbortSignal.timeout(60_000),
       });
-      if (res.status === 429 || res.status >= 500) throw new Error(`распознавание ${res.status}: ${await res.text()}`);
-      if (!res.ok) throw Object.assign(new Error(`распознавание ${res.status}: ${(await res.text()).slice(0, 300)}`), { fatal: true });
+      if (res.status === 429 || res.status >= 500) throw Object.assign(new Error(`распознавание ${res.status}: ${await res.text()}`), { status: res.status });
+      if (!res.ok) throw Object.assign(new Error(`распознавание ${res.status}: ${(await res.text()).slice(0, 300)}`), { status: res.status, fatal: true });
       // usage есть не у всех: OpenAI — токены (input_tokens) или секунды, OpenRouter ещё и цену (cost).
       const data = (await res.json()) as { text?: string; usage?: { input_tokens?: number; output_tokens?: number; cost?: number } };
-      reportUsage({ kind: "voice", model: config.stt.model, input: data.usage?.input_tokens ?? 0, output: data.usage?.output_tokens ?? 0, cost: usageCost(data.usage) });
+      const cost = usageCost(data.usage);
+      reportUsage({ kind: "voice", model: config.stt.model, input: data.usage?.input_tokens ?? 0, output: data.usage?.output_tokens ?? 0, cost });
+      reportCall({ kind: "voice", model: config.stt.model, ms: performance.now() - t0, cost });
       return (data.text ?? "").trim();
     } catch (e) {
+      reportCall({ kind: "voice", model: config.stt.model, ms: performance.now() - t0, cost: null, error: llmErrorCode(e) });
       lastErr = e;
       if ((e as { fatal?: boolean }).fatal) break;
       await new Promise((r) => setTimeout(r, 800));

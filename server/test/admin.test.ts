@@ -94,13 +94,30 @@ test("админка: код из Telegram → вход на час, тольк�
     assert.equal(ov.status, 200);
     assert.equal(ov.body.users, 2);
     assert.equal(ov.body.new_week, 2);
-    for (const p of ["/api/admin/users", "/api/admin/spend?days=7", "/api/admin/audience", "/api/admin/quality?days=7"]) {
+    assert.equal((ov.body.online as { total: number }).total, 1, "этап 2: онлайн — владелец (два его входа — один человек)");
+    for (const p of ["/api/admin/users", "/api/admin/spend?days=7", "/api/admin/audience", "/api/admin/quality?days=7", "/api/admin/health"]) {
       const r = await s.call(p, owner);
       assert.equal(r.status, 200, p);
       assert.equal((await s.call(p, other)).status, 403, `${p}: другое устройство без кода`);
       const json = JSON.stringify(r.body);
       for (const f of ["text", "reply", "prompt", "chat_id", "password_hash"]) assert.ok(!json.includes(`"${f}"`), `поле ${f} в ${p}`);
     }
+    // Форма ответов этапа 2 — те поля, которые читает сайт (web/src/screens/AdminSections.tsx: Health, Audience, SpendReport, Overview).
+    const keys = async (p: string, want: string[]) => {
+      const body = (await s.call(p, owner)).body;
+      for (const k of want) assert.ok(k in body, `${p}: нет поля ${k}`);
+      return body;
+    };
+    const h = await keys("/api/admin/health", ["kinds", "errors", "models", "messages", "reminders", "uptime_sec", "version", "built_at"]);
+    for (const k of ["kinds", "errors", "models"]) assert.ok(Array.isArray(h[k]), `health.${k} — список`);
+    assert.deepEqual(Object.keys(h.messages as object).sort(), ["clarify", "failed", "failed24"]);
+    assert.deepEqual(Object.keys(h.reminders as object).sort(), ["n", "oldest"]);
+    const aud = await keys("/api/admin/audience", ["heat", "versions", "clients"]);
+    assert.equal((aud.heat as unknown[]).length, 7);
+    for (const k of ["versions", "clients"]) assert.ok(Array.isArray(aud[k]), `audience.${k} — список`);
+    const sp = await keys("/api/admin/spend?days=7", ["heavy", "routes"]);
+    for (const k of ["heavy", "routes"]) assert.ok(Array.isArray(sp[k]), `spend.${k} — список`);
+    assert.ok(Array.isArray((ov.body.online as { clients: unknown }).clients), "overview.online.clients — список");
     assert.equal((await s.call("/api/admin/overview", other)).status, 403, "другое устройство — свой код");
     const log = await s.call("/api/admin/log", owner);
     assert.deepEqual((log.body as unknown as { action: string; who: string }[]).map((r) => `${r.who}:${r.action}`), ["Хозяин:enter", "Хозяин:wrong", "Хозяин:code"]);

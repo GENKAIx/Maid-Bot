@@ -1,11 +1,13 @@
 import { PGlite } from "@electric-sql/pglite";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { adminAlerts, adminAudience, adminOverview, adminQualityReport, adminSpend, adminUsers, ADMIN_ALERT_FAILED } from "../src/admin-stats.ts";
+import { adminAlerts, adminAudience, adminHealth, adminOverview, adminQualityReport, adminSpend, adminUsers, ADMIN_ALERT_FAILED, cmpVersion, quantile } from "../src/admin-stats.ts";
+import { authByToken, notePresence, resetSeen, tokenHash } from "../src/auth.ts";
 import { config } from "../src/config.ts";
 import { Store } from "../src/db.ts";
+import { CHAT_FAILED } from "../src/pipeline.ts";
 import { PgDriver } from "../src/driver.ts";
-import { dayKey } from "../src/time.ts";
+import { dayKey, timeOf } from "../src/time.ts";
 
 // Админка, этап 1 (24.11.2026): отчёты на готовых данных — на SQLite и на Postgres. Обращения с ИИ — Telegram/сайт/айфон
 // без поправок; без ИИ — кнопки, push, правки мышью; импорт прошлого не в счёт. В ответах — без текстов и chat id.
@@ -143,4 +145,124 @@ test("прогноз расхода: среднее за 7 полных дней
   } finally {
     await store.close();
   }
+});
+
+// Этап 2 (24.11.2026): данные шага 24 — входы с клиентом и версией, минуты присутствия, вызовы модели на сообщение, журнал попыток.
+// Время — настоящее: DESKTOP_TOKEN помнит последний заход по часам процесса.
+for (const [name, open] of Object.entries(BACKENDS)) {
+  test(`админка, этап 2 (${name}): онлайн, устройства, карта часов, версии, с ИИ / без, дорогие сообщения, здоровье`, async () => {
+    resetSeen(); // память ограничителей — с прошлой базы
+    const store = await open();
+    const saved = { chats: [...config.allowedChatIds], desk: config.desktopToken };
+    try {
+      const T = new Date();
+      const ago = (ms: number) => new Date(T.getTime() - ms).toISOString();
+      const a = await store.ensureUser("1001", "Аня", TZ);
+      const b = await store.ensureUser("2002", "Боря", TZ);
+      const age = (token: string, ms: number) => store.raw("UPDATE sessions SET last_seen = ? WHERE token_hash = ?", ago(ms), tokenHash(token));
+      // Входы: Аня — сайт и новая программа на ПК (сейчас); Боря — старая программа без заголовка (10 дней) и айфон (40 дней).
+      await store.addSession(tokenHash("w1"), a.id, "web", { client: "web", version: "" });
+      await store.addSession(tokenHash("pc1"), a.id, "Программа на ПК", { client: "desktop", version: "0.1.90" });
+      await store.addSession(tokenHash("pc-old"), b.id, "Программа на ПК");
+      await age("pc-old", 10 * 86_400_000);
+      await store.addSession(tokenHash("ip"), b.id, "iphone");
+      await age("ip", 40 * 86_400_000);
+      // Просроченный вход (100 дней — дольше SESSION_IDLE_DAYS) — ни в устройствах, ни в версиях.
+      await store.addSession(tokenHash("dead"), b.id, "web", { client: "web", version: "" });
+      await age("dead", 100 * 86_400_000);
+      // Ключ ПК из настроек (DESKTOP_TOKEN) — у владельца (Аня), версия в памяти.
+      config.allowedChatIds.splice(0, Infinity, "1001");
+      config.desktopToken = "desk-admin-test";
+      assert.equal((await authByToken(store, "desk-admin-test", { client: "", version: "0.1.88" }))?.via, "desktop");
+      // Telegram — Боря в этот час.
+      await notePresence(store, b, "telegram", T);
+      // Карта часов: в другой час сегодня Аня 2 минуты с сайта, Боря 1 минуту из Telegram — в одной клетке 3.
+      const day = dayKey(T, TZ);
+      const hx = (Number(timeOf(T, TZ).slice(0, 2)) + 12) % 24;
+      await store.bumpPresence(a.id, day, hx, "web");
+      await store.bumpPresence(a.id, day, hx, "web");
+      await store.bumpPresence(b.id, day, hx, "telegram");
+
+      // Сообщения Ани: разбор с переспросом (2 вызова), погода (0), старое без ветки из Telegram (по источнику — с ИИ),
+      // кнопка (без ИИ), поправка (1 вызов — ни там ни там).
+      const msg = async (source: string, sourceId: string, calls: number, route: string) => {
+        const { message } = await store.saveMessage({ userId: a.id, source, sourceId, text: SECRET, dayKey: day, at: new Date(T.getTime() - 3_600_000) });
+        if (route) await store.addMessageCalls(message.id, calls, route);
+        return message;
+      };
+      await msg("telegram", "t1", 2, "apply");
+      const wx = await msg("telegram", "t2", 0, "weather");
+      const old = await msg("telegram", "t3", 0, "");
+      await msg("button", "b1", 0, "");
+      await msg("desktop", "correct:1:x", 1, "correct");
+      await store.setMessage(old.id, { state: "failed" });
+      // Упавший разговор фоновый повтор пропускает — в «ещё в повторах» не идёт.
+      const { message: chat } = await store.saveMessage({ userId: b.id, source: "telegram", sourceId: "t4", text: SECRET, dayKey: day, at: new Date(T.getTime() - 3_600_000) });
+      await store.setMessage(chat.id, { state: "failed", reply: `${CHAT_FAILED}Error: упало` });
+      await store.setMessage(wx.id, { state: "clarify" });
+
+      // Журнал попыток: 10 удачных разборов по 100…1000 мс за сутки и один на 5 с три дня назад; тайм-аут; сбой голоса 3 дня назад.
+      for (let i = 1; i <= 10; i++) await store.addLlmCall(new Date(T.getTime() - 3_600_000), { kind: "parse", model: "m1", ms: i * 100, cost: 0.001, userId: a.id });
+      await store.addLlmCall(new Date(T.getTime() - 3 * 86_400_000), { kind: "parse", model: "m1", ms: 5000, cost: 0.001, userId: a.id });
+      await store.addLlmCall(new Date(T.getTime() - 2 * 3_600_000), { kind: "parse", model: "m1", ms: 60_000, cost: null, error: "timeout", userId: a.id });
+      await store.addLlmCall(new Date(T.getTime() - 3 * 86_400_000), { kind: "voice", model: "v", ms: 10, cost: null, error: "http_5xx" });
+      // Напоминания: одно ждёт 10 минут (просрочено), другое — 30 секунд (ещё нет).
+      await store.addReminder(a.id, "task", 1, new Date(T.getTime() - 10 * 60_000), SECRET);
+      await store.addReminder(a.id, "task", 2, new Date(T.getTime() - 30_000), SECRET);
+
+      const ov = await adminOverview(store, T);
+      clean(ov);
+      assert.equal(ov.online.total, 2, "Аня (сайт, ПК) и Боря (Telegram); старые входы — нет");
+      assert.deepEqual(Object.fromEntries(ov.online.clients.map((c) => [c.client, c.users])), { web: 1, desktop: 1, telegram: 1 });
+
+      const users = await adminUsers(store, T);
+      clean(users);
+      const anya = users.find((u) => u.name === "Аня")!;
+      const borya = users.find((u) => u.name === "Боря")!;
+      assert.equal(anya.ai30, 2, "с ИИ: разбор (llm_calls > 0) и старое из Telegram (по источнику)");
+      assert.equal(anya.manual30, 2, "без ИИ: погода (0 вызовов) и кнопка");
+      assert.equal(anya.n30, 5);
+      assert.deepEqual(anya.devices.map((d) => [d.client, d.version]).sort(), [["desktop", "0.1.90"], ["desktop-key", "0.1.88"], ["web", ""]], "ключ ПК — отдельной строкой");
+      assert.deepEqual(borya.devices.map((d) => [d.client, d.version]), [["desktop", ""], ["iphone", ""]], "сначала последний вход");
+      assert.ok(!JSON.stringify(users).includes("Программа на ПК"), "метка входа наружу не идёт");
+
+      const aud = await adminAudience(store, T);
+      clean(aud);
+      assert.equal(aud.heat.length, 7);
+      assert.ok(aud.heat.every((r) => r.length === 24));
+      assert.equal(aud.heat[(new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7][hx], 3, "клетка — сумма минут всех людей");
+      assert.deepEqual(aud.versions.map((v) => [v.version, v.devices, v.users]), [["0.1.90", 1, 1], ["0.1.88", 1, 1], ["", 1, 1]], "айфон и вход старше 30 дней — не в счёт");
+      const tg = aud.clients.find((c) => c.client === "telegram")!;
+      assert.deepEqual([tg.users, tg.minutes], [1, 2]);
+      assert.deepEqual(aud.clients.find((c) => c.client === "web"), { client: "web", users: 1, minutes: 2 });
+
+      const spend = await adminSpend(store, 30, T);
+      clean(spend);
+      assert.deepEqual(spend.heavy.map((m) => [m.name, m.route, m.calls]), [["Аня", "apply", 2], ["Аня", "correct", 1]]);
+      assert.deepEqual(spend.routes.map((r) => [r.route, r.messages, r.calls]).sort(), [["apply", 1, 2], ["correct", 1, 1], ["weather", 1, 0]]);
+
+      const h = await adminHealth(store, T);
+      clean(h);
+      assert.deepEqual(h.errors.map((e) => [e.kind, e.code, e.day, e.week]).sort(), [["parse", "timeout", 1, 1], ["voice", "http_5xx", 0, 1]]);
+      const parse = h.kinds.find((k) => k.kind === "parse")!;
+      assert.deepEqual([parse.day, parse.week, parse.errors_day, parse.errors_week], [11, 12, 1, 1]);
+      assert.deepEqual(h.models.map((m) => [m.model, m.day.n, m.day.p50, m.day.p95, m.week.n, m.week.p50, m.week.p95]), [["m1", 10, 500, 1000, 11, 600, 5000]]);
+      assert.deepEqual(h.messages, { failed: 2, clarify: 1, failed24: 1 });
+      assert.equal(h.reminders.n, 1);
+      assert.ok(h.reminders.oldest && h.reminders.oldest < ago(9 * 60_000));
+      assert.ok(h.uptime_sec >= 0 && typeof h.version === "string" && typeof h.built_at === "string");
+    } finally {
+      config.allowedChatIds.splice(0, Infinity, ...saved.chats);
+      config.desktopToken = saved.desk;
+      await store.close();
+    }
+  });
+}
+
+test("админка, этап 2: перцентили и порядок версий", () => {
+  assert.equal(quantile([], 0.5), null);
+  assert.equal(quantile([7], 0.95), 7);
+  assert.equal(quantile([1, 2, 3, 4], 0.5), 2);
+  assert.equal(quantile([1, 2, 3, 4], 0.95), 4);
+  assert.deepEqual(["0.1.9", "", "0.1.10", "1.0.0"].sort(cmpVersion), ["1.0.0", "0.1.10", "0.1.9", ""]);
 });

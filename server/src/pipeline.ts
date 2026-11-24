@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { MarkRow, Message, ProposalRow, Store, Table, User } from "./db.ts";
 import type { LlmCall, Picture } from "./llm.ts";
 import type { DrawCall } from "./draw.ts";
@@ -154,7 +155,7 @@ export const TALK_RULES =
   "если собеседник сам о них не говорит. 1–4 предложения, без списков.";
 
 /** Признак неудачи разговора (/ask) в reply — такие не повторяются разбором. */
-const CHAT_FAILED = "chat:";
+export const CHAT_FAILED = "chat:";
 
 /** Вопрос «добавить?» с пунктами-галочками. Кнопки: remind (если есть) — завести с напоминанием, add — просто в список, «Не надо». */
 export interface Proposal {
@@ -225,9 +226,31 @@ export const pictureText = (caption: string, n = 1) => {
   return caption.trim() ? `${mark} ${caption.trim()}` : n > 1 ? `${mark} Фото` : "📷 Фото";
 };
 
+/** Сколько логических вызовов модели ушло на сообщение (messages.llm_calls) и по какой ветке оно прошло (messages.route).
+ *  Повторы и запасная модель внутри callLlm — один вызов; попытки по отдельности — в журнале llm_calls (llm.ts). */
+interface MsgCalls { id: number; calls: number; route: string }
+const msgCalls = new AsyncLocalStorage<MsgCalls>();
+
 export class Pipeline {
+  private llm: LlmCall;
   /** publicUrl — адрес веб-приложения для ссылок на дни в ответах (пусто — без ссылок). */
-  constructor(private store: Store, private llm: LlmCall, private publicUrl = "") {}
+  constructor(private store: Store, llm: LlmCall, private publicUrl = "") {
+    this.llm = (m, o) => {
+      const c = msgCalls.getStore();
+      if (c) c.calls++;
+      return llm(m, o);
+    };
+  }
+  /** Обработать сообщение со счётчиком вызовов модели; итог — в messages (c.id ставит обработчик, когда сообщение известно). */
+  private async counted<T>(fn: (c: MsgCalls) => Promise<T>): Promise<T> {
+    const c: MsgCalls = { id: 0, calls: 0, route: "" };
+    try {
+      return await msgCalls.run(c, () => fn(c));
+    } finally {
+      // Без ожидания: учёт ответу не мешает и его не задерживает.
+      if (c.id && (c.calls || c.route)) void this.store.addMessageCalls(c.id, c.calls, c.route).catch((e) => console.error("[llm calls]", e));
+    }
+  }
 
   /** Рисовалка картинок (draw.ts); null — ключа RunPod нет, горничная честно говорит, что не рисует. */
   draw: DrawCall | null = null;
@@ -249,12 +272,12 @@ export class Pipeline {
   }
 
   async handle(inc: Incoming): Promise<Reply> {
-    const r = await this.handleOne(inc);
+    const r = await this.counted((c) => this.handleOne(inc, c));
     if (!r.duplicate && (r.undoable || r.changes?.length)) this.changed(inc.user);
     return r;
   }
 
-  private async handleOne(inc: Incoming): Promise<Reply> {
+  private async handleOne(inc: Incoming, c: MsgCalls): Promise<Reply> {
     const s = this.store;
     const at = inc.at ?? new Date();
     const u = inc.user;
@@ -269,11 +292,13 @@ export class Pipeline {
     if (!created && message.state === "done") {
       return { text: message.reply ?? p.saved[0], emotion: "neutral", messageId: message.id, undoable: false, duplicate: true };
     }
+    c.id = message.id;
     // Новое сообщение — прежний вопрос «добавить?» без ответа закрывается (кнопки висят до следующего сообщения).
     await this.closeProposals(u, "expired");
 
     // «Какая погода?» — погода дня по городу из «О вас» (weather.ts), без модели и без записи.
     if (!pics && WEATHER_ASK.test(inc.text)) {
+      c.route = "weather";
       const wx = await weatherFor(s, u, at).catch(() => null);
       const text = wx ? `${wx.icon} ${wx.text}`
         : cityOf(u) ? "Не получилось узнать погоду — сервис не отвечает. Спросите чуть позже."
@@ -282,7 +307,12 @@ export class Pipeline {
       return { text, emotion: (wx?.emotion ?? "neutral") as Emotion, messageId: message.id, undoable: false };
     }
 
-    if (inc.chatOnly) return this.chat(u, message, at, pics);
+    if (inc.chatOnly) {
+      c.route = "chat";
+      return this.chat(u, message, at, pics);
+    }
+    // Разбор не дошёл до ветки (упал) — останется «parse».
+    c.route = "parse";
 
     // Ответ на уточнение: разбираем исходное сообщение вместе с ответом. Картинка уточнением не считается.
     const original = pending && !pics ? await s.message(pending.id) : undefined;
@@ -330,17 +360,25 @@ export class Pipeline {
     // У картинки не спрашиваем: на ответ её уже не будет — пишем, что разобрали.
     if (parsed.clarify && !original && !pics) {
       const q = `${p.clarify} ${parsed.clarify}`;
+      c.route = "clarify";
       await s.setMessage(message.id, { state: "clarify", reply: q });
       return { text: q, emotion: "neutral", messageId: message.id, undoable: false };
     }
 
     // Просьба нарисовать — рисуем, ничего не записываем.
-    if (parsed.draw) return this.drawFor(u, message, parsed);
+    if (parsed.draw) {
+      c.route = "draw";
+      return this.drawFor(u, message, parsed);
+    }
 
     // Вопрос про саму картинку («что это?») — отвечаем по ней, а не по записям.
-    if (parsed.question && pics) return this.chat(u, message, at, pics);
+    if (parsed.question && pics) {
+      c.route = "chat";
+      return this.chat(u, message, at, pics);
+    }
 
     if (parsed.question) {
+      c.route = "answer";
       const { text: answer, days } = await this.answer(u, parsed, inc.text, today);
       await s.setMessage(message.id, { state: "done", reply: answer });
       if (original) await s.setMessage(original.id, { state: "done" });
@@ -348,6 +386,7 @@ export class Pipeline {
     }
 
     const target = original ?? message;
+    c.route = parsed.talk ? "talk" : "apply";
     const { lines, changes, touched } = await s.transaction(() => this.apply(u, target, parsed, at));
     if (original) await s.setMessage(message.id, { state: "done", reply: CLARIFIED });
 
@@ -409,6 +448,9 @@ export class Pipeline {
     };
     if (!this.draw) return done("Рисовать я пока не умею: на сервере не задан ключ RunPod (RUNPOD_API_KEY) или OpenRouter (OPENROUTER_API_KEY).", "awkward");
     let pic: Picture;
+    // Рисунок — тоже вызов модели у сообщения (самый дорогой): в «Дорогих сообщениях» и «По веткам» он виден.
+    const c = msgCalls.getStore();
+    if (c) c.calls++;
     try {
       pic = await this.draw(d.prompt);
     } catch (e) {
@@ -868,6 +910,10 @@ export class Pipeline {
    *  в истории разговора), журнал — под исходным сообщением: отдельно поправка не отменяется. null — нет такого ответа.
    *  Повтор с тем же sourceId возвращает прежний итог без второй записи. */
   async correct(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date }): Promise<CorrectReply | null> {
+    return this.counted((c) => this.correctOne(u, messageId, text, opts, c));
+  }
+  /** Вызовы модели поправки считаются на её служебное сообщение (ветка «correct»). */
+  private async correctOne(u: User, messageId: number, text: string, opts: { sourceId: string; at?: Date }, c: MsgCalls): Promise<CorrectReply | null> {
     const s = this.store;
     const at = opts.at ?? new Date();
     const p = persona(u.persona, u);
@@ -895,6 +941,8 @@ export class Pipeline {
       return view(m.reply ?? "", savedOf(m), true);
     };
     if (!created && message.state === "done") return stored();
+    c.id = message.id;
+    c.route = "correct";
     /** Итог без записи — в служебное сообщение, которое уже забрал claimMessage (повтор с тем же id вернёт его же). */
     const keep = async (reply: string, clarify = false, asked?: string) => {
       const o: CorrectSaved = { changed: [], clarify, emotion: "neutral", ...(clarify && asked ? { asked } : {}) };

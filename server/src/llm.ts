@@ -59,6 +59,28 @@ export const enterUser = (userId: number) => usageUser.enterWith(userId);
 export function reportUsage(u: LlmUsage) {
   try { usageSink?.({ ...u, userId: u.userId ?? usageUser.getStore() ?? 0 }); } catch { /* учёт не мешает ответу */ }
 }
+/** Одна HTTP-попытка к модели (рисованию, голосу): сколько ждали, цена, короткий код ошибки (пусто — удачно). Текста ответа нет. */
+export interface LlmAttempt { kind: UsageKind; model: string; ms: number; cost: number | null; error?: string; userId?: number }
+let callSink: ((c: LlmAttempt) => void) | null = null;
+export const onLlmCall = (fn: ((c: LlmAttempt) => void) | null) => void (callSink = fn);
+/** Сообщить о попытке (index.ts пишет её в llm_calls); ошибка учёта ответу не мешает. */
+export function reportCall(c: LlmAttempt) {
+  try { callSink?.({ ...c, userId: c.userId ?? usageUser.getStore() ?? 0 }); } catch { /* учёт не мешает ответу */ }
+}
+/** Код ошибки для журнала — только вид, без тела ответа провайдера. */
+export function llmErrorCode(e: unknown): string {
+  const x = (e ?? {}) as { name?: string; status?: unknown; code?: unknown };
+  if (x.code === "empty" || x.code === "no_key") return x.code;
+  if (x.name === "TimeoutError" || x.name === "AbortError") return "timeout";
+  if (typeof x.status === "number") return x.status === 429 ? "http_429" : x.status >= 500 ? "http_5xx" : "http_4xx";
+  if (x.name === "SyntaxError") return "bad_body";
+  if (x.name === "TypeError") return "net";
+  return "other";
+}
+/** Ошибка ответа с HTTP-кодом (по нему llmErrorCode); fatal — не повторять. */
+export const httpError = (status: number, text: string, fatal = false) =>
+  Object.assign(new Error(`LLM ${status}: ${text}`), { status, ...(fatal ? { fatal: true } : {}) });
+
 /** OpenRouter присылает цену запроса в usage.cost (доллары), если попросить usage: { include: true }. */
 export const isOpenRouter = (url: string) => /openrouter\.ai/.test(url);
 const price = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
@@ -75,7 +97,10 @@ export const activeModel = () => (liteOn && isOpenRouter(config.llm.baseUrl) ? L
 
 /** Дешёвая модель не ответила — тот же запрос основной, чтобы бот не замолкал. */
 export const callLlm: LlmCall = async (messages, opts = {}) => {
-  if (!config.llm.apiKey) throw new Error("LLM_API_KEY не задан");
+  if (!config.llm.apiKey) {
+    reportCall({ kind: opts.kind ?? "other", model: config.llm.model, ms: 0, cost: null, error: "no_key" });
+    throw Object.assign(new Error("LLM_API_KEY не задан"), { code: "no_key" });
+  }
   const model = activeModel();
   if (model === config.llm.model) return callModel(model, messages, opts);
   try {
@@ -96,7 +121,10 @@ async function callModel(model: string, messages: ChatMessage[], opts: Parameter
   if (opts.json) body.response_format = { type: "json_object" };
   if (isOpenRouter(config.llm.baseUrl)) body.usage = { include: true };
   let lastErr: unknown;
+  const kind = opts.kind ?? "other";
   for (let attempt = 0; attempt < 3; attempt++) {
+    const t0 = performance.now();
+    let cost: number | null = null;
     try {
       const res = await fetch(`${config.llm.baseUrl}/chat/completions`, {
         method: "POST",
@@ -104,16 +132,19 @@ async function callModel(model: string, messages: ChatMessage[], opts: Parameter
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(60_000),
       });
-      if (res.status === 429 || res.status >= 500) throw new Error(`LLM ${res.status}: ${await res.text()}`);
-      if (!res.ok) throw Object.assign(new Error(`LLM ${res.status}: ${await res.text()}`), { fatal: true });
+      if (res.status === 429 || res.status >= 500) throw httpError(res.status, await res.text());
+      if (!res.ok) throw httpError(res.status, await res.text(), true);
       const data = (await res.json()) as { model?: string; choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number } };
       if (data.usage) {
-        reportUsage({ kind: opts.kind ?? "other", model, input: data.usage.prompt_tokens ?? 0, output: data.usage.completion_tokens ?? 0, cost: usageCost(data.usage) });
+        cost = usageCost(data.usage);
+        reportUsage({ kind, model, input: data.usage.prompt_tokens ?? 0, output: data.usage.completion_tokens ?? 0, cost });
       }
       const text = data.choices?.[0]?.message?.content;
-      if (!text) throw new Error("LLM вернул пустой ответ");
+      if (!text) throw Object.assign(new Error("LLM вернул пустой ответ"), { code: "empty" });
+      reportCall({ kind, model, ms: performance.now() - t0, cost });
       return text;
     } catch (e) {
+      reportCall({ kind, model, ms: performance.now() - t0, cost, error: llmErrorCode(e) });
       lastErr = e;
       if ((e as { fatal?: boolean }).fatal) break;
       await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));

@@ -413,6 +413,40 @@ CREATE INDEX IF NOT EXISTS actions_msg ON actions (message_id, undone);
 CREATE INDEX IF NOT EXISTS actions_user ON actions (user_id, undone, created_at);
 CREATE INDEX IF NOT EXISTS messages_user_at ON messages (user_id, received_at);
 `,
+  // Шаг 24: этап 2 админки — клиент и версия у входа (заголовки X-Maid-Client / X-Maid-Version), минуты присутствия по часам
+  // (presence, 90 дней), сколько вызовов модели ушло на сообщение и по какой ветке (messages.llm_calls / route),
+  // журнал попыток модели (llm_calls, 30 дней): время ответа, цена, короткий код ошибки — без текстов. Индексы messages по времени
+  // и состоянию — для отчётов админки по всем людям (дорогие сообщения, ветки, зависшие).
+  `
+ALTER TABLE sessions ADD COLUMN client TEXT NOT NULL DEFAULT '';
+ALTER TABLE sessions ADD COLUMN version TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
+CREATE INDEX IF NOT EXISTS sessions_seen ON sessions (last_seen);
+CREATE TABLE IF NOT EXISTS presence (
+  user_id INTEGER NOT NULL,
+  day_key TEXT NOT NULL,
+  hour INTEGER NOT NULL,
+  client TEXT NOT NULL,
+  minutes INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day_key, hour, client)
+);
+CREATE INDEX IF NOT EXISTS presence_day ON presence (day_key);
+ALTER TABLE messages ADD COLUMN llm_calls INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE messages ADD COLUMN route TEXT NOT NULL DEFAULT '';
+CREATE TABLE IF NOT EXISTS llm_calls (
+  id {pk},
+  at TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  model TEXT NOT NULL,
+  ms INTEGER NOT NULL,
+  micro_usd INTEGER NOT NULL DEFAULT 0,
+  error_code TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS llm_calls_at ON llm_calls (at);
+CREATE INDEX IF NOT EXISTS messages_at ON messages (received_at);
+CREATE INDEX IF NOT EXISTS messages_state ON messages (state);
+`,
 ];
 
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
@@ -486,6 +520,9 @@ export interface Message {
   parse_json: string | null;
   reply: string | null;
   reply_to: number | null;
+  /** Сколько раз модель звали ради этого сообщения (повторы прибавляются) и по какой ветке оно прошло (pipeline.ts, шаг 24). */
+  llm_calls?: number;
+  route?: string;
 }
 export interface DiaryRow {
   id: number;
@@ -797,17 +834,32 @@ export class Store {
   }
 
   // --- входы (сессии веб-приложения и ключи устройств) ---
-  async addSession(tokenHash: string, userId: number, label: string) {
+  async addSession(tokenHash: string, userId: number, label: string, meta?: { client: string; version: string }) {
     const t = now();
-    await this.run("INSERT INTO sessions (token_hash, user_id, label, created_at, last_seen) VALUES (?, ?, ?, ?, ?)", tokenHash, userId, label, t, t);
-  }
-  sessionUser(tokenHash: string): Promise<(User & { last_seen: string }) | undefined> {
-    return this.get(
-      "SELECT u.*, s.last_seen FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?", tokenHash,
+    await this.run(
+      "INSERT INTO sessions (token_hash, user_id, label, created_at, last_seen, client, version) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      tokenHash, userId, label, t, t, meta?.client ?? "", meta?.version ?? "",
     );
   }
-  async touchSession(tokenHash: string) {
-    await this.run("UPDATE sessions SET last_seen = ? WHERE token_hash = ?", now(), tokenHash);
+  sessionUser(tokenHash: string): Promise<(User & { last_seen: string; session_label: string; session_client: string }) | undefined> {
+    return this.get(
+      "SELECT u.*, s.last_seen, s.label AS session_label, s.client AS session_client FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?", tokenHash,
+    );
+  }
+  /** last_seen — сейчас; клиент и версию — только если пришли (пустые не затирают известные). */
+  async touchSession(tokenHash: string, client = "", version = "") {
+    await this.run(
+      "UPDATE sessions SET last_seen = ?, client = COALESCE(NULLIF(?, ''), client), version = COALESCE(NULLIF(?, ''), version) WHERE token_hash = ?",
+      now(), client, version, tokenHash,
+    );
+  }
+  /** Ещё одна минута, в которую человек заходил с этого клиента (час — по его поясу). Не время в сети, а минуты с запросами. */
+  async bumpPresence(userId: number, dayKey: string, hour: number, client: string) {
+    await this.run(
+      `INSERT INTO presence (user_id, day_key, hour, client, minutes) VALUES (?, ?, ?, ?, 1)
+       ON CONFLICT (user_id, day_key, hour, client) DO UPDATE SET minutes = presence.minutes + 1`,
+      userId, dayKey, hour, client.slice(0, 20),
+    );
   }
   async dropSession(tokenHash: string) {
     await this.run("DELETE FROM sessions WHERE token_hash = ?", tokenHash);
@@ -841,6 +893,13 @@ export class Store {
   }
   message(id: number): Promise<Message | undefined> {
     return this.get<Message>("SELECT * FROM messages WHERE id = ?", id);
+  }
+  /** Прибавить вызовы модели к сообщению и запомнить ветку (пустая ветка прежнюю не затирает). */
+  async addMessageCalls(id: number, calls: number, route: string) {
+    await this.run(
+      "UPDATE messages SET llm_calls = llm_calls + ?, route = COALESCE(NULLIF(?, ''), route) WHERE id = ?",
+      Math.max(0, Math.round(calls)), route.slice(0, 20), id,
+    );
   }
   async setMessage(id: number, patch: { state?: Message["state"]; parse_json?: string; reply?: string }) {
     if (patch.state) await this.run("UPDATE messages SET state = ? WHERE id = ?", patch.state, id);
@@ -1481,6 +1540,14 @@ export class Store {
       x.cost == null ? 0 : 1,
     );
   }
+  /** Одна попытка запроса к модели (рисованию, голосу): время ответа, цена, короткий код ошибки (пусто — удачно). Без текстов. */
+  async addLlmCall(at: Date, x: { kind: string; model: string; ms: number; cost: number | null; error?: string; userId?: number }) {
+    await this.run(
+      "INSERT INTO llm_calls (at, user_id, kind, model, ms, micro_usd, error_code) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      at.toISOString(), x.userId ?? 0, x.kind, x.model.slice(0, 120), Math.max(0, Math.round(x.ms)),
+      x.cost == null ? 0 : Math.round(x.cost * 1e6), (x.error ?? "").slice(0, 20),
+    );
+  }
   /** Расход по дням с from по to (ГГГГ-ММ-ДД, включительно), по дням и назначениям. userId — только этого человека, без него — все вместе. */
   async usageDays(from: string, to: string, userId?: number): Promise<UsageRow[]> {
     const mine = userId === undefined ? "" : " AND user_id = ?";
@@ -1520,13 +1587,17 @@ export class Store {
   }
   // ——— Админка, этап 1 (admin-stats.ts): только счётчики, без текстов. Обращения к горничной — сообщения, которые разбирает
   // модель (ADMIN_AI_SQL); «без ИИ» — отметки кнопкой, из push и правки мышью (ADMIN_MANUAL_SQL). Импорт прошлого — не в счёт.
-  /** По людям: всего, последнее, за 30 дней — всего, с ИИ, без ИИ; отменённые за 30 дней. */
+  /** По людям: всего, последнее, за 30 дней — всего, с ИИ, без ИИ; отменённые за 30 дней.
+   *  С ИИ / без (этап 2): сообщение прошло разбор после шага 24 (route не пуст) — по messages.llm_calls (> 0 — с ИИ, 0 — без:
+   *  погода и т. п.); старые и не через разбор (route пуст: кнопки, push, правки мышью) — по источнику, как на этапе 1
+   *  (ADMIN_AI_SQL / ADMIN_MANUAL_SQL). Поправки к ответам — ни там ни там (их считает «Качество разбора»). */
   async adminUserStats(since: string): Promise<{ user_id: number; total: number; last_at: string | null; n30: number; ai30: number; manual30: number; undone30: number }[]> {
+    const routed = "(m.route <> '' AND m.source_id NOT LIKE 'correct:%')";
     const rows = await this.all<Record<string, unknown>>(
       `SELECT m.user_id, COUNT(*) AS total, MAX(m.received_at) AS last_at,
          SUM(CASE WHEN m.received_at >= ? THEN 1 ELSE 0 END) AS n30,
-         SUM(CASE WHEN m.received_at >= ? AND ${ADMIN_AI_SQL} THEN 1 ELSE 0 END) AS ai30,
-         SUM(CASE WHEN m.received_at >= ? AND ${ADMIN_MANUAL_SQL} THEN 1 ELSE 0 END) AS manual30
+         SUM(CASE WHEN m.received_at >= ? AND ((${routed} AND m.llm_calls > 0) OR (m.route = '' AND ${ADMIN_AI_SQL})) THEN 1 ELSE 0 END) AS ai30,
+         SUM(CASE WHEN m.received_at >= ? AND ((${routed} AND m.llm_calls = 0) OR (m.route = '' AND ${ADMIN_MANUAL_SQL})) THEN 1 ELSE 0 END) AS manual30
        FROM messages m WHERE m.source <> 'import' GROUP BY m.user_id`, since, since, since,
     );
     const undone = await this.all<Record<string, unknown>>(
@@ -1580,6 +1651,78 @@ export class Store {
   async adminFailedSince(since: string): Promise<number> {
     return Number((await this.get<{ n: unknown }>("SELECT COUNT(*) AS n FROM messages WHERE state = 'failed' AND received_at >= ?", since))?.n ?? 0);
   }
+  // ——— Админка, этап 2 (admin-stats.ts): входы, минуты присутствия, вызовы модели — счётчики, без текстов и chat id.
+  /** Входы, которыми пользовались с since: человек, клиент и версия (пусто — старый клиент без заголовка), метка, когда. */
+  async adminSessions(since: string): Promise<{ user_id: number; client: string; version: string; label: string; last_seen: string }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT user_id, client, version, label, last_seen FROM sessions WHERE last_seen >= ?", since);
+    return rows.map((r) => ({ user_id: Number(r.user_id), client: String(r.client ?? ""), version: String(r.version ?? ""), label: String(r.label ?? ""), last_seen: String(r.last_seen) }));
+  }
+  /** Минуты присутствия с fromDay по дням и часам — сумма по всем людям и клиентам (сводно, не по человеку). */
+  async adminPresenceHeat(fromDay: string): Promise<{ day: string; hour: number; minutes: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT day_key AS day, hour, SUM(minutes) AS minutes FROM presence WHERE day_key >= ? GROUP BY day_key, hour", fromDay,
+    );
+    return rows.map((r) => ({ day: String(r.day), hour: Number(r.hour), minutes: Number(r.minutes ?? 0) }));
+  }
+  /** С каких клиентов заходили с fromDay: сколько людей и минут. */
+  async adminPresenceClients(fromDay: string): Promise<{ client: string; users: number; minutes: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT client, COUNT(DISTINCT user_id) AS users, SUM(minutes) AS minutes FROM presence WHERE day_key >= ? GROUP BY client ORDER BY COUNT(DISTINCT user_id) DESC", fromDay,
+    );
+    return rows.map((r) => ({ client: String(r.client), users: Number(r.users), minutes: Number(r.minutes ?? 0) }));
+  }
+  /** Кто заходил с клиента client в эти дни (day_key) — с часом, чтобы сверить с «сейчас» по поясу человека. */
+  async adminPresenceUsers(client: string, days: string[]): Promise<{ user_id: number; day: string; hour: number }[]> {
+    if (!days.length) return [];
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT user_id, day_key AS day, hour FROM presence WHERE client = ? AND day_key IN (${days.map(() => "?").join(", ")})`, client, ...days,
+    );
+    return rows.map((r) => ({ user_id: Number(r.user_id), day: String(r.day), hour: Number(r.hour) }));
+  }
+  /** Сообщения с since, на которые ушло больше всего вызовов модели (messages.llm_calls, шаг 24): кто, когда, ветка — без текста. */
+  async adminHeavyMessages(since: string, limit = 20): Promise<{ user_id: number; received_at: string; source: string; route: string; llm_calls: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT user_id, received_at, source, route, llm_calls FROM messages WHERE received_at >= ? AND llm_calls > 0
+       ORDER BY llm_calls DESC, received_at DESC LIMIT ?`, since, limit,
+    );
+    return rows.map((r) => ({ user_id: Number(r.user_id), received_at: String(r.received_at), source: String(r.source), route: String(r.route), llm_calls: Number(r.llm_calls) }));
+  }
+  /** Ветки разбора с since (только сообщения, прошедшие разбор после шага 24): сколько сообщений и вызовов модели. */
+  async adminRoutes(since: string): Promise<{ route: string; messages: number; calls: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT route, COUNT(*) AS messages, SUM(llm_calls) AS calls FROM messages WHERE received_at >= ? AND route <> '' GROUP BY route ORDER BY SUM(llm_calls) DESC", since,
+    );
+    return rows.map((r) => ({ route: String(r.route), messages: Number(r.messages), calls: Number(r.calls ?? 0) }));
+  }
+  /** Попытки модели с since по назначению и коду ошибки (пусто — удачные); day — из них с daySince. */
+  async adminLlmErrors(since: string, daySince: string): Promise<{ kind: string; error_code: string; week: number; day: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT kind, error_code, COUNT(*) AS week, SUM(CASE WHEN at >= ? THEN 1 ELSE 0 END) AS day FROM llm_calls WHERE at >= ? GROUP BY kind, error_code", daySince, since,
+    );
+    return rows.map((r) => ({ kind: String(r.kind), error_code: String(r.error_code), week: Number(r.week), day: Number(r.day ?? 0) }));
+  }
+  /** Время удачных ответов модели с since (последние limit попыток) — перцентили считает admin-stats.ts. */
+  async adminLlmTimes(since: string, limit = 10_000): Promise<{ at: string; model: string; ms: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT at, model, ms FROM llm_calls WHERE at >= ? AND error_code = '' ORDER BY id DESC LIMIT ?", since, limit,
+    );
+    return rows.map((r) => ({ at: String(r.at), model: String(r.model), ms: Number(r.ms) }));
+  }
+  /** Сообщения, которые сейчас не разобраны (failed) и ждут уточнения (clarify); failed24 — из них за сутки, которые ещё повторяются
+   *  (упавший разговор — reply с префиксом noRetry, pipeline.ts CHAT_FAILED — фоновый повтор пропускает). */
+  async adminStuckMessages(daySince: string, noRetry: string): Promise<{ failed: number; clarify: number; failed24: number }> {
+    const r = await this.get<Record<string, unknown>>(
+      `SELECT SUM(CASE WHEN state = 'failed' THEN 1 ELSE 0 END) AS failed, SUM(CASE WHEN state = 'clarify' THEN 1 ELSE 0 END) AS clarify,
+         SUM(CASE WHEN state = 'failed' AND received_at >= ? AND COALESCE(reply, '') NOT LIKE ? THEN 1 ELSE 0 END) AS failed24
+       FROM messages WHERE state IN ('failed', 'clarify')`, daySince, `${noRetry}%`,
+    );
+    return { failed: Number(r?.failed ?? 0), clarify: Number(r?.clarify ?? 0), failed24: Number(r?.failed24 ?? 0) };
+  }
+  /** Напоминания, которые ждут отправки со сроком не позже before: сколько и самое старое (в норме 0 — такт планировщика идёт). */
+  async adminOverdueReminders(before: string): Promise<{ n: number; oldest: string | null }> {
+    const r = await this.get<Record<string, unknown>>("SELECT COUNT(*) AS n, MIN(due_at) AS oldest FROM reminders WHERE status = 'pending' AND due_at <= ?", before);
+    return { n: Number(r?.n ?? 0), oldest: r?.oldest == null ? null : String(r.oldest) };
+  }
   async kvDel(key: string) {
     await this.run("DELETE FROM kv WHERE key = ?", key);
   }
@@ -1602,6 +1745,11 @@ export class Store {
       `DELETE FROM kv WHERE value < ? AND (${kinds.map(() => "key LIKE ?").join(" OR ")})`,
       before.toISOString(), ...kinds.map((k) => `${k}:%`),
     );
+  }
+  /** Раз в сутки: минуты присутствия старше 90 дней (по day_key) и журнал попыток модели старше 30 дней. */
+  async pruneStats(at: Date) {
+    await this.run("DELETE FROM presence WHERE day_key < ?", new Date(at.getTime() - 90 * 86_400_000).toISOString().slice(0, 10));
+    await this.run("DELETE FROM llm_calls WHERE at < ?", new Date(at.getTime() - 30 * 86_400_000).toISOString());
   }
   /** Команда без разбора результата (снимок базы: VACUUM INTO). */
   async raw(sql: string, ...args: unknown[]): Promise<void> {

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Bot, InlineKeyboard, InputFile, type Context } from "grammy";
 import { config, ROOT } from "./config.ts";
-import { issueToken } from "./auth.ts";
+import { issueToken, notePresence } from "./auth.ts";
 import { accountsText } from "./accounts.ts";
 import { createInvite, INVITE_DAYS, installerUrl, isMember, redeemInvite } from "./invite.ts";
 import type { Store, User } from "./db.ts";
@@ -125,9 +125,11 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await next();
   });
   // Всё, что дальше делается по сообщению, — для этого человека: расход ИИ на его счёт (llm.ts, asUser).
+  // Заодно минута присутствия «telegram» (таблица presence) — не чаще раза в минуту на человека (ограничитель в notePresence).
   bot.use(async (ctx, next) => {
     const chat = String(ctx.chat?.id ?? "");
     const u = chat ? await store.userByChat(chat) : undefined;
+    if (u) void notePresence(store, u, "telegram");
     return u ? asUser(u.id, next) : next();
   });
 

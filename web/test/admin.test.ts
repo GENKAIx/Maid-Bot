@@ -1,6 +1,25 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ADMIN_ACTIONS, ADMIN_SECTIONS, adminSection, ago, sortRows, usd } from "../src/admin.ts";
+import { ADM_WEEKDAYS, ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminSection, ago, CLIENT_NAMES, ERROR_NAMES, msText, ROUTE_NAMES, sortRows, uptimeText, usd } from "../src/admin.ts";
+
+// Этап 2: раздел «Здоровье сервера» живой; подписи клиентов, веток и ошибок; время ответа и работы сервера.
+test("админка, этап 2: «Здоровье» живое, подписи и форматы", () => {
+  assert.equal(adminSection("health"), "health");
+  const health = ADMIN_SECTIONS.find((s) => s.id === "health")!;
+  assert.ok(health.stage <= ADMIN_LIVE_STAGE, "Здоровье — не «появится»");
+  for (const id of ["users", "spend", "audience", "quality"]) assert.ok(ADMIN_SECTIONS.find((s) => s.id === id)!.stage <= ADMIN_LIVE_STAGE, id);
+  for (const c of ["web", "desktop", "widget", "quick", "iphone", "telegram-widget", "telegram", "other"]) assert.ok(CLIENT_NAMES[c], c);
+  for (const r of ["weather", "chat", "parse", "clarify", "draw", "answer", "talk", "apply", "correct"]) assert.ok(ROUTE_NAMES[r], r);
+  for (const e of ["timeout", "net", "http_429", "http_5xx", "http_4xx", "bad_body", "empty", "no_key", "other"]) assert.ok(ERROR_NAMES[e], e);
+  assert.equal(ADM_WEEKDAYS.length, 7);
+  assert.equal(msText(null), "—");
+  assert.equal(msText(840), "840 мс");
+  assert.equal(msText(12_300), "12.3 с");
+  assert.equal(uptimeText(45), "45 с");
+  assert.equal(uptimeText(12 * 60 + 5), "12 мин");
+  assert.equal(uptimeText(3 * 3600 + 5 * 60), "3 ч 5 мин");
+  assert.equal(uptimeText(2 * 86400 + 4 * 3600), "2 дн. 4 ч");
+});
 
 // Разделы админки по адресу /admin/<раздел> (web/src/admin.ts).
 test("админка: раздел по адресу, незнакомый — Обзор; журнал подписан", () => {

@@ -31,6 +31,10 @@ COPY --from=check /app/web/dist web/dist
 COPY deploy/entrypoint.sh /usr/local/bin/maid-entrypoint
 RUN chmod +x /usr/local/bin/maid-entrypoint
 ENV DB_FILE=/data/maid.sqlite WEB_DIR=/app/web/dist DESKTOP_DIR=/data/desktop PORT=3000
+# Версия сервера для админки (раздел «Здоровье»): коммит и время сборки — из deploy/deploy.sh (--build-arg); нет — «—».
+ARG MAID_VERSION=""
+ARG BUILT_AT=""
+ENV MAID_VERSION=$MAID_VERSION BUILT_AT=$BUILT_AT
 VOLUME /data
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1

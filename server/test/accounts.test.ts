@@ -82,6 +82,7 @@ test("шаг 14 базы: старый расход (без людей) сохр
   db.exec(`ALTER TABLE notices DROP COLUMN kind; ALTER TABLE habit_marks DROP COLUMN amount; ALTER TABLE habit_marks DROP COLUMN unit; ALTER TABLE dates DROP COLUMN closed_at;
     ALTER TABLE users DROP COLUMN maid_hair; ALTER TABLE users DROP COLUMN maid_eyes;
     ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask; ALTER TABLE users DROP COLUMN weather_rain;
+    ALTER TABLE sessions DROP COLUMN client; ALTER TABLE sessions DROP COLUMN version; ALTER TABLE messages DROP COLUMN llm_calls; ALTER TABLE messages DROP COLUMN route;
     DROP TABLE llm_usage;
     CREATE TABLE llm_usage (day TEXT NOT NULL, kind TEXT NOT NULL, model TEXT NOT NULL, calls INTEGER NOT NULL DEFAULT 0, input INTEGER NOT NULL DEFAULT 0,
       output INTEGER NOT NULL DEFAULT 0, micro_usd INTEGER NOT NULL DEFAULT 0, priced INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, model));

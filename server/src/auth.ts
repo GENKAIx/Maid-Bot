@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { promisify } from "node:util";
 import { config } from "./config.ts";
 import type { Store, User } from "./db.ts";
+import { dayKey, timeOf } from "./time.ts";
 
 // Учётные записи: логин и пароль (scrypt), вход выдаёт ключ. В базе лежит только хеш ключа —
 // утечка базы не даёт войти. Ключ один и тот же для веб-приложения, десктопа и айфона.
@@ -24,17 +25,55 @@ export async function verifyPassword(password: string, stored: string | null): P
 
 export const tokenHash = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
 
+/** Какой клиент пришёл (заголовок X-Maid-Client) и его версия (X-Maid-Version). Только из белого списка — сырое не хранится. */
+export const MAID_CLIENTS = ["web", "desktop", "widget", "quick", "iphone", "telegram-widget"] as const;
+export interface ClientMeta { client: string; version: string }
+export function clientMeta(headers: Record<string, string | string[] | undefined>): ClientMeta {
+  const hdr = (k: string) => String(headers[k] ?? "").trim();
+  const c = hdr("x-maid-client");
+  const v = hdr("x-maid-version");
+  return { client: MAID_CLIENTS.find((x) => x === c) ?? "", version: /^\d{1,3}\.\d{1,3}\.\d{1,4}$/.test(v) ? v : "" };
+}
+/** Старые клиенты без заголовка: клиент по метке входа. */
+export function clientFromLabel(label: string): string {
+  if (label === "web" || label === "iphone" || label === "desktop") return label;
+  if (label === "Программа на ПК") return "desktop";
+  if (label === "telegram /token") return "iphone";
+  return "other";
+}
+/** Окна программы на ПК (виджет, быстрая запись) — одна программа: вход и присутствие пишутся как «desktop». */
+const familyOf = (client: string) => (client === "widget" || client === "quick" ? "desktop" : client);
+/** Что записать входу из заголовков. Сайт в главном окне программы ходит с её ключом и шлёт «web» и версию сайта:
+ *  вход программы остаётся «desktop», версия сайта ему не пишется (иначе клиент и версия скачут между сайтом и программой). */
+function sessionMeta(known: string, meta: ClientMeta): ClientMeta {
+  if (meta.client === "web" && known === "desktop") return { client: "", version: "" };
+  return { client: familyOf(meta.client), version: meta.version };
+}
+/** Последняя минута присутствия по человеку и клиенту — в памяти: два входа одного человека с одного клиента
+ *  (сайт на телефоне и на ПК) дают одну минуту, и одновременные запросы не прибавляют дважды. */
+const presenceSeen = new Map<string, number>();
+/** Минута присутствия в час человека по его поясу (таблица presence), не чаще раза в минуту на человека и клиента.
+ *  Ошибка учёта ответу не мешает. */
+export async function notePresence(store: Store, user: User, client: string, at = new Date()) {
+  const key = `${user.id} ${client}`;
+  const t = at.getTime();
+  if (t - (presenceSeen.get(key) ?? -Infinity) < 60_000) return;
+  presenceSeen.set(key, t);
+  await store.bumpPresence(user.id, dayKey(at, user.tz), Number(timeOf(at, user.tz).slice(0, 2)), client)
+    .catch((e) => console.error("[presence]", e));
+}
+
 /** Новый ключ входа для устройства. Сам ключ показывается один раз. */
-export async function issueToken(store: Store, userId: number, label: string): Promise<string> {
+export async function issueToken(store: Store, userId: number, label: string, meta?: ClientMeta): Promise<string> {
   const token = crypto.randomBytes(32).toString("base64url");
-  await store.addSession(tokenHash(token), userId, label.slice(0, 80));
+  await store.addSession(tokenHash(token), userId, label.slice(0, 80), meta && sessionMeta(clientFromLabel(label), meta));
   return token;
 }
 
-export async function login(store: Store, loginName: string, password: string, label: string): Promise<string | null> {
+export async function login(store: Store, loginName: string, password: string, label: string, meta?: ClientMeta): Promise<string | null> {
   const u = await store.userByLogin(loginName.trim());
   if (!u || !(await verifyPassword(password, u.password_hash))) return null;
-  return issueToken(store, u.id, label);
+  return issueToken(store, u.id, label, meta);
 }
 
 /** Вход, которым не пользовались столько дней, перестаёт действовать (потерянный телефон не открывает дневник вечно). */
@@ -91,8 +130,18 @@ export function isAdmin(u: User, via: Via): boolean {
   return via === "session" && Boolean(u.chat_id) && admins.includes(String(u.chat_id));
 }
 
-/** Кто пришёл с этим ключом и как вошёл. */
-export async function authByToken(store: Store, token: string): Promise<{ user: User; via: Via } | undefined> {
+/** Запасной DESKTOP_TOKEN сессий не пишет: когда и с какой версией он был в последний раз — в памяти (для админки). */
+const desktopSeen = new Map<number, { at: number; version: string }>();
+export const desktopTokenSeen = (): { userId: number; at: string; version: string }[] =>
+  [...desktopSeen].map(([userId, s]) => ({ userId, at: new Date(s.at).toISOString(), version: s.version }));
+/** Для тестов: забыть память ограничителей (DESKTOP_TOKEN, минуты присутствия) — между базами и «через минуту». */
+export function resetSeen() {
+  desktopSeen.clear();
+  presenceSeen.clear();
+}
+
+/** Кто пришёл с этим ключом и как вошёл. meta — клиент и версия из заголовков (пусто — неизвестно). */
+export async function authByToken(store: Store, token: string, meta: ClientMeta = { client: "", version: "" }): Promise<{ user: User; via: Via } | undefined> {
   if (!token) return undefined;
   const h = tokenHash(token);
   const u = await store.sessionUser(h);
@@ -101,15 +150,29 @@ export async function authByToken(store: Store, token: string): Promise<{ user: 
       await store.dropSession(h);
       return undefined;
     }
-    // last_seen обновляем не чаще раза в минуту.
-    if (Date.now() - new Date(u.last_seen).getTime() > 60_000) await store.touchSession(h);
-    const { last_seen: _, ...user } = u;
+    const { last_seen, session_label, session_client, ...user } = u;
+    // last_seen, клиент, версию и минуту присутствия пишем не чаще раза в минуту.
+    if (Date.now() - new Date(last_seen).getTime() > 60_000) {
+      const known = session_client || clientFromLabel(session_label);
+      const m = sessionMeta(known, meta);
+      await store.touchSession(h, m.client, m.version);
+      await notePresence(store, user, m.client || known);
+    }
     return { user, via: "session" };
   }
   if (config.desktopToken && safeEq(token, config.desktopToken)) {
     const owner = config.allowedChatIds[0];
     const user = owner ? await store.ensureUser(owner, "", config.defaultTimezone) : (await store.users())[0];
-    return user ? { user, via: "desktop" } : undefined;
+    if (!user) return undefined;
+    const seen = desktopSeen.get(user.id);
+    const t = Date.now();
+    if (!seen || t - seen.at > 60_000) {
+      // Ключ лежит в программе на ПК: «desktop», версия сайта из её главного окна не пишется (sessionMeta).
+      const m = sessionMeta("desktop", meta);
+      desktopSeen.set(user.id, { at: t, version: m.version || seen?.version || "" });
+      await notePresence(store, user, m.client || "desktop");
+    }
+    return { user, via: "desktop" };
   }
   return undefined;
 }

@@ -125,6 +125,13 @@ body.admin-body { background: #0f1114; }
   .adm-split { grid-template-columns: minmax(0, 1fr); }
   .adm-card { width: auto; position: static; }
 }
+/* Этап 2 (24.11.2026): карта часов (Аудитория), устройства в карточке человека. */
+.adm-hours { border-collapse: separate; border-spacing: 2px; font-family: var(--a-mono); font-size: 10.5px; color: var(--a-muted); }
+.adm-hours th { font-weight: 400; padding: 0 4px; text-align: center; }
+.adm-hours tbody th { text-align: right; font-family: inherit; }
+.adm-hours td { width: 22px; min-width: 14px; height: 18px; border-radius: 3px; background: var(--a-panel-2); background-image: linear-gradient(rgba(139, 124, 246, calc(var(--v, 0) * .9)), rgba(139, 124, 246, calc(var(--v, 0) * .9))); }
+.adm-devices { font-size: 12.5px; }
+.adm-devices td { padding: 6px 4px; }
 @media (max-width: 760px) {
   .adm-rank-row { grid-template-columns: minmax(0, 1fr) 70px; }
   .adm-rank-bar, .adm-rank-row > .adm-small { display: none; }

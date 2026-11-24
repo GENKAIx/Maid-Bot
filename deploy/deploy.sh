@@ -7,7 +7,8 @@ if [ -d maid/.git ]; then git -C maid pull --ff-only; else git clone https://git
 if ! cmp -s maid/deploy/deploy.sh /srv/deploy.sh; then cp maid/deploy/deploy.sh /srv/deploy.sh && chmod +x /srv/deploy.sh && exec /srv/deploy.sh; fi
 [ -f maid/.env ] || { cp maid/.env.example maid/.env; echo "Создан /srv/maid/.env — впишите ключи и запустите снова"; exit 1; }
 # Сначала собрать: в сборке идут проверки (типы, тесты — Dockerfile, этап check). Не прошли — выходим, работает прежняя версия.
-if ! docker compose build; then echo "Проверки или сборка не прошли — сервер не обновлён, работает прежняя версия." >&2; exit 1; fi
+# Коммит и время сборки — в образ (MAID_VERSION, BUILT_AT): их показывает админка, раздел «Здоровье».
+if ! docker compose build --build-arg MAID_VERSION="$(git -C maid rev-parse --short HEAD)" --build-arg BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"; then echo "Проверки или сборка не прошли — сервер не обновлён, работает прежняя версия." >&2; exit 1; fi
 docker compose up -d --remove-orphans
 # Дождаться, пока новый контейнер ответит на /healthz (HEALTHCHECK в Dockerfile).
 for i in $(seq 1 40); do

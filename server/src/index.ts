@@ -4,7 +4,7 @@ import { createApi } from "./api.ts";
 import { createBot } from "./bot.ts";
 import { config } from "./config.ts";
 import { Store } from "./db.ts";
-import { callLlm, llmReady, onLlmUsage, setLiteModel } from "./llm.ts";
+import { callLlm, llmReady, onLlmCall, onLlmUsage, setLiteModel } from "./llm.ts";
 import { backupName, exportJson } from "./backup.ts";
 import type { User } from "./db.ts";
 import { NOTICES_KEEP } from "./notices.ts";
@@ -29,6 +29,8 @@ if (drawReady()) pipeline.draw = callDraw;
 pipeline.onAbout = (u, text, buttons) => send(u, text, "neutral", buttons, "note");
 // Расход модели, рисования и голоса — по дням и назначениям (таблица llm_usage), на сайте — «Настройки» → «Расход».
 onLlmUsage((x) => void store.addUsage(new Date(), x).catch((e) => console.error("[usage]", e)));
+// Каждая попытка (и удачная, и упавшая) — строкой в журнал llm_calls: время ответа, цена, код ошибки (админка → «Здоровье»).
+onLlmCall((x) => void store.addLlmCall(new Date(), x).catch((e) => console.error("[llm calls]", e)));
 
 // Дешёвая модель вместо основной — если владелец выбрал её командой /model.
 setLiteModel((await store.kvGet("model:lite")) === "1");

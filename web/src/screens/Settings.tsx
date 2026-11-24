@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { get, getToken, post } from "../api";
+import { clientHeaders, get, getToken, post } from "../api";
 import { Card, Empty, Spinner } from "../components";
 import { currentSubscription, isIos, pushSupported, standalone, subscribe, unsubscribe } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
@@ -132,7 +132,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
           <div className="row">
             <a className="btn" href="/api/backup" onClick={async (e) => {
               e.preventDefault();
-              const r = await fetch("/api/backup", { headers: { Authorization: `Bearer ${getToken()}` } });
+              const r = await fetch("/api/backup", { headers: { ...clientHeaders(), Authorization: `Bearer ${getToken()}` } });
               const blob = await r.blob();
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);

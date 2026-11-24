@@ -1,5 +1,5 @@
 import { config } from "./config.ts";
-import { reportUsage, usageCost, type Picture } from "./llm.ts";
+import { llmErrorCode, reportCall, reportUsage, usageCost, type Picture } from "./llm.ts";
 
 // Картинка по описанию — RunPod (по умолчанию Z-Image Turbo), а без ключа RunPod — OpenRouter (по умолчанию Gemini 2.5 Flash Image).
 // Ответ RunPod — ссылка на картинку на 7 дней, OpenRouter — картинка в base64; в обоих случаях храним у себя (таблица drawings).
@@ -20,7 +20,19 @@ interface RunpodJob {
 }
 
 /** Рисует тем, что настроено: RunPod главнее, иначе OpenRouter. */
-export const callDraw: DrawCall = (prompt) => (config.drawing.apiKey ? callRunpod(prompt) : callOpenRouterDraw(prompt));
+export const callDraw: DrawCall = async (prompt) => {
+  // Весь заказ — одной строкой журнала llm_calls (время и код ошибки; цена — в llm_usage).
+  const model = config.drawing.apiKey ? config.drawing.model : config.drawing.openrouterModel;
+  const t0 = performance.now();
+  try {
+    const pic = await (config.drawing.apiKey ? callRunpod(prompt) : callOpenRouterDraw(prompt));
+    reportCall({ kind: "draw", model, ms: performance.now() - t0, cost: null });
+    return pic;
+  } catch (e) {
+    reportCall({ kind: "draw", model, ms: performance.now() - t0, cost: null, error: llmErrorCode(e) });
+    throw e;
+  }
+};
 
 export async function callRunpod(prompt: string): Promise<Picture> {
   const base = `https://api.runpod.ai/v2/${config.drawing.model}`;
@@ -29,7 +41,7 @@ export async function callRunpod(prompt: string): Promise<Picture> {
   const signal = () => AbortSignal.timeout(Math.max(1000, until - Date.now()));
   const ask = async (url: string, body?: unknown): Promise<RunpodJob> => {
     const r = await fetch(url, { method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined, signal: signal() });
-    if (!r.ok) throw new Error(`RunPod ${r.status}: ${(await r.text()).slice(0, 300)}`);
+    if (!r.ok) throw Object.assign(new Error(`RunPod ${r.status}: ${(await r.text()).slice(0, 300)}`), { status: r.status });
     return (await r.json()) as RunpodJob;
   };
   let job = await ask(`${base}/runsync`, {
@@ -69,7 +81,7 @@ export async function callOpenRouterDraw(prompt: string): Promise<Picture> {
     }),
     signal: AbortSignal.timeout(DRAW_TIMEOUT_MS),
   });
-  if (!r.ok) throw new Error(`OpenRouter ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  if (!r.ok) throw Object.assign(new Error(`OpenRouter ${r.status}: ${(await r.text()).slice(0, 300)}`), { status: r.status });
   const ans = (await r.json()) as OpenRouterImageAnswer;
   if (ans.usage) {
     reportUsage({ kind: "draw", model: config.drawing.openrouterModel, input: ans.usage.prompt_tokens ?? 0, output: ans.usage.completion_tokens ?? 0, cost: usageCost(ans.usage) });

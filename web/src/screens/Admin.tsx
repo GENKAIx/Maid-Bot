@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, get, post } from "../api";
 import { ADMIN_ACTIONS, ADMIN_LIVE_STAGE, ADMIN_SECTIONS, adminSection } from "../admin";
-import { AdminAudience, AdminLost, AdminOverview, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
+import { AdminAudience, AdminHealth, AdminLost, AdminOverview, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
 import { navigate } from "../router";
 import "../admin.css";
 
@@ -117,6 +117,7 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           : section === "spend" ? <AdminSpend />
           : section === "audience" ? <AdminAudience />
           : section === "quality" ? <AdminQuality />
+          : section === "health" ? <AdminHealth />
           : section === "log" ? <Journal /> : <Soon stage={cur.stage} />}
       </main>
       </AdminLost.Provider>

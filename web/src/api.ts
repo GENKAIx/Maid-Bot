@@ -18,6 +18,14 @@ export class ApiError extends Error {
   }
 }
 
+// Кто спрашивает — для статистики админки (server/src/auth.ts: clientMeta). Версия — время сборки (vite.config.ts);
+// вне сборки Vite (тесты tsx) её нет — заголовок пустой, сервер считает «не сообщает».
+// Сайт в главном окне программы на ПК — тоже «web», но ходит с ключом программы: сервер оставляет этот вход «Программой на ПК»
+// и версию сайта ему не пишет (server/src/auth.ts, sessionMeta).
+declare const __APP_VERSION__: string;
+const appVersion = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "";
+export const clientHeaders = (): Record<string, string> => ({ "X-Maid-Client": "web", "X-Maid-Version": appVersion });
+
 let onUnauthorized: (() => void) | null = null;
 export const whenUnauthorized = (fn: () => void) => (onUnauthorized = fn);
 
@@ -25,7 +33,7 @@ export async function api<T = unknown>(method: "GET" | "POST" | "DELETE", path: 
   const token = getToken();
   const res = await fetch(path, {
     method,
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { "Content-Type": "application/json", ...clientHeaders(), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(90_000),
   });
