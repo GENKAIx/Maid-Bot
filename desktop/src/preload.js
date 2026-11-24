@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 // Окнам доступно только это — ни Node, ни ключ сервера.
 contextBridge.exposeInMainWorld("maid", {
   api: (method, path, body) => ipcRenderer.invoke("api", method, path, body),
+  /** Нужна подписка (сервер ответил 402): открыть счёт Telegram в браузере системы (main.js pay-open) → "" или текст ошибки. */
+  openPay: () => ipcRenderer.invoke("pay-open"),
   settings: () => ipcRenderer.invoke("settings:get"),
   saveSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
   /** Вход логином и паролем: окно настроек — { server, login, password }, виджет — { server, login, password } (пустой адрес — из настроек). */

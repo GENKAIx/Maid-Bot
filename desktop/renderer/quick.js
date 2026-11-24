@@ -61,7 +61,26 @@ $("#f").onsubmit = async (e) => {
     maid.changed();
     setTimeout(() => !t.value && maid.hideQuick(), 4000);
   } catch (err) {
-    out.textContent = err.message;
+    const raw = String(err.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+    // Сервер ничего не записал (main.js KEEP_MARK U+2064: картинка без подписи) — строку и картинку не трогаем.
+    const kept = /^\u2063?\u2064/.test(raw);
+    const msg = raw.replace(/^(\u2063?)\u2064/, "$1");
+    // Нужна подписка (402, main.js PAY_MARK): текст горничной и кнопка — счёт Telegram открывает main (pay-open).
+    // Текст сервер уже записал заметкой — строку можно очистить; картинка без подписи заметкой не пишется — она остаётся.
+    if (msg.startsWith("\u2063")) {
+      out.textContent = msg.slice(1) + " ";
+      const pay = document.createElement("button");
+      pay.type = "button";
+      pay.className = "pay";
+      pay.textContent = "⭐ Оформить подписку";
+      pay.onclick = async () => { const fail = await maid.openPay().catch((e) => String(e.message)); if (fail) out.textContent = fail; };
+      out.appendChild(pay);
+      if (text && !kept) {
+        t.value = "";
+        attach(null);
+        maid.changed();
+      }
+    } else out.textContent = msg;
     showOut();
   } finally {
     maid.thinking(false);

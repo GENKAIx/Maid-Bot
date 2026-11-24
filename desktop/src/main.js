@@ -171,6 +171,19 @@ function movedTo(base, res) {
   } catch { return null; }
 }
 
+/** Платный доступ (24.11.2026, server/src/access.ts): пробная неделя или подписка кончились — сервер отвечает 402 с текстом
+ * горничной и ссылкой на оплату. Это не выход со входа (ключ остаётся). Через IPC доходит только текст ошибки, поэтому
+ * перед ним — невидимый знак PAY_MARK: по нему виджет (widget.js payNeed) показывает кнопку «Оформить подписку», а ссылку
+ * main держит у себя (lastPay) и открывает сам (pay-open) — только https://t.me/…, окно не может подсунуть свою. */
+const PAY_MARK = "\u2063";
+/** Вторая метка (после PAY_MARK или одна, у 429): сервер ничего не записал (saved: false — голос отклонён до распознавания,
+ *  /ask, картинка без подписи) — виджет оставляет сообщение в очереди с «Повторить», а не убирает его. */
+const KEEP_MARK = "\u2064";
+const isPayUrl = (u) => typeof u === "string" && u.length <= 512 && /^https:\/\/t\.me\/\S+$/.test(u);
+/** Ссылка из последнего 402 и когда пришла; старше PAY_FRESH_MS — берём новую (POST /api/billing/link). */
+let lastPay = null;
+const PAY_FRESH_MS = 6 * 3600_000;
+
 /** Кто спрашивает: окно программы (desktop / widget / quick) и её версия — для статистики админки (server/src/auth.ts: clientMeta). */
 const maidHeaders = (client = "desktop") => ({ "X-Maid-Client": client, "X-Maid-Version": app.getVersion() });
 
@@ -229,6 +242,13 @@ async function api(method, p, body, moved = false, client = "desktop") {
     throw Object.assign(new Error(LOGIN_STALE), { status: 401 });
   }
   loginStale = false;
+  // Нужна подписка (402): ключ принят, вход не трогаем; текст — с меткой PAY_MARK, ссылка — в lastPay.
+  const keep = data.saved === false ? KEEP_MARK : "";
+  if (res.status === 402) {
+    lastPay = { url: isPayUrl(data.pay_url) ? data.pay_url : null, at: Date.now() };
+    throw Object.assign(new Error(PAY_MARK + keep + (data.error ?? "нужна подписка")), { status: 402 });
+  }
+  if (res.status === 429 && keep) throw Object.assign(new Error(keep + (data.error ?? "слишком часто")), { status: 429 });
   // status — для счётчиков (usage.js): по нему понятно, выбросить пачку или прислать позже.
   if (!res.ok) throw Object.assign(new Error(data.error ?? `сервер ${res.status}`), { status: res.status });
   return data;
@@ -823,6 +843,22 @@ function broadcast(channel, data) {
 const clientOfWin = (wc) =>
   (widget && !widget.isDestroyed() && wc === widget.webContents ? "widget" : quick && !quick.isDestroyed() && wc === quick.webContents ? "quick" : "desktop");
 ipcMain.handle("api", (e, method, p, body) => api(method, p, body, false, clientOfWin(e.sender)));
+// «⭐ Оформить подписку» (widget.js payButtons, quick.js): открыть счёт Telegram в системе. Ссылка — из последнего 402
+// или свежая с сервера; открывается только https://t.me/…. Ответ окну — "" или текст, почему не открылось.
+ipcMain.handle("pay-open", async (e) => {
+  let url = lastPay && Date.now() - lastPay.at < PAY_FRESH_MS ? lastPay.url : null;
+  if (!url) {
+    try {
+      url = (await api("POST", "/api/billing/link", {}, false, clientOfWin(e.sender)))?.url;
+    } catch (err) {
+      return String(err?.message ?? err).replace(PAY_MARK, "").replace(KEEP_MARK, "");
+    }
+  }
+  if (!isPayUrl(url)) return "Сервер прислал непонятную ссылку на оплату.";
+  lastPay = { url, at: Date.now() };
+  await shell.openExternal(url);
+  return "";
+});
 
 // Счётчики фич для админки (usage.js): имена — только из белого списка, только от виджета и быстрой записи.
 // Пачка — раз в USAGE_EVERY_MS (whenReady) и при выходе (before-quit); нет входа — счёт ждёт, ошибки окнам не показываются.

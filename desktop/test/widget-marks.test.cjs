@@ -929,7 +929,7 @@ check(!/aria-live/.test(html.match(/<div[^>]*id="chatMarks"[^>]*>/)?.[0] ?? "ari
 check(/<div[^>]*id="marks"[^>]*data-rows="1"/.test(quickHtml) && /\.q \.draft-marks \{[^}]*max-height: 24px/.test(css), "в быстрой записи метки не в один ряд");
 const showOut = quick.match(/\nfunction showOut\(\) \{[^]*?\n\}/)?.[0] ?? "";
 check(/#marks"\)\.classList\.add\("hidden"\)/.test(showOut) && /out\.classList\.remove\("hidden"\)/.test(showOut), "showOut не прячет метки и не показывает строку ответа");
-for (const [what, re] of [["«…» при отправке", /out\.textContent = image \? "📷 Смотрю…" : "…";\s*showOut\(\);/], ["ошибка отправки", /out\.textContent = err\.message;\s*showOut\(\);/], ["«картинка приложена»", /Не получилось открыть картинку\.";\s*\}\s*showOut\(\);/]])
+for (const [what, re] of [["«…» при отправке", /out\.textContent = image \? "📷 Смотрю…" : "…";\s*showOut\(\);/], ["ошибка отправки", /else out\.textContent = msg;\s*showOut\(\);/], ["«картинка приложена»", /Не получилось открыть картинку\.";\s*\}\s*showOut\(\);/]])
   check(re.test(quick), `быстрая запись: ${what} прячется за метками`);
 // Метки не устаревают: пересчёт с каждым опросом сервера (день сервера, часы для «через 2 часа»).
 check(/data = fresh;\s*syncMarks\(\);/.test(widget), "метки не пересчитываются с опросом сервера (load)");

@@ -15,8 +15,11 @@ check(/el\.onclick = \(\) => maid\.openSection\(`\/diary\/\$\{d\}`\)/.test(widge
 check(!/openDay/.test(widget) && !/openDay/.test(preload), "в виджете или preload остался openDay");
 check(!/"open-day"/.test(main), "в main.js остался обработчик open-day (браузер)");
 // openExternal — только для ссылок «в новом окне» из главного окна (setWindowOpenHandler), не для виджета.
+// Исключение (24.11.2026): счёт оплаты подписки (pay-open) — только https://t.me/… после isPayUrl, адрес окно не передаёт
+// (проверка — widget-pay.test.cjs).
 const ext = main.match(/openExternal/g) ?? [];
-check(ext.length === 1 && /setWindowOpenHandler\(\(\{ url \}\) => \{\s*if \(\/\^https\?:\\\/\\\/\/\.test\(url\)\) void shell\.openExternal\(url\)/.test(main),
-  `openExternal в main.js — только у главного окна: ${ext.length}`);
+check(ext.length === 2 && /setWindowOpenHandler\(\(\{ url \}\) => \{\s*if \(\/\^https\?:\\\/\\\/\/\.test\(url\)\) void shell\.openExternal\(url\)/.test(main)
+  && /if \(!isPayUrl\(url\)\) return [^\n]+\n\s+lastPay = \{ url, at: Date\.now\(\) \};\n\s+await shell\.openExternal\(url\);/.test(main),
+  `openExternal в main.js — только у главного окна и у счёта оплаты: ${ext.length}`);
 console.log(`${n - bad}/${n} проверок`);
 if (bad) process.exit(1);

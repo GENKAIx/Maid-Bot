@@ -975,7 +975,21 @@ function saveOutbox() {
 }
 const offline = (e) => /нет связи с сервером|сервер не ответил/.test(e?.message ?? "");
 // Текст ошибки для облачка: без приставки Electron, «нет связи» — понятной фразой (что не получилось и что делать).
-const errText = (e) => { const t = String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""); return t === "нет связи с сервером" ? "Нет связи с сервером — не получилось. Попробуйте ещё раз, когда связь вернётся." : t === "сервер не ответил" ? "Сервер не ответил — не получилось. Попробуйте ещё раз." : t; };
+const errText = (e) => { const t = String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "").replace(/^\u2063?\u2064?/, ""); return t === "нет связи с сервером" ? "Нет связи с сервером — не получилось. Попробуйте ещё раз, когда связь вернётся." : t === "сервер не ответил" ? "Сервер не ответил — не получилось. Попробуйте ещё раз." : t; };
+
+// Нужна подписка (сервер ответил 402, main.js ставит перед текстом невидимый знак U+2063): текст горничной — иначе null.
+// Это не «нет связи» и не выход со входа: вход остаётся.
+const payNeed = (e) => { const t = String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""); return t.startsWith("\u2063") ? t.slice(1).replace(/^\u2064/, "") : null; };
+// Сервер отказал и ничего не записал (main.js KEEP_MARK U+2064: голос до распознавания, /ask, картинка без подписи) —
+// сообщение остаётся в очереди «не отправлено» с «Повторить»; иначе (текст записан заметкой) его можно убрать.
+const unsaved = (e) => /^\u2063?\u2064/.test(String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
+// Кнопка под таким ответом: счёт Telegram открывает main (pay-open, только https://t.me/…), не окно.
+function payButtons() {
+  return [{ text: "⭐ Оформить подписку", run: async () => {
+    const fail = await maid.openPay().catch((e) => errText(e));
+    if (fail) say(fail, { ms: 6000, emotion: "worried" });
+  } }];
+}
 
 function sendChat() {
   const text = chatInput.value.trim();
@@ -1021,6 +1035,17 @@ async function pump() {
       play("oops");
       react("sad", 3500);
       next = false;
+    } else if (payNeed(e)) {
+      // Пробная неделя или подписка кончились: облачко с кнопкой оплаты. Текст сервер записал заметкой — из очереди убрать;
+      // не записал (голос, /ask, картинка) — оставить «не отправлено»: после оплаты — «Повторить».
+      if (unsaved(e)) m.state = "failed";
+      else outbox = outbox.filter((x) => x !== m);
+      say(payNeed(e) + (unsaved(e) ? "\nСообщение осталось в очереди — после оплаты нажмите «Повторить»." : ""), { emotion: "neutral", ms: 30000, buttons: payButtons() });
+      maid.changed();
+    } else if (unsaved(e)) {
+      // Много сообщений подряд или лимит дня, а сервер ничего не записал (голос) — оставить в очереди для «Повторить».
+      m.state = "failed";
+      say(errText(e), { emotion: "worried", ms: 8000, sound: "oops" });
     } else {
       outbox = outbox.filter((x) => x !== m);
       say(errText(e), { emotion: "worried", ms: 8000, sound: "oops" });
