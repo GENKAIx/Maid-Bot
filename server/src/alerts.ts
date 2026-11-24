@@ -25,7 +25,7 @@ export const NEWCOMERS_HOUR_UTC = 6;
 
 export type AlertRuleId =
   | "spend_day" | "spend_spike" | "llm_errors" | "failed_msgs" | "send_fail" | "webhook" | "signup_cap"
-  | "refund" | "payment" | "backup" | "db_size" | "newcomers" | "release_crash";
+  | "refund" | "payment" | "backup" | "db_size" | "newcomers" | "release_crash" | "support_new";
 
 /** state — условие по числу сейчас; event — события с отметки (сколько накопилось); daily — сводка раз в сутки. */
 export interface AlertSpec {
@@ -74,6 +74,9 @@ export function alertSpecs(): AlertSpec[] {
     spec({ id: "release_crash", title: "Падения новой версии программы — больше прошлой в", unit: "раз", kind: "state", recover: true, window: false, int: false, min: 1.1, max: 100,
       enabled: true, threshold: 2, window_min: RELEASE_CRASH_DAYS * 1440, every_min: 360,
       hint: `доля людей с падением за ${RELEASE_CRASH_DAYS} дн., не меньше ${RELEASE_CRASH_MIN_USERS} человек; сработало — выпуск сам на паузу (раз на версию)` }),
+    // Этап 6: новые обращения людей (support.ts) — одним письмом, только число (тексты — в карточке обращения в админке).
+    spec({ id: "support_new", title: "Новые обращения людей — от", unit: "шт.", kind: "event", recover: false, window: false,
+      enabled: true, threshold: 1, window_min: 60, every_min: 30, hint: "«Написать нам» на сайте; в письме только число, тексты — в «Обращениях»" }),
   ];
 }
 export const ALERT_IDS = alertSpecs().map((s) => s.id);
@@ -201,6 +204,10 @@ export class Alerts {
           value: e.n, hit: e.n >= t,
           text: s.id === "refund" ? `↩️ Возвратов звёзд: ${e.n} на ⭐${e.stars}. Подробности — «Оплаты».` : `⭐ Новых оплат: ${e.n} на ⭐${e.stars}. Подробности — «Оплаты».`,
         };
+      }
+      case "support_new": {
+        const n = await this.store.ticketsSince(r.mark ?? now.toISOString());
+        return { value: n, hit: n >= t, text: `📨 Новых обращений: ${n}. Ответить — «Обращения» в админке.` };
       }
       case "backup": {
         if (this.store.driver.dialect !== "sqlite") return { value: null, hit: false, text: "" };

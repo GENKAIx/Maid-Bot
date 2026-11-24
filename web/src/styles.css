@@ -1350,3 +1350,17 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
   .you-progress p { grid-column: 1 / -1; }
   .persona .maid-look { flex-wrap: wrap; }
 }
+/* Объявления владельца (этап 6, NewsBar.tsx): плашка над экраном с крестиком; на телефоне — во всю ширину. */
+.news-bars { display: flex; flex-direction: column; gap: 6px; padding: 10px 32px 0; }
+.news-bar { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 14%, var(--card, transparent)); font-size: 14px; overflow-wrap: anywhere; animation: reveal .25s ease; }
+.news-x { flex: none; padding: 2px 8px; }
+@media (max-width: 760px) {
+  .news-bars { padding: 8px 14px 0; }
+}
+/* «Написать нам» и промокод в «Настройках» (этап 6). */
+.support-form, .promo-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.support-form textarea, .support-form select, .promo-form input { font: inherit; width: 100%; box-sizing: border-box; }
+.promo-form .row input { flex: 1; min-width: 0; }
+.support-list { margin-top: 12px; }
+.support-list li { display: block; }
+.support-answer { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 10%, transparent); white-space: pre-wrap; }

@@ -7,6 +7,7 @@ import { AdminTariffs } from "./AdminTariffs";
 import { AdminAccount } from "./AdminAccount";
 import { AdminAlerts, AdminBackups } from "./AdminAlerts";
 import { AdminCrashes, AdminReleases } from "./AdminReleases";
+import { AdminNews, AdminPrognosis, AdminPromo, AdminSwitches, AdminTickets } from "./AdminManage";
 import { navigate } from "../router";
 import "../admin.css";
 
@@ -134,6 +135,11 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           : section === "payments" ? <AdminPayments />
           : section === "tariffs" ? <AdminTariffs key="plans" part="plans" />
           : section === "caps" ? <AdminTariffs key="caps" part="caps" />
+          : section === "promo" ? <AdminPromo />
+          : section === "prognosis" ? <AdminPrognosis />
+          : section === "switches" ? <AdminSwitches />
+          : section === "tickets" ? <AdminTickets />
+          : section === "news" ? <AdminNews />
           : section === "spend" ? <AdminSpend />
           : section === "audience" ? <AdminAudience />
           : section === "quality" ? <AdminQuality />

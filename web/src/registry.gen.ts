@@ -253,6 +253,7 @@ export const REGISTRY: Registry = {
       {"id":"gate.calls_cap","title":"Отказ ИИ: кончились запросы на сегодня (лимит в штуках)","group":"access","by":"server"},
       {"id":"gate.draws_cap","title":"Отказ ИИ: кончились картинки на сегодня (лимит в штуках)","group":"access","by":"server"},
       {"id":"gate.voice_cap","title":"Отказ ИИ: кончились минуты голоса на сегодня (лимит в штуках)","group":"access","by":"server"},
+      {"id":"gate.switch_off","title":"Отказ ИИ: функцию выключили в админке (переключатели)","group":"access","by":"server"},
       {"id":"bot.start","title":"/start","group":"bot","by":"server"},
       {"id":"bot.list","title":"/list и «список» — список-виджет","group":"bot","by":"server"},
       {"id":"bot.today","title":"/today","group":"bot","by":"server"},

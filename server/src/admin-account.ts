@@ -43,7 +43,7 @@ export const ACCOUNT_ACTIONS = ["extend", "grant", "bonus", "freeze", "unfreeze"
 export type AccountAction = (typeof ACCOUNT_ACTIONS)[number];
 
 /** Строки журнала админа про один аккаунт (карточка): действия отсюда и возврат звёзд. */
-const ACCOUNT_LOG = new Set<string>([...ACCOUNT_ACTIONS, "refund", "refund-fail"]);
+const ACCOUNT_LOG = new Set<string>([...ACCOUNT_ACTIONS, "refund", "refund-fail", "ticket_answer", "ticket_status"]);
 
 export interface AccountDeps {
   store: Store;
@@ -74,7 +74,21 @@ const isOwner = (u: User, owners: string[]) => Boolean(u.chat_id) && owners.incl
 const liveTerm = (u: User, now: Date) =>
   (u.plan === "trial" || u.plan === "paid") && Boolean(u.access_until) && Date.parse(u.access_until!) + GRACE_MS > now.getTime();
 /** Идёт оплаченная подписка и Telegram её продлевает (продление не отменено): в свой день спишет звёзды. */
-const renewingSub = (u: User, now: Date) => u.plan === "paid" && Boolean(u.sub_charge_id) && !Number(u.sub_canceled) && liveTerm(u, now);
+export const renewingSub = (u: User, now: Date) => u.plan === "paid" && Boolean(u.sub_charge_id) && !Number(u.sub_canceled) && liveTerm(u, now);
+
+/** Продлить срок на days (действие «Продлить» и промокод, promo.ts): идёт срок — от его конца (проба остаётся пробой своего вида);
+ *  кончился — от сейчас: кончилась проба — снова проба того же вида, подарок и подписка — подарок (подписку без оплаты не
+ *  возобновить). Только запись — что поменять в users и новый конец; проверки (друг, заморозка, подписка) — у вызывающего. */
+export function extendPatch(u: User, days: number, now: Date): { patch: Partial<User>; until: string } {
+  if (liveTerm(u, now)) {
+    const until = new Date(Math.max(now.getTime(), Date.parse(u.access_until!)) + days * DAY).toISOString();
+    // Вид срока — явно: у записей до шага 31 он вычисляется по длине срока, и продление превратило бы пробу в подарок.
+    return { until, patch: u.plan === "trial" ? { access_until: until, trial_len_days: trialLenOf(u) } : { access_until: until } };
+  }
+  const until = new Date(now.getTime() + days * DAY).toISOString();
+  const ended = endedOf(u);
+  return { until, patch: { plan: "trial", access_until: until, trial_len_days: ended === "trial" ? trialLenOf(u) : 0 } };
+}
 
 /** Карточка аккаунта: только числа и номер. Нет такого — 404. */
 export async function accountCard(store: Store, id: number, now = new Date(), owners = ownerIds()) {
@@ -178,18 +192,7 @@ export async function accountAction(deps: AccountDeps, by: User, id: number, act
     if (isFrozen(u)) throw new AccountError(409, `#${u.id} заморожен — сначала разморозьте`);
     const live = liveTerm(u, now);
     if (action === "extend") {
-      let patch: Partial<User>;
-      let until: string;
-      if (live) {
-        until = new Date(Math.max(now.getTime(), Date.parse(u.access_until!)) + days * DAY).toISOString();
-        // Вид срока — явно: у записей до шага 31 он вычисляется по длине срока, и продление превратило бы пробу в подарок.
-        patch = u.plan === "trial" ? { access_until: until, trial_len_days: trialLenOf(u) } : { access_until: until };
-      } else {
-        until = new Date(now.getTime() + days * DAY).toISOString();
-        // Кончилась проба — снова проба того же вида; подарок и подписка — подарок (подписку без оплаты не возобновить).
-        const ended = endedOf(u);
-        patch = { plan: "trial", access_until: until, trial_len_days: ended === "trial" ? trialLenOf(u) : 0 };
-      }
+      const { patch, until } = extendPatch(u, days, now);
       await store.updateUser(u.id, patch);
       await billingEvent("admin_extend");
       await log("extend", `+${days} дн. → до ${until.slice(0, 10)}`);

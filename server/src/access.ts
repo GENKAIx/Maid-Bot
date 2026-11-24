@@ -2,6 +2,7 @@ import { config } from "./config.ts";
 import type { Store, User } from "./db.ts";
 import { countFeature } from "./feature-events.ts";
 import { tariffs, unpricedOf, type TariffValues } from "./tariffs.ts";
+import { switchOffText, switchOn, type SwitchId } from "./switches.ts";
 import { addDays, dayKey, zonedToUtc } from "./time.ts";
 
 // Платный доступ (24.11.2026): одна проверка «можно ли тратить ИИ на этого человека» для бота, сайта, конвейера и планировщика.
@@ -174,8 +175,9 @@ export function refusalText(why: Refusal, a: Access | null, price = tariffs().pr
 
 /** Почему не пустили к модели — счётчик фич gate.<причина> (feature-list.ts, группа «Доступ»): no_access — нет доступа (проба,
  *  подарок или подписка кончились), burst — слишком часто, day_cap — свой дневной потолок расхода, trial_pool — общий потолок проб,
- *  calls_cap / draws_cap / voice_cap — кончился лимит в штуках на сегодня (запросы, картинки, голос). */
-export type GateReason = "no_access" | "burst" | "day_cap" | "trial_pool" | "calls_cap" | "draws_cap" | "voice_cap";
+ *  calls_cap / draws_cap / voice_cap — кончился лимит в штуках на сегодня (запросы, картинки, голос), switch_off — функцию выключили
+ *  в админке (switches.ts: ИИ целиком, картинки, голосовые). */
+export type GateReason = "no_access" | "burst" | "day_cap" | "trial_pool" | "calls_cap" | "draws_cap" | "voice_cap" | "switch_off";
 const CAP_REASON: Record<Quota, GateReason> = { calls: "calls_cap", draws: "draws_cap", voice_sec: "voice_cap" };
 
 export interface GateOptions {
@@ -206,9 +208,10 @@ export class AiGate {
   access(u: User, now = this.now()): Access {
     return accessOf(u, now, this.opts.owners?.() ?? ownerIds());
   }
-  /** Только доступ (без частоты и денег): фоновые работы планировщика и повтор разбора. */
+  /** Только доступ (без частоты и денег): фоновые работы планировщика и повтор разбора. Выключены «Ответы ИИ» (switches.ts) —
+   *  тоже нет: утро и итог дня идут без модели, фоновый повтор ждёт включения (сообщение не уходит в заметки). */
   allowed(u: User, now = this.now()): boolean {
-    return this.access(u, now).ok;
+    return this.access(u, now).ok && switchOn("ai");
   }
   /** rate: false — без частоты (фоновый повтор; разбор голосового — частоту отметили до распознавания).
    *  client — клиент запроса человека (сайт, виджет, бот…): отказ идёт в счётчик gate.<причина>. Без client (фоновый повтор,
@@ -221,6 +224,11 @@ export class AiGate {
     };
     const a = this.access(u, now);
     if (!a.ok) return no("access", "no_access", a);
+    // Переключатели функций (этап 6, switches.ts) — для всех, и для друзей с владельцем: выключают, чтобы не тратить и не ломать.
+    // Отказ — why money (сообщение заметкой, как при потолке), ничего не взято со счётчиков.
+    const offId: SwitchId | null = !switchOn("ai") ? "ai" : (o.take?.draws ?? 0) > 0 && !switchOn("draw") ? "draw" : (o.take?.voiceSec ?? 0) > 0 && !switchOn("voice") ? "voice" : null;
+    // Голосовое при выключенном ИИ — текст голосовых («напишите текстом»): его не распознать и заметкой не записать.
+    if (offId) return no("money", "switch_off", a, switchOffText(offId === "ai" && (o.take?.voiceSec ?? 0) > 0 ? "voice" : offId));
     if (a.plan === "owner" || a.plan === "friend") return { ok: true };
     if (o.rate !== false && !this.take(u.id, now.getTime())) return no("rate", "burst", a);
     const day = now.toISOString().slice(0, 10);

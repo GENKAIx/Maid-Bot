@@ -277,15 +277,17 @@ export class Billing {
     }
   }
 
-  /** Письмо в Telegram (pay — с кнопкой оплаты, если платить можно) и в ленту уведомлений (сайт, виджет). */
-  async notify(u: User, text: string, pay = true) {
-    await this.store.addNotice(u.id, text, "neutral", "", "other").catch(() => {});
-    if (!this.api || !u.chat_id) return;
+  /** Письмо в Telegram (pay — с кнопкой оплаты, если платить можно) и в ленту уведомлений (сайт, виджет). Ошибок не бросает;
+   *  ответ — куда письмо на деле легло (ответ на обращение пишет это в журнал админа). */
+  async notify(u: User, text: string, pay = true): Promise<{ feed: boolean; telegram: boolean }> {
+    const feed = await this.store.addNotice(u.id, text, "neutral", "", "other").then(() => true, () => false);
+    if (!this.api || !u.chat_id) return { feed, telegram: false };
     const url = pay ? await this.link(u) : null;
-    await this.api.sendMessage(u.chat_id, esc(text), {
+    const telegram = await this.api.sendMessage(u.chat_id, esc(text), {
       parse_mode: "HTML", link_preview_options: { is_disabled: true },
       ...(url ? { reply_markup: { inline_keyboard: [[{ text: `Оформить ⭐${this.price}`, url }]] } } : {}),
-    }).catch((e) => console.error("[billing] письмо", (e as Error).message));
+    }).then(() => true, (e) => (console.error("[billing] письмо", (e as Error).message), false));
+    return { feed, telegram };
   }
 
   /** Строка журнала подписки (billing_events, шаг 28; аналитика). Сбой записи журнала — в лог, оплату и отмену не роняет. */

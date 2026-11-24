@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { clientHeaders, get, getToken, post } from "../api";
-import { isPayUrl, planView, todayText, type Access } from "../billing";
+import { isPayUrl, planView, promoAllowed, todayText, type Access } from "../billing";
+import { promoInput } from "../announce";
+import { SupportCard } from "./Support";
 import { Card, Empty, Spinner } from "../components";
 import { currentSubscription, isIos, pushSupported, standalone, subscribe, unsubscribe } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
@@ -70,6 +72,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="cards">
         <TariffCard access={me.access} onChanged={() => void load()} />
+        <SupportCard />
         <UpdateCard />
         <Card title="Вид" className="reveal">
           <div className="segment" role="radiogroup" aria-label="Тема">
@@ -152,6 +155,38 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
   );
 }
 
+/** Промокод (этап 6, server/src/promo.ts POST /api/promo): дни добавляются к сроку; ответ сервера — одной строкой под полем. */
+export function PromoForm({ onDone }: { onDone: () => void }) {
+  const [code, setCode] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ok = promoInput(code);
+  async function apply() {
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const r = await post<{ text: string }>("/api/promo", { code: ok });
+      setNote(r.text);
+      setCode("");
+      onDone();
+    } catch (e) {
+      setNote((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="promo-form">
+      <div className="row">
+        <input value={code} maxLength={20} placeholder="Промокод" aria-label="Промокод" autoCapitalize="characters" onChange={(e) => setCode(e.target.value.toUpperCase())}
+          onKeyDown={(e) => { if (e.key === "Enter") void apply(); }} />
+        <button disabled={busy || !ok} onClick={() => void apply()}>Применить</button>
+      </div>
+      {note && <p className="small" role="status">{note}</p>}
+    </div>
+  );
+}
+
 /** «Тариф» (24.11.2026): план, срок, дни пробы; оплата — ссылкой на счёт в Telegram (POST /api/billing/link, берётся заранее,
  *  чтобы браузер не счёл окно оплаты всплывающим), отмена продления — POST /api/billing/cancel (доступ остаётся до конца срока). */
 function TariffCard({ access, onChanged }: { access?: Access; onChanged: () => void }) {
@@ -205,6 +240,7 @@ function TariffCard({ access, onChanged }: { access?: Access; onChanged: () => v
       )}
       {note && <p className="small" style={{ marginTop: 8 }} role="status">{note}</p>}
       {v.pay && <p className="muted small" style={{ marginTop: 8 }}>Оплата — звёздами Telegram, продление раз в месяц; отменить можно в любой момент. Условия — /terms в боте.</p>}
+      {promoAllowed(access) && <PromoForm onDone={onChanged} />}
     </Card>
   );
 }

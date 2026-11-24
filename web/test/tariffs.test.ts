@@ -34,7 +34,7 @@ const page = (part: "plans" | "caps", draft?: Partial<TariffValues>, data = DATA
 
 test("меню: «Тарифы» и «Общие потолки» — в «Люди и деньги» после «Оплат», с иконками; журнал подписан", () => {
   const g = adminNavGroups().find((x) => x.group === "Люди и деньги")!;
-  assert.deepEqual(g.items.map((s) => s.id), ["users", "account", "payments", "tariffs", "caps", "audience"], "«Аккаунт» (этап 3) — сразу после «Пользователей»");
+  assert.deepEqual(g.items.map((s) => s.id), ["users", "account", "payments", "tariffs", "caps", "promo", "prognosis", "audience"], "«Аккаунт» (этап 3) — сразу после «Пользователей»; промокоды и прогноз (этап 6) — после потолков");
   assert.equal(adminSection("tariffs"), "tariffs");
   assert.equal(adminSection("caps"), "caps");
   assert.deepEqual(ADMIN_SECTIONS.filter((s) => s.id === "tariffs" || s.id === "caps").map((s) => s.icon), ["adm-tag", "adm-gauge"]);

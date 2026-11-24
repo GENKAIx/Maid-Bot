@@ -3,6 +3,7 @@ import * as webpush from "web-push";
 import type { Store, User } from "./db.ts";
 import type { Emotion } from "./personas.ts";
 import type { Button } from "./scheduler.ts";
+import { switchOn } from "./switches.ts";
 
 // Web Push на телефон и ПК: сервер шлёт короткий JSON, service worker показывает уведомление с кнопками.
 // Кнопка без открытого приложения — подписанная ссылка (HMAC): браузер шлёт её на /api/push/act без входа,
@@ -78,9 +79,9 @@ export class Push {
     };
   }
 
-  /** Разослать на все подписки пользователя; мёртвые (404/410) удалить. */
+  /** Разослать на все подписки пользователя; мёртвые (404/410) удалить. Выключено в админке (switches.ts push) — никому, 0. */
   async send(u: User, text: string, _emotion: Emotion, buttons?: Button[]): Promise<number> {
-    if (!this.ready) return 0;
+    if (!this.ready || !switchOn("push")) return 0;
     const subs = await this.store.pushSubsOf(u.id);
     if (!subs.length) return 0;
     const payload = JSON.stringify(this.payload(u, text, buttons));

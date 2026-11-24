@@ -104,3 +104,11 @@ export function planView(a: Access | null | undefined, price = a?.price ?? 150):
     pay: true,
   };
 }
+
+/** Показать ли поле «Промокод» в блоке «Тариф» (этап 6, server/src/promo.ts): проба, кончившийся срок и подписка без продления.
+ *  Владельцу и другу код не нужен, приостановленному не применить, идущую подписку с продлением код не продлевает. */
+export function promoAllowed(a: Access | null | undefined): boolean {
+  if (!a) return false;
+  if (a.plan === "trial" || a.plan === "expired") return true;
+  return a.plan === "paid" && a.canceled;
+}

@@ -646,14 +646,77 @@ CREATE TABLE IF NOT EXISTS desktop_days (
 );
 CREATE INDEX IF NOT EXISTS desktop_days_day ON desktop_days (day_key, version);
 `,
+  // Шаг 36: этап 6 «Тарифы и управление» — переключатели, промокоды, обращения, объявления. feature_switches — выключенные крупные
+  // функции (switches.ts; нет строки — включено). promo_codes — промокоды, которые дарят дни (promo.ts): код, сколько дней, сколько
+  // раз всего, до какого момента, вкл/выкл; promo_uses — кто применил (один человек — один код: user_id — ключ). support_tickets —
+  // обращения людей (support.ts): тема, текст, статус new | work | closed, ответ. announcements — объявления (announce.ts): текст,
+  // кому, где (сайт и/или виджет), вкл/выкл, срок; announcement_seen — кому объявление уже ушло в ленту виджета (один раз).
+  `
+CREATE TABLE IF NOT EXISTS feature_switches (
+  id TEXT PRIMARY KEY,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL,
+  updated_by INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id {pk},
+  code TEXT NOT NULL UNIQUE,
+  days INTEGER NOT NULL,
+  max_uses INTEGER NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  ends_at TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  created_by INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS promo_uses (
+  user_id INTEGER PRIMARY KEY,
+  code_id INTEGER NOT NULL,
+  days INTEGER NOT NULL,
+  at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS promo_uses_code ON promo_uses (code_id);
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id {pk},
+  user_id INTEGER NOT NULL,
+  topic TEXT NOT NULL,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'new',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  answer TEXT NOT NULL DEFAULT '',
+  answered_at TEXT
+);
+CREATE INDEX IF NOT EXISTS support_tickets_user ON support_tickets (user_id, created_at);
+CREATE INDEX IF NOT EXISTS support_tickets_status ON support_tickets (status, id);
+CREATE TABLE IF NOT EXISTS announcements (
+  id {pk},
+  text TEXT NOT NULL,
+  audience TEXT NOT NULL DEFAULT 'all',
+  site INTEGER NOT NULL DEFAULT 1,
+  widget INTEGER NOT NULL DEFAULT 0,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  ends_at TEXT,
+  created_at TEXT NOT NULL,
+  created_by INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS announcement_seen (
+  announcement_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  at TEXT NOT NULL,
+  PRIMARY KEY (announcement_id, user_id)
+);
+`,
 ];
 
 /** Виды строк журнала подписки (billing_events, шаг 28). paid_first — первая оплата подписки, paid_once — оплата без признака
  *  подписки, renewed — продление, canceled / resumed — продление отменили / возобновили, refunded — возврат, expired — кончилась
  *  подписка, trial_ended — проба, gift_ended — подарок (планировщик перевёл в free; что кончилось — access.ts endedOf),
  *  trial_started — проба при регистрации, gift — подарок по /invite (новому или продление срока). Из админки (admin-account.ts,
- *  шаг 33): admin_extend — продлили срок, admin_grant — выдали подарок без оплаты (как gift, но не по /invite). */
-export const BILLING_KINDS = ["paid_first", "paid_once", "renewed", "canceled", "resumed", "refunded", "expired", "trial_ended", "gift_ended", "trial_started", "gift", "admin_extend", "admin_grant"] as const;
+ *  шаг 33): admin_extend — продлили срок, admin_grant — выдали подарок без оплаты (как gift, но не по /invite). Этап 6 (promo.ts):
+ *  promo — человек применил промокод (дни добавлены, amount — сколько дней). */
+export const BILLING_KINDS = ["paid_first", "paid_once", "renewed", "canceled", "resumed", "refunded", "expired", "trial_ended", "gift_ended", "trial_started", "gift", "admin_extend", "admin_grant", "promo"] as const;
 /** kv: когда в этой базе начали писать журнал подписки и отказы ИИ (шаг 28) — начало данных для правила since. */
 export const COLLECT_SINCE_KEY = "analytics_collect_since";
 /** Номер шага схемы, с которого пишутся billing_events и gate.* (этап 0 аналитики). */
@@ -1864,6 +1927,10 @@ export class Store {
   noticesAll(userId: number, limit: number): Promise<NoticeRow[]> {
     return this.all<NoticeRow>("SELECT * FROM notices WHERE user_id = ? ORDER BY id DESC LIMIT ?", userId, limit);
   }
+  /** Самый большой номер письма во всей ленте (0 — писем нет): следующее письмо любого человека получит номер больше. */
+  async noticeCursor(): Promise<number> {
+    return Number((await this.get<{ n: number | string | null }>("SELECT MAX(id) AS n FROM notices"))?.n ?? 0);
+  }
   noticesAfter(userId: number, afterId: number, limit = 20): Promise<NoticeRow[]> {
     return this.all<NoticeRow>("SELECT * FROM notices WHERE user_id = ? AND id > ? ORDER BY id DESC LIMIT ?", userId, afterId, limit);
   }
@@ -2569,6 +2636,170 @@ export class Store {
   async once(key: string): Promise<boolean> {
     return (await this.run("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING", key, now())) > 0;
   }
+
+  // --- этап 6 «Тарифы и управление» (шаг 36): переключатели, промокоды, обращения, объявления, прогноз ---
+
+  /** Строки переключателей функций (switches.ts): нет строки — функция включена. */
+  async featureSwitches(): Promise<SwitchRow[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT id, enabled, updated_at, updated_by FROM feature_switches ORDER BY id");
+    return rows.map((r) => ({ id: String(r.id), enabled: Number(r.enabled), updated_at: String(r.updated_at), updated_by: Number(r.updated_by ?? 0) }));
+  }
+  async setFeatureSwitch(id: string, enabled: boolean, at: Date, by: number) {
+    await this.run(
+      `INSERT INTO feature_switches (id, enabled, updated_at, updated_by) VALUES (?, ?, ?, ?)
+       ON CONFLICT (id) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+      id, enabled ? 1 : 0, at.toISOString(), by,
+    );
+  }
+
+  /** Промокоды (promo.ts), новые сверху. */
+  async promoCodes(limit = 200): Promise<PromoRow[]> {
+    return (await this.all<Record<string, unknown>>("SELECT * FROM promo_codes ORDER BY id DESC LIMIT ?", limit)).map(toPromo);
+  }
+  async promoByCode(code: string): Promise<PromoRow | undefined> {
+    const r = await this.get<Record<string, unknown>>("SELECT * FROM promo_codes WHERE code = ?", code);
+    return r ? toPromo(r) : undefined;
+  }
+  async promoById(id: number): Promise<PromoRow | undefined> {
+    const r = await this.get<Record<string, unknown>>("SELECT * FROM promo_codes WHERE id = ?", id);
+    return r ? toPromo(r) : undefined;
+  }
+  /** Новый код; такой уже есть — null (UNIQUE). */
+  async addPromoCode(p: { code: string; days: number; max_uses: number; ends_at: string | null; at: Date; by: number }): Promise<number | null> {
+    const n = await this.run(
+      "INSERT INTO promo_codes (code, days, max_uses, ends_at, enabled, created_at, created_by) VALUES (?, ?, ?, ?, 1, ?, ?) ON CONFLICT (code) DO NOTHING",
+      p.code, p.days, p.max_uses, p.ends_at, p.at.toISOString(), p.by,
+    );
+    return n ? ((await this.promoByCode(p.code))?.id ?? null) : null;
+  }
+  async setPromoEnabled(id: number, enabled: boolean): Promise<number> {
+    return this.run("UPDATE promo_codes SET enabled = ? WHERE id = ?", enabled ? 1 : 0, id);
+  }
+  /** Какой код применил человек (один на человека) или undefined. */
+  async promoUseOf(userId: number): Promise<{ code_id: number; days: number; at: string } | undefined> {
+    const r = await this.get<Record<string, unknown>>("SELECT code_id, days, at FROM promo_uses WHERE user_id = ?", userId);
+    return r ? { code_id: Number(r.code_id), days: Number(r.days), at: String(r.at) } : undefined;
+  }
+  /** Занять применение кода: сначала строка «человек применил» (второй раз — mine), потом счётчик кода, если код ещё действует
+   *  (выключен, кончился или исчерпан — gone, строка человека убирается). Две атомарные команды: два одновременных запроса одного
+   *  человека не применят два кода, а последнее применение не уйдёт двоим. */
+  async takePromo(userId: number, codeId: number, days: number, at: Date): Promise<"ok" | "mine" | "gone"> {
+    const mine = await this.run("INSERT INTO promo_uses (user_id, code_id, days, at) VALUES (?, ?, ?, ?) ON CONFLICT (user_id) DO NOTHING", userId, codeId, days, at.toISOString());
+    if (!mine) return "mine";
+    const took = await this.run(
+      "UPDATE promo_codes SET used = used + 1 WHERE id = ? AND enabled = 1 AND used < max_uses AND (ends_at IS NULL OR ends_at > ?)", codeId, at.toISOString(),
+    );
+    if (took) return "ok";
+    await this.dropPromoUse(userId, codeId);
+    return "gone";
+  }
+  /** Вернуть применение (дни добавить не вышло): строка человека и счётчик кода. */
+  async dropPromoUse(userId: number, codeId: number, uncount = false) {
+    await this.run("DELETE FROM promo_uses WHERE user_id = ? AND code_id = ?", userId, codeId);
+    if (uncount) await this.run("UPDATE promo_codes SET used = used - 1 WHERE id = ? AND used > 0", codeId);
+  }
+
+  /** Обращение человека (support.ts). */
+  addTicket(t: { user_id: number; topic: string; text: string; at: Date }): Promise<number> {
+    const at = t.at.toISOString();
+    return this.insert("INSERT INTO support_tickets (user_id, topic, text, status, created_at, updated_at) VALUES (?, ?, ?, 'new', ?, ?)", t.user_id, t.topic, t.text, at, at);
+  }
+  /** Сколько обращений человек написал с since (ISO) — частота. */
+  async ticketsOfSince(userId: number, since: string): Promise<number> {
+    return Number((await this.get<{ n: unknown }>("SELECT COUNT(*) AS n FROM support_tickets WHERE user_id = ? AND created_at >= ?", userId, since))?.n ?? 0);
+  }
+  /** Новых обращений с since (ISO) — правило оповещений support_new. */
+  async ticketsSince(since: string): Promise<number> {
+    return Number((await this.get<{ n: unknown }>("SELECT COUNT(*) AS n FROM support_tickets WHERE created_at >= ?", since))?.n ?? 0);
+  }
+  /** Список для админки — без текста и ответа (их видно только в карточке обращения). */
+  async ticketList(limit = 200): Promise<Omit<TicketRow, "text" | "answer">[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT id, user_id, topic, status, created_at, updated_at, answered_at FROM support_tickets ORDER BY id DESC LIMIT ?", limit,
+    );
+    return rows.map((r) => ({
+      id: Number(r.id), user_id: Number(r.user_id), topic: String(r.topic), status: String(r.status) as TicketStatus,
+      created_at: String(r.created_at), updated_at: String(r.updated_at), answered_at: r.answered_at == null ? null : String(r.answered_at),
+    }));
+  }
+  async ticket(id: number): Promise<TicketRow | undefined> {
+    const r = await this.get<Record<string, unknown>>("SELECT * FROM support_tickets WHERE id = ?", id);
+    return r ? {
+      id: Number(r.id), user_id: Number(r.user_id), topic: String(r.topic), text: String(r.text), status: String(r.status) as TicketStatus,
+      created_at: String(r.created_at), updated_at: String(r.updated_at), answer: String(r.answer ?? ""), answered_at: r.answered_at == null ? null : String(r.answered_at),
+    } : undefined;
+  }
+  /** Обращения одного человека, новые сверху (его «Написать нам»): тема, статус, есть ли ответ — его же тексты ему видны. */
+  async ticketsOf(userId: number, limit = 10): Promise<TicketRow[]> {
+    const ids = await this.all<{ id: number }>("SELECT id FROM support_tickets WHERE user_id = ? ORDER BY id DESC LIMIT ?", userId, limit);
+    const out: TicketRow[] = [];
+    for (const r of ids) { const t = await this.ticket(Number(r.id)); if (t) out.push(t); }
+    return out;
+  }
+  async updateTicket(id: number, p: { status?: TicketStatus; answer?: string; answered_at?: string; at: Date }) {
+    if (p.status) await this.run("UPDATE support_tickets SET status = ?, updated_at = ? WHERE id = ?", p.status, p.at.toISOString(), id);
+    if (p.answer !== undefined) await this.run("UPDATE support_tickets SET answer = ?, answered_at = ?, updated_at = ? WHERE id = ?", p.answer, p.answered_at ?? p.at.toISOString(), p.at.toISOString(), id);
+  }
+
+  /** Объявления (announce.ts), новые сверху. */
+  async announcements(limit = 100): Promise<AnnouncementRow[]> {
+    return (await this.all<Record<string, unknown>>("SELECT * FROM announcements ORDER BY id DESC LIMIT ?", limit)).map(toAnnouncement);
+  }
+  async announcement(id: number): Promise<AnnouncementRow | undefined> {
+    const r = await this.get<Record<string, unknown>>("SELECT * FROM announcements WHERE id = ?", id);
+    return r ? toAnnouncement(r) : undefined;
+  }
+  addAnnouncement(a: { text: string; audience: string; site: boolean; widget: boolean; ends_at: string | null; at: Date; by: number }): Promise<number> {
+    const at = a.at.toISOString();
+    return this.insert(
+      "INSERT INTO announcements (text, audience, site, widget, enabled, ends_at, created_at, created_by, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)",
+      a.text, a.audience, a.site ? 1 : 0, a.widget ? 1 : 0, a.ends_at, at, a.by, at,
+    );
+  }
+  async setAnnouncementEnabled(id: number, enabled: boolean, at: Date): Promise<number> {
+    return this.run("UPDATE announcements SET enabled = ?, updated_at = ? WHERE id = ?", enabled ? 1 : 0, at.toISOString(), id);
+  }
+  /** Каким объявлениям человек уже получил строку в ленте виджета. */
+  async announcementsSeen(userId: number): Promise<number[]> {
+    return (await this.all<{ announcement_id: number }>("SELECT announcement_id FROM announcement_seen WHERE user_id = ?", userId)).map((r) => Number(r.announcement_id));
+  }
+  /** Отметить «ушло в ленту»; уже было — false (два одновременных опроса не запишут два письма). */
+  async markAnnouncementSeen(id: number, userId: number, at: Date): Promise<boolean> {
+    return (await this.run("INSERT INTO announcement_seen (announcement_id, user_id, at) VALUES (?, ?, ?) ON CONFLICT (announcement_id, user_id) DO NOTHING", id, userId, at.toISOString())) > 0;
+  }
+  /** Сколько людей объявление уже получило в виджете. */
+  async announcementReach(): Promise<Map<number, number>> {
+    const rows = await this.all<Record<string, unknown>>("SELECT announcement_id AS id, COUNT(*) AS n FROM announcement_seen GROUP BY announcement_id");
+    return new Map(rows.map((r) => [Number(r.id), Number(r.n)]));
+  }
+
+  /** Звёзды по дням (UTC, первые 10 знаков paid_at) с since (ISO), без возвращённых — прогноз доходов. */
+  async starDays(since: string): Promise<{ day: string; stars: number; n: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT SUBSTR(paid_at, 1, 10) AS day, SUM(amount) AS stars, COUNT(*) AS n FROM payments WHERE paid_at >= ? AND refunded_at IS NULL AND currency = 'XTR' GROUP BY SUBSTR(paid_at, 1, 10) ORDER BY day",
+      since,
+    );
+    return rows.map((r) => ({ day: String(r.day), stars: Number(r.stars) || 0, n: Number(r.n) || 0 }));
+  }
+}
+
+export interface SwitchRow { id: string; enabled: number; updated_at: string; updated_by: number }
+export interface PromoRow { id: number; code: string; days: number; max_uses: number; used: number; ends_at: string | null; enabled: number; created_at: string; created_by: number }
+export type TicketStatus = "new" | "work" | "closed";
+export interface TicketRow { id: number; user_id: number; topic: string; text: string; status: TicketStatus; created_at: string; updated_at: string; answer: string; answered_at: string | null }
+export interface AnnouncementRow { id: number; text: string; audience: string; site: number; widget: number; enabled: number; ends_at: string | null; created_at: string; created_by: number; updated_at: string }
+
+function toPromo(r: Row): PromoRow {
+  return {
+    id: Number(r.id), code: String(r.code), days: Number(r.days), max_uses: Number(r.max_uses), used: Number(r.used), ends_at: r.ends_at == null ? null : String(r.ends_at),
+    enabled: Number(r.enabled), created_at: String(r.created_at), created_by: Number(r.created_by ?? 0),
+  };
+}
+function toAnnouncement(r: Row): AnnouncementRow {
+  return {
+    id: Number(r.id), text: String(r.text), audience: String(r.audience), site: Number(r.site), widget: Number(r.widget), enabled: Number(r.enabled),
+    ends_at: r.ends_at == null ? null : String(r.ends_at), created_at: String(r.created_at), created_by: Number(r.created_by ?? 0), updated_at: String(r.updated_at),
+  };
 }
 
 function toActivity(r: Row): ActivityRow {

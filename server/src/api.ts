@@ -42,6 +42,11 @@ import { AlertError, Alerts } from "./alerts.ts";
 import { DbCopies, DbCopyBusy } from "./snapshot.ts";
 import { acceptCrashes, adminCrashes, CRASH_MAX_ITEMS, noteDesktopDay } from "./crashes.ts";
 import { changeRelease, ReleaseError, releasesView, servedYml, ymlVersion } from "./releases.ts";
+import { setSwitch, SwitchError, switchesView, switchOffText, switchOn } from "./switches.ts";
+import { createPromo, PromoError, promoView, redeemPromo, togglePromo } from "./promo.ts";
+import { createTicket, SupportError, supportOf, ticketAction, ticketCard, ticketsView } from "./support.ts";
+import { AnnounceError, announcementsView, createAnnouncement, deliverToWidget, siteAnnouncements, toggleAnnouncement } from "./announce.ts";
+import { prognosisView } from "./prognosis.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -88,6 +93,16 @@ async function guardAsync<T>(fn: () => Promise<T>): Promise<T> {
     return await fn();
   } catch (e) {
     if (e instanceof AccountError) throw new HttpError(e.status, e.message);
+    throw e;
+  }
+}
+
+/** Ошибки этапа 6 (переключатели, промокоды, обращения, объявления) — в ответ с их кодом. */
+async function stage6<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof SwitchError || e instanceof PromoError || e instanceof SupportError || e instanceof AnnounceError) throw new HttpError(e.status, e.message);
     throw e;
   }
 }
@@ -390,7 +405,7 @@ export function createApi(deps: ApiDeps) {
       if (m === "GET" && !acc[2]) return guardAsync(() => accountCard(store, id));
       if (m === "POST" && acc[2]) {
         const body = await readJson(req, 20_000);
-        const tell = deps.billing ? (x: User, text: string) => deps.billing!.notify(x, text, false) : undefined;
+        const tell = deps.billing ? (x: User, text: string) => deps.billing!.notify(x, text, false).then(() => {}) : undefined;
         const cancelSub = deps.billing ? (x: User) => deps.billing!.cancel(x) : undefined;
         return guardAsync(() => accountAction({ store, tell, cancelSub }, u, id, acc[2], body));
       }
@@ -456,6 +471,37 @@ export function createApi(deps: ApiDeps) {
       }
       return releasesView(store, await desktopYml());
     }
+    // Этап 6 «Тарифы и управление»: переключатели функций (switches.ts), промокоды (promo.ts), обращения (support.ts), объявления
+    // (announce.ts), прогноз (prognosis.ts). Каждое действие — с причиной, сервер пишет его в журнал админа.
+    if (m === "GET" && p === "/api/admin/switches") return switchesView(store);
+    if (m === "POST" && p === "/api/admin/switches") {
+      const b = await readJson(req, 20_000);
+      return stage6(() => setSwitch(store, u.id, b));
+    }
+    if (m === "GET" && p === "/api/admin/promo") return promoView(store);
+    if (m === "POST" && (p === "/api/admin/promo" || p === "/api/admin/promo/toggle")) {
+      const b = await readJson(req, 20_000);
+      return stage6(() => (p.endsWith("toggle") ? togglePromo(store, u.id, b) : createPromo(store, u.id, b)));
+    }
+    if (m === "GET" && p === "/api/admin/tickets") return ticketsView(store);
+    const tk = /^\/api\/admin\/tickets\/(\d{1,10})(?:\/([a-z]+))?$/.exec(p);
+    if (tk) {
+      const id = Number(tk[1]);
+      if (id > MAX_ACCOUNT_ID) throw new HttpError(404, `нет обращения №${tk[1]}`);
+      if (m === "GET" && !tk[2]) return stage6(() => ticketCard(store, id));
+      if (m === "POST" && tk[2]) {
+        const b = await readJson(req, 20_000);
+        const tell = deps.billing ? (x: User, text: string) => deps.billing!.notify(x, text, false) : undefined;
+        return stage6(() => ticketAction({ store, tell }, u.id, id, tk[2], b));
+      }
+      throw new HttpError(404, "нет такого адреса");
+    }
+    if (m === "GET" && p === "/api/admin/announcements") return announcementsView(store);
+    if (m === "POST" && (p === "/api/admin/announcements" || p === "/api/admin/announcements/toggle")) {
+      const b = await readJson(req, 20_000);
+      return stage6(() => (p.endsWith("toggle") ? toggleAnnouncement(store, u.id, b) : createAnnouncement(store, u.id, b)));
+    }
+    if (m === "GET" && p === "/api/admin/prognosis") return prognosisView(store);
     throw new HttpError(404, "нет такого адреса");
   }
 
@@ -624,6 +670,19 @@ export function createApi(deps: ApiDeps) {
       if (!r.ok) throw new HttpError(409, r.text);
       return r;
     }
+    // Промокод (этап 6, promo.ts): человек вводит код в «Тарифе» — дни добавляются к сроку; перебор — 429.
+    if (m === "POST" && p === "/api/promo") {
+      const b = parseBody(z.object({ code: z.string().max(40) }), await readJson(req, 2_000));
+      return stage6(() => redeemPromo(store, u, b.code));
+    }
+    // «Написать нам» (этап 6, support.ts): темы, свои обращения и ответы; новое — не больше SUPPORT_PER_DAY в сутки.
+    if (m === "GET" && p === "/api/support") return supportOf(store, u);
+    if (m === "POST" && p === "/api/support") {
+      const b = await readJson(req, 20_000);
+      return stage6(() => createTicket(store, u, b));
+    }
+    // Объявления для плашки сайта (этап 6, announce.ts).
+    if (m === "GET" && p === "/api/announcements") return siteAnnouncements(store, u);
     // Расход модели, рисования и голоса: по дням (UTC, все дни подряд — и пустые), по назначениям и моделям за эти дни, итог месяца.
     // Только свой (24.11.2026: раньше любой вошедший видел расход всего сервера; общий — в админке).
     if (m === "GET" && p === "/api/usage") {
@@ -735,6 +794,7 @@ export function createApi(deps: ApiDeps) {
     }
     if (m === "POST" && p === "/api/push/test") {
       if (!deps.push?.ready) throw new HttpError(404, "push выключен");
+      if (!switchOn("push")) throw new HttpError(409, switchOffText("push"));
       const sent = await deps.push.send(u, "🔔 Проверка уведомлений\nЕсли вы это видите — всё работает.", "happy",
         (await store.habitsOn(u.id, today)).slice(0, 1).map((h) => habitButtons(h.id, today)[0]));
       return { sent };
@@ -742,7 +802,16 @@ export function createApi(deps: ApiDeps) {
     // Лента уведомлений для горничной на ПК: ?after=<id> — только новые; пусто — последние.
     if (m === "GET" && p === "/api/notices") {
       const after = Number(q("after") ?? 0);
+      // Объявления «в виджет» (этап 6, announce.ts) — строкой в ленту, один раз. Только когда виджет уже знает, где он в ленте
+      // (after > 0): первый опрос лишь запоминает последнее письмо и не показывает его — объявление пропало бы.
+      if (after > 0) await deliverToWidget(store, u).catch((e) => console.error("[announce]", (e as Error).message));
       const rows = await store.noticesAfter(u.id, Number.isFinite(after) ? after : 0, after ? 20 : 1);
+      // Своих писем ещё нет — первый опрос получает «метку места» (номер последнего письма в ленте вообще, без текста): виджет
+      // запоминает её и дальше спрашивает after > 0, поэтому и объявление, и первое обычное письмо он покажет, а не проглотит.
+      if (!(after > 0) && !rows.length) {
+        const cursor = await store.noticeCursor();
+        return cursor > 0 ? [{ id: cursor, user_id: u.id, text: "", emotion: "neutral", buttons: [], at: new Date().toISOString(), kind: "cursor" }] : [];
+      }
       return rows.map((r) => ({ ...r, buttons: r.buttons ? (JSON.parse(r.buttons) as Button[]) : [] }));
     }
     // История писем горничной: ?kinds=morning,plan — только этих видов, ?before=<id> — старше этого письма.

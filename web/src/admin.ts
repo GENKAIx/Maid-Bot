@@ -13,14 +13,16 @@
 // «Копии базы» — ночная копия, отправка в Telegram, проверка восстановления (server/src/snapshot.ts DbCopies); screens/AdminAlerts.tsx.
 // Этап 5 «Тарифы и управление» (24.11.2026): «Выпуски» — поэтапный выпуск программы на ПК (server/src/releases.ts) и «Падения» —
 // падения программы по версиям и местам (server/src/crashes.ts); screens/AdminReleases.tsx.
+// Этап 6 «Тарифы и управление» (24.11.2026): «Переключатели» (server/src/switches.ts), «Промокоды» (promo.ts), «Обращения»
+// (support.ts), «Объявления» (announce.ts), «Прогноз» (prognosis.ts); screens/AdminManage.tsx. Новая категория «Связь с людьми».
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
 export const ADMIN_LIVE_STAGE = 5;
 
-export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "spend" | "audience" | "quality" | "features" | "showcase" | "health" | "alerts" | "releases" | "crashes" | "backups" | "log";
+export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "promo" | "prognosis" | "spend" | "audience" | "quality" | "features" | "switches" | "showcase" | "tickets" | "news" | "health" | "alerts" | "releases" | "crashes" | "backups" | "log";
 
 // Меню по категориям (24.11.2026): group — заголовок категории (ADMIN_GROUPS, по порядку), icon — имя в icons.tsx.
-export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Продукт", "Система"] as const;
+export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Продукт", "Связь с людьми", "Система"] as const;
 export type AdminGroup = (typeof ADMIN_GROUPS)[number];
 
 export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number; group: AdminGroup; icon: string }[] = [
@@ -34,11 +36,18 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number;
   // только раздула бы меню, а лимиты в штуках (этап 2) лягут в эти же два раздела.
   { id: "tariffs", title: "Тарифы", stage: 0, group: "Люди и деньги", icon: "adm-tag" },
   { id: "caps", title: "Общие потолки", stage: 0, group: "Люди и деньги", icon: "adm-gauge" },
+  // Этап 6: промокоды дарят дни — рядом с тарифами; прогноз денег и расходов — рядом с ними же (в макете — «Деньги»).
+  { id: "promo", title: "Промокоды", stage: 0, group: "Люди и деньги", icon: "adm-gift" },
+  { id: "prognosis", title: "Прогноз", stage: 0, group: "Люди и деньги", icon: "adm-trend" },
   { id: "audience", title: "Аудитория", stage: 1, group: "Люди и деньги", icon: "adm-target" },
   { id: "spend", title: "Расходы на модель", stage: 1, group: "ИИ", icon: "adm-coins" },
   { id: "quality", title: "Качество разбора", stage: 1, group: "ИИ", icon: "adm-check" },
   { id: "features", title: "Использование функций", stage: 3, group: "Продукт", icon: "adm-spark" },
+  { id: "switches", title: "Переключатели", stage: 0, group: "Продукт", icon: "adm-toggle" },
   { id: "showcase", title: "Витрина", stage: 4, group: "Продукт", icon: "adm-grid" },
+  // Этап 6: связь с людьми — обращения и объявления.
+  { id: "tickets", title: "Обращения", stage: 0, group: "Связь с людьми", icon: "adm-chat" },
+  { id: "news", title: "Объявления", stage: 0, group: "Связь с людьми", icon: "adm-megaphone" },
   { id: "health", title: "Здоровье сервера", stage: 2, group: "Система", icon: "adm-pulse" },
   // Этап 4 «Тарифы и управление»: в «Системе» — рядом со здоровьем сервера, о котором оповещения и пишут.
   { id: "alerts", title: "Оповещения", stage: 0, group: "Система", icon: "adm-bell" },
@@ -84,6 +93,16 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   release_pause: "поставил выпуск на паузу",
   release_resume: "продолжил выпуск",
   release_autopause: "поставил выпуск на паузу из-за падений",
+  switch_on: "включил функцию",
+  switch_off: "выключил функцию",
+  promo_create: "создал промокод",
+  promo_on: "включил промокод",
+  promo_off: "выключил промокод",
+  ticket_status: "сменил статус обращения",
+  ticket_answer: "ответил на обращение",
+  announce_create: "опубликовал объявление",
+  announce_on: "включил объявление",
+  announce_off: "выключил объявление",
 };
 
 // ——— Выпуски и падения (этап 5; типы — копия server/src/releases.ts releasesView и server/src/crashes.ts adminCrashes).
@@ -147,6 +166,91 @@ export function percentError(text: string): string | null {
   if (!Number.isInteger(v)) return "целое число";
   if (v < 1 || v > 100) return "от 1 до 100";
   return null;
+}
+
+// ——— Этап 6 (типы — копия server/src/switches.ts switchesView, promo.ts promoView, support.ts ticketsView и ticketCard,
+// announce.ts announcementsView, prognosis.ts prognosisView).
+export interface SwitchInfo { id: string; title: string; hint: string; off_text: string; on: boolean; updated_at: string | null; updated_by: string | null }
+export interface SwitchesData { reload_ms: number; env_closed: boolean; switches: SwitchInfo[] }
+
+export type PromoState = "on" | "off" | "ended" | "empty";
+export interface PromoCode { id: number; code: string; days: number; used: number; max_uses: number; ends_at: string | null; created_at: string; created_by: string; state: PromoState }
+export interface PromoData { days_max: number; uses_max: number; tries: number; window_min: number; codes: PromoCode[] }
+/** Состояние кода одной фразой и тоном. */
+export function promoStateText(s: PromoState): { text: string; tone: "ok" | "mute" | "warn" } {
+  return s === "on" ? { text: "работает", tone: "ok" } : s === "empty" ? { text: "кончился", tone: "mute" } : s === "ended" ? { text: "срок вышел", tone: "mute" } : { text: "выключен", tone: "warn" };
+}
+/** Проверка своего кода в поле (как на сервере promo.ts PROMO_RE): null — годится. Пусто — значит «сгенерировать». */
+export function promoCodeError(code: string): string | null {
+  const c = code.trim().toUpperCase();
+  if (!c) return null;
+  return /^[A-Z0-9-]{4,20}$/.test(c) ? null : "латиница, цифры и дефис, 4–20 знаков";
+}
+
+export type TicketStatus = "new" | "work" | "closed";
+export const TICKET_STATUS_NAMES: Record<TicketStatus, string> = { new: "новое", work: "в работе", closed: "закрыто" };
+export interface TicketRow { id: number; account: string; user_id: number; topic: string; status: TicketStatus; created_at: string; updated_at: string; answered: boolean }
+export interface TicketsData {
+  per_day: number; topics: Record<string, string>;
+  counts: { new: number; work: number; week: number; oldest_open: string | null; answer_hours: number | null };
+  tickets: TicketRow[];
+}
+export interface TicketCard {
+  id: number; account: string; user_id: number; topic: string; status: TicketStatus; text: string; answer: string | null;
+  created_at: string; updated_at: string; answered_at: string | null; plan: string | null; telegram: boolean;
+  /** Только в ответе на «Ответить»: куда ответ ушёл на деле (server/src/support.ts TicketDelivery). */
+  delivered?: TicketDelivery;
+}
+export type TicketDelivery = "telegram" | "feed" | "feed_tg_failed";
+/** Что показать админу после «Ответить»: куда ответ на деле дошёл. */
+export function ticketAnswerText(d: TicketDelivery | undefined): string {
+  return d === "telegram" ? "Ответ ушёл в Telegram и в уведомления."
+    : d === "feed_tg_failed" ? "Telegram не принял ответ — он только в уведомлениях; обращение осталось «в работе»."
+      : "Ответ ушёл в уведомления.";
+}
+/** Сколько ждёт: «5 мин», «3 ч», «2 д»; нет — «—». */
+export function waitText(iso: string | null, now = new Date()): string {
+  if (!iso) return "—";
+  const m = Math.max(0, Math.round((now.getTime() - Date.parse(iso)) / 60_000));
+  return m < 60 ? `${m} мин` : m < 48 * 60 ? `${Math.round(m / 60)} ч` : `${Math.round(m / 1440)} д`;
+}
+
+export type NewsAudience = "all" | "trial" | "paid";
+export interface NewsItem { id: number; text: string; audience: NewsAudience; site: boolean; widget: boolean; enabled: boolean; ends_at: string | null; live: boolean; created_at: string; created_by: string; widget_got: number }
+export interface NewsData { text_max: number; audiences: Record<NewsAudience, string>; cache_ms: number; people: Record<NewsAudience, number>; items: NewsItem[] }
+/** Проверка текста объявления (как на сервере announce.ts announceTextError): null — годится. */
+export function newsTextError(v: string, max = 200): string | null {
+  if (!v.trim()) return "напишите текст";
+  if (v.trim().length > max) return `не длиннее ${max} знаков`;
+  if (/[<>]/.test(v)) return "без знаков < и >";
+  // eslint-disable-next-line no-control-regex -- управляющие знаки и есть то, что ищем
+  if (/[\u0000-\u001f\u007f]/.test(v)) return "одной строкой";
+  return null;
+}
+/** Объявление в виджете начинается так (server/src/announce.ts ANNOUNCE_PREFIX). */
+export const NEWS_PREFIX = "📢 ";
+
+/** data_days — сколько дней с первого дня с данными (среднее делится на них, а не на 7 или 30). */
+export interface PrognosisPair { by7: number; by30: number; data_days?: number }
+export interface PrognosisData {
+  days: number; star_usd: number;
+  /** Меньше стольких дней с данными — без прямой и дней до потолка (server/src/prognosis.ts PROGNOSIS_MIN_DAYS). */
+  min_days: number;
+  spend: { month: PrognosisPair; today: number; data_days: number; slope_per_day: number; trend_last: number; alert_cap: number; days_to_alert: number | null };
+  trial_pool: { cap: number; today: number; data_days: number; slope_per_day: number; trend_last: number; days_to_cap: number | null };
+  income: { stars: PrognosisPair; usd: PrognosisPair };
+  renewals: { n: number; stars: number; usd: number; ending_without_renew: number; by_day: { day: string; n: number; stars: number }[] };
+  series: { day: string; cost: number; trial: number; stars: number }[];
+}
+/** Мало дней с данными — «мало данных: N дн.», иначе null. */
+export function fewDataText(dataDays: number | undefined, min: number): string | null {
+  return dataDays != null && dataDays < min ? `мало данных: ${dataDays} дн.` : null;
+}
+/** Подпись плитки роста расхода по знаку: растёт или снижается (значение — без минуса). */
+export const growTitle = (slope: number): string => (slope >= 0 ? "Расход за день растёт на" : "Расход за день снижается на");
+/** Дни до потолка словами: null — «не упрёмся при нынешнем темпе», 0 — «уже», иначе «через N дн.». */
+export function capDaysText(d: number | null): string {
+  return d == null ? "не упрёмся при нынешнем темпе" : d === 0 ? "уже на потолке" : `через ${d} дн.`;
 }
 
 // ——— Оповещения (этап 4, GET /api/admin/alerts; типы — копия server/src/alerts.ts Alerts.view).

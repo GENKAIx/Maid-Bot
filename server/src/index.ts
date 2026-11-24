@@ -22,6 +22,7 @@ import { AiGate } from "./access.ts";
 import { Billing, billingSecret } from "./billing.ts";
 import { installLogRedaction } from "./log-redact.ts";
 import { loadTariffs, watchTariffs } from "./tariffs.ts";
+import { loadSwitches, watchSwitches } from "./switches.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
@@ -35,6 +36,9 @@ console.log(`[start] база: ${config.databaseUrl ? "Postgres" : "SQLite " + c
 // Тарифы из базы (tariffs.ts): прочитать сейчас и перечитывать раз в минуту — админка меняет их без выкладки.
 await loadTariffs(store);
 watchTariffs(store);
+// Переключатели функций (этап 6, switches.ts): из базы при запуске и раз в минуту — как тарифы.
+await loadSwitches(store);
+watchSwitches(store);
 const pipeline = new Pipeline(store, callLlm, config.publicUrl);
 if (drawReady()) pipeline.draw = callDraw;
 // Платный доступ (access.ts): одна проверка перед ИИ — в конвейере (сообщения, поправки, повтор), планировщике, боте и API.

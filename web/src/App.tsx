@@ -21,6 +21,7 @@ import { Search } from "./screens/Search";
 import { Trash } from "./screens/Trash";
 import { Features } from "./screens/Features";
 import { Icon } from "./icons";
+import { NewsBar } from "./NewsBar";
 import { dropUsage, logoutUsage, screenFeature, startUsage, track } from "./usage";
 
 // Каталог для разработки — отдельным куском: обычным экранам его тексты не нужны.
@@ -170,6 +171,8 @@ export function App() {
         </div>
       )}
       <main className="main">
+        {/* Объявления владельца (этап 6, NewsBar.tsx): плашка с крестиком над экраном. */}
+        <NewsBar />
         <div className="content" key={tab}>{screen}</div>
         <Composer onChanged={onChanged} />
       </main>
