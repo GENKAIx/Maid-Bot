@@ -1677,11 +1677,14 @@ function addPlanToday() {
     if (add) openNewPlan(add, null);
   }, 260);
 }
-function togglePlansOn(day, spot) {
+// byHand — открыли щелчком по «Дальше» или значку дня: только это и в счёт «Часов планов» (панель после галочки задачи
+// и после «+ План» открывается сама — не в счёт).
+function togglePlansOn(day, spot, byHand = false) {
   if (!$("#planClock").classList.contains("hidden") && clockDay === day) return hideClock();
   // Полоса дней — та неделя, где этот день.
   const n = data ? daysFrom(data.day, day) : 0;
   if (n < stripFrom || n > stripFrom + DAYS_AHEAD) stripFrom = Math.floor(n / (DAYS_AHEAD + 1)) * (DAYS_AHEAD + 1);
+  if (byHand) maid.track?.("widget.clock");
   showClock(day);
   loadFar();
   if (spot) setTimeout(() => spotCard(spot), 220); // после того как панель раскрылась — иначе вспышку не успеть заметить
@@ -1702,11 +1705,11 @@ $("#next").addEventListener("click", (ev) => {
   if (ev.target.closest("[data-addplan]")) return addPlanToday();
   // Строка важной даты — вспыхивает её карточка в панели дня (pl-date, data-date), а не план с таким id.
   const spot = nx?.dataset.date ? `[data-date="${nx.dataset.date}"]` : nx?.dataset.id ? `[data-id="${nx.dataset.id}"]` : null;
-  togglePlansOn(nx?.dataset.day || $("#next").dataset.day || data?.day, spot);
+  togglePlansOn(nx?.dataset.day || $("#next").dataset.day || data?.day, spot, true);
 });
 $("#pins").addEventListener("click", (ev) => {
   const pin = ev.target.closest(".pin");
-  if (pin) togglePlansOn(pin.dataset.day || data?.day);
+  if (pin) togglePlansOn(pin.dataset.day || data?.day, null, true);
 });
 setInterval(() => { if (!$("#planClock").classList.contains("hidden")) drawClock(); }, 30_000);
 

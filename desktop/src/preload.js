@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld("maid", {
   downReady: () => ipcRenderer.send("down-ready"),
   /** Скачать и поставить новую версию программы (значок-шестерёнка в виджете); состояние приходит событием "update". */
   installUpdate: () => ipcRenderer.send("update-install"),
+  /** Счётчик фичи для админки (main.js → usage.js): только имя из белого списка, без данных. */
+  track: (name) => ipcRenderer.send("usage", name),
   /** «Перекрасить Рину» (maidlook.js): исходники из assets и кэш перекрашенных анимаций в userData/maid-look (только виджет). */
   look: {
     asset: (name, keep) => ipcRenderer.invoke("look:asset", name, keep),

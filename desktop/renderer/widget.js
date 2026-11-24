@@ -2795,6 +2795,7 @@ $("#gear").addEventListener("contextmenu", (e) => {
 // Свернуть в шапке: панель сворачивается в карточку (как двойной щелчок по горничной).
 $("#foldBtn").addEventListener("click", (e) => {
   e.stopPropagation();
+  maid.track?.("widget.fold");
   autoOpened = false;
   foldAnimated(true);
 });
@@ -2912,10 +2913,11 @@ for (const ev of ["pointerup", "pointercancel"]) $("#maid").addEventListener(ev,
 $("#maid").addEventListener("dblclick", () => {
   clearTimeout(clickTimer);
   if (!collapsed) return;
+  maid.track?.("widget.fold");
   autoOpened = false;
   foldAnimated(false);
 });
-$("#miniOpen").onclick = () => { autoOpened = false; foldAnimated(false); };
+$("#miniOpen").onclick = () => { maid.track?.("widget.fold"); autoOpened = false; foldAnimated(false); };
 // Выдвижная панель планов под свёрнутой карточкой: щелчок (по дню, по плану) разворачивает всю панель; перетаскивать здесь нельзя.
 $("#planClock").addEventListener("pointerdown", (e) => { if (collapsed) e.stopImmediatePropagation(); }, true);
 $("#planClock").addEventListener("click", (e) => {
@@ -2925,7 +2927,7 @@ $("#planClock").addEventListener("click", (e) => {
   hideClock();
   foldAnimated(false);
 }, true);
-$("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button, form, .mini-stars")) return; autoOpened = false; foldAnimated(false); });
+$("#mini").addEventListener("dblclick", (e) => { if (e.target.closest("button, form, .mini-stars")) return; maid.track?.("widget.fold"); autoOpened = false; foldAnimated(false); });
 // Строка ввода свёрнутой панели: Enter — в ту же очередь, что чат панели; ответ — облачком над головой, панель остаётся свёрнутой.
 $("#miniAsk").onsubmit = (e) => {
   e.preventDefault();

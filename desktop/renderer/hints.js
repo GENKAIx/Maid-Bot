@@ -87,6 +87,7 @@ function syncHints() {
 function useHint(id) {
   const h = HINTS.find((x) => x.id === id);
   if (!h) return;
+  maid.track?.("widget.hints");
   hintsOff = true;
   if (h.send) enqueue("/api/input", { text: h.text, id: crypto.randomUUID() }, h.text);
   else {

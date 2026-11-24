@@ -8,6 +8,7 @@ const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, screen, nativeI
 const { addMissingGames, createTracker, foreground, localDay, MORE_GAMES, STEP_MS } = require("./activity.js");
 const { iconKey, newIcons } = require("./icons.js");
 const { createUpdates } = require("./updates.js");
+const { createUsage, USAGE_EVERY_MS } = require("./usage.js");
 
 // Сервер по умолчанию (23.11.2026): установленная программа сразу смотрит на настоящий сервер, в разработке — на свой.
 // Раньше у новой установки был localhost:3000, и вход из виджета (без поля адреса) всегда писал «Нет связи с сервером».
@@ -225,10 +226,11 @@ async function api(method, p, body, moved = false, client = "desktop") {
   if (res.status === 401) {
     if (!loginStale) maidLog("сервер не принял ключ (401) — нужен вход заново");
     loginStale = true;
-    throw new Error(LOGIN_STALE);
+    throw Object.assign(new Error(LOGIN_STALE), { status: 401 });
   }
   loginStale = false;
-  if (!res.ok) throw new Error(data.error ?? `сервер ${res.status}`);
+  // status — для счётчиков (usage.js): по нему понятно, выбросить пачку или прислать позже.
+  if (!res.ok) throw Object.assign(new Error(data.error ?? `сервер ${res.status}`), { status: res.status });
   return data;
 }
 /** Сервер ответил 401 на ключ программы: виджет просит войти, настройки открывают форму входа. */
@@ -364,6 +366,8 @@ ipcMain.on("widget-drag", (_e, phase) => {
     followCursor();
   } else if (phase === "end" && drag) {
     clearInterval(drag.timer);
+    const b = widget.getBounds();
+    if (b.x !== drag.b.x || b.y !== drag.b.y) countUse("widget.drag"); // окно сдвинулось (щелчок по горничной — не в счёт)
     drag = null;
     settleWidget();
   }
@@ -705,6 +709,7 @@ function toggleWidget(show = !widget) {
 
 // --- быстрый ввод ---
 function showQuick() {
+  countUse("widget.quick");
   if (!quick) {
     const a = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
     quick = new BrowserWindow({
@@ -735,7 +740,7 @@ function refreshTray() {
     { type: "separator" },
     { label: "Запускать с Windows", type: "checkbox", checked: Boolean(settings.autostart), enabled: app.isPackaged,
       click: (it) => { settings.autostart = it.checked; saveSettings(); applyAutostart(); } },
-    ...(updates.state().status === "available" ? [{ label: `Обновить до ${updates.state().next}`, click: () => void updates.install() }] : []),
+    ...(updates.state().status === "available" ? [{ label: `Обновить до ${updates.state().next}`, click: () => { countUse("widget.update"); void updates.install(); } }] : []),
     { label: "Выход", click: () => { quitting = true; app.quit(); } },
   ]));
 }
@@ -819,6 +824,13 @@ const clientOfWin = (wc) =>
   (widget && !widget.isDestroyed() && wc === widget.webContents ? "widget" : quick && !quick.isDestroyed() && wc === quick.webContents ? "quick" : "desktop");
 ipcMain.handle("api", (e, method, p, body) => api(method, p, body, false, clientOfWin(e.sender)));
 
+// Счётчики фич для админки (usage.js): имена — только из белого списка, только от виджета и быстрой записи.
+// Пачка — раз в USAGE_EVERY_MS (whenReady) и при выходе (before-quit); нет входа — счёт ждёт, ошибки окнам не показываются.
+let usage = null;
+const countUse = (name) => usage?.count(name);
+ipcMain.on("usage", (e, name) => { if (clientOfWin(e.sender) !== "desktop") countUse(name); });
+const sendUsage = (body) => (token() ? api("POST", "/api/events/usage", body, false, "widget") : Promise.reject(new Error("нет входа")));
+
 // «Перекрасить Рину» (renderer/maidlook.js): виджет читает анимации и маски из assets и хранит перекрашенные в
 // userData/maid-look/<ключ>/<имя>.webp — одну папку, нынешний набор (look:keep убирает остальные). Только виджету.
 const LOOK_NAME = /^[a-z0-9]{1,24}$/;
@@ -859,7 +871,8 @@ ipcMain.handle("look:keep", (e, set) => {
 });
 // Раздел приложения (щелчок по карточке в облачке горничной): главное окно открывается сразу на нём.
 // «/habits?h=12» — щелчок по названию привычки в виджете: страница привычек со статистикой этой привычки.
-ipcMain.on("open-section", (_e, p) => {
+ipcMain.on("open-section", (e, p) => {
+  if (clientOfWin(e.sender) === "widget") countUse(p === "/widget" ? "widget.settings" : "widget.section");
   if (!/^\/[\w\/-]*(\?h=\d+)?$/.test(String(p)) || !/^https?:\/\//.test(settings.server)) return showMain();
   showMain();
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
@@ -980,6 +993,7 @@ ipcMain.on("site-login:keep", (e, t) => {
     maidLog("вышли на сайте — программа тоже вышла");
   }
   tokenEnc = "";
+  usage?.drop(); // несданный счёт виджета — прежнего входа, под новым ключом ему не место (usage.js)
   saveSettings();
   refreshTray();
   broadcast("changed", null);
@@ -1018,12 +1032,20 @@ const WIDGET_PREFS = {
 };
 const widgetPrefs = () => Object.fromEntries(Object.keys(WIDGET_PREFS).filter((k) => k in settings.widget).map((k) => [k, settings.widget[k]]));
 ipcMain.handle("app:widget-get", (e) => (fromApp(e) ? widgetPrefs() : null));
+let settingsUseAt = 0;
 ipcMain.handle("app:widget-set", (e, patch) => {
   if (!fromApp(e) || !patch || typeof patch !== "object") return null;
   const clean = {};
   for (const [k, v] of Object.entries(patch)) if (WIDGET_PREFS[k]?.(v)) clean[k] = k === "sections" ? { ...settings.widget.sections, ...v } : v;
+  // В счёт — только настоящая правка и не чаще раза в минуту: ползунок шлёт значение на каждую клавишу (и то же — на Tab),
+  // пять стрелок подряд — одна правка настроек.
+  const changed = Object.entries(clean).some(([k, v]) => JSON.stringify(v) !== JSON.stringify(settings.widget[k]));
   settings.widget = { ...settings.widget, ...clean };
   saveSettings();
+  if (changed && Date.now() - settingsUseAt > 60_000) {
+    settingsUseAt = Date.now();
+    countUse("widget.settings");
+  }
   widget?.webContents.send("opacity", settings.widget.opacity);
   widget?.webContents.send("prefs");
   if ("show" in clean) toggleWidget(clean.show);
@@ -1073,6 +1095,7 @@ const updates = createUpdates({
   // Установщик закрывает программу жёстко: вход сайта (localStorage главного окна) и куки сначала пишутся на диск, иначе после обновления — экран входа.
   // Окна закрываем сами: при закрытии окно дописывает своё хранилище, а у установщика — убить процесс.
   beforeInstall: async () => {
+    await usage?.atQuit(); // счётчики — до закрытия: установщик закрывает программу жёстко
     quitting = true;
     session.defaultSession.flushStorageData();
     await session.defaultSession.cookies.flushStore();
@@ -1085,9 +1108,9 @@ const updates = createUpdates({
 });
 ipcMain.handle("app:update-get", (e) => (fromApp(e) ? updates.state() : null));
 ipcMain.handle("app:update-check", (e) => (fromApp(e) ? updates.check() : null));
-ipcMain.handle("app:update-install", (e) => (fromApp(e) ? updates.install() : null));
+ipcMain.handle("app:update-install", (e) => (fromApp(e) ? (countUse("widget.update"), updates.install()) : null));
 // «Обновить» в облачке виджета — то же, что кнопка в полной версии.
-ipcMain.on("update-install", (e) => { if (widget && e.sender === widget.webContents) void updates.install(); });
+ipcMain.on("update-install", (e) => { if (widget && e.sender === widget.webContents) { countUse("widget.update"); void updates.install(); } });
 ipcMain.handle("tracker:now", trackOnce);
 // Сколько секунд человек не трогал мышь и клавиатуру (горничная засыпает, когда его нет; заблокированный экран — тоже нет).
 ipcMain.handle("idle", () => (powerMonitor.getSystemIdleState(1) === "locked" ? 86_400 : powerMonitor.getSystemIdleTime()));
@@ -1097,7 +1120,10 @@ global.maidDebug = () => ({
   bounds: widget?.getBounds(), cursor: screen.getCursorScreenPoint(),
 });
 ipcMain.on("changed", () => broadcast("changed", null));
-ipcMain.on("open-main", () => showMain());
+ipcMain.on("open-main", (e) => {
+  if (clientOfWin(e.sender) === "widget") countUse("widget.main");
+  showMain();
+});
 ipcMain.on("quick-hide", () => quick?.hide());
 ipcMain.on("grab", (_e, on) => setGrab(on));
 ipcMain.on("hover", () => {});
@@ -1161,6 +1187,9 @@ app.whenReady().then(() => {
     settings.lastVersion = app.getVersion();
     saveSettings();
   }
+  usage = createUsage({ send: sendUsage, file: path.join(app.getPath("userData"), "usage.json"), log: maidLog });
+  countUse("widget.start");
+  setInterval(() => void usage.flush(), USAGE_EVERY_MS);
   tray = new Tray(icon().isEmpty() ? nativeImage.createEmpty() : icon().resize({ width: 16, height: 16 }));
   tray.setToolTip("Горничная");
   tray.on("click", () => showMain());
@@ -1181,7 +1210,16 @@ app.whenReady().then(() => {
   setInterval(patrolWidget, 15_000);
 });
 app.on("window-all-closed", (e) => e.preventDefault?.());
+// Выход: сначала последняя пачка счётчиков (не дольше USAGE_QUIT_MS, остаток — в файл), потом выход по-настоящему.
+let usageQuit = false;
+app.on("before-quit", (e) => {
+  if (usageQuit || !usage?.pending()) return;
+  usageQuit = true;
+  e.preventDefault();
+  void usage.atQuit().finally(() => app.quit());
+});
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   counter?.save();
+  usage?.save();
 });

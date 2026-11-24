@@ -38,6 +38,7 @@
     api: (method, path, body) => invoke("api", method, path, body),
     settings: () => invoke("settings:get"),
     saveSettings: (patch) => invoke("settings:set", patch),
+    track: (name) => send("usage", name),
     login: (form) => invoke("settings:login", form),
     trackNow: () => invoke("tracker:now"),
     idle: () => (stress.idle !== undefined ? Promise.resolve(stress.idle) : invoke("idle")),

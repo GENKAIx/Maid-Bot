@@ -300,6 +300,12 @@ function create() {
       if (body.id) srv.corrections.set(body.id, r);
       return finish(200, r);
     }
+    // Пачка счётчиков фич (desktop/src/usage.js); srv.usageStatus — ответить ошибкой (404 старого сервера, 429, 500).
+    if (req.method === "POST" && p === "/api/events/usage") {
+      (srv.usage ??= []).push({ counts: body?.counts, client: rec.client });
+      if (srv.usageStatus) return finish(srv.usageStatus, { error: "нет такого адреса" });
+      return finish(200, { ok: true, accepted: Object.keys(body?.counts ?? {}).length, dropped: 0 });
+    }
     if (req.method === "POST" && p === "/api/rate") { (srv.rates ??= []).push(body); return finish(200, { text: "Спасибо" }); }
     if (req.method === "POST" && p === "/api/undo") {
       (srv.undos ??= []).push(body);

@@ -86,6 +86,7 @@ async function wxBack(plan) {
 }
 
 // Шапка, значок у плана, небо над панелью — после каждой перерисовки и после ответа сервера.
+let wxCountedDay = "";
 function wxDraw(now = new Date()) {
   const on = wxShowing(now);
   let chip = $("#wxChip");
@@ -96,6 +97,11 @@ function wxDraw(now = new Date()) {
     $("#day")?.after(chip);
   }
   chip.classList.toggle("hidden", !on);
+  // Плашку видно — раз в день в счётчик фич (у неё нет щелчка: счёт — «показалась»).
+  if (on && wxCountedDay !== wxNow.day) {
+    wxCountedDay = wxNow.day;
+    maid.track?.("widget.weather");
+  }
   if (on) {
     chip.textContent = `${wxNow.icon} ${wxNow.temp}`;
     chip.title = `${wxNow.city ?? ""}: ${wxNow.text}`.replace(/^: /, "");

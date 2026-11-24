@@ -67,6 +67,7 @@ function sulkFor(now) {
   }, Math.max(0, sulkUntil - now));
 }
 function poke(zone = "") {
+  globalThis.maid?.track?.("widget.poke"); // счётчик фич (main.js, usage.js)
   const now = Date.now();
   if (now < sulkUntil) {
     sulkFor(now);

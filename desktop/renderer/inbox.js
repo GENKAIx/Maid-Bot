@@ -351,6 +351,7 @@ function openGroup(id) {
   const g = IB_GROUPS.find((x) => x.id === id);
   const items = groupItems(id);
   if (!g || !items.length) return;
+  maid.track?.("widget.inbox");
   if (id === "mail") return openMail(items);
   if (items.length === 1) return openItem(items[0]);
   openList(g, items);

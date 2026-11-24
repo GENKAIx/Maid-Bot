@@ -152,7 +152,12 @@ new MutationObserver(() => {
   if (touring && $("#bubble").classList.contains("hidden")) setTimeout(() => { if (touring && $("#bubble").classList.contains("hidden")) endTour(); }, 60);
 }).observe($("#bubble"), { attributes: true, attributeFilter: ["class"] });
 
-maid.on("tour", () => { if (touring) endTour(); startTour(); });
+// Экскурсия по просьбе (меню) — в счёт «Экскурсии по виджету»; сама при первом запуске (ниже) — нет.
+maid.on("tour", () => {
+  if (touring) endTour();
+  startTour();
+  if (touring) maid.track?.("widget.tour");
+});
 
 // Первый запуск: когда данные пришли, горничная не спит и облачко свободно (раньше хвостов — tails.js ждёт 6 с).
 setTimeout(function waitTour() {

@@ -5,6 +5,7 @@
 // Шаг 2 («Перенести») — «Давай выберем дату»: сегодня и 6 дней вперёд, как полоса в планах (clock.js); «← Назад» — к шагу 1.
 
 function askTail(t) {
+  maid.track?.("widget.tails");
   const settle = async (body, reply, mood, emotion = "neutral") => {
     $("#bubble").dataset.ask = ""; // ответили в облачке — «вижу-вижу» не нужно
     try {
