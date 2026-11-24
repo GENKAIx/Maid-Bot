@@ -9,10 +9,21 @@
 // уйдёт со следующего запуска.
 const fs = require("node:fs");
 
+// С 24.11.2026 (этап 0 аналитики) — ещё группы «Первый запуск» (экскурсия, tour.js) и «Рина» (реакции, обида, праздники):
+// шаги — те же id, что TOUR_STEPS в renderer/tour.js, анимации — MOODS в renderer/widget.js без «Ждёт» (idle; на сервере —
+// TOUR_STEP_NAMES и REACT_MOODS в feature-list.ts).
+const TOUR_STEP_IDS = ["hello", "input", "mic", "clip", "history", "next", "list", "head", "maid", "profile", "end"];
+const REACT_MOODS = ["think", "sleep", "offline", "remind", "angry", "clean", "hello", "happy", "proud", "write", "done",
+  "streak", "sad", "worried", "surprised", "neutral", "listen", "tea", "bow", "excited", "smitten", "giggle", "gasp", "smug",
+  "refuse", "forget", "think2", "analysis", "list", "present", "letter", "salute", "thumbsup", "wrench", "deadpan", "facepalm", "pout",
+  "shy", "shh", "bedtime"];
 const WIDGET_FEATURES = [
   "widget.start", "widget.fold", "widget.quick", "widget.tour", "widget.poke", "widget.hints", "widget.clock",
   "widget.inbox", "widget.tails", "widget.main", "widget.section", "widget.settings", "widget.weather", "widget.drag",
   "widget.update",
+  "onboarding.tour.start", ...TOUR_STEP_IDS.map((id) => `onboarding.tour.step.${id}`), "onboarding.tour.done", "onboarding.tour.skip",
+  ...REACT_MOODS.map((m) => `maid.react.${m}`), "maid.sulk",
+  "maid.party.flame", "maid.party.wave", "maid.party.salute", "maid.party.course", "maid.party.level",
 ];
 const USAGE_CAP = 500; // server: USAGE_MAX_COUNT
 const USAGE_EVERY_MS = 10 * 60_000;
@@ -83,4 +94,4 @@ function createUsage({ send, file, log = () => {} }) {
   return { count: (name) => add(String(name)), flush, save, atQuit, drop, pending: () => counts.size > 0, peek: () => Object.fromEntries(counts) };
 }
 
-module.exports = { createUsage, WIDGET_FEATURES, USAGE_CAP, USAGE_EVERY_MS, USAGE_QUIT_MS };
+module.exports = { createUsage, WIDGET_FEATURES, TOUR_STEP_IDS, REACT_MOODS, USAGE_CAP, USAGE_EVERY_MS, USAGE_QUIT_MS };

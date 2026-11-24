@@ -185,6 +185,7 @@ function burst(pip, delay = 0) {
 // любой длины), горничная кланяется, курс сворачивается в медаль.
 function celebrate(el) {
   if (!el) return;
+  maid.track?.("maid.party.course"); // курс пройден — в счётчик «Рины» (usage.js)
   tuck(false);
   tuck(true, 9000);
   const pips = [...el.querySelectorAll(".pip:not(.rest)")];

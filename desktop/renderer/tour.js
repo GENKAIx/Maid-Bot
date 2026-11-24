@@ -32,10 +32,17 @@ const TOUR_STEPS = [
 
 let tourAbout = "";
 let tourSaveError = "";
+// Счётчики первого запуска (этап 0 аналитики, usage.js): только у экскурсии, что началась сама при первом запуске, — начало,
+// каждый показанный шаг, конец (дошли до последнего шага) или «закрыли раньше» (Хватит, Потом, ✕). По просьбе из меню — widget.tour.
+let tourFirst = false;
+let tourAt = -1; // какой шаг на экране
 
-function startTour() {
+function startTour(first = false) {
   if (touring || napping) return;
   touring = true;
+  tourFirst = first;
+  tourAt = -1;
+  if (first) maid.track?.("onboarding.tour.start");
   tourAbout = tourSaveError = "";
   tourSeen();
   if (collapsed) { autoOpened = false; foldAnimated(false); }
@@ -47,6 +54,8 @@ function tourStep(i) {
   const s = TOUR_STEPS[i];
   if (!s) return endTour();
   const last = i === TOUR_STEPS.length - 1;
+  tourAt = i;
+  if (tourFirst) maid.track?.(`onboarding.tour.step.${s.id}`);
   lightUp(s.target);
   showExample(s.example);
   const buttons = s.id === "profile"
@@ -64,6 +73,8 @@ function tourStep(i) {
 function endTour() {
   if (!touring) return;
   touring = false;
+  if (tourFirst) maid.track?.(tourAt === TOUR_STEPS.length - 1 ? "onboarding.tour.done" : "onboarding.tour.skip");
+  tourFirst = false;
   lightUp(null);
   showExample(null);
   hideBubble();
@@ -163,5 +174,5 @@ maid.on("tour", () => {
 setTimeout(function waitTour() {
   if (!tourDue()) return;
   if (!data || napping || !$("#bubble").classList.contains("hidden")) return setTimeout(waitTour, 3000);
-  startTour();
+  startTour(true);
 }, 4000);

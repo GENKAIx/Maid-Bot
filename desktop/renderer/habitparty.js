@@ -144,6 +144,10 @@ function hpAfterRender() {
 }
 
 function hpPlay(p) {
+  // Праздники — в счётчик «Рины» (usage.js): рубеж серии, волна, салют (салют без фигурки играет волной — в счёт салютом).
+  if (p.marks.length) maid.track?.("maid.party.flame");
+  if (p.kind === "wave") maid.track?.("maid.party.wave");
+  else if (p.kind === "salute") maid.track?.("maid.party.salute");
   if (p.marks.length) hpMarkFx(p.marks, p.kind === "marks");
   if (p.kind === "wave") hpWave(p.n);
   else if (p.kind === "salute") hpSalute(p.top);

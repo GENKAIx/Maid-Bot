@@ -78,6 +78,7 @@ function poke(zone = "") {
   pokes = now - lastPoke < 4000 ? pokes + 1 : 1;
   lastPoke = now;
   if (pokes >= 10) {
+    globalThis.maid?.track?.("maid.sulk"); // обиделась — в счётчик «Рины» (usage.js)
     pokes = 0;
     sulkFrom = now;
     sulkFor(now);

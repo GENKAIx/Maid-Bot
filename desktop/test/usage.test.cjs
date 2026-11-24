@@ -11,11 +11,32 @@ let bad = 0, n = 0;
 const check = (ok, m) => { n++; if (!ok) { bad++; console.log("FAIL", m); } };
 const root = path.join(__dirname, "..", "..");
 
-// 1. Копия списка = группа «Виджет» сервера, в том же порядке.
+// 1. Копия списка = имена, которые сервер принимает от программы: группа «Виджет» в том же порядке, и с 24.11.2026 (этап 0
+// аналитики) клиентские имена «Первого запуска» (экскурсия) и «Рины» — набором: шаги — TOUR_STEP_NAMES, реакции — ALBUM
+// сервера без idle (server/src/feature-list.ts собирает их так же).
 const list = fs.readFileSync(path.join(root, "server", "src", "feature-list.ts"), "utf8");
 const server = [...list.matchAll(/^\s*widget\("([^"]+)"/gm)].map((m) => m[1]);
 check(server.length > 0, "в списке сервера нашлись имена виджета");
-check(JSON.stringify(server) === JSON.stringify(WIDGET_FEATURES), `список виджета расходится с сервером: ${server.join(",")} ≠ ${WIDGET_FEATURES.join(",")}`);
+check(JSON.stringify(server) === JSON.stringify(WIDGET_FEATURES.filter((x) => x.startsWith("widget."))), `список виджета расходится с сервером: ${server.join(",")} ≠ ${WIDGET_FEATURES.join(",")}`);
+const album = fs.readFileSync(path.join(root, "server", "src", "album.ts"), "utf8").match(/export const ALBUM = \[([^\]]+)\]/)?.[1] ?? "";
+const serverMoods = [...album.matchAll(/"([^"]+)"/g)].map((m) => m[1]).filter((x) => x !== "idle");
+const serverSteps = [...(list.match(/TOUR_STEP_NAMES: \[string, string\]\[\] = \[([^]*?)\n\];/)?.[1] ?? "").matchAll(/\["([^"]+)", "/g)].map((m) => m[1]);
+check(serverMoods.length === 40 && serverSteps.length >= 10, `сервер: реакций ${serverMoods.length}, шагов ${serverSteps.length}`);
+check(list.includes("...TOUR_STEP_NAMES.map(([id, t]) => onboarding(`onboarding.tour.step.${id}`") && list.includes("...REACT_MOODS.map((m) => rina(`maid.react.${m}`"),
+  "сервер собирает имена шагов и реакций не так, как программа");
+const serverAll = [
+  ...server,
+  ...[...list.matchAll(/^\s*onboarding\("([^"]+)",[^\n]*"client"\)/gm)].map((m) => m[1]),
+  ...serverSteps.map((id) => `onboarding.tour.step.${id}`),
+  ...serverMoods.map((m) => `maid.react.${m}`),
+  ...[...list.matchAll(/^\s*rina\("([^"]+)"/gm)].map((m) => m[1]),
+].sort();
+check(JSON.stringify(serverAll) === JSON.stringify([...WIDGET_FEATURES].sort()),
+  `имена программы расходятся с сервером: лишние ${WIDGET_FEATURES.filter((x) => !serverAll.includes(x))}, нет ${serverAll.filter((x) => !WIDGET_FEATURES.includes(x))}`);
+check(new Set(WIDGET_FEATURES).size === WIDGET_FEATURES.length, "в списке программы повторы");
+// Сервер не берёт пачку больше USAGE_MAX_KEYS имён (400 — и вся пачка выброшена): все имена программы влезают в одну.
+const maxKeys = Number(fs.readFileSync(path.join(root, "server", "src", "feature-events.ts"), "utf8").match(/USAGE_MAX_KEYS = (\d+)/)?.[1]);
+check(WIDGET_FEATURES.length <= maxKeys, `имён программы ${WIDGET_FEATURES.length} — больше, чем сервер берёт в пачке (${maxKeys})`);
 
 // 2. Каждое имя в коде программы — из списка; каждое имя списка где-то считается.
 const files = [path.join(root, "desktop", "src", "main.js"), ...fs.readdirSync(path.join(root, "desktop", "renderer")).filter((f) => f.endsWith(".js")).map((f) => path.join(root, "desktop", "renderer", f))];
@@ -28,6 +49,9 @@ for (const f of files) {
   }
   // Разветвление в open-section: оба имени строками внутри countUse(… ? "…" : "…").
   for (const m of src.matchAll(/countUse\([^)]*\?\s*"([^"]+)"\s*:\s*"([^"]+)"\)/g)) for (const x of [m[1], m[2]]) used.add(x);
+  for (const m of src.matchAll(/track\?\.\(\s*[^"`)]*\?\s*"([^"]+)"\s*:\s*"([^"]+)"\)/g)) for (const x of [m[1], m[2]]) used.add(x);
+  // Имя по шаблону (`maid.react.${n}`, `onboarding.tour.step.${s.id}`): в счёт — все имена списка с этим началом.
+  for (const m of src.matchAll(/track\?\.\(`([a-z.]+)\$\{/g)) for (const x of WIDGET_FEATURES) if (x.startsWith(m[1])) used.add(x);
 }
 for (const id of WIDGET_FEATURES) check(used.has(id), `имя «${id}» нигде не считается`);
 

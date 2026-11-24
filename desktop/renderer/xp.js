@@ -211,6 +211,7 @@ function xpChime() {
 function xpLevelUp() {
   const l = $("#xpLvl");
   if (!l) return;
+  maid.track?.("maid.party.level"); // новый уровень — в счётчик «Рины» (usage.js)
   l.classList.remove("up");
   void l.offsetWidth;
   l.classList.add("up");

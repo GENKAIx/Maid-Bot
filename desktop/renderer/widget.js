@@ -132,6 +132,8 @@ function baseMood() {
 function showMood(n) {
   if (!MOODS.includes(n)) return;
   albumSee(n); // показана впервые — карточка в альбоме (album.js)
+  // Показанная анимация — в счётчик «Рины» (usage.js, пачкой): только смена картинки, «Ждёт» (основа) — не в счёт.
+  if (n !== "idle" && (n !== mood || n === "forget")) maid.track?.(`maid.react.${n}`);
   if (n === "forget") return forgetFlash();
   if (n === mood) return;
   mood = n;
