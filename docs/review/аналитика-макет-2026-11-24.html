@@ -1,0 +1,555 @@
+<title>Аналитика Горничной</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+<style>
+/* Макет продуктовой аналитики для админки Горничной. Цвета — как у админки (web/src/admin.css): всегда тёмная. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1013; --panel: #15181d; --panel-2: #1b1f25; --panel-3: #22272e;
+  --line: #262b33; --line-2: #313741; --text: #e4e7eb; --soft: #b9bfc8; --muted: #8a93a0;
+  --accent: #9b8cff; --ok: #5fc59a; --warn: #d9a45b; --bad: #e0727f;
+  /* серии графиков: проверены на поверхности #15181d (dataviz validate_palette, dark) */
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+  --star: #f2c14e;
+  --f: "Onest", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.5 var(--f);
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+button { font: inherit; color: inherit; }
+.shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 100vh; }
+/* левое меню админки */
+.side { background: #0b0d10; border-right: 1px solid var(--line); padding: 16px 10px; position: sticky; top: 0; height: 100vh; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.brand { font-weight: 800; font-size: 15px; padding: 2px 10px 14px; }
+.brand span { color: var(--muted); font-weight: 500; }
+.side small { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding: 12px 10px 4px; }
+.side a { color: var(--soft); text-decoration: none; padding: 6px 10px; border-radius: 8px; font-size: 13.5px; display: flex; gap: 8px; align-items: center; }
+.side a:hover { background: var(--panel); }
+.side a.on { background: var(--panel-2); color: var(--text); font-weight: 600; }
+.side a .nw { margin-left: auto; font-size: 10px; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 99px; padding: 0 6px; }
+.main { min-width: 0; padding: 26px max(16px, 2.2vw) 60px; }
+.top { display: flex; flex-direction: column; gap: 6px; max-width: 900px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; font-weight: 750; letter-spacing: -.01em; }
+h2 { font-size: 17px; margin: 0; font-weight: 700; }
+h3 { font-size: 13.5px; margin: 0; font-weight: 650; }
+.lead { color: var(--muted); font-size: 13.5px; margin: 0; max-width: 880px; }
+.mock { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.src { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line-2); font-size: 11.5px; white-space: nowrap; }
+.src::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.src.have { color: var(--ok); } .src.calc { color: var(--s1); } .src.new { color: var(--warn); }
+.toggle { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 12.5px; }
+.toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.layout { display: grid; grid-template-columns: 178px minmax(0, 1fr); gap: 22px; margin-top: 22px; align-items: start; }
+.sub { position: sticky; top: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 8px; display: flex; flex-direction: column; gap: 1px; }
+.sub small { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding: 8px 8px 3px; }
+.sub button { text-align: left; background: none; border: 0; border-radius: 7px; padding: 5px 8px 5px 14px; color: var(--muted); cursor: pointer; font-size: 13px; }
+.sub button:hover { color: var(--text); }
+.sub button.on { background: var(--panel-3); color: var(--text); font-weight: 600; }
+.content { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; position: relative; }
+.card > .d, .block > .d { color: var(--muted); font-size: 12.5px; margin: 3px 0 0; }
+/* параметры отчёта */
+.params { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 3px; gap: 3px; margin-top: 6px; flex-wrap: wrap; }
+.seg button { flex: 1; background: none; border: 0; border-radius: 7px; padding: 5px 10px; color: var(--muted); cursor: pointer; font-size: 12.5px; white-space: nowrap; }
+.seg button.on { background: var(--panel-3); color: var(--text); font-weight: 600; box-shadow: 0 0 0 1px var(--line-2); }
+.seg button:disabled { opacity: .35; cursor: default; }
+.lbl { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.meta { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 10px; font-size: 11.5px; color: var(--muted); display: flex; gap: 6px 16px; flex-wrap: wrap; }
+.meta b { color: var(--soft); font-weight: 600; }
+.block { display: flex; flex-direction: column; gap: 12px; }
+.block > header { display: flex; flex-direction: column; gap: 2px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; position: relative; min-width: 0; }
+.kpi .k { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.kpi .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.kpi .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kpi .v .st { color: var(--star); font-size: 18px; }
+.kpi .h { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.dl { font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dl.up { color: var(--ok); } .dl.down { color: var(--bad); } .dl.flat { color: var(--muted); }
+.dl.up::before { content: "↑ "; } .dl.down::before { content: "↓ "; }
+.kpi .badge, .card .badge { position: absolute; top: 10px; right: 10px; display: none; }
+.showsrc .badge { display: inline-flex; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 12px; }
+.chart { width: 100%; height: 210px; margin-top: 10px; position: relative; }
+.chart.tall { height: 260px; }
+.chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--soft); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: #0b0d10; border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 130px; box-shadow: 0 8px 24px rgba(0,0,0,.45); display: none; }
+.tip b { display: block; margin-bottom: 4px; font-weight: 650; }
+.tip div { display: flex; justify-content: space-between; gap: 14px; color: var(--soft); }
+.tip div span:last-child { color: var(--text); font-variant-numeric: tabular-nums; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+details.defs { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; font-size: 12.5px; color: var(--soft); }
+details.defs summary { cursor: pointer; font-weight: 600; color: var(--text); }
+details.defs dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 2px; }
+details.defs dt { color: var(--text); font-weight: 600; } details.defs dd { margin: 0; color: var(--muted); }
+.bridge { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 10px; }
+.bridge .k { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bridge .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tbl { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; }
+.cohort td.c { text-align: center; padding: 0; border: 2px solid var(--panel); border-radius: 4px; font-size: 11.5px; height: 28px; min-width: 52px; }
+.funnel { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; align-items: center; }
+.funnel .st { height: 30px; border-radius: 6px; background: color-mix(in srgb, var(--s1) 70%, var(--panel)); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; font-size: 12px; min-width: 210px; gap: 10px; cursor: default; }
+.funnel .st span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.funnel .st small { color: rgba(255,255,255,.75); }
+.drop { font-size: 11px; color: var(--bad); }
+.days { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.days .r { display: grid; grid-template-columns: 70px minmax(0, 1fr) 110px; gap: 10px; align-items: center; font-size: 12px; }
+.days .bar { height: 22px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+.days .bar b { display: block; height: 100%; background: var(--s3); border-radius: 0 5px 5px 0; }
+.days .r span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--soft); }
+.ladder { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.ladder .r { display: grid; grid-template-columns: 44px minmax(0, 1fr) 60px; gap: 10px; align-items: center; font-size: 12px; }
+.ladder .bar { height: 18px; position: relative; }
+.ladder .bar b { display: block; height: 100%; background: var(--s6); border-radius: 0 5px 5px 0; }
+.ladder .r > span:first-child { color: var(--muted); text-align: right; }
+.ladder .r > span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--soft); }
+.hbars { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
+.hbars .r { display: grid; grid-template-columns: minmax(110px, 190px) minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: 12.5px; }
+.hbars .r > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--soft); }
+.hbars .bar { height: 16px; } .hbars .bar b { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--s1); }
+.hbars .r > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.heat { display: grid; grid-template-columns: 26px repeat(24, minmax(0, 1fr)); gap: 2px; margin-top: 12px; font-size: 10.5px; color: var(--muted); }
+.heat div { height: 20px; border-radius: 3px; }
+.heat .hl { height: auto; text-align: center; }
+.note { font-size: 12px; color: var(--muted); }
+.plan td:nth-child(2) { white-space: normal; min-width: 260px; }
+.plan td:first-child { white-space: normal; min-width: 160px; font-weight: 600; }
+.why { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.why .card p { margin: 6px 0 0; color: var(--soft); font-size: 13px; }
+@media (max-width: 980px) { .shell { grid-template-columns: 1fr; } .side { display: none; } .layout { grid-template-columns: 1fr; } .sub { position: static; flex-direction: row; flex-wrap: wrap; } .sub small { width: 100%; } .params { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } .kpis { grid-template-columns: 1fr 1fr; } .kpi .v { font-size: 20px; } .days .r { grid-template-columns: 56px minmax(0,1fr) 84px; } .hbars .r { grid-template-columns: 100px minmax(0,1fr) 54px; } }
+</style>
+
+<div class="shell">
+<nav class="side" aria-label="Админка">
+  <div class="brand">Горничная <span>админка</span></div>
+  <small>Сейчас есть</small>
+  <a href="#">Обзор</a><a href="#">Пользователи</a><a href="#">Расходы</a><a href="#">Аудитория</a>
+  <a href="#">Качество разбора</a><a href="#">Здоровье сервера</a><a href="#">Использование функций</a><a href="#">Витрина</a><a href="#">Журнал</a>
+  <small>Будет</small>
+  <a href="#" class="on">Аналитика <span class="nw">макет</span></a>
+  <a href="#">Подписки и оплаты</a><a href="#">Промо и рефералы</a>
+</nav>
+
+<div class="main" id="root">
+  <div class="top">
+    <h1>Продуктовая аналитика</h1>
+    <p class="lead">Макет по образцу админки знакомого: один набор параметров на все отчёты, у каждой цифры — сравнение с прошлым периодом той же длины, у каждого графика — подпись, что именно он считает. Цифры выдуманы, но правдоподобны для ~400 человек. Отчёты переключаются слева, интервал — в параметрах, на графики можно навести мышь.</p>
+    <div class="mock">
+      <span class="src have">данные уже есть</span><span class="src calc">посчитать из того, что есть</span><span class="src new">нужно начать записывать</span>
+      <button class="toggle" id="srcToggle" type="button" aria-pressed="false">Показать на карточках, откуда данные</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sub" aria-label="Отчёты">
+      <small>Деньги</small>
+      <button data-tab="money" class="on">Обзор</button>
+      <button data-tab="subs">Подписки</button>
+      <button data-tab="ai">Расход на ИИ</button>
+      <small>Люди</small>
+      <button data-tab="act">Активность</button>
+      <button data-tab="ret">Удержание</button>
+      <button data-tab="fun">Воронки</button>
+      <small>Рина и функции</small>
+      <button data-tab="feat">Функции</button>
+      <button data-tab="rina">Рина</button>
+      <button data-tab="parse">Разбор</button>
+      <small>Как сделать</small>
+      <button data-tab="plan">План работ</button>
+    </nav>
+
+    <div class="content">
+      <section class="card params" aria-label="Параметры отчёта">
+        <div><span class="lbl">Интервал</span><div class="seg" id="iv"><button data-v="1">24 ч</button><button data-v="7">7 дн.</button><button data-v="30" class="on">30 дн.</button><button data-v="90">90 дн.</button><button data-v="365">12 мес.</button></div></div>
+        <div><span class="lbl">Шаг графиков</span><div class="seg" id="gr"><button data-v="h">Час</button><button data-v="d" class="on">День</button><button data-v="w">Неделя</button></div></div>
+        <div class="meta" id="meta"></div>
+      </section>
+      <div id="view"></div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  "use strict";
+  var C = { s1: "#3987e5", s2: "#d95926", s3: "#199e70", s4: "#c98500", s5: "#d55181", s6: "#9085e9", grid: "#262b33", axis: "#8a93a0", star: "#f2c14e" };
+  var STAR_USD = 0.013; // примерно столько разработчик получает за 1 ⭐ (в настройке)
+  var state = { tab: "money", days: 30, step: "d" };
+  try { var s = JSON.parse(localStorage.getItem("maid.analyticsMock") || "{}"); if (s.tab) state.tab = s.tab; if (s.days) state.days = s.days; if (s.step) state.step = s.step; } catch (e) {}
+  function save() { try { localStorage.setItem("maid.analyticsMock", JSON.stringify(state)); } catch (e) {} }
+
+  // ——— выдуманные, но стабильные данные
+  function rng(seed) { var x = seed >>> 0 || 1; return function () { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
+  var R;
+  function series(n, base, noise, trend, weekly) {
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var w = weekly ? (1 + weekly * Math.sin(i / 7 * Math.PI * 2)) : 1;
+      out.push(Math.max(0, base * (1 + trend * i / Math.max(1, n)) * w * (1 + (R() - .5) * noise)));
+    }
+    return out;
+  }
+  function points() {
+    if (state.step === "h") return Math.min(state.days, 7) * 24;
+    if (state.step === "w") return Math.max(1, Math.round(state.days / 7));
+    return state.days;
+  }
+  function stepK() { return state.step === "h" ? 1 / 24 : state.step === "w" ? 7 : 1; }
+  function labels(n) {
+    var end = new Date(2026, 10, 24, 14), out = [];
+    for (var i = n - 1; i >= 0; i--) {
+      var d = new Date(end);
+      if (state.step === "h") d.setHours(d.getHours() - i); else d.setDate(d.getDate() - i * (state.step === "w" ? 7 : 1));
+      out.push(state.step === "h" ? d.getDate() + "." + pad(d.getMonth() + 1) + " " + pad(d.getHours()) + ":00" : d.getDate() + " " + ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"][d.getMonth()]);
+    }
+    return out;
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function sum(a) { return a.reduce(function (s, v) { return s + v; }, 0); }
+  function fmt(v, d) { return v.toLocaleString("ru-RU", { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d || 0 }); }
+  function usd(v) { return "$" + fmt(v, v < 10 ? 2 : 0); }
+  function delta() { var v = (R() - .38) * 60; return v; }
+  function dl(v, inverse) {
+    if (Math.abs(v) < .5) return '<span class="dl flat">—</span>';
+    var good = inverse ? v < 0 : v > 0;
+    return '<span class="dl ' + (v > 0 ? "up" : "down") + '" style="color:var(--' + (good ? "ok" : "bad") + ')">' + (v > 0 ? "+" : "") + fmt(v, 1) + "%</span>";
+  }
+  var SRC = { have: "данные уже есть", calc: "посчитать из того, что есть", "new": "нужно записывать" };
+  function badge(src) { return '<span class="src ' + src + ' badge" title="' + SRC[src] + '">' + { have: "есть", calc: "посчитать", "new": "записывать" }[src] + "</span>"; }
+  function kpi(k, v, h, d, src, inverse) {
+    return '<div class="kpi">' + badge(src) + '<span class="k">' + k + '</span><div class="row"><span class="v">' + v + "</span>" + (d == null ? "" : dl(d, inverse)) + '</div><span class="h">' + h + "</span></div>";
+  }
+  function star(v) { return fmt(v) + ' <span class="st">★</span>'; }
+  function block(title, desc, inner) { return '<section class="block"><header><h2>' + title + '</h2><p class="d">' + desc + "</p></header>" + inner + "</section>"; }
+  function card(title, desc, inner, src) { return '<div class="card">' + (src ? badge(src) : "") + "<h3>" + title + '</h3><p class="d">' + desc + "</p>" + inner + "</div>"; }
+  function chartSlot(id, tall) { return '<div class="chart' + (tall ? " tall" : "") + '" id="' + id + '"></div>'; }
+  function legend(items) { return '<div class="legend">' + items.map(function (it) { return '<span><i style="background:' + it[1] + '"></i>' + it[0] + "</span>"; }).join("") + "</div>"; }
+  function defs(rows) { return '<details class="defs"><summary>Как считаются цифры</summary><dl>' + rows.map(function (r) { return "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>"; }).join("") + "</dl></details>"; }
+
+  // ——— графики на SVG
+  var charts = [];
+  var tip = document.getElementById("tip");
+  function showTip(e, title, rows) {
+    tip.innerHTML = "<b>" + title + "</b>" + rows.map(function (r) { return "<div><span>" + (r[2] ? '<i style="background:' + r[2] + '"></i>' : "") + r[0] + "</span><span>" + r[1] + "</span></div>"; }).join("");
+    tip.style.display = "block";
+    var x = e.clientX + 14, y = e.clientY + 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    if (x + w > innerWidth - 8) x = e.clientX - w - 14;
+    if (y + h > innerHeight - 8) y = e.clientY - h - 14;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  function hideTip() { tip.style.display = "none"; }
+  function niceMax(m) { if (m <= 0) return 1; var p = Math.pow(10, Math.floor(Math.log10(m))), f = m / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
+  function ns(tag, attrs) { var el = document.createElementNS("http://www.w3.org/2000/svg", tag); for (var k in attrs) el.setAttribute(k, attrs[k]); return el; }
+  function axisFmt(v) { return v >= 1000 ? fmt(v / 1000, v % 1000 ? 1 : 0) + "k" : fmt(v, v < 10 && v % 1 ? 1 : 0); }
+
+  // kind: "line" | "bar" (stack), series: [{name,color,values}], opts: {fmt, min}
+  function draw(id, kind, labs, ser, opts) { charts.push([id, kind, labs, ser, opts || {}]); }
+  function render(c) {
+    var el = document.getElementById(c[0]); if (!el) return;
+    var kind = c[1], labs = c[2], ser = c[3], o = c[4];
+    var W = el.clientWidth, H = el.clientHeight, L = 40, Rr = 8, T = 8, B = 22;
+    var pw = W - L - Rr, ph = H - T - B, n = labs.length;
+    var vf = o.fmt || function (v) { return fmt(v, v < 10 && v % 1 ? 1 : 0); };
+    var minV = o.min || 0, maxV = 0;
+    if (kind === "bar") { for (var i = 0; i < n; i++) { var pos = 0, neg = 0; ser.forEach(function (s) { var v = s.values[i]; if (v >= 0) pos += v; else neg += v; }); maxV = Math.max(maxV, pos); minV = Math.min(minV, neg); } }
+    else ser.forEach(function (s) { s.values.forEach(function (v) { maxV = Math.max(maxV, v); }); });
+    maxV = niceMax(maxV); if (minV < 0) minV = -niceMax(-minV);
+    var y = function (v) { return T + ph - (v - minV) / (maxV - minV) * ph; };
+    var svg = ns("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": o.label || "" });
+    for (var g = 0; g <= 4; g++) {
+      var gv = minV + (maxV - minV) * g / 4, gy = y(gv);
+      svg.appendChild(ns("line", { x1: L, x2: W - Rr, y1: gy, y2: gy, stroke: gv === 0 && minV < 0 ? "#3a414c" : C.grid, "stroke-dasharray": gv === 0 ? "" : "2 4" }));
+      var t = ns("text", { x: L - 6, y: gy + 3.5, "text-anchor": "end", fill: C.axis, "font-size": 10.5 }); t.textContent = axisFmt(gv); svg.appendChild(t);
+    }
+    svg.appendChild(ns("line", { x1: L, x2: W - Rr, y1: y(Math.max(0, minV)), y2: y(Math.max(0, minV)), stroke: "#3a414c" }));
+    var bw = pw / n, xs = function (i) { return L + bw * i + bw / 2; };
+    var tickEvery = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(pw / 70))));
+    for (var i2 = 0; i2 < n; i2 += tickEvery) { var tx = ns("text", { x: xs(i2), y: H - 5, "text-anchor": "middle", fill: C.axis, "font-size": 10.5 }); tx.textContent = labs[i2]; svg.appendChild(tx); }
+    if (kind === "bar") {
+      var barW = Math.max(1.5, Math.min(26, bw - 2));
+      for (var b = 0; b < n; b++) {
+        var up = 0, dn = 0;
+        ser.forEach(function (s, si) {
+          var v = s.values[b]; if (!v) return;
+          var y0 = v >= 0 ? y(up) : y(dn), y1 = v >= 0 ? y(up + v) : y(dn + v);
+          if (v >= 0) up += v; else dn += v;
+          var top = Math.min(y0, y1), h = Math.max(.5, Math.abs(y1 - y0) - (ser.length > 1 ? 1 : 0));
+          svg.appendChild(ns("rect", { x: xs(b) - barW / 2, y: top + (v >= 0 && ser.length > 1 && si > 0 ? 0 : 0), width: barW, height: h, rx: Math.min(3, barW / 3), fill: s.color }));
+        });
+      }
+    } else {
+      ser.forEach(function (s) {
+        var d = s.values.map(function (v, i) { return (i ? "L" : "M") + xs(i).toFixed(1) + " " + y(v).toFixed(1); }).join(" ");
+        if (s.area) svg.appendChild(ns("path", { d: d + " L" + xs(n - 1) + " " + y(0) + " L" + xs(0) + " " + y(0) + "Z", fill: s.color, "fill-opacity": .12 }));
+        svg.appendChild(ns("path", { d: d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-dasharray": s.dash ? "5 4" : "" }));
+      });
+    }
+    var cross = ns("line", { y1: T, y2: T + ph, stroke: "#5a6270", "stroke-width": 1, visibility: "hidden" }); svg.appendChild(cross);
+    var dots = ser.map(function (s) { var d = ns("circle", { r: 4.5, fill: s.color, stroke: "#15181d", "stroke-width": 2, visibility: "hidden" }); svg.appendChild(d); return d; });
+    var hit = ns("rect", { x: L, y: T, width: pw, height: ph, fill: "transparent" }); svg.appendChild(hit);
+    hit.addEventListener("mousemove", function (e) {
+      var r = svg.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width;
+      var i = Math.max(0, Math.min(n - 1, Math.floor((mx - L) / bw)));
+      cross.setAttribute("x1", xs(i)); cross.setAttribute("x2", xs(i)); cross.setAttribute("visibility", "visible");
+      if (kind === "line") dots.forEach(function (d, si) { d.setAttribute("cx", xs(i)); d.setAttribute("cy", y(ser[si].values[i])); d.setAttribute("visibility", "visible"); });
+      var rows = ser.map(function (s) { return [s.name, vf(s.values[i]), s.color]; });
+      if (kind === "bar" && ser.length > 1) rows.push(["Всего", vf(sum(ser.map(function (s) { return s.values[i]; })))]);
+      showTip(e, labs[i], rows);
+    });
+    hit.addEventListener("mouseleave", function () { cross.setAttribute("visibility", "hidden"); dots.forEach(function (d) { d.setAttribute("visibility", "hidden"); }); hideTip(); });
+    el.innerHTML = ""; el.appendChild(svg);
+  }
+  function renderAll() { charts.forEach(render); }
+  var rt; addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(renderAll, 120); });
+
+  // ——— отчёты
+  var V = {};
+  V.money = function (n, labs) {
+    var k = stepK(), subs = series(n, 260 * k, .9, .5, .2), extra = series(n, 40 * k, 1.4, .3, 0);
+    var aiUsd = series(n, 2.4 * k, .35, .25, .12);
+    var rev = sum(subs) + sum(extra), revUsd = rev * STAR_USD, ai = sum(aiUsd);
+    var active = Math.round(118 + R() * 30), payers = Math.round(active * .11), regs = Math.round(state.days * 4.2);
+    draw("c-rev", "bar", labs, [{ name: "Подписка ⭐", color: C.s4, values: subs }, { name: "Разовые покупки ⭐", color: C.s6, values: extra }], { fmt: function (v) { return fmt(v) + " ⭐"; } });
+    draw("c-unit", "line", labs, [{ name: "Выручка, $", color: C.s3, values: subs.map(function (v, i) { return (v + extra[i]) * STAR_USD; }), area: true }, { name: "Расход на ИИ, $", color: C.s2, values: aiUsd }], { fmt: usd });
+    draw("c-arpu", "line", labs, [{ name: "Выручка на активного, ⭐", color: C.s1, values: series(n, 22, .4, .3, 0) }], { fmt: function (v) { return fmt(v, 1) + " ⭐"; } });
+    draw("c-cost", "line", labs, [{ name: "Расход ИИ на активного, ¢", color: C.s2, values: series(n, 1.9, .3, -.1, .08) }], { fmt: function (v) { return fmt(v, 1) + "¢"; } });
+    return defs([["Выручка", "Сумма Stars по успешным оплатам за интервал (подписка + разовые покупки), минус возвраты. В долларах — по курсу ~" + STAR_USD + " $ за ⭐ (меняется в настройке)."], ["Маржа", "Выручка в $ минус расход на ИИ в $ за тот же интервал. Сервер и домен сюда не входят — это постоянные траты."], ["ARPU", "Выручка ÷ активные за интервал (писали хотя бы раз)."], ["ARPPU", "Выручка ÷ платившие за интервал."], ["LTV", "Сколько в среднем принёс платящий за всё время до конца интервала."], ["Расход на активного", "Сколько стоит ИИ на одного активного человека. Если он выше ARPU — каждый новый человек в минус."]]) +
+      block("Деньги", "Доход в Stars и главный расход — ИИ. Стрелка — изменение к прошлому периоду той же длины.",
+        '<div class="kpis">' +
+        kpi("Выручка", star(rev), "≈ " + usd(revUsd) + " · подписка " + fmt(sum(subs)) + " ⭐ · разовые " + fmt(sum(extra)) + " ⭐", delta(), "new") +
+        kpi("Расход на ИИ", usd(ai), "разбор, разговор, картинки, голос, сводки", delta() / 2, "have", true) +
+        kpi("Маржа", usd(revUsd - ai), "выручка минус ИИ", delta(), "calc") +
+        kpi("ARPU", fmt(rev / active, 1) + ' <span class="st">★</span>', "на одного активного (" + active + " чел.)", delta(), "calc") +
+        kpi("ARPPU", fmt(rev / Math.max(1, payers), 0) + ' <span class="st">★</span>', "на одного платившего (" + payers + " чел.)", delta(), "calc") +
+        kpi("LTV", star(410 + R() * 80), "в среднем от платящего за всё время", delta(), "calc") +
+        kpi("Средний чек", star(150 + R() * 20), "на одну успешную оплату", delta() / 4, "new") +
+        kpi("ИИ на активного", fmt(ai / active * 100, 1) + "¢", "за интервал; лимит в настройке", delta() / 3, "have", true) +
+        "</div>") +
+      '<div class="grid2">' +
+      card("Выручка во времени", "Подписка и разовые покупки стопкой. Сумма за интервал совпадает с карточкой «Выручка».", chartSlot("c-rev") + legend([["Подписка", C.s4], ["Разовые покупки", C.s6]]), "new") +
+      card("Выручка и расход на ИИ", "Оба ряда в долларах, на одной оси. Зелёная выше оранжевой — работаем в плюс.", chartSlot("c-unit") + legend([["Выручка, $", C.s3], ["Расход на ИИ, $", C.s2]]), "calc") +
+      card("Выручка на активного", "ARPU по шагам времени.", chartSlot("c-arpu"), "calc") +
+      card("Расход ИИ на активного", "Средний расход на модель на человека, писавшего в этот шаг.", chartSlot("c-cost"), "have") +
+      "</div>";
+  };
+  V.subs = function (n, labs) {
+    var k = stepK(), news = series(n, 2.1 * k, 1.2, .3, 0), cancels = series(n, .7 * k, 1.5, .1, 0).map(function (v) { return -v; });
+    var trial = Math.round(24 + R() * 12), active = Math.round(41 + R() * 10);
+    draw("c-subs", "bar", labs, [{ name: "Новые и продлённые", color: C.s3, values: news }, { name: "Отмены", color: C.s2, values: cancels }], { fmt: function (v) { return fmt(Math.abs(v), 1); } });
+    draw("c-trial", "line", labs, [{ name: "Конверсия проба → оплата, %", color: C.s1, values: series(n, 23, .35, .2, 0) }], { fmt: function (v) { return fmt(v, 1) + "%"; } });
+    return defs([["Активная подписка", "Оплаченный период ещё не кончился (Telegram Stars, ⭐150 в месяц)."], ["На пробе", "Первые 7 дней после регистрации, ИИ работает без оплаты."], ["Риск оттока", "Подписка активна, но автопродление выключено — вероятный уход."], ["Конверсия пробы", "Из закончивших пробу в интервале — доля оплативших в течение 3 дней после её конца."]]) +
+      block("Подписка «Горничная» ⭐150 / месяц", "Снимок на «сейчас»: кто платит, кто на пробе, кто может уйти. Выручка за интервал — в «Обзоре».",
+        '<div class="kpis">' +
+        kpi("Активных подписок", fmt(active), "оплаченный период не кончился", delta(), "new") +
+        kpi("На пробе", fmt(trial), "7 дней бесплатно после регистрации", delta(), "new") +
+        kpi("Проба кончится ≤ 3 дн.", fmt(Math.round(trial * .4)), "время для мягкого напоминания Рины", null, "new") +
+        kpi("С автопродлением", fmt(Math.round(active * .8)), "Telegram продлит сам", null, "new") +
+        kpi("Риск оттока", fmt(Math.round(active * .2)), "автопродление выключено", delta(), "new", true) +
+        kpi("Конверсия пробы", fmt(18 + R() * 10, 1) + "%", "закончили пробу → оплатили", delta(), "calc") +
+        kpi("Отмены", fmt(Math.round(-sum(cancels))), "за интервал", delta(), "new", true) +
+        kpi("Возвраты", fmt(Math.round(R() * 3)), "оплата возвращена (refundStarPayment)", null, "new", true) +
+        "</div>") +
+      '<div class="grid2">' +
+      card("Подписки во времени", "Новые и продлённые вверх, отмены вниз — от одной нулевой линии.", chartSlot("c-subs") + legend([["Новые и продлённые", C.s3], ["Отмены", C.s2]]), "new") +
+      card("Конверсия пробы во времени", "По дате конца пробы.", chartSlot("c-trial"), "calc") +
+      "</div>" +
+      card("Кто скоро решит", "Пять ближайших концов пробы и подписок без автопродления. В админке — без имён: номер, сколько дней с нами, активность за неделю.",
+        '<div class="tbl"><table><tr><th>Номер</th><th>Что</th><th class="n">Осталось</th><th class="n">С нами, дн.</th><th class="n">Дней активен из 7</th><th class="n">Расход ИИ</th></tr>' +
+        [["#1042", "проба", "1 дн.", 6, 6, "31¢"], ["#1051", "проба", "2 дн.", 5, 3, "12¢"], ["#0877", "без автопродления", "3 дн.", 64, 7, "48¢"], ["#1063", "проба", "3 дн.", 4, 1, "3¢"], ["#0911", "без автопродления", "5 дн.", 41, 2, "9¢"]].map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + '</td><td class="n">' + r[2] + '</td><td class="n">' + r[3] + '</td><td class="n">' + r[4] + '</td><td class="n">' + r[5] + "</td></tr>"; }).join("") + "</table></div>", "new");
+  };
+  V.ai = function (n, labs) {
+    var k = stepK();
+    var parts = [["Разбор сообщений", C.s1, 1.05], ["Разговор", C.s3, .7], ["Картинки", C.s5, .3], ["Голос", C.s4, .13], ["Сводки и связи (фон)", C.s6, .23]];
+    var ser = parts.map(function (p) { return { name: p[0], color: p[1], values: series(n, p[2] * k, .5, .2, .1) }; });
+    var total = sum(ser.map(function (s) { return sum(s.values); }));
+    draw("c-aistack", "bar", labs, ser, { fmt: usd });
+    var dist = [["до 5¢", 41], ["5–20¢", 33], ["20–50¢", 15], ["50¢–1$", 7], ["1–3$", 3], ["больше 3$", 1]];
+    return defs([["Назначение", "Для чего звали модель: уже пишется в журнал вызовов (llm_calls)."], ["Лимит", "Дневной потолок на человека. Упёрся — Рина отвечает «на сегодня я устала», запись сохраняется заметкой."], ["Распределение", "Доли людей по расходу за 30 дней. Хвост справа — те, кого стоит посмотреть."]]) +
+      block("Расход на ИИ", "Главная статья трат. Нужен, чтобы цена подписки всегда была выше того, что тратит средний и самый активный человек.",
+        '<div class="kpis">' +
+        kpi("Всего за интервал", usd(total), "все назначения", delta() / 2, "have", true) +
+        kpi("Прогноз на месяц", usd(total / state.days * 30), "по среднему за 7 дней", null, "have") +
+        kpi("Упёрлись в лимит", fmt(4 + R() * 5, 1) + "%", "активных хоть раз за интервал", delta(), "new") +
+        kpi("Самый дорогой", "$2,84", "за 30 дней, номер #0877", null, "have") +
+        kpi("Подписчик в среднем", "61¢", "≈ 1,95 $ выручки — маржа ~3×", null, "calc") +
+        "</div>") +
+      card("Расход по назначениям", "Стопкой по шагам времени, в долларах.", chartSlot("c-aistack", true) + legend(parts.map(function (p) { return [p[0], p[1]]; })), "have") +
+      '<div class="grid2">' +
+      card("Сколько людей тратят сколько", "За 30 дней, доля активных.", '<div class="hbars">' + dist.map(function (d) { return '<div class="r"><span>' + d[0] + '</span><div class="bar"><b style="width:' + d[1] / 41 * 100 + '%;background:' + C.s2 + '"></b></div><span>' + d[1] + "%</span></div>"; }).join("") + "</div>", "calc") +
+      card("Модели", "Доля расхода и среднее время ответа.", '<div class="tbl"><table><tr><th>Модель</th><th class="n">Доля</th><th class="n">p50</th><th class="n">p95</th></tr><tr><td>основная (разговор)</td><td class="n">58%</td><td class="n">2,4 с</td><td class="n">6,1 с</td></tr><tr><td>лёгкая (разбор)</td><td class="n">27%</td><td class="n">1,1 с</td><td class="n">2,9 с</td></tr><tr><td>картинки</td><td class="n">11%</td><td class="n">9,8 с</td><td class="n">21 с</td></tr><tr><td>распознавание голоса</td><td class="n">4%</td><td class="n">1,6 с</td><td class="n">3,3 с</td></tr></table></div>', "have") +
+      "</div>";
+  };
+  V.act = function (n, labs) {
+    var k = stepK(), regs = series(n, 4.2 * k, .8, .4, .15);
+    var cl = [["Программа на ПК", C.s1, 38], ["Telegram", C.s3, 30], ["Сайт", C.s4, 9], ["Айфон", C.s5, 4]];
+    var ser = cl.map(function (c) { return { name: c[0], color: c[1], values: series(n, c[2] * k, .4, .2, .15) }; });
+    draw("c-regs", "bar", labs, [{ name: "Регистрации", color: C.s4, values: regs }]);
+    draw("c-msgs", "bar", labs, ser);
+    draw("c-marks", "line", labs, [{ name: "Отметки привычек и задач", color: C.s3, values: series(n, 52 * k, .3, .2, .2) }, { name: "Записи, разобранные ИИ", color: C.s1, values: series(n, 61 * k, .3, .2, .15) }]);
+    var hours = [3, 2, 1, 1, 1, 2, 5, 11, 15, 13, 12, 10, 11, 12, 10, 9, 9, 10, 12, 14, 15, 13, 9, 5];
+    var days = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"], heat = '<div class="heat"><span></span>';
+    for (var h = 0; h < 24; h++) heat += '<span class="hl">' + (h % 3 ? "" : h) + "</span>";
+    days.forEach(function (d, di) { heat += '<span class="hl" style="text-align:left">' + d + "</span>"; for (var h2 = 0; h2 < 24; h2++) { var v = hours[h2] * (di > 4 ? (h2 < 10 ? .6 : 1.1) : 1) * (.8 + R() * .4); heat += '<div data-t="' + d + " " + pad(h2) + ':00" data-v="' + Math.round(v * 9) + '" style="background:color-mix(in srgb,' + C.s1 + " " + Math.min(100, Math.round(v / 17 * 100)) + '%, #1b1f25)"></div>'; } });
+    heat += "</div>";
+    draw("c-hours", "bar", hours.map(function (_, i) { return pad(i) + ":00"; }), [{ name: "Сообщений в час, в среднем", color: C.s4, values: hours.map(function (v) { return v * (.9 + R() * .2); }) }], { fmt: function (v) { return fmt(v, 1); } });
+    var active = Math.round(118 + R() * 30);
+    return block("Приток и объём", "Сколько людей пришло и сколько они делают. Отметка кнопкой и запись через ИИ — разные вещи: первое бесплатно, второе стоит денег.",
+        '<div class="kpis">' +
+        kpi("Регистрации", fmt(Math.round(sum(regs))), "новые аккаунты за интервал", delta(), "have") +
+        kpi("Обращения", fmt(Math.round(sum(ser.map(function (s) { return sum(s.values); })))), "сообщения во всех клиентах", delta(), "have") +
+        kpi("Активные", fmt(active), "хотя бы одно действие за интервал", delta(), "have") +
+        kpi("Обращений на активного", fmt(6 + R() * 3, 1), "сообщения ÷ активные", delta(), "calc") +
+        kpi("Отметок на активного", fmt(9 + R() * 4, 1), "галочки привычек и задач", delta(), "calc") +
+        kpi("Платящие среди активных", fmt(9 + R() * 4, 1) + "%", "хотя бы одна оплата в интервале", delta(), "calc") +
+        "</div>") +
+      '<div class="grid2">' +
+      card("Регистрации во времени", "Новые аккаунты по шагам.", chartSlot("c-regs"), "have") +
+      card("Обращения по клиентам", "Откуда пишут: стопкой по шагам.", chartSlot("c-msgs") + legend(cl.map(function (c) { return [c[0], c[1]]; })), "have") +
+      "</div>" +
+      card("Записи и отметки", "Сколько разобрал ИИ и сколько отмечено кнопкой. Растут отметки при тех же записях — привычка закрепляется.", chartSlot("c-marks") + legend([["Отметки привычек и задач", C.s3], ["Записи, разобранные ИИ", C.s1]]), "have") +
+      '<div class="grid2">' +
+      card("Активность по часам суток", "Среднее число сообщений на час, по поясу каждого человека.", chartSlot("c-hours"), "have") +
+      card("Неделя × час", "Минуты, когда программа была открыта, за 28 дней. Темнее — больше людей.", heat, "have") +
+      "</div>";
+  };
+  V.ret = function (n, labs) {
+    var dau = series(n, 61, .25, .25, .12);
+    draw("c-dau", "line", labs, [{ name: "Активные за день", color: C.s1, values: dau, area: true }, { name: "Прошлый период", color: "#5a6270", values: series(n, 52, .25, .1, .12), dash: true }]);
+    var weeks = ["29 сен", "6 окт", "13 окт", "20 окт", "27 окт", "3 ноя", "10 ноя", "17 ноя"], sizes = [22, 31, 28, 44, 39, 57, 61, 48];
+    var rows = weeks.map(function (w, i) {
+      var cells = '<td class="c" style="background:color-mix(in srgb,' + C.s1 + ' 100%, #1b1f25)">100%</td>', p = 100;
+      for (var j = 1; j <= 8; j++) {
+        if (j > 7 - i) { cells += '<td class="c" style="color:var(--muted)">—</td>'; continue; }
+        p = j === 1 ? 44 + R() * 14 : p * (.8 + R() * .14);
+        cells += '<td class="c" title="' + Math.round(sizes[i] * p / 100) + " из " + sizes[i] + '" style="background:color-mix(in srgb,' + C.s1 + " " + Math.round(p) + '%, #1b1f25)">' + Math.round(p) + "%</td>";
+      }
+      return "<tr><td>" + w + '</td><td class="n">' + sizes[i] + "</td>" + cells + "</tr>";
+    }).join("");
+    var head = ""; for (var j = 0; j <= 8; j++) head += '<th style="text-align:center">Н+' + j + "</th>";
+    return defs([["DAU / WAU / MAU", "Люди, сделавшие хоть что-то за последние 24 ч / 7 / 30 дней (сообщение, отметка, открыли программу)."], ["Липкость", "DAU ÷ MAU: какую часть месяца человек в среднем приходит. Для ежедневника хорошо — от 30%."], ["Мост MAU", "Было в прошлые 30 дней → осталось + ушло; пришло новых или вернувшихся."], ["Когорта", "Строка — неделя регистрации, столбец Н+k — доля тех, кто был активен на k-й неделе после неё."]]) +
+      block("Удержание", "Самая важная страница: возвращаются ли люди. Цифры — на конец интервала, стрелки — к той же точке неделю назад.",
+        '<div class="kpis">' +
+        kpi("DAU", fmt(Math.round(dau[dau.length - 1])), "за последние 24 ч", delta(), "have") +
+        kpi("WAU", fmt(Math.round(140 + R() * 20)), "за 7 дней", delta(), "have") +
+        kpi("MAU", fmt(Math.round(240 + R() * 40)), "за 30 дней", delta(), "have") +
+        kpi("Липкость DAU/MAU", fmt(24 + R() * 8, 1) + "%", "в среднем дней в месяц ÷ 30", delta(), "calc") +
+        kpi("Кто пропал", fmt(Math.round(18 + R() * 10)), "писали за 60 дней, но не за 14", delta(), "have", true) +
+        "</div>") +
+      card("Мост MAU", "Два окна по 30 дней до сегодня.", '<div class="bridge"><div><span class="k">Прошлый MAU</span><div class="v">212</div></div><div><span class="k">Остались</span><div class="v" style="color:var(--ok)">148</div></div><div><span class="k">Ушли</span><div class="v" style="color:var(--bad)">64</div></div><div><span class="k">Новые</span><div class="v">87</div></div><div><span class="k">Вернулись</span><div class="v">19</div></div><div><span class="k">Сейчас MAU</span><div class="v">254</div></div></div>', "calc") +
+      card("Активные по дням", "Пунктир — та же длина периода раньше, для сравнения.", chartSlot("c-dau", true) + legend([["Этот период", C.s1], ["Прошлый период", "#5a6270"]]), "have") +
+      card("Когорты по неделям регистрации", "Доля когорты, активной на k-й неделе. Наведите на ячейку — сколько людей.", '<div class="tbl"><table class="cohort"><tr><th>Неделя прихода</th><th class="n">Людей</th>' + head + "</tr>" + rows + "</table></div>", "have");
+  };
+  V.fun = function () {
+    var steps = [["Регистрация", 389], ["Выбрал характер Рины", 341], ["Первое сообщение", 302], ["Первая запись разобрана", 271], ["Первая галочка", 198], ["Вернулся на 2-й день", 141], ["Прошёл пробу (7 дней)", 96], ["Оплатил", 23]];
+    var fun = '<div class="funnel">' + steps.map(function (s, i) {
+      var w = 40 + 60 * s[1] / steps[0][1], prev = i ? steps[i - 1][1] : s[1], drop = i ? Math.round((1 - s[1] / prev) * 100) : 0;
+      return (i ? '<span class="drop">−' + drop + "%</span>" : "") + '<div class="st" style="width:' + w + '%" title="' + s[0] + ": " + s[1] + " из " + steps[0][1] + '"><span>' + s[0] + "</span><span>" + s[1] + " <small>(" + Math.round(s[1] / steps[0][1] * 100) + "%)</small></span></div>";
+    }).join("") + "</div>";
+    var dd = [["День 0", 78], ["День 1", 36], ["День 3", 27], ["День 7", 21], ["День 14", 16], ["День 30", 11]];
+    var days = '<div class="days">' + dd.map(function (d) { return '<div class="r"><span>' + d[0] + '</span><div class="bar"><b style="width:' + d[1] + '%"></b></div><span>' + d[1] + "% · " + Math.round(d[1] * 3.89) + " чел.</span></div>"; }).join("") + "</div>";
+    var lad = [], p = 100; for (var i = 1; i <= 14; i++) { lad.push([i, Math.round(p)]); p *= i < 3 ? .74 : .9; }
+    var ladder = '<div class="ladder">' + lad.map(function (l) { return '<div class="r"><span>≥' + l[0] + '</span><div class="bar"><b style="width:' + l[1] + '%"></b></div><span>' + l[1] + "%</span></div>"; }).join("") + "</div>";
+    var tour = [["Начали экскурсию", 100], ["Шаг «Панель»", 91], ["Шаг «Чат»", 84], ["Шаг «Привычки»", 72], ["Шаг «Планы»", 66], ["Дошли до конца", 58]];
+    return defs([["Когорта", "Все, кто зарегистрировался в интервале. Каждый следующий шаг — после регистрации, в любой день."], ["Вернулся на 2-й день", "Хоть одно действие в календарный день D+1 по своему поясу."], ["Возвраты по дням", "Доля когорты с действием в день D+N. Дни, ещё не наступившие для части людей, считаются только по тем, у кого наступили."], ["Лесенка", "Сколько разных дней человек был активен в первые 14 дней."]]) +
+      block("Воронки", "Где люди отваливаются по дороге от установки до оплаты. Самый большой красный процент — то, что чинить первым.",
+        '<div class="grid2">' + card("Первый запуск → оплата", "Когорта регистраций за интервал.", fun, "new") + card("Возвраты по дням", "Та же когорта: доля с действием в день D+N.", days + '<p class="note" style="margin-top:10px">Для приложений-ежедневников хороший D1 — от 30%, D30 — от 8%.</p>', "calc") + "</div>" +
+        '<div class="grid2">' + card("Лесенка первых двух недель", "Доля когорты, активной хотя бы N разных дней из первых 14.", ladder, "calc") + card("Экскурсия при первом запуске", "На каком шаге закрывают. Шаги — из tour.js.", '<div class="hbars">' + tour.map(function (t) { return '<div class="r"><span>' + t[0] + '</span><div class="bar"><b style="width:' + t[1] + '%;background:' + C.s6 + '"></b></div><span>' + t[1] + "%</span></div>"; }).join("") + "</div>", "new") + "</div>");
+  };
+  V.feat = function () {
+    var f = [["Отметить привычку", "Виджет", 3120, 188], ["Запись в чате", "Виджет", 2410, 171], ["Сообщение боту", "Telegram", 1980, 142], ["Отметить задачу", "Виджет", 1650, 160], ["Панель планов", "Виджет", 910, 120], ["Голосовая запись", "Виджет", 402, 61], ["Быстрая запись (окно)", "Виджет", 388, 54], ["Нарисовать картинку", "Общие", 211, 73], ["Перенести план", "Виджет", 190, 66], ["Альбом реакций", "Виджет", 142, 58], ["Дневник на сайте", "Сайт", 133, 39], ["Погода «Перенести»", "Виджет", 21, 14]];
+    var unused = ["Экспорт данных", "Курсы на 100 дней", "Своя тема виджета", "Повтор плана по будням"];
+    var mx = f[0][2];
+    return block("Функции", "Чем пользуются и чем нет. Счётчики уже копятся (этап 3 админки), здесь — тот же список, но с людьми, долей и сравнением.",
+      '<div class="kpis">' + kpi("Функций в ходу", "38 из 47", "хоть раз за интервал", delta() / 4, "have") + kpi("Функций на человека", "6,4", "разных, в среднем", delta(), "calc") + kpi("Не трогали", "9", "ни разу за 30 дней", null, "have", true) + "</div>") +
+      card("Самые частые", "Раз и людей за интервал. Полоса — раз.", '<div class="tbl"><table><tr><th>Функция</th><th>Где</th><th style="width:40%"></th><th class="n">Раз</th><th class="n">Людей</th><th class="n">Доля активных</th></tr>' + f.map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + '</td><td><div style="height:10px;border-radius:0 3px 3px 0;background:' + C.s1 + ";width:" + r[2] / mx * 100 + '%"></div></td><td class="n">' + fmt(r[2]) + '</td><td class="n">' + r[3] + '</td><td class="n">' + Math.round(r[3] / 2.1) + "%</td></tr>"; }).join("") + "</table></div>", "have") +
+      card("Ни разу за 30 дней", "Кандидаты: спрятать, объяснить в экскурсии или убрать.", '<p style="margin:10px 0 0;color:var(--soft)">' + unused.join(" · ") + "</p>", "have");
+  };
+  V.rina = function () {
+    var an = [["Галочка", 2840], ["Пишет", 2410], ["Думает", 2290], ["Палец вверх", 1120], ["Радуется", 980], ["Серия", 940], ["Пьёт чай", 610], ["Свиток", 590], ["Машет", 540], ["Колокольчик", 470], ["Недовольна", 310], ["Смущённо рада", 280], ["«Марш спать»", 160], ["Стирает память", 41]];
+    var pers = [["Строгая, но заботливая", 46, C.s1], ["Добрая", 31, C.s3], ["Дерзкая", 15, C.s5], ["Расслабленная", 8, C.s4]];
+    var mx = an[0][1];
+    return block("Рина", "Как люди общаются с персонажем. Нужно, чтобы понять, какие анимации и характеры работают, а какие никто не видит.",
+      '<div class="kpis">' + kpi("Реакций показано", "13,7 тыс.", "за интервал, все анимации", delta(), "new") + kpi("Тычков на человека", "4,2", "в день, у тыкавших", delta(), "new") + kpi("Обиделась", "6%", "дошли до 10-го тычка", null, "new") + kpi("Альбом: собрали все", "3%", "41 из 41 реакции", null, "new") + kpi("Сменили характер", "22%", "хоть раз после первого выбора", null, "calc") + "</div>") +
+      '<div class="grid2">' +
+      card("Какие реакции видят", "Сколько раз показана анимация за интервал.", '<div class="hbars">' + an.map(function (a) { return '<div class="r"><span>' + a[0] + '</span><div class="bar"><b style="width:' + a[1] / mx * 100 + '%;background:' + C.s6 + '"></b></div><span>' + fmt(a[1]) + "</span></div>"; }).join("") + "</div>", "new") +
+      card("Характеры", "Доля людей по выбранному характеру сейчас.", '<div class="hbars">' + pers.map(function (p) { return '<div class="r"><span>' + p[0] + '</span><div class="bar"><b style="width:' + p[1] * 2 + "%;background:" + p[2] + '"></b></div><span>' + p[1] + "%</span></div>"; }).join("") + '</div><p class="note" style="margin-top:12px">Рядом стоит смотреть удержание по характеру: если у «дерзкой» D7 ниже вдвое — её тон отпугивает.</p><div class="tbl"><table><tr><th>Характер</th><th class="n">D7</th><th class="n">Платят</th></tr><tr><td>Строгая</td><td class="n">24%</td><td class="n">12%</td></tr><tr><td>Добрая</td><td class="n">27%</td><td class="n">10%</td></tr><tr><td>Дерзкая</td><td class="n">18%</td><td class="n">9%</td></tr><tr><td>Расслабленная</td><td class="n">15%</td><td class="n">6%</td></tr></table></div>', "calc") +
+      "</div>" +
+      card("Праздники", "Сколько раз и у скольких людей. Помогает понять, не надоедают ли.", '<div class="tbl"><table><tr><th>Праздник</th><th class="n">Раз</th><th class="n">Людей</th><th class="n">Закрыли раньше конца</th></tr><tr><td>Волна по отметкам</td><td class="n">1 240</td><td class="n">171</td><td class="n">4%</td></tr><tr><td>Салют за серию 7/30/100</td><td class="n">96</td><td class="n">61</td><td class="n">1%</td></tr><tr><td>Курс пройден</td><td class="n">18</td><td class="n">14</td><td class="n">0%</td></tr><tr><td>Новый уровень (XP)</td><td class="n">203</td><td class="n">122</td><td class="n">2%</td></tr></table></div>', "new");
+  };
+  V.parse = function (n, labs) {
+    var k = stepK();
+    var kinds = [["Задачи", C.s1, 22], ["Планы", C.s3, 18], ["Дневник", C.s6, 14], ["Привычки", C.s4, 7], ["Деньги", C.s5, 6], ["Разговор без записи", C.s2, 12]];
+    draw("c-kinds", "bar", labs, kinds.map(function (x) { return { name: x[0], color: x[1], values: series(n, x[2] * k, .4, .2, .15) }; }));
+    draw("c-err", "line", labs, [{ name: "Отменено или поправлено, %", color: C.s2, values: series(n, 6.5, .4, -.2, 0) }], { fmt: function (v) { return fmt(v, 1) + "%"; } });
+    return block("Разбор", "Что люди пишут и как часто ИИ ошибается. Это уже частично есть в «Качестве разбора» — здесь добавлены виды записей и сравнение.",
+      '<div class="kpis">' + kpi("Сообщений с ИИ", "2 380", "за интервал", delta(), "have") + kpi("Отменено", fmt(3 + R() * 2, 1) + "%", "«↩ Отменить», «просто заметка»", delta(), "have", true) + kpi("Поправки", fmt(2 + R() * 2, 1) + "%", "«поправить этот ответ…»", delta(), "have", true) + kpi("Сейчас в ошибке", "2", "ждут повтора", null, "have", true) + kpi("Ответ за", "2,1 с", "медиана; 95% быстрее 6 с", delta() / 3, "have", true) + "</div>") +
+      card("Что записывается", "По виду записи, стопкой по шагам.", chartSlot("c-kinds", true) + legend(kinds.map(function (x) { return [x[0], x[1]]; })), "have") +
+      card("Доля отмен и поправок", "Растёт — разбор стал хуже (сменили модель, промпт).", chartSlot("c-err"), "have");
+  };
+  V.plan = function () {
+    var rows = [
+      ["Параметры отчёта", "Один набор: 24 ч / 7 / 30 / 90 дн. / 12 мес, шаг час/день/неделя, сравнение с прошлым периодом той же длины, обновление раз в минуту.", "have", "Каркас: общий запрос /api/admin/analytics?from&to&step, ответ — текущий и прошлый период."],
+      ["Активность, удержание, когорты", "Сообщения, отметки, входы и минуты присутствия уже в базе (messages, presence, sessions).", "have", "Этап 1 — сразу. Добавить мост MAU, липкость, DAU с прошлым периодом."],
+      ["Расход на ИИ", "Журнал вызовов модели с назначением, моделью и ценой уже пишется (llm_calls).", "have", "Этап 1. Добавить распределение по людям и долю упёршихся в лимит."],
+      ["Функции", "Счётчики feature_events копятся с 24.11 (этап 3 админки).", "have", "Этап 1. Доля активных и «ни разу» — запросом."],
+      ["Подписки и выручка", "Таблицы тарифов и оплат Stars делает сессия «Стресс-тест» прямо сейчас (проба 7 дней, ⭐150 в месяц).", "new", "Этап 2 — сразу после оплат. Каждая оплата, продление, отмена, возврат — отдельной строкой с датой."],
+      ["Воронка первого запуска", "Есть регистрация, первое сообщение и первая галочка. Нет: выбора характера, шагов экскурсии, конца пробы.", "new", "Этап 2. События onboarding.* в тот же feature_events, с номером шага."],
+      ["Рина: реакции, тычки, праздники", "Виджет это не отправляет.", "new", "Этап 3. Счётчики maid.react.<имя>, poke, party.* — пачкой, как usage.json. Без текстов."],
+      ["Удержание по характеру", "Характер есть у каждого — достаточно соединить с активностью.", "calc", "Этап 3. Тот же запрос когорт с разбивкой."],
+      ["Выгрузка в CSV", "У образца — «сырые числа для скриптов». Удобно для своих таблиц.", "calc", "Этап 4. Кнопка у каждой таблицы."]
+    ];
+    var map = { have: "есть", calc: "посчитать", "new": "записывать" };
+    return block("Как это сделать", "Что уже есть в базе, что посчитать и что начать записывать. Порядок — сверху вниз; начать записывать стоит как можно раньше, данные не появляются задним числом.",
+      card("План по блокам", "", '<div class="tbl"><table class="plan"><tr><th>Блок</th><th>Откуда данные</th><th>Статус</th><th>Что сделать</th></tr>' + rows.map(function (r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + '</td><td><span class="src ' + r[2] + '">' + map[r[2]] + '</span></td><td style="white-space:normal;min-width:240px">' + r[3] + "</td></tr>"; }).join("") + "</table></div>") +
+      '<div class="why">' +
+      card("Взяли у образца", "", "<p>Один блок параметров на все отчёты; сравнение с прошлым периодом у каждой цифры; подпись под каждым графиком, что он считает; «Как считаются цифры» в раскрывашке; мост MAU; когортная матрица; воронка + возвраты по дням + лесенка глубины; активность по часам.</p>") +
+      card("Сделали иначе", "", "<p>Деньги сразу против расхода на ИИ — у нас это главный вопрос. Отмены вниз от нуля, а не отдельным графиком. Отдельный отчёт про Рину: реакции, характеры, праздники. Метки «есть / посчитать / записывать» — чтобы было видно, сколько работы.</p>") +
+      card("Приватность", "", "<p>Как и в нынешней админке: только счётчики и номера. Ни текстов сообщений, ни названий программ из трекера, ни chat_id. Люди в таблицах — номером аккаунта, без имени.</p>") +
+      "</div>");
+  };
+
+  // ——— переключение
+  var view = document.getElementById("view");
+  function go() {
+    charts = []; hideTip();
+    R = rng(state.days * 131 + { h: 1, d: 2, w: 3 }[state.step] * 17 + state.tab.length * 7);
+    var n = points(), labs = labels(n);
+    view.innerHTML = '<div class="content">' + V[state.tab](n, labs) + "</div>";
+    document.querySelectorAll(".sub button").forEach(function (b) { b.classList.toggle("on", b.dataset.tab === state.tab); });
+    document.querySelectorAll("#iv button").forEach(function (b) { b.classList.toggle("on", +b.dataset.v === state.days); });
+    document.querySelectorAll("#gr button").forEach(function (b) {
+      var bad = (b.dataset.v === "h" && state.days > 7) || (b.dataset.v === "w" && state.days < 30);
+      b.disabled = bad; b.classList.toggle("on", b.dataset.v === state.step);
+    });
+    var stepName = { h: "час", d: "календарный день", w: "неделя" }[state.step];
+    document.getElementById("meta").innerHTML = "<span><b>" + { 1: "24 ч", 7: "7 дней", 30: "30 дней", 90: "90 дней", 365: "12 месяцев" }[state.days] + "</b> до 24 нояб. 2026, 14:00</span><span>Шаг графиков: <b>" + stepName + "</b></span><span>Сравнение: <b>прошлые " + state.days + " дн.</b></span><span>Обновление каждые 60 с</span><span>Пояс: <b>каждого человека</b> (деньги — UTC)</span>";
+    view.querySelectorAll(".heat div").forEach(function (c) { c.addEventListener("mousemove", function (e) { showTip(e, c.dataset.t, [["Минут", c.dataset.v]]); }); c.addEventListener("mouseleave", hideTip); });
+    view.querySelectorAll(".cohort td.c[title], .funnel .st").forEach(function (c) { var t = c.getAttribute("title"); c.removeAttribute("title"); c.addEventListener("mousemove", function (e) { showTip(e, t.split(":")[0], [[t.indexOf(":") > 0 ? "Людей" : "Людей", t.indexOf(":") > 0 ? t.split(": ")[1] : t]]); }); c.addEventListener("mouseleave", hideTip); });
+    requestAnimationFrame(renderAll);
+    save();
+  }
+  function fixStep() { if (state.step === "h" && state.days > 7) state.step = "d"; if (state.step === "w" && state.days < 30) state.step = "d"; }
+  document.querySelectorAll(".sub button").forEach(function (b) { b.addEventListener("click", function () { state.tab = b.dataset.tab; go(); window.scrollTo({ top: 0 }); }); });
+  document.querySelectorAll("#iv button").forEach(function (b) { b.addEventListener("click", function () { state.days = +b.dataset.v; if (state.days === 1) state.step = "h"; fixStep(); go(); }); });
+  document.querySelectorAll("#gr button").forEach(function (b) { b.addEventListener("click", function () { if (b.disabled) return; state.step = b.dataset.v; go(); }); });
+  var tg = document.getElementById("srcToggle");
+  tg.addEventListener("click", function () { var on = tg.getAttribute("aria-pressed") !== "true"; tg.setAttribute("aria-pressed", on); document.getElementById("root").classList.toggle("showsrc", on); });
+  document.querySelectorAll(".side a").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); }); });
+  fixStep(); go();
+})();
+</script>
