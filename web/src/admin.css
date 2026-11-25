@@ -451,3 +451,12 @@ body.admin-body { background: #0f1114; }
   .adm-acc-num input[type="date"], .adm-acc-num select { width: 100% !important; }
   .adm-acc-num { flex-wrap: wrap; }
 }
+
+/* «Счёт OpenRouter» в «Расходах на модель» (AdminOpenRouter.tsx): строка сверки с расхождением — красная полоса слева. */
+.adm-or { margin-top: 18px; }
+.adm-or-status { margin: 4px 0 12px; }
+/* Статус блока длинный (ключ не задан: … OPENROUTER_MANAGEMENT_KEY …) — переносится, а не вылезает за панель на телефоне. */
+.adm-or-status .adm-al-st { white-space: normal; overflow-wrap: anywhere; }
+.adm-or-days tr.adm-or-flag td { color: var(--a-bad); }
+.adm-or-days tr.adm-or-flag td:first-child { box-shadow: inset 3px 0 0 var(--a-bad); }
+.adm-or .adm-h3 { font-size: 14px; font-weight: 600; margin: 18px 0 8px; }

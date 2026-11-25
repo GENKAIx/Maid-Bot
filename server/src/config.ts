@@ -57,6 +57,9 @@ export const config = {
     openrouterKey: env("OPENROUTER_API_KEY"),
     openrouterModel: env("OPENROUTER_DRAW_MODEL", "google/gemini-2.5-flash-image"),
   },
+  /** Управляющий ключ OpenRouter (Management key) — только для «Счёта OpenRouter» в админке (openrouter-bill.ts): /api/v1/activity и
+   *  /api/v1/credits. Пусто — блок показывает «ключ не задан». Обычный ключ LLM сюда не подходит (OpenRouter отвечает 403). */
+  openrouterManagementKey: env("OPENROUTER_MANAGEMENT_KEY"),
   port: Number(env("PORT", "3000")),
   /** Postgres (Render). Если задан — главнее файла SQLite. */
   databaseUrl: env("DATABASE_URL"),

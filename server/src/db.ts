@@ -749,7 +749,33 @@ CREATE TABLE IF NOT EXISTS server_metrics (
   tick_ms {real} NOT NULL DEFAULT 0
 );
 `,
+  // Шаг 38: «Счёт OpenRouter» (openrouter-bill.ts) — расход так, как его считает сам OpenRouter (/api/v1/activity, управляющий ключ):
+  // день UTC × модель × провайдер. micro_usd — потрачено кредитов OpenRouter (usage), byok_micro — расход по своим ключам провайдеров
+  // (byok_usage_inference), в миллионных доллара, как llm_usage. Загрузка за окно заменяет строки этих дней, а не складывает.
+  // Без ключей и без людей: только модель, провайдер и числа.
+  `
+CREATE TABLE IF NOT EXISTS openrouter_bill (
+  day TEXT NOT NULL,
+  model TEXT NOT NULL,
+  provider TEXT NOT NULL DEFAULT '',
+  micro_usd BIGINT NOT NULL DEFAULT 0,
+  byok_micro BIGINT NOT NULL DEFAULT 0,
+  requests BIGINT NOT NULL DEFAULT 0,
+  prompt_tokens BIGINT NOT NULL DEFAULT 0,
+  completion_tokens BIGINT NOT NULL DEFAULT 0,
+  reasoning_tokens BIGINT NOT NULL DEFAULT 0,
+  cached_tokens BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, model, provider)
+);
+`,
 ];
+
+/** Строка «Счёта OpenRouter» (шаг 38, openrouter-bill.ts): день UTC × модель × провайдер; деньги — миллионные доллара. */
+export interface OpenRouterBillRow {
+  day: string; model: string; provider: string; micro_usd: number; byok_micro: number; requests: number;
+  prompt_tokens: number; completion_tokens: number; reasoning_tokens: number; cached_tokens: number;
+}
+const OPENROUTER_BILL_COLS = ["day", "model", "provider", "micro_usd", "byok_micro", "requests", "prompt_tokens", "completion_tokens", "reasoning_tokens", "cached_tokens"] as const;
 
 /** Снимок нагрузки сервера за минуту (шаг 37, server-metrics.ts); поля — как столбцы server_metrics. */
 export interface ServerMetricRow {
@@ -2798,6 +2824,42 @@ export class Store {
     const sel = (cols ?? SERVER_METRIC_COLS).filter((k) => (SERVER_METRIC_COLS as readonly string[]).includes(k));
     const rows = await this.all<Record<string, unknown>>(`SELECT ${sel.join(", ")} FROM server_metrics WHERE at >= ? ORDER BY at`, since);
     return rows.map((x) => Object.fromEntries(sel.map((k) => [k, k === "at" ? String(x.at) : x[k] == null ? null : Number(x[k])])) as unknown as Pick<ServerMetricRow, K>);
+  }
+  /** «Счёт OpenRouter» (шаг 38): строки дней from..to (ГГГГ-ММ-ДД, включительно) заменяются rows — повторная загрузка того же
+   *  дня не складывается; одной транзакцией, чтобы ручка не увидела окно пустым. */
+  async replaceOpenRouterBill(from: string, to: string, rows: OpenRouterBillRow[]) {
+    await this.driver.tx(async () => {
+      await this.run("DELETE FROM openrouter_bill WHERE day >= ? AND day <= ?", from, to);
+      for (const r of rows) {
+        if (r.day < from || r.day > to) continue;
+        await this.run(
+          `INSERT INTO openrouter_bill (${OPENROUTER_BILL_COLS.join(", ")}) VALUES (${OPENROUTER_BILL_COLS.map(() => "?").join(", ")})
+           ON CONFLICT (day, model, provider) DO UPDATE SET micro_usd = excluded.micro_usd, byok_micro = excluded.byok_micro, requests = excluded.requests,
+           prompt_tokens = excluded.prompt_tokens, completion_tokens = excluded.completion_tokens, reasoning_tokens = excluded.reasoning_tokens,
+           cached_tokens = excluded.cached_tokens`,
+          ...OPENROUTER_BILL_COLS.map((k) => r[k]),
+        );
+      }
+    });
+  }
+  /** Строки «Счёта OpenRouter» за дни from..to (включительно), по дням и моделям. */
+  async openRouterBill(from: string, to: string): Promise<OpenRouterBillRow[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT ${OPENROUTER_BILL_COLS.join(", ")} FROM openrouter_bill WHERE day >= ? AND day <= ? ORDER BY day, model, provider`, from, to,
+    );
+    return rows.map((x) => ({
+      day: String(x.day), model: String(x.model), provider: String(x.provider), micro_usd: Number(x.micro_usd) || 0, byok_micro: Number(x.byok_micro) || 0,
+      requests: Number(x.requests) || 0, prompt_tokens: Number(x.prompt_tokens) || 0, completion_tokens: Number(x.completion_tokens) || 0,
+      reasoning_tokens: Number(x.reasoning_tokens) || 0, cached_tokens: Number(x.cached_tokens) || 0,
+    }));
+  }
+  /** Наш расход по дням UTC (llm_usage.day — день UTC, addUsage): сумма micro_usd и вызовы без цены — для сверки со счётом OpenRouter. */
+  async usageByDay(from: string, to: string): Promise<{ day: string; micro: number; calls: number; unpriced: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      "SELECT day, SUM(micro_usd) AS micro, SUM(calls) AS calls, SUM(calls - priced) AS unpriced FROM llm_usage WHERE day >= ? AND day <= ? GROUP BY day ORDER BY day",
+      from, to,
+    );
+    return rows.map((x) => ({ day: String(x.day), micro: Number(x.micro) || 0, calls: Number(x.calls) || 0, unpriced: Number(x.unpriced) || 0 }));
   }
   /** Удалить снимки старше before (ISO); вернуть, сколько удалено. */
   async pruneServerMetrics(before: string): Promise<number> {

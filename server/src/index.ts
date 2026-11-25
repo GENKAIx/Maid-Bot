@@ -4,7 +4,7 @@ import { createApi } from "./api.ts";
 import { createBot } from "./bot.ts";
 import { config } from "./config.ts";
 import { Store } from "./db.ts";
-import { callLlm, llmReady, onLlmCall, onLlmUsage, setLiteModel } from "./llm.ts";
+import { callLlm, isOpenRouter, llmReady, onLlmCall, onLlmUsage, setLiteModel } from "./llm.ts";
 import { backupName, exportJson } from "./backup.ts";
 import type { User } from "./db.ts";
 import { NOTICES_KEEP } from "./notices.ts";
@@ -24,13 +24,14 @@ import { installLogRedaction } from "./log-redact.ts";
 import { loadTariffs, watchTariffs } from "./tariffs.ts";
 import { loadSwitches, watchSwitches } from "./switches.ts";
 import { noteBotUpdate, noteLlmCall, ServerMeter } from "./server-metrics.ts";
+import { OpenRouterBill } from "./openrouter-bill.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
 
 // Сначала — чтобы ни одна строка лога (и падение) не вывела токен бота или ключи.
 installLogRedaction([config.telegramToken, config.llm.apiKey, config.stt.apiKey, config.drawing.apiKey, config.drawing.openrouterKey,
-  config.databaseUrl, config.desktopToken, config.push.privateKey]);
+  config.databaseUrl, config.desktopToken, config.push.privateKey, config.openrouterManagementKey]);
 
 const store = await Store.open(config.databaseUrl || config.dbFile);
 console.log(`[start] база: ${config.databaseUrl ? "Postgres" : "SQLite " + config.dbFile}`);
@@ -116,6 +117,13 @@ const copies = new DbCopies(store, {
     ? async (name, data, caption) => sendEach((await owners()).filter((u) => u.chat_id), (u) => tg.sendFile(u, name, data, caption))
     : undefined,
 });
+// «Счёт OpenRouter» (openrouter-bill.ts): управляющим ключом — /activity и /credits; «потрачено сегодня/неделя/месяц» — ключами
+// самого сервера, которые идут через OpenRouter (LLM, рисование, голос). Раз в час из такта планировщика и по кнопке в админке.
+const openrouter = new OpenRouterBill(store, {
+  key: config.openrouterManagementKey,
+  usageKeys: [isOpenRouter(config.llm.baseUrl) ? config.llm.apiKey : "", config.drawing.apiKey ? "" : config.drawing.openrouterKey,
+    isOpenRouter(config.stt.baseUrl) ? config.stt.apiKey : ""],
+});
 scheduler = new Scheduler(store, llmReady() ? callLlm : null, send, backup);
 scheduler.aiFor = (u, now) => gate.allowed(u, now);
 scheduler.extra = async (now) => {
@@ -132,6 +140,8 @@ scheduler.extra = async (now) => {
   }
   // Оповещения владельцу (alerts.ts): раз в 5 минут, сводка новичков — раз в сутки после 06:00 UTC.
   await alerts.check(now).catch((e) => console.error("[alerts]", e));
+  // Счёт OpenRouter — раз в час, без ожидания: медленный OpenRouter не держит такт с напоминаниями; ошибки — статусом в админке.
+  openrouter.hourlyInBackground(now);
 };
 scheduler.start();
 // Нагрузка сервера раз в минуту (server-metrics.ts): снимок в server_metrics, 7 дней; админка → «Здоровье сервера».
@@ -146,7 +156,7 @@ const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => cons
 void pipeline.sweepProposals().catch(() => {});
 
 let botName: string | undefined;
-const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode, billing, alerts, copies, llmRpm: config.llm.rpm });
+const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode, billing, alerts, copies, llmRpm: config.llm.rpm, openrouter });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
   if (!tg) return;

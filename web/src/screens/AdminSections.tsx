@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { ApiError, get, post } from "../api";
 import { navigate } from "../router";
+import { AdminOpenRouter } from "./AdminOpenRouter";
 import { ADM_WEEKDAYS, ago, CLIENT_NAMES, dayAgo, ERROR_NAMES, featureView, msText, PAYMENT_KINDS, refundable, ROUTE_NAMES, SOURCE_NAMES, sortRows, sparkPoints, starsText, uptimeText, usd, type FeatureRow, type PaymentRow } from "../admin";
 
 // Разделы админки этапа 1 (24.11.2026): Обзор, Пользователи, Расходы, Аудитория, Качество разбора. Данные — /api/admin/*
@@ -303,6 +304,7 @@ export function AdminSpend() {
         Вызовы считаются с этапа 2: повтор доставки и запасная модель — один вызов, переспрос модели — ещё один. Цены у отдельного сообщения нет:
         журнал попыток модели с сообщениями не связан, поэтому деньги — только по людям и назначениям выше.
       </p>
+      <AdminOpenRouter />
     </>
   );
 }

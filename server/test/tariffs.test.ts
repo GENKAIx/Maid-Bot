@@ -40,7 +40,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       await store.kvSet("schema_version", "29");
       await store.kvSet("signups:closed", "1");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "37");
+      assert.equal(await again.kvGet("schema_version"), "38");
       assert.equal(await again.kvGet("signups:closed"), undefined, "старое место удалено");
       assert.deepEqual((await again.tariffSettings()).map((r) => [r.key, r.value]), [["signupsOpen", "false"]]);
       assert.equal((await loadTariffs(again)).signupsOpen, false);
@@ -402,7 +402,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       await store.driver.exec("ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
       await store.kvSet("schema_version", "30");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "37");
+      assert.equal(await again.kvGet("schema_version"), "38");
       assert.equal((await again.user(t.id))!.trial_len_days, null);
       assert.equal(Number((await again.user(g.id))!.trial_len_days), 0);
       assert.equal(endedOf((await again.user(g.id))!), "gift");

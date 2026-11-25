@@ -49,6 +49,7 @@ import { createTicket, SupportError, supportOf, ticketAction, ticketCard, ticket
 import { AnnounceError, announcementsView, createAnnouncement, deliverToWidget, siteAnnouncements, toggleAnnouncement } from "./announce.ts";
 import { prognosisView } from "./prognosis.ts";
 import { healthRange, noteActive, noteHttp, serverLoad } from "./server-metrics.ts";
+import { OpenRouterBill, OpenRouterBillError } from "./openrouter-bill.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -83,6 +84,8 @@ export interface ApiDeps {
   copies?: DbCopies;
   /** Потолок провайдера модели, запросов в минуту (config.llm.rpm; 0 — не известен) — для «Сколько выдержит» (server-metrics.ts). */
   llmRpm?: number;
+  /** «Счёт OpenRouter» (openrouter-bill.ts); нет — без ключа (блок покажет «ключ не задан»). */
+  openrouter?: OpenRouterBill;
 }
 
 /** Ошибка проверки действия с аккаунтом (admin-account.ts) — в ответ с её кодом. */
@@ -323,6 +326,7 @@ export function createApi(deps: ApiDeps) {
     },
   });
   const copies = deps.copies ?? new DbCopies(store, { dir: null });
+  const orBill = deps.openrouter ?? new OpenRouterBill(store);
   const gate = deps.loginGate ?? new LoginGate();
   const previews = new PreviewPasses();
 
@@ -393,6 +397,20 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/admin/overview") return adminOverview(store);
     if (m === "GET" && p === "/api/admin/users") return adminUsers(store);
     if (m === "GET" && p === "/api/admin/spend") return adminSpend(store, days);
+    // «Счёт OpenRouter» (openrouter-bill.ts): что насчитал сам OpenRouter за 30 дней UTC, сверка с llm_usage по дням; «Обновить» —
+    // с причиной (в журнал админа), не чаще раза в минуту (429). Ключа в ответе нет.
+    if (m === "GET" && p === "/api/admin/openrouter") return orBill.view();
+    if (m === "POST" && p === "/api/admin/openrouter/refresh") {
+      const b = (await readJson(req, 20_000)) as Record<string, unknown> | null;
+      const reason = guard(() => accountReason(b?.reason));
+      try {
+        await orBill.manual(u.id, reason);
+      } catch (e) {
+        if (e instanceof OpenRouterBillError) throw new HttpError(e.status, e.message);
+        throw e;
+      }
+      return orBill.view();
+    }
     if (m === "GET" && p === "/api/admin/audience") return adminAudience(store);
     if (m === "GET" && p === "/api/admin/quality") return adminQualityReport(store, days);
     if (m === "GET" && p === "/api/admin/health") return adminHealth(store);

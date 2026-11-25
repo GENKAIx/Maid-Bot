@@ -106,6 +106,7 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   announce_on: "включил объявление",
   announce_off: "выключил объявление",
   preview: "открыл живой показ виджета (витрина)",
+  openrouter_refresh: "обновил счёт OpenRouter",
 };
 
 // ——— Выпуски и падения (этап 5; типы — копия server/src/releases.ts releasesView и server/src/crashes.ts adminCrashes).
@@ -857,4 +858,47 @@ export const csvFileName = (report: string, table: string, days: number, today: 
 export function seriesCsv(buckets: AnalyticsBucket[], cols: { name: string; values: (number | null)[] }[]): string {
   return toCsv(["bucket", "from", "to", "days", ...cols.map((c) => c.name)],
     buckets.map((b, i) => [b.key, b.from, b.to, +b.days.toFixed(4), ...cols.map((c) => c.values[i] ?? null)]));
+}
+
+// ——— «Счёт OpenRouter» в «Расходах на модель» (тип — копия server/src/openrouter-bill.ts OpenRouterBill.view).
+export type OpenRouterStatus = "never" | "no_key" | "ok" | "bad_key" | "no_net" | "error";
+export interface OpenRouterDay {
+  day: string; bill: number | null; byok: number | null; requests: number | null;
+  ours: number; ours_calls: number; ours_unpriced: number; diff: number | null; flag: boolean; today: boolean;
+}
+export interface OpenRouterModel { model: string; providers: string[]; cost: number; byok: number; requests: number; prompt: number; completion: number; reasoning: number; share: number }
+export interface OpenRouterData {
+  status: OpenRouterStatus; has_key: boolean; error: string; checked_at: string | null; ok_at: string | null;
+  credits: { total: number; used: number; left: number } | null; credits_at: string | null;
+  /** null в поле — цифры взяты в прошлый день / неделю / месяц UTC (устарели); missing — сколько ключей сервера не ответило. */
+  spent: { daily: number | null; weekly: number | null; monthly: number | null; byok_daily: number | null; byok_weekly: number | null; byok_monthly: number | null; keys: number; missing: number } | null; spent_at: string | null;
+  from: string; to: string; days: OpenRouterDay[]; models: OpenRouterModel[];
+  total: { bill: number; byok: number; requests: number; ours: number };
+  every_min: number; gap_s: number; share: number; usd: number;
+}
+
+/** Статус загрузки счёта по-человечески и тон плашки. */
+export function openRouterStatus(d: Pick<OpenRouterData, "status" | "error">): { text: string; tone: "ok" | "warn" | "bad" | "mute" } {
+  switch (d.status) {
+    case "ok": return { text: "загружено", tone: "ok" };
+    case "never": return { text: "ещё не загружали — нажмите «Обновить» или подождите час", tone: "mute" };
+    case "no_key": return { text: "ключ не задан: нужен управляющий ключ OpenRouter (OPENROUTER_MANAGEMENT_KEY в .env сервера)", tone: "warn" };
+    case "bad_key": return { text: "ключ не подходит — нужен управляющий ключ (Management key), обычный ключ LLM не годится", tone: "bad" };
+    case "no_net": return { text: `нет связи с OpenRouter${d.error ? ` (${d.error})` : ""}`, tone: "bad" };
+    default: return { text: d.error || "не загрузилось", tone: "bad" };
+  }
+}
+
+/** Деньги со знаком: «+$0.25», «−$0.010», ноль — «$0». */
+export function signedUsd(v: number): string {
+  if (Math.abs(v) < 5e-7) return "$0";
+  return `${v > 0 ? "+" : "−"}${usd(Math.abs(v))}`;
+}
+
+/** Расхождение дня по-человечески: доля от большего из двух; нет счёта — прочерк. */
+export function openRouterDiffText(d: Pick<OpenRouterDay, "bill" | "ours" | "diff">): string {
+  if (d.bill == null || d.diff == null) return "—";
+  const base = Math.max(d.bill, d.ours);
+  const pct = base > 0 ? Math.round((Math.abs(d.diff) / base) * 100) : 0;
+  return d.diff ? `${signedUsd(d.diff)} (${pct}%)` : "$0";
 }
