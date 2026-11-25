@@ -17,6 +17,7 @@ import { weatherFor } from "./weather.ts";
 import { countFeature } from "./feature-events.ts";
 import { RATE_AGAIN, type AiGate, type Refusal, type Taken, type Verdict } from "./access.ts";
 import { SHELVES, notesData, sameNote } from "./notes.ts";
+import { noteQueue } from "./server-metrics.ts";
 import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, moneyCard, noteCard, taskCard, traitCard } from "./cards.ts";
 import {
   ALREADY_UNDONE, CorrectSchema, KIND_CHANGE, NOT_UNDERSTOOD, addLine, addOf, alive, answerCards, answerRows, applyPlanned, cardOf, changeLine, correctPrompt, editable,
@@ -296,11 +297,16 @@ export class Pipeline {
    *  не дождался ответа, Telegram прислал обновление ещё раз), не берёт второй раз лимит и не зовёт модель: ждёт первый и
    *  получает его итог (again: true). Только в памяти процесса — сервер один. */
   private running = new Map<string, Promise<unknown>>();
+  /** Сколько разборов и поправок сейчас в работе — очередь для «Здоровья сервера» (server-metrics.ts). */
+  get inWork() {
+    return this.running.size;
+  }
   async inFlight<T>(key: string, fn: () => Promise<T>): Promise<{ value: T; again: boolean }> {
     const busy = this.running.get(key);
     if (busy) return { value: (await busy) as T, again: true };
     const job = fn();
     this.running.set(key, job);
+    noteQueue(this.running.size);
     try {
       return { value: await job, again: false };
     } finally {

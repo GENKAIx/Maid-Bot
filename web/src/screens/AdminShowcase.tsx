@@ -1,27 +1,32 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
-import { FEATURES as SCENES, demoLength, type Demo } from "../features";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { ApiError, post } from "../api";
+import { FEATURES as SCENES } from "../features";
 import { REGISTRY } from "../registry.gen";
 import { recolorIsOwn, recolorPixels, SHOW_EYES, SHOW_HAIR, type RecolorOption } from "../recolor";
-import { ANIM_GROUPS, animWhen, frameStart, PLAYER_SPEEDS, playerStep, secText, sizeText, usageIndex, usedCount, type AnimGroup, type AnimInfo, type UsageNum } from "../showcase";
+import {
+  bigViewKey, filterCards, frameStart, liveSet, previewRemain, PLAYER_SPEEDS, playerStep, cropOf, PREVIEW_CROPS, PREVIEW_H, PREVIEW_SLOW, PREVIEW_URL, PREVIEW_W, previewScale, secText, SHOW_FILTERS,
+  SHOW_GROUPS, showcaseCards, sizeText, usageIndex, usedCount, animWhen, type AnimInfo, type PreviewPlay, type ShowCard, type ShowFilter, type UsageNum,
+} from "../showcase";
 import { navigate } from "../router";
-import { Loading, useAdmin } from "./AdminSections";
+import { AdminLost, Loading, useAdmin } from "./AdminSections";
 
-// «Витрина» админки (этап 4, 24.11.2026) — свой кусок (lazy в Admin.tsx): анимации Рины с проигрывателем и перекраской,
-// эффекты виджета списком (живой показ — только походка букв), сценарии «Возможностей», карта функций с числами этапа 3.
-// Всё — из реестра web/src/registry.gen.ts (tools/registry/make_registry.ts) и готовых картинок /maid/*.webp, без своих копий.
+// «Витрина» админки (этап 4, 24.11.2026; живой показ — 25.11.2026) — свой кусок (lazy в Admin.tsx). Карточки по группам:
+// 41 анимация Рины, слова с характером, облачко, походка букв, погода, праздники привычек и 12 сценариев «Возможностей» —
+// в каждой настоящий виджет программы на ПК (desktop/renderer в iframe, server/src/preview.ts) с заглушкой window.maid
+// и тестовыми данными: нажал — проигрывается, «ещё раз», «медленно», настроение реплики. Виджет запускается, только когда
+// карточка видна (не больше PREVIEW_LIVE_MAX сразу), играет одна карточка. Щелчок по названию — большой просмотр
+// (← → — соседние карточки, Esc — закрыть), у анимаций там же покадровый проигрыватель картинок сайта с перекраской.
+// Карточки — из реестра web/src/registry.gen.ts (tools/registry/make_registry.ts) и features.ts (showcase.ts showcaseCards).
 
-type Tab = "anims" | "fx" | "scenes" | "map";
+type Tab = "live" | "map";
+const CARDS = showcaseCards(REGISTRY, SCENES);
 const TABS: { id: Tab; title: string }[] = [
-  { id: "anims", title: `Анимации ${REGISTRY.anims.length}` },
-  { id: "fx", title: "Эффекты" },
-  { id: "scenes", title: `Сценарии ${SCENES.length}` },
+  { id: "live", title: `Живой показ ${CARDS.length}` },
   { id: "map", title: "Карта функций" },
 ];
 
 export function AdminShowcase() {
-  const [tab, setTab] = useState<Tab>("anims");
-  const [pick, setPick] = useState("idle");
-  const open = (id: string) => { setPick(id); setTab("anims"); };
+  const [tab, setTab] = useState<Tab>("live");
   return (
     <>
       <div className="adm-toolbar">
@@ -29,56 +34,341 @@ export function AdminShowcase() {
           {TABS.map((t) => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>{t.title}</button>)}
         </div>
       </div>
-      {tab === "anims" ? <Anims pick={pick} onPick={setPick} />
-        : tab === "fx" ? <Effects />
-        : tab === "scenes" ? <Scenes onAnim={open} />
-        : <FunctionMap />}
+      {tab === "live" ? <LiveShow /> : <FunctionMap />}
     </>
   );
 }
 
-// ——— Анимации: сетка и проигрыватель.
+// ——— Живой показ.
 
-function Anims({ pick, onPick }: { pick: string; onPick: (id: string) => void }) {
-  const [group, setGroup] = useState<"all" | AnimGroup>("all");
-  const [hair, setHair] = useState("red");
-  const [eyes, setEyes] = useState("violet");
-  const anim = REGISTRY.anims.find((a) => a.id === pick) ?? REGISTRY.anims[0];
-  const list = REGISTRY.anims.filter((a) => group === "all" || a.group === group);
+/** Пропуск к файлам виджета (POST /api/admin/preview → cookie): "" — ещё нет, "ok", иначе текст ошибки. */
+function usePreviewPass(): string {
+  const [state, setState] = useState("");
+  const lost = useContext(AdminLost);
+  useEffect(() => {
+    let alive = true;
+    post<{ until: string }>("/api/admin/preview").then(() => alive && setState("ok")).catch((e) => {
+      if (!alive) return;
+      if (e instanceof ApiError && e.status === 403) lost();
+      else setState((e as Error).message || "не получилось");
+    });
+    return () => { alive = false; };
+  }, [lost]);
+  return state;
+}
+
+export function LiveShow({ cards = CARDS, pass: given }: { cards?: ShowCard[]; pass?: string }) {
+  const got = usePreviewPass();
+  const pass = given ?? got;
+  const [filter, setFilter] = useState<ShowFilter>("all");
+  const [q, setQ] = useState("");
+  const [sound, setSound] = useState(false);
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [visible, setVisible] = useState<string[]>([]);
+  const [onScreen, setOnScreen] = useState<string[]>([]);
+  const [recent, setRecent] = useState<string[]>([]);
+  const [big, setBig] = useState<string | null>(null);
+  const shown = useMemo(() => filterCards(cards, filter, q), [cards, filter, q]);
+  const live = pass === "ok" ? liveSet(visible, recent, playing, undefined, onScreen) : [];
+  const timer = useRef(0);
+  // Идущий показ: сколько его своего времени уже прошло (done) и с какой скоростью идёт сейчас (k) — «медленно» тянет конец.
+  const run = useRef<{ key: string; ms: number; done: number; at: number; k: number } | null>(null);
+
+  const toggle = (on: boolean, key: string) => (v: string[]) => (on ? (v.includes(key) ? v : [...v, key]) : v.filter((k) => k !== key));
+  const onVisible = useCallback((key: string, on: boolean, screen: boolean) => (screen ? setOnScreen : setVisible)(toggle(on, key)), []);
+  const arm = useCallback(() => {
+    const r = run.current;
+    clearTimeout(timer.current);
+    if (r) timer.current = window.setTimeout(() => setPlaying((p) => (p === r.key ? null : p)), previewRemain(r.ms, r.done, r.k));
+  }, []);
+  // Нажали «играть»: эта карточка — играющая (прежняя остановится), её виджет — живой в первую очередь; по окончании — снова тихо.
+  const onPlay = useCallback((c: ShowCard, k: number) => {
+    setPlaying(c.key);
+    setRecent((r) => [c.key, ...r.filter((x) => x !== c.key)].slice(0, 12));
+    run.current = { key: c.key, ms: c.ms, done: 0, at: performance.now(), k };
+    arm();
+  }, [arm]);
+  // «Медленно» переключили посреди показа — конец переставляется под новую скорость.
+  const onSpeed = useCallback((c: ShowCard, k: number) => {
+    const r = run.current;
+    if (!r || r.key !== c.key) return;
+    const now = performance.now();
+    run.current = { ...r, done: r.done + (now - r.at) * r.k, at: now, k };
+    arm();
+  }, [arm]);
+  // Поза из сценария — карточка этой анимации в большом просмотре (её не видно за фильтром или поиском — они сбрасываются).
+  const openKey = (key: string) => {
+    setPlaying(null);
+    if (!shown.some((c) => c.key === key)) { setFilter("all"); setQ(""); }
+    setBig(key);
+  };
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const counts = (f: ShowFilter) => filterCards(cards, f, "").length;
+  const bigList = big && !shown.some((c) => c.key === big) ? cards : shown;
+  const bigIdx = big ? bigList.findIndex((c) => c.key === big) : -1;
+
   return (
     <>
-      <section className="adm-player">
-        <Player key={anim.id} anim={anim} hair={hair} eyes={eyes} />
-        <div className="adm-player-side">
-          <Swatches title="Волосы" table={SHOW_HAIR} value={hair} onChange={setHair} />
-          <Swatches title="Глаза" table={SHOW_EYES} value={eyes} onChange={setEyes} />
-          <p className="adm-muted adm-small">
-            Перекраска — те же формулы, что у виджета (look.js), но без маски: у картинок сайта её нет, поэтому румянец и рот тоже
-            чуть меняют цвет. Звука здесь нет — звуки эмоций синтезирует сам виджет (moodsound.js).
-          </p>
-        </div>
-      </section>
-      <div className="adm-toolbar">
-        <div className="adm-seg-ctl" role="tablist" aria-label="Группа">
-          {(["all", "base", "event", "once"] as const).map((g) => (
-            <button key={g} role="tab" aria-selected={group === g} className={group === g ? "on" : ""} onClick={() => setGroup(g)}>
-              {g === "all" ? "Все" : ANIM_GROUPS[g]} <span className="adm-muted">{g === "all" ? REGISTRY.anims.length : REGISTRY.anims.filter((a) => a.group === g).length}</span>
+      <div className="adm-toolbar adm-live-tools">
+        <input className="adm-live-q" type="search" placeholder="Поиск: название, id, описание" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Поиск по витрине" />
+        <div className="adm-seg-ctl adm-live-filter" role="tablist" aria-label="Группа">
+          {SHOW_FILTERS.map((f) => (
+            <button key={f.id} role="tab" aria-selected={filter === f.id} className={filter === f.id ? "on" : ""} onClick={() => setFilter(f.id)}>
+              {f.title} <span className="adm-muted">{counts(f.id)}</span>
             </button>
           ))}
         </div>
-        <span className="adm-muted adm-small">группы — по baseMood() в widget.js; кадры и длительность — картинок сайта</span>
+        <button className={`adm-btn small ${sound ? "on" : ""}`} aria-pressed={sound} onClick={() => setSound(!sound)} title="Звуки виджета: «бип» печати, звуки эмоций и облачка">
+          {sound ? "🔊 звук" : "🔇 без звука"}
+        </button>
       </div>
-      <div className="adm-anims">
-        {list.map((a) => (
-          <button key={a.id} className={`adm-anim ${a.id === anim.id ? "on" : ""}`} onClick={() => onPick(a.id)} aria-pressed={a.id === anim.id}>
-            <img src={`/maid/${a.id}.webp`} alt="" width={90} height={96} loading="lazy" />
-            <b>{a.name}</b>
-            <span className="adm-num adm-muted">{a.id}</span>
-            <span className="adm-num adm-muted">{a.frames} кадр. · {secText(a.ms)}</span>
-          </button>
-        ))}
-      </div>
+      <p className="adm-muted adm-small adm-note adm-live-why">
+        В карточках — настоящий виджет программы на ПК (файлы <code>desktop/renderer</code>) с тестовыми данными: ничего не записывается и никуда не уходит.
+        Виджет запускается, когда карточка на экране; играет одна. «Медленно» — вчетверо: буквы, облачко, эффекты и кадры фигурки.
+      </p>
+      {pass && pass !== "ok" && <p className="adm-err" role="alert">Живой показ недоступен: {pass}. Карточки — с картинками.</p>}
+      {!shown.length && <p className="adm-muted">Ничего не нашлось.</p>}
+      {SHOW_GROUPS.map((g) => {
+        const list = shown.filter((c) => c.group === g.id);
+        if (!list.length) return null;
+        return (
+          <section key={g.id} className="adm-live-group" aria-label={g.title}>
+            <h2 className="adm-h2">{g.title} <span className="adm-muted">· {list.length} · {g.src}</span>
+              {g.id === "scene" && <> · <a className="adm-link" href="/features" onClick={(e) => { e.preventDefault(); navigate("/features"); }}>страница «Возможности»</a></>}
+            </h2>
+            <div className="adm-live-grid">
+              {list.map((c) => (
+                <LiveCard key={c.key} card={c} live={live.includes(c.key)} active={playing === c.key && !big} sound={sound}
+                  onVisible={onVisible} onPlay={onPlay} onSpeed={onSpeed} onBig={() => { setPlaying(null); setBig(c.key); }} onPose={(id) => openKey(`anim:${id}`)} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+      {big && bigIdx >= 0 && (
+        <BigView card={bigList[bigIdx]} live={pass === "ok"} sound={sound} n={bigIdx + 1} total={bigList.length}
+          onClose={() => setBig(null)} onStep={(d) => setBig(bigList[(bigIdx + d + bigList.length) % bigList.length].key)} />
+      )}
     </>
+  );
+}
+
+/** Карточка: виджет (или картинка, пока он не запущен), название, описание и кнопки. */
+function LiveCard({ card, live, active, sound, onVisible, onPlay, onSpeed, onBig, onPose }: {
+  card: ShowCard; live: boolean; active: boolean; sound: boolean;
+  onVisible: (key: string, on: boolean, screen: boolean) => void; onPlay: (c: ShowCard, k: number) => void; onSpeed: (c: ShowCard, k: number) => void;
+  onBig: () => void; onPose: (id: string) => void;
+}) {
+  const ref = useRef<HTMLElement>(null);
+  const [slow, setSlow] = useState(false);
+  const [mood, setMood] = useState(card.moods?.[0]?.id ?? "");
+  const [order, setOrder] = useState<{ n: number; play: PreviewPlay } | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    // Два наблюдателя: с запасом 200 px — виджет можно запускать заранее; без запаса — карточка на самом экране (живые — сначала они).
+    const near = new IntersectionObserver(([e]) => onVisible(card.key, e.isIntersecting, false), { rootMargin: "200px 0px" });
+    const screen = new IntersectionObserver(([e]) => onVisible(card.key, e.isIntersecting, true));
+    near.observe(el);
+    screen.observe(el);
+    return () => { near.disconnect(); screen.disconnect(); onVisible(card.key, false, false); onVisible(card.key, false, true); };
+  }, [card.key, onVisible]);
+  const go = (m = mood) => { setOrder((o) => ({ n: (o?.n ?? 0) + 1, play: card.play(m || undefined) })); onPlay(card, slow ? PREVIEW_SLOW : 1); };
+  return (
+    <article ref={ref} className={`adm-live-card ${active ? "on" : ""}`}>
+      <PreviewBox card={card} live={live} order={active ? order : null} active={active} slow={slow} sound={sound} />
+      <div className="adm-live-meta">
+        <button className="adm-live-title" onClick={onBig} title="Большой просмотр">
+          <b>{card.title}</b> <span className="adm-muted adm-num">{card.sub}</span>
+        </button>
+        <p className="adm-muted adm-small">{card.text}</p>
+        <SceneMore card={card} onPose={onPose} />
+      </div>
+      <Controls card={card} active={active} slow={slow} mood={mood} onPlay={() => go()}
+        onSlow={() => { setSlow(!slow); if (active) onSpeed(card, slow ? 1 : PREVIEW_SLOW); }}
+        onMood={(m) => { setMood(m); go(m); }} onBig={onBig} />
+    </article>
+  );
+}
+
+/** У сценария: второй пример (он — на странице «Возможности») и позы горничной — ссылки на карточки анимаций. */
+function SceneMore({ card, onPose }: { card: ShowCard; onPose: (id: string) => void }) {
+  if (!card.extra && !card.poses?.length) return null;
+  return (
+    <>
+      {card.extra && <p className="adm-muted adm-small">{card.extra} — <a className="adm-link" href="/features" onClick={(e) => { e.preventDefault(); navigate("/features"); }}>на странице «Возможности»</a></p>}
+      {card.poses && card.poses.length > 0 && (
+        <div className="adm-row adm-live-poses" aria-label="Позы горничной">
+          {card.poses.map((id) => <button key={id} className="adm-chip" onClick={() => onPose(id)} title="Анимация в большом просмотре">{id}</button>)}
+        </div>
+      )}
+    </>
+  );
+}
+
+function Controls({ card, active, slow, mood, onPlay, onSlow, onMood, onBig }: {
+  card: ShowCard; active: boolean; slow: boolean; mood: string; onPlay: () => void; onSlow: () => void; onMood: (m: string) => void; onBig?: () => void;
+}) {
+  return (
+    <div className="adm-row adm-live-ctl">
+      <button className="adm-btn small primary" onClick={onPlay}>{active ? "↻ ещё раз" : "▶ играть"}</button>
+      <button className={`adm-btn small ${slow ? "on" : ""}`} aria-pressed={slow} onClick={onSlow} title="Вчетверо медленнее">🐢 медленно</button>
+      {card.moods && (
+        <select className="adm-live-mood" value={mood} onChange={(e) => onMood(e.target.value)} aria-label={card.group === "holiday" ? "Рубеж серии" : "Настроение реплики"}>
+          {card.moods.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+        </select>
+      )}
+      {onBig && <button className="adm-btn small" onClick={onBig} title="Большой просмотр" aria-label="Большой просмотр">⤢</button>}
+    </div>
+  );
+}
+
+/** Окно виджета, уменьшенное под ширину карточки; пока не живой — картинка или пример текста. */
+function PreviewBox({ card, live, order, active, slow, sound, big, onKey }: {
+  card: ShowCard; live: boolean; order: { n: number; play: PreviewPlay } | null; active: boolean; slow: boolean; sound: boolean; big?: boolean;
+  onKey?: (key: string) => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  // Карточка — нужная часть окна (PREVIEW_CROPS), большой просмотр — всё окно.
+  const crop = big ? { x: 0, y: 0, w: PREVIEW_W, h: PREVIEW_H } : PREVIEW_CROPS[cropOf(card.group)];
+  const [scale, setScale] = useState(big ? 1 : 0.5);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setScale(previewScale(e.contentRect.width, e.contentRect.height || Infinity, crop.w, crop.h)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [crop.w, crop.h]);
+  return (
+    <div ref={box} className={`adm-live-box ${big ? "big" : ""}`} style={big ? undefined : { aspectRatio: `${crop.w} / ${crop.h}` }}>
+      {live ? (
+        <div className="adm-live-frame" style={{ width: PREVIEW_W, height: PREVIEW_H, transform: `scale(${scale}) translate(${-crop.x}px, ${-crop.y}px)` }}>
+          <WidgetFrame title={`Виджет: ${card.title}`} order={order} active={active} slow={slow} sound={sound} interactive={big} onKey={onKey} />
+        </div>
+      ) : card.poster ? (
+        <img className="adm-live-poster" src={card.poster} alt="" width={180} height={192} loading="lazy" />
+      ) : card.still ? (
+        <Still still={card.still} />
+      ) : (
+        <span className="adm-live-wait adm-muted adm-small">{card.sub}</span>
+      )}
+    </div>
+  );
+}
+
+/** Образец, пока виджет не запущен: облачко с репликой (слово с эффектом выделено) или значок с подписью. */
+function Still({ still }: { still: NonNullable<ShowCard["still"]> }) {
+  const at = still.word ? still.text.indexOf(still.word) : -1;
+  return (
+    <span className="adm-live-still">
+      {still.icon && <span className="adm-live-still-icon" aria-hidden="true">{still.icon}</span>}
+      {at < 0 ? still.text : <>{still.text.slice(0, at)}<mark>{still.word}</mark>{still.text.slice(at + still.word!.length)}</>}
+    </span>
+  );
+}
+
+/** Сам iframe: ждёт «готов» от control.js, потом шлёт скорость, звук и что проиграть; перестал быть играющим — «стоп». */
+function WidgetFrame({ title, order, active, slow, sound, interactive, onKey }: {
+  title: string; order: { n: number; play: PreviewPlay } | null; active: boolean; slow: boolean; sound: boolean; interactive?: boolean;
+  onKey?: (key: string) => void;
+}) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const keyTo = useRef(onKey);
+  keyTo.current = onKey;
+  const [ready, setReady] = useState(false);
+  const send = useCallback((msg: Record<string, unknown>) => frame.current?.contentWindow?.postMessage({ maidPreview: 1, ...msg }, location.origin), []);
+  useEffect(() => {
+    const on = (e: MessageEvent) => {
+      if (e.source !== frame.current?.contentWindow || e.origin !== location.origin || e.data?.maidPreview !== 1) return;
+      if (e.data.ev === "ready") setReady(true);
+      // Клавиша, нажатая в виджете (фокус в iframe): control.js пересылает Esc, ← и →.
+      if (e.data.ev === "key" && typeof e.data.key === "string") keyTo.current?.(e.data.key);
+    };
+    addEventListener("message", on);
+    return () => removeEventListener("message", on);
+  }, []);
+  useEffect(() => { if (ready) send({ cmd: "speed", k: slow ? PREVIEW_SLOW : 1 }); }, [ready, slow, send]);
+  useEffect(() => { if (ready) send({ cmd: "mute", on: !sound }); }, [ready, sound, send]);
+  useEffect(() => { if (ready && order) send({ cmd: "play", play: order.play }); }, [ready, order, send]);
+  const was = useRef(false);
+  useEffect(() => {
+    if (ready && was.current && !active) send({ cmd: "stop" });
+    was.current = active;
+  }, [ready, active, send]);
+  return <iframe ref={frame} src={PREVIEW_URL} title={title} className={interactive ? "on" : ""} width={PREVIEW_W} height={PREVIEW_H} />;
+}
+
+/** Большой просмотр: виджет крупно (можно трогать: тычок, облачко), подробности; у анимаций — покадровый проигрыватель. */
+function BigView({ card, live, sound, n, total, onClose, onStep }: {
+  card: ShowCard; live: boolean; sound: boolean; n: number; total: number; onClose: () => void; onStep: (d: number) => void;
+}) {
+  const [slow, setSlow] = useState(false);
+  const [mood, setMood] = useState(card.moods?.[0]?.id ?? "");
+  const [order, setOrder] = useState<{ n: number; play: PreviewPlay } | null>(null);
+  const [frames, setFrames] = useState(false);
+  const dialog = useRef<HTMLDivElement>(null);
+  const go = (m = mood) => setOrder((o) => ({ n: (o?.n ?? 0) + 1, play: card.play(m || undefined) }));
+  useEffect(() => { setMood(card.moods?.[0]?.id ?? ""); setFrames(false); setOrder({ n: 1, play: card.play(card.moods?.[0]?.id) }); }, [card]);
+  useEffect(() => { dialog.current?.focus(); }, []);
+  const act = (k: ReturnType<typeof bigViewKey>) => {
+    if (k === "close") onClose();
+    else if (k) onStep(k === "prev" ? -1 : 1);
+    return Boolean(k);
+  };
+  const keys = (e: KeyboardEvent) => {
+    const field = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
+    if (act(bigViewKey(e.key, { field, handled: e.defaultPrevented })) && e.key !== "Escape") e.preventDefault();
+  };
+  const a = card.anim;
+  return (
+    <div className="adm-live-shade" onClick={onClose}>
+      <div ref={dialog} className="adm-live-big" role="dialog" aria-modal="true" aria-label={card.title} tabIndex={-1} onKeyDown={keys} onClick={(e) => e.stopPropagation()}>
+        <div className="adm-live-big-view">
+          {frames && a ? <PlayerWithColors anim={a} /> : <PreviewBox card={card} live={live} order={order} active slow={slow} sound={sound} big onKey={(k) => act(bigViewKey(k))} />}
+        </div>
+        <div className="adm-live-big-side">
+          <div className="adm-row adm-live-big-nav">
+            <button className="adm-btn small" onClick={() => onStep(-1)} title="Предыдущая (←)" aria-label="Предыдущая">←</button>
+            <span className="adm-num adm-muted">{n} / {total}</span>
+            <button className="adm-btn small" onClick={() => onStep(1)} title="Следующая (→)" aria-label="Следующая">→</button>
+            <span className="adm-grow" />
+            <button className="adm-btn small" onClick={onClose} title="Закрыть (Esc)" aria-label="Закрыть">✕</button>
+          </div>
+          <h2>{card.title} <span className="adm-muted adm-num">{card.sub}</span></h2>
+          <p className="adm-muted adm-small">{card.text}</p>
+          {a && (
+            <dl className="adm-live-dl">
+              <dt>Когда играет</dt><dd>{animWhen(a)}</dd>
+              <dt>Кадров</dt><dd className="adm-num">{a.desk.frames} в виджете · {a.frames} на сайте</dd>
+              <dt>Длительность</dt><dd className="adm-num">{secText(a.ms)}{a.group === "once" ? " · один раз" : " · по кругу"}</dd>
+              <dt>Холст</dt><dd className="adm-num">{a.desk.w}×{a.desk.h} в виджете · {a.w}×{a.h} на сайте ({sizeText(a.bytes)})</dd>
+            </dl>
+          )}
+          {!frames && <Controls card={card} active={Boolean(order)} slow={slow} mood={mood} onPlay={() => go()} onSlow={() => setSlow(!slow)} onMood={(m) => { setMood(m); go(m); }} />}
+          {a && (
+            <button className={`adm-btn small ${frames ? "on" : ""}`} aria-pressed={frames} onClick={() => setFrames(!frames)}>
+              {frames ? "← живой виджет" : "Покадрово и перекраска (картинка сайта)"}
+            </button>
+          )}
+          {!live && <p className="adm-muted adm-small">Живой виджет недоступен — только картинка.</p>}
+          <p className="adm-muted adm-small">Виджет можно трогать: щелчок по горничной, облачко, строка ввода. ← → — соседние карточки, Esc — закрыть.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ——— Покадровый проигрыватель картинок сайта (большой просмотр анимации): шаги, скорость, перекраска.
+
+function PlayerWithColors({ anim }: { anim: AnimInfo }) {
+  const [hair, setHair] = useState("red");
+  const [eyes, setEyes] = useState("violet");
+  return (
+    <div className="adm-live-player">
+      <Player key={anim.id} anim={anim} hair={hair} eyes={eyes} />
+      <Swatches title="Волосы" table={SHOW_HAIR} value={hair} onChange={setHair} />
+      <Swatches title="Глаза" table={SHOW_EYES} value={eyes} onChange={setEyes} />
+    </div>
   );
 }
 
@@ -198,8 +488,9 @@ function Player({ anim, hair, eyes }: { anim: AnimInfo; hair: string; eyes: stri
   };
   const keys = (e: KeyboardEvent) => {
     if (!dec) return;
-    if (e.key === " ") { e.preventDefault(); toggle(); }
-    else if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); setPlaying(false); seek(idx + (e.key === "ArrowLeft" ? -1 : 1)); }
+    // Свои клавиши — дальше не идут: стрелки шагают по кадрам, а не листают карточки большого просмотра.
+    if (e.key === " ") { e.preventDefault(); e.stopPropagation(); toggle(); }
+    else if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); setPlaying(false); seek(idx + (e.key === "ArrowLeft" ? -1 : 1)); }
   };
   const t = dec ? frameStart(dec.durations, idx) : 0;
 
@@ -242,93 +533,6 @@ function Player({ anim, hair, eyes }: { anim: AnimInfo; hair: string; eyes: stri
         )}
       </div>
     </div>
-  );
-}
-
-// ——— Эффекты виджета: список из реестра; живьём — только походка букв (её ключевые кадры скопированы из style.css).
-
-const GAIT_WORD = "Записала";
-
-function Effects() {
-  const fx = REGISTRY.effects;
-  const [run, setRun] = useState(0);
-  const css = fx.gait.map((g) => `@keyframes adm-gait-${g.id} { ${g.keyframes} }\n.adm-gait-${g.id} > span { animation: adm-gait-${g.id} ${g.animation}; animation-delay: calc(var(--i) * 70ms); }`).join("\n");
-  return (
-    <>
-      <p className="adm-muted adm-note adm-fx-why">
-        Живого показа виджета здесь нет: окна программы работают только в Electron (им нужен preload с <code>window.maid</code>), а сайт
-        собирается без папки <code>desktop</code>. Описания — из комментариев в коде эффектов, собирает их скрипт реестра.
-      </p>
-      <h2 className="adm-h2">Походка букв <span className="adm-muted">· {fx.gait.length} · style.css</span></h2>
-      <style>{css}</style>
-      <div className="adm-gaits">
-        {fx.gait.map((g) => (
-          <div key={g.id} className="adm-gait-card">
-            <div key={run} className={`adm-gait-word adm-gait-${g.id}`} aria-label={GAIT_WORD}>
-              {[...GAIT_WORD].map((ch, i) => <span key={i} style={{ "--i": i } as CSSProperties}>{ch}</span>)}
-            </div>
-            <b className="adm-num">{g.id}</b>
-            <span className="adm-muted adm-small">{g.emotions.join(", ")}</span>
-          </div>
-        ))}
-      </div>
-      <button className="adm-btn small" onClick={() => setRun(run + 1)}>▶ ещё раз</button>
-      <FxList title="Слова с характером" src="wordfx.js" rows={fx.wordfx.map((x) => ({ id: x.id, name: `[${x.ru}]`, text: x.text }))} />
-      <FxList title="Облачко" src="bubblefx.js" rows={fx.bubble.map((x) => ({ id: x.id, name: x.kind === "mark" ? "значок" : "облачко", text: x.text }))} />
-      <FxList title="Погода над панелью" src="weather.js, style.css" rows={fx.weather.map((x) => ({ id: x.id, name: "", text: x.text }))} />
-      <FxList title="Праздники привычек" src="habitparty.js" rows={fx.holidays.map((x) => ({ id: x.title, name: "", text: x.text }))} />
-    </>
-  );
-}
-
-function FxList({ title, src, rows }: { title: string; src: string; rows: { id: string; name: string; text: string }[] }) {
-  return (
-    <>
-      <h2 className="adm-h2">{title} <span className="adm-muted">· {rows.length} · {src}</span></h2>
-      <div className="adm-fx">
-        {rows.map((r) => (
-          <div key={r.id} className="adm-fx-row">
-            <b className="adm-num">{r.id}</b>{r.name && <span className="adm-muted adm-num">{r.name}</span>}
-            <span>{r.text}</span>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-// ——— Сценарии «Возможностей» (web/src/features.ts): что показывают и какие позы Рины в них играют.
-
-const posesOf = (d: Demo) => [d.start.maid, ...d.steps.map((s) => s.set.maid)].filter((x): x is string => Boolean(x));
-const KIND_NAMES: Record<Demo["kind"], string> = { widget: "виджет", panel: "панель дня", chat: "Telegram", search: "поиск", stats: "статистика" };
-
-function Scenes({ onAnim }: { onAnim: (id: string) => void }) {
-  return (
-    <>
-      <div className="adm-fx">
-        {SCENES.map((f, i) => {
-          const demos = [f.ai, ...(f.manual ? [f.manual] : [])];
-          const poses = [...new Set(demos.flatMap(posesOf))];
-          return (
-            <div key={f.id} className="adm-scene">
-              <span className="adm-num adm-muted">{String(i + 1).padStart(2, "0")}</span>
-              <div>
-                <b>{f.title}</b> <span className="adm-muted adm-small adm-num">{f.id}</span>
-                <p className="adm-muted adm-small">{f.text}</p>
-                <div className="adm-unused">
-                  {demos.map((d, k) => <span key={k} className="adm-chip">{KIND_NAMES[d.kind]} · {secText(demoLength(d))}</span>)}
-                  {poses.map((p) => <button key={p} className="adm-chip adm-chip-btn" onClick={() => onAnim(p)} title="Открыть в проигрывателе">{p}</button>)}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <p className="adm-muted adm-small adm-note">
-        Живые примеры — на странице <a className="adm-link" href="/features" onClick={(e) => { e.preventDefault(); navigate("/features"); }}>«Возможности»</a>.
-        Позы — кнопки: открывают анимацию в проигрывателе.
-      </p>
-    </>
   );
 }
 

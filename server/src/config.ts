@@ -38,6 +38,9 @@ export const config = {
     baseUrl: env("LLM_BASE_URL", "https://api.openai.com/v1").replace(/\/$/, ""),
     apiKey: env("LLM_API_KEY"),
     model: env("LLM_MODEL", "gpt-4o-mini"),
+    /** Потолок провайдера модели — запросов в минуту (LLM_RPM); 0 — не известен. Только для оценки «Сколько выдержит» в админке
+     *  («Здоровье сервера», server-metrics.ts serverCapacity): сам сервер запросы по нему не придерживает. */
+    rpm: Math.max(0, Number(env("LLM_RPM", "0")) || 0),
   },
   /** Распознавание голоса (/audio/transcriptions). Пусто — те же адрес и ключ, что у LLM. */
   stt: {

@@ -2,6 +2,7 @@ import { config } from "./config.ts";
 import type { AlertRuleRow, BillingKind, Store } from "./db.ts";
 import { newcomersText } from "./invite.ts";
 import { autoPause, crashRatio, readRelease, RELEASE_CRASH_DAYS, RELEASE_CRASH_MIN_USERS, releaseCrashes, releaseDone } from "./releases.ts";
+import { cpuPct, memUsedPct } from "./server-metrics.ts";
 import { tariffs } from "./tariffs.ts";
 import { addDays } from "./time.ts";
 
@@ -22,10 +23,12 @@ export const ALERT_LLM_MIN_CALLS = 10;
 export const ALERT_SPIKE_MIN_USD = 0.5;
 /** Сводка новичков — раз в сутки после этого часа UTC (как прежде). */
 export const NEWCOMERS_HOUR_UTC = 6;
+/** Нагрузка сервера: окно считается набранным, если снимков (раз в минуту, server-metrics.ts) в нём не меньше этой доли минут. */
+export const ALERT_LOAD_COVER = 0.8;
 
 export type AlertRuleId =
   | "spend_day" | "spend_spike" | "llm_errors" | "failed_msgs" | "send_fail" | "webhook" | "signup_cap"
-  | "refund" | "payment" | "backup" | "db_size" | "newcomers" | "release_crash" | "support_new";
+  | "refund" | "payment" | "backup" | "db_size" | "newcomers" | "release_crash" | "support_new" | "server_load";
 
 /** state — условие по числу сейчас; event — события с отметки (сколько накопилось); daily — сводка раз в сутки. */
 export interface AlertSpec {
@@ -77,6 +80,10 @@ export function alertSpecs(): AlertSpec[] {
     // Этап 6: новые обращения людей (support.ts) — одним письмом, только число (тексты — в карточке обращения в админке).
     spec({ id: "support_new", title: "Новые обращения людей — от", unit: "шт.", kind: "event", recover: false, window: false,
       enabled: true, threshold: 1, window_min: 60, every_min: 30, hint: "«Написать нам» на сайте; в письме только число, тексты — в «Обращениях»" }),
+    // Часть 2 (25.11.2026): процессор или память выше порога всё окно подряд (снимки раз в минуту, server-metrics.ts).
+    spec({ id: "server_load", title: "Процессор или память дольше окна — выше", unit: "%", kind: "state", recover: true, window: true, min: 10, max: 100,
+      enabled: true, threshold: 85, window_min: 10, every_min: 60,
+      hint: `каждая минута окна; процессор — больший из «машина» и «процесс от одного ядра»; снимков в окне не меньше ${Math.round(ALERT_LOAD_COVER * 100)}% минут` }),
   ];
 }
 export const ALERT_IDS = alertSpecs().map((s) => s.id);
@@ -232,6 +239,28 @@ export class Alerts {
       }
       case "newcomers":
         return { value: null, hit: false, text: "" };
+      case "server_load": {
+        const rows = await this.store.serverMetrics(win);
+        // Снимков мало (сервер только запустился, тик стоял) — состояние не трогаем: ни тревоги, ни «снова норма».
+        if (rows.length < Math.ceil(r.window_min * ALERT_LOAD_COVER)) return { value: null, hit: false, text: "" };
+        // Тревога — держится всё окно: самая низкая минута окна выше порога (по процессору или по памяти). «Снова норма» — тоже
+        // всё окно: самая высокая минута окна не выше порога; одна просевшая минута среди нагрузки тревогу не снимает.
+        const cpu = Math.min(...rows.map(cpuPct)), mem = Math.min(...rows.map(memUsedPct));
+        const v = Math.max(cpu, mem);
+        const cpuHi = Math.max(...rows.map(cpuPct)), memHi = Math.max(...rows.map(memUsedPct));
+        const still = r.firing > 0 && v <= t && Math.max(cpuHi, memHi) > t;
+        const what = cpu >= mem ? `процессор ${Math.round(cpu)}%` : `память ${Math.round(mem)}%`;
+        const tail = `(порог ${num(t)}%, окно ${r.window_min} мин)`;
+        if (still) {
+          const hi = cpuHi >= memHi ? `процессор до ${Math.round(cpuHi)}%` : `память до ${Math.round(memHi)}%`;
+          return { value: Math.round(Math.max(cpuHi, memHi) * 10) / 10, hit: true, text: `⚠️ Сервер нагружен: ${hi}, ниже порога не держится всё окно ${tail}. Подробности — «Здоровье сервера».` };
+        }
+        return {
+          value: Math.round(v * 10) / 10, hit: v > t,
+          text: `⚠️ Сервер нагружен: ${what} и выше всё окно ${tail}. Подробности — «Здоровье сервера».`,
+          ok: `✅ Снова норма: нагрузка сервера ниже порога — сейчас процессор ${Math.round(cpuPct(rows.at(-1)!))}%, память ${Math.round(memUsedPct(rows.at(-1)!))}%.`,
+        };
+      }
       case "release_crash": {
         const rel = await readRelease(this.store);
         if (!rel?.prev || releaseDone(rel, now)) return { value: null, hit: false, text: "" };

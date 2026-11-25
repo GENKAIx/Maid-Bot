@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { z } from "zod";
 import { PERSONAS } from "./personas.ts";
+import { PREVIEW_PREFIX, PreviewPasses, previewCookie, previewKey, servePreview, WIDGET_DIR_DEFAULT } from "./preview.ts";
 import { authByToken, clientMeta, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
 import { adminJournal, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
 import { accountAction, accountCard, AccountError, accountReason, MAX_ACCOUNT_ID } from "./admin-account.ts";
@@ -47,6 +48,7 @@ import { createPromo, PromoError, promoView, redeemPromo, togglePromo } from "./
 import { createTicket, SupportError, supportOf, ticketAction, ticketCard, ticketsView } from "./support.ts";
 import { AnnounceError, announcementsView, createAnnouncement, deliverToWidget, siteAnnouncements, toggleAnnouncement } from "./announce.ts";
 import { prognosisView } from "./prognosis.ts";
+import { healthRange, noteActive, noteHttp, serverLoad } from "./server-metrics.ts";
 
 // HTTP: API для веб-приложения, десктопа и айфона (Bearer-ключ после входа, /token в боте или DESKTOP_TOKEN)
 // и webhook Telegram.
@@ -62,6 +64,8 @@ export interface ApiDeps {
   webDir?: string;
   /** Папка обновлений программы для ПК (/desktop/latest.yml, установщик); пусто — не отдавать. */
   desktopDir?: string;
+  /** Папка программы на ПК с renderer/ и assets/ — живой показ виджета в «Витрине» админки (preview.ts); по умолчанию desktop/ репозитория. */
+  widgetDir?: string;
   push?: Push;
   /** Имя Telegram-бота без @ (ссылка на экране входа); нет бота — undefined. */
   botName?: () => string | undefined;
@@ -77,6 +81,8 @@ export interface ApiDeps {
   alerts?: Alerts;
   /** Ночные копии базы (snapshot.ts); нет — без папки снимков (раздел покажет «не настроено»). */
   copies?: DbCopies;
+  /** Потолок провайдера модели, запросов в минуту (config.llm.rpm; 0 — не известен) — для «Сколько выдержит» (server-metrics.ts). */
+  llmRpm?: number;
 }
 
 /** Ошибка проверки действия с аккаунтом (admin-account.ts) — в ответ с её кодом. */
@@ -318,6 +324,7 @@ export function createApi(deps: ApiDeps) {
   });
   const copies = deps.copies ?? new DbCopies(store, { dir: null });
   const gate = deps.loginGate ?? new LoginGate();
+  const previews = new PreviewPasses();
 
   const replanEvents = (u: User) => replanEventsOf(store, u);
   /** Кнопка «you:…» (вопрос Рины о вас, «Записать в профиль?»): ответ; сменился пояс — напоминания заново. */
@@ -353,7 +360,7 @@ export function createApi(deps: ApiDeps) {
   }
 
   /** /api/admin/* (admin.ts): состояние и вход по коду — сразу, остальное — только после подтверждённого кода. sid — эта сессия. */
-  async function adminApi(u: User, sid: string, m: string, p: string, req: http.IncomingMessage) {
+  async function adminApi(u: User, sid: string, m: string, p: string, req: http.IncomingMessage, res: http.ServerResponse, hash: string) {
     if (m === "GET" && p === "/api/admin/state") return { until: await adminUntil(store, sid), telegram: Boolean(deps.adminCode) };
     if (m === "POST" && p === "/api/admin/code") {
       if (!deps.adminCode) throw new HttpError(503, "бот выключен — код некуда прислать");
@@ -371,7 +378,16 @@ export function createApi(deps: ApiDeps) {
     if (!(await adminUntil(store, sid))) throw new HttpError(403, "вход в админку не подтверждён");
     if (m === "POST" && p === "/api/admin/leave") {
       await leaveAdmin(store, u, sid);
+      previews.drop(hash);
       return { ok: true };
+    }
+    // Живой показ виджета в «Витрине» (preview.ts): пропуск в cookie до конца входа в админку; новый пропуск — в журнал.
+    if (m === "POST" && p === "/api/admin/preview") {
+      const until = new Date((await adminUntil(store, sid))!);
+      const pass = previews.issue(hash, until);
+      if (pass.fresh) await store.addAdminLog(u.id, "preview", "", new Date(), "витрина: живой показ виджета");
+      res.setHeader("Set-Cookie", previewCookie(pass.key, until, req.headers["x-forwarded-proto"] === "https"));
+      return { until: until.toISOString() };
     }
     const days = Number(new URL(req.url ?? "/", "http://local").searchParams.get("days")) || 30;
     if (m === "GET" && p === "/api/admin/overview") return adminOverview(store);
@@ -380,6 +396,10 @@ export function createApi(deps: ApiDeps) {
     if (m === "GET" && p === "/api/admin/audience") return adminAudience(store);
     if (m === "GET" && p === "/api/admin/quality") return adminQualityReport(store, days);
     if (m === "GET" && p === "/api/admin/health") return adminHealth(store);
+    // Нагрузка сервера (server-metrics.ts): снимки раз в минуту за ?range=1h|24h|7d (иначе 24h), пик за сутки, «Сколько выдержит».
+    if (m === "GET" && p === "/api/admin/health/load") {
+      return serverLoad(store, healthRange(new URL(req.url ?? "/", "http://local").searchParams.get("range")), new Date(), { rpm: deps.llmRpm ?? 0 });
+    }
     if (m === "GET" && p === "/api/admin/features") return adminFeatures(store);
     // Аналитика (этап 1, admin-analytics.ts): ?report=&days=&step=, неверные — 400; ответ считается раз в 60 с (кэш в памяти).
     if (m === "GET" && p === "/api/admin/analytics") return cachedAnalytics(store, parseAnalyticsQuery(req.url));
@@ -507,6 +527,16 @@ export function createApi(deps: ApiDeps) {
     throw new HttpError(404, "нет такого адреса");
   }
 
+  /** Пропуск живого показа действует: сессия жива, человек не заморожен и админ, вход в админку на этой сессии не кончился. */
+  async function previewAllowed(key: string): Promise<boolean> {
+    const hash = previews.check(key);
+    if (!hash) return false;
+    const u = await store.sessionUser(hash);
+    const ok = Boolean(u && !u.frozen_at && isAdmin(u, "session") && (await adminUntil(store, hash.slice(0, 16))));
+    if (!ok) previews.drop(hash);
+    return ok;
+  }
+
   /** latest.yml из папки обновлений (как есть) или null — нет папки или файла. */
   const desktopYml = async () => (deps.desktopDir ? fs.promises.readFile(path.join(deps.desktopDir, "latest.yml"), "utf8").catch(() => null) : null);
   /** Выпущенная версия программы (из latest.yml; перечитывается, только когда файл изменился) — падения и дни программы новее неё
@@ -551,6 +581,15 @@ export function createApi(deps: ApiDeps) {
       return undefined;
     }
     if (!p.startsWith("/api/")) {
+      // Живой показ виджета для «Витрины» админки: только по пропуску (POST /api/admin/preview), иначе 401.
+      if (p.startsWith(PREVIEW_PREFIX)) {
+        if (m !== "GET") throw new HttpError(404, "нет такого файла");
+        if (!(await previewAllowed(previewKey(req.headers.cookie)))) throw new HttpError(401, "нужен вход в админку");
+        let rel = "";
+        try { rel = decodeURIComponent(p.slice(PREVIEW_PREFIX.length)); } catch { throw new HttpError(404, "нет такого файла"); }
+        if (await servePreview(rel, res, deps.widgetDir ?? WIDGET_DIR_DEFAULT)) return undefined;
+        throw new HttpError(404, "нет такого файла");
+      }
       if (p.startsWith("/desktop/")) {
         if (m === "GET" && (await serveDesktop(deps.desktopDir ?? "", p, res, (t) => servedYml(store, t).catch((e) => (console.error("[release]", e), t))))) return undefined;
         throw new HttpError(404, "нет такого файла");
@@ -604,6 +643,7 @@ export function createApi(deps: ApiDeps) {
     if (!auth) throw new HttpError(401, "нужен вход (логин и пароль) или ключ");
     const u = auth.user;
     enterUser(u.id); // расход ИИ в этом запросе — на счёт этого человека
+    noteActive(u.id); // «активных за минуту» для «Здоровья сервера» (server-metrics.ts) — только число
     // Клиент для счётчиков фич: виджет и быстрая запись — «desktop», без заголовка — «other» (feature-events.ts).
     const client = featureClient(clientMeta(req.headers).client);
     askedBy.set(req, { user: u, client });
@@ -612,7 +652,7 @@ export function createApi(deps: ApiDeps) {
     if (p.startsWith("/api/admin/")) {
       // Не админу (и админу, вошедшему по DESKTOP_TOKEN) — как будто адреса нет.
       if (!isAdmin(u, auth.via)) throw new HttpError(404, "нет такого адреса");
-      return adminApi(u, tokenHash(token).slice(0, 16), m, p, req);
+      return adminApi(u, tokenHash(token).slice(0, 16), m, p, req, res, tokenHash(token));
     }
 
     // Счётчики фич от клиента (этап 3 админки): { client?, counts: { фича: сколько } } раз в 10 минут и при уходе со страницы.
@@ -1463,6 +1503,10 @@ export function createApi(deps: ApiDeps) {
   }
 
   return http.createServer(async (req, res) => {
+    // Запросы в минуту, время ответа и 5xx для «Здоровья сервера» (server-metrics.ts): две метки времени на запрос, без адресов.
+    // По close, а не finish: оборванный клиентом до конца ответа (таймаут, закрытая вкладка) finish не получает, а close — всегда.
+    const t0 = performance.now();
+    res.once("close", () => noteHttp(performance.now() - t0, res.statusCode, !res.writableFinished));
     try {
       const out = await route(req, res);
       // Удачный запрос к ручке-фиче — ещё одно использование (в памяти, в базу — пачкой раз в минуту). Повтор того же

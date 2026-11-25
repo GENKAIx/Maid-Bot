@@ -9,7 +9,11 @@ import { ADMIN_LIVE_STAGE, ADMIN_SECTIONS } from "../src/admin.ts";
 import { NAV_TABS } from "../src/nav.ts";
 import { recolorIsOwn, recolorPixels, SHOW_EYES, SHOW_HAIR } from "../src/recolor.ts";
 import { REGISTRY } from "../src/registry.gen.ts";
-import { animWhen, frameStart, playerStep, secText, sizeText, usageIndex, usedCount } from "../src/showcase.ts";
+import { FEATURES } from "../src/features.ts";
+import {
+  animWhen, bigViewKey, BUBBLE_SAMPLES, previewRemain, PREVIEW_SLOW, wordfxPlain, cropOf, filterCards, frameStart, HOLIDAY_PLAY, liveSet, playerStep, PREVIEW_CROPS, PREVIEW_H, PREVIEW_LIVE_MAX, PREVIEW_W,
+  previewScale, secText, SHOW_EMOTIONS, SHOW_GROUPS, showcaseCards, sizeText, usageIndex, usedCount, WEATHER_SAMPLES, WORDFX_SAMPLES,
+} from "../src/showcase.ts";
 
 // Этап 4 админки, «Витрина»: реестр (web/src/registry.gen.ts) свеж и собран из настоящих исходников, перекраска сайта
 // = look.js виджета, счёт кадров проигрывателя, числа карты функций.
@@ -121,3 +125,238 @@ test("карта функций: числа этапа 3 у пунктов, бе
   assert.ok(ADMIN_LIVE_STAGE >= 4, "этап 4 живой (дальше — этап 5, Аналитика)");
   assert.ok(ADMIN_SECTIONS.find((s) => s.id === "showcase")!.stage <= ADMIN_LIVE_STAGE);
 });
+
+// ——— Живой показ (25.11.2026): карточки — все анимации и эффекты из кода виджета, у каждого показа — свой пример и вид,
+// который умеет server/preview/control.js; раздел рисуется.
+
+const DESK = (f: string) => readFileSync(new URL(`../../desktop/renderer/${f}`, import.meta.url), "utf8");
+const CARDS = showcaseCards(REGISTRY, FEATURES);
+const idsOf = (g: string) => CARDS.filter((c) => c.group === g || (g === "anim" && c.group.startsWith("anim-"))).map((c) => c.id);
+const keysIn = (src: string, name: string) => {
+  const i = src.indexOf(`const ${name} = {`);
+  assert.ok(i >= 0, `нет ${name}`);
+  return [...src.slice(i, src.indexOf("\n};", i)).matchAll(/^ {2}(\w+)\s*(?:\(|:)/gm)].map((m) => m[1]);
+};
+
+test("живой показ: карточки совпадают с анимациями и эффектами в коде виджета — новая не потеряется", () => {
+  const moodsSrc = DESK("widget.js").match(/const MOODS = (\[[\s\S]*?\]);/)![1];
+  const moods = [...moodsSrc.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual([...idsOf("anim")].sort(), [...moods].sort(), "анимации = MOODS в widget.js");
+  assert.equal(idsOf("anim").length, 41);
+  assert.deepEqual([...idsOf("wordfx")].sort(), keysIn(DESK("wordfx.js"), "WORDFX").sort(), "слова = WORDFX в wordfx.js");
+  const bfx = DESK("bubblefx.js");
+  assert.deepEqual([...idsOf("bubble")].sort(), [...keysIn(bfx, "BUBBLEFX_KINDS"), ...keysIn(bfx, "BUBBLEFX_MARK")]
+    .filter((k) => !k.endsWith("Exit")).sort(), "облачко = bubblefx.js (…Exit — уход того же превращения)");
+  const gaits = [...new Set([...DESK("style.css").matchAll(/#bubbleText\[data-gait="(\w+)"\]/g)].map((m) => m[1]))];
+  assert.deepEqual([...idsOf("gait")].sort(), gaits.sort(), "походка = style.css");
+  assert.deepEqual([...idsOf("weather")].sort(), REGISTRY.effects.weather.map((w) => w.id).sort());
+  assert.deepEqual(CARDS.filter((c) => c.group === "holiday").map((c) => c.title), REGISTRY.effects.holidays.map((h) => h.title));
+  assert.deepEqual(idsOf("scene"), FEATURES.map((f) => f.id));
+  assert.equal(idsOf("scene").length, 12);
+  const n = REGISTRY.anims.length + REGISTRY.effects.wordfx.length + REGISTRY.effects.bubble.length + REGISTRY.effects.gait.length
+    + REGISTRY.effects.weather.length + REGISTRY.effects.holidays.length + FEATURES.length;
+  assert.equal(CARDS.length, n);
+  assert.equal(new Set(CARDS.map((c) => c.key)).size, CARDS.length, "ключи карточек разные");
+  for (const g of SHOW_GROUPS) assert.ok(CARDS.some((c) => c.group === g.id), `группа ${g.id} не пустая`);
+});
+
+test("живой показ: у каждого показа — свой пример, и его умеет server/preview/control.js", () => {
+  assert.deepEqual(Object.keys(WORDFX_SAMPLES).sort(), REGISTRY.effects.wordfx.map((w) => w.id).sort(), "пример у каждого слова");
+  for (const w of REGISTRY.effects.wordfx) {
+    const m = WORDFX_SAMPLES[w.id].match(/\[([^\]=]+)(=[^\]]+)?\]([^[]+)\[\/\]/);
+    assert.ok(m, `${w.id}: нет пометки`);
+    assert.equal(m[1], w.ru, `${w.id}: пометка [${w.ru}]`);
+    if (w.id === "count") assert.match(m[3], /^\d+$/, "у счёта — число");
+    if (w.id === "fix") assert.ok(m[2], "у правки — новое слово");
+  }
+  assert.deepEqual(Object.keys(BUBBLE_SAMPLES).sort(), REGISTRY.effects.bubble.map((b) => b.id).sort(), "пример у каждого облачка");
+  assert.deepEqual(Object.keys(WEATHER_SAMPLES).sort(), REGISTRY.effects.weather.map((w) => w.id).sort(), "пример у каждой погоды");
+  for (const h of REGISTRY.effects.holidays) assert.ok(HOLIDAY_PLAY[h.title], `праздник «${h.title}» — без показа`);
+  const control = readFileSync(new URL("../../server/preview/control.js", import.meta.url), "utf8");
+  const kinds = JSON.parse(control.match(/const PREVIEW_KINDS = (\[[^\]]*\]);/)![1]) as string[];
+  for (const k of kinds) assert.match(control, new RegExp(`^ {4}${k}: `, "m"), `в control.js нет показа ${k}`);
+  for (const c of CARDS) {
+    for (const m of [undefined, ...(c.moods ?? []).map((x) => x.id)]) {
+      const p = c.play(m);
+      assert.ok(kinds.includes(p.kind), `${c.key}: вид ${p.kind} не умеет control.js`);
+      if (p.kind === "say" && m) assert.equal(p.emotion, m, `${c.key}: настроение доходит до реплики`);
+    }
+    assert.ok(c.ms > 0, c.key);
+  }
+  const server = readFileSync(new URL("../../server/src/personas.ts", import.meta.url), "utf8");
+  assert.deepEqual(SHOW_EMOTIONS, JSON.parse(server.match(/export const EMOTIONS = (\[[^\]]*\])/)![1]), "настроения = эмоции сервера");
+  assert.deepEqual(CARDS.find((c) => c.group === "holiday" && c.id === "flame")!.play("30"), { kind: "holiday", party: "flame", tier: 30 });
+  assert.equal(CARDS.find((c) => c.key === "anim:forget")!.ms, REGISTRY.anims.find((a) => a.id === "forget")!.ms, "forget — один показ");
+});
+
+test("живой показ: поиск и фильтр, кто живой, масштаб, кадр окна", () => {
+  assert.equal(filterCards(CARDS, "all", "").length, CARDS.length);
+  assert.equal(filterCards(CARDS, "anim", "").length, 41);
+  assert.equal(filterCards(CARDS, "wordfx", "").length, REGISTRY.effects.wordfx.length);
+  assert.deepEqual(filterCards(CARDS, "all", "FORGET").map((c) => c.key), ["anim:forget"]);
+  assert.equal(filterCards(CARDS, "all", "ещё").length, filterCards(CARDS, "all", "еще").length, "ё = е");
+  assert.equal(filterCards(CARDS, "wordfx", "forget").length, 0, "фильтр и поиск вместе");
+  assert.ok(filterCards(CARDS, "all", "метель").some((c) => c.key === "weather:storm"));
+  const vis = Array.from({ length: 10 }, (_, i) => `k${i}`);
+  assert.deepEqual(liveSet(vis, ["k9", "x"], "k5"), ["k5", "k9", "k0", "k1", "k2", "k3"]);
+  assert.equal(liveSet(vis, [], null).length, PREVIEW_LIVE_MAX);
+  assert.deepEqual(liveSet(["a"], ["b"], "c"), ["c", "a"], "играющая живёт, даже ушла с экрана; невидимая недавняя — нет");
+  assert.deepEqual(liveSet([], [], null), []);
+  assert.equal(previewScale(PREVIEW_W), 1);
+  assert.equal(previewScale(310), 0.5);
+  assert.equal(previewScale(5000, 380), 0.5, "по высоте");
+  for (const c of Object.values(PREVIEW_CROPS)) assert.ok(c.x + c.w <= PREVIEW_W && c.y + c.h <= PREVIEW_H, "кадр внутри окна");
+  assert.equal(cropOf("scene"), "panel");
+  assert.equal(cropOf("anim-base"), "face");
+});
+
+test("живой показ: раздел рисуется — группы, карточки с кнопками и настроением; без пропуска — картинки, без iframe", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { LiveShow } = await import("../src/screens/AdminShowcase.tsx");
+  const html = renderToStaticMarkup(createElement(LiveShow, { pass: "нет доступа" }));
+  assert.equal((html.match(/<article class="adm-live-card/g) ?? []).length, CARDS.length);
+  for (const g of SHOW_GROUPS) assert.ok(html.includes(`aria-label="${g.title}"`), g.title);
+  assert.equal((html.match(/▶ играть/g) ?? []).length, CARDS.length);
+  assert.equal((html.match(/🐢 медленно/g) ?? []).length, CARDS.length);
+  const withMood = CARDS.filter((c) => c.moods && c.group !== "holiday").length;
+  assert.equal((html.match(/aria-label="Настроение реплики"/g) ?? []).length, withMood, "настроение — у слов и походки");
+  assert.equal((html.match(/aria-label="Рубеж серии"/g) ?? []).length, 1);
+  assert.equal((html.match(/<img class="adm-live-poster" src="\/maid\/\w+\.webp"/g) ?? []).length, 41);
+  assert.ok(!html.includes("<iframe"), "без пропуска виджетов нет");
+  const still = CARDS.filter((c) => !c.poster).length;
+  assert.equal((html.match(/<span class="adm-live-still">/g) ?? []).length, still, "у карточек без картинки — образец, а не голый id");
+  assert.ok(html.includes("<mark>сегодня</mark>"), "слово с эффектом выделено");
+  assert.equal((html.match(/Второй пример — «/g) ?? []).length, FEATURES.filter((f) => f.manual).length);
+  assert.ok((html.match(/aria-label="Позы горничной"/g) ?? []).length >= FEATURES.length - 1, "позы сценариев");
+  assert.match(html, /Живой показ недоступен: нет доступа/);
+  assert.ok(html.includes('type="search"'));
+});
+
+// --- исправления этапа 10 (25.11.2026) ---
+
+test("живой показ: «медленно» тянет конец показа, переключение посреди — конец переставляется", () => {
+  assert.equal(previewRemain(9000, 0, 1), 10_500);
+  assert.equal(previewRemain(9000, 0, PREVIEW_SLOW), 9000 * 4 + 1500, "вчетверо медленнее — вчетверо дольше");
+  // 3 с шло обычно, потом «медленно»: осталось 6 с своего времени — 24 с реального.
+  assert.equal(previewRemain(9000, 3000, PREVIEW_SLOW), 6000 * 4 + 1500);
+  assert.equal(previewRemain(9000, 20_000, 1), 1500, "уже кончился — только хвост");
+  assert.equal(previewRemain(9000, 0, 0), 10_500, "ноль — обычная скорость");
+  const src = readFileSync(new URL("../src/screens/AdminShowcase.tsx", import.meta.url), "utf8");
+  assert.match(src, /onPlay\(card, slow \? PREVIEW_SLOW : 1\)/, "карточка передаёт свою скорость");
+  assert.match(src, /previewRemain\(r\.ms, r\.done, r\.k\)/, "таймер конца — по скорости");
+  assert.match(src, /if \(active\) onSpeed\(card/, "переключили посреди показа — таймер переставляется");
+});
+
+test("живой показ: клавиши большого просмотра — стрелки проигрывателя шагают по кадрам, из виджета Esc и стрелки доходят", () => {
+  assert.equal(bigViewKey("Escape"), "close");
+  assert.equal(bigViewKey("ArrowLeft"), "prev");
+  assert.equal(bigViewKey("ArrowRight"), "next");
+  assert.equal(bigViewKey("ArrowRight", { handled: true }), null, "проигрыватель уже шагнул кадром — карточка не меняется");
+  assert.equal(bigViewKey("ArrowLeft", { field: true }), null, "в поле ввода — стрелки поля");
+  assert.equal(bigViewKey("Escape", { field: true }), "close");
+  assert.equal(bigViewKey("a"), null);
+  const src = readFileSync(new URL("../src/screens/AdminShowcase.tsx", import.meta.url), "utf8");
+  const player = src.slice(src.indexOf("function Player("), src.indexOf("// ——— Карта функций"));
+  assert.equal((player.match(/e\.stopPropagation\(\)/g) ?? []).length, 2, "пробел и стрелки проигрывателя не всплывают");
+  assert.match(src, /handled: e\.defaultPrevented/);
+  assert.match(src, /e\.data\.ev === "key"/, "клавиши из iframe");
+  // control.js: Esc и стрелки вне строки ввода уходят странице; в строке ввода — нет.
+  const w = runControl();
+  w.handlers.keydown({ key: "Escape", target: { tagName: "DIV" } });
+  w.handlers.keydown({ key: "ArrowRight", target: { tagName: "IMG" } });
+  w.handlers.keydown({ key: "ArrowLeft", target: { tagName: "INPUT" } });
+  w.handlers.keydown({ key: "a", target: { tagName: "DIV" } });
+  assert.deepEqual(w.posted.filter((m) => m.ev === "key").map((m) => m.key), ["Escape", "ArrowRight"]);
+});
+
+test("живой показ: кто живой — сначала карточки на самом экране, потом запас у края", () => {
+  const near = ["a", "b", "c", "d", "e", "f", "g", "h"]; // a, b — ушли за верх в запас 200 px
+  assert.deepEqual(liveSet(near, [], null, 6, ["c", "d", "e", "f", "g", "h"]), ["c", "d", "e", "f", "g", "h"]);
+  assert.deepEqual(liveSet(near, ["a", "h"], "z", 4, ["g", "h"]), ["z", "h", "g", "a"], "играющая, недавняя на экране, экран, недавняя в запасе");
+  assert.deepEqual(liveSet(near, [], null, 3, ["x"]), ["a", "b", "c"], "на экране, но не в запасе — не в счёт");
+});
+
+test("живой показ: образцы карточек без картинки, второй пример и позы сценариев", () => {
+  for (const c of CARDS) assert.ok(c.poster || c.still?.text, `${c.key}: ни картинки, ни образца`);
+  assert.deepEqual(wordfxPlain("Сдадите [правка=никогда]завтра[/]."), { text: "Сдадите завтра.", word: "завтра" });
+  assert.deepEqual(wordfxPlain("Без пометок."), { text: "Без пометок.", word: undefined });
+  for (const w of REGISTRY.effects.wordfx) {
+    const c = CARDS.find((x) => x.key === `wordfx:${w.id}`)!;
+    assert.ok(c.still?.word && !/\[/.test(c.still.text) && c.still.text.includes(c.still.word), `${c.key}: ${JSON.stringify(c.still)}`);
+  }
+  const anims = new Set(REGISTRY.anims.map((a) => a.id));
+  for (const f of FEATURES) {
+    const c = CARDS.find((x) => x.key === `scene:${f.id}`)!;
+    if (f.manual) assert.ok(c.extra?.includes(`«${f.manualTitle ?? "Вручную"}»`), `${f.id}: второй пример потерян`);
+    else assert.equal(c.extra, undefined);
+    assert.ok(c.poses!.every((m) => anims.has(m)), `${f.id}: позы — анимации из реестра`);
+    const used = new Set([f.ai.start, ...f.ai.steps.map((x) => x.set)].map((x) => x.maid).filter(Boolean));
+    assert.deepEqual(new Set(c.poses), new Set([...used].filter((m) => anims.has(m!))), `${f.id}: все позы`);
+  }
+  assert.ok(FEATURES.filter((f) => f.manual).length >= 5);
+});
+
+test("живой показ: сценарии в виджете — запись голоса, самонажатие и вспышка кнопки, реплика человека в чате", async () => {
+  const control = readFileSync(new URL("../../server/preview/control.js", import.meta.url), "utf8");
+  const fields = JSON.parse(control.match(/const PREVIEW_FIELDS = (\[[^\]]*\]);/)![1]) as string[];
+  for (const f of FEATURES) {
+    for (const fr of [f.ai.start, ...f.ai.steps.map((x) => x.set)]) {
+      for (const k of Object.keys(fr)) assert.ok(fields.includes(k), `${f.id}: поле ${k} показ не умеет (control.js PREVIEW_FIELDS)`);
+    }
+  }
+  const scene = async (demo: unknown) => {
+    const w = runControl();
+    await w.handlers.message({ source: w.parent, origin: "o", data: { maidPreview: 1, cmd: "play", play: { kind: "scene", demo } } });
+    await w.flush();
+    return w;
+  };
+  const voice = await scene(FEATURES.find((f) => f.id === "voice")!.ai);
+  assert.deepEqual(voice.rec, [true, false], "волна записи включилась и выключилась");
+  const days = await scene(FEATURES.find((f) => f.id === "days")!.ai);
+  const ask = days.said.find((x) => x.text === "В 15:00 у вас уже «Врач».")!;
+  assert.equal(ask.buttons[1].auto, 4, "«Оставить» заполняется сама");
+  assert.equal(ask.buttons[0].auto, undefined);
+  assert.deepEqual(days.pressed, ["0:pressed"], "нажатая кнопка вспыхнула");
+  const chat = await scene({ kind: "chat", start: { maid: "idle", msgs: [] }, steps: [
+    { at: 100, set: { msgs: [{ me: true, text: "🎙 Голосовое", time: "9:00" }] } },
+    { at: 900, set: { msgs: [{ me: true, text: "🎙 Голосовое", time: "9:00" }, { text: "Трата: 1 240 ₽ — продукты", time: "9:00" }] } },
+  ] });
+  assert.deepEqual(chat.said.map((x) => [x.text, x.heard]), [["…", "🎙 Голосовое"], ["Трата: 1 240 ₽ — продукты", "🎙 Голосовое"]], "видно, на что отвечает");
+  assert.deepEqual([...voice.errors, ...days.errors, ...chat.errors], []);
+});
+
+/** server/preview/control.js в песочнице: функции виджета — записывающие заглушки, таймеры — по очереди вручную. */
+function runControl() {
+  const handlers: Record<string, (e: unknown) => unknown> = {};
+  const posted: { ev: string; key?: string }[] = [];
+  const said: { text: string; heard?: string; buttons: { text: string; auto?: number }[] }[] = [];
+  const rec: boolean[] = [], pressed: string[] = [], errors: string[] = [];
+  let timers: { at: number; f: () => void }[] = [], clock = 0;
+  const P = { k: 1, errors, data: {}, sample: () => ({}), realTimeout: () => 0, dayKey: () => "2026-11-25", dayPlus: () => "2026-11-26", speed: () => {} };
+  const btn = { classList: { add: (c: string) => pressed.push(`0:${c}`) }, animate: () => ({}) };
+  const ctx: Record<string, unknown> = {
+    __preview: P, parent: { postMessage: (m: { ev: string }) => posted.push(m) }, location: { origin: "o" },
+    document: { getElementById: () => null, querySelector: (q: string) => (q === '#bubble button[data-i="0"]' ? btn : null) },
+    addEventListener: (t: string, f: (e: unknown) => unknown) => { handlers[t] = f; },
+    setTimeout: (f: () => void, ms: number) => timers.push({ at: clock + ms, f }), clearTimeout: () => {},
+    say: (text: string, o: { heard?: string; buttons?: { text: string; auto?: number }[] }) => said.push({ text, heard: o?.heard, buttons: o?.buttons ?? [] }),
+    react: () => {}, hideBubble: () => {}, load: async () => {}, mood: "idle", data: null,
+    chatInput: { value: "", dispatchEvent: () => true }, Event: class { constructor(public type: string) {} },
+    chatBox: { classList: { toggle: (_c: string, on: boolean) => rec.push(on), remove: () => {} } },
+    JSON, Number, String, Math, Promise, Object, Array, Set, Error,
+  };
+  ctx.window = ctx;
+  runInNewContext(control(), ctx);
+  const flush = async () => {
+    for (let guard = 0; timers.length && guard < 2000; guard++) {
+      timers.sort((a, b) => a.at - b.at);
+      const t = timers.shift()!;
+      clock = t.at;
+      t.f();
+      await new Promise((ok) => setImmediate(ok));
+    }
+  };
+  return { handlers, posted, said, rec, pressed, errors, parent: ctx.parent, flush };
+}
+function control() { return readFileSync(new URL("../../server/preview/control.js", import.meta.url), "utf8"); }

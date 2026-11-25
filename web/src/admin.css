@@ -160,8 +160,7 @@ body.admin-body { background: #0f1114; }
 .adm-feat td, .adm-feat th { white-space: nowrap; }
 .adm-unused { display: flex; flex-wrap: wrap; gap: 6px; }
 .adm-chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 10px; border: 1px solid var(--a-line); border-radius: 999px; background: var(--a-panel); font-size: 12.5px; color: var(--a-muted); }
-/* Этап 4 (24.11.2026): витрина — проигрыватель, сетка анимаций, эффекты, сценарии, карта функций (screens/AdminShowcase.tsx). */
-.adm-player { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; margin-bottom: 18px; }
+/* Этап 4 (24.11.2026): витрина — покадровый проигрыватель, карта функций; живой показ виджета (25.11.2026) — ниже (screens/AdminShowcase.tsx). */
 .adm-pl { display: grid; grid-template-columns: 288px minmax(0, 1fr); gap: 18px; padding: 16px; border: 1px solid var(--a-line); border-radius: 12px; background: var(--a-panel); outline: none; }
 .adm-pl:focus-visible { border-color: var(--a-accent); }
 .adm-pl-view { width: 288px; height: 307px; display: grid; place-items: center; border-radius: 10px; background: repeating-conic-gradient(#1b1f25 0 25%, #15181d 0 50%) 0 0 / 16px 16px; }
@@ -174,35 +173,11 @@ body.admin-body { background: #0f1114; }
 .adm-player-foot { justify-content: space-between; align-items: center; font-size: 12.5px; }
 .adm-btn.on { border-color: var(--a-accent); color: var(--a-text); }
 .adm-range { width: 100%; accent-color: var(--a-accent); }
-.adm-player-side { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--a-line); border-radius: 12px; background: var(--a-panel); }
-.adm-player-side p { margin: 0; }
 .adm-sw h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
 .adm-sw [role="radiogroup"] { display: flex; flex-wrap: wrap; gap: 8px; }
 .adm-sw button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--a-line); cursor: pointer; padding: 0; }
 .adm-sw button.on { border-color: var(--a-text); box-shadow: 0 0 0 2px var(--a-accent); }
 .adm-sw button:focus-visible { outline: 2px dashed var(--a-accent); outline-offset: 3px; }
-.adm-anims { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
-.adm-anim { font: inherit; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border: 1px solid var(--a-line); border-radius: 10px; background: var(--a-panel); color: var(--a-text); cursor: pointer; font-size: 12.5px; }
-.adm-anim:hover { border-color: #3a414c; }
-.adm-anim.on { border-color: var(--a-accent); background: var(--a-panel-2); }
-.adm-anim img { width: 90px; height: 96px; margin-bottom: 4px; }
-.adm-anim span { font-size: 10.5px; }
-.adm-fx-why { margin-top: 0; }
-.adm-fx-why code, .adm-fgroup code { font-family: var(--a-mono); font-size: 12px; }
-.adm-fx { display: flex; flex-direction: column; border: 1px solid var(--a-line); border-radius: 12px; overflow: hidden; }
-.adm-fx-row, .adm-scene { display: grid; grid-template-columns: 110px auto minmax(0, 1fr); gap: 4px 14px; padding: 10px 14px; border-bottom: 1px solid var(--a-line); font-size: 13px; }
-.adm-fx-row:last-child, .adm-scene:last-child { border-bottom: 0; }
-.adm-fx-row > b { font-weight: 600; }
-.adm-fx-row > span:last-child { grid-column: 3; }
-.adm-fx-row > b + span:last-child { grid-column: 2 / 4; }
-.adm-scene { grid-template-columns: 28px minmax(0, 1fr); }
-.adm-scene p { margin: 4px 0 8px; }
-.adm-chip-btn { font: inherit; font-family: var(--a-mono); font-size: 12px; cursor: pointer; color: var(--a-text); }
-.adm-chip-btn:hover { border-color: var(--a-accent); }
-.adm-gaits { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
-.adm-gait-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--a-line); border-radius: 10px; background: var(--a-panel); }
-.adm-gait-word { font-size: 20px; font-weight: 600; min-height: 30px; }
-.adm-gait-word > span { display: inline-block; }
 .adm-fmap { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: start; }
 .adm-fgroup { margin: 0; }
 .adm-fgroup h3 { margin: 0; font-size: 14px; font-weight: 600; }
@@ -211,16 +186,59 @@ body.admin-body { background: #0f1114; }
 .adm-fgroup li b { font-weight: 500; }
 .adm-fgroup li > span { white-space: nowrap; }
 .adm-fgroup li.dead b { color: var(--a-muted); }
-@media (max-width: 1100px) {
-  .adm-player { grid-template-columns: minmax(0, 1fr); }
-}
+
+.adm-fgroup code, .adm-live-why code { font-family: var(--a-mono); font-size: 12px; }
+/* Живой показ (25.11.2026): карточки с настоящим виджетом в iframe 620×760, уменьшенным под ширину (transform: scale). */
+.adm-live-tools { gap: 10px; }
+.adm-live-q { flex: 1 1 220px; min-width: 0; max-width: 340px; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--a-line); background: var(--a-bg); color: var(--a-text); }
+.adm-live-filter { flex-wrap: wrap; }
+.adm-live-why { margin-top: 0; }
+.adm-live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.adm-live-card { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--a-line); border-radius: 12px; background: var(--a-panel); min-width: 0; }
+.adm-live-card.on { border-color: var(--a-accent); }
+.adm-live-box { position: relative; width: 100%; aspect-ratio: 500 / 360; overflow: hidden; border-radius: 9px; display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 80% 100%, #3b4f7a 0%, #26324d 45%, #171c28 100%); }
+.adm-live-box.big { height: min(76vh, 760px); width: auto; max-width: 100%; aspect-ratio: 620 / 760; }
+.adm-live-frame { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.adm-live-frame iframe { display: block; width: 620px; height: 760px; border: 0; background: transparent; pointer-events: none; color-scheme: normal; }
+.adm-live-frame iframe.on { pointer-events: auto; }
+.adm-live-poster { height: 80%; width: auto; image-rendering: auto; opacity: .92; }
+.adm-live-wait { font-family: var(--a-mono); padding: 12px; text-align: center; }
+/* Образец карточки, пока виджет не запущен: облачко реплики, слово с эффектом выделено; погода и праздники — значок. */
+.adm-live-still { max-width: 82%; padding: 10px 14px; border-radius: 14px; background: #fffaf3; color: #2b2233; font-size: 13px; line-height: 1.4; text-align: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
+.adm-live-still mark { background: rgba(125, 82, 230, .2); color: #5b34c4; font-weight: 600; border-radius: 4px; padding: 0 2px; }
+.adm-live-still-icon { display: block; font-size: 28px; line-height: 1.2; }
+.adm-live-poses { gap: 4px; flex-wrap: wrap; }
+.adm-live-poses .adm-chip { cursor: pointer; font-family: var(--a-mono); font-size: 11.5px; padding: 2px 8px; }
+.adm-live-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.adm-live-meta p { margin: 0; line-height: 1.4; }
+.adm-live-title { font: inherit; text-align: left; padding: 0; border: 0; background: none; color: var(--a-text); cursor: pointer; font-size: 13.5px; }
+.adm-live-title:hover b { text-decoration: underline; }
+.adm-live-title b { font-weight: 600; }
+.adm-live-title span { font-size: 11.5px; }
+.adm-live-ctl { align-items: center; margin-top: auto; }
+.adm-live-mood { font: inherit; font-size: 12.5px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--a-line); background: var(--a-panel-2); color: var(--a-text); max-width: 140px; }
+.adm-live-shade { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(8, 10, 14, .72); }
+.adm-live-big { display: grid; grid-template-columns: auto minmax(260px, 340px); gap: 18px; max-width: min(1100px, 100%); max-height: 100%; overflow: auto; padding: 16px;
+  border: 1px solid var(--a-line); border-radius: 14px; background: var(--a-panel); outline: none; }
+.adm-live-big-view { min-width: 0; display: flex; justify-content: center; }
+.adm-live-big-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.adm-live-big-side h2 { margin: 0; font-size: 17px; font-weight: 650; }
+.adm-live-big-side p { margin: 0; }
+.adm-live-big-nav { align-items: center; }
+.adm-grow { flex: 1; }
+.adm-live-dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin: 0; font-size: 13px; }
+.adm-live-dl dt { color: var(--a-muted); }
+.adm-live-dl dd { margin: 0; }
+.adm-live-player { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 @media (max-width: 760px) {
   .adm-pl { grid-template-columns: minmax(0, 1fr); }
   .adm-pl-view { width: 100%; }
-  .adm-fx-row { grid-template-columns: minmax(0, 1fr); }
-  .adm-fx-row > span:last-child, .adm-fx-row > b + span:last-child { grid-column: auto; }
+  .adm-live-grid { grid-template-columns: minmax(0, 1fr); }
+  .adm-live-big { grid-template-columns: minmax(0, 1fr); }
+  .adm-live-box.big { height: auto; width: 100%; }
+  .adm-live-q { max-width: none; }
 }
-@media (prefers-reduced-motion: reduce) { .adm-gait-word > span { animation: none !important; } }
 /* Этап 5 (24.11.2026): Аналитика — screens/AdminAnalytics.tsx, графики adminCharts.tsx; вид — по макету docs/review/аналитика-макет-2026-11-24.html.
    Цвета рядов (--a-c1…--a-c6, звезда --a-star) — палитра макета, проверена на тёмной поверхности. */
 .admin { --a-c1: #3987e5; --a-c2: #d95926; --a-c3: #199e70; --a-c4: #c98500; --a-c5: #d55181; --a-c6: #9085e9; --a-star: #f2c14e; --a-good: #5fc59a; --a-panel-3: #22272e; --a-line-2: #313741; --a-soft: #b9bfc8; }
@@ -325,16 +343,19 @@ body.admin-body { background: #0f1114; }
 .adm-tf-lead { margin: 0; font-size: 13px; }
 .adm-tf .good { color: #6fcf97; }
 .adm-tf .bad { color: var(--a-bad); }
-.adm-tf-plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.adm-tf-plans { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .adm-tf-caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-.adm-tf-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--a-line); border-radius: 12px; background: var(--a-panel); min-width: 0; }
+.adm-tf-card { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border: 1px solid var(--a-line); border-radius: 12px; background: var(--a-panel); min-width: 0; }
 .adm-tf-card h3 { margin: 0; font-size: 15px; font-weight: 650; }
 .adm-tf-card p { margin: 0; }
 .adm-tf-price { font-size: 22px; font-weight: 600; }
 .adm-tf-price small { font-size: 12px; font-weight: 400; }
-.adm-tf-fields { display: flex; flex-direction: column; gap: 10px; }
-.adm-tf-field { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 4px 10px; align-items: center; }
+.adm-tf-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 16px; }
+.adm-tf-head .adm-tf-price { text-align: right; }
+.adm-tf-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px 18px; align-items: start; }
+.adm-tf-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .adm-tf-label { font-size: 13px; }
+.adm-tf-hint { display: block; font-size: 11.5px; line-height: 1.35; color: var(--a-muted); font-family: inherit; font-weight: 400; }
 .adm-tf-label em { display: block; font-style: normal; font-size: 11.5px; color: var(--a-muted); }
 .adm-tf-num { display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--a-line); border-radius: 8px; background: var(--a-bg); }
 .adm-tf-num input { width: 100%; min-width: 0; padding: 8px 0; border: 0; background: none; color: var(--a-text); font: inherit; font-family: var(--a-mono); text-align: right; outline: none; }
@@ -344,12 +365,20 @@ body.admin-body { background: #0f1114; }
 .adm-tf-num.err { border-color: var(--a-bad); }
 .adm-tf-ferr { grid-column: 1 / -1; font-size: 12px; }
 .adm-tf-toggle { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--a-line); border-radius: 8px; cursor: pointer; }
-.adm-tf-text { grid-template-columns: minmax(0, 1fr); }
+.adm-tf-text { grid-column: 1 / -1; }
 .adm-tf-txt { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--a-line); border-radius: 8px; background: var(--a-bg); color: var(--a-text); font: inherit; resize: vertical; outline: none; }
 .adm-tf-txt:focus { border-color: var(--a-accent); }
 .adm-tf-txt.ch { border-color: #c98500; box-shadow: 0 0 0 1px #c98500 inset; }
 .adm-tf-txt.err { border-color: var(--a-bad); }
-.adm-tf-econ { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 10px; border-top: 1px solid var(--a-line); }
+.adm-tf-econ { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px 14px; padding-top: 12px; border-top: 1px solid var(--a-line); }
+.adm-tf-econ > div { min-width: 0; }
+.adm-tf-calc .adm-tf-act { grid-column: 1 / -1; max-width: 560px; }
+.adm-tf-range { width: 100%; accent-color: var(--a-accent); margin: 4px 0; }
+.adm-tf-presets { flex-wrap: wrap; gap: 6px; }
+.adm-tf-calctab td .adm-tf-hint { margin-top: 2px; }
+.adm-tf-total td { font-weight: 600; border-top: 1px solid var(--a-line); }
+.adm-tf-worst { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 13px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--a-line); border-left: 3px solid var(--a-bad); background: var(--a-panel-2); }
+.adm-tf-notes { margin: 0; padding-left: 18px; }
 .adm-tf-econ span { display: block; font-size: 11.5px; color: var(--a-muted); }
 .adm-tf-econ b { font-size: 15px; font-weight: 600; }
 .adm-tf-flags { display: flex; flex-direction: column; gap: 8px; }
@@ -374,7 +403,6 @@ body.admin-body { background: #0f1114; }
 .adm-tf-draft { position: sticky; bottom: 12px; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid #c98500; border-radius: 12px; background: var(--a-panel-2); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); z-index: 2; }
 .adm-tf-draft ul { margin: 0; padding-left: 18px; font-size: 13px; }
 @media (max-width: 520px) {
-  .adm-tf-field { grid-template-columns: minmax(0, 1fr); }
   .adm-tf-defs dl { grid-template-columns: minmax(0, 1fr); }
   .adm-tf-plans, .adm-tf-caps { grid-template-columns: minmax(0, 1fr); }
 }

@@ -1,7 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// В разработке (npm --workspace web run dev) запросы /api идут на сервер :3000.
+// В разработке (npm --workspace web run dev) запросы /api и /admin-preview идут на сервер :3000.
 // Сборка — web/dist, сервер отдаёт её сам (WEB_DIR).
 
 // Версия сайта — время сборки по UTC: «год.день года.ЧЧММ» (26.328.1530). Такой вид пропускает сервер (auth.ts: clientMeta,
@@ -15,6 +15,7 @@ function buildVersion(t = new Date()) {
 export default defineConfig({
   plugins: [react()],
   define: { __APP_VERSION__: JSON.stringify(buildVersion()) },
-  server: { port: 5173, proxy: { "/api": "http://localhost:3000" } },
+  // /admin-preview — живой показ виджета в «Витрине» админки (server/src/preview.ts).
+  server: { port: 5173, proxy: { "/api": "http://localhost:3000", "/admin-preview": "http://localhost:3000" } },
   build: { outDir: "dist", emptyOutDir: true, sourcemap: false },
 });

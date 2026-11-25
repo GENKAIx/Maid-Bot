@@ -23,6 +23,7 @@ import { Billing, billingSecret } from "./billing.ts";
 import { installLogRedaction } from "./log-redact.ts";
 import { loadTariffs, watchTariffs } from "./tariffs.ts";
 import { loadSwitches, watchSwitches } from "./switches.ts";
+import { noteBotUpdate, noteLlmCall, ServerMeter } from "./server-metrics.ts";
 
 // Запуск. Чего не хватает в .env — та часть выключена, остальное работает.
 // База: DATABASE_URL (Postgres на Render) или файл SQLite из DB_FILE.
@@ -49,7 +50,10 @@ pipeline.onAbout = (u, text, buttons) => send(u, text, "neutral", buttons, "note
 // Расход модели, рисования и голоса — по дням и назначениям (таблица llm_usage), на сайте — «Настройки» → «Расход».
 onLlmUsage((x) => void store.addUsage(new Date(), x).catch((e) => console.error("[usage]", e)));
 // Каждая попытка (и удачная, и упавшая) — строкой в журнал llm_calls: время ответа, цена, код ошибки (админка → «Здоровье»).
-onLlmCall((x) => void store.addLlmCall(new Date(), x).catch((e) => console.error("[llm calls]", e)));
+onLlmCall((x) => {
+  noteLlmCall(Boolean(x.error)); // и в «вызовы модели в минуту» нагрузки сервера (server-metrics.ts)
+  void store.addLlmCall(new Date(), x).catch((e) => console.error("[llm calls]", e));
+});
 
 // Дешёвая модель вместо основной — если владелец выбрал её командой /model.
 setLiteModel((await store.kvGet("model:lite")) === "1");
@@ -64,6 +68,9 @@ let webhook: ((req: import("node:http").IncomingMessage, res: import("node:http"
 
 const tg = config.telegramToken ? createBot(store, pipeline, () => scheduler) : null;
 if (tg) {
+  // Апдейты бота в минуту (server-metrics.ts): и вебхук, и long polling идут через handleUpdate.
+  const handle = tg.bot.handleUpdate.bind(tg.bot);
+  tg.bot.handleUpdate = (update, webhookReplyEnvelope) => (noteBotUpdate(), handle(update, webhookReplyEnvelope));
   if (config.publicUrl) webhook = webhookCallback(tg.bot, "http", { secretToken: webhookSecret(config.telegramToken) });
 } else console.warn("[start] TELEGRAM_BOT_TOKEN не задан — бот выключен");
 // Подписка Telegram Stars (billing.ts): без бота ссылок на оплату нет, сроки всё равно кончаются по расписанию.
@@ -127,12 +134,19 @@ scheduler.extra = async (now) => {
   await alerts.check(now).catch((e) => console.error("[alerts]", e));
 };
 scheduler.start();
+// Нагрузка сервера раз в минуту (server-metrics.ts): снимок в server_metrics, 7 дней; админка → «Здоровье сервера».
+const meter = new ServerMeter(store, {
+  dbBytes: () => (config.databaseUrl ? null : dbFileBytes(config.dbFile)),
+  diskPath: config.databaseUrl ? process.cwd() : path.dirname(config.dbFile),
+  queue: () => pipeline.inWork,
+});
+meter.start();
 // Вопросы «добавить?» без ответа дольше суток — закрыть (ничего не создают).
 const sweep = setInterval(() => void pipeline.sweepProposals().catch((e) => console.error("[proposals]", e)), 10 * 60_000);
 void pipeline.sweepProposals().catch(() => {});
 
 let botName: string | undefined;
-const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode, billing, alerts, copies });
+const server = createApi({ store, pipeline, send, webhook, webDir: config.webDir, desktopDir: config.desktopDir, push, botName: () => botName, adminCode, billing, alerts, copies, llmRpm: config.llm.rpm });
 server.listen(config.port, async () => {
   console.log(`[start] сервер: http://localhost:${config.port}`);
   if (!tg) return;
@@ -148,6 +162,7 @@ server.listen(config.port, async () => {
 
 const shutdown = async () => {
   scheduler?.stop();
+  meter.stop();
   clearInterval(sweep);
   if (tg && !config.publicUrl) await tg.bot.stop();
   // Запросы, что ещё идут, досчитывают свои счётчики фич — ждём их не дольше 3 с, потом пишем пачку и закрываем базу.

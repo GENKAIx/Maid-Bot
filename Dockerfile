@@ -14,6 +14,10 @@ RUN npm --workspace web run build
 # и /srv/deploy.sh оставляет работать прежний контейнер.
 FROM build AS check
 COPY server server
+# Тест живого показа (server/test/preview.test.ts): заглушка window.maid сверяется с preload.js и скриптами виджета.
+COPY desktop/renderer desktop/renderer
+COPY desktop/src/preload.js desktop/src/preload.js
+COPY desktop/assets/star.png desktop/assets/star.png
 RUN npm --workspace server run typecheck && npm --workspace server test
 
 FROM node:22-alpine
@@ -27,6 +31,14 @@ COPY web/package.json web/
 COPY desktop/package.json desktop/
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY server server
+# Живой показ виджета в «Витрине» админки (server/src/preview.ts): только renderer и нужные ему картинки, шрифты и звуки,
+# без исходников программы (desktop/src) и установщиков.
+COPY desktop/renderer desktop/renderer
+COPY desktop/assets/maid desktop/assets/maid
+COPY desktop/assets/inbox desktop/assets/inbox
+COPY desktop/assets/fonts desktop/assets/fonts
+COPY desktop/assets/sounds desktop/assets/sounds
+COPY desktop/assets/star.png desktop/assets/star.png
 COPY --from=check /app/web/dist web/dist
 COPY deploy/entrypoint.sh /usr/local/bin/maid-entrypoint
 RUN chmod +x /usr/local/bin/maid-entrypoint

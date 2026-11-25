@@ -708,7 +708,66 @@ CREATE TABLE IF NOT EXISTS announcement_seen (
   PRIMARY KEY (announcement_id, user_id)
 );
 `,
+  // Шаг 37: «Здоровье сервера» подробно (server-metrics.ts) — снимок нагрузки раз в минуту, хранится 7 дней (SERVER_METRICS_KEEP_DAYS).
+  // at — минута (ISO, ключ). Процессор: cpu_proc — % одного ядра у процесса, cpu_ms — мс процессора процесса за минуту, cpu_sys — %
+  // машины (все ядра), load1 — средняя нагрузка за минуту (os.loadavg; на Windows 0), cores. Память в МБ: rss, куча, машина (всего,
+  // свободно), mem_limit_mb — потолок памяти процесса (ограничение контейнера или вся память машины). Цикл событий: задержка p50 / p99 /
+  // max, мс. За минуту: запросы HTTP, время ответа p50 / p95 (мс), ответы 5xx, апдейты бота, вызовы модели и из них с ошибкой, разных
+  // активных людей (только число), очередь разбора (сейчас и наибольшая за минуту). Размер базы, свободный и весь диск (МБ, NULL — не
+  // измерить), аптайм (с), tick_ms — сколько занял сам снимок. Без имён, номеров и текстов людей.
+  `
+CREATE TABLE IF NOT EXISTS server_metrics (
+  at TEXT PRIMARY KEY,
+  cpu_proc {real} NOT NULL DEFAULT 0,
+  cpu_ms {real} NOT NULL DEFAULT 0,
+  cpu_sys {real},
+  load1 {real},
+  cores INTEGER NOT NULL DEFAULT 1,
+  rss_mb {real} NOT NULL DEFAULT 0,
+  heap_mb {real} NOT NULL DEFAULT 0,
+  heap_total_mb {real} NOT NULL DEFAULT 0,
+  mem_total_mb {real} NOT NULL DEFAULT 0,
+  mem_free_mb {real} NOT NULL DEFAULT 0,
+  mem_limit_mb {real} NOT NULL DEFAULT 0,
+  loop_p50 {real} NOT NULL DEFAULT 0,
+  loop_p99 {real} NOT NULL DEFAULT 0,
+  loop_max {real} NOT NULL DEFAULT 0,
+  http INTEGER NOT NULL DEFAULT 0,
+  http_p50 {real},
+  http_p95 {real},
+  http_5xx INTEGER NOT NULL DEFAULT 0,
+  bot INTEGER NOT NULL DEFAULT 0,
+  llm INTEGER NOT NULL DEFAULT 0,
+  llm_err INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 0,
+  queue INTEGER NOT NULL DEFAULT 0,
+  queue_peak INTEGER NOT NULL DEFAULT 0,
+  db_mb {real},
+  disk_free_mb {real},
+  disk_total_mb {real},
+  uptime INTEGER NOT NULL DEFAULT 0,
+  tick_ms {real} NOT NULL DEFAULT 0
+);
+`,
 ];
+
+/** Снимок нагрузки сервера за минуту (шаг 37, server-metrics.ts); поля — как столбцы server_metrics. */
+export interface ServerMetricRow {
+  at: string; cpu_proc: number; cpu_ms: number; cpu_sys: number | null; load1: number | null; cores: number;
+  rss_mb: number; heap_mb: number; heap_total_mb: number; mem_total_mb: number; mem_free_mb: number; mem_limit_mb: number;
+  loop_p50: number; loop_p99: number; loop_max: number;
+  http: number; http_p50: number | null; http_p95: number | null; http_5xx: number;
+  bot: number; llm: number; llm_err: number; active: number; queue: number; queue_peak: number;
+  db_mb: number | null; disk_free_mb: number | null; disk_total_mb: number | null; uptime: number; tick_ms: number;
+}
+export const SERVER_METRIC_COLS = [
+  "at", "cpu_proc", "cpu_ms", "cpu_sys", "load1", "cores", "rss_mb", "heap_mb", "heap_total_mb", "mem_total_mb", "mem_free_mb", "mem_limit_mb",
+  "loop_p50", "loop_p99", "loop_max", "http", "http_p50", "http_p95", "http_5xx", "bot", "llm", "llm_err", "active", "queue", "queue_peak",
+  "db_mb", "disk_free_mb", "disk_total_mb", "uptime", "tick_ms",
+] as const satisfies readonly (keyof ServerMetricRow)[];
+export type ServerMetricCol = (typeof SERVER_METRIC_COLS)[number];
+/** Столбцы, где NULL значит «не измерить» (остальные — числа). */
+const METRIC_NULLABLE = new Set<string>(["cpu_sys", "load1", "http_p50", "http_p95", "db_mb", "disk_free_mb", "disk_total_mb"]);
 
 /** Виды строк журнала подписки (billing_events, шаг 28). paid_first — первая оплата подписки, paid_once — оплата без признака
  *  подписки, renewed — продление, canceled / resumed — продление отменили / возобновили, refunded — возврат, expired — кончилась
@@ -2719,6 +2778,30 @@ export class Store {
     const cols = (["enabled", "threshold", "window_min", "every_min", "firing", "last_sent", "last_value", "mark", "updated_at", "updated_by"] as const).filter((k) => k in patch);
     if (!cols.length) return;
     await this.run(`UPDATE alert_rules SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`, ...cols.map((c) => patch[c] ?? null), id);
+  }
+  // ——— Нагрузка сервера (шаг 37, server-metrics.ts): снимок раз в минуту, чтение за период, чистка старше 7 дней.
+  /** Записать снимок; минута уже есть (перезапуск в ту же минуту) — первый остаётся. */
+  async addServerMetric(r: ServerMetricRow) {
+    const val = (k: (typeof SERVER_METRIC_COLS)[number]) => {
+      if (k === "at") return r.at;
+      const v = r[k] as number | null;
+      if (v == null || !Number.isFinite(v)) return METRIC_NULLABLE.has(k) ? null : 0;
+      return /^(cores|http|http_5xx|bot|llm|llm_err|active|queue|queue_peak|uptime)$/.test(k) ? Math.round(v) : v;
+    };
+    await this.run(
+      `INSERT INTO server_metrics (${SERVER_METRIC_COLS.join(", ")}) VALUES (${SERVER_METRIC_COLS.map(() => "?").join(", ")}) ON CONFLICT (at) DO NOTHING`,
+      ...SERVER_METRIC_COLS.map(val),
+    );
+  }
+  /** Снимки с since (ISO, включительно) по порядку времени; cols — только эти столбцы (по умолчанию все). */
+  async serverMetrics<K extends ServerMetricCol = ServerMetricCol>(since: string, cols?: readonly K[]): Promise<Pick<ServerMetricRow, K>[]> {
+    const sel = (cols ?? SERVER_METRIC_COLS).filter((k) => (SERVER_METRIC_COLS as readonly string[]).includes(k));
+    const rows = await this.all<Record<string, unknown>>(`SELECT ${sel.join(", ")} FROM server_metrics WHERE at >= ? ORDER BY at`, since);
+    return rows.map((x) => Object.fromEntries(sel.map((k) => [k, k === "at" ? String(x.at) : x[k] == null ? null : Number(x[k])])) as unknown as Pick<ServerMetricRow, K>);
+  }
+  /** Удалить снимки старше before (ISO); вернуть, сколько удалено. */
+  async pruneServerMetrics(before: string): Promise<number> {
+    return this.run("DELETE FROM server_metrics WHERE at < ?", before);
   }
   async addAlertLog(e: { at: Date; rule: string; kind: string; value: number | null; text: string; sent: boolean }) {
     await this.run("INSERT INTO alert_log (at, rule, kind, value, text, sent) VALUES (?, ?, ?, ?, ?, ?)",

@@ -1,6 +1,8 @@
 // «Витрина» админки (этап 4, 24.11.2026; screens/AdminShowcase.tsx) без React: типы реестра (web/src/registry.gen.ts — его
 // пишет tools/registry/make_registry.ts из настоящих исходников), счёт времени проигрывателя и подписи. Ревью —
 // docs/review/админка-2026-11-24.html, раздел «Витрина функций и анимаций».
+// Живой показ (25.11.2026): карточки (showcaseCards), примеры к эффектам, что проиграть в виджете (PreviewPlay — виды
+// server/preview/control.js), поиск, кадр окна и какие виджеты держать живыми (liveSet).
 
 export type AnimGroup = "base" | "event" | "once";
 export interface AnimInfo {
@@ -92,4 +94,226 @@ export function usageIndex(report: { features: { id: string; all: UsageNum }[] }
 export function usedCount(ids: (string | undefined)[], usage: (id: string | undefined) => UsageNum | null): { used: number; counted: number } {
   const known = ids.filter((x): x is string => Boolean(x));
   return { used: known.filter((id) => (usage(id)?.uses30 ?? 0) > 0).length, counted: known.length };
+}
+
+// ——— Живой показ (25.11.2026): настоящий виджет в iframe (/admin-preview/renderer/widget.html, server/src/preview.ts) и что
+// в нём проиграть. Карточки — из реестра (анимации, эффекты) и features.ts (сценарии): новая анимация или эффект в коде
+// попадает в витрину сама, а показ без своего примера (WORDFX_SAMPLES и др.) — ошибка теста web/test/showcase.test.ts.
+
+/** Что проиграть в виджете (server/preview/control.js, виды — PREVIEW_KINDS там же). */
+export type PreviewPlay =
+  | { kind: "anim"; id: string; ms: number }
+  | { kind: "say"; text: string; own?: boolean; emotion: string; heard?: string; mark?: string }
+  | { kind: "weather"; sky: string; icon: string; temp: string; text: string }
+  | { kind: "holiday"; party: "flame" | "wave" | "salute"; tier?: number }
+  | { kind: "scene"; demo: unknown };
+
+export const PREVIEW_URL = "/admin-preview/renderer/widget.html";
+/** Окно виджета на ПК (desktop/src/main.js WIDGET_W × WIDGET_H): iframe такого размера, уменьшенный под карточку. */
+export const PREVIEW_W = 620, PREVIEW_H = 760;
+/** Сколько виджетов живут на странице одновременно (каждый — целая страница виджета); остальные карточки — с картинкой. */
+export const PREVIEW_LIVE_MAX = 6;
+/** «Медленно» — вчетверо. */
+export const PREVIEW_SLOW = 0.25;
+/** Сколько ещё ждать конца показа (реального времени, мс): показ длится ms мс своего времени, done уже прошло, k — скорость
+ *  (PREVIEW_SLOW — вчетверо дольше); плюс 1,5 с, чтобы итог было видно. */
+export const previewRemain = (ms: number, done: number, k: number) => Math.max(0, ms - done) / (k > 0 ? k : 1) + 1500;
+
+/** Клавиша большого просмотра → действие: Esc — закрыть, ← → — соседние карточки. Стрелки в поле ввода и уже обработанные
+ *  (покадровый проигрыватель шагает ими по кадрам) карточки не листают. Клавиши из виджета (control.js шлёт ev "key") — те же. */
+export function bigViewKey(key: string, opts: { field?: boolean; handled?: boolean } = {}): "close" | "prev" | "next" | null {
+  if (key === "Escape") return "close";
+  if ((key !== "ArrowLeft" && key !== "ArrowRight") || opts.field || opts.handled) return null;
+  return key === "ArrowLeft" ? "prev" : "next";
+}
+
+export type ShowGroup = "anim-base" | "anim-event" | "anim-once" | "wordfx" | "bubble" | "gait" | "weather" | "holiday" | "scene";
+export const SHOW_GROUPS: { id: ShowGroup; title: string; src: string }[] = [
+  { id: "anim-base", title: "Анимации: основа", src: "widget.js baseMood" },
+  { id: "anim-event", title: "Анимации: по событию", src: "widget.js react" },
+  { id: "anim-once", title: "Анимации: один раз", src: "widget.js forgetFlash" },
+  { id: "wordfx", title: "Слова с характером", src: "wordfx.js" },
+  { id: "bubble", title: "Облачко", src: "bubblefx.js" },
+  { id: "gait", title: "Походка букв", src: "style.css, widget.js TYPE_GAIT" },
+  { id: "weather", title: "Погода над панелью", src: "weather.js" },
+  { id: "holiday", title: "Праздники привычек", src: "habitparty.js" },
+  { id: "scene", title: "Сценарии «Возможностей»", src: "web/src/features.ts" },
+];
+/** Кнопки фильтра: группы анимаций — одной кнопкой. */
+export type ShowFilter = "all" | "anim" | ShowGroup;
+export const SHOW_FILTERS: { id: ShowFilter; title: string }[] = [
+  { id: "all", title: "Все" }, { id: "anim", title: "Анимации" }, { id: "wordfx", title: "Слова" }, { id: "bubble", title: "Облачко" },
+  { id: "gait", title: "Походка" }, { id: "weather", title: "Погода" }, { id: "holiday", title: "Праздники" }, { id: "scene", title: "Сценарии" },
+];
+
+/** Эмоции ответа сервера (server/src/personas.ts EMOTIONS) — выбор настроения у реплик. */
+export const SHOW_EMOTIONS = ["neutral", "happy", "proud", "worried", "stern", "sleepy", "surprised", "sad", "teasing", "awkward", "deadpan"];
+export const EMOTION_NAMES: Record<string, string> = {
+  neutral: "спокойно", happy: "радостно", proud: "гордо", worried: "тревожно", stern: "строго", sleepy: "сонно", surprised: "удивлённо",
+  sad: "грустно", teasing: "с подколкой", awkward: "неловко", deadpan: "невозмутимо", excited: "восторженно", love: "нежно", angry: "сердито", annoyed: "раздражённо",
+};
+
+/** Примеры слов с характером: пометка [имя]слово[/] (как в lines.js); у правки — новое слово, у счёта — число. */
+export const WORDFX_SAMPLES: Record<string, string> = {
+  shk: "Сдать отчёт нужно [строго]сегодня[/].",
+  yell: "Срок — [крик]сегодня[/]!",
+  syl: "Это [по слогам]обязательно[/].",
+  confetti: "Все задачи [конфетти]сделаны[/]!",
+  gold: "Новый уровень — [золото]пятый[/]!",
+  count: "Серия уже [счёт]12[/] дней подряд.",
+  pulse: "[пульс]Спасибо[/], что заглянули.",
+  whisper: "Скажу по секрету: [шёпот]вы молодец[/].",
+  drip: "Опять [капля]дождь[/]…",
+  wilt: "Цветок на окне [увядает]завял[/].",
+  str: "Ладно, [нехотя]сделаю[/].",
+  slump: "Сил уже [сползает]нет[/]…",
+  jolt: "[ой]Ой[/], чуть не забыла!",
+  glitch: "Что-то [сбой]сломалось[/].",
+  fix: "Сдадите [правка=никогда]завтра[/].",
+  quote: "Вы весь день [кавычки]отдыхали[/].",
+  mark: "Главное сегодня — [маркер]выспаться[/].",
+  breath: "Вдох… и [дыхание]выдох[/].",
+};
+/** Пример к слову, у которого своего нет (эффект новее этого списка): карточка не теряется, тест напомнит дописать. */
+export const wordfxSample = (id: string, ru: string) => WORDFX_SAMPLES[id] ?? `Вот так: [${ru}]пример[/].`;
+/** Пример без пометок — образец карточки, пока виджет не запущен: текст и слово с эффектом. */
+export function wordfxPlain(sample: string): { text: string; word?: string } {
+  const mark = /\[[^\]]+\]([^[]*)\[\/\]/g;
+  const word = [...sample.matchAll(mark)][0]?.[1];
+  return { text: sample.replace(mark, "$1"), word };
+}
+
+/** Облачко: превращения выбирает сам виджет (bubblefxPick) по эмоции и тексту, значки — поверх реплики. */
+export const BUBBLE_SAMPLES: Record<string, { text: string; emotion: string; heard?: string; mark?: string }> = {
+  melt: { text: "Не успели сегодня. Ну ничего…", emotion: "sad" },
+  deflate: { text: "Пф-ф… устала.", emotion: "sleepy" },
+  heart: { text: "Всегда рада помочь!", emotion: "happy", heard: "спасибо тебе" },
+  bloom: { text: "Все задачи сделаны — вы молодец!", emotion: "proud" },
+  fall: { text: "Сто задач за один день?!", emotion: "surprised" },
+  // Длинная грустная реплика: тает только короткая, а линии уныния — у каждой грустной.
+  gloom: { text: "Сегодня ни одна привычка не отмечена, и задачи с прошлой недели так и висят. Завтра начнём заново, хорошо?", emotion: "sad" },
+  drop: { text: "Кажется, я перепутала время…", emotion: "awkward", mark: "drop" },
+};
+export const GAIT_SAMPLE = "Записала ваш план на завтра.";
+export const WEATHER_SAMPLES: Record<string, { icon: string; temp: string; text: string }> = {
+  storm: { icon: "🌨", temp: "−9°", text: "Метель" },
+  snow: { icon: "❄", temp: "−3°", text: "Снег" },
+  rain: { icon: "☂", temp: "+6°", text: "Дождь" },
+  frost: { icon: "🥶", temp: "−18°", text: "Мороз" },
+  gray: { icon: "☁", temp: "+2°", text: "Пасмурно" },
+  sun: { icon: "☀", temp: "+21°", text: "Ясно" },
+};
+export const HOLIDAY_PLAY: Record<string, "flame" | "wave" | "salute"> = { "Огонёк взрослеет": "flame", "Волна по отметкам": "wave", "Салют из искр": "salute" };
+const FLAME_TIERS = [{ id: "7", label: "7 дней" }, { id: "30", label: "30 дней" }, { id: "100", label: "100 дней" }];
+
+export interface ShowCard {
+  key: string; group: ShowGroup; id: string; title: string; sub: string; text: string;
+  /** Сколько длится показ, мс (после — карточка снова «стоит»). */
+  ms: number;
+  /** Картинка до запуска виджета (анимации — /maid/<id>.webp сайта). */
+  poster?: string;
+  /** Без картинки — образец: реплика (word — слово с эффектом) или подпись, как это выглядит в виджете. */
+  still?: { text: string; word?: string; icon?: string };
+  /** Сценарий: второй пример («Вручную», «В Telegram», поиск, статистика) — в виджете его нет, он на странице «Возможности». */
+  extra?: string;
+  /** Сценарий: позы горничной по ходу — ссылки на карточки анимаций. */
+  poses?: string[];
+  /** Выбор настроения или варианта; первый — по умолчанию. */
+  moods?: { id: string; label: string }[];
+  play: (mood?: string) => PreviewPlay;
+  /** Анимация из реестра — для большого просмотра (покадровый проигрыватель). */
+  anim?: AnimInfo;
+}
+
+/** Сценарий «Возможностей» — сколько полей нужно витрине (сам тип — web/src/features.ts). */
+type SceneFrame = { maid?: string; bubble?: string; msgs?: { me?: boolean; text: string }[] };
+type SceneDemo = { kind: string; start: SceneFrame; steps: { at: number; set: SceneFrame }[] };
+export type ShowScene = { id: string; title: string; text: string; ai: SceneDemo; manual?: SceneDemo; manualTitle?: string };
+const sceneLength = (d: { steps: { at: number }[] }) => (d.steps.at(-1)?.at ?? 0) + 1800;
+/** Виды второго примера по-человечески. */
+export const SCENE_KINDS: Record<string, string> = { widget: "виджет", panel: "панель дня", chat: "чат Telegram", search: "поиск Ctrl+K", stats: "статистика дня" };
+/** Позы горничной сценария по порядку, без повторов. */
+export const scenePoses = (d: SceneDemo) => [...new Set([d.start, ...d.steps.map((x) => x.set)].map((f) => f.maid).filter((m): m is string => Boolean(m)))];
+/** Итоговая реплика сценария — образец карточки: последнее облачко или последняя реплика горничной в чате. */
+export function sceneStill(d: SceneDemo): string {
+  let out = "";
+  for (const f of [d.start, ...d.steps.map((x) => x.set)]) {
+    if (f.bubble && f.bubble !== "…") out = f.bubble;
+    const m = f.msgs?.filter((x) => !x.me).at(-1);
+    if (m) out = m.text;
+  }
+  return out;
+}
+
+/** Все карточки витрины по порядку групп; scenes — FEATURES из features.ts. */
+export function showcaseCards(reg: Registry, scenes: ShowScene[]): ShowCard[] {
+  const out: ShowCard[] = [];
+  for (const a of reg.anims) {
+    const group: ShowGroup = a.group === "base" ? "anim-base" : a.group === "once" ? "anim-once" : "anim-event";
+    const ms = a.group === "once" ? a.ms : Math.max(2 * a.ms, 6000);
+    out.push({ key: `anim:${a.id}`, group, id: a.id, title: a.name, sub: `${a.desk.frames} кадр. · ${secText(a.ms)}`,
+      text: animWhen(a) + (a.emotions.length ? ` · эмоции ответа: ${a.emotions.join(", ")}` : ""),
+      ms, poster: `/maid/${a.id}.webp`, anim: a, play: () => ({ kind: "anim", id: a.id, ms }) });
+  }
+  const moodsOf = (ids: string[]) => ids.map((id) => ({ id, label: EMOTION_NAMES[id] ?? id }));
+  for (const w of reg.effects.wordfx) {
+    out.push({ key: `wordfx:${w.id}`, group: "wordfx", id: w.id, title: `[${w.ru}]`, sub: w.id, text: w.text, ms: 9000, moods: moodsOf(SHOW_EMOTIONS),
+      still: wordfxPlain(wordfxSample(w.id, w.ru)),
+      play: (mood) => ({ kind: "say", own: true, text: wordfxSample(w.id, w.ru), emotion: mood || "neutral" }) });
+  }
+  for (const b of reg.effects.bubble) {
+    const s = BUBBLE_SAMPLES[b.id] ?? { text: "Вот так выглядит облачко.", emotion: "neutral", mark: b.kind === "mark" ? b.id : undefined };
+    out.push({ key: `bubble:${b.id}`, group: "bubble", id: b.id, title: b.id, sub: b.kind === "mark" ? "значок" : "превращение", text: b.text, ms: 9000, still: { text: s.text },
+      play: () => ({ kind: "say", text: s.text, emotion: s.emotion, heard: s.heard, mark: s.mark }) });
+  }
+  for (const g of reg.effects.gait) {
+    out.push({ key: `gait:${g.id}`, group: "gait", id: g.id, title: g.id, sub: g.emotions.join(", "), text: `Буквы реплики появляются походкой «${g.id}» — у эмоций ${g.emotions.join(", ")}.`,
+      ms: 6000, moods: moodsOf(g.emotions), still: { text: GAIT_SAMPLE }, play: (mood) => ({ kind: "say", text: GAIT_SAMPLE, emotion: mood || g.emotions[0] }) });
+  }
+  for (const w of reg.effects.weather) {
+    const s = WEATHER_SAMPLES[w.id] ?? { icon: "⛅", temp: "+5°", text: w.id };
+    out.push({ key: `weather:${w.id}`, group: "weather", id: w.id, title: s.text, sub: `${s.icon} ${s.temp} · ${w.id}`, text: w.text, ms: 10_000,
+      still: { icon: s.icon, text: `${s.temp} · ${s.text}` },
+      play: () => ({ kind: "weather", sky: w.id, ...s }) });
+  }
+  reg.effects.holidays.forEach((h, i) => {
+    const party = HOLIDAY_PLAY[h.title] ?? "wave";
+    out.push({ key: `holiday:${i}`, group: "holiday", id: party, title: h.title, sub: party, text: h.text, ms: 9000, moods: party === "flame" ? FLAME_TIERS : undefined,
+      still: { icon: party === "flame" ? "🔥" : party === "salute" ? "🎆" : "🌊", text: h.title },
+      play: (mood) => ({ kind: "holiday", party, tier: party === "flame" ? Number(mood || 7) : undefined }) });
+  });
+  const anims = new Set(reg.anims.map((a) => a.id));
+  for (const f of scenes) {
+    const ms = sceneLength(f.ai);
+    out.push({ key: `scene:${f.id}`, group: "scene", id: f.id, title: f.title, sub: `${f.ai.kind === "chat" ? "реплики из чата Telegram" : "виджет"} · ${secText(ms)}`, text: f.text, ms,
+      still: { text: sceneStill(f.ai) || f.title },
+      extra: f.manual ? `Второй пример — «${f.manualTitle ?? "Вручную"}»: ${SCENE_KINDS[f.manual.kind] ?? f.manual.kind} · ${secText(sceneLength(f.manual))}` : undefined,
+      poses: scenePoses(f.ai).filter((m) => anims.has(m)),
+      play: () => ({ kind: "scene", demo: f.ai }) });
+  }
+  return out;
+}
+
+/** Поиск и фильтр витрины: по названию, id, подписи и описанию; без учёта регистра и «ё». */
+export function filterCards(cards: ShowCard[], filter: ShowFilter, q: string): ShowCard[] {
+  const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е");
+  const words = norm(q).split(/\s+/).filter(Boolean);
+  return cards.filter((c) => (filter === "all" || c.group === filter || (filter === "anim" && c.group.startsWith("anim-")))
+    && words.every((w) => norm(`${c.title} ${c.id} ${c.sub} ${c.text}`).includes(w)));
+}
+
+/** Что видно в карточке (слева и сверху окно виджета прозрачное и пустое): face — горничная, облачко и верх панели
+ *  (анимации, слова, облачко, походка), panel — горничная и вся панель (погода, праздники привычек, сценарии). */
+export const PREVIEW_CROPS = { face: { x: 120, y: 140, w: 500, h: 360 }, panel: { x: 150, y: 120, w: 470, h: 640 } } as const;
+export type PreviewCrop = keyof typeof PREVIEW_CROPS;
+export const cropOf = (g: ShowGroup): PreviewCrop => (g === "weather" || g === "holiday" || g === "scene" ? "panel" : "face");
+/** Масштаб окна виджета под ширину (и высоту, если она задана) места; w × h — видимая часть окна. */
+export const previewScale = (width: number, height = Infinity, w = PREVIEW_W, h = PREVIEW_H) => Math.max(0.1, Math.min(1, width / w, height / h));
+
+/** Какие виджеты держать живыми: видимые карточки (visible — с запасом у края экрана), сначала играющая, потом те, что на
+ *  самом экране (onScreen; недавно запущенные — первыми), потом остальные в запасе; не больше max. */
+export function liveSet(visible: string[], recent: string[], playing: string | null, max = PREVIEW_LIVE_MAX, onScreen: string[] = []): string[] {
+  const screen = onScreen.filter((k) => visible.includes(k));
+  const order = [...(playing ? [playing] : []), ...recent.filter((k) => screen.includes(k)), ...screen, ...recent.filter((k) => visible.includes(k)), ...visible];
+  return [...new Set(order)].filter((k) => k === playing || visible.includes(k)).slice(0, max);
 }

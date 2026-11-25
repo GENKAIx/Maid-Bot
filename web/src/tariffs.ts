@@ -87,7 +87,7 @@ export function checkTariffPatch(raw: unknown): { ok: true; patch: Partial<Tarif
 // ——— Ответ GET /api/admin/tariffs (server/src/tariffs.ts tariffsView).
 export interface TariffChange { key: TariffKey; from: TariffValue; to: TariffValue }
 /** quota_days — дни, когда человек выбрал хоть один лимит в штуках целиком (старый сервер без поля — нет). */
-export interface PlanEconomy { people: number; spenders: number; avg_month_usd: number | null; worst_month_usd: number | null; worst_day_usd: number | null; capped_days: number; quota_days?: number }
+export interface PlanEconomy { people: number; spenders: number; avg_month_usd: number | null; avg_day_usd?: number | null; worst_month_usd: number | null; worst_day_usd: number | null; capped_days: number; quota_days?: number }
 /** Средние цены единиц лимита за 30 дней (server/src/tariffs.ts unitPrices); нет данных — null. */
 export interface UnitPrices { call_usd: number | null; draw_usd: number | null; voice_min_usd: number | null }
 export interface TariffHistoryView { id: number; at: string; who: string; source: string; reason: string; changes: TariffChange[] }
@@ -254,6 +254,14 @@ export function money(v: number | null | undefined): string {
   return `${v < 0 ? "−" : ""}$${a < 0.1 && a > 0 ? a.toFixed(3) : a.toFixed(2)}`;
 }
 
+/** Мелкие суммы — цены единиц и расход на человека в день: две значащие цифры ($0.00030, $0.012); 0 и от $0.10 — как money. */
+export function unitMoney(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const a = Math.abs(v);
+  if (a === 0 || a >= 0.1) return money(v);
+  return `${v < 0 ? "−" : ""}$${a.toFixed(Math.min(8, Math.max(3, Math.ceil(-Math.log10(a)) + 1)))}`;
+}
+
 /** Выручка подписки за месяц с человека, $: цена × курс звезды. */
 export const paidRevenue = (v: TariffValues) => v.price * v.starUsd;
 
@@ -279,7 +287,7 @@ export function tariffWarnings(draft: TariffValues, applied: TariffValues, part:
     const rev = paidRevenue(draft), w = worstDay(draft, "paid", prices), worstMonth = w.usd * 30;
     if (worstMonth > rev) {
       const how = w.by === "limits"
-        ? `человек каждый день выбирает все лимиты в штуках: средние цены за 30 дней — запрос ${money(prices?.call_usd)}, картинка ${money(prices?.draw_usd)}, минута голоса ${money(prices?.voice_min_usd)}`
+        ? `человек каждый день выбирает все лимиты в штуках: средние цены за 30 дней — запрос ${unitMoney(prices?.call_usd)}, картинка ${unitMoney(prices?.draw_usd)}, минута голоса ${unitMoney(prices?.voice_min_usd)}`
         : `человек каждый день упирается в денежный предохранитель ${money(draft.paidDayUsd)}/день${prices ? "" : " (средних цен ещё нет — по штукам не посчитать)"}`;
       out.push({ kind: "bad", text: `Худший случай по подписке за 30 дней — ${money(worstMonth)}: ${how}. Это больше месячной выручки с человека (${money(rev)}: ${draft.price} ⭐ × $${draft.starUsd}) — такой подписчик обходится дороже, чем платит.` });
     }

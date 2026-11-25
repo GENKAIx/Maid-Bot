@@ -21,6 +21,7 @@ import { sttReady, transcribe, VOICE_MAX_BYTES, voiceSeconds } from "./voice.ts"
 import { activeModel, asUser, IMAGE_MAX_BYTES, IMAGE_TYPES, isOpenRouter, LITE_MODEL, setLiteModel } from "./llm.ts";
 import { asksForList, WIDGET_CAPTION, WIDGET_HTML, widgetQuery, widgetState } from "./widget.ts";
 import { countFeature, countPersona } from "./feature-events.ts";
+import { noteActive } from "./server-metrics.ts";
 
 // Telegram: обычный текст — запись (без режимов), команды — просмотр и настройки.
 
@@ -239,6 +240,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const chat = String(ctx.chat?.id ?? "");
     const u = chat ? await store.userByChat(chat) : undefined;
     if (u) void notePresence(store, u, "telegram");
+    if (u) noteActive(u.id); // «активных за минуту» для «Здоровья сервера» — только число
     if (u) countBot(u, ctx);
     return u ? asUser(u.id, next) : next();
   });

@@ -105,6 +105,7 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   announce_create: "опубликовал объявление",
   announce_on: "включил объявление",
   announce_off: "выключил объявление",
+  preview: "открыл живой показ виджета (витрина)",
 };
 
 // ——— Выпуски и падения (этап 5; типы — копия server/src/releases.ts releasesView и server/src/crashes.ts adminCrashes).

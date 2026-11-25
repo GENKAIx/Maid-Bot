@@ -40,7 +40,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       await store.kvSet("schema_version", "29");
       await store.kvSet("signups:closed", "1");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "36");
+      assert.equal(await again.kvGet("schema_version"), "37");
       assert.equal(await again.kvGet("signups:closed"), undefined, "старое место удалено");
       assert.deepEqual((await again.tariffSettings()).map((r) => [r.key, r.value]), [["signupsOpen", "false"]]);
       assert.equal((await loadTariffs(again)).signupsOpen, false);
@@ -302,7 +302,7 @@ test("экономика тарифа в админке: из llm_usage за 30 
   await loadTariffs(store);
   const now = new Date("2026-11-24T12:00:00Z");
   const empty = await tariffsView(store, now);
-  assert.deepEqual(empty.economy.paid, { people: 0, spenders: 0, avg_month_usd: null, worst_month_usd: null, worst_day_usd: null, capped_days: 0, quota_days: 0 });
+  assert.deepEqual(empty.economy.paid, { people: 0, spenders: 0, avg_month_usd: null, avg_day_usd: null, worst_month_usd: null, worst_day_usd: null, capped_days: 0, quota_days: 0 });
   assert.deepEqual(empty.unit_prices, { call_usd: null, draw_usd: null, voice_min_usd: null }, "штук ещё не было — средних цен нет");
   const until = new Date(now.getTime() + 10 * DAY).toISOString();
   const a = await store.createUser({ login: "a", passwordHash: "x", tz: TZ, plan: "paid", accessUntil: until });
@@ -314,6 +314,7 @@ test("экономика тарифа в админке: из llm_usage за 30 
   assert.equal(v.economy.paid.people, 2);
   assert.equal(v.economy.paid.spenders, 1);
   assert.equal(v.economy.paid.avg_month_usd, 1, "$2 на двоих");
+  assert.ok(Math.abs(v.economy.paid.avg_day_usd! - 2 / 60) < 1e-12, "оплат нет, запись позже now — все 30 дней окна: $2 / (2 × 30)");
   assert.equal(v.economy.paid.worst_month_usd, 2);
   assert.equal(v.economy.paid.worst_day_usd, 1.6);
   assert.equal(v.economy.paid.capped_days, 1, "день $1.60 при потолке $0.50 (а $0.40 — ниже)");
@@ -401,7 +402,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       await store.driver.exec("ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
       await store.kvSet("schema_version", "30");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "36");
+      assert.equal(await again.kvGet("schema_version"), "37");
       assert.equal((await again.user(t.id))!.trial_len_days, null);
       assert.equal(Number((await again.user(g.id))!.trial_len_days), 0);
       assert.equal(endedOf((await again.user(g.id))!), "gift");
@@ -486,7 +487,7 @@ test("экономика тарифа: в расходе только те, кт
     for (let i = 0; i < 20; i++) await spend((await store.createUser({ login: `x${i}`, passwordHash: "x", tz: TZ, plan: "trial", accessUntil: gone })).id, "2026-11-15", 0.3);
     await spend((await store.createUser({ login: "own", passwordHash: "x", tz: TZ, chatId: "900", plan: "trial", accessUntil: live })).id, "2026-11-22", 5);
     const e = (await tariffsView(store, now)).economy.trial;
-    assert.deepEqual(e, { people: 1, spenders: 1, avg_month_usd: 0.2, worst_month_usd: 0.2, worst_day_usd: 0.2, capped_days: 0, quota_days: 0 });
+    assert.deepEqual(e, { people: 1, spenders: 1, avg_month_usd: 0.2, avg_day_usd: 0.04, worst_month_usd: 0.2, worst_day_usd: 0.2, capped_days: 0, quota_days: 0 });
   } finally {
     config.allowedChatIds.splice(0, Infinity, ...keep.allowed);
     config.adminChatIds.splice(0, Infinity, ...keep.admin);
@@ -535,3 +536,34 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     }
   });
 }
+
+test("экономика тарифа: средний день — по дням на тарифе в окне, а не по 30 (проба 7 дней, новый подписчик)", async () => {
+  const store = await Store.open(":memory:");
+  try {
+    await loadTariffs(store);
+    const now = new Date("2026-11-24T12:00:00Z");
+    const spend = async (id: number, day: string, cost: number) => store.addUsage(new Date(`${day}T10:00:00Z`), { kind: "chat", model: "m", input: 1, output: 1, cost, userId: id });
+    // 10 человек на пробе 7 дней пришли за последние 10 дней (кто раньше 7 дней — срок уже кончился, их нет); каждый тратит $0.10 в день.
+    let people = 0;
+    for (let k = 0; k < 7; k++) {
+      const at = new Date(now.getTime() - k * DAY);
+      const u = await store.createUser({ login: `t${k}`, passwordHash: "x", tz: TZ, plan: "trial", at, trialLenDays: 7, accessUntil: new Date(at.getTime() + 7 * DAY).toISOString() });
+      for (let d = 0; d <= k; d++) await spend(u.id, new Date(now.getTime() - d * DAY).toISOString().slice(0, 10), 0.1);
+      people++;
+    }
+    // Подписчик оплатил 3 дня назад; до оплаты был на пробе и тратил $1 в день — это не расход подписки.
+    const payAt = new Date(now.getTime() - 2 * DAY);
+    const p = await store.createUser({ login: "p", passwordHash: "x", tz: TZ, plan: "paid", at: new Date(now.getTime() - 10 * DAY), accessUntil: new Date(payAt.getTime() + 30 * DAY).toISOString() });
+    await store.addPayment({ charge_id: "c1", user_id: p.id, tg_user_id: "1", amount: 150, currency: "XTR", payload: "x", kind: "first", paid_at: payAt.toISOString(), expires_at: new Date(payAt.getTime() + 30 * DAY).toISOString() });
+    for (let d = 3; d < 8; d++) await spend(p.id, new Date(now.getTime() - d * DAY).toISOString().slice(0, 10), 1);
+    for (let d = 0; d <= 2; d++) await spend(p.id, new Date(now.getTime() - d * DAY).toISOString().slice(0, 10), 0.2);
+    const e = (await tariffsView(store, now)).economy;
+    assert.equal(e.trial.people, people);
+    assert.ok(Math.abs(e.trial.avg_day_usd! - 0.1) < 1e-9, `проба: $0.10 в день, а не avg_month / 30 (${e.trial.avg_day_usd})`);
+    assert.ok(e.trial.avg_month_usd! / 30 < 0.05, "старая оценка занижала в разы");
+    assert.ok(Math.abs(e.paid.avg_day_usd! - 0.2) < 1e-9, `подписка: только дни с оплаты (${e.paid.avg_day_usd})`);
+    assert.ok(Math.abs(e.paid.avg_month_usd! - 5.6) < 1e-9, "avg_month_usd по-прежнему — весь расход за окно");
+  } finally {
+    await store.close();
+  }
+});

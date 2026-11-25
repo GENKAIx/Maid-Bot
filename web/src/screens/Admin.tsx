@@ -6,6 +6,7 @@ import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, Ad
 import { AdminTariffs } from "./AdminTariffs";
 import { AdminAccount } from "./AdminAccount";
 import { AdminAlerts, AdminBackups } from "./AdminAlerts";
+import { AdminLoad } from "./AdminLoad";
 import { AdminCrashes, AdminReleases } from "./AdminReleases";
 import { AdminNews, AdminPrognosis, AdminPromo, AdminSwitches, AdminTickets } from "./AdminManage";
 import { navigate } from "../router";
@@ -143,7 +144,7 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           : section === "spend" ? <AdminSpend />
           : section === "audience" ? <AdminAudience />
           : section === "quality" ? <AdminQuality />
-          : section === "health" ? <AdminHealth />
+          : section === "health" ? <><AdminLoad /><h2 className="adm-h2">Модель и сообщения</h2><AdminHealth /></>
           : section === "alerts" ? <AdminAlerts />
           : section === "releases" ? <AdminReleases />
           : section === "crashes" ? <AdminCrashes />

@@ -1,6 +1,6 @@
 import "./config.ts"; // .env — в process.env до чтения значений по умолчанию
-import { accessOf, limitsOf, ownerIds, tariffKindOf, type TariffKind } from "./access.ts";
-import type { Store } from "./db.ts";
+import { accessOf, limitsOf, ownerIds, tariffKindOf, trialLenOf, type TariffKind } from "./access.ts";
+import type { Store, User } from "./db.ts";
 
 // Тарифы из базы (24.11.2026, этап 1 макета docs/review/тарифы-и-управление-макет-2026-11-24.html). Числа платного доступа —
 // цена, сроки, регистрация, частота ИИ, денежные потолки, оценки цены — живут в таблице tariff_settings (шаг 30); нет строки —
@@ -300,10 +300,40 @@ const DAY = 86_400_000;
  *  подарок — по users.trial_len_days = 0) — те же люди и в расходе, и в числе людей: среднее и худшее на человека, дни у денежного
  *  потолка (capped_days) и дни, когда человек выбрал хоть один лимит в штуках целиком (quota_days, ai_quota, по нынешним лимитам).
  *  Нет людей или расхода — null (на сайте «—», ничего не выдумываем). */
-export interface PlanEconomy { people: number; spenders: number; avg_month_usd: number | null; worst_month_usd: number | null; worst_day_usd: number | null; capped_days: number; quota_days: number }
+export interface PlanEconomy {
+  people: number; spenders: number; avg_month_usd: number | null;
+  /** Средний расход на человека за день на тарифе (25.11.2026, калькулятор web/src/tariffCalc.ts): расход с начала тарифа в окне,
+   *  делённый на человеко-дни на тарифе в окне (у каждого — дни с начала пробы, подарка или подписки, не больше 30; planSinceOf).
+   *  avg_month_usd / 30 занижал пробу: человек на ней в окне не больше trialDays. Нет людей или расхода — null. */
+  avg_day_usd: number | null;
+  worst_month_usd: number | null; worst_day_usd: number | null; capped_days: number; quota_days: number;
+}
 /** Средняя цена единицы лимита за 30 дней: обращение к ИИ (всё, кроме рисунков и голоса), рисунок, минута голоса — расход llm_usage
  *  в дни со счётчиками ai_quota, делённый на взятые штуки. Штук ещё не было — null («—»). */
 export interface UnitPrices { call_usd: number | null; draw_usd: number | null; voice_min_usd: number | null }
+
+/** С какого времени (мс) человек на нынешнем тарифе — для человеко-дней в avg_day_usd. Проба — конец срока минус длина пробы,
+ *  подарок — конец срока минус giftDays, подписка — начало последней непрерывной цепочки оплат без возврата (следующая оплата не
+ *  позже конца прошлой + сутки); ничего не известно — регистрация. Не раньше регистрации (если она не позже now). */
+export function planSinceOf(u: User, kind: TariffKind, t: Readonly<TariffValues>, pays: { paid_at: string; expires_at: string | null; refunded_at: string | null }[], now: Date): number | null {
+  const made = Date.parse(u.created_at ?? "");
+  const floor = Number.isFinite(made) && made <= now.getTime() ? made : null;
+  let start: number | null = null;
+  const until = Date.parse(u.access_until ?? "");
+  if (kind !== "paid" && Number.isFinite(until)) start = until - (kind === "gift" ? t.giftDays : trialLenOf(u)) * DAY;
+  if (kind === "paid") {
+    let end = -Infinity;
+    for (const p of pays.filter((x) => !x.refunded_at).sort((a, b) => a.paid_at.localeCompare(b.paid_at))) {
+      const at = Date.parse(p.paid_at);
+      if (!Number.isFinite(at)) continue;
+      if (start == null || at > end + DAY) start = at;
+      const exp = Date.parse(p.expires_at ?? "");
+      end = Math.max(end, Number.isFinite(exp) ? exp : at + 30 * DAY);
+    }
+  }
+  if (start == null) return floor;
+  return floor == null ? start : Math.max(start, floor);
+}
 
 export async function tariffsView(store: Store, now = new Date()) {
   const t = tariffs();
@@ -312,9 +342,17 @@ export async function tariffsView(store: Store, now = new Date()) {
   const since = new Date(now.getTime() - 29 * DAY).toISOString().slice(0, 10);
   const owners = ownerIds();
   const ids: Record<TariffKind, Set<number>> = { trial: new Set(), gift: new Set(), paid: new Set() };
+  const pays = new Map<number, Awaited<ReturnType<Store["analyticsPayments"]>>>();
+  for (const p of await store.analyticsPayments(new Date(now.getTime() + 1).toISOString())) pays.set(p.user_id, [...(pays.get(p.user_id) ?? []), p]);
+  /** С какого дня UTC (не раньше since) человек на тарифе — для avg_day_usd. */
+  const fromDay = new Map<number, string>();
   for (const u of await store.users()) {
     const kind = tariffKindOf(u, accessOf(u, now, owners));
-    if (kind) ids[kind].add(u.id);
+    if (!kind) continue;
+    ids[kind].add(u.id);
+    const at = planSinceOf(u, kind, t, pays.get(u.id) ?? [], now);
+    const day = at == null ? since : new Date(Math.min(at, now.getTime())).toISOString().slice(0, 10);
+    fromDay.set(u.id, day > since ? day : since);
   }
   const rows = await store.planDaySpend(since, ["trial", "paid"], est);
   const quota = await store.quotaRows(since);
@@ -327,10 +365,15 @@ export async function tariffsView(store: Store, now = new Date()) {
     for (const r of mine) byUser.set(r.user_id, (byUser.get(r.user_id) ?? 0) + r.micro);
     const n = ids[plan].size;
     const sum = [...byUser.values()].reduce((s, v) => s + v, 0);
+    // Человеко-дни на тарифе в окне и расход только за них (у подписчика расход с пробы до оплаты — не расход подписки).
+    let personDays = 0, onPlan = 0;
+    for (const id of ids[plan]) personDays += Math.round((Date.parse(today) - Date.parse(fromDay.get(id) ?? since)) / DAY) + 1;
+    for (const r of mine) if (r.day >= (fromDay.get(r.user_id) ?? since)) onPlan += r.micro;
     const full = new Set(quota.filter((q) => ids[plan].has(q.user_id) && (lim[q.kind as keyof typeof lim] ?? 0) > 0 && q.n >= lim[q.kind as keyof typeof lim]).map((q) => `${q.user_id}:${q.day}`));
     return {
       people: n, spenders: byUser.size,
       avg_month_usd: n && mine.length ? sum / n / 1e6 : null,
+      avg_day_usd: personDays && mine.length ? onPlan / personDays / 1e6 : null,
       worst_month_usd: byUser.size ? Math.max(...byUser.values()) / 1e6 : null,
       worst_day_usd: mine.length ? Math.max(...mine.map((r) => r.micro)) / 1e6 : null,
       capped_days: mine.filter((r) => r.micro >= cap).length,
