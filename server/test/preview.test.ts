@@ -179,7 +179,13 @@ test("живой показ: кэш — адрес с меткой immutable и 
     const page = (await s.raw("/admin-preview/renderer/widget.html", cookie)).body.toString("utf8");
     const links = [...page.matchAll(/\s(?:src|href)="([^"]+)"/g)].map((m) => m[1]);
     assert.ok(links.length >= 25);
-    for (const l of links) assert.match(l, /^\/admin-preview\/[\w/.-]+\?v=[0-9a-f]{16}$/, `ссылка без метки: ${l}`);
+    // Метку получает каждая ссылка на файл, который есть на диске; без метки — только ссылка на файл, которого в этой сборке нет
+    // (в Docker на этапе проверок нет assets/maid — его кладут только в итоговый образ).
+    for (const l of links) {
+      if (/^\/admin-preview\/[\w/.-]+\?v=[0-9a-f]{16}$/.test(l)) continue;
+      assert.ok(!existsSync(new URL(l, new URL("renderer/", DESK))), `ссылка без метки: ${l}`);
+    }
+    assert.ok(links.filter((l) => /\?v=[0-9a-f]{16}$/.test(l)).length >= 10, "метки у ссылок страницы");
     const json = page.match(/<script type="application\/json" id="preview-files">([^<]*)<\/script>/);
     assert.ok(json, "список меток в странице");
     assert.equal(JSON.parse(json![1])["assets/star.png"], star.v);
