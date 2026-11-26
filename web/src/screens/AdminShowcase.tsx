@@ -4,8 +4,9 @@ import { FEATURES as SCENES } from "../features";
 import { REGISTRY } from "../registry.gen";
 import { recolorIsOwn, recolorPixels, SHOW_EYES, SHOW_HAIR, type RecolorOption } from "../recolor";
 import {
-  bigViewKey, filterCards, frameStart, liveSet, previewRemain, PLAYER_SPEEDS, playerStep, cropOf, PREVIEW_CROPS, PREVIEW_H, PREVIEW_SLOW, PREVIEW_URL, PREVIEW_W, previewScale, secText, SHOW_FILTERS,
-  SHOW_GROUPS, showcaseCards, sizeText, usageIndex, usedCount, animWhen, type AnimInfo, type PreviewPlay, type ShowCard, type ShowFilter, type UsageNum,
+  bigViewKey, filterCards, frameStart, liveSet, runPlay, runRemain, runSpeed, runStarted, type ShowRun, PLAYER_SPEEDS, playerStep, cropOf, PREVIEW_CROPS, PREVIEW_H, PREVIEW_SLOW, PREVIEW_URL, PREVIEW_W, previewScale, secText, SHOW_FILTERS,
+  SHOW_GROUPS, showcaseCards, sizeText, usageIndex, usedCount, animWhen, posterOf, preloadAll, preloadText, PREVIEW_FILES_URL,
+  type AnimInfo, type PreloadState, type PreviewFile, type PreviewPlay, type ShowCard, type ShowFilter, type UsageNum,
 } from "../showcase";
 import { navigate } from "../router";
 import { AdminLost, Loading, useAdmin } from "./AdminSections";
@@ -14,7 +15,8 @@ import { AdminLost, Loading, useAdmin } from "./AdminSections";
 // 41 анимация Рины, слова с характером, облачко, походка букв, погода, праздники привычек и 12 сценариев «Возможностей» —
 // в каждой настоящий виджет программы на ПК (desktop/renderer в iframe, server/src/preview.ts) с заглушкой window.maid
 // и тестовыми данными: нажал — проигрывается, «ещё раз», «медленно», настроение реплики. Виджет запускается, только когда
-// карточка видна (не больше PREVIEW_LIVE_MAX сразу), играет одна карточка. Щелчок по названию — большой просмотр
+// по «играть» (не больше PREVIEW_LIVE_MAX сразу; остальные карточки — неподвижный первый кадр), играет одна карточка. Файлы
+// показа — с меткой версии, из кэша браузера; «Загрузить всё заранее» скачивает их разом (26.11.2026). Щелчок по названию — большой просмотр
 // (← → — соседние карточки, Esc — закрыть), у анимаций там же покадровый проигрыватель картинок сайта с перекраской.
 // Карточки — из реестра web/src/registry.gen.ts (tools/registry/make_registry.ts) и features.ts (showcase.ts showcaseCards).
 
@@ -57,9 +59,28 @@ function usePreviewPass(): string {
   return state;
 }
 
-export function LiveShow({ cards = CARDS, pass: given }: { cards?: ShowCard[]; pass?: string }) {
+/** Файлы показа с метками (GET /admin-preview/files.json по пропуску): null — ещё нет, [] — не получилось. */
+function usePreviewFiles(pass: string): PreviewFile[] | null {
+  const [files, setFiles] = useState<PreviewFile[] | null>(null);
+  useEffect(() => {
+    if (pass !== "ok") return;
+    let alive = true;
+    fetch(PREVIEW_FILES_URL, { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((x: { files?: PreviewFile[] }) => alive && setFiles(Array.isArray(x.files) ? x.files : []))
+      .catch(() => alive && setFiles([]));
+    return () => { alive = false; };
+  }, [pass]);
+  return files;
+}
+
+export function LiveShow({ cards = CARDS, pass: given, files: givenFiles }: { cards?: ShowCard[]; pass?: string; files?: PreviewFile[] }) {
   const got = usePreviewPass();
   const pass = given ?? got;
+  const gotFiles = usePreviewFiles(givenFiles ? "" : pass);
+  const files = givenFiles ?? gotFiles;
+  // Картинка карточки анимации: первый кадр с меткой; нет пропуска или списка — анимация сайта; пропуск или список ещё ждём — пусто.
+  const posterFor = (c: ShowCard) => (!c.poster ? undefined : files?.length ? posterOf(files, c.id) ?? c.poster : (pass && pass !== "ok") || files ? c.poster : null);
   const [filter, setFilter] = useState<ShowFilter>("all");
   const [q, setQ] = useState("");
   const [sound, setSound] = useState(false);
@@ -72,28 +93,34 @@ export function LiveShow({ cards = CARDS, pass: given }: { cards?: ShowCard[]; p
   const live = pass === "ok" ? liveSet(visible, recent, playing, undefined, onScreen) : [];
   const timer = useRef(0);
   // Идущий показ: сколько его своего времени уже прошло (done) и с какой скоростью идёт сейчас (k) — «медленно» тянет конец.
-  const run = useRef<{ key: string; ms: number; done: number; at: number; k: number } | null>(null);
+  // Отсчёт конца — с той минуты, когда виджет готов и команда play ушла (onStarted), а не с нажатия: первый запуск грузит виджет.
+  const run = useRef<ShowRun | null>(null);
 
   const toggle = (on: boolean, key: string) => (v: string[]) => (on ? (v.includes(key) ? v : [...v, key]) : v.filter((k) => k !== key));
   const onVisible = useCallback((key: string, on: boolean, screen: boolean) => (screen ? setOnScreen : setVisible)(toggle(on, key)), []);
   const arm = useCallback(() => {
     const r = run.current;
+    const left = runRemain(r);
     clearTimeout(timer.current);
-    if (r) timer.current = window.setTimeout(() => setPlaying((p) => (p === r.key ? null : p)), previewRemain(r.ms, r.done, r.k));
+    if (r && left !== null) timer.current = window.setTimeout(() => setPlaying((p) => (p === r.key ? null : p)), left);
   }, []);
   // Нажали «играть»: эта карточка — играющая (прежняя остановится), её виджет — живой в первую очередь; по окончании — снова тихо.
   const onPlay = useCallback((c: ShowCard, k: number) => {
     setPlaying(c.key);
     setRecent((r) => [c.key, ...r.filter((x) => x !== c.key)].slice(0, 12));
-    run.current = { key: c.key, ms: c.ms, done: 0, at: performance.now(), k };
+    run.current = runPlay(c.key, c.ms, k);
+    arm();
+  }, [arm]);
+  // Виджет карточки принял play (после ready) — показ пошёл, ставим его конец.
+  const onStarted = useCallback((c: ShowCard) => {
+    run.current = runStarted(run.current, c.key, performance.now());
     arm();
   }, [arm]);
   // «Медленно» переключили посреди показа — конец переставляется под новую скорость.
   const onSpeed = useCallback((c: ShowCard, k: number) => {
     const r = run.current;
     if (!r || r.key !== c.key) return;
-    const now = performance.now();
-    run.current = { ...r, done: r.done + (now - r.at) * r.k, at: now, k };
+    run.current = runSpeed(r, c.key, k, performance.now());
     arm();
   }, [arm]);
   // Поза из сценария — карточка этой анимации в большом просмотре (её не видно за фильтром или поиском — они сбрасываются).
@@ -121,10 +148,11 @@ export function LiveShow({ cards = CARDS, pass: given }: { cards?: ShowCard[]; p
         <button className={`adm-btn small ${sound ? "on" : ""}`} aria-pressed={sound} onClick={() => setSound(!sound)} title="Звуки виджета: «бип» печати, звуки эмоций и облачка">
           {sound ? "🔊 звук" : "🔇 без звука"}
         </button>
+        {pass === "ok" && files && files.length > 0 && <Preload files={files} />}
       </div>
       <p className="adm-muted adm-small adm-note adm-live-why">
         В карточках — настоящий виджет программы на ПК (файлы <code>desktop/renderer</code>) с тестовыми данными: ничего не записывается и никуда не уходит.
-        Виджет запускается, когда карточка на экране; играет одна. «Медленно» — вчетверо: буквы, облачко, эффекты и кадры фигурки.
+        Виджет запускается кнопкой «играть» (до того — неподвижный первый кадр); играет одна. «Медленно» — вчетверо: буквы, облачко, эффекты и кадры фигурки.
       </p>
       {pass && pass !== "ok" && <p className="adm-err" role="alert">Живой показ недоступен: {pass}. Карточки — с картинками.</p>}
       {!shown.length && <p className="adm-muted">Ничего не нашлось.</p>}
@@ -138,25 +166,74 @@ export function LiveShow({ cards = CARDS, pass: given }: { cards?: ShowCard[]; p
             </h2>
             <div className="adm-live-grid">
               {list.map((c) => (
-                <LiveCard key={c.key} card={c} live={live.includes(c.key)} active={playing === c.key && !big} sound={sound}
-                  onVisible={onVisible} onPlay={onPlay} onSpeed={onSpeed} onBig={() => { setPlaying(null); setBig(c.key); }} onPose={(id) => openKey(`anim:${id}`)} />
+                <LiveCard key={c.key} card={c} poster={posterFor(c)} live={live.includes(c.key)} active={playing === c.key && !big} sound={sound}
+                  onVisible={onVisible} onPlay={onPlay} onStarted={onStarted} onSpeed={onSpeed} onBig={() => { setPlaying(null); setBig(c.key); }} onPose={(id) => openKey(`anim:${id}`)} />
               ))}
             </div>
           </section>
         );
       })}
       {big && bigIdx >= 0 && (
-        <BigView card={bigList[bigIdx]} live={pass === "ok"} sound={sound} n={bigIdx + 1} total={bigList.length}
+        <BigView card={bigList[bigIdx]} poster={posterFor(bigList[bigIdx])} live={pass === "ok"} sound={sound} n={bigIdx + 1} total={bigList.length}
           onClose={() => setBig(null)} onStep={(d) => setBig(bigList[(bigIdx + d + bigList.length) % bigList.length].key)} />
       )}
     </>
   );
 }
 
+/** «Загрузить всё заранее»: все файлы показа с меткой — в кэш браузера, по PRELOAD_PARALLEL сразу, с полоской и отменой. */
+function Preload({ files }: { files: PreviewFile[] }) {
+  const [st, setSt] = useState<PreloadState | null>(null);
+  const [run, setRun] = useState(false);
+  const stop = useRef<AbortController | null>(null);
+  useEffect(() => () => stop.current?.abort(), []);
+  const start = async () => {
+    const ctl = new AbortController();
+    stop.current = ctl;
+    setRun(true);
+    setSt(null);
+    const get = async (url: string, signal?: AbortSignal) => {
+      const r = await fetch(url, { signal, credentials: "same-origin" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      await r.arrayBuffer(); // до конца — иначе браузер не положит файл в кэш
+    };
+    const end = await preloadAll(files, get, { signal: ctl.signal, onProgress: (x) => { if (stop.current === ctl) setSt(x); } });
+    if (stop.current === ctl) { setSt(end); setRun(false); stop.current = null; }
+  };
+  const cancel = () => {
+    stop.current?.abort();
+    stop.current = null;
+    setRun(false);
+    setSt((x) => (x ? { ...x, stopped: true } : x));
+  };
+  const total = files.reduce((a, f) => a + f.bytes, 0);
+  return (
+    <div className="adm-row adm-live-preload" aria-live="polite">
+      {run ? (
+        <>
+          <progress max={files.length} value={st ? st.done + st.failed : 0} aria-label="Загрузка файлов показа" />
+          <span className="adm-num adm-small">{st ? preloadText(st) : `0 из ${files.length}`}</span>
+          <button className="adm-btn small" onClick={cancel}>Отмена</button>
+        </>
+      ) : (
+        <>
+          <button className="adm-btn small" onClick={() => void start()} title={`Все файлы показа (${files.length}, ${sizeText(total)}) — в кэш браузера: потом карточки не ждут загрузки`}>
+            ⬇ Загрузить всё заранее
+          </button>
+          {st && !st.stopped && !st.failed && <span className="adm-muted adm-small">всё в кэше браузера ({sizeText(st.bytes)})</span>}
+          {st && !st.stopped && st.failed > 0 && <span className="adm-err adm-small">не скачалось {st.failed} из {st.total}</span>}
+          {st?.stopped && <span className="adm-muted adm-small">остановлено: {preloadText(st)}</span>}
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Карточка: виджет (или картинка, пока он не запущен), название, описание и кнопки. */
-function LiveCard({ card, live, active, sound, onVisible, onPlay, onSpeed, onBig, onPose }: {
-  card: ShowCard; live: boolean; active: boolean; sound: boolean;
-  onVisible: (key: string, on: boolean, screen: boolean) => void; onPlay: (c: ShowCard, k: number) => void; onSpeed: (c: ShowCard, k: number) => void;
+function LiveCard({ card, poster, live, active, sound, onVisible, onPlay, onStarted, onSpeed, onBig, onPose }: {
+  card: ShowCard; poster?: string | null; live: boolean; active: boolean; sound: boolean;
+  onVisible: (key: string, on: boolean, screen: boolean) => void; onPlay: (c: ShowCard, k: number) => void; onStarted: (c: ShowCard) => void;
+  onSpeed: (c: ShowCard, k: number) => void;
   onBig: () => void; onPose: (id: string) => void;
 }) {
   const ref = useRef<HTMLElement>(null);
@@ -176,7 +253,7 @@ function LiveCard({ card, live, active, sound, onVisible, onPlay, onSpeed, onBig
   const go = (m = mood) => { setOrder((o) => ({ n: (o?.n ?? 0) + 1, play: card.play(m || undefined) })); onPlay(card, slow ? PREVIEW_SLOW : 1); };
   return (
     <article ref={ref} className={`adm-live-card ${active ? "on" : ""}`}>
-      <PreviewBox card={card} live={live} order={active ? order : null} active={active} slow={slow} sound={sound} />
+      <PreviewBox card={card} poster={poster} live={live} order={active ? order : null} active={active} slow={slow} sound={sound} onStarted={() => onStarted(card)} />
       <div className="adm-live-meta">
         <button className="adm-live-title" onClick={onBig} title="Большой просмотр">
           <b>{card.title}</b> <span className="adm-muted adm-num">{card.sub}</span>
@@ -223,10 +300,10 @@ function Controls({ card, active, slow, mood, onPlay, onSlow, onMood, onBig }: {
   );
 }
 
-/** Окно виджета, уменьшенное под ширину карточки; пока не живой — картинка или пример текста. */
-function PreviewBox({ card, live, order, active, slow, sound, big, onKey }: {
-  card: ShowCard; live: boolean; order: { n: number; play: PreviewPlay } | null; active: boolean; slow: boolean; sound: boolean; big?: boolean;
-  onKey?: (key: string) => void;
+/** Окно виджета, уменьшенное под ширину карточки; пока не живой — картинка (poster: первый кадр; null — её ещё ждём) или пример текста. */
+function PreviewBox({ card, poster, live, order, active, slow, sound, big, onKey, onStarted }: {
+  card: ShowCard; poster?: string | null; live: boolean; order: { n: number; play: PreviewPlay } | null; active: boolean; slow: boolean; sound: boolean; big?: boolean;
+  onKey?: (key: string) => void; onStarted?: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   // Карточка — нужная часть окна (PREVIEW_CROPS), большой просмотр — всё окно.
@@ -243,11 +320,11 @@ function PreviewBox({ card, live, order, active, slow, sound, big, onKey }: {
     <div ref={box} className={`adm-live-box ${big ? "big" : ""}`} style={big ? undefined : { aspectRatio: `${crop.w} / ${crop.h}` }}>
       {live ? (
         <div className="adm-live-frame" style={{ width: PREVIEW_W, height: PREVIEW_H, transform: `scale(${scale}) translate(${-crop.x}px, ${-crop.y}px)` }}>
-          <WidgetFrame title={`Виджет: ${card.title}`} order={order} active={active} slow={slow} sound={sound} interactive={big} onKey={onKey} />
+          <WidgetFrame title={`Виджет: ${card.title}`} order={order} active={active} slow={slow} sound={sound} interactive={big} onKey={onKey} onStarted={onStarted} />
         </div>
-      ) : card.poster ? (
-        <img className="adm-live-poster" src={card.poster} alt="" width={180} height={192} loading="lazy" />
-      ) : card.still ? (
+      ) : poster ? (
+        <img className="adm-live-poster" src={poster} alt="" width={180} height={192} loading="lazy" decoding="async" />
+      ) : card.still && !card.poster ? (
         <Still still={card.still} />
       ) : (
         <span className="adm-live-wait adm-muted adm-small">{card.sub}</span>
@@ -268,13 +345,15 @@ function Still({ still }: { still: NonNullable<ShowCard["still"]> }) {
 }
 
 /** Сам iframe: ждёт «готов» от control.js, потом шлёт скорость, звук и что проиграть; перестал быть играющим — «стоп». */
-function WidgetFrame({ title, order, active, slow, sound, interactive, onKey }: {
+function WidgetFrame({ title, order, active, slow, sound, interactive, onKey, onStarted }: {
   title: string; order: { n: number; play: PreviewPlay } | null; active: boolean; slow: boolean; sound: boolean; interactive?: boolean;
-  onKey?: (key: string) => void;
+  onKey?: (key: string) => void; onStarted?: () => void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const keyTo = useRef(onKey);
   keyTo.current = onKey;
+  const startedTo = useRef(onStarted);
+  startedTo.current = onStarted;
   const [ready, setReady] = useState(false);
   const send = useCallback((msg: Record<string, unknown>) => frame.current?.contentWindow?.postMessage({ maidPreview: 1, ...msg }, location.origin), []);
   useEffect(() => {
@@ -289,7 +368,8 @@ function WidgetFrame({ title, order, active, slow, sound, interactive, onKey }: 
   }, []);
   useEffect(() => { if (ready) send({ cmd: "speed", k: slow ? PREVIEW_SLOW : 1 }); }, [ready, slow, send]);
   useEffect(() => { if (ready) send({ cmd: "mute", on: !sound }); }, [ready, sound, send]);
-  useEffect(() => { if (ready && order) send({ cmd: "play", play: order.play }); }, [ready, order, send]);
+  // play уходит только после ready; ушёл — сообщаем наверх: отсюда считается конец показа.
+  useEffect(() => { if (ready && order) { send({ cmd: "play", play: order.play }); startedTo.current?.(); } }, [ready, order, send]);
   const was = useRef(false);
   useEffect(() => {
     if (ready && was.current && !active) send({ cmd: "stop" });
@@ -299,8 +379,8 @@ function WidgetFrame({ title, order, active, slow, sound, interactive, onKey }: 
 }
 
 /** Большой просмотр: виджет крупно (можно трогать: тычок, облачко), подробности; у анимаций — покадровый проигрыватель. */
-function BigView({ card, live, sound, n, total, onClose, onStep }: {
-  card: ShowCard; live: boolean; sound: boolean; n: number; total: number; onClose: () => void; onStep: (d: number) => void;
+function BigView({ card, poster, live, sound, n, total, onClose, onStep }: {
+  card: ShowCard; poster?: string | null; live: boolean; sound: boolean; n: number; total: number; onClose: () => void; onStep: (d: number) => void;
 }) {
   const [slow, setSlow] = useState(false);
   const [mood, setMood] = useState(card.moods?.[0]?.id ?? "");
@@ -324,7 +404,7 @@ function BigView({ card, live, sound, n, total, onClose, onStep }: {
     <div className="adm-live-shade" onClick={onClose}>
       <div ref={dialog} className="adm-live-big" role="dialog" aria-modal="true" aria-label={card.title} tabIndex={-1} onKeyDown={keys} onClick={(e) => e.stopPropagation()}>
         <div className="adm-live-big-view">
-          {frames && a ? <PlayerWithColors anim={a} /> : <PreviewBox card={card} live={live} order={order} active slow={slow} sound={sound} big onKey={(k) => act(bigViewKey(k))} />}
+          {frames && a ? <PlayerWithColors anim={a} /> : <PreviewBox card={card} poster={poster} live={live} order={order} active slow={slow} sound={sound} big onKey={(k) => act(bigViewKey(k))} />}
         </div>
         <div className="adm-live-big-side">
           <div className="adm-row adm-live-big-nav">

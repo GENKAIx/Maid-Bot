@@ -1,15 +1,54 @@
 // Заглушка preload.js для живого показа виджета в «Витрине» админки (server/src/preview.ts вставляет её первым скриптом
 // в настоящий desktop/renderer/widget.html). В отличие от стенда desktop/test/stress/stub.js — без стенда и без сети:
 // window.maid отвечает из памяти тестовыми данными (не данные человека), записи никуда не уходят, к серверу запросов нет.
-// Ещё здесь: localStorage в памяти (виджет на одном адресе с сайтом и иначе писал бы в его хранилище; экскурсия первого
-// запуска уже «пройдена»), замедление показа (window.__preview.speed: таймеры, performance.now, Date.now, кадры rAF и CSS-анимации)
-// и window.__preview — общий объект с control.js (данные дня, погода, вызовы).
+// Ещё здесь: адреса картинок и звуков с меткой версии и без предзагрузки всех анимаций (ниже), localStorage в памяти (виджет
+// на одном адресе с сайтом и иначе писал бы в его хранилище; экскурсия первого запуска уже «пройдена»), замедление
+// показа (window.__preview.speed: таймеры, performance.now, Date.now, кадры rAF и CSS-анимации) и window.__preview — общий объект с control.js (данные дня, погода, вызовы).
 // Методы window.maid — те же, что у desktop/src/preload.js; что их не меньше и что виджет при загрузке не зовёт ничего
 // другого, проверяет server/test/preview.test.ts.
 (() => {
   const P = (window.__preview = { k: 1, calls: [], errors: [], subs: {}, weather: null, data: null, settings: null });
   addEventListener("error", (e) => P.errors.push(`${e.message} @ ${String(e.filename).split("/").pop()}:${e.lineno}`));
   addEventListener("unhandledrejection", (e) => P.errors.push("обещание: " + String(e.reason?.message ?? e.reason)));
+
+  // --- файлы с меткой версии и только своя анимация (26.11.2026, server/src/preview.ts PreviewFiles) ---
+  // Сервер кладёт в страницу список «путь → метка» (<script type="application/json" id="preview-files">). Адреса картинок и
+  // звуков, которые виджет собирает сам (`../assets/maid/${n}.webp`, new Audio(…)), получают ?v=<метка> — такой адрес браузер
+  // берёт из своего кэша без запроса (immutable). Предзагрузку всех 41 анимации (widget.js: new Image().src = … для каждой)
+  // показ пропускает: картинке, которой нет на странице, адрес анимации не ставится (P.lazy — что пропущено) — карточка тянет
+  // только то, что показывает горничная (idle из разметки и свою анимацию).
+  let files = {};
+  try { files = JSON.parse(document.getElementById?.("preview-files")?.textContent || "{}") || {}; } catch {}
+  P.files = files;
+  P.lazy = [];
+  const ROOT = "/admin-preview/";
+  P.url = (u) => {
+    try {
+      const x = new URL(String(u), location.href);
+      const v = x.origin === location.origin && x.pathname.startsWith(ROOT) && !x.searchParams.has("v") ? files[x.pathname.slice(ROOT.length)] : undefined;
+      if (!v) return String(u);
+      x.searchParams.set("v", v);
+      return x.href;
+    } catch { return String(u); }
+  };
+  const isMaid = (u) => /\/assets\/maid\/[a-z0-9-]+\.webp(\?|$)/.test(u);
+  const imgSrc = typeof HTMLImageElement !== "undefined" ? Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src") : null;
+  if (imgSrc?.set) {
+    Object.defineProperty(HTMLImageElement.prototype, "src", {
+      configurable: true, enumerable: imgSrc.enumerable, get: imgSrc.get,
+      set(v) {
+        const u = P.url(v);
+        if (!this.isConnected && isMaid(u)) return void P.lazy.push(u);
+        imgSrc.set.call(this, u);
+      },
+    });
+  }
+  const RealAudio = window.Audio;
+  if (typeof RealAudio === "function") {
+    const Audio = function Audio(src) { return src === undefined ? new RealAudio() : new RealAudio(P.url(src)); };
+    Audio.prototype = RealAudio.prototype;
+    window.Audio = Audio;
+  }
 
   // --- localStorage в памяти: экскурсия и подсказки уже видены, остальное — пусто ---
   const mem = new Map([["maid.tour", "1"], ["maid.miniSeen", String(Date.now())]]);

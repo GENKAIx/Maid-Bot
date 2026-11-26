@@ -144,7 +144,8 @@
     const my = ++faceRun, f = face();
     if (!f || P.k >= 1 || typeof ImageDecoder === "undefined" || !/\/assets\/maid\//.test(f.src)) return faceStop();
     try {
-      const buf = await (await fetch(f.src.replace(/\?.*$/, ""))).arrayBuffer();
+      // Без своих меток адреса (у forget — ?время), но с меткой версии (P.url) — тот же файл из кэша браузера.
+      const buf = await (await fetch(P.url(f.src.replace(/\?.*$/, "")))).arrayBuffer();
       if (my !== faceRun) return;
       const dec = new ImageDecoder({ data: buf, type: "image/webp" });
       await dec.tracks.ready;

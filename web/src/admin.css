@@ -202,7 +202,11 @@ body.admin-body { background: #0f1114; }
 .adm-live-frame { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .adm-live-frame iframe { display: block; width: 620px; height: 760px; border: 0; background: transparent; pointer-events: none; color-scheme: normal; }
 .adm-live-frame iframe.on { pointer-events: auto; }
-.adm-live-poster { height: 80%; width: auto; image-rendering: auto; opacity: .92; }
+/* Первый кадр анимации (400×427, poster/<id>.webp) — целиком, по низу места, как горничная в виджете. */
+.adm-live-poster { position: absolute; left: 0; right: 0; bottom: 0; margin: 0 auto; height: 90%; width: auto; max-width: 100%; object-fit: contain; image-rendering: auto; opacity: .92; }
+/* «Загрузить всё заранее» (26.11.2026): полоска «N из M, X МБ» и отмена — в строке инструментов. */
+.adm-live-preload { align-items: center; gap: 8px; }
+.adm-live-preload progress { width: 140px; height: 8px; accent-color: var(--a-accent); }
 .adm-live-wait { font-family: var(--a-mono); padding: 12px; text-align: center; }
 /* Образец карточки, пока виджет не запущен: облачко реплики, слово с эффектом выделено; погода и праздники — значок. */
 .adm-live-still { max-width: 82%; padding: 10px 14px; border-radius: 14px; background: #fffaf3; color: #2b2233; font-size: 13px; line-height: 1.4; text-align: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }

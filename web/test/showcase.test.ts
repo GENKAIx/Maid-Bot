@@ -13,6 +13,7 @@ import { FEATURES } from "../src/features.ts";
 import {
   animWhen, bigViewKey, BUBBLE_SAMPLES, previewRemain, PREVIEW_SLOW, wordfxPlain, cropOf, filterCards, frameStart, HOLIDAY_PLAY, liveSet, playerStep, PREVIEW_CROPS, PREVIEW_H, PREVIEW_LIVE_MAX, PREVIEW_W,
   previewScale, secText, SHOW_EMOTIONS, SHOW_GROUPS, showcaseCards, sizeText, usageIndex, usedCount, WEATHER_SAMPLES, WORDFX_SAMPLES,
+  runPlay, runRemain, runSpeed, runStarted, posterOf, preloadAll, preloadText, previewTagged, PRELOAD_PARALLEL, type PreloadState, type PreviewFile,
 } from "../src/showcase.ts";
 
 // Этап 4 админки, «Витрина»: реестр (web/src/registry.gen.ts) свеж и собран из настоящих исходников, перекраска сайта
@@ -198,9 +199,10 @@ test("живой показ: поиск и фильтр, кто живой, ма
   assert.equal(filterCards(CARDS, "wordfx", "forget").length, 0, "фильтр и поиск вместе");
   assert.ok(filterCards(CARDS, "all", "метель").some((c) => c.key === "weather:storm"));
   const vis = Array.from({ length: 10 }, (_, i) => `k${i}`);
-  assert.deepEqual(liveSet(vis, ["k9", "x"], "k5"), ["k5", "k9", "k0", "k1", "k2", "k3"]);
-  assert.equal(liveSet(vis, [], null).length, PREVIEW_LIVE_MAX);
-  assert.deepEqual(liveSet(["a"], ["b"], "c"), ["c", "a"], "играющая живёт, даже ушла с экрана; невидимая недавняя — нет");
+  assert.deepEqual(liveSet(vis, ["k9", "x"], "k5"), ["k5", "k9"], "играющая и недавняя видимая; сами видимые — без виджета");
+  assert.deepEqual(liveSet(vis, [], null), [], "ничего не запускали — ни одного виджета (первые кадры)");
+  assert.equal(liveSet(vis, vis, "k5").length, PREVIEW_LIVE_MAX);
+  assert.deepEqual(liveSet(["a"], ["b"], "c"), ["c"], "играющая живёт, даже ушла с экрана; невидимая недавняя — нет");
   assert.deepEqual(liveSet([], [], null), []);
   assert.equal(previewScale(PREVIEW_W), 1);
   assert.equal(previewScale(310), 0.5);
@@ -222,7 +224,7 @@ test("живой показ: раздел рисуется — группы, к�
   const withMood = CARDS.filter((c) => c.moods && c.group !== "holiday").length;
   assert.equal((html.match(/aria-label="Настроение реплики"/g) ?? []).length, withMood, "настроение — у слов и походки");
   assert.equal((html.match(/aria-label="Рубеж серии"/g) ?? []).length, 1);
-  assert.equal((html.match(/<img class="adm-live-poster" src="\/maid\/\w+\.webp"/g) ?? []).length, 41);
+  assert.equal((html.match(/<img class="adm-live-poster" src="\/maid\/\w+\.webp"/g) ?? []).length, 41, "без пропуска — картинки сайта");
   assert.ok(!html.includes("<iframe"), "без пропуска виджетов нет");
   const still = CARDS.filter((c) => !c.poster).length;
   assert.equal((html.match(/<span class="adm-live-still">/g) ?? []).length, still, "у карточек без картинки — образец, а не голый id");
@@ -244,7 +246,7 @@ test("живой показ: «медленно» тянет конец пока
   assert.equal(previewRemain(9000, 0, 0), 10_500, "ноль — обычная скорость");
   const src = readFileSync(new URL("../src/screens/AdminShowcase.tsx", import.meta.url), "utf8");
   assert.match(src, /onPlay\(card, slow \? PREVIEW_SLOW : 1\)/, "карточка передаёт свою скорость");
-  assert.match(src, /previewRemain\(r\.ms, r\.done, r\.k\)/, "таймер конца — по скорости");
+  assert.match(src, /runRemain\(r\)/, "таймер конца — по скорости (runRemain → previewRemain)");
   assert.match(src, /if \(active\) onSpeed\(card/, "переключили посреди показа — таймер переставляется");
 });
 
@@ -272,9 +274,9 @@ test("живой показ: клавиши большого просмотра 
 
 test("живой показ: кто живой — сначала карточки на самом экране, потом запас у края", () => {
   const near = ["a", "b", "c", "d", "e", "f", "g", "h"]; // a, b — ушли за верх в запас 200 px
-  assert.deepEqual(liveSet(near, [], null, 6, ["c", "d", "e", "f", "g", "h"]), ["c", "d", "e", "f", "g", "h"]);
-  assert.deepEqual(liveSet(near, ["a", "h"], "z", 4, ["g", "h"]), ["z", "h", "g", "a"], "играющая, недавняя на экране, экран, недавняя в запасе");
-  assert.deepEqual(liveSet(near, [], null, 3, ["x"]), ["a", "b", "c"], "на экране, но не в запасе — не в счёт");
+  assert.deepEqual(liveSet(near, [], null, 6, ["c", "d", "e", "f", "g", "h"]), [], "на экране — первые кадры, виджеты не запускаются сами");
+  assert.deepEqual(liveSet(near, ["a", "h"], "z", 4, ["g", "h"]), ["z", "h", "a"], "играющая, недавняя на экране, недавняя в запасе");
+  assert.deepEqual(liveSet(near, ["a", "b", "c", "d"], null, 3, ["d"]), ["d", "a", "b"], "не больше max: сначала на экране");
 });
 
 test("живой показ: образцы карточек без картинки, второй пример и позы сценариев", () => {
@@ -360,3 +362,89 @@ function runControl() {
   return { handlers, posted, said, rec, pressed, errors, parent: ctx.parent, flush };
 }
 function control() { return readFileSync(new URL("../../server/preview/control.js", import.meta.url), "utf8"); }
+
+// --- скорость «Живого показа» (26.11.2026): первые кадры с меткой, «Загрузить всё заранее» ---
+
+test("живой показ: с пропуском и списком файлов — первые кадры с меткой, ни одного iframe, кнопка «Загрузить всё заранее»", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { LiveShow } = await import("../src/screens/AdminShowcase.tsx");
+  const files: PreviewFile[] = REGISTRY.anims.map((a, i) => ({ path: `poster/${a.id}.webp`, v: i.toString(16).padStart(16, "0"), bytes: 30_000 }));
+  files.push({ path: "assets/maid/idle.webp", v: "f".repeat(16), bytes: 1_665_222 });
+  const html = renderToStaticMarkup(createElement(LiveShow, { pass: "ok", files }));
+  const posters = [...html.matchAll(/<img class="adm-live-poster" src="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, "&"));
+  assert.equal(posters.length, 41);
+  for (const p of posters) assert.match(p, /^\/admin-preview\/poster\/[a-z0-9-]+\.webp\?v=[0-9a-f]{16}$/);
+  assert.equal(posterOf(files, "idle"), `/admin-preview/poster/idle.webp?v=${files.find((f) => f.path === "poster/idle.webp")!.v}`);
+  assert.equal(posterOf(files, "nope"), null);
+  assert.ok(!html.includes("<iframe"), "пока ничего не играли — виджетов нет");
+  assert.match(html, /⬇ Загрузить всё заранее/);
+  // Пропуск ещё ждём — ни картинок сайта, ни первых кадров (не тянуть 17 МБ анимаций сайта зря).
+  const wait = renderToStaticMarkup(createElement(LiveShow, { pass: "" }));
+  assert.equal((wait.match(/adm-live-poster/g) ?? []).length, 0);
+  assert.ok(!wait.includes("Загрузить всё заранее"));
+});
+
+test("живой показ: «Загрузить всё заранее» — по 4 сразу, прогресс «N из M, X МБ», отмена останавливает новые", async () => {
+  const files: PreviewFile[] = Array.from({ length: 10 }, (_, i) => ({ path: `assets/maid/a${i}.webp`, v: String(i).padStart(16, "0"), bytes: 1048576 * (i + 1) }));
+  let now = 0, peak = 0;
+  const asked: string[] = [];
+  const get = async (url: string, signal?: AbortSignal) => {
+    asked.push(url);
+    now++;
+    peak = Math.max(peak, now);
+    await new Promise((ok) => setTimeout(ok, 5));
+    now--;
+    if (signal?.aborted) throw new Error("отменено");
+    if (url.includes("a3.webp")) throw new Error("HTTP 500");
+  };
+  const seen: PreloadState[] = [];
+  const end = await preloadAll(files, get, { onProgress: (x) => seen.push(x) });
+  assert.equal(PRELOAD_PARALLEL, 4);
+  assert.equal(peak, 4, "по четыре сразу");
+  assert.deepEqual(asked.sort(), files.map(previewTagged).sort(), "все адреса — с меткой");
+  assert.equal(end.done, 9);
+  assert.equal(end.failed, 1);
+  assert.equal(end.total, 10);
+  assert.equal(end.bytes, 1048576 * (55 - 4));
+  assert.equal(seen.length, 10);
+  assert.deepEqual(seen.map((x) => x.done + x.failed), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "прогресс растёт по одному");
+  assert.equal(preloadText({ done: 3, total: 10, bytes: 1048576 * 6, totalBytes: 1048576 * 55, failed: 0 }), "3 из 10, 6.0 из 55.0 МБ");
+  // Отмена посреди: в работе были 4, новых не начинается, итог — stopped.
+  const ctl = new AbortController();
+  let started = 0;
+  const stopped = await preloadAll(files, async (u, sig) => { if (++started === 2) ctl.abort(); await get(u, sig); }, { signal: ctl.signal, parallel: 2 });
+  assert.equal(stopped.stopped, true);
+  assert.equal(started, 2, "после отмены новых нет");
+  assert.ok(stopped.done < files.length);
+  assert.equal((await preloadAll([], get)).total, 0, "пустой список — сразу итог");
+});
+
+// --- исправление этапа 12 (26.11.2026): конец показа считается с запуска виджета, а не с нажатия «играть» ---
+
+test("живой показ: виджет грузится дольше ms+1,5 с — play всё равно уходит, показ идёт целиком", () => {
+  const ms = 2500, load = 5000; // загрузка дольше previewRemain(ms, 0, 1) = 4000
+  let r = runPlay("anim:a", ms, 1);
+  assert.equal(runRemain(r), null, "виджет ещё не готов — таймер конца не ставится, карточка остаётся играющей");
+  // Пока грузится, переключили «медленно» — своё время не копится, только скорость.
+  r = runSpeed(r, "anim:a", PREVIEW_SLOW, 1000);
+  assert.deepEqual([r!.done, r!.at, r!.k], [0, null, PREVIEW_SLOW]);
+  r = runSpeed(r, "anim:a", 1, 2000);
+  assert.equal(runRemain(r), null);
+  assert.equal(runStarted(r, "anim:b", load), r, "чужая карточка показ не запускает");
+  // ready через 5 с, play ушёл: конец — через весь показ и хвост от этой минуты, а не от нажатия.
+  r = runStarted(r, "anim:a", load);
+  assert.equal(runRemain(r), ms + 1500);
+  // Через 1 с показа — «медленно»: осталось 1,5 с своего времени вчетверо дольше.
+  r = runSpeed(r, "anim:a", PREVIEW_SLOW, load + 1000);
+  assert.equal(runRemain(r), 1500 * 4 + 1500);
+  // «Ещё раз»: снова ждём, пока виджет примет play (живой — сразу), отсчёт с нуля.
+  r = runStarted(runPlay("anim:a", ms, 1), "anim:a", 9000);
+  assert.deepEqual([r!.done, r!.at, runRemain(r)], [0, 9000, ms + 1500]);
+  const src = readFileSync(new URL("../src/screens/AdminShowcase.tsx", import.meta.url), "utf8");
+  assert.match(src, /run\.current = runPlay\(c\.key, c\.ms, k\)/, "«играть» — показ ждёт запуска виджета");
+  assert.match(src, /send\(\{ cmd: "play", play: order\.play \}\); startedTo\.current\?\.\(\);/, "play ушёл — WidgetFrame сообщает наверх");
+  assert.match(src, /onStarted=\{\(\) => onStarted\(card\)\}/, "карточка передаёт запуск в LiveShow");
+  assert.match(src, /runStarted\(run\.current, c\.key, performance\.now\(\)\)/, "конец — от запуска");
+  assert.doesNotMatch(src, /at: performance\.now\(\), k \}/, "отсчёта от нажатия больше нет");
+});

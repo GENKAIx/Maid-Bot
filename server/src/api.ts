@@ -4,7 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { z } from "zod";
 import { PERSONAS } from "./personas.ts";
-import { PREVIEW_PREFIX, PreviewPasses, previewCookie, previewKey, servePreview, WIDGET_DIR_DEFAULT } from "./preview.ts";
+import { PREVIEW_PREFIX, PreviewFiles, PreviewPasses, previewCookie, previewKey, servePreview, WIDGET_DIR_DEFAULT } from "./preview.ts";
 import { authByToken, clientMeta, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
 import { adminJournal, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
 import { accountAction, accountCard, AccountError, accountReason, MAX_ACCOUNT_ID } from "./admin-account.ts";
@@ -329,6 +329,8 @@ export function createApi(deps: ApiDeps) {
   const orBill = deps.openrouter ?? new OpenRouterBill(store);
   const gate = deps.loginGate ?? new LoginGate();
   const previews = new PreviewPasses();
+  /** Метки версий файлов живого показа (preview.ts): считаются при первом пропуске, дальше — из памяти. */
+  const previewFiles = new PreviewFiles(deps.widgetDir ?? WIDGET_DIR_DEFAULT);
 
   const replanEvents = (u: User) => replanEventsOf(store, u);
   /** Кнопка «you:…» (вопрос Рины о вас, «Записать в профиль?»): ответ; сменился пояс — напоминания заново. */
@@ -390,6 +392,7 @@ export function createApi(deps: ApiDeps) {
       const until = new Date((await adminUntil(store, sid))!);
       const pass = previews.issue(hash, until);
       if (pass.fresh) await store.addAdminLog(u.id, "preview", "", new Date(), "витрина: живой показ виджета");
+      void previewFiles.list().catch(() => {}); // метки — заранее, пока сайт ставит iframe
       res.setHeader("Set-Cookie", previewCookie(pass.key, until, req.headers["x-forwarded-proto"] === "https"));
       return { until: until.toISOString() };
     }
@@ -605,7 +608,8 @@ export function createApi(deps: ApiDeps) {
         if (!(await previewAllowed(previewKey(req.headers.cookie)))) throw new HttpError(401, "нужен вход в админку");
         let rel = "";
         try { rel = decodeURIComponent(p.slice(PREVIEW_PREFIX.length)); } catch { throw new HttpError(404, "нет такого файла"); }
-        if (await servePreview(rel, res, deps.widgetDir ?? WIDGET_DIR_DEFAULT)) return undefined;
+        const inm = req.headers["if-none-match"];
+        if (await servePreview(rel, res, previewFiles, { v: url.searchParams.get("v"), inm: Array.isArray(inm) ? inm.join(",") : inm })) return undefined;
         throw new HttpError(404, "нет такого файла");
       }
       if (p.startsWith("/desktop/")) {

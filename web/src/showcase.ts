@@ -111,13 +111,27 @@ export type PreviewPlay =
 export const PREVIEW_URL = "/admin-preview/renderer/widget.html";
 /** Окно виджета на ПК (desktop/src/main.js WIDGET_W × WIDGET_H): iframe такого размера, уменьшенный под карточку. */
 export const PREVIEW_W = 620, PREVIEW_H = 760;
-/** Сколько виджетов живут на странице одновременно (каждый — целая страница виджета); остальные карточки — с картинкой. */
-export const PREVIEW_LIVE_MAX = 6;
+/** Сколько виджетов живут на странице одновременно (каждый — целая страница виджета). С 26.11.2026 виджет запускается только по
+ *  «играть» (остальные карточки — с неподвижным первым кадром), живыми остаются играющая и недавно запущенные на экране. */
+export const PREVIEW_LIVE_MAX = 3;
 /** «Медленно» — вчетверо. */
 export const PREVIEW_SLOW = 0.25;
 /** Сколько ещё ждать конца показа (реального времени, мс): показ длится ms мс своего времени, done уже прошло, k — скорость
  *  (PREVIEW_SLOW — вчетверо дольше); плюс 1,5 с, чтобы итог было видно. */
 export const previewRemain = (ms: number, done: number, k: number) => Math.max(0, ms - done) / (k > 0 ? k : 1) + 1500;
+
+/** Идущий показ карточки: ms — длина своего времени, done — сколько его уже прошло, k — скорость, at — когда (performance.now)
+ *  виджет начал показ; null — ещё не начал: виджет грузится (страница, скрипты, данные дня), отсчёт конца не идёт. */
+export type ShowRun = { key: string; ms: number; done: number; at: number | null; k: number };
+/** Нажали «играть» (или «ещё раз», настроение): показ ждёт, пока виджет примет команду play. */
+export const runPlay = (key: string, ms: number, k: number): ShowRun => ({ key, ms, done: 0, at: null, k });
+/** Виджет готов и команда play ушла — показ пошёл с начала, с этой минуты отсчитывается конец. Чужая карточка — без изменений. */
+export const runStarted = (r: ShowRun | null, key: string, now: number): ShowRun | null => (r && r.key === key ? { ...r, done: 0, at: now } : r);
+/** «Медленно» переключили: прошедшее своё время копится по прежней скорости; показ ещё не начался — только новая скорость. */
+export const runSpeed = (r: ShowRun | null, key: string, k: number, now: number): ShowRun | null =>
+  !r || r.key !== key ? r : r.at === null ? { ...r, k } : { ...r, done: r.done + (now - r.at) * r.k, at: now, k };
+/** Через сколько мс снять показ; null — виджет ещё не начал, таймер не ставится (карточка остаётся играющей и дождётся ready). */
+export const runRemain = (r: ShowRun | null): number | null => (!r || r.at === null ? null : previewRemain(r.ms, r.done, r.k));
 
 /** Клавиша большого просмотра → действие: Esc — закрыть, ← → — соседние карточки. Стрелки в поле ввода и уже обработанные
  *  (покадровый проигрыватель шагает ими по кадрам) карточки не листают. Клавиши из виджета (control.js шлёт ev "key") — те же. */
@@ -310,10 +324,55 @@ export const cropOf = (g: ShowGroup): PreviewCrop => (g === "weather" || g === "
 /** Масштаб окна виджета под ширину (и высоту, если она задана) места; w × h — видимая часть окна. */
 export const previewScale = (width: number, height = Infinity, w = PREVIEW_W, h = PREVIEW_H) => Math.max(0.1, Math.min(1, width / w, height / h));
 
-/** Какие виджеты держать живыми: видимые карточки (visible — с запасом у края экрана), сначала играющая, потом те, что на
- *  самом экране (onScreen; недавно запущенные — первыми), потом остальные в запасе; не больше max. */
+/** Какие виджеты держать живыми: играющая, потом недавно запущенные (recent — по «играть») на самом экране (onScreen), потом
+ *  недавние в запасе у края (visible); не больше max. Сами видимые карточки виджет больше не запускают (26.11.2026): каждый —
+ *  целая страница виджета, а первый кадр карточки — неподвижная картинка (poster). */
 export function liveSet(visible: string[], recent: string[], playing: string | null, max = PREVIEW_LIVE_MAX, onScreen: string[] = []): string[] {
   const screen = onScreen.filter((k) => visible.includes(k));
-  const order = [...(playing ? [playing] : []), ...recent.filter((k) => screen.includes(k)), ...screen, ...recent.filter((k) => visible.includes(k)), ...visible];
-  return [...new Set(order)].filter((k) => k === playing || visible.includes(k)).slice(0, max);
+  const order = [...(playing ? [playing] : []), ...recent.filter((k) => screen.includes(k)), ...recent.filter((k) => visible.includes(k))];
+  return [...new Set(order)].slice(0, max);
 }
+
+// ——— Файлы показа с меткой версии (26.11.2026, server/src/preview.ts): список — GET /admin-preview/files.json (по пропуску),
+// адрес с меткой браузер держит в кэше год (immutable). Кнопка «Загрузить всё заранее» качает их все — потом карточки и
+// повторные заходы берут файлы из кэша браузера без запросов.
+
+export type PreviewFile = { path: string; v: string; bytes: number };
+export const PREVIEW_FILES_URL = "/admin-preview/files.json";
+export const previewTagged = (f: PreviewFile) => `/admin-preview/${f.path}?v=${f.v}`;
+/** Неподвижная картинка карточки анимации — первый кадр (poster/<id>.webp с меткой); нет в списке — null. */
+export function posterOf(files: PreviewFile[] | null, id: string): string | null {
+  const f = files?.find((x) => x.path === `poster/${id}.webp`);
+  return f ? previewTagged(f) : null;
+}
+
+/** Сколько файлов качать заранее одновременно. */
+export const PRELOAD_PARALLEL = 4;
+export type PreloadState = { done: number; total: number; bytes: number; totalBytes: number; failed: number; stopped?: boolean };
+/** Скачать все файлы (get — один адрес; бросил — не скачался), по parallel сразу; после каждого — onProgress. Отменили (signal) —
+ *  новые не начинаются, итог со stopped. */
+export async function preloadAll(files: PreviewFile[], get: (url: string, signal?: AbortSignal) => Promise<void>,
+  opts: { parallel?: number; signal?: AbortSignal; onProgress?: (s: PreloadState) => void } = {}): Promise<PreloadState> {
+  const s: PreloadState = { done: 0, total: files.length, bytes: 0, totalBytes: files.reduce((a, f) => a + f.bytes, 0), failed: 0 };
+  let next = 0;
+  const worker = async () => {
+    while (next < files.length && !opts.signal?.aborted) {
+      const f = files[next++];
+      try {
+        await get(previewTagged(f), opts.signal);
+        if (opts.signal?.aborted) break;
+        s.done++;
+        s.bytes += f.bytes;
+      } catch {
+        if (opts.signal?.aborted) break;
+        s.failed++;
+      }
+      opts.onProgress?.({ ...s });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(opts.parallel ?? PRELOAD_PARALLEL, files.length)) }, worker));
+  if (opts.signal?.aborted) s.stopped = true;
+  return s;
+}
+/** «12 из 140, 8.4 из 92.1 МБ». */
+export const preloadText = (s: PreloadState) => `${s.done} из ${s.total}, ${(s.bytes / 1048576).toFixed(1)} из ${(s.totalBytes / 1048576).toFixed(1)} МБ`;
