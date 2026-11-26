@@ -102,7 +102,7 @@ for (const [name, open] of BASES) {
   test(`${name}: хранение снимков — та же минута не дублируется, чтение за период, чистка старше 7 дней`, async () => {
     const store = await open();
     try {
-      assert.equal(await store.kvGet("schema_version"), "38");
+      assert.equal(await store.kvGet("schema_version"), "39");
       await store.addServerMetric(row(8 * 1440, { http: 1 }));
       await store.addServerMetric(row(6 * 1440, { http: 2 }));
       await store.addServerMetric(row(5, { http: 3, cpu_sys: null, db_mb: null, disk_free_mb: null, disk_total_mb: null, http_p50: null }));

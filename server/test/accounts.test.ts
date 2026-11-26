@@ -88,6 +88,7 @@ test("шаг 14 базы: старый расход (без людей) сохр
     CREATE TABLE llm_usage (day TEXT NOT NULL, kind TEXT NOT NULL, model TEXT NOT NULL, calls INTEGER NOT NULL DEFAULT 0, input INTEGER NOT NULL DEFAULT 0,
       output INTEGER NOT NULL DEFAULT 0, micro_usd INTEGER NOT NULL DEFAULT 0, priced INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, model));
     INSERT INTO llm_usage VALUES ('2026-11-10', 'answer', 'm', 4, 40, 20, 1500000, 4);
+    ALTER TABLE habits DROP COLUMN finished_at;
     UPDATE kv SET value = '13' WHERE key = 'schema_version';`);
   db.close();
   const store = await Store.open(file);

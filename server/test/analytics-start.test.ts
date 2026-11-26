@@ -51,9 +51,11 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     const store = await open();
     try {
       await store.driver.exec("DROP TABLE billing_events; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
+      // Шаг 39 (habits.finished_at) — миграция добавит снова.
+      await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at;");
       await store.kvSet("schema_version", "27");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "38");
+      assert.equal(await again.kvGet("schema_version"), "39");
       const t = Date.parse("2026-11-24T12:00:00Z");
       await again.addBillingEvent({ user_id: 5, kind: "trial_started", at: new Date(t) });
       await again.addBillingEvent({ user_id: 5, kind: "paid_first", at: new Date(t + DAY), charge_id: "ch1", amount: 150 });

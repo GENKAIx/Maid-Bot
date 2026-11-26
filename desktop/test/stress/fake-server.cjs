@@ -34,7 +34,8 @@ const DATASETS = {
     ],
     habits: [
       { id: 1, title: "Зарядка", status: null, streak: 4 },
-      { id: 2, title: "Пить воду", status: "done", streak: 12 },
+      // at_time — когда отметили, как у сервера (26.11.2026): у галочки «✓ 08:40».
+      { id: 2, title: "Пить воду", status: "done", streak: 12, at_time: "08:40", at_day: null },
       { id: 3, title: "Читать 20 минут", status: null, streak: 0 },
     ],
     events: [
@@ -273,6 +274,8 @@ function create() {
       if (hb) {
         const was = hb.status === "done";
         hb.status = m[2] === "mark" ? body?.status ?? "done" : null;
+        hb.at_time = hb.status ? hm(srv.now()) : null; // когда отметили (сервер: markTime), «ЧЧ:ММ»
+        hb.at_day = null;
         srv.xp += (hb.status === "done" ? 5 : 0) - (was ? 5 : 0);
         // Серия как на сервере (habits.ts streak): сегодняшняя отметка «сделано» продлевает её на день, снятие — убирает этот день.
         hb.streak = Math.max(0, (hb.streak ?? 0) + (hb.status === "done" ? 1 : 0) - (was ? 1 : 0));

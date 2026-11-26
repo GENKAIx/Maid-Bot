@@ -113,7 +113,8 @@
     ],
     habits: [
       { id: 1, title: "Зарядка", status: null, streak: 4 },
-      { id: 2, title: "Пить воду", status: "done", streak: 12 },
+      // at_time — когда отметили (26.11.2026): у галочки «✓ 08:40».
+      { id: 2, title: "Пить воду", status: "done", streak: 12, at_time: "08:40", at_day: null },
     ],
     events: [
       { id: 11, title: "Спортзал", date_iso: dayKey(), time: soon(50), end_time: null, status: "active" },

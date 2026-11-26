@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { DateRow, EventRow, HabitRow, MemoryRow, NoteRow, TaskRow } from "./db.ts";
-import { timesOf } from "./habits.ts";
+import { habitFinished, timesOf } from "./habits.ts";
 import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, SHELF_KEYS, sameNote, shelfKey, type Shelf } from "./notes.ts";
 import { EMOTIONS } from "./personas.ts";
 import { addDays, isDayKey, normalizeTime, weekdayLong } from "./time.ts";
@@ -290,7 +290,8 @@ export function buildPrompt(ctx: ParseContext, voice: string): string {
     const t = timesOf(h);
     return h.quiet ? "без напоминаний" : t.length ? `напоминания ${t.join(", ")}` : "напоминания — общее время";
   };
-  const hab = ctx.habits.map((h) => `#${h.id} ${h.title} (дни ${h.days}${h.end_date ? ", до " + h.end_date : ""}; ${remindOf(h)})`).join("\n") || "нет";
+  // Завершённая (habitFinished) — «завершена»: её не отмечают, только «верни» (reopen).
+  const hab = ctx.habits.map((h) => `#${h.id} ${h.title} (${habitFinished(h, ctx.today) ? "завершена; " : ""}дни ${h.days}${h.end_date ? ", до " + h.end_date : ""}; ${remindOf(h)})`).join("\n") || "нет";
   return `Ты разбираешь сообщения пользователя для его личного дневника-помощника.
 ${promptHeader(ctx.today, ctx.now, ctx.tz)}
 
@@ -374,7 +375,9 @@ ${promptHeader(ctx.today, ctx.now, ctx.tz)}
 - «Выпил таблетку», «сделал зарядку» про привычку из списка — habit_marks с её номером (не задача и не дневник).
   Назвал, сколько сделал («прочитал 35 страниц», «пробежал 5 км», «ещё 20 страниц») — amount числом этого сообщения
   (не сумма за день — сложит сервер) и unit коротко по-русски («стр.», «км», «мин», «раз»); числа нет — amount null.
-  «Бросаю привычку X» — edits kind=habit action=cancel.
+  «Бросаю привычку X», «удали привычку X» — edits kind=habit action=cancel (удалить).
+  «Заверши/закончи привычку X» (курс пройден, больше не нужна, история остаётся) — edits kind=habit action=done.
+  «Верни/возобнови привычку X» — edits kind=habit action=reopen. Привычку с пометкой «завершена» не отмечай в habit_marks.
 - Деньги: «потратил 450 на такси», «пришло 30к за заказ» — money; сумма числом (30к = 30000), валюта по умолчанию RUB.
   Долги: дал в долг — expense с category «долг», вернули — income с «долг»; кто должен — ещё и memory.
 - memory — устойчивые факты о жизни пользователя (люди, предпочтения, цели), не события дня.

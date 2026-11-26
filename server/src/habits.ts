@@ -1,6 +1,6 @@
 import type { HabitRow, MarkRow, Store, User } from "./db.ts";
 import { esc } from "./report.ts";
-import { addDays, weekdayOf } from "./time.ts";
+import { addDays, dayKey, timeOf, weekdayOf } from "./time.ts";
 
 // Привычки: расписание (дни недели, время напоминаний, срок), отметки по дням и серии.
 
@@ -45,6 +45,10 @@ export interface HabitDay {
   course: CourseDay[] | null;
   /** Вчера по расписанию и не отмечено «сделал» — «none» (можно спасти задним числом), иначе его отметка; не по расписанию — null. */
   yesterday: "done" | "skipped" | "none" | null;
+  /** Когда отметили этот день (markTime): «ЧЧ:ММ» в поясе человека; at_day — день отметки, если задним числом. Нет отметки или
+   *  минус в полночь — null. */
+  at_time: string | null;
+  at_day: string | null;
 }
 
 /** done — сделано; miss — прошёл без отметки или «пропуск»; today — сегодня, ещё не отмечено; wait — впереди; rest — не по расписанию. */
@@ -83,10 +87,62 @@ function yesterdayOf(h: HabitRow, own: MarkRow[], day: string): HabitDay["yester
 /** Минус за день без ответа ставит планировщик в полночь — отметка без сообщения. */
 export const isAutoMinus = (m: Pick<MarkRow, "status" | "message_id">) => m.status === "skipped" && m.message_id === null;
 
+/** Когда отметили, в поясе человека (26.11.2026): at_time — «ЧЧ:ММ»; at_day — день отметки, только если он не день клетки
+ *  (отметили задним числом: «отмечено 26 ноя в 10:02»), иначе null. Минус, поставленный сам в полночь, — без времени. */
+export function markTime(m: Pick<MarkRow, "status" | "message_id" | "at" | "day_key"> | undefined, tz: string): { at_time: string | null; at_day: string | null } {
+  if (!m || isAutoMinus(m)) return { at_time: null, at_day: null };
+  const at = new Date(m.at);
+  if (Number.isNaN(at.getTime())) return { at_time: null, at_day: null };
+  const day = dayKey(at, tz);
+  return { at_time: timeOf(at, tz), at_day: day === m.day_key ? null : day };
+}
+
+/** Завершённая привычка (26.11.2026) — единственное правило: идёт (status active) и её закончили вручную (finished_at) или срок
+ *  прошёл (end_date раньше сегодня в поясе человека — со следующего дня после конца, само, без планировщика). Удалённые
+ *  (stopped, deleted) — не завершённые: их нет нигде. */
+export function habitFinished(h: Pick<HabitRow, "status" | "end_date" | "finished_at">, today: string): boolean {
+  return h.status === "active" && (Boolean(h.finished_at) || (h.end_date != null && h.end_date < today));
+}
+
+/** Как было — для журнала отмены: «Отменить» возвращает всё (статус, название, срок, «закончена», время напоминаний). */
+export const habitBefore = (h: HabitRow) => ({
+  status: h.status, title: h.title, end_date: h.end_date, finished_at: h.finished_at ?? null, quiet: h.quiet ?? 0, times: h.times,
+});
+
+/** Закончить вручную (сайт, виджет, чат — одна логика): конец — сегодня, если сегодня уже отмечена, иначе вчера; не раньше начала
+ *  и не позже прежнего конца. Уже завершённая или удалённая — null (ничего не менять: повтор не продлевает прошедший срок). */
+export async function finishPatch(store: Store, h: HabitRow, today: string, now = new Date()): Promise<Pick<HabitRow, "end_date" | "finished_at"> | null> {
+  if (h.status !== "active" || habitFinished(h, today)) return null;
+  const marked = (await store.marksOf(h.user_id, today, today)).some((x) => x.habit_id === h.id);
+  let end = marked ? today : addDays(today, -1);
+  if (end < h.start_date) end = h.start_date;
+  if (h.end_date && h.end_date < end) end = h.end_date;
+  return { end_date: end, finished_at: now.toISOString() };
+}
+
+/** «↺ Вернуть»: снова идёт, без отметки «закончена»; срок, который уже прошёл (или закончили вручную), снимается — будущий конец
+ *  курса остаётся. Удалённую тоже возвращает (status active). */
+export function reopenPatch(h: HabitRow, today: string): Pick<HabitRow, "status" | "finished_at"> & { end_date?: null } {
+  const ended = Boolean(h.finished_at) || (h.end_date != null && h.end_date < today);
+  return { status: "active", finished_at: null, ...(ended ? { end_date: null } : {}) };
+}
+
+/** Почему этот день не отметить (null — можно): удалённая, после конца срока (завершённая), до начала. Старые кнопки в Telegram
+ *  получают этот текст ответом, сайт — ошибкой 409. */
+export function markRefusal(h: Pick<HabitRow, "status" | "start_date" | "end_date">, day: string): string | null {
+  if (h.status !== "active") return "Этой привычки больше нет.";
+  if (h.end_date && day > h.end_date) return "Эта привычка уже завершена.";
+  if (day < h.start_date) return "Привычка тогда ещё не началась.";
+  return null;
+}
+
 
 /** Что из привычек идёт в этот день, с отметками и сериями. */
-export async function habitsOfDay(store: Store, u: User, day: string): Promise<HabitDay[]> {
-  const list = (await store.habitsOn(u.id, day)).filter((h) => dueOn(h, day));
+export async function habitsOfDay(store: Store, u: User, day: string, today = dayKey(new Date(), u.tz)): Promise<HabitDay[]> {
+  // Закончили вручную сегодня, уже отметив, — конец сегодня, но в списке сегодняшнего дня её больше нет: она в «Завершённых».
+  // Прошлые дни (история /api/day) показывают её как была — с отметкой.
+  const list = (await store.habitsOn(u.id, day))
+    .filter((h) => dueOn(h, day) && !(day >= today && h.finished_at && dayKey(new Date(h.finished_at), u.tz) <= day));
   if (!list.length) return [];
   const from = list.reduce((m, h) => (h.start_date < m ? h.start_date : m), day);
   const marks = await store.marksOf(u.id, addDays(from, -1), day);
@@ -107,25 +163,57 @@ export async function habitsOfDay(store: Store, u: User, day: string): Promise<H
       plannedDays: planned,
       course: courseDays(h, byDay, day),
       yesterday: yesterdayOf(h, own, day),
+      ...markTime(today, u.tz),
     };
   });
 }
 
-/** Сетка месяца для приложения: каждый день — запланирован ли и что отмечено. */
-export async function habitMonth(store: Store, u: User, month: string) {
+/** Сетка месяца для приложения: каждый день — запланирован ли, что и когда отмечено (at_time, at_day — markTime).
+ *  Завершённые (habitFinished) в сетку не идут — они в finishedHabits. */
+export async function habitMonth(store: Store, u: User, month: string, today = dayKey(new Date(), u.tz)) {
   const from = `${month}-01`;
   let to = from;
   while (addDays(to, 1).slice(0, 7) === month) to = addDays(to, 1);
-  const habits = await store.activeHabits(u.id);
+  const habits = (await store.activeHabits(u.id)).filter((h) => !habitFinished(h, today));
   const marks = await store.marksOf(u.id, from, to);
   return habits.map((h) => {
-    const days: { day: string; due: boolean; status: string | null; amount: number | null; unit: string }[] = [];
+    const days: { day: string; due: boolean; status: string | null; amount: number | null; unit: string; at_time: string | null; at_day: string | null }[] = [];
     for (let d = from; d <= to; d = addDays(d, 1)) {
       const m = marks.find((x) => x.habit_id === h.id && x.day_key === d);
-      days.push({ day: d, due: dueOn(h, d), status: m?.status ?? null, amount: m?.amount == null ? null : Number(m.amount), unit: m?.unit ?? "" });
+      days.push({ day: d, due: dueOn(h, d), status: m?.status ?? null, amount: m?.amount == null ? null : Number(m.amount), unit: m?.unit ?? "", ...markTime(m, u.tz) });
     }
     return { ...h, times: timesOf(h), days };
   });
+}
+
+/** Карточка завершённой привычки (раздел «Завершённые» на сайте): done из planned — сделано из запланированного за весь срок
+ *  [start_date, end_date], best — лучшая серия (считает habitStatsOf, как статистика). */
+export interface FinishedHabit {
+  id: number;
+  title: string;
+  start_date: string;
+  end_date: string;
+  finished_at: string | null;
+  done: number;
+  planned: number;
+  best: number;
+}
+
+/** Все завершённые привычки человека, свежие (по концу срока) сверху. */
+export async function finishedHabits(store: Store, u: User, today: string): Promise<FinishedHabit[]> {
+  const list = (await store.activeHabits(u.id)).filter((h) => habitFinished(h, today));
+  if (!list.length) return [];
+  const cap = addDays(today, -1830);
+  const first = list.reduce((m, h) => (h.start_date < m ? h.start_date : m), today);
+  const marks = await store.marksOf(u.id, first < cap ? cap : first, today);
+  return list.map((h) => {
+    const own = marks.filter((m) => m.habit_id === h.id);
+    const st = habitStatsOf(h, new Map(own.map((m) => [m.day_key, m.status] as const)), today);
+    // Завершённая всегда со сроком: вручную он ставится (finishPatch), иначе она не завершена; запасной — сегодня.
+    // Старые записи (виджет до 26.11.2026 не сверял с началом) бывают с концом раньше начала — конец не раньше начала.
+    const end = h.end_date ?? today;
+    return { id: h.id, title: h.title, start_date: h.start_date, end_date: end < h.start_date ? h.start_date : end, finished_at: h.finished_at ?? null, done: st.total.done, planned: st.total.planned, best: st.best };
+  }).sort((a, b) => b.end_date.localeCompare(a.end_date) || b.id - a.id);
 }
 
 export function habitLine(d: HabitDay): string {

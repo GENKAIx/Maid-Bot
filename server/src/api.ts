@@ -15,7 +15,7 @@ import { featureOfApi } from "./feature-list.ts";
 import type { DateRow, Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { ALBUM, albumOf, albumSee } from "./album.ts";
-import { habitMonth, habitsOfDay, habitStats } from "./habits.ts";
+import { finishedHabits, finishPatch, habitBefore, habitMonth, habitsOfDay, habitStats, markRefusal, reopenPatch } from "./habits.ts";
 import { MAID_EYES, MAID_HAIR } from "./look.ts";
 import { historyOf, NOTICE_KINDS } from "./notices.ts";
 import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, RATED_SHELVES, SHELF_KEYS, SHELVES, noteCounts, sameNote, type Shelf } from "./notes.ts";
@@ -156,6 +156,8 @@ export async function dayJson(store: Store, u: User, day: string) {
     habits: (await habitsOfDay(store, u, day)).map((d) => ({
       id: d.habit.id, title: d.habit.title, times: d.times, status: d.status, streak: d.streak, done: d.doneDays, planned: d.plannedDays,
       start: d.habit.start_date, end: d.habit.end_date, course: d.course, yesterday: d.yesterday, quiet: d.habit.quiet ?? 0,
+      // Когда отметили (сайт «Сегодня», виджет: «✓ 21:14»): «ЧЧ:ММ» в поясе человека; at_day — день отметки, если задним числом.
+      at_time: d.at_time, at_day: d.at_day,
     })),
     metrics: await store.metricsRange(u.id, day, day),
     money: await store.moneyRange(u.id, day, day),
@@ -1316,7 +1318,11 @@ export function createApi(deps: ApiDeps) {
       const month = q("month") ?? today.slice(0, 7);
       if (!/^\d{4}-\d{2}$/.test(month)) throw new HttpError(400, "month: YYYY-MM");
       // ask — общее время вопросов из настроек: у привычки без своего времени — оно, и «ещё раз» в last, если не отмечена.
-      return { month, today: await habitsOfDay(store, u, today), habits: await habitMonth(store, u, month), ask: { first: u.habit_first, last: u.habit_last } };
+      // finished — «Завершённые» (habits.ts habitFinished): их нет в сетке месяца, карточкой с итогом за весь срок.
+      return {
+        month, today: await habitsOfDay(store, u, today), habits: await habitMonth(store, u, month, today), finished: await finishedHabits(store, u, today),
+        ask: { first: u.habit_first, last: u.habit_last },
+      };
     }
     // Статистика одной привычки: год клетками, серии, процент за 30/90 дней и всё время, по дням недели и месяцам.
     const stats = p.match(/^\/api\/habits\/(\d+)\/stats$/);
@@ -1329,6 +1335,10 @@ export function createApi(deps: ApiDeps) {
     if (m === "POST" && mark) {
       // later — «Ещё нет»: отметки нет, вопрос придёт снова (pipeline.habitLater).
       const b = parseBody(z.object({ status: z.enum(["done", "skipped", "later"]).default("done"), day: Day.optional() }), await readJson(req));
+      // Удалённую, завершённую (день после конца) и день до начала не отметить — сайту ошибка 409 с текстом (markRefusal), и «Ещё нет» тоже.
+      const h = await store.habit(Number(mark[1]));
+      const refused = h && h.user_id === u.id ? markRefusal(h, b.day ?? today) : null;
+      if (refused) throw new HttpError(409, refused);
       if (b.status === "later") return { text: await pipeline.habitLater(u, Number(mark[1]), b.day ?? today) };
       return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.status, "web") };
     }
@@ -1349,30 +1359,35 @@ export function createApi(deps: ApiDeps) {
       return { undo };
     }
 
-    // Правка привычки мышью (ПКМ в виджете): title — переименовать, quiet — без напоминаний и вечерних вопросов,
-    // finish — закончить (end_date — сегодня, если сегодня уже отмечена, иначе вчера: в истории остаётся со всеми отметками),
+    // Правка привычки мышью (ПКМ в виджете, сайт): title — переименовать, quiet — без напоминаний и вечерних вопросов,
+    // finish — завершить (habits.ts finishPatch: конец — сегодня, если сегодня уже отмечена, иначе вчера; уходит в «Завершённые»
+    // со всеми отметками; уже завершённую — не трогает, undo null), reopen — «↺ Вернуть» из «Завершённых» (reopenPatch),
     // status stopped — удалить (пропадает отовсюду, отметки в базе остаются); times — время напоминаний (пусто — общее из настроек:
     // habit_first и habit_last). Всё через журнал отмены.
     const habitEdit = p.match(/^\/api\/habits\/(\d+)$/);
     if (m === "POST" && habitEdit) {
       const b = parseBody(z.object({
         title: z.string().trim().min(1).max(200).optional(), quiet: z.boolean().optional(),
-        times: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "время ЧЧ:ММ")).max(4).optional(), finish: z.literal(true).optional(), status: z.enum(["active", "stopped"]).optional(),
+        times: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "время ЧЧ:ММ")).max(4).optional(), finish: z.literal(true).optional(),
+        reopen: z.literal(true).optional(), status: z.enum(["active", "stopped"]).optional(),
       }), await readJson(req));
       const h = await store.habit(Number(habitEdit[1]));
       if (!h || h.user_id !== u.id) throw new HttpError(404, "нет привычки");
-      if (!b.title && b.quiet === undefined && !b.times && !b.finish && !b.status) throw new HttpError(400, "нужно title, quiet, times, finish или status");
-      const marked = (await store.marksOf(u.id, today, today)).some((x) => x.habit_id === h.id);
+      if (!b.title && b.quiet === undefined && !b.times && !b.finish && !b.reopen && !b.status) throw new HttpError(400, "нужно title, quiet, times, finish, reopen или status");
+      const finish = b.finish ? await finishPatch(store, h, today) : null;
       const patch = {
         ...(b.title ? { title: b.title } : {}),
         ...(b.quiet !== undefined ? { quiet: b.quiet ? 1 : 0 } : {}),
         ...(b.times ? { times: JSON.stringify([...new Set(b.times)].sort()) } : {}),
-        ...(b.finish ? { end_date: marked ? today : addDays(today, -1) } : {}),
+        ...(finish ?? {}),
+        ...(b.reopen ? reopenPatch(h, today) : {}),
         ...(b.status ? { status: b.status } : {}),
       };
-      const what = b.status === "stopped" ? "🗑" : b.finish ? "⏸" : b.times && !b.title ? "🔔" : "✎";
+      // Завершить уже завершённую — ничего не делать (и не писать в журнал): повтор не продлевает срок.
+      if (!Object.keys(patch).length) return { ...h, undo: null };
+      const what = b.status === "stopped" ? "🗑" : finish ? "🏁" : b.reopen ? "↺" : b.times && !b.title ? "🔔" : "✎";
       const undo = await pipeline.manual(u, `${what} ${h.title}`, async (log) => {
-        await log("habits", h.id, { status: h.status, title: h.title, end_date: h.end_date, quiet: h.quiet ?? 0, times: h.times });
+        await log("habits", h.id, habitBefore(h));
         await store.updateHabit(h.id, patch);
       });
       return { ...(await store.habit(h.id)), undo };

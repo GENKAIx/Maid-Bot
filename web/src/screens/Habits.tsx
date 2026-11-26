@@ -4,23 +4,29 @@ import { Card, Chip, Empty, Spinner } from "../components";
 import { WEEKDAYS, addMonths, monthTitle, shortDay, todayKey } from "../format";
 import { prefill } from "../Composer";
 import { navigate } from "../router";
-import type { HabitMonth } from "../types";
+import { cellTitle, daysBetween, finishedSummary, habitPlace } from "../habitview";
+import type { HabitFinished, HabitMonth } from "../types";
 import { HabitStatsPanel } from "./HabitStats";
 
 // Привычки: сетка месяца (строка — привычка, столбец — день), отметка щелчком, серии и время напоминаний (🔔 — правка прямо в строке),
 // щелчок по названию — статистика привычки строкой под ней (HabitStats.tsx). Адрес «/habits?h=12» (из виджета на ПК) —
-// статистика этой привычки раскрыта сразу, а её строка подсвечена волной по клеткам.
+// статистика этой привычки раскрыта сразу, а её строка подсвечена волной по клеткам. «🏁 Завершить» уносит привычку из сетки
+// в «Завершённые» (свёрнутая карточка под сеткой, с итогом за срок, статистикой и «↺ Вернуть»), с «↩ Отменить» (26.11.2026).
 
 const WEEK_SHORT = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
-const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86400000);
-/** Срок привычки с концом: «день 3 из 7 · до 18 ноя»; ещё не началась — «с …»; закончилась — «закончилась …». Бессрочная — пусто. */
+/** Срок привычки с концом: «день 3 из 7 · до 18 ноя»; ещё не началась — «с …». Бессрочная — пусто. Закончившиеся в сетку
+ *  не приходят — они в «Завершённых». */
 function spanText(h: { start_date: string; end_date: string | null }, today: string): string {
   if (!h.end_date) return "";
   if (today < h.start_date) return `с ${shortDay(h.start_date)} до ${shortDay(h.end_date)}`;
-  if (today > h.end_date) return `закончилась ${shortDay(h.end_date)}`;
   return `день ${daysBetween(h.start_date, today) + 1} из ${daysBetween(h.start_date, h.end_date) + 1} · до ${shortDay(h.end_date)}`;
 }
 const NEW_HABIT = "каждый день ";
+/** Раскрыты ли «Завершённые» — запоминается в браузере. */
+const DONE_OPEN_KEY = "maid.habitsDone";
+const readDoneOpen = () => { try { return localStorage.getItem(DONE_OPEN_KEY) === "1"; } catch { return false; } };
+const saveDoneOpen = (v: boolean) => { try { localStorage.setItem(DONE_OPEN_KEY, v ? "1" : "0"); } catch { /* браузер не даёт хранить — не страшно */ } };
+type Note = { text: string; undo?: number; bad?: boolean };
 /** Привычка из адреса «?h=12» — какую раскрыть и подсветить; нет или мусор — null. */
 export function habitFromSearch(search: string): number | null {
   const m = /^\d{1,9}$/.exec(new URLSearchParams(search).get("h") ?? "");
@@ -47,6 +53,19 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
   const [stats, setStats] = useState<number | null>(null);
   const [flash, setFlash] = useState<number | null>(null);
   const want = useRef(habitFromSearch(location.search));
+  // Завершённую по «?h=» прокрутить, когда «Завершённые» и её статистика уже раскрыты в DOM (эффект ниже по doneOpen/doneStats).
+  const scrollDone = useRef<number | null>(null);
+  const [doneOpen, setDoneOpen] = useState(readDoneOpen);
+  const [doneStats, setDoneStats] = useState<number | null>(null);
+  const [note, setNote] = useState<Note | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const timer = useRef(0);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  function say(n: Note) {
+    setNote(n);
+    clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setNote(null), 8000);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -56,24 +75,75 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
 
   async function mark(id: number, day: string, was: string | null) {
     // Щелчок: пусто → сделал → пропуск → сделал … (снять отметку совсем — командой «отменить» в строке ввода).
+    // Сервер не даёт отметить удалённую, завершённую и день до начала — показываем его ответ.
     const status = was === "done" ? "skipped" : "done";
-    await post(`/api/habits/${id}/mark`, { status, day });
-    onChanged();
+    try {
+      await post(`/api/habits/${id}/mark`, { status, day });
+      onChanged();
+    } catch (e) {
+      say({ text: `Не отметилось: ${(e as Error).message}`, bad: true });
+    }
+  }
+
+  // «🏁 Завершить» и «↺ Вернуть» — без вопроса, но с «↩ Отменить» (сервер пишет правку в журнал отмены).
+  async function edit(h: { id: number; title: string }, body: { finish: true } | { reopen: true }) {
+    if (busy !== null) return;
+    setBusy(h.id);
+    try {
+      const r = await post<{ undo: number | null }>(`/api/habits/${h.id}`, body);
+      if ("finish" in body) {
+        if (stats === h.id) setStats(null);
+        if (editing === h.id) setEditing(null);
+      } else if (doneStats === h.id) setDoneStats(null);
+      say({ text: "finish" in body ? `«${h.title}» — в «Завершённых»` : `«${h.title}» снова идёт`, ...(r.undo ? { undo: r.undo } : {}) });
+      onChanged();
+    } catch (e) {
+      say({ text: `Не получилось: ${(e as Error).message}`, bad: true });
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function undo(id: number) {
+    setNote(null);
+    try {
+      await post("/api/undo", { messageId: id });
+      onChanged();
+    } catch (e) {
+      say({ text: `Не получилось отменить: ${(e as Error).message}`, bad: true });
+    }
+  }
+  function toggleDone(open: boolean) {
+    setDoneOpen(open);
+    saveDoneOpen(open);
   }
 
   // Пришли из виджета по «?h=12»: раскрыть статистику, прокрутить к строке и подсветить её; адрес — снова чистый «/habits».
+  // Завершённая — раскрыть «Завершённые» и её статистику, прокрутить к ней.
   useEffect(() => {
     const id = want.current;
     if (!data || id == null) return;
     want.current = null;
     history.replaceState(null, "", location.pathname);
-    if (!data.habits.some((h) => h.id === id)) return;
+    const place = habitPlace(data, id);
+    if (place === "finished") {
+      setDoneOpen(true);
+      setDoneStats(id);
+      scrollDone.current = id;
+      return;
+    }
+    if (place !== "grid") return;
     setStats(id);
     setFlash(id);
     requestAnimationFrame(() => document.querySelector(`[data-habit-row="${id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
     const t = setTimeout(() => setFlash(null), 2600);
     return () => clearTimeout(t);
   }, [data]);
+  useEffect(() => {
+    const id = scrollDone.current;
+    if (id == null || !doneOpen || doneStats !== id) return;
+    scrollDone.current = null;
+    requestAnimationFrame(() => document.querySelector(`[data-habit-row="${id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  }, [doneOpen, doneStats]);
 
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!data) return <Spinner />;
@@ -98,8 +168,15 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
         <button className="ghost hg-add" onClick={() => prefill(NEW_HABIT)} title="Напишите в строке ввода, что и когда: «каждый день в 8:00 зарядка», «по будням читать 20 минут до конца года»">+ Привычка</button>
       </div>
 
+      {note && (
+        <div className={`task-note hg-note ${note.bad ? "bad" : ""}`} role="status">
+          <span className="grow">{note.text}</span>
+          {note.undo !== undefined && <button className="link" onClick={() => undo(note.undo!)}>↩ Отменить</button>}
+        </div>
+      )}
+
       {data.habits.length === 0 ? (
-        <Card className="reveal"><Empty>Привычек пока нет. Напишите, например: «каждый будний день в 7:30 зарядка до конца года»</Empty></Card>
+        <Card className="reveal"><Empty>{data.finished?.length ? "Идущих привычек нет — завершённые ниже." : "Привычек пока нет."} Напишите, например: «каждый будний день в 7:30 зарядка до конца года»</Empty></Card>
       ) : (
         <Card className="reveal wide grid-card">
           <div className="habit-grid" style={{ gridTemplateColumns: `minmax(230px, 3fr) repeat(${days.length}, minmax(26px, 1fr))` }}>
@@ -140,6 +217,9 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                   <button className={`hg-bell hg-chart ${stats === h.id ? "on" : ""}`} onClick={() => setStats(stats === h.id ? null : h.id)} title="Статистика привычки: серии, год, дни недели">
                     📊 {stats === h.id ? "Скрыть" : "Статистика"}
                   </button>
+                  <button className="hg-bell hg-finish" disabled={busy === h.id} onClick={() => edit(h, { finish: true })} title="Завершить привычку: уйдёт из сетки в «Завершённые» со всеми отметками" aria-label="Завершить привычку">
+                    🏁
+                  </button>
                   </span>
                 </span>,
                 ...h.days.map((x, k) => (
@@ -147,9 +227,9 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                     key={`${h.id}-${x.day}`}
                     style={flash === h.id ? { animationDelay: `${k * 22}ms` } : undefined}
                     className={`hg-cell ${flash === h.id ? "hg-flash" : ""} ${x.due ? "due" : ""} ${x.status ?? ""} ${x.day === today ? "today hg-now" : ""} ${x.day > today ? "future" : ""} ${x.status === "done" && x.amount != null ? "num" : ""}`}
-                    disabled={x.day > today}
+                    disabled={x.day > today || x.day < h.start_date}
                     onClick={() => mark(h.id, x.day, x.status)}
-                    title={`${x.day}${x.status === "done" ? " — сделано" : x.status === "skipped" ? " — пропуск" : x.due ? " — запланировано" : ""}${x.amount != null ? ` · ${x.amount}${x.unit ? " " + x.unit : ""}` : ""}`}
+                    title={cellTitle(x)}
                   >
                     {x.status === "done" ? (x.amount != null ? shortNum(x.amount) : "✓") : x.status === "skipped" ? "–" : ""}
                   </button>
@@ -161,10 +241,42 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
               ];
             })}
           </div>
-          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск». Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить, 📊 — статистика привычки. Число в клетке — сколько сделали, если написали горничной: «прочитал 35 страниц».</p>
+          <p className="muted small">Щелчок по клетке — «сделал», ещё раз — «пропуск»; наведите — когда отметили. Серия 🔥 — сколько запланированных дней подряд сделано. 🔔 — когда напомнить, 📊 — статистика привычки, 🏁 — закончить. Число в клетке — сколько сделали, если написали горничной: «прочитал 35 страниц».</p>
+        </Card>
+      )}
+
+      {!!data.finished?.length && (
+        <Card className="reveal hg-done">
+          <details open={doneOpen} onToggle={(e) => toggleDone((e.currentTarget as HTMLDetailsElement).open)}>
+            <summary><b>Завершённые ({data.finished.length})</b></summary>
+            <ul className="hg-done-list">
+              {data.finished.map((f) => (
+                <FinishedRow key={f.id} f={f} open={doneStats === f.id} busy={busy === f.id} version={version}
+                  onStats={() => setDoneStats(doneStats === f.id ? null : f.id)} onReopen={() => edit(f, { reopen: true })} />
+              ))}
+            </ul>
+          </details>
         </Card>
       )}
     </div>
+  );
+}
+
+/** Строка «Завершённых»: «Название · 3 окт – 25 ноя · 42 из 50 (84 %)», «📊 Статистика» (панель под строкой) и «↺ Вернуть». */
+function FinishedRow({ f, open, busy, version, onStats, onReopen }: {
+  f: HabitFinished; open: boolean; busy: boolean; version: number; onStats: () => void; onReopen: () => void;
+}) {
+  return (
+    <li className="hg-done-row" data-habit-row={f.id}>
+      <div className="hg-done-head">
+        <span className="hg-done-text"><b>{f.title}</b><span className="muted"> · {finishedSummary(f)}</span></span>
+        <span className="hg-done-tools">
+          <button className={`hg-bell ${open ? "on" : ""}`} onClick={onStats} title="Статистика привычки за её срок">📊 {open ? "Скрыть" : "Статистика"}</button>
+          <button className="hg-bell" disabled={busy} onClick={onReopen} title="Вернуть в сетку: привычка снова идёт, без конца срока">↺ Вернуть</button>
+        </span>
+      </div>
+      {open && <HabitStatsPanel key={`d${f.id}-${version}`} id={f.id} finished />}
+    </li>
   );
 }
 

@@ -1714,7 +1714,7 @@ function render() {
     const name = i >= 0 ? `<span class="t">${esc(h.title)}</span>${sub}` : `<span class="t">${esc(h.title)}${sub}</span>`;
     if (go) return `<li class="habit ${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span>${name}</li>`;
     const fresh = habitArriving(h) ? ` arrive" data-arrive="h${h.id}` : "";
-    return `<li class="habit${h.status ? " did" : ""}${i < 0 ? flameRowClass(h) : ""}${fresh}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}${i < 0 ? flameTagHtml(h) : ""}</li>`;
+    return `<li class="habit${h.status ? " did" : ""}${i < 0 ? flameRowClass(h) : ""}${fresh}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${markAtHtml(h)}${name}${i < 0 ? flameTagHtml(h) : ""}</li>`;
   };
   const allTasks = taskRows();
   const later = allTasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -2343,6 +2343,12 @@ function ghostRow(box, old) {
     width: `${old.r.width}px`, margin: "0", padding: "0", pointerEvents: "none", zIndex: "3" });
   const done = () => wrap.remove();
   wrap.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(18px)" }], { duration: 520, delay: 120, easing: "ease-in", fill: "forwards" }).finished.then(done, done);
+}
+// Когда сделали привычку сегодня (26.11.2026): «✓ 21:14» — мелко сразу за галочкой. Время — с сервера (/api/today, at_time
+// «ЧЧ:ММ» в поясе человека); у пропуска и у полуночного минуса его нет. Ширина у всех строк одна (цифры одной ширины, flex: none),
+// при наведении не меняется ничего; старый сервер без at_time — строка как раньше.
+function markAtHtml(h) {
+  return h?.status === "done" && /^\d\d:\d\d$/.test(h.at_time ?? "") ? `<span class="mark-at" title="Сделано в ${h.at_time}">${h.at_time}</span>` : "";
 }
 // Привычки, отмеченные в этом окне, — когда (для порядка отмеченных). Перестройка списка привычек — плавная: строка едет
 // со старого места на новое (FLIP: запомнить места до перерисовки, после — сдвинуть обратно и отпустить).
@@ -3093,7 +3099,7 @@ async function editHabit(h, act, li) {
     const r = await maid.api("POST", `/api/habits/${h.id}`, body);
     const text = act === "quiet" ? `«${h.title}» — без напоминаний ✓`
       : act === "loud" ? `«${h.title}» — снова с напоминаниями ✓`
-        : act === "finish" ? `Закончила привычку «${h.title}». В истории она осталась со всеми отметками.`
+        : act === "finish" ? `Закончила привычку «${h.title}». Она на сайте в «Завершённых», со всеми отметками.`
           : `Удалила привычку «${h.title}».`;
     popTone(act === "delete" ? -1 : 2, { soft: act === "delete" });
     say(text, { ms: 5000, buttons: r.undo ? [{ text: "↩ Вернуть", run: () => undoHabit(h, r.undo) }] : [] });

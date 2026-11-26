@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { get, post } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
 import { SECTIONS, SECTION_ORDER, dateWhen, dur, metricText, money, parts, shortDay } from "../format";
+import { markTip } from "../habitview";
 import { navigate } from "../router";
 import type { EventRow, HabitToday, TaskRow, TodayData } from "../types";
 
@@ -386,6 +387,7 @@ function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; 
               <li key={h.id} className={`habit ${h.status ?? ""}`}>
                 <button className={`dot ${h.status ?? ""}`} onClick={() => toggle(h)} disabled={busy === h.id}
                   title={h.status ? "Снять отметку" : "Сделал"} aria-label={`${h.status ? "Снять отметку" : "Отметить"}: ${h.title}`} />
+                {h.status === "done" && h.at_time && <span className="habit-at" title={markTip(h)}>{h.at_time}</span>}
                 <span className="grow">{h.title}</span>
                 {c ? <span className="count">{c.done}/{c.total}</span> : h.streak >= 2 ? <span className="count fire">🔥 {h.streak}</span> : null}
               </li>

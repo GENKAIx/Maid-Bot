@@ -4,7 +4,7 @@ import type { LlmCall, Picture } from "./llm.ts";
 import type { DrawCall } from "./draw.ts";
 import { asUser, extractJson, llmErrorCode } from "./llm.ts";
 import { buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
-import { scheduleText } from "./habits.ts";
+import { finishPatch, habitBefore, markRefusal, reopenPatch, scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
 import { changesList, esc, upcomingDates, wholeSentences } from "./report.ts";
 import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
@@ -895,6 +895,12 @@ export class Pipeline {
     for (const m of r.marks) {
       const h = await s.habit(m.habitId);
       if (!h || h.user_id !== u.id) continue;
+      // Завершённую (день после конца), удалённую и день до начала не отметить — строкой в ответе, как у кнопок (markRefusal).
+      const refused = markRefusal(h, m.dayKey);
+      if (refused) {
+        markLines.push(`⛔ ${esc(h.title)}: ${esc(refused.charAt(0).toLowerCase() + refused.slice(1))}`);
+        continue;
+      }
       const { id, before } = await s.markHabit(h.id, m.dayKey, m.status, msg.id, m.amount ? { amount: m.amount, unit: m.unit } : undefined);
       await log("mark", "habit_marks", id, before ?? null);
       const much = m.amount ? ` · ${m.amount}${m.unit ? " " + m.unit : ""}` : "";
@@ -974,12 +980,20 @@ export class Pipeline {
         await s.setMemoryStatus(m.id, "superseded");
         await log("status", "memory", m.id, { status: "active" });
         editLines.push(`✖ забыла: ${esc(m.text)}`);
-      } else if (e.kind === "habit" && (e.action === "cancel" || e.action === "reopen")) {
+      } else if (e.kind === "habit" && (e.action === "cancel" || e.action === "reopen" || e.action === "done")) {
+        // «Бросаю/удали X» — cancel (удалить, stopped); «заверши/закончи X» — done (в «Завершённые», как «🏁 Завершить» на сайте:
+        // finishPatch); «верни/возобнови X» — reopen (reopenPatch: снова идёт, прошедший срок снят). Журнал помнит всё (habitBefore).
         const h = await s.habit(e.id);
         if (!h || h.user_id !== u.id) continue;
-        await s.updateHabit(h.id, { status: e.action === "cancel" ? "stopped" : "active" });
-        await log("status", "habits", h.id, { status: h.status });
-        editLines.push(e.action === "cancel" ? `✖ привычка остановлена: ${esc(h.title)}` : `↺ привычка снова идёт: ${esc(h.title)}`);
+        const today = dayKey(at, u.tz);
+        const patch = e.action === "cancel" ? { status: "stopped" } : e.action === "done" ? await finishPatch(s, h, today, at) : reopenPatch(h, today);
+        if (!patch) {
+          editLines.push(`🏁 привычка уже завершена: ${esc(h.title)}`);
+          continue;
+        }
+        await log(e.action === "done" ? "update" : "status", "habits", h.id, habitBefore(h));
+        await s.updateHabit(h.id, patch);
+        editLines.push(e.action === "cancel" ? `✖ привычка остановлена: ${esc(h.title)}` : e.action === "done" ? `🏁 привычка завершена: ${esc(h.title)}` : `↺ привычка снова идёт: ${esc(h.title)}`);
       } else if (e.kind === "habit" && (e.action === "rename" || e.action === "remind")) {
         // Как правка мышью (POST /api/habits/:id): журнал помнит название, время и «без напоминаний» — «Отменить» вернёт всё.
         const h = await s.habit(e.id);
@@ -1310,6 +1324,9 @@ export class Pipeline {
     const s = this.store;
     const h = await s.habit(habitId);
     if (!h || h.user_id !== u.id) return "Нет такой привычки.";
+    // Старая кнопка в Telegram у завершённой или удалённой привычки — короткий ответ, отметки нет (сайт получает 409 раньше, api.ts).
+    const refused = markRefusal(h, day);
+    if (refused) return refused;
     const { message } = await s.saveMessage({
       userId: u.id, source, sourceId: `mark:${habitId}:${day}:${Date.now()}`,
       text: `${status === "done" ? "✅" : "➖"} ${h.title}`, dayKey: day,
@@ -1327,6 +1344,9 @@ export class Pipeline {
   async habitLater(u: User, habitId: number, day: string, at = new Date()): Promise<string> {
     const h = await this.store.habit(habitId);
     if (!h || h.user_id !== u.id) return "Нет такой привычки.";
+    // Завершённая или удалённая — тот же короткий ответ, что у отметки (markRefusal), без обещания минуса.
+    const refused = markRefusal(h, day);
+    if (refused) return refused;
     const again = day === dayKey(at, u.tz) && timeOf(at, u.tz) < u.habit_last;
     return `⏳ ${esc(h.title)} — хорошо, ${again ? `спрошу ещё раз в ${u.habit_last}` : "подожду"}. Не отметите до 00:00 — поставлю минус.`;
   }

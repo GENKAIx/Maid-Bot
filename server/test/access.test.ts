@@ -66,9 +66,11 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     const old = await store.ensureUser("1", "Старый", TZ);
     await store.driver.exec("ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id;" +
       " ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; DROP TABLE payments; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
+    // Шаг 39 (habits.finished_at) — миграция добавит снова.
+    await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at;");
     await store.kvSet("schema_version", "26");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "38");
+    assert.equal(await again.kvGet("schema_version"), "39");
     const was = (await again.user(old.id))!;
     assert.deepEqual([was.plan, was.access_until, Number(was.sub_canceled), was.name], ["friend", null, 0, "Старый"]);
     assert.equal(accessOf(was, new Date(), []).ok, true);

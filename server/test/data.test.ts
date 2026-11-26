@@ -249,6 +249,8 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     // Как до шага 19: столбцов ещё нет (и столбцов шага 20), пользователи уже есть — после миграции у них свои цвета, остальное на месте.
     await store.driver.exec("ALTER TABLE users DROP COLUMN maid_hair; ALTER TABLE users DROP COLUMN maid_eyes;" +
       " ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask; ALTER TABLE users DROP COLUMN weather_rain;" + STEP24_DROP);
+    // Шаг 39 (habits.finished_at) — миграция добавит снова.
+    await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at;");
     await store.kvSet("schema_version", "18");
     const again = await Store.over(store.driver);
     const old = (await again.user(u.id))!;
@@ -262,6 +264,8 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     const { store, u } = await setup(open);
     assert.deepEqual([u.address, u.city, u.wake, u.bed, u.ask], ["master", "", 7, "auto", ""]);
     await store.driver.exec("ALTER TABLE users DROP COLUMN address; ALTER TABLE users DROP COLUMN city; ALTER TABLE users DROP COLUMN wake; ALTER TABLE users DROP COLUMN bed; ALTER TABLE users DROP COLUMN ask; ALTER TABLE users DROP COLUMN weather_rain;" + STEP24_DROP);
+    // Шаг 39 (habits.finished_at) — миграция добавит снова.
+    await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at;");
     await store.kvSet("schema_version", "19");
     const again = await Store.over(store.driver);
     const old = (await again.user(u.id))!;

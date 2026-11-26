@@ -768,6 +768,12 @@ CREATE TABLE IF NOT EXISTS openrouter_bill (
   PRIMARY KEY (day, model, provider)
 );
 `,
+  // Шаг 39: «Завершённые» привычки (26.11.2026, habits.ts habitFinished). finished_at — когда закончили вручную («🏁 Завершить»
+  // на сайте, «⏸ Закончить» в виджете, «заверши привычку X» в чате), UTC ISO; NULL — не заканчивали (кончившаяся по сроку
+  // end_date тоже завершена — без отметки времени). «↺ Вернуть» снова ставит NULL.
+  `
+ALTER TABLE habits ADD COLUMN finished_at TEXT;
+`,
 ];
 
 /** Строка «Счёта OpenRouter» (шаг 38, openrouter-bill.ts): день UTC × модель × провайдер; деньги — миллионные доллара. */
@@ -1041,6 +1047,8 @@ export interface HabitRow {
   message_id: number | null;
   /** 1 — «в список»: без напоминаний и вечерних вопросов. */
   quiet?: number;
+  /** Когда закончили вручную (UTC ISO); null — нет. Завершена ли — habits.ts habitFinished. */
+  finished_at?: string | null;
 }
 export interface ProposalRow {
   id: number;
@@ -1916,7 +1924,7 @@ export class Store {
   habit(id: number): Promise<HabitRow | undefined> {
     return this.get<HabitRow>("SELECT * FROM habits WHERE id = ?", id);
   }
-  async updateHabit(id: number, patch: Partial<Pick<HabitRow, "title" | "days" | "times" | "end_date" | "status" | "quiet">>) {
+  async updateHabit(id: number, patch: Partial<Pick<HabitRow, "title" | "days" | "times" | "end_date" | "status" | "quiet" | "finished_at">>) {
     for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE habits SET ${k} = ? WHERE id = ?`, v as never, id);
   }
   /** Привычки, которые идут в этот день (по датам; день недели проверяет habits.ts). */

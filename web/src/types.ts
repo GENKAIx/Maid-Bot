@@ -62,6 +62,22 @@ export interface HabitToday {
   planned: number;
   /** Курс со сроком («пить Аевит месяц»): каждый день срока; null — обычная привычка. */
   course?: { day: string; s: "done" | "miss" | "today" | "wait" | "rest" }[] | null;
+  /** Когда отметили (26.11.2026, сервер — в поясе человека): «ЧЧ:ММ»; at_day — день отметки «ГГГГ-ММ-ДД», только если
+   *  отметили задним числом. Нет отметки или минус в полночь — null. */
+  at_time?: string | null;
+  at_day?: string | null;
+}
+/** «Завершённые» на странице «Привычки» (GET /api/habits → finished): done из planned — за весь срок, best — лучшая серия. */
+export interface HabitFinished {
+  id: number;
+  title: string;
+  start_date: string;
+  end_date: string;
+  /** Когда закончили вручную (UTC ISO); null — кончилась по сроку сама. */
+  finished_at: string | null;
+  done: number;
+  planned: number;
+  best: number;
 }
 export interface MetricRow {
   id: number;
@@ -119,9 +135,12 @@ export interface HabitMonthRow {
 }
 export interface HabitMonth {
   month: string;
-  today: { habit: { id: number; title: string }; status: "done" | "skipped" | null; streak: number; doneDays: number; plannedDays: number }[];
-  /** amount — сколько сделано за день, если человек сам назвал число («прочитал 35 страниц»); unit — «стр.», «км». */
-  habits: (Omit<HabitMonthRow, "days_"> & { days: { day: string; due: boolean; status: string | null; amount?: number | null; unit?: string }[] })[];
+  today: { habit: { id: number; title: string }; status: "done" | "skipped" | null; streak: number; doneDays: number; plannedDays: number; at_time?: string | null; at_day?: string | null }[];
+  /** amount — сколько сделано за день, если человек сам назвал число («прочитал 35 страниц»); unit — «стр.», «км».
+   *  at_time / at_day — когда отметили (как HabitToday). Завершённых здесь нет — они в finished. */
+  habits: (Omit<HabitMonthRow, "days_"> & { days: { day: string; due: boolean; status: string | null; amount?: number | null; unit?: string; at_time?: string | null; at_day?: string | null }[] })[];
+  /** «Завершённые»: свежие (по концу срока) сверху. */
+  finished?: HabitFinished[];
   /** Общее время вопросов из настроек (habit_first, habit_last). */
   ask?: { first: string; last: string };
 }

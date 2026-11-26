@@ -3,6 +3,7 @@ import { get } from "../api";
 import { Bars } from "../charts";
 import { Spinner } from "../components";
 import { MONTHS, MONTHS_GEN, WEEKDAYS, shortDay } from "../format";
+import { daysBetween } from "../habitview";
 import type { HabitStatCell, HabitStats } from "../types";
 import { fullNum } from "./Habits";
 
@@ -26,7 +27,8 @@ function weakDay(w: HabitStats["weekdays"]): string | null {
   return `Чаще всего пропускаете ${["в понедельник", "во вторник", "в среду", "в четверг", "в пятницу", "в субботу", "в воскресенье"][worst.i]}: ${worst.p} % против ${Math.round(avg)} % в другие дни.`;
 }
 
-export function HabitStatsPanel({ id }: { id: number }) {
+/** finished — привычка из «Завершённых»: вместо серии сейчас и «за 30 дней» — сколько длилась и итог за срок. */
+export function HabitStatsPanel({ id, finished = false }: { id: number; finished?: boolean }) {
   const [s, setS] = useState<HabitStats | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -37,23 +39,33 @@ export function HabitStatsPanel({ id }: { id: number }) {
 
   return (
     <div className="hg-panel hs" style={{ gridColumn: "1 / -1" }}>
-      {error ? <p className="muted small">Не загрузилось: {error}</p> : !s ? <Spinner /> : <StatsBody s={s} />}
+      {error ? <p className="muted small">Не загрузилось: {error}</p> : !s ? <Spinner /> : <StatsBody s={s} finished={finished} />}
     </div>
   );
 }
 
-function StatsBody({ s }: { s: HabitStats }) {
+function StatsBody({ s, finished }: { s: HabitStats; finished: boolean }) {
   const p30 = pct(s.rate30);
   const all = pct(s.total);
   const hint = weakDay(s.weekdays);
+  const end = s.end_date ?? s.start_date;
+  const lasted = daysBetween(s.start_date, end) + 1;
   return (
     <>
-      <div className="hs-figures">
-        <Figure big={`🔥 ${s.streak}`} small={`${daysWord(s.streak)} подряд сейчас`} />
-        <Figure big={String(s.best)} small={`лучшая серия`} />
-        <Figure big={p30 === null ? "—" : `${p30} %`} small={`за 30 дней · ${s.rate30.done} из ${s.rate30.planned}`} />
-        <Figure big={all === null ? "—" : `${all} %`} small={`всего · ${s.total.done} из ${s.total.planned}, с ${shortDay(s.start_date)}`} />
-      </div>
+      {finished ? (
+        <div className="hs-figures">
+          <Figure big={`${lasted} ${daysWord(lasted)}`} small={`длилась · ${shortDay(s.start_date)} – ${shortDay(end)}`} />
+          <Figure big={String(s.best)} small={`лучшая серия`} />
+          <Figure big={all === null ? "—" : `${all} %`} small={`итог · ${s.total.done} из ${s.total.planned}`} />
+        </div>
+      ) : (
+        <div className="hs-figures">
+          <Figure big={`🔥 ${s.streak}`} small={`${daysWord(s.streak)} подряд сейчас`} />
+          <Figure big={String(s.best)} small={`лучшая серия`} />
+          <Figure big={p30 === null ? "—" : `${p30} %`} small={`за 30 дней · ${s.rate30.done} из ${s.rate30.planned}`} />
+          <Figure big={all === null ? "—" : `${all} %`} small={`всего · ${s.total.done} из ${s.total.planned}, с ${shortDay(s.start_date)}`} />
+        </div>
+      )}
       <YearGrid year={s.year} />
       <div className="hs-charts">
         <div>

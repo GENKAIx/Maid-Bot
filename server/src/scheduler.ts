@@ -1,5 +1,5 @@
 import type { EventRow, Store, User } from "./db.ts";
-import { habitLine, habitsOfDay } from "./habits.ts";
+import { habitLine, habitsOfDay, markRefusal } from "./habits.ts";
 import { asUser, type LlmCall } from "./llm.ts";
 import { persona, type Emotion } from "./personas.ts";
 import {
@@ -137,12 +137,13 @@ export async function snooze(store: Store, u: User, text: string, buttons: Butto
   await store.addReminder(u.id, "snooze", now.getTime(), due, text, buttons.length ? JSON.stringify(buttons) : "");
 }
 
-/** У напоминания кнопки вопроса про привычку (habit:ID:день:…), а на этот день она уже отмечена или привычки больше нет. */
+/** У напоминания кнопки вопроса про привычку (habit:ID:день:…), а на этот день она уже отмечена, привычки больше нет
+ *  или она завершена до этого дня (markRefusal). */
 export async function habitAnswered(store: Store, buttons: Button[] | undefined): Promise<boolean> {
   const m = buttons?.map((b) => /^habit:(\d+):(\d{4}-\d{2}-\d{2}):/.exec(b.data)).find(Boolean);
   if (!m) return false;
   const h = await store.habit(Number(m[1]));
-  if (!h || h.status !== "active") return true;
+  if (!h || markRefusal(h, m[2])) return true;
   return (await store.marksOf(h.user_id, m[2], m[2])).some((x) => x.habit_id === h.id);
 }
 
