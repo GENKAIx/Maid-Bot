@@ -4,10 +4,11 @@ import { Card, Chip, Empty, Spinner } from "../components";
 import { HEALTH_TOPICS, SECTIONS, SECTION_ORDER, WEEKDAYS, addDays, addMonths, dur, humanDay, metricText, money, monthGrid, monthTitle, todayKey } from "../format";
 import { navigate } from "../router";
 import { dayEmojis, emojiIcon, type DayEmoji, type Why } from "../dayEmoji";
+import { avgText, clearBadge, dayScores, monthAverage, scoreNum, scoreTip, scoreTone } from "../dayscore";
 import type { ActivityRow, DayData, DiaryRow, MetricRow } from "../types";
 import { EventList } from "./Today";
 
-// Дневник по дням: календарь с эмодзи дня (чем занимался — dayEmoji.ts), день — по разделам, показатели, деньги, компьютер.
+// Дневник по дням: календарь с эмодзи дня (чем занимался — dayEmoji.ts) и оценкой дня (кружок справа сверху — dayscore.ts), день — по разделам, показатели, деньги, компьютер.
 
 /** Эмодзи картинкой (Emoji Kitchen), без картинки — символом. */
 function Sticker({ emoji, style, data }: { emoji: string; style?: CSSProperties; data?: string }) {
@@ -34,6 +35,7 @@ function scatter(day: string, n: number) {
   for (const c of day) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
   const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296;
   const flip = n > 1 && rnd() < 0.5; // крупная то слева, то справа
+  if (n <= 0) return []; // пустая клетка (будущий или пустой день): наклеек нет, SPOTS[-1] уронил бы экран
   return SPOTS[Math.min(n, CELL_MAX) - 1].map(([x, y, s]) => ({
     x: (flip ? 100 - x : x) + (rnd() - 0.5) * 6,
     y: (flip && y < 50 ? y + 4 : y) + (rnd() - 0.5) * 6, // слева сверху — число дня
@@ -108,6 +110,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
 
   useEffect(() => setMonth(current.slice(0, 7)), [current]);
   const [emojis, setEmojis] = useState<Map<string, DayEmoji[]>>(new Map());
+  const [scores, setScores] = useState<Map<string, number>>(new Map());
   useEffect(() => {
     get<{ day: string; n: number }[]>("/api/diary/days").then((rows) => setDays(new Map(rows.map((r) => [r.day, r.n])))).catch(() => {});
   }, [version]);
@@ -120,8 +123,8 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
       get<ActivityRow[]>(`/api/activity?from=${from}&to=${to}`).catch(() => []),
       get<{ rows: MetricRow[] }>(`/api/metrics?from=${from}&to=${to}`).then((m) => m.rows).catch(() => []),
     ])// Все — для итога дня и счёта месяца; календарь показывает первые CELL_MAX.
-      .then(([d, a, m]) => alive && setEmojis(dayEmojis(d, a, m, 99)))
-      .catch(() => alive && setEmojis(new Map()));
+      .then(([d, a, m]) => { if (alive) { setEmojis(dayEmojis(d, a, m, 99)); setScores(dayScores(m)); } })
+      .catch(() => { if (alive) { setEmojis(new Map()); setScores(new Map()); } });
     return () => { alive = false; };
   }, [month, version]);
   useEffect(() => {
@@ -132,6 +135,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
   }, [current, version]);
 
   const grid = useMemo(() => monthGrid(month), [month]);
+  const avg = useMemo(() => monthAverage(scores, month), [scores, month]);
   const top = useMemo(() => {
     const c = new Map<string, number>();
     for (const [d, list] of emojis) if (d.startsWith(month)) for (const e of list) c.set(e.emoji, (c.get(e.emoji) ?? 0) + 1);
@@ -182,11 +186,15 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
               // У подсвеченного дня выбранный значок — первым (крупным), даже если он не в первых CELL_MAX.
               const em = (match ? [...all.filter((e) => e.emoji === only), ...all.filter((e) => e.emoji !== only)] : all).slice(0, CELL_MAX);
               const n = days.get(k) ?? 0;
-              const tip = all.length ? all.map((e) => `${e.emoji} ${e.what}`).join("\n") : n ? `записей: ${n}` : "";
+              const score = scores.get(k);
+              const tip = [all.length ? all.map((e) => `${e.emoji} ${e.what}`).join("\n") : n ? `записей: ${n}` : "", score !== undefined ? scoreTip(score) : ""].filter(Boolean).join("\n");
+              // Выбранный в фильтре значок крупнее (×1,3) — увеличение до clearBadge, чтобы и крупная наклейка обходила кружок оценки.
+              const grow = (j: number) => (match && j === 0 ? 1.3 : 1);
+              const spots = scatter(k, em.length).map((p, j) => ({ ...p, s: p.s * grow(j) }));
               return (
                 <button
                   key={k}
-                  className={`cal-day ${k === current ? "on" : ""} ${k === today ? "today" : ""} ${k > today ? "future" : ""} ${em.length ? "has" : ""} ${match ? "match" : ""}`}
+                  className={`cal-day ${k === current ? "on" : ""} ${k === today ? "today" : ""} ${k > today ? "future" : ""} ${em.length ? "has" : ""} ${match ? "match" : ""} ${score !== undefined ? "rated" : ""}`}
                   onClick={(ev) => {
                     // Щелчок по наклейке — открыть, почему она здесь.
                     const hit = (ev.target as HTMLElement).closest<HTMLElement>("[data-emoji]")?.dataset.emoji;
@@ -197,10 +205,11 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
                   title={tip || undefined}
                 >
                   <span className="cal-num">{Number(k.slice(-2))}</span>
+                  {score !== undefined && <span className={`cal-score ${scoreTone(score)}`} aria-label={scoreTip(score)}>{scoreNum(score)}</span>}
                   {em.length > 0 ? (
                     <span className="cal-stickers">
-                      {scatter(k, em.length).map((p, j) => (
-                        <Sticker key={em[j].emoji} emoji={em[j].emoji} data={em[j].emoji} style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.s * (match && j === 0 ? 1.3 : 1)}%`, rotate: `${p.r}deg`, zIndex: CELL_MAX - j, fontSize: `${p.s * 0.7}cqw` }} />
+                      {(score !== undefined ? clearBadge(spots) : spots).map((p, j) => (
+                        <Sticker key={em[j].emoji} emoji={em[j].emoji} data={em[j].emoji} style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.s}%`, rotate: `${p.r}deg`, zIndex: CELL_MAX - j, fontSize: `${(p.s / grow(j)) * 0.7}cqw` }} />
                       ))}
                     </span>
                   ) : n > 0 && <i className="dot" style={{ opacity: Math.min(1, 0.35 + n / 6) }} />}
@@ -221,7 +230,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
             )}
             {only
               ? <span className="cal-only">Дней с <Sticker emoji={only} />: {onlyDays} <button className="ghost" onClick={() => setOnly(null)} aria-label="Показать все дни">✕</button></span>
-              : <span>Дней с записями: {days.size}</span>}
+              : <span>Дней с записями: {days.size}{avg !== undefined && <>, средняя оценка за месяц: {avgText(avg)}</>}</span>}
           </div>
         </aside>
 

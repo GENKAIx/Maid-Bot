@@ -31,6 +31,13 @@
   --error: #b83a4c;
   --toast-bad: #8f2236;
   --backdrop: rgba(40, 30, 60, .35);
+  /* Оценка дня в «Дневнике»: расходящаяся шкала — две красные ступени, серая середина, две зелёные (dayscore.ts, scoreTone).
+     Проверено validate_palette.js на фоне клетки --panel-2; число в кружке — своим цветом (--score-*-ink), контраст WCAG ≥ 4,8. */
+  --score-low2: #c23347; --score-low2-ink: #fff;
+  --score-low1: #e87a87; --score-low1-ink: #1d1830;
+  --score-mid: #746e86; --score-mid-ink: #fff;
+  --score-high1: #4fb882; --score-high1-ink: #1d1830;
+  --score-high2: #1d7f50; --score-high2-ink: #fff;
   color-scheme: light;
   font-family: "Onest Variable", "Segoe UI", -apple-system, system-ui, sans-serif;
 }
@@ -60,6 +67,12 @@
   --error: #ff8a9a;
   --toast-bad: #8f2236;
   --backdrop: rgba(0, 0, 0, .55);
+  /* На тёмном края шкалы — самые яркие, ближние к середине ступени — приглушённые. */
+  --score-low2: #f06a7c; --score-low2-ink: #1d1830;
+  --score-low1: #a8414f; --score-low1-ink: #fff;
+  --score-mid: #575070; --score-mid-ink: #fff;
+  --score-high1: #26784f; --score-high1-ink: #fff;
+  --score-high2: #5fd69a; --score-high2-ink: #1d1830;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -287,9 +300,21 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 @media (prefers-reduced-motion: reduce) { .cal-day:hover .cal-stickers .sticker { transform: none; } }
 .cal-day.today .cal-num { color: #fff; background: var(--accent-fill); border-radius: 99px; padding: 2px 5px; font-weight: 700; }
 .cal-day.today:not(.has) .cal-num { padding: 4px 8px; }
+/* Клетка с оценкой: число дня всегда слева сверху (и без эмодзи), пилюля «сегодня» узкая — не заходит под кружок справа. */
+.cal-day.rated:not(.has) .cal-num { position: absolute; font-size: 11px; }
+.cal-day.rated.today .cal-num { padding: 2px 5px; }
 .cal-day.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
 .cal-day.future { background: transparent; }
 .cal-day.future .cal-num { color: var(--grey); }
+.cal-score { position: absolute; top: 4px; right: 4px; z-index: 5; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 10.5px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; pointer-events: none; }
+.cal-score.low2 { background: var(--score-low2); color: var(--score-low2-ink); }
+.cal-score.low1 { background: var(--score-low1); color: var(--score-low1-ink); }
+.cal-score.mid { background: var(--score-mid); color: var(--score-mid-ink); }
+/* Серая середина в тёмной теме почти сливается с клеткой — тонкое светлое кольцо держит кружок (26.11.2026). */
+.cal-score.mid { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
+.cal-score.high1 { background: var(--score-high1); color: var(--score-high1-ink); }
+.cal-score.high2 { background: var(--score-high2); color: var(--score-high2-ink); }
 .cal-day .dot { position: absolute; left: 50%; bottom: 7px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--accent); }
 .day-stickers { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .ds-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -526,12 +551,21 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
   .cards { grid-template-columns: 1fr; }
   .diary-layout { grid-template-columns: 1fr; }
   .calendar { position: static; }
-  .cal-day.has .cal-num { font-size: 10px; top: 3px; left: 4px; }
+  .cal-day.has .cal-num, .cal-day.rated:not(.has) .cal-num { font-size: 10px; top: 3px; left: 4px; }
+  .cal-day.rated.today .cal-num { padding: 2px 3px; }
+  .cal-score { top: 3px; right: 3px; width: 15px; height: 15px; font-size: 9px; }
   .rings { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 12px 6px; justify-items: center; padding: 14px 10px; }
   .rings .ring { width: 64px !important; }
   .rings .ring svg { width: 64px; height: 64px; }
   .composer-wrap { padding: 6px 10px 8px; }
   .diary-section li.entry .tiny { opacity: 1; }
+}
+@media (max-width: 400px) {
+  /* клетка ~33 px при 320 px: число 9 px с x 3, кружок 12 px с правым краем 2 — между ними зазор */
+  .cal-day.rated .cal-num, .cal-day.rated:not(.has) .cal-num { top: 3px; left: 3px; font-size: 9px; }
+  .cal-day.rated.today .cal-num { padding: 1px 1px; left: 2px; } /* «26» в пилюле ≈14 px: кончается до кружка (x 18,6 при 320 px) */
+  /* 320 px: кружок в самый угол, чтобы «15» и пилюля «сегодня» его не касались. */
+  .cal-score { top: 1px; right: 1px; width: 12px; height: 12px; font-size: 8px; }
 }
 
 /* вторая пачка: планы, здоровье, деньги, статистика */
