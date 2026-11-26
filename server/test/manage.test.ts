@@ -268,7 +268,7 @@ test("объявления: кому и где; сайт — свои плашк
   try {
     resetAnnounceCache();
     const p = await people(store);
-    const now = new Date();
+    const now = NOW; // люди из people() заведены от NOW — проба до NOW + 2 дня, а не от настоящего времени
     const add = (audience: string, site: boolean, widget: boolean, text: string, ends: string | null = null) => store.addAnnouncement({ text, audience, site, widget, ends_at: ends, at: now, by: 1 });
     const all = await add("all", true, true, "Ночью обновляю сервер");
     await add("paid", true, false, "Спасибо подписчикам");
