@@ -10,12 +10,16 @@ import { addDays } from "./time.ts";
 // выключен), да и установщик на сервере лежит один, последний.
 // Файл на диске не меняется: сервер при отдаче /desktop/latest.yml подставляет процент из настройки выпуска (kv «desktop:release»).
 // Новая версия в latest.yml (не та, что в настройке) — сервер сам начинает выпуск: процент — из stagingPercentage файла (его пишет
-// tools/release-desktop.py, по умолчанию 20) или RELEASE_START_PERCENT. Самая первая версия, которую сервер видит без настройки, считается
-// уже выпущенной (100%) — иначе выкладка сервера с этой правкой вдруг закрыла бы обновление 80% людей.
+// tools/release-desktop.py: по умолчанию 100 — сразу всем, поэтапно — только с --percent=N) или RELEASE_START_PERCENT (тоже 100: решение
+// владельца 26.11.2026 — «делай всегда для 100%, если я не прошу об обратном»). Самая первая версия, которую сервер видит без настройки,
+// тоже считается выпущенной (100%).
+// «Что нового» (26.11.2026): у выпуска — короткий список пунктов для владельца. tools/release-desktop.py кладёт рядом с latest.yml файл
+// notes-<версия>.json ({ version, notes }); сервер, впервые увидев версию, переносит пункты в историю (kv «desktop:release-notes», последние
+// RELEASE_NOTES_KEEP). Правка — в админке «Выпуски» с причиной (журнал release_notes). Пока истории в базе нет — она начинается с NOTES_SEED.
 // Процент, пауза и «продолжить» — в админке «Выпуски» с причиной (журнал админа). Автопауза — правило оповещений release_crash (alerts.ts).
 
 export const RELEASE_KEY = "desktop:release";
-export const RELEASE_START_PERCENT = 20;
+export const RELEASE_START_PERCENT = 100;
 /** Автопауза: людей с падением на новой версии — не меньше стольких (иначе «в 2 раза» от одного человека). */
 export const RELEASE_CRASH_MIN_USERS = 3;
 /** Окно сравнения долей падений новой и прошлой версии, дней. */
@@ -79,9 +83,13 @@ export async function readRelease(store: Pick<Store, "kvGet">): Promise<Release 
 }
 const saveRelease = (store: Pick<Store, "kvSet">, r: Release) => store.kvSet(RELEASE_KEY, JSON.stringify(r));
 
-/** Настройка выпуска для версии из latest.yml: та же — как есть; другая — новый выпуск (с процентом из файла или по умолчанию);
- *  настройки нет — эта версия считается выпущенной (100%). Начало выпуска — в журнал админа от сервера (один раз на версию). */
-export async function releaseFor(store: Store, yml: string, now = new Date()): Promise<Release | null> {
+/** Пункты «что нового» из notes-<версия>.json рядом с latest.yml (api.ts читает файл); нет файла — null. */
+export type NotesOf = (version: string) => Promise<string[] | null>;
+
+/** Настройка выпуска для версии из latest.yml: та же — как есть; другая — новый выпуск (с процентом из файла или по умолчанию — 100%);
+ *  настройки нет — эта версия считается выпущенной (100%). Начало выпуска — в журнал админа от сервера (один раз на версию);
+ *  пункты «что нового» новой версии (notesOf) — в историю выпусков. */
+export async function releaseFor(store: Store, yml: string, now = new Date(), notesOf?: NotesOf): Promise<Release | null> {
   const v = ymlVersion(yml);
   if (!v) return null;
   const cur = await readRelease(store);
@@ -96,6 +104,7 @@ export async function releaseFor(store: Store, yml: string, now = new Date()): P
     auto_paused_at: null, updated_at: now.toISOString(), by: 0,
   };
   await saveRelease(store, r);
+  await noteRelease(store, v, (await notesOf?.(v).catch(() => null)) ?? [], now);
   if (await store.once(`release-start:${v}`)) {
     await store.addAdminLog(0, "release_start", first ? `${v}: первая известная версия — 100%` : `${v}: ${r.paused ? "на паузе" : `${r.percent}%`}, прошлая ${r.prev}`,
       now, first ? "сервер увидел версию без настройки выпуска" : "в latest.yml новая версия");
@@ -104,8 +113,8 @@ export async function releaseFor(store: Store, yml: string, now = new Date()): P
 }
 
 /** latest.yml для отдачи: процент из настройки выпуска подставлен (файл на диске тот же). */
-export async function servedYml(store: Store, yml: string, now = new Date()): Promise<string> {
-  const r = await releaseFor(store, yml, now);
+export async function servedYml(store: Store, yml: string, now = new Date(), notesOf?: NotesOf): Promise<string> {
+  const r = await releaseFor(store, yml, now, notesOf);
   return r ? withStaging(yml, servedPercent(r)) : yml;
 }
 
@@ -181,17 +190,143 @@ export async function autoPause(store: Store, why: string, now = new Date()): Pr
 }
 
 /** Раздел «Выпуски»: настройка, что сейчас в latest.yml и что отдаётся, люди по версиям за 7 дней, доли падений новой и прошлой. */
-export async function releasesView(store: Store, yml: string | null, now = new Date()) {
+export async function releasesView(store: Store, yml: string | null, now = new Date(), notesOf?: NotesOf) {
   const file = yml ? ymlVersion(yml) : null;
-  const r = yml ? await releaseFor(store, yml, now) : await readRelease(store);
+  const r = yml ? await releaseFor(store, yml, now, notesOf) : await readRelease(store);
+  // Файл заметок мог лечь позже latest.yml — пустые пункты выпускаемой версии дозаполняются из файла, пока их никто не правил.
+  if (r && notesOf) {
+    const have = (await readNotes(store)).find((x) => x.version === r.version);
+    if (!have || (!have.notes.length && !have.edited_at)) {
+      const notes = await notesOf(r.version).catch(() => null);
+      if (notes?.length || !have) await noteRelease(store, r.version, notes ?? [], new Date(r.started_at));
+    }
+  }
   const vers = (await store.crashVersions(addDays(now.toISOString().slice(0, 10), -6))).sort((a, b) => cmpVersion(b.version, a.version));
   const people = vers.reduce((s, v) => s + v.active, 0);
   const crash = r ? await releaseCrashes(store, r, now) : null;
   return {
     release: r, file_version: file, served: servedPercent(r), start_percent: RELEASE_START_PERCENT,
+    notes: await readNotes(store), notes_max_items: NOTES_MAX_ITEMS, notes_max_len: NOTE_MAX_LEN,
     min_users: RELEASE_CRASH_MIN_USERS, crash_days: RELEASE_CRASH_DAYS,
     versions: vers.map((v) => ({ version: v.version, active: v.active, share_people: people ? v.active / people : 0, crashed: v.crashed, crash_share: crashShare(v) })),
     crash: crash && { version: crash.cur.version, active: crash.cur.active, crashed: crash.cur.crashed, share: crash.curShare,
       prev: crash.prev && { version: crash.prev.version, active: crash.prev.active, crashed: crash.prev.crashed, share: crash.prevShare } },
   };
+}
+
+// ——— «Что нового» в выпуске (26.11.2026).
+
+export const RELEASE_NOTES_KEY = "desktop:release-notes";
+/** Сколько выпусков хранится в истории (старые уходят). */
+export const RELEASE_NOTES_KEEP = 30;
+/** Пунктов у выпуска — не больше (советуем 3–7). Копии — web/src/admin.ts и tools/release-desktop.py. */
+export const NOTES_MAX_ITEMS = 12;
+/** Длина пункта, знаков. */
+export const NOTE_MAX_LEN = 200;
+
+export interface ReleaseNotes {
+  version: string;
+  /** Когда сервер впервые увидел версию (ISO). */
+  date: string;
+  notes: string[];
+  /** Когда пункты правили в админке; null — как пришли с выпуском. */
+  edited_at: string | null;
+  /** Кто правил последним: #id админа, 0 — пришли с выпуском. */
+  by: number;
+}
+
+/** Уже вышедшие версии, у которых файла заметок не было (выпуски до 26.11.2026): пока истории в базе нет, она начинается с них. */
+export const NOTES_SEED: readonly ReleaseNotes[] = [
+  {
+    version: "0.1.94", date: "2026-11-26T15:03:16.000Z", edited_at: null, by: 0,
+    notes: [
+      "Плашки задач под ответом горничной больше не шире самого сообщения.",
+      "Когда горничная пишет, что задача «уже в списке», рядом стрелка «↗» — щелчок открывает эту задачу.",
+      "Окошко «Сегодня» больше не прыгает, когда на него наводишь мышь.",
+    ],
+  },
+  {
+    version: "0.1.93", date: "2026-11-24T19:50:35.000Z", edited_at: null, by: 0,
+    notes: [
+      "Программа сама сообщает о падениях: только тип ошибки и место в коде, без текстов и путей с компьютера.",
+      "Обновления можно выпускать поэтапно: сначала части людей, с паузой, если новая версия падает чаще.",
+    ],
+  },
+];
+
+const HTML_TAG = /<[a-z!/?]/i;
+/** Пункты «что нового»: строки обрезаются, «- »/«• »/«* » в начале убираются, пустые выбрасываются. Ошибка — текстом:
+ *  больше NOTES_MAX_ITEMS пунктов, пункт длиннее NOTE_MAX_LEN, похоже на HTML. */
+export function cleanNotes(x: unknown): { notes: string[]; error: string | null } {
+  const raw = Array.isArray(x) ? x : typeof x === "string" ? x.split(/\r?\n/) : null;
+  if (!raw || raw.some((n) => typeof n !== "string")) return { notes: [], error: "пункты — список строк" };
+  const notes = (raw as string[]).map((n) => n.replace(/^\s*(?:[-•*]\s+)?/, "").trim()).filter(Boolean);
+  if (notes.length > NOTES_MAX_ITEMS) return { notes, error: `пунктов — не больше ${NOTES_MAX_ITEMS}` };
+  const long = notes.findIndex((n) => n.length > NOTE_MAX_LEN);
+  if (long >= 0) return { notes, error: `пункт ${long + 1} длиннее ${NOTE_MAX_LEN} знаков` };
+  if (notes.some((n) => HTML_TAG.test(n))) return { notes, error: "без HTML: только простой текст" };
+  return { notes, error: null };
+}
+
+/** Содержимое notes-<версия>.json: { version, notes } той же версии с годными пунктами — пункты; иначе null. */
+export function notesFile(text: string, version: string): string[] | null {
+  try {
+    const j = JSON.parse(text) as { version?: unknown; notes?: unknown } | null;
+    if (j?.version !== version) return null;
+    const c = cleanNotes(j.notes);
+    return c.error ? null : c.notes;
+  } catch {
+    return null;
+  }
+}
+
+const isNotes = (x: unknown): x is ReleaseNotes => {
+  const n = x as ReleaseNotes | null;
+  return Boolean(n) && VERSION.test(String(n!.version)) && typeof n!.date === "string" && Array.isArray(n!.notes) && n!.notes.every((s) => typeof s === "string");
+};
+const byVersionDesc = (a: ReleaseNotes, b: ReleaseNotes) => cmpVersion(b.version, a.version);
+
+/** История выпусков, новые сверху (не больше RELEASE_NOTES_KEEP). Записи в базе ещё нет — NOTES_SEED. */
+export async function readNotes(store: Pick<Store, "kvGet">): Promise<ReleaseNotes[]> {
+  const raw = await store.kvGet(RELEASE_NOTES_KEY);
+  if (raw == null) return NOTES_SEED.map((n) => ({ ...n, notes: [...n.notes] }));
+  try {
+    const list = JSON.parse(raw) as unknown;
+    return Array.isArray(list) ? list.filter(isNotes).sort(byVersionDesc).slice(0, RELEASE_NOTES_KEEP) : [];
+  } catch {
+    return [];
+  }
+}
+const saveNotes = (store: Pick<Store, "kvSet">, list: ReleaseNotes[]) =>
+  store.kvSet(RELEASE_NOTES_KEY, JSON.stringify([...list].sort(byVersionDesc).slice(0, RELEASE_NOTES_KEEP)));
+
+/** Выпуск в историю: версии нет — заводится (с пунктами из файла или пустая); есть — пункты из файла заменяют прежние (пустые или из
+ *  NOTES_SEED). Пункты, которые правил админ, файл не перетирает; пустой файл ничего не стирает. */
+export async function noteRelease(store: Store, version: string, notes: string[], now = new Date()): Promise<void> {
+  const list = await readNotes(store);
+  const have = list.find((x) => x.version === version);
+  if (have) {
+    if (have.edited_at || !notes.length || JSON.stringify(have.notes) === JSON.stringify(notes)) return;
+    have.notes = notes;
+  } else list.push({ version, date: now.toISOString(), notes, edited_at: null, by: 0 });
+  await saveNotes(store, list);
+}
+
+/** Изменить «что нового» из админки: { version, notes (список или текст — пункт на строку), reason }. Версия — из истории.
+ *  В журнал — release_notes: версия и сколько пунктов было и стало (сами пункты — в истории). */
+export async function editNotes(store: Store, adminId: number, body: unknown, now = new Date()): Promise<ReleaseNotes> {
+  const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const reason = reasonOf(b.reason);
+  const v = typeof b.version === "string" ? b.version : "";
+  const list = await readNotes(store);
+  const have = list.find((x) => x.version === v);
+  if (!have) throw new ReleaseError(404, `выпуска ${VERSION.test(v) ? v : "с таким номером"} нет в истории`);
+  const c = cleanNotes(b.notes);
+  if (c.error) throw new ReleaseError(400, c.error);
+  if (JSON.stringify(c.notes) === JSON.stringify(have.notes)) throw new ReleaseError(400, "ничего не изменилось");
+  const was = have.notes.length;
+  Object.assign(have, { notes: c.notes, edited_at: now.toISOString(), by: adminId });
+  await saveNotes(store, list);
+  await store.addAdminLog(adminId, "release_notes", `${v}: пунктов ${was} → ${c.notes.length}`, now, reason);
+  return have;
 }

@@ -42,7 +42,7 @@ import { applyTariffs, TariffError, tariffs, tariffsView, undoTariff } from "./t
 import { AlertError, Alerts } from "./alerts.ts";
 import { DbCopies, DbCopyBusy } from "./snapshot.ts";
 import { acceptCrashes, adminCrashes, CRASH_MAX_ITEMS, noteDesktopDay } from "./crashes.ts";
-import { changeRelease, ReleaseError, releasesView, servedYml, ymlVersion } from "./releases.ts";
+import { changeRelease, editNotes, notesFile, ReleaseError, releasesView, servedYml, ymlVersion } from "./releases.ts";
 import { setSwitch, SwitchError, switchesView, switchOffText, switchOn } from "./switches.ts";
 import { createPromo, PromoError, promoView, redeemPromo, togglePromo } from "./promo.ts";
 import { createTicket, SupportError, supportOf, ticketAction, ticketCard, ticketsView } from "./support.ts";
@@ -503,16 +503,18 @@ export function createApi(deps: ApiDeps) {
     // Падения программы на ПК (этап 5, crashes.ts): по версиям, места, по дням (?days=, до 90). Только числа.
     if (m === "GET" && p === "/api/admin/crashes") return adminCrashes(store, days);
     // Поэтапный выпуск (этап 5, releases.ts): настройка, что в latest.yml, люди по версиям; POST — процент или пауза с причиной.
-    if (m === "GET" && p === "/api/admin/releases") return releasesView(store, await desktopYml());
-    if (m === "POST" && p === "/api/admin/releases") {
+    // «Что нового» (26.11.2026): POST /api/admin/releases/notes { version, notes, reason } — пункты выпуска из истории.
+    if (m === "GET" && p === "/api/admin/releases") return releasesView(store, await desktopYml(), new Date(), desktopNotes);
+    if (m === "POST" && (p === "/api/admin/releases" || p === "/api/admin/releases/notes")) {
       const b = await readJson(req, 20_000);
       try {
-        await changeRelease(store, u.id, b);
+        if (p.endsWith("/notes")) await editNotes(store, u.id, b);
+        else await changeRelease(store, u.id, b);
       } catch (e) {
         if (e instanceof ReleaseError) throw new HttpError(e.status, e.message);
         throw e;
       }
-      return releasesView(store, await desktopYml());
+      return releasesView(store, await desktopYml(), new Date(), desktopNotes);
     }
     // Этап 6 «Тарифы и управление»: переключатели функций (switches.ts), промокоды (promo.ts), обращения (support.ts), объявления
     // (announce.ts), прогноз (prognosis.ts). Каждое действие — с причиной, сервер пишет его в журнал админа.
@@ -560,6 +562,10 @@ export function createApi(deps: ApiDeps) {
 
   /** latest.yml из папки обновлений (как есть) или null — нет папки или файла. */
   const desktopYml = async () => (deps.desktopDir ? fs.promises.readFile(path.join(deps.desktopDir, "latest.yml"), "utf8").catch(() => null) : null);
+  /** «Что нового» выпуска: notes-<версия>.json рядом с latest.yml (tools/release-desktop.py; наружу не отдаётся — serveDesktop берёт
+   *  только latest.yml и .exe). Нет файла или он не годится — null. Версия уже проверена (releases.ts ymlVersion). */
+  const desktopNotes = async (v: string) =>
+    deps.desktopDir ? notesFile((await fs.promises.readFile(path.join(deps.desktopDir, `notes-${v}.json`), "utf8").catch(() => "")) || "null", v) : null;
   /** Выпущенная версия программы (из latest.yml; перечитывается, только когда файл изменился) — падения и дни программы новее неё
    *  не принимаются (crashes.ts versionOk). Нет файла — null (сверять не с чем). */
   let knownYml: { stamp: string; version: string | null } | null = null;
@@ -613,7 +619,7 @@ export function createApi(deps: ApiDeps) {
         throw new HttpError(404, "нет такого файла");
       }
       if (p.startsWith("/desktop/")) {
-        if (m === "GET" && (await serveDesktop(deps.desktopDir ?? "", p, res, (t) => servedYml(store, t).catch((e) => (console.error("[release]", e), t))))) return undefined;
+        if (m === "GET" && (await serveDesktop(deps.desktopDir ?? "", p, res, (t) => servedYml(store, t, new Date(), desktopNotes).catch((e) => (console.error("[release]", e), t))))) return undefined;
         throw new HttpError(404, "нет такого файла");
       }
       if (m === "GET" && (await serveStatic(deps.webDir ?? "", p, res))) return undefined;

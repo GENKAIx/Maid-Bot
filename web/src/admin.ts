@@ -95,6 +95,7 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   release_pause: "поставил выпуск на паузу",
   release_resume: "продолжил выпуск",
   release_autopause: "поставил выпуск на паузу из-за падений",
+  release_notes: "изменил «что нового» выпуска",
   switch_on: "включил функцию",
   switch_off: "выключил функцию",
   promo_create: "создал промокод",
@@ -113,8 +114,12 @@ export const ADMIN_ACTIONS: Record<string, string> = {
 export interface ReleaseInfo {
   version: string; percent: number; paused: boolean; started_at: string; prev: string; auto_paused_at: string | null; updated_at: string; by: number;
 }
+/** Пункты «что нового» выпуска (server/src/releases.ts ReleaseNotes): edited_at — правили в админке, by — #id админа (0 — пришли с выпуском). */
+export interface ReleaseNotesInfo { version: string; date: string; notes: string[]; edited_at: string | null; by: number }
 export interface ReleasesData {
   release: ReleaseInfo | null; file_version: string | null; served: number | null; start_percent: number; min_users: number; crash_days: number;
+  /** История выпусков, новые сверху (не больше 30). */
+  notes: ReleaseNotesInfo[]; notes_max_items: number; notes_max_len: number;
   versions: { version: string; active: number; share_people: number; crashed: number; crash_share: number }[];
   crash: { version: string; active: number; crashed: number; share: number; prev: { version: string; active: number; crashed: number; share: number } | null } | null;
 }
@@ -169,6 +174,17 @@ export function percentError(text: string): string | null {
   if (!text.trim() || !Number.isFinite(v)) return "нужно число";
   if (!Number.isInteger(v)) return "целое число";
   if (v < 1 || v > 100) return "от 1 до 100";
+  return null;
+}
+
+/** «Что нового» из поля правки: пункт на строку, «- »/«• »/«* » в начале и пустые строки убираются (как server/src/releases.ts cleanNotes). */
+export const notesFromText = (text: string): string[] => text.split(/\r?\n/).map((n) => n.replace(/^\s*(?:[-•*]\s+)?/, "").trim()).filter(Boolean);
+/** Проверка пунктов до отправки: null — годятся; иначе почему нет (те же пределы, что на сервере: NOTES_MAX_ITEMS, NOTE_MAX_LEN, без HTML). */
+export function notesError(notes: string[], maxItems = 12, maxLen = 200): string | null {
+  if (notes.length > maxItems) return `пунктов — не больше ${maxItems}`;
+  const long = notes.findIndex((n) => n.length > maxLen);
+  if (long >= 0) return `пункт ${long + 1} длиннее ${maxLen} знаков`;
+  if (notes.some((n) => /<[a-z!/?]/i.test(n))) return "без HTML: только простой текст";
   return null;
 }
 

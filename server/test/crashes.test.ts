@@ -148,8 +148,8 @@ test("выпуск: stagingPercentage в latest.yml — разбор и подс
     // Первая версия без настройки — уже выпущена (100%, без строки), иначе выкладка сервера закрыла бы обновление.
     assert.equal(await servedYml(store, YML.replace(/0\.1\.93/g, "0.1.92"), NOW), YML.replace(/0\.1\.93/g, "0.1.92"));
     assert.equal((await readRelease(store))!.percent, 100);
-    // Новая версия — выпуск с 20% (по умолчанию) или с процента из файла (tools/release-desktop.py --percent).
-    assert.equal(await servedYml(store, YML, NOW), YML + "stagingPercentage: 20\n");
+    // Новая версия — с процента из файла (tools/release-desktop.py --percent=20); без строки — сразу всем (тест ниже).
+    assert.equal(await servedYml(store, YML + "stagingPercentage: 20\n", NOW), YML + "stagingPercentage: 20\n");
     const r = (await readRelease(store))!;
     assert.deepEqual([r.version, r.percent, r.paused, r.prev], ["0.1.93", 20, false, "0.1.92"]);
     assert.equal(await servedYml(store, YML + "stagingPercentage: 70\n", NOW), YML + "stagingPercentage: 20\n", "та же версия — процент из настройки, не из файла");
@@ -181,7 +181,7 @@ test("выпуск: изменение — причина, процент 1…10
     await bad({ percent: 101 }, /от 1 до 100/);
     await bad({ percent: 20.5 }, /от 1 до 100/);
     await bad({ paused: "да" }, /да или нет/);
-    await bad({ percent: 20 }, /ничего не изменилось/);
+    await bad({ percent: 100 }, /ничего не изменилось/);
     await bad({ version: "0.1.92", percent: 50 }, /сейчас выпускается 0\.1\.93/);
     const r = await changeRelease(store, 1, { version: "0.1.93", percent: 50, reason: "падений нет" }, NOW);
     assert.equal(r.percent, 50);
@@ -253,14 +253,17 @@ test("API: /api/events/crash, /desktop/latest.yml с процентом, адм�
   };
   const login = async (l: string, pw: string) => String((await (await fetch(base + "/api/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ login: l, password: pw }) })).json()).token);
   try {
-    // latest.yml: первая версия — как на диске; новая — с 20%; файл на диске не меняется.
+    // latest.yml: первая версия — как на диске; новая с --percent=20 — с 20%; файл на диске не меняется.
     assert.equal(await (await fetch(base + "/desktop/latest.yml")).text(), YML.replace(/0\.1\.93/g, "0.1.92"));
-    fs.writeFileSync(path.join(dir, "latest.yml"), YML);
+    fs.writeFileSync(path.join(dir, "latest.yml"), YML + "stagingPercentage: 20\n");
+    // «Что нового» лежит рядом (tools/release-desktop.py) — сервер берёт его при первом виде версии; наружу файл не отдаётся.
+    fs.writeFileSync(path.join(dir, "notes-0.1.93.json"), JSON.stringify({ version: "0.1.93", notes: ["Отчёты о падениях", "Поэтапный выпуск"] }));
     const y = await fetch(base + "/desktop/latest.yml");
     const text = await y.text();
     assert.equal(text, YML + "stagingPercentage: 20\n");
     assert.equal(Number(y.headers.get("content-length")), Buffer.byteLength(text));
-    assert.equal(fs.readFileSync(path.join(dir, "latest.yml"), "utf8"), YML);
+    assert.equal(fs.readFileSync(path.join(dir, "latest.yml"), "utf8"), YML + "stagingPercentage: 20\n");
+    assert.equal((await fetch(base + "/desktop/notes-0.1.93.json")).status, 404, "заметки наружу не отдаются");
 
     const anya = await login("anya", "anya-pass-1");
     assert.equal((await call("nope", "/api/events/crash", { items: [item()] }, "widget")).status, 401);
@@ -283,9 +286,11 @@ test("API: /api/events/crash, /desktop/latest.yml с процентом, адм�
 
     for (const p of ["/api/admin/crashes", "/api/admin/releases"]) assert.equal((await call(anya, p)).status, 404, p);
     assert.equal((await call(anya, "/api/admin/releases", { version: "0.1.93", paused: true, reason: "хочу" })).status, 404);
+    assert.equal((await call(anya, "/api/admin/releases/notes", { version: "0.1.93", notes: ["моё"], reason: "хочу" })).status, 404);
     const owner = await login("owner", "owner-pass-1");
     assert.equal((await call(owner, "/api/admin/crashes")).status, 403, "без кода");
     assert.equal((await call(owner, "/api/admin/releases", { version: "0.1.93", paused: true, reason: "проверка" })).status, 403);
+    assert.equal((await call(owner, "/api/admin/releases/notes", { version: "0.1.93", notes: ["x"], reason: "проверка" })).status, 403);
     await call(owner, "/api/admin/code", {});
     assert.equal((await call(owner, "/api/admin/confirm", { code: tg.at(-1)!.match(/\d{6}/)![0] })).status, 200);
 
@@ -297,6 +302,17 @@ test("API: /api/events/crash, /desktop/latest.yml с процентом, адм�
     const v = await call(owner, "/api/admin/releases");
     assert.equal(v.status, 200);
     assert.deepEqual([v.body.release.version, v.body.release.percent, v.body.served, v.body.file_version], ["0.1.93", 20, 20, "0.1.93"]);
+    assert.equal(v.body.start_percent, 100, "по умолчанию — сразу всем");
+    assert.deepEqual(v.body.notes.map((n: { version: string }) => n.version).slice(0, 2), ["0.1.94", "0.1.93"], "история: новые сверху (0.1.94 — из заготовки)");
+    assert.deepEqual(v.body.notes.find((n: { version: string }) => n.version === "0.1.93").notes, ["Отчёты о падениях", "Поэтапный выпуск"], "пункты из файла, не из заготовки");
+    assert.equal((await call(owner, "/api/admin/releases/notes", { version: "0.1.93", notes: ["Новое"] })).status, 400, "без причины");
+    assert.equal((await call(owner, "/api/admin/releases/notes", { version: "0.1.93", notes: ["<b>жирно</b>"], reason: "проверка" })).status, 400, "без HTML");
+    assert.equal((await call(owner, "/api/admin/releases/notes", { version: "0.1.99", notes: ["Новое"], reason: "проверка" })).status, 404);
+    const ed = await call(owner, "/api/admin/releases/notes", { version: "0.1.93", notes: "- Отчёты о падениях\n- Поэтапный выпуск\n- Ещё пункт", reason: "дописал" });
+    assert.equal(ed.status, 200);
+    const e93 = ed.body.notes.find((n: { version: string }) => n.version === "0.1.93");
+    assert.deepEqual(e93.notes, ["Отчёты о падениях", "Поэтапный выпуск", "Ещё пункт"]);
+    assert.ok(e93.edited_at && Number.isInteger(e93.by) && e93.by > 0);
     assert.equal((await call(owner, "/api/admin/releases", { version: "0.1.93", percent: 50 })).status, 400, "без причины");
     assert.equal((await call(owner, "/api/admin/releases", { version: "0.1.92", percent: 50, reason: "старая страница" })).status, 409);
     const p50 = await call(owner, "/api/admin/releases", { version: "0.1.93", percent: 50, reason: "падений нет" });
@@ -308,7 +324,7 @@ test("API: /api/events/crash, /desktop/latest.yml с процентом, адм�
     await call(owner, "/api/admin/releases", { version: "0.1.93", paused: false, reason: "всё хорошо" });
 
     const log = (await call(owner, "/api/admin/log")).body as unknown as { who: string; action: string; reason: string }[];
-    for (const a of ["release_percent", "release_pause", "release_resume"]) {
+    for (const a of ["release_percent", "release_pause", "release_resume", "release_notes"]) {
       const row = log.find((r) => r.action === a);
       assert.ok(row && row.reason.length >= 3 && /^#\d+$/.test(row.who), `${a} — в журнале с причиной и номером`);
     }
@@ -415,11 +431,11 @@ test("выпуск: прошлый не дошёл до всех (пауза, м
   const store = await Store.open(":memory:");
   try {
     await releaseFor(store, YML, NOW); // 0.1.93 — всем
-    await releaseFor(store, Y94, NOW); // 0.1.94 — 20%, prev 0.1.93
+    await releaseFor(store, yml("0.1.94", 20), NOW); // 0.1.94 — 20%, prev 0.1.93
     assert.equal(await autoPause(store, "падения 6% против 1%", NOW), true);
-    const r95 = (await releaseFor(store, yml("0.1.95"), NOW))!;
+    const r95 = (await releaseFor(store, yml("0.1.95", 20), NOW))!;
     assert.equal(r95.prev, "0.1.93", "0.1.94 стояла на паузе — сравнение с 0.1.93");
-    const r96 = (await releaseFor(store, yml("0.1.96"), NOW))!;
+    const r96 = (await releaseFor(store, yml("0.1.96", 20), NOW))!;
     assert.equal(r96.prev, "0.1.93", "0.1.95 на 20% — всё ещё с 0.1.93");
     await changeRelease(store, 1, { version: "0.1.96", percent: 100, reason: "всё спокойно" }, NOW);
     assert.equal((await releaseFor(store, yml("0.1.97"), NOW))!.prev, "0.1.96", "0.1.96 дошла до всех — с ней");

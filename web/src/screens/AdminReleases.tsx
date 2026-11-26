@@ -1,8 +1,8 @@
 import { useContext, useState } from "react";
 import { ApiError, post } from "../api";
 import {
-  CRASH_PROCESS_NAMES, crashCompare, percentError, releaseState, shareText,
-  type CrashesData, type CrashVersion, type ReleasesData,
+  CRASH_PROCESS_NAMES, crashCompare, notesError, notesFromText, percentError, releaseState, shareText,
+  type CrashesData, type CrashVersion, type ReleaseNotesInfo, type ReleasesData,
 } from "../admin";
 import { AdmBars, AdminLost, Loading, useAdmin } from "./AdminSections";
 import type { ActNote } from "./AdminAlerts";
@@ -12,6 +12,9 @@ import type { ActNote } from "./AdminAlerts";
 // latest.yml подставляет сервер, server/src/releases.ts), пауза и «продолжить» — с причиной в журнал админа; доли падений новой и
 // прошлой версии; люди по версиям за 7 дней. Падения (server/src/crashes.ts): по версиям — доля людей с падением, сравнение с прошлой,
 // топ мест в коде, график по дням. Только числа: ни текстов ошибок, ни имён.
+// 26.11.2026: новая версия по умолчанию — сразу всем (100%; поэтапно — tools/release-desktop.py --percent=N); под плашками — «Что нового»
+// выпускаемой версии и «Прошлые выпуски» (пункты владельца из notes-<версия>.json, правка с причиной — POST /api/admin/releases/notes).
+// В макете этого блока нет — добавлен по просьбе владельца.
 
 const dt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 const dayText = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
@@ -23,13 +26,22 @@ function Kpi({ title, value, hint, tone }: { title: string; value: string; hint?
 export function AdminReleases() {
   const [tick, setTick] = useState(0);
   const [note, setNote] = useState<ActNote>(null);
+  // Раскрытые «Прошлые выпуски» и надпись о сохранённых заметках живут здесь: ReleasesPage после правки монтируется заново (key={tick}).
+  const [openPast, setOpenPast] = useState<string[]>([]);
+  const [notesNote, setNotesNote] = useState<NotesNote>(null);
   const [data, err] = useAdmin<ReleasesData>(`/api/admin/releases${tick ? `?t=${tick}` : ""}`);
   if (!data) return <Loading err={err} />;
-  return <ReleasesPage key={tick} data={data} onChanged={() => setTick((t) => t + 1)} note={note} setNote={setNote} />;
+  return <ReleasesPage key={tick} data={data} onChanged={() => setTick((t) => t + 1)} note={note} setNote={setNote}
+    openPast={openPast} onTogglePast={(v, open) => setOpenPast((l) => (open ? (l.includes(v) ? l : [...l, v]) : l.filter((x) => x !== v)))}
+    notesNote={notesNote} setNotesNote={setNotesNote} />;
 }
 
+/** Надпись после правки заметок — у того выпуска, который правили. */
+export type NotesNote = { version: string; ok: boolean; text: string } | null;
+type NotesUi = { openPast?: string[]; onTogglePast?: (version: string, open: boolean) => void; notesNote?: NotesNote; setNotesNote?: (n: NotesNote) => void };
+
 /** Сам раздел по готовым данным (тест рисует его без сети: web/test/admin-releases.test.ts). */
-export function ReleasesPage({ data, onChanged, note, setNote }: { data: ReleasesData; onChanged: () => void; note: ActNote; setNote: (n: ActNote) => void }) {
+export function ReleasesPage({ data, onChanged, note, setNote, ...notesUi }: { data: ReleasesData; onChanged: () => void; note: ActNote; setNote: (n: ActNote) => void } & NotesUi) {
   const r = data.release;
   const [pct, setPct] = useState(String(r?.percent ?? data.start_percent));
   const [reason, setReason] = useState("");
@@ -58,7 +70,8 @@ export function ReleasesPage({ data, onChanged, note, setNote }: { data: Release
   return (
     <div className="adm-al">
       <p className="adm-muted">
-        Новая версия программы сначала уходит части людей: сервер дописывает в latest.yml долю (stagingPercentage), программа сама решает,
+        Новая версия программы {data.start_percent >= 100 ? "сразу уходит всем" : `сначала уходит ${data.start_percent}% людей`}; долю можно
+        уменьшить здесь или выпустить поэтапно с самого начала. Долю сервер дописывает в latest.yml (stagingPercentage), программа сама решает,
         попала ли она в долю. Если у новой версии падений в разы больше, чем у прошлой, выпуск сам встаёт на паузу и владельцу приходит письмо.
       </p>
       <div className="adm-kpis">
@@ -67,9 +80,10 @@ export function ReleasesPage({ data, onChanged, note, setNote }: { data: Release
         <Kpi title="В latest.yml на сервере" value={data.file_version ?? "нет файла"} hint={data.file_version && r && data.file_version !== r.version ? "не та версия, что выпускается" : undefined} />
         {c && <Kpi title={`Падения ${c.version}`} value={shareText(c.active ? c.share : null)} hint={`${c.crashed} из ${c.active} чел. за ${data.crash_days} дн.; ${cmp!.text}`} tone={cmp!.tone} />}
       </div>
+      <ReleaseNotesBlock data={data} onChanged={onChanged} {...notesUi} />
       {r && (
         <section className="adm-panel adm-al-acts">
-          <b>Поэтапный выпуск {r.version}</b>
+          <b>Выпуск {r.version}</b>
           <p className={r.paused ? "adm-err" : "adm-muted"} role="status">
             {r.paused
               ? `Выпуск на паузе${r.auto_paused_at ? ` — автопауза из-за падений (${dt(r.auto_paused_at)})` : ""}. Уже установленные программы не обновляются; новые установки с сайта всё равно получают ${r.version} (на сервере один установщик). «Продолжить» вернёт ${r.percent}%.`
@@ -97,8 +111,10 @@ export function ReleasesPage({ data, onChanged, note, setNote }: { data: Release
             Уже обновившиеся не откатываются: пауза и меньшая доля только не дают обновление тем, у кого его ещё нет (откатить версию
             нельзя — на сервере лежит один установщик, последний). Новые установки с сайта пауза не останавливает: постоянная ссылка
             ведёт на этот же установщик. Кто в долю — решает программа по своему случайному номеру, поэтому
-            при росте доли те, кто уже получил обновление, остаются в ней. Новая версия выкладывается с {data.start_percent}%
-            (tools/release-desktop.py --percent=…).
+            при росте доли те, кто уже получил обновление, остаются в ней.{" "}
+            {data.start_percent >= 100
+              ? "Новая версия выкладывается сразу всем; поэтапно — tools/release-desktop.py --percent=20 (или другая доля меньше 100)."
+              : `Новая версия выкладывается с ${data.start_percent}% (tools/release-desktop.py --percent=…).`}
           </p>
         </section>
       )}
@@ -119,6 +135,99 @@ export function ReleasesPage({ data, onChanged, note, setNote }: { data: Release
           </div>
         ) : <span className="adm-muted">Программой на ПК за 7 дней никто не пользовался.</span>}
       </section>
+    </div>
+  );
+}
+
+const dayOf = (iso: string) => (iso ? new Date(iso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
+const items = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? "пункт" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "пункта" : "пунктов"}`;
+
+/** «Что нового» выпускаемой версии и «Прошлые выпуски» (свёрнуто: версия, дата, пункты), у каждого — «Изменить заметки». */
+export function ReleaseNotesBlock({ data, onChanged, openPast = [], onTogglePast, notesNote = null, setNotesNote }: { data: ReleasesData; onChanged: () => void } & NotesUi) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const curVersion = data.release?.version ?? data.notes[0]?.version ?? null;
+  const cur = data.notes.find((n) => n.version === curVersion) ?? null;
+  const past = data.notes.filter((n) => n !== cur);
+  const edit = (n: ReleaseNotesInfo) => (editing === n.version
+    ? <NotesEditor entry={n} data={data} onDone={(saved) => {
+      setEditing(null);
+      if (!saved) return;
+      setNotesNote?.(saved);
+      if (n !== cur) onTogglePast?.(n.version, true);
+      onChanged();
+    }} />
+    : <>
+      <button className="adm-btn small" onClick={() => { setEditing(n.version); setNotesNote?.(null); }}>Изменить заметки</button>
+      {notesNote?.version === n.version && <p className={notesNote.ok ? "adm-muted" : "adm-err"} role="status">{notesNote.text}</p>}
+    </>);
+  return (
+    <>
+      <section className="adm-panel adm-al-acts">
+        <b>Что нового в {curVersion ?? "—"}</b>
+        {cur?.notes.length ? <ul className="adm-notes">{cur.notes.map((t, i) => <li key={i}>{t}</li>)}</ul>
+          : <span className="adm-muted">{cur ? "Заметок к этому выпуску нет — выпускали без --notes." : "Выпусков ещё не было."}</span>}
+        {cur && <div className="adm-row adm-small adm-muted">вышла {dayOf(cur.date)}{cur.edited_at ? ` · заметки правил #${cur.by} ${dt(cur.edited_at)}` : ""}</div>}
+        {cur && edit(cur)}
+      </section>
+      {past.length > 0 && (
+        <section className="adm-panel adm-al-acts">
+          <b>Прошлые выпуски</b>
+          {past.map((n) => (
+            <details key={n.version} className="adm-notes-past" open={openPast.includes(n.version)}
+              onToggle={(e) => onTogglePast?.(n.version, e.currentTarget.open)}>
+              <summary><span className="adm-num">{n.version}</span> <span className="adm-muted">· {dayOf(n.date)} · {n.notes.length ? items(n.notes.length) : "без заметок"}</span></summary>
+              {n.notes.length > 0 && <ul className="adm-notes">{n.notes.map((t, i) => <li key={i}>{t}</li>)}</ul>}
+              {n.edited_at && <div className="adm-small adm-muted">заметки правил #{n.by} {dt(n.edited_at)}</div>}
+              {edit(n)}
+            </details>
+          ))}
+        </section>
+      )}
+    </>
+  );
+}
+
+/** Сохранение пунктов (кнопка «Сохранить заметки»): при успехе — надпись, как у остальных действий раздела. send — для теста. */
+export async function saveReleaseNotes(version: string, notes: string[], reason: string, send: (path: string, body: unknown) => Promise<unknown> = post):
+  Promise<{ ok: true; note: NonNullable<NotesNote> } | { ok: false; text: string; lost: boolean }> {
+  if (reason.trim().length < 3) return { ok: false, text: "Напишите причину — хотя бы 3 знака.", lost: false };
+  try {
+    await send("/api/admin/releases/notes", { version, notes, reason: reason.trim() });
+    return { ok: true, note: { version, ok: true, text: `Заметки ${version} сохранены. Записано в журнал админа.` } };
+  } catch (e) {
+    return { ok: false, text: (e as Error).message || "не вышло", lost: e instanceof ApiError && e.status === 403 };
+  }
+}
+
+/** Правка пунктов: пункт на строку, причина обязательна; в журнал админа (release_notes). */
+function NotesEditor({ entry, data, onDone }: { entry: ReleaseNotesInfo; data: ReleasesData; onDone: (saved: NotesNote) => void }) {
+  const [text, setText] = useState(entry.notes.join("\n"));
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const lost = useContext(AdminLost);
+  const notes = notesFromText(text);
+  const err = notesError(notes, data.notes_max_items, data.notes_max_len);
+  async function save() {
+    setBusy(true);
+    const res = await saveReleaseNotes(entry.version, notes, reason);
+    setBusy(false);
+    if (res.ok) return onDone(res.note);
+    if (res.lost) lost();
+    setMsg(res.text);
+  }
+  return (
+    <div className="adm-al-acts">
+      <textarea className={`adm-tf-reason adm-al-reason${err ? " err" : ""}`} rows={Math.min(9, Math.max(3, notes.length + 1))} aria-label={`Что нового в ${entry.version}`}
+        placeholder={`Пункт на строку: 3–7 коротких строк, не больше ${data.notes_max_items}, до ${data.notes_max_len} знаков`} value={text} onChange={(e) => setText(e.target.value)} />
+      {err && <span className="adm-err adm-small">{err}</span>}
+      <input className="adm-tf-reason adm-al-reason" placeholder="Причина (обязательно): например, «проще словами»" aria-label="Причина правки заметок" maxLength={300}
+        value={reason} onChange={(e) => setReason(e.target.value)} />
+      <div className="adm-row">
+        <button className="adm-btn primary" disabled={busy || Boolean(err)} onClick={() => void save()}>Сохранить заметки</button>
+        <button className="adm-btn" disabled={busy} onClick={() => onDone(null)}>Отмена</button>
+      </div>
+      {msg && <p className="adm-err" role="alert">{msg}</p>}
     </div>
   );
 }
