@@ -104,7 +104,7 @@ export function usedCount(ids: (string | undefined)[], usage: (id: string | unde
 export type PreviewPlay =
   | { kind: "anim"; id: string; ms: number }
   | { kind: "say"; text: string; own?: boolean; emotion: string; heard?: string; mark?: string }
-  | { kind: "weather"; sky: string; icon: string; temp: string; text: string }
+  | { kind: "weather"; sky: string; icon: string; temp: string; text: string; say: string; pose: string; emotion: string }
   | { kind: "holiday"; party: "flame" | "wave" | "salute"; tier?: number }
   | { kind: "scene"; demo: unknown };
 
@@ -209,14 +209,18 @@ export const BUBBLE_SAMPLES: Record<string, { text: string; emotion: string; hea
   drop: { text: "Кажется, я перепутала время…", emotion: "awkward", mark: "drop" },
 };
 export const GAIT_SAMPLE = "Записала ваш план на завтра.";
-export const WEATHER_SAMPLES: Record<string, { icon: string; temp: string; text: string }> = {
-  storm: { icon: "🌨", temp: "−9°", text: "Метель" },
-  snow: { icon: "❄", temp: "−3°", text: "Снег" },
-  rain: { icon: "☂", temp: "+6°", text: "Дождь" },
-  frost: { icon: "🥶", temp: "−18°", text: "Мороз" },
-  gray: { icon: "☁", temp: "+2°", text: "Пасмурно" },
-  sun: { icon: "☀", temp: "+21°", text: "Ясно" },
+/** Погода: шесть сцен макета docs/review/погода-утром-2026-11-20.html («Шесть утр»); say, pose, emotion — фраза, поза и эмоция
+ *  горничной из того же макета (показ идёт тем же путём, что её фраза о погоде: wxSay → say + сцена на WX_FX_MS). */
+export const WEATHER_SAMPLES: Record<string, { icon: string; temp: string; text: string; say: string; pose: string; emotion: string }> = {
+  storm: { icon: "🌨", temp: "−4°", text: "Метель", say: "С обеда метель, ветер до 18 м/с. Шиномонтаж в 18:00 — может, перенесём?", pose: "worried", emotion: "neutral" },
+  snow: { icon: "☁️", temp: "−1°", text: "Снег", say: "Первый снег! ❄ С обеда пойдёт снег — а в 18:00 шиномонтаж, вы как раз вовремя.", pose: "excited", emotion: "happy" },
+  rain: { icon: "🌥", temp: "+3°", text: "Дождь", say: "Доброе утро! С пяти вечера дождь, а в 18:00 шиномонтаж. Зонт не забудьте ☂", pose: "remind", emotion: "sad" },
+  frost: { icon: "❄️", temp: "−18°", text: "Мороз", say: "Брр, −18°! Пробежку в 8:00 лучше в зал — или хотя бы шапку и перчатки.", pose: "tea", emotion: "neutral" },
+  gray: { icon: "☁️", temp: "+3°", text: "Пасмурно", say: "Доброе утро! Пасмурно, +3°, без дождя. Хороший день, чтобы разобрать хвосты 😌", pose: "neutral", emotion: "neutral" },
+  sun: { icon: "☀️", temp: "+2°", text: "Ясно", say: "Доброе утро! Солнце и +2° — для пробежки в 8:00 погода в самый раз. Днём до +6°.", pose: "happy", emotion: "happy" },
 };
+/** Сколько длится показ погоды: сцена (WX_FX_MS в desktop/renderer/weather.js) и угасание (WX_FX_FADE). */
+export const WEATHER_SHOW_MS = 30_000 + 2500;
 export const HOLIDAY_PLAY: Record<string, "flame" | "wave" | "salute"> = { "Огонёк взрослеет": "flame", "Волна по отметкам": "wave", "Салют из искр": "salute" };
 const FLAME_TIERS = [{ id: "7", label: "7 дней" }, { id: "30", label: "30 дней" }, { id: "100", label: "100 дней" }];
 
@@ -285,8 +289,8 @@ export function showcaseCards(reg: Registry, scenes: ShowScene[]): ShowCard[] {
       ms: 6000, moods: moodsOf(g.emotions), still: { text: GAIT_SAMPLE }, play: (mood) => ({ kind: "say", text: GAIT_SAMPLE, emotion: mood || g.emotions[0] }) });
   }
   for (const w of reg.effects.weather) {
-    const s = WEATHER_SAMPLES[w.id] ?? { icon: "⛅", temp: "+5°", text: w.id };
-    out.push({ key: `weather:${w.id}`, group: "weather", id: w.id, title: s.text, sub: `${s.icon} ${s.temp} · ${w.id}`, text: w.text, ms: 10_000,
+    const s = WEATHER_SAMPLES[w.id] ?? { icon: "⛅", temp: "+5°", text: w.id, say: w.id, pose: "neutral", emotion: "neutral" };
+    out.push({ key: `weather:${w.id}`, group: "weather", id: w.id, title: s.text, sub: `${s.icon} ${s.temp} · ${w.id}`, text: w.text, ms: WEATHER_SHOW_MS,
       still: { icon: s.icon, text: `${s.temp} · ${s.text}` },
       play: () => ({ kind: "weather", sky: w.id, ...s }) });
   }

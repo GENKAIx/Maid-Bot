@@ -1,7 +1,7 @@
 // Управление живым показом виджета в «Витрине» админки (server/src/preview.ts вставляет этот файл последним скриптом
 // в настоящий desktop/renderer/widget.html). Страница админки шлёт postMessage { maidPreview: 1, cmd, … } — здесь это
 // превращается в вызовы самого виджета: react() (анимация), say() (слова с характером, походка букв, превращения облачка),
-// bubblefxMark(), погода (wxNow + wxDraw), праздники привычек (данные дня → load → hpSync, как настоящий опрос) и сценарии
+// bubblefxMark(), погода (wxNow + wxDraw, фраза и сцена — wxSay), праздники привычек (данные дня → load → hpSync, как настоящий опрос) и сценарии
 // «Возможностей» (шаги по времени). Код виджета не меняется: скрипты страницы делят одну область имён, и отсюда видны его
 // функции и переменные. Виды показа — PREVIEW_KINDS (сверяет web/test/showcase.test.ts с карточками витрины).
 // Медленно: window.__preview.speed (stub.js) тормозит таймеры и CSS-анимации, а кадры фигурки (WebP идёт со своей скоростью)
@@ -30,7 +30,7 @@
     try { chatInput.value = ""; } catch {}
     try { chatBox.classList.remove("recording"); } catch {}
     P.weather = null;
-    try { wxNow = null; wxAt = Date.now(); wxDraw(); } catch {}
+    try { wxFxStop(); wxNow = null; wxAt = Date.now(); wxDraw(); } catch {}
     if (JSON.stringify(P.data) !== JSON.stringify(P.sample())) {
       P.data = P.sample();
       try { await load(); } catch {}
@@ -48,12 +48,15 @@
       say((x.own ? WORDFX_OWN : "") + x.text, { emotion: x.emotion || "neutral", heard: x.heard || "", ms: 12000, mood: x.mood || null });
       if (x.mark) later(500, () => bubblefxMark(x.mark, 2600));
     },
-    // Погода над панелью: плашка в шапке и частицы — как после ответа GET /api/weather.
+    // Погода: плашка в шапке — как после ответа GET /api/weather, потом фраза и сцена погоды тем же путём, что утренняя фраза
+    // (weather.js wxSay: say + wxFx на WX_FX_MS, затем угасание). kind — id сцены: wxScene берёт его как небо.
     weather: (x) => {
-      P.weather = { day: data?.day, kind: x.sky, sky: x.sky, icon: x.icon, temp: x.temp, text: x.text, city: "" };
+      P.weather = { day: data?.day, kind: x.sky, sky: x.sky, icon: x.icon, temp: x.temp, text: x.say || x.text, pose: x.pose, emotion: x.emotion, city: "" };
       wxNow = P.weather;
       wxAt = Date.now();
       wxDraw();
+      try { bubblefxSince = 99; } catch {} // капли с облачка в дождь (bubblefx «тает») — и в показе, а не 1 раз из 3
+      wxSay(wxNow);
     },
     // Праздник привычек: два ответа «сервера» подряд — до отметки и после, остальное делает сам hpSync в load().
     holiday: async (x, id) => {

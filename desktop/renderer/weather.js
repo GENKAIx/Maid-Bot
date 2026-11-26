@@ -1,8 +1,10 @@
 // Погода утром (21.11.2026): прогноз с сервера (GET /api/weather — Open-Meteo по городу из «Персонализации → О вас»,
 // фраза и задетый план выбирает server/src/weather.ts). Здесь — что видно в виджете:
 //   • первый ответ дня после подъёма (daySleep.wakeMin) — фраза о погоде вместо «С возвращением» (cfg.weatherMorning);
-//   • плашка «☂ +3°» в шапке рядом с датой и частицы над панелью — до полудня, весь день или нет (cfg.weatherChip);
-//     частиц нет при «Эффекты: тихо» и при «Уменьшить движение» в системе;
+//   • плашка «☂ +3°» в шапке рядом с датой — до полудня, весь день или нет (cfg.weatherChip);
+//   • сцена погоды (26.11.2026, по макету docs/review/погода-утром-2026-11-20.html, «Шесть утр», колонка «Новое») — только после
+//     её фразы о погоде (утренней или ответа на «какая погода?»): WX_FX_MS, потом угасание WX_FX_FADE, и слоя больше нет;
+//     нет при «Эффекты: тихо», «Уменьшить движение» в системе, свёрнутом виджете и во сне;
 //   • значок ☂/🌨/⚠ у плана в «Ближайшем», который задевает погода;
 //   • в опасную погоду (метель, гроза, гололёд, сильный ветер) — «Перенести на завтра» / «Оставить», после переноса — «↩ Отменить».
 // Города нет или сеть молчит — сервер отдаёт null, и погоды в виджете просто нет.
@@ -10,10 +12,17 @@
 const WX_POLL_MS = 30 * 60_000; // прогноз на сервере обновляется раз в 3 ч — опрашивать чаще незачем
 const WX_SAID_KEY = "maid.wxSaid"; // день, когда утренняя фраза уже прозвучала
 const WX_GREET_UNTIL = 14; // после этого часа утренняя фраза уже не к месту
-const WX_DROPS = { snow: 18, rain: 26, storm: 30 };
+const WX_FX_MS = 30_000; // столько играет сцена погоды после её фразы
+const WX_FX_FADE = 2500; // плавное угасание сцены (wx-fade в style.css — столько же)
+// Погода дня (kind с сервера) → одна из шести сцен макета. Жара — как ясно, туман — как пасмурно.
+const WX_SCENE = { clear: "sun", heat: "sun", rain: "rain", snow: "snow", frost: "frost", storm: "storm", gray: "gray", fog: "gray" };
+// Опасная погода (kind storm) — какая именно, в danger (server/src/weather.ts danger()): метель — сцена метели, гроза — дождь,
+// гололёд — иней, сильный ветер — облака. Снег вбок и шапка снега — только в метель.
+const WX_DANGER_SCENE = { "метель": "storm", "гроза": "rain", "гололёд": "frost", "сильный ветер": "gray" };
+const WX_SCENES = ["sun", "rain", "snow", "frost", "storm", "gray"];
 let wxNow = null; // ответ /api/weather: { day, kind, icon, temp, text, pose, emotion, hit, plan, move, sky, … } или null
 let wxAt = 0; // когда спросили
-let wxSkyDrawn = ""; // какое небо сейчас нарисовано над панелью
+let wxFxRun = null; // играющая сцена: { scene, layer, timers, ro }
 let wxSaidDay = ""; // память о WX_SAID_KEY, чтобы не читать localStorage на каждое движение мыши
 
 // Опрос из load(): не чаще WX_POLL_MS, или сразу, если сменился день.
@@ -29,7 +38,7 @@ async function wxLoad(force = false) {
   if (!napping) wxGreet();
 }
 
-// Плашка и частицы видны: погода на сегодня есть и по настройке ещё её время.
+// Плашка видна: погода на сегодня есть и по настройке ещё её время.
 function wxShowing(now = new Date()) {
   if (!wxNow || !data || wxNow.day !== data.day || cfg.weatherChip === "off") return false;
   return cfg.weatherChip === "day" || now.getHours() < 12;
@@ -56,9 +65,14 @@ function wxGreet(now = new Date()) {
   if (!wxGreetDue(now) || !$("#bubble").classList.contains("hidden")) return false;
   wxSaidDay = wxNow.day;
   try { localStorage.setItem(WX_SAID_KEY, wxNow.day); } catch {}
-  const buttons = wxButtons();
-  say(wxNow.text, { emotion: wxNow.emotion || "neutral", mood: MOODS.includes(wxNow.pose) ? wxNow.pose : null, ms: buttons.length ? 0 : 12000, buttons });
+  wxSay(wxNow, wxButtons());
   return true;
+}
+
+// Фраза о погоде и сразу её сцена — тот же путь у утренней фразы и у показа погоды в «Витрине» админки (server/preview/control.js).
+function wxSay(w, buttons = []) {
+  say(w.text, { emotion: w.emotion || "neutral", mood: MOODS.includes(w.pose) ? w.pose : null, ms: buttons.length ? 0 : 12000, buttons });
+  wxFx(w);
 }
 
 async function wxMove(plan) {
@@ -85,7 +99,7 @@ async function wxBack(plan) {
   load();
 }
 
-// Шапка, значок у плана, небо над панелью — после каждой перерисовки и после ответа сервера.
+// Шапка и значок у плана — после каждой перерисовки и после ответа сервера (сцена погоды — только после фразы, wxFx).
 let wxCountedDay = "";
 function wxDraw(now = new Date()) {
   const on = wxShowing(now);
@@ -115,41 +129,103 @@ function wxDraw(now = new Date()) {
     s.title = wxNow.text;
     row.querySelector(".hero-txt, .nx-title")?.after(s);
   }
-  wxSky(on ? wxNow.sky : "");
+  if (wxFxRun && wxFxCalm()) wxFxStop(); // «Эффекты: тихо» включили посреди сцены
 }
 
-// Частицы: снег (и шапка снега на панели), косой дождь, иней по краю, метель с толчком, облака, солнце.
-function wxSky(sky) {
-  const calm = cfg.fx === "quiet" || matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const want = calm ? "" : sky || "";
-  if (want === wxSkyDrawn) return;
-  wxSkyDrawn = want;
-  const w = $("#w");
-  $("#wxSky")?.remove();
-  w.classList.remove("wx-frost", "wx-capped", "wx-shake");
-  if (!want) return;
+// --- сцена погоды (по макету: частицы, лучи, иней, ветер, облака; капли с облачка в дождь — bubblefx.js, «тает» при sad) ---
+function wxScene(w) {
+  // storm без danger (старый сервер, «Витрина») — по небу; неба нет — облака, а не метель.
+  if (w?.kind === "storm") return WX_DANGER_SCENE[w.danger] ?? (WX_SCENES.includes(w.sky) ? w.sky : "gray");
+  return WX_SCENE[w?.kind] ?? (WX_SCENES.includes(w?.sky) ? w.sky : "");
+}
+function wxFxCalm() {
+  return cfg.fx === "quiet" || matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Сцена погоды после её фразы: w — ответ /api/weather или признак weather из ответа чата ({ kind, sky }). Играет WX_FX_MS,
+ *  потом угасает и уходит из DOM. Фразы не видно (облачко закрыто, спит, экскурсия), виджет свёрнут, «тихо» — сцены нет.
+ *  Повторная фраза — сцена с начала. true — играет. */
+function wxFx(w) {
+  const scene = wxScene(w);
+  if (!scene || wxFxCalm() || napping || touring || collapsed || $("#bubble").classList.contains("hidden")) return false;
+  wxFxStop();
+  const stage = $("#stage"), panel = $("#w");
   const layer = document.createElement("div");
   layer.id = "wxSky";
-  layer.className = `wx-sky wx-${want}`;
+  layer.className = `wx-sky wx-${scene}`;
   layer.setAttribute("aria-hidden", "true");
-  const n = WX_DROPS[want] ?? (want === "gray" ? 3 : want === "sun" ? 1 : 0);
-  for (let i = 0; i < n; i++) {
-    const p = document.createElement("i");
-    // Своё место и темп у каждой — без Math.random, чтобы картинка не «перетасовывалась» при перерисовке.
-    const k = (i * 37 + 11) % 100;
-    p.style.setProperty("--x", `${k}%`);
-    p.style.setProperty("--d", `${((i * 53) % 40) / 10}s`);
-    p.style.setProperty("--s", `${(want === "snow" ? 5 : want === "storm" ? 1.6 : want === "gray" ? 40 : 1.1) + ((i * 29) % 10) / 10}s`);
-    p.style.setProperty("--z", `${0.6 + ((i * 17) % 5) / 10}`);
-    layer.append(p);
+  const run = (wxFxRun = { scene, layer, timers: [], ro: null });
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const add = (cls, css, txt) => {
+    const i = document.createElement("i");
+    i.className = cls;
+    if (css) i.style.cssText = css; // через CSSOM: CSP запрещает только атрибут style в разметке
+    if (txt) i.textContent = txt;
+    layer.append(i);
+  };
+  // Количество, места и темп — как в макете.
+  if (scene === "snow") for (let i = 0; i < 34; i++) add("fl", `left:${rnd(0, 100)}%;--s:${rnd(3, 7).toFixed(1)}px;--d:${rnd(5, 10).toFixed(1)}s;--dl:-${rnd(0, 10).toFixed(1)}s;--dx:${rnd(-30, 30).toFixed(0)}px`);
+  if (scene === "storm") {
+    add("dim", "");
+    for (let i = 0; i < 70; i++) add("st", `left:${rnd(10, 140)}%;--d:${rnd(0.9, 1.7).toFixed(2)}s;--dl:-${rnd(0, 2).toFixed(2)}s`);
   }
-  w.prepend(layer);
-  if (want === "frost") w.classList.add("wx-frost");
-  if (want === "snow" || want === "storm") w.classList.add("wx-capped");
-  if (want === "storm") {
-    w.classList.add("wx-shake");
-    setTimeout(() => w.classList.remove("wx-shake"), 700);
+  if (scene === "rain") for (let i = 0; i < 46; i++) add("dr", `left:${rnd(0, 120)}%;--d:${rnd(0.6, 1).toFixed(2)}s;--dl:-${rnd(0, 1).toFixed(2)}s`);
+  if (scene === "sun") {
+    add("sun", "");
+    [-150, -135, -118, -100].forEach((a) => add("ray", `--a:${a}deg`));
+    for (let i = 0; i < 8; i++) add("mote", `left:${rnd(10, 90)}%;top:${rnd(10, 70)}%;--dl:-${rnd(0, 5).toFixed(1)}s`);
   }
+  if (scene === "gray") [[8, 26, 0], [42, 34, -12], [20, 40, -22]].forEach(([y, d, dl]) => add("cl", `--y:${y}px;--d:${d}s;--dl:${dl}s`));
+  if (scene === "frost") for (let i = 0; i < 9; i++) add("ice", `left:${rnd(4, 94)}%;top:${rnd(52, 96)}%;--dl:-${rnd(0, 2.4).toFixed(1)}s`, "✦");
+  if (scene === "snow" || scene === "storm") add("cap", ""); // панель заметает: шапка снега растёт по верху за 5 с
+  stage.append(layer);
+  wxFxPlace();
+  if (typeof ResizeObserver === "function") (run.ro = new ResizeObserver(() => wxFxPlace())).observe(stage);
+  // Фраза раскрыла свёрнутый виджет (foldAnimated): панель и горничная ещё в анимации (рамки по мини-карточке, а окно и #stage
+  // не меняются) — место ставим заново, когда анимация кончится.
+  for (const el of [panel, $("#maid")]) for (const a of el?.getAnimations?.() ?? []) {
+    const again = () => wxFxRun === run && wxFxPlace();
+    a.finished?.then(again, again);
+  }
+  if (scene === "frost") panel.classList.add("wx-frost");
+  if (scene === "storm") {
+    panel.classList.remove("wx-shake");
+    void panel.offsetWidth; // толчок с начала и у повторной фразы
+    panel.classList.add("wx-shake");
+  }
+  run.timers.push(setTimeout(() => {
+    layer.classList.add("out");
+    if (panel.classList.contains("wx-frost")) panel.classList.replace("wx-frost", "wx-thaw"); // иней сходит за то же время
+    run.timers.push(setTimeout(wxFxStop, WX_FX_FADE));
+  }, WX_FX_MS));
+  return true;
+}
+
+// Слой — над панелью, горничной и облачком с фразой, как небо над виджетом в макете (от макушки на 10 px выше до низа панели).
+// Над панелью окно прозрачное: там края слоя гаснут маской (.wx-sky в style.css), а не режутся. В слое: --pl/--pt/--pw/--ph —
+// где панель (шапка снега, сумрак метели, маска), --fh/--fhn — путь частиц до низа слоя (темп как в макете).
+function wxFxPlace() {
+  const r = wxFxRun;
+  if (!r) return;
+  const s = $("#stage").getBoundingClientRect(), p = $("#w").getBoundingClientRect();
+  const boxes = [$("#maid")?.getBoundingClientRect(), $("#bubble")?.classList.contains("hidden") ? null : $("#bubble")?.getBoundingClientRect?.()]
+    .filter((b) => b && b.width && b.height);
+  const top = Math.max(0, Math.min(p.top, ...boxes.map((b) => b.top)) - 10 - s.top);
+  const bottom = Math.max(p.bottom, ...boxes.map((b) => b.bottom)) - s.top;
+  const left = Math.max(0, Math.min(p.left, ...boxes.map((b) => b.left)) - s.left);
+  const right = Math.min(s.width, Math.max(p.right, ...boxes.map((b) => b.right)) - s.left);
+  const h = Math.max(0, bottom - top), fh = Math.round(h + 30);
+  r.layer.style.cssText = `left:${left}px;top:${top}px;width:${Math.max(0, right - left)}px;height:${h}px;--pl:${p.left - s.left - left}px;--pt:${p.top - s.top - top}px;--pw:${p.width}px;--ph:${p.height}px;--fh:${fh}px;--fhn:${fh}`;
+}
+
+function wxFxStop() {
+  const r = wxFxRun;
+  if (!r) return;
+  wxFxRun = null;
+  for (const t of r.timers) clearTimeout(t);
+  r.ro?.disconnect();
+  r.layer.remove();
+  $("#w")?.classList.remove("wx-frost", "wx-thaw", "wx-shake");
 }
 
 // Не уснула, но сегодня ещё не говорила: первое движение мыши над виджетом после подъёма — фраза о погоде.

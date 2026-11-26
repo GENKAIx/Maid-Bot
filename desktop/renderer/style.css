@@ -1496,21 +1496,48 @@ body.widget ::-webkit-scrollbar-thumb:active { background: rgba(180, 156, 255, .
 .w .head .wx-chip { flex: none; align-self: center; font-size: 12px; line-height: 1; padding: 3px 7px; border-radius: 999px; background: rgba(255, 255, 255, .07); color: var(--text); white-space: nowrap; cursor: default; }
 .w .head .wx-chip.hidden { display: none; }
 .nx .nx-wx { flex: none; margin-left: 6px; font-size: 12px; opacity: .9; }
-.w > .wx-sky { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; border-radius: inherit; }
-.wx-sky i { position: absolute; left: var(--x); top: -12px; display: block; animation-delay: calc(-1 * var(--d)); animation-iteration-count: infinite; animation-timing-function: linear; }
-.wx-snow i, .wx-storm i { width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, .8); opacity: calc(var(--z) * .8); animation-name: wx-fall; animation-duration: var(--s); }
-.wx-storm i { width: 3px; height: 3px; animation-name: wx-blow; }
-.wx-rain i { width: 1px; height: 12px; background: linear-gradient(transparent, rgba(170, 200, 255, .55)); transform: rotate(14deg); animation-name: wx-rain; animation-duration: var(--s); }
-.wx-gray i { top: calc(var(--x) * .3 - 30px); left: -40%; width: 60%; height: 46px; border-radius: 50%; background: rgba(255, 255, 255, .05); filter: blur(10px); animation-name: wx-drift; animation-duration: var(--s); }
-.wx-sun i { top: -60px; right: -60px; left: auto; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(rgba(255, 214, 120, .22), transparent 70%); animation: wx-glow 6s ease-in-out infinite alternate; }
-.w.wx-capped .head { position: relative; }
-.w.wx-capped .head::before { content: ""; position: absolute; left: 10px; right: 10px; top: 0; height: 4px; border-radius: 0 0 6px 6px; background: rgba(255, 255, 255, .55); pointer-events: none; }
-.w.wx-frost { box-shadow: inset 0 0 14px rgba(190, 225, 255, .28), 0 10px 30px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .2); }
-.w.wx-shake { animation: wx-shake .6s ease; }
-@keyframes wx-fall { to { transform: translate(10px, calc(100vh + 20px)); } }
-@keyframes wx-blow { to { transform: translate(-90px, calc(100vh + 20px)); } }
-@keyframes wx-rain { to { transform: translate(-60px, calc(100vh + 20px)) rotate(14deg); } }
-@keyframes wx-drift { to { transform: translateX(260%); } }
-@keyframes wx-glow { to { opacity: .55; } }
-@keyframes wx-shake { 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(1px); } }
-@media (prefers-reduced-motion: reduce) { .w > .wx-sky { display: none; } .w.wx-shake { animation: none; } }
+/* Сцена погоды (weather.js wxFx, 26.11.2026) — из макета docs/review/погода-утром-2026-11-20.html («Шесть утр», «Новое»): формы,
+   количество и формы те же. Слой — в #stage над панелью, горничной и облачком (место, панель в слое --pl/--pt/--pw и путь частиц
+   --fh ставит wxFxPlace), мышь не ловит; играет WX_FX_MS после фразы о погоде, потом .out — угасание за 2,5 с (WX_FX_FADE), и слой удаляется.
+   В макете края слоя — край тёмной карточки; здесь над панелью окно прозрачное, поэтому маска: по панели (и 8 px над ней — шапка
+   снега) слой виден целиком, выше — гаснет к верху и бокам за 40 px, а слева от панели — к её верху за 24 px. Слои маски снизу вверх:
+   слева от панели ниже её верха (вычитается из боков), бока, верх (пересечение), панель (добавляется). */
+.wx-sky {
+  position: absolute; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 16px;
+  mask-image: linear-gradient(#000, #000), linear-gradient(transparent, #000 40px), linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent), linear-gradient(transparent, #000 24px);
+  mask-size: var(--pw, 100%) calc(100% - var(--pt, 0px) + 8px), 100% 100%, 100% 100%, var(--pl, 0px) calc(100% - var(--pt, 0px) + 24px);
+  mask-position: var(--pl, 0px) calc(var(--pt, 0px) - 8px), 0 0, 0 0, 0 calc(var(--pt, 0px) - 24px);
+  mask-repeat: no-repeat;
+  mask-composite: add, intersect, subtract, add;
+}
+.wx-sky.out { animation: wx-fade 2.5s ease-in reverse forwards; }
+.wx-sky i { position: absolute; display: block; }
+.wx-sky .fl { top: -12px; width: var(--s, 5px); height: var(--s, 5px); border-radius: 50%; background: #fff; opacity: .9; box-shadow: 0 0 4px rgba(255, 255, 255, .6); animation: wx-fall calc(var(--d, 6s) * var(--fhn, 640) / 640) linear var(--dl, 0s) infinite; }
+/* Путь частиц — до низа слоя (--fh, а не 640/520/660 px макета: слой выше и растёт с окном); темп как в макете — длительность растёт с путём. */
+@keyframes wx-fall { from { transform: translate(0, 0); } to { transform: translate(var(--dx, 20px), var(--fh, 640px)); } }
+.wx-sky .st { top: -12px; width: 3px; height: 3px; border-radius: 50%; background: #f4f8ff; animation: wx-blow calc(var(--d, 1.4s) * var(--fhn, 520) / 520) linear var(--dl, 0s) infinite; }
+@keyframes wx-blow { from { transform: translate(0, 0); } to { transform: translate(calc(var(--fh, 520px) * -.5), var(--fh, 520px)); } }
+.wx-sky .dr { top: -30px; width: 1.5px; height: 18px; background: linear-gradient(transparent, rgba(170, 210, 255, .85)); animation: wx-rain calc(var(--d, .8s) * var(--fhn, 660) / 660) linear var(--dl, 0s) infinite; }
+@keyframes wx-rain { from { transform: translate(0, 0) rotate(12deg); } to { transform: translate(calc(var(--fh, 660px) * -.1364), var(--fh, 660px)) rotate(12deg); } }
+.wx-sky .sun { right: -60px; top: -70px; width: 230px; height: 230px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 220, 130, .55), rgba(255, 200, 90, .18) 45%, transparent 70%); animation: wx-glow 4s ease-in-out infinite alternate; }
+.wx-sky .ray { right: 52px; top: 40px; width: 260px; height: 2px; transform-origin: 100% 50%; background: linear-gradient(270deg, rgba(255, 226, 150, .55), transparent); animation: wx-ray 7s ease-in-out infinite alternate; }
+@keyframes wx-glow { to { transform: scale(1.12); opacity: .8; } }
+@keyframes wx-ray { from { rotate: var(--a); opacity: .3; } to { rotate: calc(var(--a) + 6deg); opacity: .8; } }
+.wx-sky .mote { width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 236, 170, .9); animation: wx-mote 5s ease-in-out var(--dl, 0s) infinite; }
+@keyframes wx-mote { 0%, 100% { transform: translate(0, 0); opacity: 0; } 50% { transform: translate(14px, -18px); opacity: 1; } }
+.wx-sky .cl { top: var(--y, 10px); left: -40%; width: 46%; height: 34px; border-radius: 50%; background: rgba(205, 205, 225, .16); filter: blur(6px); animation: wx-cloud var(--d, 26s) linear var(--dl, 0s) infinite; }
+@keyframes wx-cloud { to { transform: translateX(330%); } }
+.wx-sky .ice { width: 12px; height: 12px; color: #d6eeff; font-size: 12px; line-height: 1; font-style: normal; text-shadow: 0 0 6px rgba(140, 200, 255, .9); animation: wx-twinkle 2.4s ease-in-out var(--dl, 0s) infinite; }
+@keyframes wx-twinkle { 0%, 100% { transform: scale(.3); opacity: 0; } 50% { transform: scale(1); opacity: 1; } }
+/* Сумрак метели — по панели (в макете — на весь виджет; окно программы прозрачное, и тёмный прямоугольник лёг бы на рабочий стол). */
+.wx-sky .dim { left: var(--pl, 0px); width: var(--pw, 100%); top: var(--pt, 0); bottom: 0; border-radius: 16px; background: rgba(20, 22, 50, .32); animation: wx-fade .8s ease-out both; }
+@keyframes wx-fade { from { opacity: 0; } }
+/* Шапка снега по верху панели (в макете — .w::before; у панели программы overflow: hidden, поэтому — в слое, над её краем). */
+.wx-sky .cap { left: calc(var(--pl, 0px) + 6px); width: calc(var(--pw, 100%) - 12px); top: calc(var(--pt, 0px) - 7px); height: 11px; border-radius: 10px 10px 6px 6px; background: radial-gradient(14px 9px at 12% 100%, #fff 98%, transparent), radial-gradient(18px 10px at 40% 100%, #fff 98%, transparent), radial-gradient(16px 9px at 70% 100%, #fff 98%, transparent), linear-gradient(#fff, #e9f1ff); animation: wx-cap 5s ease-out both; }
+@keyframes wx-cap { from { height: 0; opacity: 0; } 12% { opacity: 1; } }
+/* Иней по краю панели в мороз: нарастает за 2,5 с, при угасании сцены (.wx-thaw) сходит за столько же. */
+.w.wx-frost { box-shadow: inset 0 0 22px 2px rgba(140, 200, 255, .45), 0 10px 30px rgba(0, 0, 0, .35); border-color: rgba(190, 228, 255, .6); }
+.w.wx-frost, .w.wx-thaw { transition: opacity .25s, transform .25s, box-shadow 2.5s, border-color 2.5s; }
+.w.wx-shake { animation: wx-shake .5s ease-in-out 3; }
+@keyframes wx-shake { 25% { transform: translateX(-2px) rotate(-.3deg); } 75% { transform: translateX(2px) rotate(.3deg); } }
+@media (prefers-reduced-motion: reduce) { .wx-sky { display: none; } .w.wx-shake { animation: none; } }

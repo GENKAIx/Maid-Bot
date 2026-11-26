@@ -212,10 +212,20 @@ test("API: /api/weather, «Перенести на завтра» и обрат�
     assert.equal((await call("/api/weather/move", { eventId: e.id, back: true }, token)).json.date, today, "↩ Отменить");
     const r = await pipeline.handle({ user: u, source: "web", sourceId: "w1", text: "какая погода?" });
     assert.match(r.text, /^🌧 /);
+    assert.deepEqual(r.weather, { kind: "rain", sky: "rain" }, "признак погоды — виджет играет по нему сцену");
     assert.equal(llmCalls, 0, "без модели");
     const r2 = await pipeline.handle({ user: { ...u, city: "" }, source: "web", sourceId: "w2", text: "Погода?" });
     assert.match(r2.text, /из какого вы города/);
+    assert.equal(r2.weather, undefined, "без прогноза — без сцены");
   } finally {
     server.close();
   }
+});
+
+test("«какая погода?» в грозу: признак погоды с danger — виджет играет дождь, а не метель", async () => {
+  serve(day({ t: 26, p: 2, pp: 90, code: 95, wind: 5 }));
+  const { store, u } = await owner();
+  const pipeline = new Pipeline(store, async () => "{}");
+  const r = await pipeline.handle({ user: u, source: "web", sourceId: "g1", text: "какая погода?" });
+  assert.deepEqual(r.weather, { kind: "storm", sky: "rain", danger: "гроза" });
 });

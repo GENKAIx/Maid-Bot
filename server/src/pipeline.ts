@@ -111,6 +111,10 @@ export interface Reply {
   /** ИИ не звали (access.ts): access — нет пробы или подписки (кнопка оплаты), rate — слишком часто, money — дневной потолок.
    *  Текст сообщения при этом записан заметкой (undoable), само сообщение — done: фоновый повтор его не возьмёт. */
   blocked?: Refusal;
+  /** Ответ на «какая погода?» с прогнозом: погода дня (kind) и небо сейчас (sky) — виджет играет по ним сцену погоды (weather.js
+   *  wxFx). Старые виджеты поле не знают и просто показывают текст. danger — какая опасная погода у kind storm (метель, гроза,
+   *  гололёд, сильный ветер): по ней виджет выбирает сцену, снег вбок — только в метель. */
+  weather?: { kind: string; sky: string; danger?: string };
 }
 
 /** Итог поправки к ответу (POST /api/correct, correct.ts). */
@@ -426,7 +430,7 @@ export class Pipeline {
         : cityOf(u) ? "Не получилось узнать погоду — сервис не отвечает. Спросите чуть позже."
         : "Скажите, из какого вы города, — тогда буду знать погоду. Город — в «Персонализации → О вас».";
       await s.setMessage(message.id, { state: "done", reply: text });
-      return { text, emotion: (wx?.emotion ?? "neutral") as Emotion, messageId: message.id, undoable: false };
+      return { text, emotion: (wx?.emotion ?? "neutral") as Emotion, messageId: message.id, undoable: false, ...(wx ? { weather: { kind: wx.kind, sky: wx.sky, ...(wx.danger ? { danger: wx.danger } : {}) } } : {}) };
     }
 
     // Платный доступ (access.ts): дальше — только модель. Нельзя — сообщение заметкой, без единого вызова модели.

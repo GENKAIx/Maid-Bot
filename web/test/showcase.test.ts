@@ -172,10 +172,22 @@ test("живой показ: у каждого показа — свой при�
   }
   assert.deepEqual(Object.keys(BUBBLE_SAMPLES).sort(), REGISTRY.effects.bubble.map((b) => b.id).sort(), "пример у каждого облачка");
   assert.deepEqual(Object.keys(WEATHER_SAMPLES).sort(), REGISTRY.effects.weather.map((w) => w.id).sort(), "пример у каждой погоды");
+  // Сцены погоды виджета (weather.js WX_SCENES, 26.11.2026) — те же, что небо сервера в реестре; показ — тем же путём, что фраза
+  // (wxSay: say + сцена), и длится, пока сцена играет и угасает (WX_FX_MS + WX_FX_FADE).
+  const wxFile = new URL("../../desktop/renderer/weather.js", import.meta.url);
+  if (existsSync(wxFile)) { // в Docker на этапе проверок desktop/ может не быть
+    const wxSrc = readFileSync(wxFile, "utf8");
+    const scenes = JSON.parse(wxSrc.match(/const WX_SCENES = (\[[^\]]*\]);/)![1]) as string[];
+    assert.deepEqual([...scenes].sort(), REGISTRY.effects.weather.map((w) => w.id).sort(), "сцены виджета = погоды витрины");
+    const fxMs = Number(wxSrc.match(/const WX_FX_MS = ([\d_]+);/)![1].replace(/_/g, "")) + Number(wxSrc.match(/const WX_FX_FADE = (\d+);/)![1]);
+    for (const c of CARDS.filter((x) => x.group === "weather")) assert.equal(c.ms, fxMs, `${c.key}: показ — вся сцена`);
+  }
+  for (const [id, s] of Object.entries(WEATHER_SAMPLES)) assert.ok(s.say.length > 20 && s.pose && s.emotion, `погода ${id}: фраза, поза, эмоция`);
   for (const h of REGISTRY.effects.holidays) assert.ok(HOLIDAY_PLAY[h.title], `праздник «${h.title}» — без показа`);
   const control = readFileSync(new URL("../../server/preview/control.js", import.meta.url), "utf8");
   const kinds = JSON.parse(control.match(/const PREVIEW_KINDS = (\[[^\]]*\]);/)![1]) as string[];
   for (const k of kinds) assert.match(control, new RegExp(`^ {4}${k}: `, "m"), `в control.js нет показа ${k}`);
+  assert.match(control.slice(control.indexOf("    weather: (x) =>"), control.indexOf("    holiday:")), /wxSay\(wxNow\);/, "погода в показе — тем же путём, что фраза");
   for (const c of CARDS) {
     for (const m of [undefined, ...(c.moods ?? []).map((x) => x.id)]) {
       const p = c.play(m);

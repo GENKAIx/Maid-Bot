@@ -349,6 +349,7 @@ function fallAsleep(idleSec) {
   napping = true;
   napSince = Date.now() - idleSec * 1000;
   hideBubble();
+  wxFxStop(); // уснула — сцена погоды уходит сразу (weather.js)
   setState("sleep");
   if (cfg.napFold && !collapsed) {
     napFolded = true;
@@ -1034,6 +1035,7 @@ async function pump() {
     outbox = outbox.filter((x) => x !== m);
     remember(m.body.text || r.heard || m.label, r);
     say(r.text, { emotion: r.emotion, changes: r.changes ?? [], refs: r.refs ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)], stay: m.mini && collapsed, drawing: r.drawing });
+    if (r.weather) wxFx(r.weather); // ответ на «какая погода?» — сцена погоды (weather.js)
     maid.changed();
   } catch (e) {
     if (offline(e)) {
@@ -1795,7 +1797,7 @@ function render() {
   askSettled();
   if (binTasks.size) flyTasksToBin();
   hpAfterRender(); // праздники привычек: дотянуть анимации огоньков и начать волну или салют (habitparty.js)
-  wxDraw(); // погода: плашка в шапке, значок у задетого плана, небо над панелью (weather.js)
+  wxDraw(); // погода: плашка в шапке, значок у задетого плана (weather.js)
 }
 
 // Облачко спрашивает о привычке за день («… — сегодня сделали?») или о задаче с прошедшим сроком (tails.js), а ответили не в нём:
@@ -2528,6 +2530,7 @@ $("#miniExtra").addEventListener("click", async (ev) => {
 
 function setCollapsed(on) {
   collapsed = on;
+  if (on) wxFxStop(); // свёрнут — без сцены погоды (weather.js)
   if (!on && !autoOpened) seeMini(); // развернул сам (не горничная для сообщения) — свечение карточки замечено
   hideClock(); // свёрнутый вид — без панели планов; разворот — выдвижная панель уходит, а не превращается в обычную
   // История чата закрывается со сворачиванием: развернули — снова список задач, а не старая история.
@@ -2903,7 +2906,11 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => { wakeUp(); setState(on ? "think" : restState()); });
-maid.on("reply", (r) => wakeUp() || remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], refs: r.refs ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)] }));
+maid.on("reply", (r) => {
+  if (wakeUp() || remember(r.heard ?? "", r)) return;
+  say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], refs: r.refs ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)] });
+  if (r.weather) wxFx(r.weather); // ответ из быстрой записи на «какая погода?» — сцена погоды (weather.js)
+});
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // Состояние обновления программы — значок-шестерёнка, когда вышла новая версия (inbox.js).
 maid.on("update", inboxUpdate);
