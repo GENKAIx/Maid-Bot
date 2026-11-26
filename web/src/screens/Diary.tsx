@@ -4,7 +4,7 @@ import { Card, Chip, Empty, Spinner } from "../components";
 import { HEALTH_TOPICS, SECTIONS, SECTION_ORDER, WEEKDAYS, addDays, addMonths, dur, humanDay, metricText, money, monthGrid, monthTitle, todayKey } from "../format";
 import { navigate } from "../router";
 import { dayEmojis, emojiIcon, type DayEmoji, type Why } from "../dayEmoji";
-import { avgText, clearBadge, dayScores, monthAverage, scoreNum, scoreTip, scoreTone } from "../dayscore";
+import { avgText, clearBadge, dayScores, monthAverage, scoreNum, scoreTip, scoreTone, scoreNudge } from "../dayscore";
 import type { ActivityRow, DayData, DiaryRow, MetricRow } from "../types";
 import { EventList } from "./Today";
 
@@ -205,7 +205,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
                   title={tip || undefined}
                 >
                   <span className="cal-num">{Number(k.slice(-2))}</span>
-                  {score !== undefined && <span className={`cal-score ${scoreTone(score)}`} aria-label={scoreTip(score)}>{scoreNum(score)}</span>}
+                  {score !== undefined && <span className={`cal-score ${scoreTone(score)}`} aria-label={scoreTip(score)}><span className="cal-score-n" style={{ transform: scoreNudge(score) }}>{scoreNum(score)}</span></span>}
                   {em.length > 0 ? (
                     <span className="cal-stickers">
                       {(score !== undefined ? clearBadge(spots) : spots).map((p, j) => (

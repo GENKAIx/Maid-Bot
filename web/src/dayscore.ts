@@ -22,6 +22,11 @@ export function scoreTone(v: number): ScoreTone {
 export const scoreNum = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
 
 /** Строка подсказки клетки. */
+/** Сдвиг цифры в кружке оценки, в em (26.11.2026). Шрифт Onest 700, line-height 1: чернила цифр сидят на 0,03 em выше центра
+ *  строки, а «1», «2», «3», «7», «10» — чуть левее центра своей ширины. Замерено по пикселям для каждой оценки 1–10;
+ *  с этим сдвигом центр цифры совпадает с центром кружка. Цифры без tabular-nums: моноширинная «1» уезжала влево на 0,17 em. */
+const SCORE_NUDGE_X: Record<number, number> = { 1: 0.04, 2: 0.015, 3: 0.015, 7: 0.01, 10: 0.015 };
+export const scoreNudge = (v: number) => `translate(${SCORE_NUDGE_X[scoreNum(v)] ?? 0}em, 0.03em)`;
 export const scoreTip = (v: number) => `Оценка дня: ${scoreNum(v)}/10`;
 
 /** Средняя оценка за месяц («2026-11») — только дни этого месяца с оценкой; нет ни одной — undefined. */

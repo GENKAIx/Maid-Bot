@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { avgText, BADGE_ZONE, clearBadge, dayScores, monthAverage, scoreNum, scoreTip, scoreTone } from "../src/dayscore.ts";
+import { avgText, BADGE_ZONE, clearBadge, dayScores, monthAverage, scoreNudge, scoreNum, scoreTip, scoreTone } from "../src/dayscore.ts";
 import type { MetricRow } from "../src/types.ts";
 
 // «Дневник» (web/src/screens/Diary.tsx): оценка дня кружком в клетке календаря и средняя за месяц под ним.
@@ -60,4 +60,16 @@ test("пустая клетка календаря не роняет «Днев�
   const src = readFileSync(new URL("../src/screens/Diary.tsx", import.meta.url), "utf8");
   // Наклейки считаются для каждой клетки; без этой проверки SPOTS[-1].map падал на любом пустом дне.
   assert.match(src, /function scatter\(day: string, n: number\) \{[\s\S]*?if \(n <= 0\) return \[\];[\s\S]*?SPOTS\[Math\.min\(n, CELL_MAX\) - 1\]/);
+});
+
+test("цифра оценки по центру кружка: сдвиг для каждой оценки 1–10, без моноширинных цифр (26.11.2026)", () => {
+  for (let n = 1; n <= 10; n++) assert.match(scoreNudge(n), /^translate\(-?[\d.]+em, 0\.03em\)$/);
+  assert.equal(scoreNudge(1), "translate(0.04em, 0.03em)"); // «1» узкая — чернила левее центра
+  assert.equal(scoreNudge(5), "translate(0em, 0.03em)");
+  assert.equal(scoreNudge(7.4), scoreNudge(7)); // округляется, как scoreNum
+  const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  const rule = css.match(/\.cal-score \{[^}]*\}/)?.[0] ?? "";
+  assert.doesNotMatch(rule, /tabular-nums/, "моноширинная «1» уезжала влево");
+  const src = readFileSync(new URL("../src/screens/Diary.tsx", import.meta.url), "utf8");
+  assert.match(src, /className="cal-score-n" style=\{\{ transform: scoreNudge\(score\) \}\}/);
 });
