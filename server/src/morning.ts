@@ -1,6 +1,7 @@
 import type { Store, User } from "./db.ts";
 import type { LlmCall } from "./llm.ts";
 import { persona } from "./personas.ts";
+import { prompt, setPromptPreview } from "./prompts.ts";
 import { esc, eventLine, taskLine } from "./report.ts";
 import { humanDay } from "./time.ts";
 import { weatherFor, type WeatherView } from "./weather.ts";
@@ -95,6 +96,21 @@ export function weatherLineOk(line: string, facts: string): boolean {
   return nums(line).every((n) => known.has(n));
 }
 
+/** Системное сообщение утра. Три абзаца — промпты morning.fact / morning.wish / morning.weather (правятся в админке → «Промпты»);
+ *  голос, строка с ключами JSON и последняя строка — из кода. over — свой текст абзаца (предпросмотр в админке). */
+function morningAsk(voice: string, today: string, wx: boolean, over: { fact?: string; wish?: string; weather?: string } = {}): string {
+  const max = { max: String(LINE_MAX) };
+  return `${voice}\nУтреннее сообщение хозяину на ${humanDay(today)} (${today}). Ответь JSON {"fact": "...", "wish": "..."${wx ? ', "weather": "..."' : ""}}.\n` +
+    `${over.fact ?? prompt("morning.fact", max)}\n` +
+    `${over.wish ?? prompt("morning.wish", max)}\n` +
+    (wx ? `${over.weather ?? prompt("morning.weather", max)}\n` : "") +
+    `Без приветствия, без кавычек вокруг текста, без эмодзи в начале.`;
+}
+const MORNING_SAMPLE_DAY = "2026-11-27";
+const morningUser = `\n\n[сообщение пользователя]\nМысль дня: ${STOIC[0].text}\nПланы на сегодня: 11:15 Поездка к родителям\nПогода (факты): ‹факты прогноза›`;
+for (const id of ["fact", "wish", "weather"] as const)
+  setPromptPreview(`morning.${id}`, { frame: (s) => morningAsk("‹голос характера›", MORNING_SAMPLE_DAY, true, { [id]: s }) + morningUser });
+
 /** Строка про день, напутствие и (если есть прогноз) строка погоды — от модели одним запросом (JSON). Нет модели, ошибка, не JSON —
  *  пустые строки: утро уходит без строки про день, напутствие — сама мысль дня, погода — фраза из заготовок (weather.ts). */
 async function dayWords(llm: LlmCall | null, u: User, today: string, thought: string, plans: string[], wx: WeatherView | null = null): Promise<{ fact: string; wish: string; weather: string }> {
@@ -103,17 +119,7 @@ async function dayWords(llm: LlmCall | null, u: User, today: string, thought: st
     const text = await llm([
       {
         role: "system",
-        content: `${persona(u.persona, u).voice}\nУтреннее сообщение хозяину на ${humanDay(today)} (${today}). Ответь JSON {"fact": "...", "wish": "..."${wx ? ', "weather": "..."' : ""}}.\n` +
-          `fact — одно короткое забавное предложение про этот день, не длиннее ${LINE_MAX} знаков: праздник этого дня (можно неофициальный и ` +
-          `смешной), событие, случившееся в этот день в истории, или интересный факт. Пиши только то, в чём уверена. Не уверена — скажи ` +
-          `что-нибудь про время года или день недели.\n` +
-          `wish — напутствие на день от тебя хозяину, 1–2 предложения, не длиннее ${LINE_MAX} знаков, твоими словами и твоим голосом. Основа — ` +
-          `мысль ниже (идея стоиков): перескажи её по-своему, как совет на сегодня, можно с привязкой к его планам. Не цитируй, не называй ` +
-          `философов и стоицизм.\n` +
-          (wx ? `weather — погода на сегодня, 1–2 предложения, не длиннее ${LINE_MAX} знаков, твоим голосом: сначала погода, потом совет ` +
-            `про одно дело, которое она задевает (если оно есть в фактах). Числа и часы — только из фактов погоды, ничего не добавляй ` +
-            `и не округляй по-своему; слово «температура» не пиши.\n` : "") +
-          `Без приветствия, без кавычек вокруг текста, без эмодзи в начале.`,
+        content: morningAsk(persona(u.persona, u).voice, today, Boolean(wx)),
       },
       { role: "user", content: `Мысль дня: ${thought}\nПланы на сегодня: ${plans.join("; ") || "нет"}${wx ? `\nПогода (факты): ${wx.facts}` : ""}` },
     ], { json: true, temperature: 0.8, maxTokens: 500, kind: "summary" });

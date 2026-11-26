@@ -1,6 +1,7 @@
 import type { MetricRow, Store, TraitRow, User } from "./db.ts";
 import type { LlmCall } from "./llm.ts";
 import { extractJson } from "./llm.ts";
+import { fill, prompt, setPromptPreview } from "./prompts.ts";
 import { addDays, humanDay } from "./time.ts";
 
 // Профиль в духе карточки персонажа: уровень (опыт за сделанное), характеристики (рост — сам, вес, сон, шаги — из записей),
@@ -166,12 +167,12 @@ export function traitPrompt(traits: TraitRow[]): string {
   const line = (t: TraitRow) => `- [${TRAIT_CATEGORIES[t.category] ?? t.category}] ${t.title}${t.note ? ` — ${t.note}` : ""}`;
   const de = on.filter((t) => t.kind === "debuff").map(line);
   const bu = on.filter((t) => t.kind === "buff").map(line);
-  return [
-    de.length ? `Дебафы пользователя (аллергии, непереносимость, противопоказания):\n${de.join("\n")}` : "",
-    bu.length ? `Бафы пользователя (что ему помогает):\n${bu.join("\n")}` : "",
-    "Если сообщение или вопрос касается еды, напитков, лекарств, нагрузок или мест, которые задевают дебаф, — коротко и прямо " +
-      "предупреди об этом в ответе (например: «Лучше без креветок — у вас на них аллергия»). Не к месту дебафы не упоминай.",
-  ].filter(Boolean).join("\n");
+  // Текст — промпт profile.traits (админка → «Промпты»): абзацы через пустую строку; абзац с {{debuffs}} пропускаем, если дебафов
+  // нет, с {{buffs}} — если нет бафов; остальные идут подряд через перенос строки. Делим до подстановки: строки черт не делятся.
+  const vars = { debuffs: de.join("\n"), buffs: bu.join("\n") };
+  return prompt("profile.traits").split("\n\n")
+    .filter((b) => b.trim() && !(b.includes("{{debuffs}}") && !de.length) && !(b.includes("{{buffs}}") && !bu.length))
+    .map((b) => fill(b, vars)).join("\n");
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\d ]/gu, "").trim();
@@ -198,6 +199,18 @@ const PATTERN_MAX = 2;
 
 export interface Pattern { title: string; category: string; note: string; days: string[] }
 
+/** Системное сообщение поиска закономерностей: правила — промпт profile.patterns (админка → «Промпты»), образец JSON-ответа и
+ *  «Уже известно» — из кода. */
+const patternsAsk = (rules: string, known: string) =>
+  `${rules}\n` +
+  'Ответь JSON: {"patterns": [{"title": "коротко, до 40 символов: «Плохо после молока»", "category": "food|allergy|med|condition|body|other", ' +
+  '"note": "одно предложение: что именно повторяется", "days": ["ГГГГ-ММ-ДД", …]}]}. Ничего не нашлось — {"patterns": []}.\n\n' +
+  `Уже известно:\n${known}`;
+setPromptPreview("profile.patterns", {
+  frame: (s) => patternsAsk(s, "- Плохо после молока (пользователь отказался — не предлагать)") +
+    "\n\n[сообщение пользователя]\n2026-11-25 [food] латте\n2026-11-25 [health] болел живот\n‹дневник за 30 дней: здоровье, еда, настроение, сон›",
+});
+
 /** Найти повторяющееся «от X плохо» в дневнике за PATTERN_DAYS и завести как предложения (suggested). Возвращает новые. */
 export async function findPatterns(store: Store, llm: LlmCall, u: User, today: string): Promise<TraitRow[]> {
   const from = addDays(today, -PATTERN_DAYS);
@@ -212,14 +225,7 @@ export async function findPatterns(store: Store, llm: LlmCall, u: User, today: s
     raw = await llm([
       {
         role: "system",
-        content:
-          "Ты смотришь дневник пользователя и ищешь повторяющиеся связи «после X ему плохо» (еда, напитки, лекарства, " +
-          "недосып, нагрузка → боль, тошнота, сыпь, слабость и т. п.). Связь засчитывается, только если в дневнике она видна " +
-          `минимум в ${PATTERN_MIN} разных днях: в один день — и X, и плохое самочувствие после него. Не выдумывай, не ставь ` +
-          "диагнозов, случайные совпадения не бери. Уже известное ниже не повторяй.\n" +
-          'Ответь JSON: {"patterns": [{"title": "коротко, до 40 символов: «Плохо после молока»", "category": "food|allergy|med|condition|body|other", ' +
-          '"note": "одно предложение: что именно повторяется", "days": ["ГГГГ-ММ-ДД", …]}]}. Ничего не нашлось — {"patterns": []}.\n\n' +
-          `Уже известно:\n${known}`,
+        content: patternsAsk(prompt("profile.patterns", { min: String(PATTERN_MIN) }), known),
       },
       { role: "user", content: log },
     ], { json: true, temperature: 0.2, kind: "patterns" });

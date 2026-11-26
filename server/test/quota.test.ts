@@ -53,7 +53,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at;");
       await store.kvSet("schema_version", "31");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "39");
+      assert.equal(await again.kvGet("schema_version"), "40");
       assert.equal(await again.takeQuota(1, "2026-11-24", "calls", 1, 2), true);
       assert.equal(await again.takeQuota(1, "2026-11-24", "calls", 1, 2), true);
       assert.equal(await again.takeQuota(1, "2026-11-24", "calls", 1, 2), false, "третий сверх лимита 2");

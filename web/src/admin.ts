@@ -15,14 +15,15 @@
 // падения программы по версиям и местам (server/src/crashes.ts); screens/AdminReleases.tsx.
 // Этап 6 «Тарифы и управление» (24.11.2026): «Переключатели» (server/src/switches.ts), «Промокоды» (promo.ts), «Обращения»
 // (support.ts), «Объявления» (announce.ts), «Прогноз» (prognosis.ts); screens/AdminManage.tsx. Новая категория «Связь с людьми».
+// Промпты (27.11.2026): тексты для ИИ, которые владелец правит без выкладки, — версии и откат (server/src/prompts.ts; screens/AdminPrompts.tsx).
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
 export const ADMIN_LIVE_STAGE = 5;
 
-export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "promo" | "prognosis" | "spend" | "audience" | "quality" | "features" | "switches" | "showcase" | "tickets" | "news" | "health" | "alerts" | "releases" | "crashes" | "backups" | "log";
+export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "promo" | "prognosis" | "spend" | "audience" | "quality" | "features" | "switches" | "showcase" | "tickets" | "news" | "health" | "alerts" | "releases" | "crashes" | "backups" | "log" | "prompts";
 
 // Меню по категориям (24.11.2026): group — заголовок категории (ADMIN_GROUPS, по порядку), icon — имя в icons.tsx.
-export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Продукт", "Связь с людьми", "Система"] as const;
+export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Промпты", "Продукт", "Связь с людьми", "Система"] as const;
 export type AdminGroup = (typeof ADMIN_GROUPS)[number];
 
 export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number; group: AdminGroup; icon: string }[] = [
@@ -42,6 +43,8 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number;
   { id: "audience", title: "Аудитория", stage: 1, group: "Люди и деньги", icon: "adm-target" },
   { id: "spend", title: "Расходы на модель", stage: 1, group: "ИИ", icon: "adm-coins" },
   { id: "quality", title: "Качество разбора", stage: 1, group: "ИИ", icon: "adm-check" },
+  // Промпты: своя категория сразу после «ИИ» — тексты, которые получает модель; список по разделам и карточка /admin/prompts/<id>.
+  { id: "prompts", title: "Промпты", stage: 0, group: "Промпты", icon: "adm-prompt" },
   { id: "features", title: "Использование функций", stage: 3, group: "Продукт", icon: "adm-spark" },
   { id: "switches", title: "Переключатели", stage: 0, group: "Продукт", icon: "adm-toggle" },
   { id: "showcase", title: "Витрина", stage: 4, group: "Продукт", icon: "adm-grid" },
@@ -106,6 +109,8 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   announce_create: "опубликовал объявление",
   announce_on: "включил объявление",
   announce_off: "выключил объявление",
+  prompt_save: "изменил промпт",
+  prompt_select: "выбрал версию промпта",
   preview: "открыл живой показ виджета (витрина)",
   openrouter_refresh: "обновил счёт OpenRouter",
 };
@@ -917,4 +922,45 @@ export function openRouterDiffText(d: Pick<OpenRouterDay, "bill" | "ours" | "dif
   const base = Math.max(d.bill, d.ours);
   const pct = base > 0 ? Math.round((Math.abs(d.diff) / base) * 100) : 0;
   return d.diff ? `${signedUsd(d.diff)} (${pct}%)` : "$0";
+}
+
+// ——— Промпты (GET /api/admin/prompts и /api/admin/prompts/<id>; типы — копия server/src/prompts.ts promptsView и promptCard).
+// Текст промпта (body, def, preview) — второе исключение из правила «в админке без текстов»: это тексты владельца для ИИ.
+export interface PromptRow {
+  id: string; title: string; hint: string;
+  /** version — что идёт модели (0 — «как в коде»); stored_version — номер в базе; broken — записанная версия не подходит к коду. */
+  version: number; stored_version: number; broken: boolean; versions: number;
+  changed_at: string | null; changed_by: string | null; differs_from_default: boolean; length: number;
+}
+export interface PromptsData { reload_ms: number; sections: { title: string; prompts: PromptRow[] }[] }
+export interface PromptVersionInfo { version: number; body: string; created_at: string; created_by: string; reason: string }
+export interface PromptCardData {
+  id: string; section: string; title: string; hint: string;
+  vars: string[]; required: string[]; var_hints: Record<string, string>; must_contain: string[]; apart: string[];
+  readonly: string | null; max: number;
+  def: string; version: number; stored_version: number; broken: boolean; body: string; preview: string;
+  versions: PromptVersionInfo[]; reload_ms: number;
+}
+/** Проверка текста промпта до отправки — копия server/src/prompts.ts checkPrompt (web/test/admin-prompts.test.ts сверяет). */
+export function promptError(spec: Pick<PromptCardData, "vars" | "required" | "max"> & { must_contain?: readonly string[]; apart?: readonly string[] }, body: unknown): string | null {
+  if (typeof body !== "string" || !body.trim()) return "текст пустой";
+  if (body.length > spec.max) return `текст длиннее ${spec.max} знаков`;
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u0008\u000b-\u001f\u007f]/.test(body)) return "в тексте служебные знаки (можно только перенос строки и табуляцию)";
+  for (const m of body.matchAll(/\{\{([^{}]*)\}\}/g)) {
+    if (!spec.vars.includes(m[1])) return `незнакомая подстановка {{${m[1]}}}` + (spec.vars.length ? ` (можно: ${spec.vars.map((v) => `{{${v}}}`).join(", ")})` : " (здесь подстановок нет)");
+  }
+  for (const r of spec.required) if (!body.includes(`{{${r}}}`)) return `нужна подстановка {{${r}}}`;
+  const apart = spec.apart ?? [];
+  for (const par of body.split("\n\n")) {
+    const both = apart.filter((a) => par.includes(`{{${a}}}`));
+    if (both.length > 1) return `${both.map((a) => `{{${a}}}`).join(" и ")} — в разных абзацах (между ними пустая строка)`;
+  }
+  for (const t of spec.must_contain ?? []) if (!body.includes(t)) return `в тексте должно остаться «${t}»`;
+  return null;
+}
+/** Ключ промпта из адреса /admin/prompts/<id> (нет или не похож на ключ — null); регулярка — как у ручки в server/src/api.ts. */
+export function promptIdOf(path: string): string | null {
+  const m = /^\/admin\/prompts\/([a-z][a-z0-9._-]{1,60})\/?$/.exec(path);
+  return m ? m[1] : null;
 }

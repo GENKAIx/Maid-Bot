@@ -55,7 +55,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at;");
     await store.kvSet("schema_version", "23");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "39");
+    assert.equal(await again.kvGet("schema_version"), "40");
     const [s] = await q<{ client: string; version: string; label: string }>(again, "SELECT client, version, label FROM sessions");
     assert.deepEqual([s.client, s.version, s.label], ["", "", "web"]);
     const m = (await again.message(message.id))!;

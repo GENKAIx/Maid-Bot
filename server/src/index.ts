@@ -23,6 +23,7 @@ import { Billing, billingSecret } from "./billing.ts";
 import { installLogRedaction } from "./log-redact.ts";
 import { loadTariffs, watchTariffs } from "./tariffs.ts";
 import { loadSwitches, watchSwitches } from "./switches.ts";
+import { loadPrompts, watchPrompts } from "./prompts.ts";
 import { noteBotUpdate, noteLlmCall, ServerMeter } from "./server-metrics.ts";
 import { OpenRouterBill } from "./openrouter-bill.ts";
 
@@ -41,6 +42,9 @@ watchTariffs(store);
 // Переключатели функций (этап 6, switches.ts): из базы при запуске и раз в минуту — как тарифы.
 await loadSwitches(store);
 watchSwitches(store);
+// Промпты (prompts.ts): действующие версии из базы при запуске и раз в минуту — админка правит тексты для ИИ без выкладки.
+await loadPrompts(store);
+watchPrompts(store);
 const pipeline = new Pipeline(store, callLlm, config.publicUrl);
 if (drawReady()) pipeline.draw = callDraw;
 // Платный доступ (access.ts): одна проверка перед ИИ — в конвейере (сообщения, поправки, повтор), планировщике, боте и API.

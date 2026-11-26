@@ -2,6 +2,7 @@ import { carryQuota } from "./access.ts";
 import { config } from "./config.ts";
 import type { Store, User } from "./db.ts";
 import { profileInfo, saveProfile, type ProfileInfo } from "./profile.ts";
+import { prompt } from "./prompts.ts";
 import { dayKey } from "./time.ts";
 
 // «Персонализация → О вас» (20.11.2026): что горничной знать о человеке — обращение, город (с часовым поясом), подъём, отбой;
@@ -108,12 +109,13 @@ export function callAs(text: string, u: Partial<Pick<User, "address" | "name">> 
     pre + (h === "Х" ? w[0].toUpperCase() + w.slice(1) : w));
 }
 
-/** Строка в промпт: как обращаться к человеку. «Хозяин» — пусто (промпты и так так говорят). */
+/** Строка в промпт: как обращаться к человеку. «Хозяин» — пусто (промпты и так так говорят). Тексты — промпты persona.address_mistress
+ *  и persona.address_name (27.11.2026, правятся в админке → «Промпты»). */
 export function addressRule(u: Partial<Pick<User, "address" | "name">> | undefined): string {
   const w = addressWord(u);
   if (w === "хозяин") return "";
-  if (u?.address === "mistress") return "Человек — женщина: обращаешься к ней «хозяйка» и говоришь о ней в женском роде.";
-  return `Обращаешься к человеку по имени — «${w}» (вместо слова «хозяин»).`;
+  if (u?.address === "mistress") return prompt("persona.address_mistress");
+  return prompt("persona.address_name", { name: w });
 }
 
 /** Поиск города по началу названия: геокодер Open-Meteo, по-русски, до 6 вариантов. fetcher — для тестов. */

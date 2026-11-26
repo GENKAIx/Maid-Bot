@@ -774,6 +774,27 @@ CREATE TABLE IF NOT EXISTS openrouter_bill (
   `
 ALTER TABLE habits ADD COLUMN finished_at TEXT;
 `,
+  // Шаг 40: версии промптов (27.11.2026, prompts.ts). Владелец правит тексты для ИИ в админке → «Промпты»: каждая правка — новая
+  // версия (1, 2, …) в prompt_versions, активная — в prompt_active. Нет строки prompt_active (или version 0) — текст «как в коде»
+  // (PromptSpec.def, в базе не хранится). created_by / updated_by — админ, сделавший правку (столбца user_id нет — не данные людей).
+  `
+CREATE TABLE IF NOT EXISTS prompt_versions (
+  id {pk},
+  prompt_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  created_by INTEGER NOT NULL DEFAULT 0,
+  reason TEXT NOT NULL DEFAULT '',
+  UNIQUE (prompt_id, version)
+);
+CREATE TABLE IF NOT EXISTS prompt_active (
+  prompt_id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL,
+  updated_at TEXT NOT NULL,
+  updated_by INTEGER NOT NULL DEFAULT 0
+);
+`,
 ];
 
 /** Строка «Счёта OpenRouter» (шаг 38, openrouter-bill.ts): день UTC × модель × провайдер; деньги — миллионные доллара. */
@@ -1180,7 +1201,9 @@ export const ACCOUNT_TABLES = [
  *  (llm_usage, llm_calls) — на 0, «без человека», как записи до учёта по людям (строки llm_usage одного дня складываются). */
 export const ACCOUNT_DETACH_TABLES = ["payments", "billing_events", "llm_usage", "llm_calls"] as const;
 /** user_id здесь — админ, сделавший действие (не тот, о ком оно); админа удалить нельзя — строки не трогаются. Строки журнала админа
- *  про удалённого («#N …» в detail) тоже остаются: там только номер. */
+ *  про удалённого («#N …» в detail) тоже остаются: там только номер. Список — ровно таблицы со столбцом user_id (account-delete.test
+ *  сверяет со схемой). prompt_versions / prompt_active (шаг 40) сюда не входят: у них нет user_id, автор — created_by / updated_by
+ *  (как updated_by у feature_switches), удаление аккаунта их и так не трогает. */
 export const ACCOUNT_ACTOR_TABLES = ["admin_log", "tariff_history"] as const;
 /** Ключи kv с номером человека: ровно «<префикс>:<id>» и «<префикс>:<id>:…». series:<id>:<день> — раскладка серий человека, а
  *  series:<план>:laid — по номеру плана (ниже, по строкам events): у первых хвост — день, «laid» не трогается. */
@@ -2936,6 +2959,48 @@ export class Store {
     );
   }
 
+  // --- версии промптов (шаг 40, prompts.ts) ---
+
+  /** Какая версия какого промпта сейчас действует (нет строки — «как в коде», v0). */
+  async promptActive(): Promise<PromptActiveRow[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT prompt_id, version, updated_at, updated_by FROM prompt_active ORDER BY prompt_id");
+    return rows.map((r) => ({ prompt_id: String(r.prompt_id), version: Number(r.version), updated_at: String(r.updated_at), updated_by: Number(r.updated_by ?? 0) }));
+  }
+  /** Все сохранённые версии промпта, новые сверху (v0 «как в коде» здесь нет). */
+  async promptVersions(id: string): Promise<PromptVersionRow[]> {
+    return (await this.all<Record<string, unknown>>("SELECT * FROM prompt_versions WHERE prompt_id = ? ORDER BY version DESC", id)).map(toPromptVersion);
+  }
+  async promptVersion(id: string, version: number): Promise<PromptVersionRow | undefined> {
+    const r = await this.get<Record<string, unknown>>("SELECT * FROM prompt_versions WHERE prompt_id = ? AND version = ?", id, version);
+    return r ? toPromptVersion(r) : undefined;
+  }
+  /** Сколько сохранённых версий у каждого промпта (список «Промпты» без текстов). */
+  async promptVersionCounts(): Promise<Map<string, number>> {
+    const rows = await this.all<Record<string, unknown>>("SELECT prompt_id, COUNT(*) AS n FROM prompt_versions GROUP BY prompt_id");
+    return new Map(rows.map((r) => [String(r.prompt_id), Number(r.n)]));
+  }
+  /** Новая версия одним разом: номер — наибольший + 1, вставка и она же активная. Номер новой версии. */
+  async addPromptVersion(id: string, body: string, at: string, by: number, reason: string): Promise<number> {
+    return this.driver.tx(async () => {
+      const top = await this.get<Record<string, unknown>>("SELECT MAX(version) AS v FROM prompt_versions WHERE prompt_id = ?", id);
+      const v = Number(top?.v ?? 0) + 1;
+      await this.run(
+        "INSERT INTO prompt_versions (prompt_id, version, body, created_at, created_by, reason) VALUES (?, ?, ?, ?, ?, ?)",
+        id, v, body, at, by, reason.slice(0, 300),
+      );
+      await this.setPromptActive(id, v, at, by);
+      return v;
+    });
+  }
+  /** Сделать действующей версию version (0 — «как в коде»). */
+  async setPromptActive(id: string, version: number, at: string, by: number) {
+    await this.run(
+      `INSERT INTO prompt_active (prompt_id, version, updated_at, updated_by) VALUES (?, ?, ?, ?)
+       ON CONFLICT (prompt_id) DO UPDATE SET version = excluded.version, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+      id, version, at, by,
+    );
+  }
+
   /** Промокоды (promo.ts), новые сверху. */
   async promoCodes(limit = 200): Promise<PromoRow[]> {
     return (await this.all<Record<string, unknown>>("SELECT * FROM promo_codes ORDER BY id DESC LIMIT ?", limit)).map(toPromo);
@@ -3068,6 +3133,16 @@ export class Store {
 }
 
 export interface SwitchRow { id: string; enabled: number; updated_at: string; updated_by: number }
+/** Действующая версия промпта (шаг 40): version 0 — «как в коде». */
+export interface PromptActiveRow { prompt_id: string; version: number; updated_at: string; updated_by: number }
+/** Сохранённая версия промпта (шаг 40); body — текст владельца для ИИ. */
+export interface PromptVersionRow { prompt_id: string; version: number; body: string; created_at: string; created_by: number; reason: string }
+function toPromptVersion(r: Row): PromptVersionRow {
+  return {
+    prompt_id: String(r.prompt_id), version: Number(r.version), body: String(r.body), created_at: String(r.created_at),
+    created_by: Number(r.created_by ?? 0), reason: String(r.reason ?? ""),
+  };
+}
 export interface PromoRow { id: number; code: string; days: number; max_uses: number; used: number; ends_at: string | null; enabled: number; created_at: string; created_by: number }
 export type TicketStatus = "new" | "work" | "closed";
 export interface TicketRow { id: number; user_id: number; topic: string; text: string; status: TicketStatus; created_at: string; updated_at: string; answer: string; answered_at: string | null }

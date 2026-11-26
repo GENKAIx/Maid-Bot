@@ -469,3 +469,10 @@ body.admin-body { background: #0f1114; }
 .adm-or-days tr.adm-or-flag td { color: var(--a-bad); }
 .adm-or-days tr.adm-or-flag td:first-child { box-shadow: inset 3px 0 0 var(--a-bad); }
 .adm-or .adm-h3 { font-size: 14px; font-weight: 600; margin: 18px 0 8px; }
+
+/* Промпты (27.11.2026, screens/AdminPrompts.tsx): текст промпта целиком, переносы как в тексте; длинный — со своей прокруткой. */
+.adm-pr-text { margin: 0; padding: 10px 12px; border: 1px solid var(--a-line); border-radius: 8px; background: var(--a-bg); color: var(--a-text); font-family: var(--a-mono); font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 480px; overflow: auto; }
+.adm-pr .adm-al-acts > p, .adm-pr .adm-al-acts > h2 { margin: 0; }
+.adm-pr-edit { font-family: var(--a-mono); font-size: 12.5px; line-height: 1.5; }
+.adm-pr-vars ul { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.adm-pr .adm-table .adm-notes-past { border-top: 0; padding-top: 0; min-width: 260px; }

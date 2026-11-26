@@ -4,6 +4,7 @@ import { buildPrompt } from "../src/parse.ts";
 import { readFileSync } from "node:fs";
 import { EYES_NAMES, HAIR_NAMES, MAID_EYES, MAID_HAIR } from "../src/look.ts";
 import { HOUSE_RULES, PERSONAS, RINA, persona, rina } from "../src/personas.ts";
+import { prompt } from "../src/prompts.ts";
 
 // Общие правила горничной (personas.ts, HOUSE_RULES): интимное записывать спокойно, без отказов и нотаций; политику не обсуждать.
 
@@ -73,6 +74,8 @@ test("промпт разбора: Рина в выбранных цветах",
 });
 
 test("ответ на вопрос: о себе Рина отвечает по своей карточке, а не «нет данных»", () => {
+  // Текст ответа — промпт answer.rules (prompts.ts, 27.11.2026); pipeline.ts берёт его через prompt().
   const src = readFileSync(new URL("../src/pipeline.ts", import.meta.url), "utf8");
-  assert.match(src, /Вопросы о тебе самой — по твоей карточке/);
+  assert.match(src, /prompt\("answer\.rules"/);
+  assert.match(prompt("answer.rules", { shelf_rule: "", today: "2026-11-27" }), /Вопросы о тебе самой — по твоей карточке/);
 });

@@ -5,6 +5,7 @@ import { dateCard, diaryCard, eventCard, habitCard, memoryCard, metricCard, mone
 import { SHELF_KEYS, SHELVES, NOTE_TEXT_MAX, NOTE_TITLE_MAX, shelfKey } from "./notes.ts";
 import { CURRENCY, HEALTH_TOPICS, MONEY_CATEGORIES, SECTIONS, normalize, num, promptHeader, topicOf, type Parsed } from "./parse.ts";
 import { EMOTIONS } from "./personas.ts";
+import { prompt, setPromptPreview } from "./prompts.ts";
 import { esc } from "./report.ts";
 import { isDayKey, normalizeTime } from "./time.ts";
 
@@ -131,59 +132,45 @@ function fieldsOf(x: Editable): Record<string, unknown> {
 export const DATE_TYPES = ["birthday", "anniversary", "holiday", "deadline", "other"];
 const PRIORITIES = ["high", "normal", "low"];
 
-/** Запрос к модели: голос характера, «сегодня» как у разбора, исходное сообщение и только записи этого ответа.
- *  question — прошлая поправка этого ответа кончилась вопросом: тогда в сообщении пользователя — та поправка и ответ на вопрос. */
-export function correctPrompt(o: { voice: string; today: string; now: string; tz: string; original: string; rows: Editable[]; question?: string }): string {
-  const list = o.rows.map((x, i) => `r${i + 1} ${KIND_NAME[x.tbl]}: ${JSON.stringify(fieldsOf(x))}`).join("\n");
-  const asked = o.question
-    ? `\nНа прошлую поправку ты переспросила: «${plain(o.question)}». Ниже в сообщении — та поправка и ответ на вопрос («(уточнение: …)»): исполни поправку с ним.\n`
-    : "";
-  return `${o.voice}
-Пользователь поправляет один твой ответ — записи, которые ты сделала из его сообщения. Меняй только их: других записей здесь нет.
-${promptHeader(o.today, o.now, o.tz)}
-
-Его сообщение, из которого сделаны записи:
-${o.original}
-
-Записи этого ответа (ref — номер, дальше — вид записи и её поля сейчас):
-${list}
-${asked}
-Какие поля можно менять:
-- план: title, date_iso (ГГГГ-ММ-ДД), time (ЧЧ:ММ или null — на весь день), end_time (ЧЧ:ММ или null), details
+/** Части запроса поправки, которые строит код из констант (в админке → «Промпты» — только для чтения): подстановки {{fields}},
+ *  {{schema}} и {{add_schema}} промпта correct.rules (prompts.ts). */
+const CORRECT_FIELDS = `- план: title, date_iso (ГГГГ-ММ-ДД), time (ЧЧ:ММ или null — на весь день), end_time (ЧЧ:ММ или null), details
 - задача: title, due_date (ГГГГ-ММ-ДД или null — без срока), priority (${PRIORITIES.join("|")})
 - деньги: kind (expense — трата, income — доход), amount (число больше 0), currency (RUB|USD|EUR…), category (${MONEY_CATEGORIES.join("|")}), note (на что / от кого), day_key (ГГГГ-ММ-ДД, не позже сегодня)
 - показатель: value (число), day_key (ГГГГ-ММ-ДД, не позже сегодня), note
 - дневник: section (${Object.keys(SECTIONS).join("|")}), topic (только для health: ${Object.keys(HEALTH_TOPICS).join("|")}), text, day_key (не позже сегодня)
 - заметка «на потом»: shelf (${SHELF_KEYS.join("|")}), title, note
-- важная дата: title, date_iso (ГГГГ-ММ-ДД), type (${DATE_TYPES.join("|")}), yearly (true|false)
-
-Ответь ОДНИМ JSON-объектом:
-{"edits": [{"ref": "r1", "set": {"time": "17:00"}}], "remove": [], "add": {}, "clarify": null, "unsupported": false, "reply": "короткая живая реплика, что поправила (1 предложение)", "emotion": "${EMOTIONS.join("|")}"}
-
-Правила:
-- В set — только поля, которые просит поменять поправка; остальное оставь как есть и не повторяй.
-- Поправка про одну запись — меняй только её. Неясно, какую запись или на что поменять, — clarify: один короткий вопрос, edits пустой.
-- Время «в 7» без утра/вечера, где оба варианта правдоподобны, — clarify. «В 7 вечера» — 19:00. Время — только ЧЧ:ММ.
-- Сдвигаешь начало плана, а конец не назван — end_time не ставь: длительность сохранит сервер. Конец раньше начала («с 22 до 2») — до утра следующего дня, так можно.
-- «Это еда, а не транспорт» — category; «сумма 540» — amount; «на завтра», «это было вчера» — date_iso, due_date или day_key.
-- Трата или доход — это поле kind у денег, его менять можно.
-
-Убрать, дописать, записать в другом виде:
-- remove — номера записей, которые не надо было записывать («в задачи не надо», «это не трата», «убери встречу»). Остальные записи не трогай.
-- Просят другой вид записи («это задача, а не план», «запиши в дневник, а не в траты», «это на полку фильмов») — remove прежней записи и add с новой:
-  перенеси в неё название, дату, время, сумму — всё, что подходит новому виду. Вид — только из списка ниже.
-- Пропущено в ответе («и ещё 300 на такси», «и задачу купить хлеб», «запиши ещё, что болела голова») — add без remove:
-  только то, что прямо сказано в поправке. Уже записанное в ответе второй раз не добавляй — поправь его.
-- add — новые записи, поля — как у разбора сообщения:
-  "events": [{"title": "...", "date_iso": "ГГГГ-ММ-ДД", "time": "ЧЧ:ММ или null", "end_time": null, "details": ""}] — план,
+- важная дата: title, date_iso (ГГГГ-ММ-ДД), type (${DATE_TYPES.join("|")}), yearly (true|false)`;
+const CORRECT_SCHEMA = `{"edits": [{"ref": "r1", "set": {"time": "17:00"}}], "remove": [], "add": {}, "clarify": null, "unsupported": false, "reply": "короткая живая реплика, что поправила (1 предложение)", "emotion": "${EMOTIONS.join("|")}"}`;
+const CORRECT_ADD = `  "events": [{"title": "...", "date_iso": "ГГГГ-ММ-ДД", "time": "ЧЧ:ММ или null", "end_time": null, "details": ""}] — план,
   "tasks": [{"title": "...", "priority": "${PRIORITIES.join("|")}", "due_date": "ГГГГ-ММ-ДД или null"}] — задача,
   "money": [{"kind": "expense|income", "amount": 450, "currency": "RUB", "category": "${MONEY_CATEGORIES.join("|")}", "note": "на что / от кого", "day_iso": null}],
   "metrics": [{"key": "weight|pulse|… латиницей", "label": "подпись по-русски", "value": 85, "unit": "", "note": "", "day_iso": null}] — показатель,
   "diary": [{"section": "${Object.keys(SECTIONS).join("|")}", "topic": "только для health", "text": "...", "day_iso": null}] — дневник,
   "stash": [{"shelf": "${SHELF_KEYS.join("|")}", "title": "название как есть", "note": ""}] — заметка «на потом»,
-  "dates": [{"title": "...", "date_iso": "ГГГГ-ММ-ДД", "type": "${DATE_TYPES.join("|")}", "person": "", "yearly": true}] — важная дата.
-- Сделать из записи привычку, запомнить о пользователе, записать в профиль (аллергия, особенность) — этого поправка не умеет: unsupported: true, остальное пустое.
-- Ничего не выдумывай: числа, даты и время — только названные в поправке или прямо из неё вытекающие («на час позже»).`;
+  "dates": [{"title": "...", "date_iso": "ГГГГ-ММ-ДД", "type": "${DATE_TYPES.join("|")}", "person": "", "yearly": true}] — важная дата.`;
+setPromptPreview("correct.rules", {
+  sample: {
+    header: "‹две строки «Сегодня…» — промпт parse.header›",
+    original: "Встреча с Петей завтра в 7, такси 450",
+    rows: 'r1 план: {"title":"Встреча с Петей","date_iso":"2026-11-28","time":"19:00","end_time":null,"details":""}\n' +
+      'r2 деньги: {"kind":"expense","amount":450,"currency":"RUB","category":"транспорт","note":"такси","day_key":"2026-11-27"}',
+    asked: "",
+    fields: CORRECT_FIELDS, schema: CORRECT_SCHEMA, add_schema: CORRECT_ADD,
+  },
+  frame: (s) => `‹голос характера›\n${s}`,
+});
+
+/** Запрос к модели: голос характера, «сегодня» как у разбора, исходное сообщение и только записи этого ответа.
+ *  question — прошлая поправка этого ответа кончилась вопросом: тогда в сообщении пользователя — та поправка и ответ на вопрос.
+ *  Текст правил — промпт correct.rules (prompts.ts, правится в админке → «Промпты»). */
+export function correctPrompt(o: { voice: string; today: string; now: string; tz: string; original: string; rows: Editable[]; question?: string }): string {
+  const list = o.rows.map((x, i) => `r${i + 1} ${KIND_NAME[x.tbl]}: ${JSON.stringify(fieldsOf(x))}`).join("\n");
+  const asked = o.question
+    ? `\nНа прошлую поправку ты переспросила: «${plain(o.question)}». Ниже в сообщении — та поправка и ответ на вопрос («(уточнение: …)»): исполни поправку с ним.\n`
+    : "";
+  const header = promptHeader(o.today, o.now, o.tz);
+  return `${o.voice}\n${prompt("correct.rules", { header, original: o.original, rows: list, asked, fields: CORRECT_FIELDS, schema: CORRECT_SCHEMA, add_schema: CORRECT_ADD })}`;
 }
 
 const optText = z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim() : null), z.string().nullable());

@@ -19,7 +19,7 @@ export type ActNote = { ok: boolean; text: string } | null;
 type PageProps<T> = { data: T; onChanged: () => void; note: ActNote; setNote: (n: ActNote) => void };
 
 /** Отправка действия: ответ или текст ошибки; 403 — вход в админку кончился. */
-function useSend() {
+export function useSend() {
   const lost = useContext(AdminLost);
   return async <T,>(path: string, body: unknown): Promise<{ ok: T } | { err: string }> => {
     try {
@@ -32,7 +32,7 @@ function useSend() {
 }
 
 /** Действие с причиной: проверка причины, отправка, итог в note, перечитать раздел. */
-function useAct(reason: string, setReason: (v: string) => void, setNote: (n: ActNote) => void, onChanged: () => void) {
+export function useAct(reason: string, setReason: (v: string) => void, setNote: (n: ActNote) => void, onChanged: () => void) {
   const send = useSend();
   const [busy, setBusy] = useState(false);
   const act = async <T,>(path: string, body: Record<string, unknown>, done: (r: T) => string): Promise<boolean> => {
@@ -49,19 +49,19 @@ function useAct(reason: string, setReason: (v: string) => void, setNote: (n: Act
   return { act, busy };
 }
 
-function Reason({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function Reason({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <input className="adm-tf-reason adm-al-reason" placeholder="Причина (обязательно): например, «акция на стриме»" aria-label="Причина" maxLength={300}
       value={value} onChange={(e) => onChange(e.target.value)} />
   );
 }
-const Note = ({ note }: { note: ActNote }) => (note ? <p className={note.ok ? "adm-muted" : "adm-err"} role={note.ok ? "status" : "alert"}>{note.text}</p> : null);
+export const Note = ({ note }: { note: ActNote }) => (note ? <p className={note.ok ? "adm-muted" : "adm-err"} role={note.ok ? "status" : "alert"}>{note.text}</p> : null);
 function Kpi({ title, value, hint, warn }: { title: string; value: string; hint?: string; warn?: boolean }) {
   return <div className={`adm-kpi ${warn ? "warn" : ""}`}><span>{title}</span><b className="adm-num">{value}</b>{hint && <i>{hint}</i>}</div>;
 }
 
 /** Обёртка раздела: данные, «перечитать после действия» (key={tick}) и итог действия, который переживает перерисовку. */
-function useSection<T>(path: string) {
+export function useSection<T>(path: string) {
   const [tick, setTick] = useState(0);
   const [note, setNote] = useState<ActNote>(null);
   const [data, err] = useAdmin<T>(`${path}${tick ? `?t=${tick}` : ""}`);

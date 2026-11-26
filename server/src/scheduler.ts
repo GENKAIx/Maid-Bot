@@ -13,6 +13,7 @@ import { rainSoon } from "./weather.ts";
 import { reminderKind, type NoticeKind } from "./notices.ts";
 import { METRICS } from "./parse.ts";
 import { findPatterns, patternText, traitButtons } from "./profile.ts";
+import { prompt } from "./prompts.ts";
 import { extendSeries } from "./repeat.ts";
 import { addDays, dayKey, durationHuman, humanDay, timeOf, zonedToUtc } from "./time.ts";
 
@@ -344,11 +345,8 @@ export class Scheduler {
       const words = await llm([
         {
           role: "system",
-          content: `${persona(u.persona, u).voice}\nВечерний итог дня для хозяина — 2–3 коротких предложения, не длиннее ${EVENING_MAX} знаков, ` +
-            `без заголовков, списков и эмодзи в начале строк. НЕ пересказывай, что было за день: цифры он уже видит. ` +
-            `Найди одну неочевидную связь по записям за неделю (что повторяется, что идёт после чего: еда и самочувствие, игры и сон, ` +
-            `дела и настроение) и дай один конкретный маленький совет на завтра с учётом завтрашних планов. Только по фактам ниже, ` +
-            `без выдумок; связи нет — один точный совет. О здоровье — без диагнозов: «заметь и проверь», при повторах несколько дней — к врачу.`,
+          // Текст — промпт evening.summary (админка → «Промпты»).
+          content: `${persona(u.persona, u).voice}\n${prompt("evening.summary", { max: String(EVENING_MAX) })}`,
         },
         {
           role: "user",

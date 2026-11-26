@@ -6,6 +6,7 @@ import { asUser, extractJson, llmErrorCode } from "./llm.ts";
 import { buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
 import { finishPatch, habitBefore, markRefusal, reopenPatch, scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
+import { prompt } from "./prompts.ts";
 import { changesList, esc, upcomingDates, wholeSentences } from "./report.ts";
 import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
 import { planEventReminders } from "./scheduler.ts";
@@ -209,11 +210,9 @@ export const TRASH_DAYS = 14;
 
 /** Через сколько минут после сообщения повторять неудавшийся разбор; после последней попытки — заметкой. */
 export const RETRY_AFTER_MIN = [2, 10, 30];
-/** Как вести разговор (/ask и сообщения, где с горничной разговаривают, — talk в разборе). */
-export const TALK_RULES =
-  "Это разговор: ничего не записывай, записи делает разбор. Поддерживай разговор как живой собеседник — отвечай по существу, " +
-  "делись своим мнением и впечатлением, можешь задать встречный вопрос по теме разговора. Не сворачивай на дела, задачи и планы, " +
-  "если собеседник сам о них не говорит. 1–4 предложения, без списков.";
+/** Как вести разговор (/ask и сообщения, где с горничной разговаривают, — talk в разборе): текст «как в коде» промпта chat.rules
+ *  (prompts.ts, правится в админке → «Промпты»); в разговоре — prompt("chat.rules"). */
+export { TALK_RULES } from "./prompts.ts";
 
 /** Признак неудачи разговора (/ask) в reply — такие не повторяются разбором. После него — код сбоя (llmErrorCode), не текст ошибки. */
 export const CHAT_FAILED = "chat:";
@@ -284,11 +283,8 @@ export interface Incoming {
 /** Ветка разбора → фича (feature-list.ts); упавший разбор и уточнение — не фичи. */
 const ROUTE_FEATURES: Record<string, string> = { weather: "weather_ask", chat: "chat", draw: "draw", answer: "answer", talk: "talk", apply: "record" };
 
-/** Что модели сказать о картинке — рядом с подписью. */
-const pictureNote = (n: number) =>
-  n > 1
-    ? `(К сообщению приложено изображений: ${n} — разбери каждое по правилам для изображений, одно и то же не записывай дважды. Подпись выше, если есть, важнее картинок.)`
-    : "(К сообщению приложено изображение — разбери его по правилам для изображений. Подпись выше, если есть, важнее картинки.)";
+/** Что модели сказать о картинке — рядом с подписью (prompts.ts parse.picture.one / parse.picture.many). */
+const pictureNote = (n: number) => (n > 1 ? prompt("parse.picture.many", { n: String(n) }) : prompt("parse.picture.one"));
 
 /** Как сообщение с картинками выглядит в истории и в базе. */
 export const pictureText = (caption: string, n = 1) => {
@@ -489,7 +485,7 @@ export class Pipeline {
       } catch {
         // Модель иногда отвечает словами вместо JSON — один раз переспрашиваем, только потом это сбой.
         console.warn("[parse] без JSON, переспрашиваю:", raw.slice(0, 200));
-        raw = await this.llm([...ask, { role: "assistant", content: raw }, { role: "user", content: "Ответь одним JSON-объектом по схеме из инструкции, без текста вокруг." }], { json: true, kind: "parse" });
+        raw = await this.llm([...ask, { role: "assistant", content: raw }, { role: "user", content: prompt("common.json_retry") }], { json: true, kind: "parse" });
         json = extractJson(raw);
       }
       parsed = normalize(json, { today, now: ctx.now, text: inc.text });
@@ -1194,7 +1190,7 @@ export class Pipeline {
         json = extractJson(raw);
       } catch {
         console.warn("[correct] без JSON, переспрашиваю:", raw.slice(0, 200));
-        raw = await this.llm([...ask, { role: "assistant", content: raw }, { role: "user", content: "Ответь одним JSON-объектом по схеме из инструкции, без текста вокруг." }], { json: true, kind: "correct" });
+        raw = await this.llm([...ask, { role: "assistant", content: raw }, { role: "user", content: prompt("common.json_retry") }], { json: true, kind: "correct" });
         json = extractJson(raw);
       }
       out = CorrectSchema.parse(json ?? {});
@@ -1415,17 +1411,14 @@ export class Pipeline {
     const data = r.shelves.length
       ? `Заметки «на потом»:\n${notes || "ничего не записано"}`
       : (await answerData(this.store, u, range, r.search)) + (notes ? `\n\nЗаметки «на потом» с этими словами:\n${notes}` : "");
-    const shelfRule = r.shelves.length
-      ? "Спрашивают про заметки «на потом»: назови, что ждёт на полке (до 8 названий; если их больше — скажи, сколько всего), и предложи одно на выбор. Полка пуста — так и скажи. "
-      : "";
+    // Тексты — промпты answer.rules и answer.shelf_rule (prompts.ts, правятся в админке → «Промпты»).
+    const shelfRule = r.shelves.length ? `${prompt("answer.shelf_rule")} ` : "";
     const traits = traitPrompt(await this.store.traitsOf(u.id));
     try {
       const out = await this.llm([
         {
           role: "system",
-          content: `${persona(u.persona, u).voice}\nОтвечай на вопрос пользователя только по его записям ниже. ` +
-            `Нет данных — так и скажи, не выдумывай. ${shelfRule}Вопросы о тебе самой — по твоей карточке, не по записям. Коротко, 1–4 предложения. Сегодня ${today}. ` +
-            `Дни называй датой в виде ГГГГ-ММ-ДД (их покажут ссылками), суммы и средние бери из «Итогов», сам не складывай; данные за один день — не называй это средним.\n\n${data}${traits ? "\n\n" + traits : ""}`,
+          content: `${persona(u.persona, u).voice}\n${prompt("answer.rules", { shelf_rule: shelfRule, today })}\n\n${data}${traits ? "\n\n" + traits : ""}`,
         },
         { role: "user", content: question },
       ], { temperature: 0.4, kind: "answer", maxTokens: ANSWER_MAX_TOKENS });
@@ -1447,7 +1440,7 @@ export class Pipeline {
     const traits = traitPrompt(await this.store.traitsOf(u.id));
     const mem = (await this.store.activeMemory(u.id)).slice(-PROMPT_CAP.memory).map((m) => `${m.subject ? m.subject + ": " : ""}${m.text}`).join("\n");
     const out = await this.llm([
-      { role: "system", content: `${p.voice}\n${TALK_RULES}\nСегодня ${today}.\nЧто знаешь о собеседнике:\n${mem || "почти ничего"}${traits ? "\n\n" + traits : ""}`
+      { role: "system", content: `${p.voice}\n${prompt("chat.rules")}\n${prompt("chat.system", { today, memory: mem || "почти ничего" })}${traits ? "\n\n" + traits : ""}`
         + (saved.length ? `\n\nИз этого сообщения ты уже записала (это видно под твоим ответом, не пересказывай и не говори, что не записала):\n${saved.join("\n")}` : "") },
       ...(await this.history(u.id, msg.id)),
       { role: "user", content: images ? `${msg.text}\n(Приложено изображений: ${images.length}.)` : msg.text, images },

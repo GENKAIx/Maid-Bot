@@ -1,5 +1,7 @@
 import { config } from "./config.ts";
 import { llmErrorCode, reportCall, reportUsage, usageCost, type Picture } from "./llm.ts";
+// Обёртка просьбы нарисовать — промпт draw.wrap (prompts.ts, правится в админке); prompt в этом файле — описание картинки.
+import { prompt as promptText } from "./prompts.ts";
 
 // Картинка по описанию — RunPod (по умолчанию Z-Image Turbo), а без ключа RunPod — OpenRouter (по умолчанию Gemini 2.5 Flash Image).
 // Ответ RunPod — ссылка на картинку на 7 дней, OpenRouter — картинка в base64; в обоих случаях храним у себя (таблица drawings).
@@ -76,7 +78,7 @@ export async function callOpenRouterDraw(prompt: string): Promise<Picture> {
     body: JSON.stringify({
       model: config.drawing.openrouterModel,
       modalities: ["image", "text"],
-      messages: [{ role: "user", content: `Draw a single square picture: ${prompt}` }],
+      messages: [{ role: "user", content: promptText("draw.wrap", { prompt }) }],
       usage: { include: true },
     }),
     signal: AbortSignal.timeout(DRAW_TIMEOUT_MS),

@@ -70,7 +70,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at;");
     await store.kvSet("schema_version", "26");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "39");
+    assert.equal(await again.kvGet("schema_version"), "40");
     const was = (await again.user(old.id))!;
     assert.deepEqual([was.plan, was.access_until, Number(was.sub_canceled), was.name], ["friend", null, 0, "Старый"]);
     assert.equal(accessOf(was, new Date(), []).ok, true);

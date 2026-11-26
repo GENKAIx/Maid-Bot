@@ -44,6 +44,7 @@ import { DbCopies, DbCopyBusy } from "./snapshot.ts";
 import { acceptCrashes, adminCrashes, CRASH_MAX_ITEMS, noteDesktopDay } from "./crashes.ts";
 import { changeRelease, editNotes, notesFile, ReleaseError, releasesView, servedYml, ymlVersion } from "./releases.ts";
 import { setSwitch, SwitchError, switchesView, switchOffText, switchOn } from "./switches.ts";
+import { promptCard, PromptError, promptsView, savePrompt, selectPrompt } from "./prompts.ts";
 import { createPromo, PromoError, promoView, redeemPromo, togglePromo } from "./promo.ts";
 import { createTicket, SupportError, supportOf, ticketAction, ticketCard, ticketsView } from "./support.ts";
 import { AnnounceError, announcementsView, createAnnouncement, deliverToWidget, siteAnnouncements, toggleAnnouncement } from "./announce.ts";
@@ -106,12 +107,14 @@ async function guardAsync<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Ошибки этапа 6 (переключатели, промокоды, обращения, объявления) — в ответ с их кодом. */
+/** Ошибки этапа 6 (переключатели, промокоды, обращения, объявления) и промптов — в ответ с их кодом. */
 async function stage6<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (e) {
-    if (e instanceof SwitchError || e instanceof PromoError || e instanceof SupportError || e instanceof AnnounceError) throw new HttpError(e.status, e.message);
+    if (e instanceof SwitchError || e instanceof PromoError || e instanceof SupportError || e instanceof AnnounceError || e instanceof PromptError) {
+      throw new HttpError(e.status, e.message);
+    }
     throw e;
   }
 }
@@ -235,7 +238,8 @@ async function serveStatic(dir: string, pathname: string, res: http.ServerRespon
   };
   let st = await statOf(file);
   if (!st) {
-    if (path.extname(safe)) return false;
+    // Путь с точкой — файл, которого нет; кроме экранов админки: ключ промпта с точкой (/admin/prompts/parse.rules).
+    if (path.extname(safe) && !safe.replace(/\\/g, "/").startsWith("/admin/")) return false;
     file = path.join(dir, "index.html");
     st = await statOf(file);
     if (!st) return false;
@@ -549,6 +553,18 @@ export function createApi(deps: ApiDeps) {
       return stage6(() => (p.endsWith("toggle") ? toggleAnnouncement(store, u.id, b) : createAnnouncement(store, u.id, b)));
     }
     if (m === "GET" && p === "/api/admin/prognosis") return prognosisView(store);
+    // Промпты (prompts.ts): список без текстов; карточка — тексты владельца для ИИ (поля body / def / preview); правка — новая версия,
+    // выбор — любая версия или «как в коде» (v0). Каждое действие — с причиной в журнал админа (без текста).
+    if (m === "GET" && p === "/api/admin/prompts") return promptsView(store);
+    const pr = /^\/api\/admin\/prompts\/([a-z][a-z0-9._-]{1,60})(?:\/(save|select))?$/.exec(p);
+    if (pr) {
+      if (m === "GET" && !pr[2]) return stage6(() => promptCard(store, pr[1]));
+      if (m === "POST" && pr[2]) {
+        const raw = await readJson(req, 100_000);
+        const b = { ...(raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}), id: pr[1] };
+        return stage6(() => (pr[2] === "save" ? savePrompt(store, u.id, b) : selectPrompt(store, u.id, b)));
+      }
+    }
     throw new HttpError(404, "нет такого адреса");
   }
 
