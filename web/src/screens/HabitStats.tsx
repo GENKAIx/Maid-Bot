@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { get } from "../api";
-import { Bars } from "../charts";
+import { Bars, MarkTimeLine } from "../charts";
 import { Spinner } from "../components";
 import { MONTHS, MONTHS_GEN, WEEKDAYS, shortDay } from "../format";
 import { daysBetween } from "../habitview";
+import { hhmm, medianMin } from "../timechart";
 import type { HabitStatCell, HabitStats } from "../types";
 import { fullNum } from "./Habits";
 
 // Статистика одной привычки — открывается щелчком по названию на странице «Привычки», строкой под ней:
-// серии и проценты, год клетками (как у GitHub), по дням недели и по месяцам.
+// серии и проценты, год клетками (как у GitHub), по дням недели и по месяцам, во сколько отмечали.
 
 const WEEK_SHORT = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 const pct = (r: { done: number; planned: number }) => (r.planned ? Math.round((r.done / r.planned) * 100) : null);
@@ -90,9 +91,26 @@ function StatsBody({ s, finished }: { s: HabitStats; finished: boolean }) {
           />
         </div>
       </div>
+      {s.mark_times && <TimesBlock t={s.mark_times} />}
       {hint && <p className="small hs-hint">{hint}</p>}
       {s.amount && <AmountBlock a={s.amount} />}
     </>
+  );
+}
+
+/** «Во сколько отмечали» — время «сделал» за последние 30 дней срока, 🔔 — когда напоминает. Меньше двух точек — строка вместо графика. */
+function TimesBlock({ t }: { t: NonNullable<HabitStats["mark_times"]> }) {
+  const med = medianMin(t.points.map((p) => p.min));
+  return (
+    <div className="hs-times">
+      <h4 className="hs-sub">Во сколько отмечали</h4>
+      {t.points.length < 2 ? <p className="muted small hs-hint">Пока мало отметок со временем</p> : (
+        <>
+          {med !== null && <p className="muted small hs-hint">обычно около {hhmm(med)}</p>}
+          <MarkTimeLine data={t} />
+        </>
+      )}
+    </div>
   );
 }
 

@@ -317,10 +317,46 @@ function amountStats(amounts: Map<string, { amount: number; unit: string }>, tod
   return { unit, week: sum(addDays(today, -(isoWeekday(today) - 1))), month: sum(`${today.slice(0, 7)}-01`), total: sum(""), best, days };
 }
 
-export async function habitStats(store: Store, u: User, h: HabitRow, today: string): Promise<HabitStats> {
+/** «Во сколько отмечали» (26.11.2026) — график под «По дням недели» / «По месяцам». Окно — последние 30 дней срока: у идущей —
+ *  по сегодня, у законченной — по конец срока (не раньше начала). points — дни со «сделал», по порядку: time «ЧЧ:ММ» и min (минут с
+ *  полуночи) в поясе человека; пропуски, минус в полночь и отмеченные задним числом (время другого дня ничего не говорит) — не идут.
+ *  gap — между этой точкой и прошлой был день по расписанию без такой отметки: линия на нём рвётся. remind — время напоминаний,
+ *  как у 🔔 на странице: своё время привычки, нет своего — общее из настроек (habit_first), «без напоминаний» — пусто. */
+export interface MarkTimes {
+  from: string;
+  to: string;
+  points: { day: string; time: string; min: number; gap: boolean }[];
+  remind: string[];
+}
+
+export function markTimesOf(h: HabitRow, marks: MarkRow[], today: string, tz: string, first: string): MarkTimes {
+  const to = h.end_date && h.end_date < today ? h.end_date : today;
+  const back = addDays(to, -29);
+  const from = back < h.start_date ? (h.start_date < to ? h.start_date : to) : back;
+  const byDay = new Map(marks.filter((m) => m.habit_id === h.id).map((m) => [m.day_key, m] as const));
+  const live = { ...h, status: "active" };
+  const points: MarkTimes["points"] = [];
+  let gap = false;
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    const m = byDay.get(d);
+    const t = m?.status === "done" ? markTime(m, tz) : null;
+    if (t?.at_time && !t.at_day) {
+      const [hh, mm] = t.at_time.split(":").map(Number);
+      points.push({ day: d, time: t.at_time, min: hh * 60 + mm, gap: points.length > 0 && gap });
+      gap = false;
+    } else if (dueOn(live, d) && d < today) gap = true; // сегодня, ещё не отмеченное, линию не рвёт
+  }
+  const remind = h.quiet ? [] : timesOf(h).length ? [...timesOf(h)].sort() : [first];
+  return { from, to, points, remind };
+}
+
+export async function habitStats(store: Store, u: User, h: HabitRow, today: string): Promise<HabitStats & { mark_times: MarkTimes }> {
   const from = h.start_date < addDays(today, -1830) ? addDays(today, -1830) : h.start_date;
   const yearFrom = addDays(today, -380);
   const marks = (await store.marksOf(u.id, from < yearFrom ? from : yearFrom, addDays(today, 7))).filter((m) => m.habit_id === h.id);
   const amounts = new Map(marks.filter((m) => m.amount != null).map((m) => [m.day_key, { amount: Number(m.amount), unit: m.unit ?? "" }] as const));
-  return habitStatsOf(h, new Map(marks.map((m) => [m.day_key, m.status] as const)), today, amounts);
+  return {
+    ...habitStatsOf(h, new Map(marks.map((m) => [m.day_key, m.status] as const)), today, amounts),
+    mark_times: markTimesOf(h, marks, today, u.tz, u.habit_first),
+  };
 }

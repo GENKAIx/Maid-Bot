@@ -174,4 +174,13 @@ export interface HabitStats {
   months: { month: string; done: number; planned: number }[];
   /** Сколько сделано — если человек хоть раз называл число: суммы за неделю (с пн), месяц, всё время, лучший день, 30 дней. */
   amount?: { unit: string; week: number; month: number; total: number; best: { day: string; value: number }; days: { day: string; value: number | null }[] } | null;
+  /** «Во сколько отмечали» (26.11.2026): последние 30 дней срока; points — «сделал» в тот же день, время в поясе человека;
+   *  gap — до точки был день по расписанию без такой отметки; remind — время напоминаний, как у 🔔. */
+  mark_times?: MarkTimes;
+}
+export interface MarkTimes {
+  from: string;
+  to: string;
+  points: { day: string; time: string; min: number; gap: boolean }[];
+  remind: string[];
 }

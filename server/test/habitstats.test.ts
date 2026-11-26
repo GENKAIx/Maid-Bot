@@ -4,9 +4,9 @@ import { test } from "node:test";
 import { createApi } from "../src/api.ts";
 import { hashPassword } from "../src/auth.ts";
 import { Store, type HabitRow, type MarkRow } from "../src/db.ts";
-import { habitStatsOf } from "../src/habits.ts";
+import { habitStatsOf, markTimesOf } from "../src/habits.ts";
 import { Pipeline } from "../src/pipeline.ts";
-import { addDays } from "../src/time.ts";
+import { addDays, zonedToUtc } from "../src/time.ts";
 
 // Статистика привычки (страница «Привычки», щелчок по названию): год клетками, серии, проценты, дни недели, месяцы.
 
@@ -69,8 +69,53 @@ test("/api/habits/:id/stats: своя привычка — статистика,
     assert.equal(s.title, "Аевит");
     assert.equal(s.total.done, 1);
     assert.equal(s.year.length, 371);
+    const mt = (s as unknown as { mark_times: { remind: string[]; points: unknown[] } }).mark_times;
+    assert.deepEqual(mt.remind, ["12:00"], "время из настроек, как у 🔔");
+    assert.ok(Array.isArray(mt.points));
     assert.equal((await get(other)).status, 404);
   } finally {
     server.close();
   }
+});
+
+// «Во сколько отмечали» (26.11.2026): время «сделал» в поясе человека за последние 30 дней срока, линия рвётся на днях без такой отметки.
+const TZ = "Asia/Yekaterinburg"; // UTC+5
+const mk = (day: string, status: MarkRow["status"], atDay: string, time: string, message_id: number | null = 7): MarkRow =>
+  ({ id: 0, habit_id: 1, day_key: day, status, at: zonedToUtc(atDay, time, TZ).toISOString(), message_id, amount: null, unit: "" });
+
+test("во сколько отмечали: только «сделал» в тот же день, в поясе человека; пропуск, минус в полночь и задним числом — нет", () => {
+  const marks = [
+    mk("2026-11-20", "done", "2026-11-20", "12:04"),
+    mk("2026-11-21", "done", "2026-11-21", "23:50"), // по UTC это 18:50 — считаем по поясу
+    mk("2026-11-22", "skipped", "2026-11-22", "21:00"),
+    mk("2026-11-23", "skipped", "2026-11-24", "00:01", null), // минус в полночь
+    mk("2026-11-24", "done", "2026-11-25", "10:02"), // задним числом
+    mk("2026-11-25", "done", "2026-11-25", "08:30"),
+    { ...mk("2026-11-25", "done", "2026-11-25", "09:00"), habit_id: 2 }, // чужая привычка
+  ];
+  const t = markTimesOf(habit({ start_date: "2026-11-20" }), marks, "2026-11-26", TZ, "12:00");
+  assert.equal(t.from, "2026-11-20", "не раньше начала");
+  assert.equal(t.to, "2026-11-26");
+  assert.deepEqual(t.points, [
+    { day: "2026-11-20", time: "12:04", min: 724, gap: false },
+    { day: "2026-11-21", time: "23:50", min: 1430, gap: false },
+    { day: "2026-11-25", time: "08:30", min: 510, gap: true },
+  ]);
+  assert.deepEqual(t.remind, ["12:00"], "своего времени нет — общее из настроек, как у 🔔");
+});
+
+test("во сколько отмечали: окно 30 дней, у законченной — до конца срока; свои напоминания и «без напоминаний»", () => {
+  const marks: MarkRow[] = [];
+  for (let d = "2026-09-01"; d <= "2026-10-31"; d = addDays(d, 1)) marks.push(mk(d, "done", d, "07:15"));
+  const run = markTimesOf(habit({ start_date: "2026-09-01", times: '["21:00","09:00"]' }), marks, "2026-10-31", TZ, "12:00");
+  assert.equal(run.from, "2026-10-02");
+  assert.equal(run.points.length, 30);
+  assert.ok(run.points.every((p) => !p.gap));
+  assert.deepEqual(run.remind, ["09:00", "21:00"]);
+  const fin = markTimesOf(habit({ start_date: "2026-09-01", end_date: "2026-09-20", finished_at: "2026-09-20T10:00:00Z", quiet: 1 } as Partial<HabitRow>), marks, "2026-11-26", TZ, "12:00");
+  assert.deepEqual([fin.from, fin.to, fin.points.length, fin.points.at(-1)!.day], ["2026-09-01", "2026-09-20", 20, "2026-09-20"]);
+  assert.deepEqual(fin.remind, [], "без напоминаний — линии нет");
+  // Пн, ср, пт: дни не по расписанию линию не рвут, сегодняшнее неотмеченное — тоже.
+  const mwf = markTimesOf(habit({ start_date: "2026-10-26", days: "135" }), [mk("2026-10-26", "done", "2026-10-26", "10:00"), mk("2026-10-28", "done", "2026-10-28", "11:00")], "2026-10-30", TZ, "12:00");
+  assert.deepEqual(mwf.points.map((p) => p.gap), [false, false]);
 });
