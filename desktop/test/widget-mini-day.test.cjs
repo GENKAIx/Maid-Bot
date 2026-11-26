@@ -78,7 +78,7 @@ if (ctx.view) {
   ctx.data = base();
   let v = V("morning", {});
   check(v.line1 === "Доброе утро ☀", `утро, первая строка: ${v.line1}`);
-  check(v.lines[0] === "5 планов · 5 дел", `утро, вторая строка: ${v.lines[0]}`);
+  check(v.lines[0] === "5 планов · осталось 5 из 8", `утро, вторая строка: ${v.lines[0]}`);
   const chips = [...v.extra.matchAll(/<span data-c="([^"]+)"[^>]*><b>([^<]+)<\/b>([^<]+)<\/span>/g)].map((m) => `${m[1]} ${m[2]} ${m[3]}`);
   // Политика страницы (widget.html: style-src 'self') молча выбрасывает style="…" из разметки — цвет плашек пропадал (стенд, 19.11.2026).
   check(!/style="/.test(v.extra), "в разметке ряда карточки style=\"…\" — политика страницы его выбросит");
@@ -98,7 +98,7 @@ if (ctx.view) {
   // День — как было.
   ctx.data = base();
   v = V("day", { plan: { time: "15:00", title: "Врач", rel: "через 40 мин", soon: false }, late: 2, left: 5 });
-  check(/<b>15:00<\/b> Врач/.test(v.line1) && v.lines[0] === "через 40 мин · 2 просрочены · 3 дела" && v.extra === "", `день: ${v.line1} / ${v.lines[0]} / ${v.extra}`);
+  check(/<b>15:00<\/b> Врач/.test(v.line1) && v.lines[0] === "через 40 мин · 2 просрочены · осталось 5 из 8" && v.extra === "", `день: ${v.line1} / ${v.lines[0]} / ${v.extra}`);
   v = V("day", { left: 7 });
   check(v.line1 === "Задачи · 7" && v.lines.length === 0, `день без планов: ${v.line1} / ${v.lines.join(" | ")}`);
 

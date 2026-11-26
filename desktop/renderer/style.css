@@ -169,7 +169,12 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .mini-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .mini-ring circle { fill: none; stroke: #3f3852; stroke-width: 3.5; }
 .mini-ring .arc { stroke: var(--accent-2); stroke-linecap: round; transition: stroke-dasharray .5s cubic-bezier(.3, 0, .2, 1); }
-.mini-count { position: relative; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Без цифр (26.11.2026): внутри только ✓, когда всё сделано; дел нет — кольцо бледное и пустое. Размер кнопки тот же. */
+.mini-count { position: relative; font-size: 17px; font-weight: 700; line-height: 1; color: var(--accent-2); }
+.mini-count:empty { display: none; }
+.mini .mini-open.empty .mini-ring { opacity: .45; }
+/* Нет дел — дуги нет: круглый конец штриха при длине 0 рисовал зелёную точку сверху (26.11.2026). */
+.mini .mini-open.empty .mini-ring .arc { stroke-linecap: butt; }
 /* Строка ввода — только когда курсор на карточке (или в ней пишут). */
 .mini-ask { display: none; gap: 8px; align-items: center; margin-top: 10px; }
 .mini:hover .mini-ask, .mini:focus-within .mini-ask, .mini-ask:has(input:not(:placeholder-shown)) { display: flex; }

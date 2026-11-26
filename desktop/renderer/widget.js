@@ -2381,12 +2381,16 @@ function seeMini() {
   $("#mini").classList.remove("live");
 }
 $("#mini").addEventListener("pointerdown", seeMini);
-// Вторая строка свёрнутой карточки — варианты от полного к короткому: «через 40 мин · 2 просрочены · 3 дела» → без «3 дела»
-// (они в кольце) → только «2 просрочены» (время плана видно строкой выше). Просрочка не пропадает никогда. Без плана «N дел» нет.
-function miniSubLines(rel, late, rest) {
+// Вторая строка свёрнутой карточки — варианты от полного к короткому: «через 1 ч · 2 просрочены · осталось 5 из 9» → без отсчёта
+// (время плана видно строкой выше) → без счёта → только «2 просрочены». Просрочка не пропадает никогда. Без плана счёта нет.
+// 26.11.2026 (одобрено владельцем): в кольце больше нет цифр, поэтому вместо «N дел» — «осталось N из M» (left — все
+// несделанные, вместе с просроченными; total — всего на сегодня), всё сделано — «всё сделано»; счёт уходит позже отсчёта.
+function miniSubLines(rel, late, left, total) {
   const lateTxt = late ? `${late} ${plural(late, "просрочено", "просрочены", "просрочено")}` : "";
-  const restTxt = rel && rest > 0 ? `${rest} ${plural(rest, "дело", "дела", "дел")}` : "";
-  const ways = [[rel, lateTxt, restTxt], [rel, lateTxt], late ? [lateTxt] : [rel]];
+  const restTxt = rel && total > 0 ? (left > 0 ? `осталось ${left} из ${total}` : "всё сделано") : "";
+  // Отсчёт — самое срочное в строке, уходит последним (решение владельца 26.11.2026): сперва счёт сокращается до «23 из 24».
+  const restShort = rel && total > 0 ? (left > 0 ? `${left} из ${total}` : "всё сделано") : "";
+  const ways = [[rel, lateTxt, restTxt], [rel, lateTxt, restShort], [rel, lateTxt], late ? [lateTxt] : [rel]];
   return [...new Set(ways.map((w) => w.filter(Boolean).join(" · ")))].filter(Boolean);
 }
 // Ставит первый вариант, что влезает целиком (строка в карточке 136 px — полная при просрочке обрывалась «через 40 мин · 2 п…»).
@@ -2437,7 +2441,7 @@ function miniView(part, { plan, late, left, done, now }) {
   if (part === "morning") {
     const ahead = (data.events ?? []).filter((e) => !e.time || minutesUntil(e) > 0);
     const plans = ahead.length ? `${ahead.length} ${plural(ahead.length, "план", "плана", "планов")}` : "";
-    const lines = miniSubLines(plans, late, left - late);
+    const lines = miniSubLines(plans, late, left, done + left);
     if (!lines.length && left > 0) lines.push(`${left} ${plural(left, "дело", "дела", "дел")}`);
     // Три ближайших плана со временем — плашками цвета плана (как точки ленты «Дальше»): время, под ним название. Цвет — в data-c,
     // его ставит renderMini (style="…" в разметке запрещён политикой страницы, style-src 'self').
@@ -2448,7 +2452,7 @@ function miniView(part, { plan, late, left, done, now }) {
   if (part === "evening") {
     const total = done + left;
     const next = miniTomorrow(now); // строки — текст (fitMiniSub ставит textContent), не разметка: без esc
-    const lateTxt = late ? miniSubLines("", late, 0)[0] : "";
+    const lateTxt = late ? miniSubLines("", late, 0, 0)[0] : "";
     const lines = [...new Set([[lateTxt, next].filter(Boolean).join(" · "), lateTxt || next])].filter(Boolean);
     // Десять звёзд оценки дня — как под вечерним итогом, не дожидаясь его. День уже оценён (здесь, в облачке, в Telegram) —
     // ряда нет совсем (20.11.2026: раньше звёзды горели до оценки и висели, хотя улетели к горничной).
@@ -2466,7 +2470,7 @@ function miniView(part, { plan, late, left, done, now }) {
       ? `<span class="mini-plan${plan.soon ? " soon" : ""}"><b>${esc(plan.time)}</b> ${esc(plan.title)}</span>`
       : left > 0 ? `Задачи · ${left}` : "Всё на сегодня ✨",
     // Вторая строка — главное словами: когда план, что просрочено, сколько осталось (что влезает, miniSubLines).
-    lines: miniSubLines(plan?.rel, late, left - late),
+    lines: miniSubLines(plan?.rel, late, left, done + left),
     extra: "",
   };
 }
@@ -2500,10 +2504,22 @@ function renderMini(open, todo, left, done) {
   miniPart = part;
   // План идёт — обводка со свечением, пока человек не ткнул в карточку и не развернул панель (или ответил на «⏰ Пора»).
   mini.classList.toggle("live", part === "day" && plan?.rel === "идёт" && !miniSeen[ackKey(plan.e)] && planAcks[ackKey(plan.e)] !== "ok");
-  const total = done + left;
-  $("#miniArc").style.strokeDasharray = `${total ? (done / total) * RING : 0} ${RING}`;
-  $("#miniCount").textContent = total ? `${done}/${total}` : "✓";
-  $("#miniOpen").title = total && part !== "night" ? `Сделано ${done} из ${total} · развернуть панель` : "Развернуть панель";
+  const ring = miniRing(done, done + left);
+  $("#miniArc").style.strokeDasharray = `${ring.part * RING} ${RING}`;
+  $("#miniCount").textContent = ring.mark;
+  $("#miniOpen").classList.toggle("full", ring.full);
+  $("#miniOpen").classList.toggle("empty", ring.empty);
+  $("#miniOpen").title = ring.label && part !== "night" ? `${ring.label} · развернуть панель` : "Развернуть панель";
+  $("#miniOpen").setAttribute("aria-label", $("#miniOpen").title);
+}
+// Кольцо свёрнутой карточки (26.11.2026, одобрено владельцем): без цифр — «11/27» не влезало и повторяло строку слева. Только дуга
+// (part — доля сделанного), всё сделано — полное кольцо и ✓ внутри, дел нет — пустое бледное кольцо без знака (кнопка того же
+// размера — ширина не прыгает). Числа — в подсказке и aria-label кнопки («Сделано 11 из 27»).
+function miniRing(done, total) {
+  if (!(total > 0)) return { part: 0, mark: "", full: false, empty: true, label: "" };
+  const d = Math.min(Math.max(0, done), total);
+  const full = d === total;
+  return { part: d / total, mark: full ? "✓" : "", full, empty: false, label: `Сделано ${d} из ${total}` };
 }
 // Въезд доигран — класс снять: копия карточки при развороте (foldAnimated, cloneNode) иначе проиграла бы его заново и стояла пустой.
 for (const el of [$("#mini .mini-text"), $("#miniExtra")]) el.addEventListener("animationend", (e) => { if (e.animationName === "miniSwap") el.classList.remove("swap"); });
