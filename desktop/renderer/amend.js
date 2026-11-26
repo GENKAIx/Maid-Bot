@@ -388,7 +388,7 @@ function amendRollTo(span, from, to, delay, still) {
 // «✎ текст» → ответ горничной, без своего «Отменить» (поправка отменяется вместе с ответом).
 function amendRemember(messageId, merged, text, r) {
   const h = chatLog.findLast((x) => x.undo === messageId);
-  if (h) h.changes = merged.filter((c) => !c.gone).slice(0, 12).map((c) => ({ kind: c.kind, title: String(c.title ?? "").slice(0, 80) }));
+  if (h) h.changes = merged.filter((c) => !c.gone).slice(0, 12).map((c) => ({ kind: c.kind, title: String(c.title ?? "").slice(0, 200) }));
   if (r?.text) {
     chatLog = [...chatLog, { at: Date.now(), me: `✎ ${text}`.slice(0, 400), reply: String(r.text).slice(0, 2000), undo: null, pic: null, changes: [], day: data?.day ?? "" }].slice(-HIST_MAX);
   }

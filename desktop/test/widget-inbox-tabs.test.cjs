@@ -163,8 +163,10 @@ readAll();
 check(/^Прочитано: 1\.$/.test(said.at(-1).t) && said.at(-1).o.ms === 5000 && said.at(-1).o.buttons[0].text === "↩ Вернуть", `всё прочитано: ${said.at(-1).t}`);
 check(!t.groupItems("alarm").length, "раздел пуст");
 
-// Стили: ✕ на месте времени при наведении, «Прочитать все» слева.
-check(/\.ib-list button:hover \.ib-time[^{]*\{ display: none; \}/.test(css) && /\.ib-list button:hover \.ib-x[^{]*\{ display: inline-block; \}/.test(css), "✕ вместо времени при наведении");
+// Стили: ✕ при наведении проявляется на своём, всегда занятом месте рядом со сроком (26.11.2026: раньше вставал вместо срока —
+// строка и облачко меняли размер; подробно — widget-hover-steady.test.cjs), «Прочитать все» слева.
+check(/\.ib-list \.ib-x \{ display: inline-block; visibility: hidden;/.test(css) && /\.ib-list button:hover \.ib-x[^{]*\{ visibility: visible; opacity: 1; \}/.test(css)
+  && !/\.ib-time[^{]*\{[^}]*display: none/.test(css), "✕ проявляется при наведении, срок остаётся");
 check(/#bubbleActions \.ib-readall \{ margin-right: auto; \}/.test(css), "«Прочитать все» слева");
 
 const widget = fs.readFileSync(path.join(root, "renderer", "widget.js"), "utf8");

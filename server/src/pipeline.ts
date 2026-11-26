@@ -38,6 +38,53 @@ export interface Change {
   ref?: { tbl: Table; id: number };
 }
 
+/** Задача, которая уже есть и о которой ответ («Эта задача уже в списке, под номером #102: «…»», правка задачи словами):
+ *  плашка «↗ название» под ответом, щелчок в виджете — к строке задачи в списке (26.11.2026, виджет 0.1.94).
+ *  Отдельным полем, а не в changes: changes — «записала» (облачко старого виджета тогда обрезает текст до первой строки и
+ *  ставит «записала»), а незнакомое поле старый виджет просто не читает. id — только известный коду, по тексту не угадывается. */
+export interface TaskRef { tbl: "tasks"; id: number; title: string }
+/** Больше ссылок под одним ответом не нужно: это не список задач. */
+export const REFS_MAX = 5;
+
+const plainOf = (t: string) => t.replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+const sameTitle = (a: string, b: string) => a.toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim() === b.toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+/** Слова, что перед номером называют его таблицу: «задача #7» — задача; «план #7», «привычка #7», «дата #7»… — не задача. */
+const TASK_WORD = /^задач/;
+const OTHER_WORD = /^(план|событ|встреч|привычк|дат(а|ы|у|е|ой)$|заметк|памят|корзин)/;
+const NEAR_WORDS = 6;
+const SENTENCE_END = [".", "!", "?", "\n", "…"];
+const normOf = (t: string) => t.toLowerCase().replace(/ё/g, "е").replace(/[«»"]/g, " ").replace(/\s+/g, " ").trim();
+/** Задачи из списка, что видела модель в запросе разбора («#id название»), которые называет её ответ (26.11.2026):
+ *  номер («#102», «под номером 102», «№ 102») — если ближайшее слово-таблица перед ним (до NEAR_WORDS слов в той же фразе) —
+ *  «задача», или в той же фразе стоит название задачи; перед номером «план», «привычка», «дата»… — не задача. У событий, дат,
+ *  привычек, заметок, памяти и корзины свои счётчики id (others — их номера из того же запроса): такой номер — задача только
+ *  при слове «задача» перед ним или названии задачи целиком в той же фразе, одного общего слова мало. Ещё — название целиком
+ *  в кавычках «…». Только из этого списка: id другого человека или выдуманный номер ссылкой не станет. */
+export function taskRefsIn(text: string, tasks: { id: number; title: string }[], others: Iterable<number> = []): number[] {
+  const plain = plainOf(text);
+  const taken = new Set(others);
+  const ids: number[] = [];
+  const add = (id: number) => { if (!ids.includes(id)) ids.push(id); };
+  for (const m of plain.matchAll(/(?:#|№\s*|номер(?:ом|у|е|а)?\s+#?)(\d{1,9})(?!\d)/giu)) {
+    const t = tasks.find((x) => x.id === Number(m[1]));
+    if (!t) continue;
+    const at = m.index ?? 0;
+    const from = Math.max(...SENTENCE_END.map((c) => plain.lastIndexOf(c, at - 1))) + 1;
+    const ends = SENTENCE_END.map((c) => plain.indexOf(c, at + m[0].length)).filter((i) => i >= 0);
+    const sentence = plain.slice(from, ends.length ? Math.min(...ends) : plain.length);
+    const before = (plain.slice(from, at).toLowerCase().replace(/ё/g, "е").match(/[\p{L}\d]+/gu) ?? []).slice(-NEAR_WORDS).reverse();
+    const marker = before.find((w) => TASK_WORD.test(w) || OTHER_WORD.test(w));
+    if (marker && !TASK_WORD.test(marker)) continue; // «план #7», «привычка под номером 7»
+    const named = normOf(sentence).includes(normOf(t.title));
+    if (marker || named || (!taken.has(t.id) && mentions(wordsOf(sentence), t.title))) add(t.id);
+  }
+  for (const m of plain.matchAll(/«([^«»]{2,200})»/g)) {
+    const t = tasks.find((x) => sameTitle(x.title, m[1]));
+    if (t) add(t.id);
+  }
+  return ids.slice(0, REFS_MAX);
+}
+
 /** Вопрос о погоде: «какая погода?», «что с погодой сегодня», «погода». */
 export const WEATHER_ASK = /^\s*(а\s+)?((какая|какой)\s+(сегодня\s+)?(погод|прогноз)|что\s+(там\s+)?(с|по)\s+погод|погода(\s+(сегодня|на\s+сегодня))?\s*\??\s*$)/i;
 
@@ -49,6 +96,8 @@ export interface Reply {
   undoable: boolean;
   duplicate?: boolean;
   changes?: Change[];
+  /** Существующие открытые задачи, о которых ответ (TaskRef): ссылки под ответом. */
+  refs?: TaskRef[];
   /** Дни, о которых ответ на вопрос (ГГГГ-ММ-ДД) — ссылки на дневник. */
   days?: string[];
   /** Спорное — спросить кнопками: завести ли привычки / задачи из рассказа. */
@@ -481,7 +530,7 @@ export class Pipeline {
 
     const target = original ?? message;
     c.route = parsed.talk ? "talk" : "apply";
-    const { lines, changes, touched } = await s.transaction(() => this.apply(u, target, parsed, at));
+    const { lines, changes, touched, edited } = await s.transaction(() => this.apply(u, target, parsed, at));
     if (original) await s.setMessage(message.id, { state: "done", reply: CLARIFIED });
 
     // С горничной разговаривают — ответ разговором (как /ask), записанное — строками под ним; не вышло — короткая реплика.
@@ -529,7 +578,25 @@ export class Pipeline {
           .finally(done);
       }, this.aboutDelayMs));
     }
-    return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes, proposal, clash };
+    // Ссылки на задачи, что уже есть: названные в ответе (из списка, что видела модель) и поправленные словами (переименована,
+    // новый срок, снова открыта). Только те, что после записи ещё открыты, — и не только что записанные (у них карточка).
+    // Номера других таблиц из того же запроса: «#7» у плана — не задача #7 (taskRefsIn).
+    const otherIds = [...ctx.events, ...ctx.dates, ...ctx.habits, ...ctx.memory, ...(ctx.notes ?? []), ...(ctx.trash ?? [])].map((x) => x.id);
+    const refs = await this.taskRefs(u.id, [...edited, ...taskRefsIn(head, ctx.tasks, otherIds)], changes);
+    return { text: reply, emotion: parsed.emotion, messageId: target.id, undoable: lines.length > 0, changes, ...(refs.length ? { refs } : {}), proposal, clash };
+  }
+
+  /** Открытые задачи человека по id (порядок сохраняется, повторы и записанные этим ответом — мимо), не больше REFS_MAX. */
+  private async taskRefs(userId: number, ids: number[], changes: Change[]): Promise<TaskRef[]> {
+    const fresh = new Set(changes.filter((c) => c.ref?.tbl === "tasks").map((c) => c.ref!.id));
+    const out: TaskRef[] = [];
+    for (const id of [...new Set(ids)]) {
+      if (out.length >= REFS_MAX) break;
+      if (fresh.has(id)) continue;
+      const t = await this.store.task(id);
+      if (t && t.user_id === userId && t.status === "open") out.push({ tbl: "tasks", id: t.id, title: t.title });
+    }
+    return out;
   }
 
   /** «Нарисуй …»: картинка от RunPod сохраняется (drawings) и уходит в ответ. Без ключа или при сбое — сказать словами. */
@@ -716,11 +783,12 @@ export class Pipeline {
 
   /** Записать разобранное. Вызывать внутри транзакции. */
   /** touched — планы, которые записали или перенесли: их проверяет findClash. */
-  private async apply(u: User, msg: Message, r: Parsed, at: Date): Promise<{ lines: string[]; changes: Change[]; touched: number[] }> {
+  private async apply(u: User, msg: Message, r: Parsed, at: Date): Promise<{ lines: string[]; changes: Change[]; touched: number[]; edited: number[] }> {
     const s = this.store;
     const log = (kind: string, tbl: Table, id: number, before?: unknown) => s.logAction(u.id, msg.id, kind, tbl, id, before);
     const sections: Section[] = [];
     const editLines: string[] = [];
+    const edited: number[] = []; // задачи, поправленные словами и оставшиеся в списке, — ссылкой под ответом (TaskRef)
     const markLines: string[] = [];
     const changes: Change[] = [];
     const touched: number[] = [];
@@ -864,6 +932,7 @@ export class Pipeline {
         else if (e.action === "reopen") await s.updateTask(t.id, { status: "open" });
         else await s.updateTask(t.id, { due_date: e.newDate ?? t.due_date });
         await log("update", "tasks", t.id, before);
+        if (e.action !== "done" && e.action !== "cancel") edited.push(t.id);
         editLines.push(e.action === "done" ? `✔ сделано: ${esc(t.title)}` : e.action === "cancel" ? `✖ убрано: ${esc(t.title)}`
           : e.action === "reopen" ? `↺ снова открыто: ${esc(t.title)}`
           : e.action === "rename" ? `✎ переименовано: ${esc(t.title)} → ${esc(e.newTitle!)}` : `➜ срок: ${esc(t.title)} → ${e.newDate}`);
@@ -934,6 +1003,7 @@ export class Pipeline {
       ],
       changes,
       touched,
+      edited,
     };
   }
 

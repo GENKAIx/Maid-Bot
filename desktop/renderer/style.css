@@ -400,9 +400,18 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .chat button.h-undo:hover { background: none; text-decoration: underline; }
 .chat .h-undone { color: var(--muted); font-size: 11.5px; }
 /* Что записалось — кнопками разделов в ответе; «Отменить» — строкой под сообщением (widget.js herHtml). */
-.chat .h-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; white-space: normal; }
-.chat button.h-chip { width: auto; height: auto; padding: 2px 8px; border-radius: 999px; background: rgba(183, 156, 255, .16); color: var(--text); font-size: 11.5px; font-weight: 500; line-height: 1.5; }
+.chat .h-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; white-space: normal; min-width: 0; }
+/* Плашка не шире облачка сообщения (26.11.2026: длинное «✅ Сделать чехол для …» вылезало за правый край — у .chat button
+   стоит flex: none): сжимается, название — не больше двух строк, дальше многоточие; полное название — в title. */
+.chat button.h-chip { flex: 0 1 auto; min-width: 0; max-width: 100%; width: auto; height: auto; display: inline-flex; align-items: flex-start; gap: 4px;
+  padding: 2px 8px; border-radius: 11px; background: rgba(183, 156, 255, .16); color: var(--text); font-size: 11.5px; font-weight: 500; line-height: 1.5; text-align: left; }
+.chat .h-chip .chip-t { min-width: 0; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 .chat button.h-chip:hover { background: rgba(183, 156, 255, .3); }
+/* Ссылка на задачу, которая уже есть (refs: «уже в списке, #102»): щелчок — к её строке; задачи уже нет — серая, без перехода. */
+.chat button.h-chip.ref { background: rgba(120, 200, 255, .14); }
+.chat button.h-chip.ref:hover { background: rgba(120, 200, 255, .26); }
+.chat button.h-chip.ref.gone, .chat button.h-chip.ref.gone:hover { background: rgba(255, 255, 255, .06); color: var(--muted); cursor: default; }
+.chat .h-chip .chip-gone, .card.ref .chip-gone { flex: none; font-size: 10.5px; opacity: .85; }
 .chat .h-acts { align-self: flex-start; margin: -2px 0 0 8px; }
 .chat .h-empty { color: var(--muted); font-size: 12.5px; text-align: center; padding: 10px 0; }
 .chat button.hist-btn.on { background: rgba(183, 156, 255, .22); color: var(--accent); }
@@ -1023,10 +1032,12 @@ body.quick { background: transparent; }
 .ib-toast.inline { position: static; align-self: stretch; justify-content: space-between; margin-bottom: 6px; box-shadow: none; background: #ece7f7; animation: none; }
 .ib-toast button { padding: 3px 8px; border-radius: 6px; border: 0; background: #4b3f72; color: #fff; font: inherit; font-size: 12px; cursor: pointer; }
 .ib-toast button:hover { background: #5d4f8c; }
-.ib-list .ib-x { display: none; flex: none; width: 20px; text-align: center; font-size: 12px; line-height: 18px; color: #8a849c; border-radius: 50%; }
+/* 26.11.2026: место под ✕ есть всегда (раньше ✕ вставал на место «срок был вчера» — строка и всё облачко меняли ширину и
+   высоту при наведении); ✕ только проявляется, подпись срока остаётся. */
+.ib-list .ib-x { display: inline-block; visibility: hidden; opacity: 0; flex: none; width: 20px; height: 18px; margin: -1px -4px -1px -6px; text-align: center;
+  font-size: 12px; line-height: 18px; color: #8a849c; border-radius: 50%; transition: opacity .12s, background .12s; }
 .ib-list .ib-x:hover { background: #d8d1ea; color: var(--ink); }
-.ib-list button:hover .ib-time, .ib-list button:focus-visible .ib-time { display: none; }
-.ib-list button:hover .ib-x, .ib-list button:focus-visible .ib-x { display: inline-block; }
+.ib-list button:hover .ib-x, .ib-list button:focus-visible .ib-x { visibility: visible; opacity: 1; }
 .ib-list button.gone { opacity: 0; transform: translateX(14px); transition: opacity .2s, transform .2s; pointer-events: none; }
 #bubbleActions .ib-readall { margin-right: auto; }
 @media (prefers-reduced-motion: reduce) { .ib.new { animation: none; } }
@@ -1319,6 +1330,15 @@ body.quick { background: transparent; }
 
 /* Карточка записи в облачке — ссылка на раздел приложения. */
 .card.go { cursor: pointer; transition: transform .12s, background .12s; }
+/* Ссылка на задачу, которая уже есть (refs), в облачке: «↗ название», щелчок — к строке задачи; задачи нет — серая. */
+.card.ref { border-color: #3d8fe0; font: inherit; font-size: 12.5px; color: var(--ink); text-align: left; width: 100%; min-width: 0; }
+.card.ref .card-body { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; }
+.card.ref.gone { border-color: #c9c4d6; background: #f3f1f8; color: #8a849c; cursor: default; }
+.card.ref.gone:hover { transform: none; background: #f3f1f8; }
+/* Строка задачи, к которой привела ссылка: подсветка ~2 с (TASKREF_LIT_MS в taskref.js). */
+.w .list li.ref-lit { border-radius: 8px; animation: refLit 2s ease-out both; animation-delay: var(--lit-delay, 0ms); }
+@keyframes refLit { 0%, 70% { background: rgba(120, 200, 255, .30); box-shadow: 0 0 0 2px rgba(120, 200, 255, .55); } 100% { background: transparent; box-shadow: 0 0 0 2px transparent; } }
+@media (prefers-reduced-motion: reduce) { .w .list li.ref-lit { animation: none; background: rgba(120, 200, 255, .30); } }
 .card.go:hover { transform: translateX(2px); background: #ebe7f6; }
 
 /* Конец плана — по желанию: без него строки нет, есть кнопка «+ Время конца». */

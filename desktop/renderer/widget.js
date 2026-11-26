@@ -467,7 +467,7 @@ function bubbleCard(c) {
   el.innerHTML = `<span class="card-icon">${icon}</span><span class="card-body"><b>${esc(name)}</b> <span class="card-title">${esc(c.title)}</span>${c.detail ? `<span class="card-detail">${esc(c.detail)}</span>` : ""}</span>`;
   return el;
 }
-function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false, drawing = null, tour = false } = {}) {
+function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = [], refs = [], undo = null, sound = null, days = [], mood: as = null, heard = "", notice = null, proposal = null, stay = false, drawing = null, tour = false } = {}) {
   // Спит — молчит (её будит человек; ответы и уведомления сначала будят — см. wakeUp, pollNotices). Идёт экскурсия — говорит
   // только она (tour); уведомления при этом всё равно ложатся в ящик.
   if (napping || (touring && !tour)) return;
@@ -518,6 +518,12 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     cards.appendChild(el);
     typeTimers.push(setTimeout(() => play("pop"), late + 160 + i * 140));
   });
+  // Задачи, которые уже есть и о которых ответ (taskref.js): «↗ название» — щелчок ведёт к строке в списке.
+  taskRefsOf(refs).forEach((r, i) => {
+    const el = taskRefCard(r);
+    el.style.animationDelay = `${late + 160 + (changes.length + i) * 140}ms`;
+    cards.appendChild(el);
+  });
   for (const d of days) {
     const el = document.createElement("button");
     el.className = "card day";
@@ -551,7 +557,7 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   }
   // Строка «поправить этот ответ…» под карточками (amend.js) — только у ответа, который что-то записал; новое облачко её сбрасывает.
   amendMount({ undo, changes, proposal, text });
-  const weighty = !!(drawing || changes.length || days.length || undo || notice || buttons.some((x) => !x.auto) || plain.length > 140 || (ms === 0 && text !== "…"));
+  const weighty = !!(drawing || changes.length || taskRefsOf(refs).length || days.length || undo || notice || buttons.some((x) => !x.auto) || plain.length > 140 || (ms === 0 && text !== "…"));
   const acts = $("#bubbleActions");
   acts.innerHTML = proposal
     ? (proposal.remind ? `<button class="prop-yes" data-p="remind">✅ ${esc(proposal.remind.label)}</button>` : "")
@@ -1027,7 +1033,7 @@ async function pump() {
     const r = await maid.api("POST", m.path, m.body);
     outbox = outbox.filter((x) => x !== m);
     remember(m.body.text || r.heard || m.label, r);
-    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)], stay: m.mini && collapsed, drawing: r.drawing });
+    say(r.text, { emotion: r.emotion, changes: r.changes ?? [], refs: r.refs ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, ms: 16000, sound: r.changes?.length ? "ding" : null, heard: r.heard, mood: heardMood(m.body?.text ?? r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)], stay: m.mini && collapsed, drawing: r.drawing });
     maid.changed();
   } catch (e) {
     if (offline(e)) {
@@ -1109,8 +1115,10 @@ let chatLog = (() => { try { return JSON.parse(localStorage.getItem(HIST_KEY)) ?
 function remember(me, r) {
   if (!r?.text) return;
   // changes — что записалось (кнопки разделов под ответом), day — день, в дневник которого вела запись.
-  const changes = (r.changes ?? []).slice(0, 12).map((c) => ({ kind: c.kind, title: String(c.title ?? "").slice(0, 80) }));
-  chatLog = [...chatLog, { at: Date.now(), me: String(me ?? "").slice(0, 400), reply: String(r.text).slice(0, 2000), undo: r.undoable ? r.messageId : null, pic: r.drawing?.id ?? null, changes, day: data?.day ?? "" }].slice(-HIST_MAX);
+  // refs — задачи, которые уже есть и о которых ответ (taskref.js). Названия — целиком (до 200): длинное плашка обрежет, а полное — в подсказке.
+  const changes = (r.changes ?? []).slice(0, 12).map((c) => ({ kind: c.kind, title: String(c.title ?? "").slice(0, 200) }));
+  const refs = taskRefsOf(r.refs);
+  chatLog = [...chatLog, { at: Date.now(), me: String(me ?? "").slice(0, 400), reply: String(r.text).slice(0, 2000), undo: r.undoable ? r.messageId : null, pic: r.drawing?.id ?? null, changes, ...(refs.length ? { refs } : {}), day: data?.day ?? "" }].slice(-HIST_MAX);
   try { localStorage.setItem(HIST_KEY, JSON.stringify(chatLog)); } catch {}
   if (!$("#chatHist").classList.contains("hidden")) drawHistory();
 }
@@ -1122,11 +1130,13 @@ function herHtml(h, i) {
   const ch = h.changes?.length ? h.changes : null;
   const [first, ...rest] = String(h.reply).split("\n");
   const text = ch ? [first, ...rest.filter((l) => l.startsWith("⚠ ") || /\?\s*$/.test(l))].join("\n") : h.reply;
-  const chips = ch
-    ? `<div class="h-chips">${ch.map((c, j) => {
+  // Плашка не шире облачка: название — в .chip-t (две строки, дальше многоточие, style.css), полностью — в подсказке.
+  const refs = taskRefsOf(h.refs);
+  const chips = ch || refs.length
+    ? `<div class="h-chips">${(ch ?? []).map((c, j) => {
       const [icon, name] = KIND[c.kind] ?? ["•", c.kind];
-      return `<button type="button" class="h-chip" data-h="${i}" data-c="${j}" title="${esc(name)} — открыть в приложении">${icon} ${esc(c.title)}</button>`;
-    }).join("")}</div>`
+      return `<button type="button" class="h-chip" data-h="${i}" data-c="${j}" title="${esc(name)}: ${esc(c.title)} — открыть в приложении">${icon} <span class="chip-t">${esc(c.title)}</span></button>`;
+    }).join("")}${refs.map((r, j) => taskRefChipHtml(r, i, j)).join("")}</div>`
     : "";
   const undo = h.undo
     ? `<div class="h-acts">${h.undone ? `<span class="h-undone">отменено</span>` : `<button type="button" class="h-undo" data-h="${i}">↩ Отменить</button>`}</div>`
@@ -1216,6 +1226,12 @@ $("#chatHist").addEventListener("contextmenu", (e) => {
   });
 });
 $("#chatHist").addEventListener("click", async (e) => {
+  const ref = e.target.closest(".h-chip.ref");
+  if (ref) {
+    const r = taskRefsOf(chatLog[Number(ref.dataset.h)]?.refs)[Number(ref.dataset.r)];
+    if (r && !goToTask(r.id)) drawHistory(); // задачи уже нет — плашка станет серой
+    return;
+  }
   const chip = e.target.closest(".h-chip");
   if (chip) {
     const h = chatLog[Number(chip.dataset.h)];
@@ -1307,7 +1323,7 @@ function failedButtons(r) {
     try {
       const x = await maid.api("POST", `/api/messages/${r.messageId}/${what}`);
       if (what === "note") say(x.text, { ms: 5000, sound: "ding" });
-      else say(x.text, { emotion: x.emotion, changes: x.changes ?? [], days: x.days ?? [], undo: x.undoable ? x.messageId : null, ms: 16000, sound: x.changes?.length ? "ding" : null, proposal: x.proposal, buttons: [...failedButtons(x), ...clashButtons(x)] });
+      else say(x.text, { emotion: x.emotion, changes: x.changes ?? [], refs: x.refs ?? [], days: x.days ?? [], undo: x.undoable ? x.messageId : null, ms: 16000, sound: x.changes?.length ? "ding" : null, proposal: x.proposal, buttons: [...failedButtons(x), ...clashButtons(x)] });
       maid.changed();
     } catch (e) {
       say(errText(e), { ms: 6000, emotion: "worried" });
@@ -1768,6 +1784,7 @@ function render() {
     li.style.setProperty("--arrive-delay", `-${Date.now() - at}ms`);
   }
   scrollToArrival();
+  taskRefRelight(); // строка, к которой привела ссылка на задачу (taskref.js), — подсветка и после перерисовки
   for (const li of $("#body").querySelectorAll("li.woke")) li.style.setProperty("--wake-delay", `-${Date.now() - wokeAt.get(Number(li.dataset.woke))}ms`);
   for (const li of $("#body").querySelectorAll("li.leaving")) {
     const x = leavingRows.get(li.dataset.key);
@@ -2886,7 +2903,7 @@ maid.on("grab", (on) => {
 });
 maid.on("changed", () => { loadCfg(); load(); });
 maid.on("thinking", (on) => { wakeUp(); setState(on ? "think" : restState()); });
-maid.on("reply", (r) => wakeUp() || remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)] }));
+maid.on("reply", (r) => wakeUp() || remember(r.heard ?? "", r) || say(r.text, { emotion: r.emotion, ms: 12000, changes: r.changes ?? [], refs: r.refs ?? [], days: r.days ?? [], undo: r.undoable ? r.messageId : null, sound: r.changes?.length ? "ding" : null, mood: heardMood(r.heard, r), proposal: r.proposal, buttons: [...failedButtons(r), ...clashButtons(r)] }));
 maid.on("opacity", (o) => { cfg.opacity = o; applyCfg(); });
 // Состояние обновления программы — значок-шестерёнка, когда вышла новая версия (inbox.js).
 maid.on("update", inboxUpdate);
