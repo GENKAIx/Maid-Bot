@@ -184,6 +184,7 @@ export const FEATURES: FeatureDef[] = [
   common("date.edit", "Правка важной даты", "POST /api/dates/:id"),
   common("diary.delete", "Удаление записи дневника", "DELETE /api/diary/:id"),
   common("sleep", "Сон вручную", "POST /api/sleep"),
+  common("sleep.swap", "Сон: перетащить на другой день", "POST /api/sleep/swap"),
   common("steps", "Шаги с айфона", "POST /api/steps"),
   common("rate", "Оценка дня", "POST /api/rate"),
   common("search", "Поиск по записям", "GET /api/search"),

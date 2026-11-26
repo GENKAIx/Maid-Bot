@@ -140,6 +140,12 @@ export function humanDay(key: string, withYear = false): string {
   return `${d} ${MONTHS_GEN[m - 1]}${withYear ? ` ${y}` : ""}, ${WEEKDAY_SHORT[weekdayOf(key)]}`;
 }
 
+/** «8 ноя» (как shortDay на сайте). */
+export function shortDay(key: string): string {
+  const [, m, d] = key.split("-").map(Number);
+  return `${d} ${MONTHS_GEN[m - 1].slice(0, 3)}`;
+}
+
 export function weekdayLong(key: string): string {
   return WEEKDAY_LONG[weekdayOf(key)];
 }

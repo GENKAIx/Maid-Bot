@@ -1,4 +1,5 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { post } from "./api";
 import { shortDay } from "./format";
 import type { DiaryRow, MetricRow } from "./types";
@@ -80,6 +81,31 @@ export function sleepDraft(d: SleepDay): { bed: string; wake: string } {
   return s ? { bed: hhmm(s[0] + START), wake: hhmm(s[1] + START) } : { bed: "23:00", wake: "07:00" };
 }
 
+// Перетаскивание сна на другой день (POST /api/sleep/swap, 27.11.2026): мышью — сдвинуть больше чем на DRAG_PX, пальцем —
+// подержать LONG_PRESS_MS (иначе палец прокручивает страницу). Отпустить на строке дня — перенос или обмен, мимо строк или Esc — отмена.
+export const DRAG_PX = 6;
+export const LONG_PRESS_MS = 300;
+/** Палец сдвинулся до долгого нажатия больше этого — это прокрутка, не перетаскивание. */
+export const TOUCH_SLOP_PX = 10;
+
+/** Что с нажатием: ещё ждём, началось перетаскивание или это не оно (прокрутка пальцем). */
+export function pressOutcome(p: { dx: number; dy: number; ms: number; touch: boolean }): "wait" | "drag" | "cancel" {
+  const moved = Math.hypot(p.dx, p.dy);
+  if (!p.touch) return moved >= DRAG_PX ? "drag" : "wait";
+  if (moved >= TOUCH_SLOP_PX) return p.ms >= LONG_PRESS_MS ? "drag" : "cancel";
+  return p.ms >= LONG_PRESS_MS ? "drag" : "wait";
+}
+
+/** Строка дня под указателем: и по высоте, и по ширине строки; мимо (в щели, сбоку над меню) — null. */
+export function rowAt(x: number, y: number, rows: { day: string; top: number; bottom: number; left: number; right: number }[]): string | null {
+  return rows.find((r) => y >= r.top && y < r.bottom && x >= r.left && x < r.right)?.day ?? null;
+}
+
+/** Строка после переноса: «Сон 8 ноя ⇄ 12 ноя» или «Сон перенесён на 12 ноя». */
+export function sleepMoveText(from: string, to: string, swapped: boolean): string {
+  return swapped ? `Сон ${shortDay(from)} ⇄ ${shortDay(to)}` : `Сон перенесён на ${shortDay(to)}`;
+}
+
 /** Правка сна за день (POST /api/sleep): записи о сне за день заменяются одной «лёг в …, встал в …»; «Удалить» — убрать сон. */
 function SleepEditor({ day, notes, onDone }: { day: SleepDay; notes: string[]; onDone: (saved: boolean) => void }) {
   const [draft, setDraft] = useState(() => ({ ...sleepDraft(day), note: "" }));
@@ -113,12 +139,116 @@ function SleepEditor({ day, notes, onDone }: { day: SleepDay; notes: string[]; o
   );
 }
 
-/** onChanged — после правки сна (без него шкала только для просмотра); notes — тексты записей о сне по дням. */
+type Drag = { from: string; label: string; y: number; dy: number; left: number; width: number; height: number; over: string | null };
+type Press = { day: string; x: number; y: number; t: number; touch: boolean; id: number; timer: number };
+type Note = { text: string; undo?: number; bad?: boolean };
+
+/** onChanged — после правки сна (без него шкала только для просмотра); notes — тексты записей о сне по дням.
+ *  С onChanged полосу сна можно перетащить на другой день (перенос или обмен, «↩ Отменить»). */
 export function SleepTimeline({ days, notes, onChanged }: { days: SleepDay[]; notes?: Map<string, string[]>; onChanged?: () => void }) {
   const [hover, setHover] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [drag, setDragState] = useState<Drag | null>(null);
+  const [note, setNote] = useState<Note | null>(null);
+  const dragRef = useRef<Drag | null>(null);
+  const press = useRef<Press | null>(null);
+  const dragged = useRef(false); // перетаскивание кончилось — щелчок за ним не открывает правку
+  const rowEls = useRef(new Map<string, HTMLDivElement>());
+  const noteTimer = useRef(0);
+  const setDrag = (d: Drag | null) => { dragRef.current = d; setDragState(d); };
+
+  function say(n: Note) {
+    setNote(n);
+    clearTimeout(noteTimer.current);
+    noteTimer.current = window.setTimeout(() => setNote(null), 8000);
+  }
+  async function undo(id: number) {
+    setNote(null);
+    try {
+      await post("/api/undo", { messageId: id });
+      onChanged?.();
+    } catch (e) {
+      say({ text: `Не получилось отменить: ${(e as Error).message}`, bad: true });
+    }
+  }
+  function rows() {
+    return [...rowEls.current].map(([day, el]) => { const r = el.getBoundingClientRect(); return { day, top: r.top, bottom: r.bottom, left: r.left, right: r.right }; });
+  }
+  function start(p: Press, y: number) {
+    const el = rowEls.current.get(p.day);
+    const bar = el?.querySelector<HTMLElement>(".sleep-bar, .sleep-unknown") ?? el?.querySelector<HTMLElement>(".sleep-track");
+    if (!bar) return;
+    const r = bar.getBoundingClientRect();
+    const sd = days.find((d) => d.day === p.day);
+    const s = sd && span(sd);
+    const label = s ? `${clock(s[0] + START)} – ${clock(s[1] + START)}` : sd?.hours ? hoursText(sd.hours) : shortDay(p.day);
+    setHover(null);
+    setDrag({ from: p.day, label, y, dy: p.y - r.top, left: r.left, width: Math.max(r.width, 40), height: r.height, over: p.day });
+  }
+  function stopPress() {
+    if (press.current) clearTimeout(press.current.timer);
+    press.current = null;
+  }
+  function cancel() {
+    stopPress();
+    if (!dragRef.current) return;
+    dragged.current = true; // сбрасывается следующим нажатием на шкалу: щелчок после касания приходит позже pointerup отдельной задачей
+    setDrag(null);
+  }
+  async function drop() {
+    const d = dragRef.current;
+    cancel();
+    if (!d || !d.over || d.over === d.from) return;
+    try {
+      const r = await post<{ swapped: boolean; undo: number }>("/api/sleep/swap", { from: d.from, to: d.over });
+      say({ text: sleepMoveText(d.from, d.over, r.swapped), undo: r.undo });
+      onChanged?.();
+    } catch (e) {
+      say({ text: `Не получилось перенести: ${(e as Error).message}`, bad: true });
+    }
+  }
+  // Слушатели на окне берут свежие функции через ref (иначе замкнутся на первый рендер).
+  const live = useRef({ start, cancel, drop, rows, stopPress });
+  live.current = { start, cancel, drop, rows, stopPress };
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const p = press.current;
+      if (!p || p.id !== e.pointerId) return;
+      if (!dragRef.current) {
+        const o = pressOutcome({ dx: e.clientX - p.x, dy: e.clientY - p.y, ms: Date.now() - p.t, touch: p.touch });
+        if (o === "cancel") return live.current.stopPress();
+        if (o === "wait") return;
+        live.current.start(p, e.clientY);
+        if (!dragRef.current) return;
+      }
+      setDrag({ ...dragRef.current!, y: e.clientY, over: rowAt(e.clientX, e.clientY, live.current.rows()) });
+    };
+    const up = (e: PointerEvent) => {
+      if (press.current?.id !== e.pointerId) return;
+      if (dragRef.current) void live.current.drop();
+      else live.current.stopPress();
+    };
+    const lost = (e: PointerEvent) => { if (press.current?.id === e.pointerId) live.current.cancel(); };
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape" && dragRef.current) { e.preventDefault(); live.current.cancel(); } };
+    // Пальцем: пока тащим — страница не прокручивается.
+    const touch = (e: TouchEvent) => { if (dragRef.current && e.cancelable) e.preventDefault(); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", lost);
+    window.addEventListener("keydown", key);
+    window.addEventListener("touchmove", touch, { passive: false });
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", lost);
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("touchmove", touch);
+      live.current.stopPress();
+    };
+  }, []);
+
   return (
-    <div className="sleep">
+    <div className={`sleep${drag ? " dragging" : ""}`} onPointerDownCapture={() => { dragged.current = false; }}>
       <div className="sleep-row sleep-head">
         <span />
         <div className="sleep-scale">
@@ -133,10 +263,38 @@ export function SleepTimeline({ days, notes, onChanged }: { days: SleepDay[]; no
         const tip = s
           ? `${shortDay(d.day)}: лёг ${clock(s[0] + START)}, встал ${clock(s[1] + START)} · ${hoursText(d.hours!)}`
           : d.hours ? `${shortDay(d.day)}: ${hoursText(d.hours)}, время не записано` : `${shortDay(d.day)}: нет записи`;
-        const edit = onChanged ? { role: "button", tabIndex: 0, onClick: () => setOpen(open === d.day ? null : d.day), onKeyDown: (e: { key: string }) => e.key === "Enter" && setOpen(open === d.day ? null : d.day) } : {};
+        const toggle = () => setOpen(open === d.day ? null : d.day);
+        const movable = !!onChanged && (!!d.hours || !!notes?.get(d.day)?.length);
+        const edit = onChanged ? {
+          role: "button", tabIndex: 0,
+          onClick: () => { if (!dragged.current) toggle(); },
+          onKeyDown: (e: { key: string }) => e.key === "Enter" && toggle(),
+        } : {};
+        const grab = movable ? {
+          onPointerDown: (e: React.PointerEvent) => {
+            if (dragRef.current || (e.pointerType === "mouse" && e.button !== 0)) return;
+            stopPress();
+            const p: Press = { day: d.day, x: e.clientX, y: e.clientY, t: Date.now(), touch: e.pointerType === "touch", id: e.pointerId, timer: 0 };
+            if (p.touch) p.timer = window.setTimeout(() => { if (press.current === p && !dragRef.current) live.current.start(p, p.y); }, LONG_PRESS_MS);
+            press.current = p;
+          },
+          onContextMenu: (e: React.MouseEvent) => { if (press.current || dragRef.current) e.preventDefault(); },
+        } : {};
+        const cls = [
+          "sleep-row",
+          !drag && (hover === d.day || open === d.day) ? "on" : "",
+          onChanged ? "editable" : "",
+          movable ? "movable" : "",
+          drag?.from === d.day ? "drag-from" : "",
+          drag && drag.over === d.day && drag.from !== d.day ? "drop" : "",
+        ].filter(Boolean).join(" ");
         return (
           <Fragment key={d.day}>
-          <div className={`sleep-row ${hover === d.day || open === d.day ? "on" : ""}${onChanged ? " editable" : ""}`} onMouseEnter={() => setHover(d.day)} onMouseLeave={() => setHover(null)} title={onChanged ? `${tip} · щёлкните, чтобы исправить` : tip} {...edit}>
+          <div
+            ref={(el) => { if (el) rowEls.current.set(d.day, el); else rowEls.current.delete(d.day); }}
+            className={cls} onMouseEnter={() => setHover(d.day)} onMouseLeave={() => setHover(null)}
+            title={onChanged ? `${tip} · щёлкните, чтобы исправить${movable ? ", перетащите на другой день" : ""}` : tip} {...edit} {...grab}
+          >
             <span className="sleep-day">{shortDay(d.day)}</span>
             <div className="sleep-track">
               <i className="sleep-night" style={{ left: `${(off(22) / 24) * 100}%`, width: `${(9 / 24) * 100}%` }} />
@@ -154,7 +312,21 @@ export function SleepTimeline({ days, notes, onChanged }: { days: SleepDay[]; no
           </Fragment>
         );
       })}
-      <p className="muted small sleep-legend"><i className="sleep-night-dot" /> 22:00–7:00 — ночное время{onChanged ? " · щёлкните по дню, чтобы записать или исправить сон" : ""}</p>
+      {/* Призрак — в body: у карточки после появления остаётся transform, и position: fixed внутри неё считался бы от карточки. */}
+      {drag && createPortal(
+        <div className="sleep-ghost" aria-hidden style={{ top: drag.y - drag.dy, left: drag.left, width: drag.width, height: drag.height }}>
+          <span>{drag.label}</span>
+        </div>,
+        document.body,
+      )}
+      {/* Плашка — под строками и прилипает к низу экрана: после переноса нижнего дня «↩ Отменить» видно и на телефоне. */}
+      {note && (
+        <div className={`task-note sleep-note ${note.bad ? "bad" : ""}`} role="status">
+          <span className="grow">{note.text}</span>
+          {note.undo !== undefined && <button className="link" onClick={() => undo(note.undo!)}>↩ Отменить</button>}
+        </div>
+      )}
+      <p className="muted small sleep-legend"><i className="sleep-night-dot" /> 22:00–7:00 — ночное время{onChanged ? " · щёлкните по дню, чтобы записать или исправить сон, перетащите полосу на другой день — перенести" : ""}</p>
     </div>
   );
 }

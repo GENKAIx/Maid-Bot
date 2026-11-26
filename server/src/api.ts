@@ -31,7 +31,7 @@ import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates, yearKnown } from "./report.ts";
 import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
 import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, replanEvents as replanEventsOf, snooze, type Button, type Send } from "./scheduler.ts";
-import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, zonedToUtc } from "./time.ts";
+import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, shortDay, zonedToUtc } from "./time.ts";
 import { isOpusMime, transcribe, VOICE_MAX_BYTES, voiceSeconds } from "./voice.ts";
 import { moveToTomorrow, weatherFor } from "./weather.ts";
 import { ADDRESSES, addressWord, askNext, askOf, wakeAt, wakeMinOf, askShown, findCities, saveYou, youButton, youView, type City } from "./you.ts";
@@ -998,6 +998,29 @@ export function createApi(deps: ApiDeps) {
       await store.addDiary(u.id, b.day, "sleep", `лёг в ${clock(b.bed!)}, встал в ${clock(b.wake!)}${b.note ? `. ${b.note}` : ""}`, null);
       await store.setDayMetric({ user_id: u.id, day_key: b.day, key: "sleep_hours", label: "Сон", value: hours, unit: "ч", source: "manual" });
       return { day: b.day, bed: b.bed, wake: b.wake, hours };
+    }
+    // Перетащить сон на другой день (полоса на шкале сна в «Статистике», 27.11.2026): у to сна нет — сон from переезжает туда,
+    // есть — сон двух дней меняется местами. Записи «сон» и sleep_hours не переписываются, а только перекладываются на другой
+    // день (day_key) — текст, заметка и число остаются как были. Журнал отмены: «↩ Отменить» возвращает оба дня.
+    if (m === "POST" && p === "/api/sleep/swap") {
+      const Day = z.string().refine((d) => isDayKey(d) && d <= today, "день — не позже сегодня");
+      const b = parseBody(z.object({ from: Day, to: Day }).refine((x) => x.from !== x.to, "дни должны быть разными"), await readJson(req));
+      const rowsOf = async (day: string) => ({
+        diary: (await store.diaryOf(u.id, day)).filter((r) => r.section === "sleep"),
+        metrics: await store.metricsRange(u.id, day, day, "sleep_hours"),
+      });
+      const [a, c] = [await rowsOf(b.from), await rowsOf(b.to)];
+      if (!a.diary.length && !a.metrics.length) throw new HttpError(400, "в этот день сна нет");
+      const swapped = c.diary.length > 0 || c.metrics.length > 0;
+      const undo = await pipeline.manual(u, `😴 Сон ${shortDay(b.from)} ${swapped ? "⇄" : "→"} ${shortDay(b.to)}`, async (log) => {
+        const move = async (r: typeof a, from: string, to: string) => {
+          for (const x of r.diary) { await log("diary", x.id, { day_key: from }); await store.updateDiary(x.id, { day_key: to }); }
+          for (const x of r.metrics) { await log("metrics", x.id, { day_key: from }); await store.updateMetric(x.id, { day_key: to }); }
+        };
+        await move(a, b.from, b.to);
+        await move(c, b.to, b.from);
+      });
+      return { from: b.from, to: b.to, swapped, undo };
     }
     if (m === "GET" && p === "/api/tasks") return store.openTasks(u.id);
     // Корзина: удалённые и отменённые задачи и планы за TRASH_DAYS дней. Вернуть — POST /api/tasks/:id {status:"open"}

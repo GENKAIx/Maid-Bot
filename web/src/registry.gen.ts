@@ -323,6 +323,7 @@ export const REGISTRY: Registry = {
       {"id":"date.edit","title":"Правка важной даты","group":"common","by":"server"},
       {"id":"diary.delete","title":"Удаление записи дневника","group":"common","by":"server"},
       {"id":"sleep","title":"Сон вручную","group":"common","by":"server"},
+      {"id":"sleep.swap","title":"Сон: перетащить на другой день","group":"common","by":"server"},
       {"id":"steps","title":"Шаги с айфона","group":"common","by":"server"},
       {"id":"rate","title":"Оценка дня","group":"common","by":"server"},
       {"id":"search","title":"Поиск по записям","group":"common","by":"server"},

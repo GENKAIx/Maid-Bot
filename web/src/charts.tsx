@@ -1,5 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { scoreNum } from "./dayscore";
+import { shortDay } from "./format";
 import { DAY_SEC, dayParts } from "./pcday";
+import { hoursAxis, sleepHoursText, sleepScorePoints, sleepScoreSummary, sleepScoreTip, type SleepScorePair } from "./sleepscore";
 import { axisLabels, dayPos, dayTicks, gapLinks, hitBands, lineRuns, markerSize, pointTip, timeScale, timeSummary, tipLeft, tipTop, toMin } from "./timechart";
 
 // Графики без библиотек: столбики по дням/неделям/месяцам, подпись при наведении.
@@ -275,6 +278,74 @@ export function MarkTimeLine({ data, color = "var(--green)", height = 160 }: {
         <summary>Таблицей</summary>
         <table>
           <tbody>{data.points.map((p) => <tr key={p.day}><td>{pointTip(p).split(" — ")[0]}</td><td>{p.time}</td></tr>)}</tbody>
+        </table>
+      </details>
+    </div>
+  );
+}
+
+/** «Сон и оценка дня» («Статистика → Сон», 27.11.2026): точка на день — X часы сна, Y оценка дня 1–10. Одна серия — без легенды,
+ *  цвет сна (--blue), как полосы на шкале выше: оценку несёт высота точки, расходящаяся шкала --score-* её бы только повторила.
+ *  Подсказка — ближайшая точка в 32 px от указателя (наведение, касание) или фокус с клавиатуры; таблица — в «Таблицей». */
+export function SleepScoreChart({ pairs, height = 190 }: { pairs: SleepScorePair[]; height?: number }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(320);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    if (el.clientWidth) setW(el.clientWidth);
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((es) => { const x = Math.round(es[0]?.contentRect.width ?? 0); if (x) setW(x); });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const [hover, setHover] = useState<number | null>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  const [tipW, setTipW] = useState(0);
+  useLayoutEffect(() => { const el = tipRef.current; if (el && el.offsetWidth !== tipW) setTipW(el.offsetWidth); });
+  const points = sleepScorePoints(pairs);
+  const ax = hoursAxis(points.map((p) => p.hours));
+  const L = 26, R = 10, T = 8, B = 22;
+  const pw = Math.max(40, w - L - R), ph = height - T - B;
+  const x = (h: number) => L + 8 + ((h - ax.lo) / (ax.hi - ax.lo)) * (pw - 16);
+  const y = (v: number) => T + ((10.5 - v) / 10) * ph;
+  const nearest = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = e.clientX - r.left, py = e.clientY - r.top;
+    let best: number | null = null, bd = 32;
+    points.forEach((p, i) => { const d = Math.hypot(x(p.hours) - px, y(p.score) - py); if (d < bd) { bd = d; best = i; } });
+    setHover(best);
+  };
+  const tip = hover !== null ? points[hover] : null;
+  return (
+    <div className="hs-time ss-chart" ref={box} onMouseLeave={() => setHover(null)}>
+      <svg width={w} height={height} viewBox={`0 0 ${w} ${height}`} role="group" aria-label={sleepScoreSummary(pairs)} onPointerMove={nearest} onPointerDown={nearest}>
+        {[2, 4, 6, 8, 10].map((v) => (
+          <g key={v}>
+            <line x1={L} x2={L + pw} y1={y(v)} y2={y(v)} className="hs-grid" />
+            <text x={L - 6} y={y(v) + 3.5} textAnchor="end" className="hs-axis">{v}</text>
+          </g>
+        ))}
+        {ax.ticks.map((t) => <text key={t} x={x(t)} y={height - 5} textAnchor="middle" className="hs-axis">{sleepHoursText(t)}</text>)}
+        {points.map((p, i) => (
+          <circle key={`${p.hours}|${p.score}`} cx={x(p.hours)} cy={y(p.score)} r={(p.days.length > 1 ? 6 : 4.5) + (hover === i ? 1.5 : 0)}
+            fill="var(--blue)" stroke="var(--panel)" strokeWidth={2} className="ss-dot" />
+        ))}
+        {points.map((p, i) => (
+          <circle key={`h${p.hours}|${p.score}`} cx={x(p.hours)} cy={y(p.score)} r={12} className="hs-hit" tabIndex={0} role="img" aria-label={sleepScoreTip(p)}
+            onFocus={() => setHover(i)} onBlur={() => setHover(null)} />
+        ))}
+      </svg>
+      {tip && (
+        <div ref={tipRef} className="chart-tip hs-time-tip" style={{ left: tipLeft(x(tip.hours), tipW, w), top: tipTop(y(tip.score) - 4), visibility: tipW ? undefined : "hidden" }}>
+          {sleepScoreTip(tip)}
+        </div>
+      )}
+      <details className="hs-time-table muted small">
+        <summary>Таблицей</summary>
+        <table>
+          <thead><tr><th>День</th><th>Сон</th><th>Оценка</th></tr></thead>
+          <tbody>{pairs.map((p) => <tr key={p.day}><td>{shortDay(p.day)}</td><td>{sleepHoursText(p.hours)}</td><td>{scoreNum(p.score)}</td></tr>)}</tbody>
         </table>
       </details>
     </div>

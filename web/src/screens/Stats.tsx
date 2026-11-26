@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { get } from "../api";
 import { appsWithoutGames, iconKey, prettyName, sumByApp } from "../appnames";
-import { Bars, DayPie, NestedBars, Segment } from "../charts";
+import { Bars, DayPie, NestedBars, Segment, SleepScoreChart } from "../charts";
 import { Card, Empty, Spinner } from "../components";
+import { dayScores } from "../dayscore";
 import { dayFacts, STAT_TABS, type StatTab } from "../dayrate";
 import { addDays, dur, humanDay, metricText, monthTitle, shortDay, todayKey } from "../format";
 import { STAT_DEFAULT, STAT_RANGES as RANGES, type Range } from "../pcday";
 import { SleepTimeline, sleepAverages, sleepDays } from "../sleep";
+import { sleepScorePairs, sleepScoreTakeaway } from "../sleepscore";
 import type { ActivityRow, DiaryRow, MetricRow } from "../types";
 import { DayRatings } from "./DayRatings";
 
@@ -138,6 +140,9 @@ export function Stats({ version }: { version: number }) {
   const slept = sleepRows.filter((d) => d.hours);
   const times = sleepAverages(slept);
   const rating = metric("rating_day", "avg");
+  // «Сон и оценка дня»: весь период вкладки (не только последние 31 строку шкалы), пара — сон и оценка одного дня.
+  const sleepScore = sleepScorePairs(allDays, sd, dayScores(metrics));
+  const sleepTakeaway = sleepScoreTakeaway(sleepScore);
   const facts = dayFacts(allDays, { activity, metrics, sleep: sd, notes: noteDays });
   const sleepHead = slept.length ? [`в среднем ${h(avg(slept.map((d) => d.hours!)))}`, times && `отбой ~${times.bed}, подъём ~${times.wake}`].filter(Boolean).join(" · ") : "";
 
@@ -191,6 +196,12 @@ export function Stats({ version }: { version: number }) {
         {tab === "sleep" && (
         <Card title={`Сон`} className="reveal wide" action={<span className="muted small">{sleepHead}</span>}>
           {sleepRows.length ? <SleepTimeline days={sleepRows} notes={sleepTexts} onChanged={reloadSleep} /> : <Empty>Сон не записан — скажите боту «лёг в 1:30, встал в 9:00»</Empty>}
+        </Card>
+        )}
+        {tab === "sleep" && !oneDay && (
+        <Card title="Сон и оценка дня" className="reveal wide">
+          {sleepScore.length > 0 && <SleepScoreChart pairs={sleepScore} />}
+          <p className={`small ss-takeaway${sleepTakeaway ? "" : " muted"}`}>{sleepTakeaway ?? "Мало дней, где есть и сон, и оценка"}</p>
         </Card>
         )}
         {tab === "body" && (<>
