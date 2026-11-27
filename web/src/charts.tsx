@@ -3,9 +3,26 @@ import { scoreNum } from "./dayscore";
 import { shortDay } from "./format";
 import { DAY_SEC, dayParts } from "./pcday";
 import { hoursAxis, sleepHoursText, sleepScorePoints, sleepScoreSummary, sleepScoreTip, type SleepScorePair } from "./sleepscore";
-import { tipLeft, tipTop } from "./timechart";
+import { barTip, tipLeft, tipTop } from "./timechart";
 
 // Графики без библиотек: столбики по дням/неделям/месяцам, подпись при наведении.
+
+/** Подсказка столбикового графика: меряет поле и саму подсказку и ставит её через barTip (timechart.ts) — не вылезает за
+ *  края, не сжимается, не ложится на высокий столбик. frac — высота столбика под указателем в долях поля (0…1). */
+function useBarTip(hover: number | null, count: number, frac: number) {
+  const area = useRef<HTMLDivElement>(null);
+  const tip = useRef<HTMLDivElement>(null);
+  const [m, setM] = useState({ w: 0, h: 0, tw: 0, th: 0 });
+  useLayoutEffect(() => {
+    const a = area.current, t = tip.current;
+    if (!a || !t) return;
+    const n = { w: a.clientWidth, h: a.clientHeight, tw: t.offsetWidth, th: t.offsetHeight };
+    if (n.w !== m.w || n.h !== m.h || n.tw !== m.tw || n.th !== m.th) setM(n);
+  });
+  const col = m.w / Math.max(1, count);
+  const pos = barTip({ x: ((hover ?? 0) + 0.5) * col, barW: Math.max(0, Math.min(col - 2, 28)), barTop: m.h * (1 - Math.min(1, frac)), tipW: m.tw, tipH: m.th, w: m.w });
+  return { area, tip, style: { left: pos.left, top: pos.top, visibility: m.tw ? undefined : "hidden" } as const };
+}
 
 export interface Bar {
   label: string;
@@ -21,9 +38,10 @@ export function Bars({ bars, color = "var(--accent)", format = (v: number) => St
   const max = Math.max(goal ?? 0, ...bars.map((b) => b.value), 1);
   const w = 100 / bars.length;
   const step = Math.max(1, Math.ceil(bars.length / 10));
+  const bt = useBarTip(hover, bars.length, hover !== null && bars[hover] ? bars[hover].value / max : 0);
   return (
     <div className="chart">
-      <div className="chart-area" style={{ height }} onMouseLeave={() => setHover(null)}>
+      <div ref={bt.area} className="chart-area" style={{ height }} onMouseLeave={() => setHover(null)}>
         {goal !== undefined && <div className="chart-goal" style={{ bottom: `${(goal / max) * 100}%` }} title={`цель ${format(goal)}`} />}
         {bars.map((b, i) => (
           <div
@@ -37,7 +55,7 @@ export function Bars({ bars, color = "var(--accent)", format = (v: number) => St
           </div>
         ))}
         {hover !== null && bars[hover] && (
-          <div className="chart-tip" style={{ left: `${(hover + 0.5) * w}%` }}>
+          <div ref={bt.tip} className="chart-tip" style={bt.style}>
             <b>{format(bars[hover].value)}</b> · {bars[hover].title ?? bars[hover].label}
           </div>
         )}
@@ -67,9 +85,10 @@ export function StackedBars({ bars, format, height = 150, avg, highlight }: {
     const total = ps.reduce((s, p) => s + p.value, 0);
     return `${b.title ?? b.label}: ${format(total)}${ps.length > 1 ? "\n" + ps.map((p) => `${p.key} — ${format(p.value)}`).join("\n") : ""}`;
   };
+  const bt = useBarTip(hover, bars.length, hover !== null && bars[hover] ? sum(bars[hover]) / max : 0);
   return (
     <div className="chart">
-      <div className={`chart-area ${highlight ? "dim" : ""}`} style={{ height }} onMouseLeave={() => setHover(null)}>
+      <div ref={bt.area} className={`chart-area ${highlight ? "dim" : ""}`} style={{ height }} onMouseLeave={() => setHover(null)}>
         {avg && <div className="chart-avg" style={{ bottom: `${(avg.value / max) * 100}%` }}><span>{avg.label}</span></div>}
         {bars.map((b, i) => (
           <div
@@ -91,7 +110,7 @@ export function StackedBars({ bars, format, height = 150, avg, highlight }: {
           </div>
         ))}
         {hover !== null && bars[hover] && (
-          <div className="chart-tip" style={{ left: `${(hover + 0.5) * w}%` }}>{tip(bars[hover])}</div>
+          <div ref={bt.tip} className="chart-tip" style={bt.style}>{tip(bars[hover])}</div>
         )}
       </div>
       <div className="chart-labels">
@@ -113,9 +132,10 @@ export function NestedBars({ bars, back, front, format, tip, height = 160, goal 
   const max = Math.max(goal ?? 0, ...bars.map((b) => Math.max(b.back, b.front)), 1);
   const w = 100 / bars.length;
   const step = Math.max(1, Math.ceil(bars.length / 10));
+  const bt = useBarTip(hover, bars.length, hover !== null && bars[hover] ? Math.max(bars[hover].back, bars[hover].front) / max : 0);
   return (
     <div className="chart">
-      <div className="chart-area" style={{ height }} onMouseLeave={() => setHover(null)}>
+      <div ref={bt.area} className="chart-area" style={{ height }} onMouseLeave={() => setHover(null)}>
         {goal !== undefined && <div className="chart-goal" style={{ bottom: `${(goal / max) * 100}%` }} title={`цель ${format(goal)}`} />}
         {bars.map((b, i) => (
           <div key={i} className={`chart-col ${hover === i ? "on" : ""}`} style={{ width: `${w}%` }} onMouseEnter={() => setHover(i)} onClick={() => setHover(hover === i ? null : i)}>
@@ -125,7 +145,7 @@ export function NestedBars({ bars, back, front, format, tip, height = 160, goal 
           </div>
         ))}
         {hover !== null && bars[hover] && (
-          <div className="chart-tip" style={{ left: `${(hover + 0.5) * w}%` }}>
+          <div ref={bt.tip} className="chart-tip" style={bt.style}>
             <b>{bars[hover].title ?? bars[hover].label}</b><br />{tip(bars[hover])}
           </div>
         )}

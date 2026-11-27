@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import * as webpush from "web-push";
 import type { Store, User } from "./db.ts";
 import type { Emotion } from "./personas.ts";
-import type { Button } from "./scheduler.ts";
+import { snoozeOptions, type Button } from "./scheduler.ts";
 import { switchOn } from "./switches.ts";
 
 // Web Push на телефон и ПК: сервер шлёт короткий JSON, service worker показывает уведомление с кнопками.
@@ -63,15 +63,32 @@ export class Push {
     return crypto.createHmac("sha256", this.keys.privateKey || "no-key").update(body).digest("base64url");
   }
 
-  /** Что показать: заголовок — первая строка, остальное — тело; кнопки + «Через 30 мин» у напоминаний с кнопками. */
-  payload(u: User, text: string, buttons: Button[] = []): PushPayload {
+  /** Кнопки уведомления. Отложить — всегда одна:
+   *  - вопрос про привычку: вместо «⏰ Позже» (в push второго шага с выбором времени нет) — «⏰ Через 30 мин», тот же шаг s30, что
+   *    в Telegram и виджете (pipeline.habitSnooze). До 00:00 полчаса уже не помещаются — «Через 15 мин»; не помещаются и они
+   *    (или вопрос не за сегодня) — кнопки отложить нет. Общая «snooze» сюда не дописывается;
+   *  - остальные письма с кнопками: общая «⏰ Через 30 мин» (snooze) последней;
+   *  - оценка дня (десять чисел, в уведомление помещаются три) — без кнопок вовсе: оценить — в приложении.
+   *  Кнопки-ссылки (url, только Telegram) в push не идут. */
+  buttons(u: Pick<User, "tz">, buttons: Button[] = [], now = new Date()): Button[] {
+    const own = buttons.filter((b) => !b.url);
+    if (!own.length || own.some((b) => b.data.startsWith("rate:"))) return [];
+    if (!own.some((b) => b.data.startsWith("habit:"))) return [...own, { text: `⏰ Через ${SNOOZE_MIN} мин`, data: "snooze" }];
+    return own.flatMap((b) => {
+      const later = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):later$/.exec(b.data);
+      if (!later) return [b];
+      const step = snoozeOptions(u, later[2], now).steps.filter((x) => x <= SNOOZE_MIN).at(-1);
+      return step ? [{ text: `⏰ Через ${step} мин`, data: `habit:${later[1]}:${later[2]}:s${step}` }] : [];
+    });
+  }
+
+  /** Что показать: заголовок — первая строка, остальное — тело; кнопки — buttons() выше. */
+  payload(u: User, text: string, buttons: Button[] = [], now = new Date()): PushPayload {
     const plain = stripHtml(text).trim();
     const nl = plain.indexOf("\n");
     const title = (nl > 0 ? plain.slice(0, nl) : plain).slice(0, 80) || "Горничная";
     const body = (nl > 0 ? plain.slice(nl + 1).trim() : "").slice(0, 600);
-    // Оценка дня — десять кнопок с числами: в уведомление помещаются три, поэтому там их нет вовсе (оценить — в приложении).
-    const rate = buttons.some((b) => b.data.startsWith("rate:"));
-    const all = buttons.length && !rate ? [...buttons, { text: `⏰ Через ${SNOOZE_MIN} мин`, data: "snooze" }] : [];
+    const all = this.buttons(u, buttons, now);
     return {
       title, body, tag: `maid-${Date.now()}`, url: "/",
       actions: all.slice(0, 3).map((b, i) => ({ action: String(i), title: b.text })),

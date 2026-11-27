@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { get } from "../api";
-import { Empty, Spinner } from "../components";
+import { Empty, LoadError, NoteBar, Spinner } from "../components";
 import { humanDay, plainReply, todayKey } from "../format";
 import { byDay, HISTORY_FILTERS, KIND_NAMES, type HistoryItem } from "../history";
 
@@ -18,6 +18,9 @@ export function History({ version, filter: start }: { version: number; filter?: 
   const [filter, setFilter] = useState(HISTORY_FILTERS.some((f) => f.id === start) ? start! : "all");
   const [page, setPage] = useState<Page | null>(null);
   const [error, setError] = useState("");
+  const [again, setAgain] = useState(0);
+  // Сбой «Показать ещё» — отдельно: уже загруженные письма остаются на экране.
+  const [moreError, setMoreError] = useState("");
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<Record<number, boolean>>({});
 
@@ -33,19 +36,21 @@ export function History({ version, filter: start }: { version: number; filter?: 
     if (fresh) setPage(null);
     shown.current = { filter, pages: 1 };
     let alive = true;
-    get<Page>(url()).then((p) => alive && setPage(p)).catch((e) => alive && setError((e as Error).message));
+    setMoreError("");
+    get<Page>(url()).then((p) => { if (alive) { setPage(p); setError(""); } }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
-  }, [filter, version]);
+  }, [filter, version, again]);
 
   async function more() {
     if (!page?.items.length) return;
     setBusy(true);
+    setMoreError("");
     try {
       const next = await get<Page>(url(page.items.at(-1)!.id));
       shown.current.pages++;
       setPage({ items: [...page.items, ...next.items], more: next.more });
     } catch (e) {
-      setError((e as Error).message);
+      setMoreError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -65,7 +70,7 @@ export function History({ version, filter: start }: { version: number; filter?: 
         ))}
       </div>
 
-      {error ? <Empty>Нет связи: {error}</Empty>
+      {error && !page ? <LoadError error={error} onRetry={() => { setError(""); setAgain((n) => n + 1); }} />
         : !page ? <Spinner />
         : !page.items.length ? <Empty>{filter === "all" ? "Писем пока нет. Первое придёт утром." : "Таких писем пока нет."}</Empty>
         : (
@@ -93,6 +98,7 @@ export function History({ version, filter: start }: { version: number; filter?: 
                 </ul>
               </section>
             ))}
+            {moreError && <NoteBar note={{ text: `Не получилось показать ещё: ${moreError}`, bad: true }} onRetry={() => void more()} onClose={() => setMoreError("")} />}
             {page.more && <button className="hist-more" disabled={busy} onClick={more}>{busy ? "Загружаю…" : "Показать ещё"}</button>}
           </>
         )}

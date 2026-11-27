@@ -253,6 +253,24 @@ button.link.forever:hover { color: var(--bad-ink); text-decoration: none; }
 .task-note .link { color: #d9cbff; }
 .task-note.bad { background: var(--bad-bg); color: var(--bad-ink); }
 .task-note.bad .link { color: var(--bad-ink); }
+/* Общая плашка сообщения (components.tsx NoteBar): итог, сбой действия, сбой загрузки с «Повторить». */
+.task-note .grow { overflow-wrap: anywhere; }
+.task-note .link { flex: none; font-weight: 600; }
+.task-note .note-close { flex: none; display: grid; place-items: center; padding: 4px; color: inherit; opacity: .8; }
+.task-note .note-close:hover { background: transparent; opacity: 1; }
+.note-stick { position: sticky; bottom: 8px; z-index: 5; }
+.note-stick-top { position: sticky; top: 8px; z-index: 5; }
+.set-body > .task-note, .support-form > .task-note { margin: 0; }
+@media (max-width: 760px) {
+  .task-note button { min-height: 44px; }
+  .task-note .link { padding: 0 6px; }
+  .task-note .note-close { min-width: 44px; }
+  /* Квадрат задачи остаётся 18 px, зона нажатия — 44 px. */
+  .list li.task { min-height: 44px; }
+  button.box { position: relative; }
+  button.box::after { content: ""; position: absolute; inset: -13px; }
+  .diary-section li.entry .entry-del { min-width: 44px; min-height: 44px; display: grid; place-items: center; }
+}
 .day-side { display: flex; flex-direction: column; gap: 18px; }
 .side-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
 .side-head h3 { margin: 0; font-size: 16px; font-weight: 650; }
@@ -292,7 +310,7 @@ button.link.forever:hover { color: var(--bad-ink); text-decoration: none; }
 .diary-section ul { margin: 0; padding: 0 0 0 1em; display: flex; flex-direction: column; gap: 5px; }
 .diary-section li.entry { display: flex; gap: 6px; align-items: flex-start; }
 .diary-section li.entry .tiny { opacity: 0; }
-.diary-section li.entry:hover .tiny { opacity: 1; }
+.diary-section li.entry:hover .tiny, .diary-section li.entry .tiny:focus-visible { opacity: 1; }
 .diary-section .chip { margin-right: 6px; }
 .diary-layout { display: grid; grid-template-columns: minmax(440px, 640px) 1fr; gap: 18px; align-items: start; }
 .calendar { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 16px 12px; position: sticky; top: 0; }
@@ -661,7 +679,7 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .composer .rec-wave { flex: 1; min-width: 0; height: 30px; }
 @keyframes recBlink { to { visibility: hidden; } }
 @keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.55); } 50% { box-shadow: 0 0 0 6px rgba(229,72,77,0); } }
-@media (prefers-reduced-motion: reduce) { .composer .mic.rec { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .composer .mic.rec, .composer .rec-dot { animation: none; } }
 .toast { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; padding: 12px 14px; background: var(--ink-bg); color: var(--on-ink); border-radius: 14px; white-space: pre-wrap; box-shadow: var(--lift); animation: reveal .25s ease; }
 .toast.bad { background: var(--toast-bad); }
 .toast-text { flex: 1; }
@@ -675,6 +693,27 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .toast-days { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .toast-days button { font-size: 13px; padding: 4px 10px; }
 .toast-actions { display: flex; gap: 6px; flex: none; }
+/* Ответ над строкой ввода (Composer.tsx, docs/ДИЗАЙН.md 5.8): состояние подписью — «Не сохранено», «Нужно уточнение»;
+   кнопок бывает много (повторить, заметкой, «добавить?») — ряд переносится под текст. */
+.toast { flex-wrap: wrap; }
+.toast-text { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+.toast-actions { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; max-width: 100%; }
+.toast-state { margin-bottom: 4px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+.toast.ask { box-shadow: var(--lift), inset 3px 0 0 var(--on-ink); }
+.toast button:disabled { opacity: .55; cursor: default; }
+.toast-close { display: grid; place-items: center; padding: 6px; }
+.toast-prop { display: grid; gap: 6px; margin-top: 8px; white-space: normal; }
+.toast-prop label, .toast-prop div { display: flex; align-items: center; gap: 8px; }
+.toast-prop input { flex: none; width: 18px; height: 18px; accent-color: var(--accent-fill); }
+.toast-prop i { display: block; font-style: normal; font-size: 13px; opacity: .8; }
+.toast-aside { margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, currentColor 22%, transparent); font-size: 13.5px; }
+.toast-problem { margin-top: 8px; padding: 6px 10px; border-radius: 8px; background: var(--bad-bg); color: var(--bad-ink); font-size: 13.5px; white-space: normal; }
+@media (max-width: 760px) {
+  /* Телефон: зона нажатия не меньше 44 px (решение 11). */
+  .toast-actions button, .toast-actions a.btn.pay, .toast-days button { min-height: 44px; }
+  .toast-close { min-width: 44px; }
+  .toast-prop label { min-height: 44px; }
+}
 
 /* вход */
 .login { min-height: 100%; display: grid; place-items: center; padding: 20px; }
@@ -708,6 +747,8 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 
 .spinner { width: 28px; height: 28px; margin: 40px auto; border-radius: 50%; border: 3px solid var(--ring-bg); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* Меньше движения: кружок загрузки не замирает (иначе загрузку не видно), а идёт медленно — поверх общего выключателя ниже. */
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s !important; animation-iteration-count: infinite !important; } }
 
 /* телефон */
 @media (max-width: 1100px) {
@@ -877,6 +918,9 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 
 /* Компьютер и игры */
 .chart-tip { white-space: pre-line; }
+/* Подсказка столбиков (Bars, StackedBars, NestedBars): место считает barTip (timechart.ts) по своей ширине — без сдвига
+   на полширины; ширина по тексту, а не по остатку места справа (иначе у правого края сжимается в столбик слов). */
+.chart-area > .chart-tip { transform: none; width: max-content; max-width: calc(100% - 8px); z-index: 1; }
 .chart-bar.nested { position: relative; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
 .chart-bar.nested i { display: block; width: 100%; border-radius: 4px 4px 0 0; }
 
@@ -983,7 +1027,7 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
 }
 
 /* Каталог для разработки: главы слева, текст по центру строкой не шире 72 знаков; блоки «шаги» и «анимации». */

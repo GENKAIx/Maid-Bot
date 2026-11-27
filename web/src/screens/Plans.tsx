@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { get, post } from "../api";
-import { Card, Chip, Empty, Spinner } from "../components";
+import { get } from "../api";
+import { Card, Chip, Empty, NoteBar, Spinner } from "../components";
 import { WEEKDAYS, addDays, shortDay, todayKey } from "../format";
+import { TaskBox, useTaskDone } from "../taskdone";
 import type { EventRow, TaskRow } from "../types";
 import { Dates } from "./Dates";
 
@@ -40,10 +41,8 @@ function Week({ version, onChanged }: { version: number; onChanged: () => void }
     return () => { alive = false; };
   }, [start, version]);
 
-  async function closeTask(id: number) {
-    await post(`/api/tasks/${id}`, { status: "done" });
-    onChanged();
-  }
+  // Отметка задачи — та же, что на «Сегодня» (taskdone.tsx): плашка «Отменить» на 8 секунд, при сбое отметка снимается и видна причина.
+  const { closing, note, say, close, undo } = useTaskDone(tasks, onChanged);
 
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!events) return <Spinner />;
@@ -89,14 +88,15 @@ function Week({ version, onChanged }: { version: number; onChanged: () => void }
           {tasks.length ? (
             <ul className="list">
               {tasks.map((t) => (
-                <li key={t.id} className="task">
-                  <button className="check" onClick={() => closeTask(t.id)} aria-label="Сделано" />
-                  <span className={`grow ${t.priority === "high" ? "high" : ""}`}>{t.title}{t.notes && <span className="muted small"> · {t.notes}</span>}</span>
+                <li key={t.id} className={`task ${closing.has(t.id) ? "did" : ""}`}>
+                  <TaskBox task={t} done={closing.has(t.id)} onClose={close} />
+                  <span className={`grow task-title ${t.priority === "high" ? "high" : ""}`}>{t.title}{t.notes && <span className="muted small"> · {t.notes}</span>}</span>
                   {t.due_date && <Chip tone={t.due_date < today ? "bad" : ""}>до {shortDay(t.due_date)}</Chip>}
                 </li>
               ))}
             </ul>
           ) : <Empty>Открытых задач нет</Empty>}
+          {note && <NoteBar note={note} onUndo={undo} onClose={() => say(null)} />}
         </Card>
 
       </div>

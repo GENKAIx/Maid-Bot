@@ -10,8 +10,10 @@ export type NoticeKind = (typeof NOTICE_KINDS)[number];
 /** Сколько последних писем сервер хранит на человека (старше — удаляются при каждой отправке). */
 export const NOTICES_KEEP = 1000;
 
-/** Вид отложенного или запланированного напоминания: вопрос про привычку (кнопки habit:) или план. */
-export const reminderKind = (buttons?: { data: string }[]): NoticeKind => (buttons?.some((b) => b.data.startsWith("habit:")) ? "habit" : "plan");
+/** Вид отложенного или запланированного напоминания: вопрос про привычку (кнопки habit:), отложенное в push письмо
+ *  о закономерности (кнопки trait:) — заметка, как исходное, иначе план. */
+export const reminderKind = (buttons?: { data: string }[]): NoticeKind =>
+  buttons?.some((b) => b.data.startsWith("habit:")) ? "habit" : buttons?.some((b) => b.data.startsWith("trait:")) ? "note" : "plan";
 
 // Письма, записанные до 17.11.2026, вида не имеют — он угадывается по кнопкам и началу текста. Новым письмам не нужно.
 function oldKind(r: NoticeRow): NoticeKind {

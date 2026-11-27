@@ -18,7 +18,7 @@ import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.t
 import { ALBUM, albumOf, albumSee } from "./album.ts";
 import { dayCount, finishedHabits, finishPatch, habitBefore, habitMonth, habitsOfDay, habitStats, markClosed, markRefusal, perDayOf, reopenPatch } from "./habits.ts";
 import { MAID_EYES, MAID_HAIR } from "./look.ts";
-import { historyOf, NOTICE_KINDS } from "./notices.ts";
+import { historyOf, NOTICE_KINDS, NOTICES_KEEP } from "./notices.ts";
 import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, RATED_SHELVES, SHELF_KEYS, SHELVES, noteCounts, sameNote, type Shelf } from "./notes.ts";
 import { HEALTH_TOPICS, METRICS } from "./parse.ts";
 import { proposalView, TRASH_DAYS, type Pipeline } from "./pipeline.ts";
@@ -354,9 +354,11 @@ export function createApi(deps: ApiDeps) {
   async function runButton(u: User, data: string, all: string[]): Promise<string> {
     const HABIT = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped|later)$/;
     const habit = data.match(HABIT);
-    if (habit?.[3] === "later") return pipeline.habitLater(u, Number(habit[1]), habit[2]);
+    // «⏰ Позже» из уведомления, показанного до 28.11.2026 (подпись живёт 36 ч): в push выбора времени нет — откладываем на те же
+    // 30 минут, что новая кнопка «⏰ Через 30 мин» (s30). Раньше тут был только текст habitLater, и вопрос не откладывался.
+    if (habit?.[3] === "later") return (await pipeline.habitSnooze(u, Number(habit[1]), habit[2], { in: Push.snoozeMinutes })).text;
     if (habit) return pipeline.markHabit(u, Number(habit[1]), habit[2], habit[3] as "done" | "skipped", "push");
-    // Шаг «Позже» в push не приходит (там «⏰ Позже» — прежний ответ habitLater), но кнопку s<мин> / t<ЧЧММ> поймём так же, как бот.
+    // Шаг «Позже»: в push это «⏰ Через 30 мин» (s30; под полночь — s15, push.ts buttons); s<мин> / t<ЧЧММ> понимаем так же, как бот.
     const step = data.match(HABIT_DATA)?.slice(1);
     if (step && /^[st]\d+$/.test(step[2])) {
       const when = step[2][0] === "s" ? { in: Number(step[2].slice(1)) } : { at: `${step[2].slice(1, 3)}:${step[2].slice(3)}` };
@@ -369,13 +371,31 @@ export function createApi(deps: ApiDeps) {
     if (rate) return rateDay(store, u, rate[1], Number(rate[2]));
     if (data.startsWith("you:")) return runYou(u, data);
     if (data === "snooze") {
-      const buttons: Button[] = all.filter((d) => d !== "snooze").map((d) => {
-        const h = d.match(HABIT);
-        return { text: h ? (h[3] === "done" ? "✅ Да" : h[3] === "later" ? "⏰ Позже" : "✖ Нет") : d, data: d };
+      const rest = all.filter((d) => d !== "snooze");
+      // Вопрос про привычку с общей «snooze» — только из уведомлений, показанных до 28.11.2026 (теперь у него свой шаг s30).
+      if (rest.some((d) => HABIT.test(d))) {
+        const buttons: Button[] = rest.map((d) => {
+          const h = d.match(HABIT);
+          return { text: h ? (h[3] === "done" ? "✅ Да" : h[3] === "later" ? "⏰ Позже" : "✖ Нет") : d, data: d };
+        });
+        const first = buttons[0]?.data.match(HABIT);
+        const title = first ? (await store.habit(Number(first[1])))?.title : undefined;
+        await snooze(store, u, title ? `🔁 Напоминаю: ${title}` : "🔔 Напоминаю", buttons, Push.snoozeMinutes);
+        return `Напомню через ${Push.snoozeMinutes} мин.`;
+      }
+      // Остальные письма (закономерность — trait:… и любые другие): в подписи push лежат только data кнопок, поэтому текст письма
+      // и подписи кнопок берём из самого письма в ленте (notices) — последнего с тем же набором кнопок. Письма уже нет
+      // (лента хранит NOTICES_KEEP последних) — честно говорим, что отложить не вышло, а не шлём пустое «Напоминаю».
+      const letter = (await store.noticesAll(u.id, NOTICES_KEEP)).find((n) => {
+        try {
+          const b = n.buttons ? (JSON.parse(n.buttons) as Button[]) : [];
+          return b.length === rest.length && b.every((x, i) => x.data === rest[i]);
+        } catch {
+          return false;
+        }
       });
-      const first = buttons[0]?.data.match(HABIT);
-      const title = first ? (await store.habit(Number(first[1])))?.title : undefined;
-      await snooze(store, u, title ? `🔁 Напоминаю: ${title}` : "🔔 Напоминаю", buttons, Push.snoozeMinutes);
+      if (!letter) throw new HttpError(404, "Это письмо уже не найти — отложить не получилось. Оно осталось в «Истории» на сайте.");
+      await snooze(store, u, letter.text, JSON.parse(letter.buttons) as Button[], Push.snoozeMinutes);
       return `Напомню через ${Push.snoozeMinutes} мин.`;
     }
     throw new HttpError(400, "неизвестная кнопка");
@@ -1018,8 +1038,13 @@ export function createApi(deps: ApiDeps) {
     if (m === "DELETE" && diaryRow) {
       const r = await store.diaryRow(Number(diaryRow[1]));
       if (!r || r.user_id !== u.id) throw new HttpError(404, "нет записи");
-      await store.setDiaryDeleted(r.id, true);
-      return { ok: true };
+      // Журнал помнит «не удалена» — POST /api/undo с этим номером вернёт запись (плашка «Отменить» на сайте).
+      const short = r.text.length > 60 ? `${r.text.slice(0, 60)}…` : r.text;
+      const undo = await pipeline.manual(u, `🗑 ${short}`, async (log) => {
+        await log("diary", r.id, { deleted: 0 });
+        await store.setDiaryDeleted(r.id, true);
+      });
+      return { ok: true, undo };
     }
     // Сон за день вручную (щелчок по дню на шкале сна в «Статистике»): записи «сон» за день и sleep_hours уходят в удалённые,
     // вместо них — одна запись «лёг в …, встал в …» (её же читают шкала, вечерний итог и горничная) и часы сна; clear — только убрать.
@@ -1029,9 +1054,20 @@ export function createApi(deps: ApiDeps) {
         day: z.string().refine((d) => isDayKey(d) && d <= today, "день — не позже сегодня"),
         bed: At.optional(), wake: At.optional(), note: z.string().trim().max(300).default(""), clear: z.boolean().default(false),
       }).refine((x) => x.clear || (x.bed && x.wake), "нужны «лёг» и «встал»"), await readJson(req));
+      // «Удалить сон» (clear): убранное пишется в журнал — «Отменить» (POST /api/undo, номер в undo) возвращает записи и часы.
+      // Сна за день не было — убирать нечего, undo нет.
+      if (b.clear) {
+        const rows = (await store.diaryOf(u.id, b.day)).filter((r) => r.section === "sleep");
+        const hoursRows = await store.metricsRange(u.id, b.day, b.day, "sleep_hours");
+        if (!rows.length && !hoursRows.length) return { day: b.day, hours: 0, undo: null };
+        const undo = await pipeline.manual(u, `🗑 Сон ${shortDay(b.day)}`, async (log) => {
+          for (const r of rows) { await log("diary", r.id, { deleted: 0 }); await store.setDiaryDeleted(r.id, true); }
+          for (const x of hoursRows) { await log("metrics", x.id, { deleted: 0 }); await store.setMetricDeleted(x.id, true); }
+        });
+        return { day: b.day, hours: 0, undo };
+      }
       for (const r of await store.diaryOf(u.id, b.day)) if (r.section === "sleep") await store.setDiaryDeleted(r.id, true);
       for (const x of await store.metricsRange(u.id, b.day, b.day, "sleep_hours")) await store.setMetricDeleted(x.id, true);
-      if (b.clear) return { day: b.day, hours: 0 };
       const clock = (t: string) => t.replace(/^0(\d)/, "$1");
       const h = (t: string) => Number(t.slice(0, 2)) + Number(t.slice(3)) / 60;
       const hours = Math.round((((h(b.wake!) - h(b.bed!) + 24) % 24) || 24) * 100) / 100;
@@ -1598,8 +1634,10 @@ export function createApi(deps: ApiDeps) {
       const b = parseBody(z.object({ action: z.enum(["remind", "add", "decline"]), picked: z.array(z.number().int().min(0)).max(20).optional() }), await readJson(req));
       return pipeline.decideProposal(u, Number(prop[1]), b.action, b.picked);
     }
-    const again = p.match(/^\/api\/messages\/(\d+)\/(retry|note)$/);
+    const again = p.match(/^\/api\/messages\/(\d+)\/(retry|note|dismiss)$/);
     if (again && m === "POST") {
+      // Крестик у уточняющего вопроса: сообщение больше не ждёт ответа (иначе следующая фраза приклеилась бы к старой).
+      if (again[2] === "dismiss") return pipeline.dismissClarify(u, Number(again[1]));
       if (again[2] === "retry") {
         const r = await pipeline.retry(u, Number(again[1]), new Date(), client);
         if (r.blocked) return refuse(u, r.blocked, r.text, { messageId: r.messageId, saved: r.undoable });

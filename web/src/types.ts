@@ -161,6 +161,26 @@ export interface Reply {
   days?: string[];
   /** План лёг на занятое время: кнопки «Сдвинуть на shiftTo» (если не null) и «Оставить» (POST /api/clash). */
   clash?: { eventId: number; withId: number; shiftTo: string | null };
+  /** Разобрать не вышло: фраза лежит на сервере несохранённой — «Повторить» (POST /api/messages/:id/retry) или
+   *  «Оставить заметкой» (POST /api/messages/:id/note). */
+  failed?: boolean;
+  /** Уточняющий вопрос: ничего не записано, сервер ждёт ответ. Крестик — POST /api/messages/:id/dismiss. */
+  clarify?: boolean;
+  /** Номер другого сообщения, чей уточняющий вопрос всё ещё ждёт после этого ответа (пришла картинка, «какая погода?»,
+   *  или разбор ответа на вопрос упал): вопрос остаётся на экране (replyview.ts stillAsked). */
+  waiting?: number;
+  /** Вопрос «добавить?» (привычки, задачи из рассказа): кнопки, ответ — POST /api/proposals/:id. */
+  proposal?: Proposal;
+}
+
+/** server/src/pipeline.ts proposalView. remind — «добавить и напоминать» (подпись кнопки), add — подпись «Добавить …». */
+export interface Proposal {
+  id: number;
+  items: { kind: "habit" | "task"; title: string; detail: string }[];
+  picked: number[];
+  remind: { label: string } | null;
+  status: string;
+  add: string;
 }
 
 /** GET /api/habits/:id/stats (server/src/habits.ts, habitStatsOf). */

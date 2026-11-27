@@ -47,8 +47,15 @@ test("перетаскивание сна: строка под указател�
 test("перетаскивание сна: шкала зовёт /api/sleep/swap, отмена — /api/undo, Esc отменяет", () => {
   const src = readFileSync(new URL("../src/sleep.tsx", import.meta.url), "utf8");
   assert.match(src, /post<[^>]*>\("\/api\/sleep\/swap", \{ from: d\.from, to: d\.over \}\)/);
-  assert.match(src, /post\("\/api\/undo", \{ messageId: id \}\)/);
-  assert.match(src, /↩ Отменить/);
+  // Отмена и плашка — общие (components.tsx: undoNote, NoteBar), кнопка «Отменить» без значка-глифа (28.11.2026).
+  const parts = readFileSync(new URL("../src/components.tsx", import.meta.url), "utf8");
+  assert.match(src, /undoNote\(id, say, onChanged\)/);
+  assert.match(src, /<NoteBar note=\{note\} className="sleep-note" onUndo=\{undo\}/);
+  assert.match(parts, /post\("\/api\/undo", \{ messageId: id \}\)/);
+  assert.match(parts, />Отменить<\/button>/);
+  // «Удалить сон» — без системного окна, с отменой.
+  assert.doesNotMatch(src, /confirm\(/);
+  assert.match(src, /Сон за \$\{shortDay\(d\.day\)\} убран/);
   assert.match(src, /e\.key === "Escape" && dragRef\.current/);
   assert.match(src, /if \(!dragged\.current\) toggle\(\)/, "после перетаскивания щелчок не открывает правку");
   // Пальцем щелчок после короткого удержания приходит после pointerup отдельной задачей — сброс по таймеру его пропускал.

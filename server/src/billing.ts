@@ -3,6 +3,7 @@ import { tariffs } from "./tariffs.ts";
 import type { BillingKind, Store, User } from "./db.ts";
 import { accessOf, endedOf, endedText, GRACE_MS, isFrozen } from "./access.ts";
 import { esc } from "./report.ts";
+import type { Deliver } from "./send.ts";
 
 // Подписка Telegram Stars (24.11.2026): ⭐price в месяц, Telegram сам продлевает её каждые 30 дней (subscription_period 2592000).
 // Продать подписку можно только ссылкой createInvoiceLink (у sendInvoice периода нет): бот ставит её на кнопку, сайт и виджет
@@ -75,6 +76,8 @@ const day = (iso: string) => iso.slice(0, 10).split("-").reverse().join(".");
 
 export class Billing {
   constructor(private store: Store, private api: StarsApi | null, private opts: BillingOptions) {}
+  /** Общий Send с ответом, куда письмо легло (send.ts); ставит index.ts. Через него идут все письма notify. */
+  deliver: Deliver | null = null;
   /** Цена нового счёта — текущая из тарифов: новая цена действует на новые счета, уже оформленную подписку Telegram продлевает
    *  по цене при оформлении. */
   private get price(): number {
@@ -277,9 +280,18 @@ export class Billing {
     }
   }
 
-  /** Письмо в Telegram (pay — с кнопкой оплаты, если платить можно) и в ленту уведомлений (сайт, виджет). Ошибок не бросает;
-   *  ответ — куда письмо на деле легло (ответ на обращение пишет это в журнал админа). */
+  /** Письмо человеку (конец пробы и подписки, ответ на обращение, письма об аккаунте) — через общий Send (deliver, вид other):
+   *  лента уведомлений (сайт, виджет), Web Push и Telegram; pay — в Telegram с кнопкой-ссылкой оплаты, если платить можно
+   *  (в ленту и push кнопка не идёт). Ошибок не бросает; ответ — куда письмо на деле легло (ответ на обращение пишет это в
+   *  журнал админа). Общий Send не подключён (тесты без index.ts) — прежний путь: лента и Telegram, без Web Push. */
   async notify(u: User, text: string, pay = true): Promise<{ feed: boolean; telegram: boolean }> {
+    if (this.deliver) {
+      const url = pay && this.api && u.chat_id ? await this.link(u) : null;
+      // Текст — как у всех писем Send: HTML для Telegram, сайт и push теги снимают.
+      const r = await this.deliver(u, esc(text), "neutral", url ? [{ text: `Оформить ⭐${this.price}`, data: "", url }] : undefined, "other")
+        .catch((e) => (console.error("[billing] письмо", (e as Error).message), { feed: false, telegram: false }));
+      return { feed: r.feed, telegram: r.telegram };
+    }
     const feed = await this.store.addNotice(u.id, text, "neutral", "", "other").then(() => true, () => false);
     if (!this.api || !u.chat_id) return { feed, telegram: false };
     const url = pay ? await this.link(u) : null;

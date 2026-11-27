@@ -1,6 +1,6 @@
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { get, post } from "../api";
-import { Card, Empty, Spinner } from "../components";
+import { Card, Empty, LoadError, NoteBar, Spinner, useNote } from "../components";
 import { navigate } from "../router";
 
 // Виджет на рабочем столе: что на панели, горничная, задачи, сроки самонажатия кнопок. С 27.11.2026 — по дизайну v2: группы
@@ -412,7 +412,10 @@ export function Widget() {
   const bridge = desktop();
   const [p, setP] = useState<Required<WidgetPrefs> | null>(null);
   const [opacity, setOpacity] = useState(DEFAULTS.opacity);
-  const [msg, setMsg] = useState("");
+  // Итог и сбой сохранения — плашка: сбой красный (role="alert"), итог обычный (role="status").
+  const [msg, say] = useNote();
+  const [error, setError] = useState("");
+  const [again, setAgain] = useState(0);
   const [ping, setPing] = useState(0); // выбрали что-то про облачко — показать его ещё раз со звуком
   const [ask, setAsk] = useState<"add" | "clash">("add"); // какой пример самонажатия показать
   const [gen, setGen] = useState<General | null>(null);
@@ -422,33 +425,37 @@ export function Widget() {
 
   useEffect(() => {
     if (!bridge) return;
-    void bridge.widget().then((w) => {
+    // Программа не ответила — причина и «Повторить» вместо вечной крутилки.
+    bridge.widget().then((w) => {
       const all = { ...DEFAULTS, ...w, sections: { ...DEFAULTS.sections, ...w?.sections } };
       setP(all);
       setOpacity(all.opacity);
-    });
+      setError("");
+    }).catch((e) => setError((e as Error)?.message || "программа «Горничная» не ответила"));
     void bridge.general?.().then(setGen).catch(() => null);
     void get<{ weather_rain?: number; city?: string }>("/api/me").then((m) => setWx({ rain: Boolean(m.weather_rain), city: Boolean(m.city) })).catch(() => null);
-  }, [bridge]);
+  }, [bridge, again]);
 
   if (!bridge) return <Empty>Виджет — это программа «Горничная» на компьютере. Его настройки — в ней: раздел «Виджет» слева.</Empty>;
+  if (error && !p) return <LoadError error={error} onRetry={() => { setError(""); setAgain((n) => n + 1); }} />;
   if (!p) return <Spinner />;
+  const fail = (text: string) => say({ text, bad: true });
 
   async function save(patch: WidgetPrefs) {
     setP((x) => ({ ...x!, ...patch, sections: { ...x!.sections, ...patch.sections } }));
     const r = await bridge!.saveWidget(patch).catch(() => null);
-    if (!r) setMsg("Не сохранилось: перезапустите программу «Горничная».");
+    if (!r) fail("Не сохранилось: перезапустите программу «Горничная».");
   }
   async function saveRain(rain: boolean) {
     setWx((x) => x && { ...x, rain });
     const r = await post<{ weather_rain?: number }>("/api/settings", { weather_rain: rain ? 1 : 0 }).catch(() => null);
-    if (!r) { setWx((x) => x && { ...x, rain: !rain }); setMsg("Не сохранилось: нет связи с сервером."); }
+    if (!r) { setWx((x) => x && { ...x, rain: !rain }); fail("Не сохранилось: нет связи с сервером."); }
   }
   async function saveGen(patch: { autostart?: boolean; keys?: Partial<General["keys"]> }) {
     const r = await bridge!.saveGeneral?.(patch).catch(() => null);
-    if (!r) return setMsg("Не сохранилось: перезапустите программу «Горничная».");
+    if (!r) return fail("Не сохранилось: перезапустите программу «Горничная».");
     setGen(r);
-    setMsg(r.error ?? "");
+    say(r.error ? { text: r.error, bad: true } : null);
   }
 
   return (
@@ -463,20 +470,20 @@ export function Widget() {
       </aside>
       <div className="wp-main">
       <p className="muted small">Всё сохраняется само. Панель с горничной на рабочем столе этого компьютера; на других устройствах — свои настройки.</p>
-      {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
+      {msg && <NoteBar note={msg} onClose={() => say(null)} />}
       <div className="wp-list">
         <section className="card wp-sec reveal">
           <h3>Окно</h3>
           <Setting title="Виджет на рабочем столе" hint={p.show !== false ? "Включён. Пропал с экрана — «Показать снова»" : "Выключен — панели с горничной на экране нет"}
             side={<Toggle label="Виджет на рабочем столе" on={p.show !== false} set={(show) => save({ show })} />} />
           {p.show !== false && <Setting title="Не видно виджета" hint="Вернуть его на экран поверх окон"
-            side={<button onClick={() => { void save({ show: true }); setMsg("Виджет снова на экране."); }}>Показать снова</button>} />}
+            side={<button onClick={() => { void save({ show: true }); say({ text: "Виджет снова на экране." }); }}>Показать снова</button>} />}
           <Setting title="Непрозрачность панели" hint="Насколько сквозь панель видно рабочий стол" side={<b className="wp-val">{Math.round(opacity * 100)}%</b>}>
             <input type="range" min={0.4} max={1} step={0.02} value={opacity} aria-label="Непрозрачность панели" onChange={(e) => setOpacity(Number(e.target.value))}
               onPointerUp={() => save({ opacity })} onKeyUp={() => save({ opacity })} />
           </Setting>
           <Setting title="Положение на экране" hint="Если виджет потерялся или ушёл за край"
-            side={<button onClick={() => { void bridge.resetWidget(); setMsg("Виджет вернулся в правый нижний угол."); }}>Вернуть в угол</button>} />
+            side={<button onClick={() => { void bridge.resetWidget(); say({ text: "Виджет вернулся в правый нижний угол." }); }}>Вернуть в угол</button>} />
         </section>
 
         <section className="card wp-sec reveal">

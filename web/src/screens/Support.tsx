@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import { MY_TICKET_STATUS } from "../announce";
-import { Card } from "../components";
+import { Card, LoadError, NoteBar } from "../components";
+import { type Note, failNote } from "../notice";
 
 // «Написать нам» в «Настройках» (этап 6 «Тарифы и управление», 24.11.2026; сервер — server/src/support.ts): тема, текст, отправить;
 // ниже — свои обращения со статусом и ответом. Не больше N в сутки (сервер отвечает 429 с понятным текстом).
@@ -14,28 +15,30 @@ export interface SupportInfo {
 
 export function SupportCard() {
   const [info, setInfo] = useState<SupportInfo | null>(null);
-  const load = () => get<SupportInfo>("/api/support").then(setInfo).catch(() => setInfo(null));
+  const [error, setError] = useState("");
+  const load = () => get<SupportInfo>("/api/support").then((i) => { setInfo(i); setError(""); }).catch((e) => setError((e as Error).message));
   useEffect(() => { void load(); }, []);
-  if (!info) return null;
+  // Не загрузилось — карточка на месте, с причиной и «Повторить» (раньше молча не появлялась).
+  if (!info) return error ? <Card title="Написать нам" className="reveal"><LoadError error={error} onRetry={() => { setError(""); void load(); }} /></Card> : null;
   return <SupportView info={info} onSent={() => void load()} />;
 }
 
 export function SupportView({ info, onSent }: { info: SupportInfo; onSent: () => void }) {
   const [topic, setTopic] = useState("");
   const [text, setText] = useState("");
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState<Note | null>(null);
   const [busy, setBusy] = useState(false);
   const titles = Object.fromEntries(info.topics.map((t) => [t.id, t.title]));
   async function send() {
     setBusy(true);
     try {
       const r = await post<{ text: string }>("/api/support", { topic, text });
-      setNote(r.text);
+      setNote({ text: r.text });
       setText("");
       setTopic("");
       onSent();
     } catch (e) {
-      setNote((e as Error).message);
+      setNote(failNote("Обращение не отправлено", e));
     } finally {
       setBusy(false);
     }
@@ -53,7 +56,7 @@ export function SupportView({ info, onSent }: { info: SupportInfo; onSent: () =>
           <button className="primary" disabled={busy || !topic || text.trim().length < 5 || info.left_today === 0} onClick={() => void send()}>Отправить</button>
           {info.left_today === 0 && <span className="muted small">На сегодня обращений хватит — новое можно завтра.</span>}
         </div>
-        {note && <p className="small" role="status">{note}</p>}
+        {note && <NoteBar note={note} onClose={() => setNote(null)} />}
       </div>
       {info.tickets.length > 0 && (
         <ul className="list small support-list">

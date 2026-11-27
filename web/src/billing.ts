@@ -44,12 +44,12 @@ export function refusedOf(e: unknown): Refused | null {
 }
 
 /** Что делать строке ввода с отказом (Composer.tsx refused): очистить ли (текст записан заметкой), красное ли облачко,
- *  сколько висит, можно ли отменить заметку «↩». Голос, отклонённый до распознавания, и /ask не записаны — строка остаётся. */
-export function refusedView(no: Refused | null): { clear: boolean; error: boolean; ms: number; undoId: number | null } {
+ *  можно ли отменить заметку. Голос, отклонённый до распознавания, и /ask не записаны — строка остаётся, запись голоса
+ *  остаётся в памяти («Повторить»). Сколько висит — не отсюда: ответ висит до следующей отправки или крестика (решение 23). */
+export function refusedView(no: Refused | null): { clear: boolean; error: boolean; undoId: number | null } {
   return {
     clear: Boolean(no?.saved),
     error: !no?.payUrl,
-    ms: no?.payUrl ? 40000 : 14000,
     undoId: no?.saved && no.messageId ? no.messageId : null,
   };
 }

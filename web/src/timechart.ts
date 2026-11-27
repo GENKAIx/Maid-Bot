@@ -1,5 +1,5 @@
 // Чистые расчёты графиков времени суток: «Во сколько отмечали» в раскрытой привычке (HabitMarkChart.tsx) — шкала, медиана, куски
-// линии; подсказка над точкой — и у «Сна и оценки дня». Отрезки, полосы «обычно» и подписи дней — habitpanel.ts.
+// линии; подсказка над точкой — и у «Сна и оценки дня»; подсказка столбиковых графиков (barTip). Отрезки, полосы «обычно» и подписи дней — habitpanel.ts.
 // Проверка — web/test/timechart.test.ts.
 
 /** Минуты с полуночи → «ЧЧ:ММ». */
@@ -51,3 +51,17 @@ export const tipTop = (y: number) => (y < 30 ? y + 10 : y - 30);
  *  (не вылезает и не переносится). */
 export const tipLeft = (x: number, tipW: number, w: number, pad = 4) =>
   Math.max(pad, Math.min(x - tipW / 2, w - tipW - pad));
+
+/** Подсказка столбикового графика (charts.tsx: Bars, StackedBars, NestedBars) размером tipW×tipH на поле шириной w.
+ *  x — середина столбика, barW — его ширина, barTop — верх столбика от верха поля. Обычно — вверху поля над столбиком,
+ *  у краёв прижата к краю (tipLeft). Столбик высокий и подсказка легла бы на него — встаёт сбоку: справа, не помещается —
+ *  слева; не помещается ни там, ни там — остаётся над столбиком. */
+export function barTip(o: { x: number; barW: number; barTop: number; tipW: number; tipH: number; w: number; pad?: number; gap?: number }): { left: number; top: number } {
+  const { x, barW, barTop, tipW, tipH, w, pad = 4, gap = 6 } = o;
+  const over = { left: tipLeft(x, tipW, w, pad), top: 0 };
+  if (barTop >= tipH + gap) return over;
+  const right = x + barW / 2 + gap;
+  if (right + tipW + pad <= w) return { left: right, top: 0 };
+  const left = x - barW / 2 - gap - tipW;
+  return left >= pad ? { left, top: 0 } : over;
+}

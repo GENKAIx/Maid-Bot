@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { del, get } from "../api";
-import { Card, Chip, Empty, Spinner } from "../components";
+import { Card, Chip, Empty, LoadError, NoteBar, Spinner, undoNote, useNote } from "../components";
+import { Icon } from "../icons";
+import { failNote, shortText } from "../notice";
 import { HEALTH_TOPICS, SECTIONS, SECTION_ORDER, WEEKDAYS, addDays, addMonths, dur, humanDay, metricText, money, monthGrid, monthTitle, todayKey } from "../format";
 import { navigate } from "../router";
 import { dayEmojis, emojiIcon, type DayEmoji, type Why } from "../dayEmoji";
@@ -107,13 +109,24 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
   const [days, setDays] = useState<Map<string, number>>(new Map());
   const [data, setData] = useState<DayData | null>(null);
   const [error, setError] = useState("");
+  // Сбой календаря (дни с записями, наклейки и оценки месяца) — отдельно от сбоя дня; again — «Повторить».
+  const [daysError, setDaysError] = useState("");
+  const [monthError, setMonthError] = useState("");
+  const [again, setAgain] = useState(0);
+  const [note, say] = useNote();
+  // Удаляемая запись пропадает сразу; пришёл новый день с сервера — список снова по нему.
+  const [gone, setGone] = useState<Set<number>>(new Set());
 
   useEffect(() => setMonth(current.slice(0, 7)), [current]);
   const [emojis, setEmojis] = useState<Map<string, DayEmoji[]>>(new Map());
   const [scores, setScores] = useState<Map<string, number>>(new Map());
   useEffect(() => {
-    get<{ day: string; n: number }[]>("/api/diary/days").then((rows) => setDays(new Map(rows.map((r) => [r.day, r.n])))).catch(() => {});
-  }, [version]);
+    let alive = true;
+    get<{ day: string; n: number }[]>("/api/diary/days")
+      .then((rows) => { if (alive) { setDays(new Map(rows.map((r) => [r.day, r.n]))); setDaysError(""); } })
+      .catch((e) => alive && setDaysError((e as Error).message));
+    return () => { alive = false; };
+  }, [version, again]);
   // Эмодзи дней месяца — по записям, играм и шагам (dayEmoji.ts).
   useEffect(() => {
     let alive = true;
@@ -123,16 +136,18 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
       get<ActivityRow[]>(`/api/activity?from=${from}&to=${to}`).catch(() => []),
       get<{ rows: MetricRow[] }>(`/api/metrics?from=${from}&to=${to}`).then((m) => m.rows).catch(() => []),
     ])// Все — для итога дня и счёта месяца; календарь показывает первые CELL_MAX.
-      .then(([d, a, m]) => { if (alive) { setEmojis(dayEmojis(d, a, m, 99)); setScores(dayScores(m)); } })
-      .catch(() => { if (alive) { setEmojis(new Map()); setScores(new Map()); } });
+      .then(([d, a, m]) => { if (alive) { setEmojis(dayEmojis(d, a, m, 99)); setScores(dayScores(m)); setMonthError(""); } })
+      .catch((e) => { if (alive) { setEmojis(new Map()); setScores(new Map()); setMonthError((e as Error).message); } });
     return () => { alive = false; };
-  }, [month, version]);
+  }, [month, version, again]);
   useEffect(() => {
     let alive = true;
     setData(null);
-    get<DayData>(`/api/day?day=${current}`).then((d) => alive && setData(d)).catch((e) => alive && setError((e as Error).message));
+    setError(""); // ошибка прошлого дня не висит над новым
+    get<DayData>(`/api/day?day=${current}`).then((d) => { if (alive) { setData(d); setError(""); } }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
-  }, [current, version]);
+  }, [current, version, again]);
+  useEffect(() => setGone(new Set()), [data]);
 
   const grid = useMemo(() => monthGrid(month), [month]);
   const avg = useMemo(() => monthAverage(scores, month), [scores, month]);
@@ -158,14 +173,23 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
   const [pick, setPick] = useState<{ day: string; emoji: string } | null>(null);
   const picked = pick?.day === current ? pick.emoji : null;
 
-  async function remove(id: number) {
-    if (!confirm("Удалить эту запись?")) return;
-    await del(`/api/diary/${id}`);
-    onChanged();
+  // Удаление без вопроса: запись пропадает сразу, плашка «Отменить» на 8 секунд (сервер отдаёт undo — DELETE /api/diary/:id).
+  // Не вышло — запись снова на месте и красная плашка с причиной.
+  async function remove(r: { id: number; text: string }) {
+    if (gone.has(r.id)) return;
+    setGone((g) => new Set(g).add(r.id));
+    try {
+      const x = await del<{ undo?: number }>(`/api/diary/${r.id}`);
+      say({ text: `Запись «${shortText(r.text, 40)}» удалена`, undo: x.undo });
+      onChanged();
+    } catch (e) {
+      setGone((g) => { const n = new Set(g); n.delete(r.id); return n; });
+      say(failNote("Не получилось удалить запись", e));
+    }
   }
 
   const bySection = new Map<string, DayData["diary"]>();
-  for (const r of data?.diary ?? []) bySection.set(r.section, [...(bySection.get(r.section) ?? []), r]);
+  for (const r of data?.diary ?? []) if (!gone.has(r.id)) bySection.set(r.section, [...(bySection.get(r.section) ?? []), r]);
   const sections = [...bySection.keys()].sort((a, b) => SECTION_ORDER.indexOf(a) - SECTION_ORDER.indexOf(b));
 
   return (
@@ -232,6 +256,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
               ? <span className="cal-only">Дней с <Sticker emoji={only} />: {onlyDays} <button className="ghost" onClick={() => setOnly(null)} aria-label="Показать все дни">✕</button></span>
               : <span>Дней с записями: {days.size}{avg !== undefined && <>, средняя оценка за месяц: {avgText(avg)}</>}</span>}
           </div>
+          {(daysError || monthError) && <LoadError error={daysError || monthError} onRetry={() => setAgain((n) => n + 1)} />}
         </aside>
 
         <div className="diary-day">
@@ -243,7 +268,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
           </div>}
 
           {only && <OnlyDays emoji={only} days={onlyList} onClose={() => setOnly(null)} onOpen={(d) => { setOnly(null); go(d); }} />}
-          {!only && error && <Empty>Нет связи: {error}</Empty>}
+          {!only && error && !data && <LoadError error={error} onRetry={() => setAgain((n) => n + 1)} />}
           {!only && !data && !error && <Spinner />}
           {!only && data && (
             <div className="cards" key={current}>
@@ -261,7 +286,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
                                 {r.section === "health" && r.topic && <Chip tone="accent">{HEALTH_TOPICS[r.topic] ?? r.topic}</Chip>}
                                 {r.text}
                               </span>
-                              <button className="ghost tiny" onClick={() => remove(r.id)} title="Удалить" aria-label="Удалить">✕</button>
+                              <button type="button" className="ghost tiny entry-del" onClick={() => void remove(r)} title="Удалить" aria-label={`Удалить запись: ${shortText(r.text, 40)}`}><Icon name="close" size={14} /></button>
                             </li>
                           ))}
                         </ul>
@@ -314,6 +339,7 @@ export function Diary({ day, version, onChanged }: { day?: string; version: numb
               )}
             </div>
           )}
+          {note && <NoteBar note={note} className="note-stick" onUndo={(id) => void undoNote(id, say, onChanged)} onClose={() => say(null)} />}
         </div>
       </div>
     </div>

@@ -41,14 +41,17 @@ export function dayNumbers(d: { tasks: number; habitsDone: number; habits: numbe
 export interface Button {
   text: string;
   data: string;
+  /** Кнопка-ссылка (оплата подписки, billing.ts): показывается только в Telegram; в ленту (notices) и в push не идёт (send.ts). */
+  url?: string;
 }
 /** kind — вид письма для «Истории» (notices.ts); без него письмо попадёт в «Прочее». */
 export type Send = (u: User, text: string, emotion: Emotion, buttons?: Button[], kind?: NoticeKind) => Promise<void>;
 
 /** Кнопки вопроса про привычку на день: «Да», «Позже», «Нет» (пропуск — в курсе крестик за день). «⏰ Позже» (later) открывает
  *  второй шаг (habitLaterRows); later = false — до полуночи не успеть даже 15 минут (snoozeOptions), «Позже» нет.
- *  Старые клиенты (виджеты 0.1.96/97, push, старые сообщения Telegram с «⏳ Ещё нет») шлют тот же later: виджет и push получают
- *  прежний ответ habitLater, Telegram — второй шаг. */
+ *  Старые клиенты (виджеты 0.1.96/97, старые сообщения Telegram с «⏳ Ещё нет») шлют тот же later: виджет получает прежний ответ
+ *  habitLater, Telegram — второй шаг. В push на месте «Позже» — «⏰ Через 30 мин» (шаг s30, push.ts buttons); later из старого
+ *  push-уведомления откладывает на те же 30 минут (api.ts runButton). */
 export const habitButtons = (habitId: number, day: string, later = true): Button[] => [
   { text: "✅ Да", data: `habit:${habitId}:${day}:done` },
   ...(later ? [{ text: "⏰ Позже", data: `habit:${habitId}:${day}:later` }] : []),

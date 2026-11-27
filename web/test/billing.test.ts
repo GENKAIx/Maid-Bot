@@ -105,12 +105,12 @@ test("админка: раздел «Оплаты», суммы, кнопка в
   assert.equal(refundable(rows, 9), false);
 });
 
-test("строка ввода и отказ: заметка записана — строка очищается и «↩» есть; голос до распознавания — текст остаётся; 402 со ссылкой — не красное и дольше", () => {
+test("строка ввода и отказ: заметка записана — строка очищается и «↩» есть; голос до распознавания — текст остаётся; 402 со ссылкой — не красное", () => {
   const saved = refusedView({ text: "x", payUrl: "https://t.me/$a", messageId: 5, saved: true });
-  assert.deepEqual(saved, { clear: true, error: false, ms: 40000, undoId: 5 });
+  assert.deepEqual(saved, { clear: true, error: false, undoId: 5 });
   const voice = refusedView({ text: "x", payUrl: "https://t.me/$a", messageId: null, saved: false });
   assert.deepEqual([voice.clear, voice.undoId, voice.error], [false, null, false]);
   const money = refusedView({ text: "лимит", payUrl: null, messageId: 7, saved: true });
-  assert.deepEqual([money.clear, money.error, money.ms, money.undoId], [true, true, 14000, 7]);
-  assert.deepEqual(refusedView(null), { clear: false, error: true, ms: 14000, undoId: null });
+  assert.deepEqual([money.clear, money.error, money.undoId], [true, true, 7]);
+  assert.deepEqual(refusedView(null), { clear: false, error: true, undoId: null });
 });

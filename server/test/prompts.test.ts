@@ -422,3 +422,14 @@ test("ручки «Промпты»: не админу 404, без кода 403;
     await s.close();
   }
 });
+
+test("разбор: ирония deadpan не про здоровье (решение владельца 28.11.2026)", () => {
+  const rules = prompt("parse.rules");
+  const i = rules.indexOf("- emotion deadpan");
+  assert.ok(i >= 0, "правило deadpan есть");
+  const rule = rules.slice(i, rules.indexOf("\n- ", i + 1));
+  assert.match(rule, /Здоровье — никогда не deadpan/);
+  assert.match(rule, /worried, назови факт и следующий шаг/);
+  // примеры иронии больше не про еду и сон
+  assert.doesNotMatch(rule.slice(0, rule.indexOf("Здоровье —")), /болел живот|лёг в четыре/);
+});

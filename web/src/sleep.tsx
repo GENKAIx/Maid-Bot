@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { post } from "./api";
+import { NoteBar, undoNote, useNote } from "./components";
 import { shortDay } from "./format";
+import { failNote } from "./notice";
 import type { DiaryRow, MetricRow } from "./types";
 
 // Сон по часам суток: из записей о сне («лёг в 5:00, проснулся в 14:00», «спал с 2 до 9») и часов сна (sleep_hours)
@@ -107,7 +109,7 @@ export function sleepMoveText(from: string, to: string, swapped: boolean): strin
 }
 
 /** Правка сна за день (POST /api/sleep): записи о сне за день заменяются одной «лёг в …, встал в …»; «Удалить» — убрать сон. */
-function SleepEditor({ day, notes, onDone }: { day: SleepDay; notes: string[]; onDone: (saved: boolean) => void }) {
+function SleepEditor({ day, notes, onDone }: { day: SleepDay; notes: string[]; onDone: (saved: boolean, undo?: number | null) => void }) {
   const [draft, setDraft] = useState(() => ({ ...sleepDraft(day), note: "" }));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -116,6 +118,17 @@ function SleepEditor({ day, notes, onDone }: { day: SleepDay; notes: string[]; o
     try {
       await post("/api/sleep", { day: day.day, ...body });
       onDone(true);
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  }
+  // «Удалить сон» — без вопроса: сервер отдаёт undo, шкала показывает плашку «Отменить» на 8 секунд. Не вышло — сон на месте, причина здесь же.
+  async function clear() {
+    setBusy(true); setErr("");
+    try {
+      const r = await post<{ undo?: number | null }>("/api/sleep", { day: day.day, clear: true });
+      onDone(true, r.undo ?? null);
     } catch (e) {
       setErr((e as Error).message);
       setBusy(false);
@@ -131,9 +144,9 @@ function SleepEditor({ day, notes, onDone }: { day: SleepDay; notes: string[]; o
       </div>
       <div className="row">
         <button type="submit" className="primary" disabled={busy}>Сохранить</button>
-        {day.hours ? <button type="button" disabled={busy} onClick={() => confirm(`Убрать сон за ${shortDay(day.day)}?`) && void send({ clear: true })}>Удалить сон</button> : null}
+        {day.hours ? <button type="button" disabled={busy} onClick={() => void clear()}>Удалить сон</button> : null}
         <button type="button" className="ghost" disabled={busy} onClick={() => onDone(false)}>Отмена</button>
-        {err && <span className="small err">{err}</span>}
+        {err && <span className="small err" role="alert">{err}</span>}
       </div>
     </form>
   );
@@ -141,36 +154,20 @@ function SleepEditor({ day, notes, onDone }: { day: SleepDay; notes: string[]; o
 
 type Drag = { from: string; label: string; y: number; dy: number; left: number; width: number; height: number; over: string | null };
 type Press = { day: string; x: number; y: number; t: number; touch: boolean; id: number; timer: number };
-type Note = { text: string; undo?: number; bad?: boolean };
-
 /** onChanged — после правки сна (без него шкала только для просмотра); notes — тексты записей о сне по дням.
  *  С onChanged полосу сна можно перетащить на другой день (перенос или обмен, «↩ Отменить»). */
 export function SleepTimeline({ days, notes, onChanged }: { days: SleepDay[]; notes?: Map<string, string[]>; onChanged?: () => void }) {
   const [hover, setHover] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [drag, setDragState] = useState<Drag | null>(null);
-  const [note, setNote] = useState<Note | null>(null);
+  const [note, say] = useNote();
   const dragRef = useRef<Drag | null>(null);
   const press = useRef<Press | null>(null);
   const dragged = useRef(false); // перетаскивание кончилось — щелчок за ним не открывает правку
   const rowEls = useRef(new Map<string, HTMLDivElement>());
-  const noteTimer = useRef(0);
   const setDrag = (d: Drag | null) => { dragRef.current = d; setDragState(d); };
 
-  function say(n: Note) {
-    setNote(n);
-    clearTimeout(noteTimer.current);
-    noteTimer.current = window.setTimeout(() => setNote(null), 8000);
-  }
-  async function undo(id: number) {
-    setNote(null);
-    try {
-      await post("/api/undo", { messageId: id });
-      onChanged?.();
-    } catch (e) {
-      say({ text: `Не получилось отменить: ${(e as Error).message}`, bad: true });
-    }
-  }
+  const undo = (id: number) => void undoNote(id, say, onChanged);
   function rows() {
     return [...rowEls.current].map(([day, el]) => { const r = el.getBoundingClientRect(); return { day, top: r.top, bottom: r.bottom, left: r.left, right: r.right }; });
   }
@@ -204,7 +201,7 @@ export function SleepTimeline({ days, notes, onChanged }: { days: SleepDay[]; no
       say({ text: sleepMoveText(d.from, d.over, r.swapped), undo: r.undo });
       onChanged?.();
     } catch (e) {
-      say({ text: `Не получилось перенести: ${(e as Error).message}`, bad: true });
+      say(failNote("Не получилось перенести", e));
     }
   }
   // Слушатели на окне берут свежие функции через ref (иначе замкнутся на первый рендер).
@@ -308,7 +305,12 @@ export function SleepTimeline({ days, notes, onChanged }: { days: SleepDay[]; no
             </div>
             <span className="sleep-hours">{d.hours ? hoursText(d.hours) : "—"}</span>
           </div>
-          {open === d.day && onChanged && <SleepEditor day={d} notes={notes?.get(d.day) ?? []} onDone={(saved) => { setOpen(null); if (saved) onChanged(); }} />}
+          {open === d.day && onChanged && <SleepEditor day={d} notes={notes?.get(d.day) ?? []} onDone={(saved, undone) => {
+            setOpen(null);
+            if (!saved) return;
+            if (undone !== undefined) say({ text: `Сон за ${shortDay(d.day)} убран`, undo: undone ?? undefined });
+            onChanged();
+          }} />}
           </Fragment>
         );
       })}
@@ -320,12 +322,7 @@ export function SleepTimeline({ days, notes, onChanged }: { days: SleepDay[]; no
         document.body,
       )}
       {/* Плашка — под строками и прилипает к низу экрана: после переноса нижнего дня «↩ Отменить» видно и на телефоне. */}
-      {note && (
-        <div className={`task-note sleep-note ${note.bad ? "bad" : ""}`} role="status">
-          <span className="grow">{note.text}</span>
-          {note.undo !== undefined && <button className="link" onClick={() => undo(note.undo!)}>↩ Отменить</button>}
-        </div>
-      )}
+      {note && <NoteBar note={note} className="sleep-note" onUndo={undo} onClose={() => say(null)} />}
       <p className="muted small sleep-legend"><i className="sleep-night-dot" /> 22:00–7:00 — ночное время{onChanged ? " · щёлкните по дню, чтобы записать или исправить сон, перетащите полосу на другой день — перенести" : ""}</p>
     </div>
   );

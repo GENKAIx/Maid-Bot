@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
-import { Empty, Spinner } from "../components";
+import { LoadError, NoteBar, Spinner, useNote } from "../components";
 import { MONTHS_GEN, shortDay } from "../format";
 import { Icon } from "../icons";
+import { failNote } from "../notice";
 import { deletedWhen, leftText, soon, soonest, soonestText, trashLeft } from "../trash";
 import type { EventRow, NoteRow, TaskRow } from "../types";
 
@@ -10,6 +11,7 @@ import type { EventRow, NoteRow, TaskRow } from "../types";
 // и сколько дней хранится, «Очистить всё»; строка Рины — о записи, что сотрётся через 3 дня или раньше; ниже группы
 // Планы, Задачи, Заметки, Даты (пустые не показываются). В строке — что и когда удалено, «удалится через N дней» с полоской
 // срока (красной, если осталось 3 дня или меньше), «Вернуть» и «✕» — удалить навсегда (после вопроса «точно?»).
+// Сбой «Вернуть» или «Удалить навсегда» (28.11.2026) — красная плашка над списком, список остаётся; сбой загрузки — с «Повторить».
 // «Вернуть» — задача снова открыта, план снова в планах; то же, что «верни … из корзины» словами. Сервер держит удалённое TRASH_DAYS дней.
 
 type Trash = {
@@ -28,23 +30,28 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
   const [trash, setTrash] = useState<Trash | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [again, setAgain] = useState(0);
+  // Сбой «Вернуть» или «Удалить навсегда» — своя плашка над списком; список остаётся (error — только про загрузку).
+  const [note, say] = useNote();
 
   useEffect(() => {
     let alive = true;
-    get<Trash>("/api/trash").then((t) => alive && setTrash(t)).catch((e) => alive && setError((e as Error).message));
+    get<Trash>("/api/trash").then((t) => { if (alive) { setTrash(t); setError(""); } }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
-  }, [version]);
+  }, [version, again]);
 
-  async function restore(kind: Kind, id: number) {
+  async function restore({ kind, id, title }: Item) {
     setBusy(`${kind}${id}`);
+    say(null);
     try {
       if (kind === "task") await post(`/api/tasks/${id}`, { status: "open" });
       else if (kind === "note") await post(`/api/notes/${id}`, { status: "open" });
       else if (kind === "date") await post(`/api/dates/${id}`, { status: "active" });
       else await post(`/api/events/${id}`, { status: "active" });
+      say({ text: `«${title}» — возвращено` });
       onChanged();
     } catch (e) {
-      setError((e as Error).message);
+      say(failNote(`Не получилось вернуть «${title}»`, e));
     } finally {
       setBusy("");
     }
@@ -53,17 +60,19 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
   async function purge(body: { all: true } | { tasks: number[] } | { events: number[] } | { notes: number[] } | { dates: number[] }, ask: string, key: string) {
     if (!confirm(ask)) return;
     setBusy(key);
+    say(null);
     try {
       await post("/api/trash/purge", body);
       onChanged();
     } catch (e) {
-      setError((e as Error).message);
+      say(failNote("Не получилось удалить навсегда", e));
     } finally {
       setBusy("");
     }
   }
 
-  if (error) return <Empty>Нет связи: {error}</Empty>;
+  const retry = () => { setError(""); setAgain((n) => n + 1); };
+  if (error && !trash) return <LoadError error={error} onRetry={retry} />;
   if (!trash) return <Spinner />;
 
   const items: Item[] = [
@@ -97,7 +106,7 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
           </div>
         )}
         <div className="trash-acts">
-          <button disabled={busy === key} onClick={() => void restore(x.kind, x.id)}>Вернуть</button>
+          <button disabled={busy === key} onClick={() => void restore(x)}>Вернуть</button>
           <button className="ghost trash-forever" disabled={busy === key} title="Удалить навсегда" aria-label={`Удалить навсегда: ${x.title}`}
             onClick={() => void purge(body, `Удалить «${x.title}» навсегда? Вернуть будет нельзя.`, key)}>✕</button>
         </div>
@@ -117,6 +126,8 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
             onClick={() => void purge({ all: true }, `Очистить корзину? ${total} — навсегда, вернуть будет нельзя.`, "all")}>Очистить всё</button>
         )}
       </div>
+      {error && <LoadError error={error} onRetry={retry} />}
+      {note && <NoteBar note={note} className="note-stick-top" onClose={() => say(null)} />}
       {urgent && (
         <div className="trash-say">
           <img src="/maid/idle.webp" alt="" width={56} height={56} />

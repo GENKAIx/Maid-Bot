@@ -1,6 +1,8 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { get, post } from "../api";
-import { Card, Chip, Empty, Spinner } from "../components";
+import { Card, Chip, Empty, NoteBar, Spinner, undoNote, useNote } from "../components";
+import { failNote } from "../notice";
+import { TaskBox, useTaskDone } from "../taskdone";
 import { SECTIONS, SECTION_ORDER, dateWhen, dur, metricText, money, parts, plainReply, shortDay } from "../format";
 import { markTip } from "../habitview";
 import { navigate } from "../router";
@@ -173,51 +175,16 @@ function dueTag(due: string, day: string) {
   return <span className={`due ${n < 0 ? "over" : n === 0 ? "today" : ""}`}>{text}</span>;
 }
 
-type Note = { text: string; undo?: number; bad?: boolean };
-
 function Tasks({ d, onChanged }: { d: TodayData; onChanged: () => void }) {
-  const [closing, setClosing] = useState<Set<number>>(new Set());
-  const [note, setNote] = useState<Note | null>(null);
+  // Отметка задачи — общая с «Планами» (taskdone.tsx): плашка «Отменить», при сбое отметка снимается.
+  const { closing, note, say, close, undo } = useTaskDone(d.tasks, onChanged);
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [all, setAll] = useState(false);
-  const timer = useRef(0);
   const input = useRef<HTMLInputElement>(null);
 
-  // Отмеченная остаётся зачёркнутой, пока сервер не прислал новый список без неё.
-  useEffect(() => setClosing((c) => new Set([...c].filter((id) => d.tasks.some((t) => t.id === id)))), [d.tasks]);
-  useEffect(() => () => clearTimeout(timer.current), []);
   useEffect(() => { if (adding) input.current?.focus(); }, [adding]);
-
-  function say(n: Note) {
-    setNote(n);
-    clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setNote(null), 8000);
-  }
-
-  async function close(t: TaskRow) {
-    if (closing.has(t.id)) return;
-    setClosing((c) => new Set(c).add(t.id));
-    try {
-      const r = await post<{ undo: number }>(`/api/tasks/${t.id}`, { status: "done" });
-      say({ text: `«${t.title}» — сделано`, undo: r.undo });
-      onChanged();
-    } catch (e) {
-      setClosing((c) => { const n = new Set(c); n.delete(t.id); return n; });
-      say({ text: `Не получилось отметить «${t.title}»: ${(e as Error).message}`, bad: true });
-    }
-  }
-
-  async function undo(id: number) {
-    setNote(null);
-    try {
-      await post("/api/undo", { messageId: id });
-      onChanged();
-    } catch (e) {
-      say({ text: `Не получилось отменить: ${(e as Error).message}`, bad: true });
-    }
-  }
 
   async function add() {
     const t = title.trim();
@@ -229,7 +196,7 @@ function Tasks({ d, onChanged }: { d: TodayData; onChanged: () => void }) {
       say({ text: `Добавила «${t}»`, undo: r.undo });
       onChanged();
     } catch (e) {
-      say({ text: `Не получилось добавить задачу: ${(e as Error).message}`, bad: true });
+      say(failNote("Не получилось добавить задачу", e));
     } finally {
       setBusy(false);
       requestAnimationFrame(() => input.current?.focus());
@@ -249,9 +216,7 @@ function Tasks({ d, onChanged }: { d: TodayData; onChanged: () => void }) {
             const done = closing.has(t.id);
             return (
               <li key={t.id} className={`task ${done ? "did" : ""}`}>
-                <button className={`box ${done ? "on" : ""}`} onClick={() => close(t)} disabled={done} aria-label={`Сделано: ${t.title}`} title="Сделано">
-                  <svg viewBox="0 0 16 16" width="12" height="12"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </button>
+                <TaskBox task={t} done={done} onClose={close} />
                 <span className={`grow task-title ${t.priority === "high" ? "high" : ""}`}>{t.title}</span>
                 {t.due_date && dueTag(t.due_date, d.day)}
               </li>
@@ -281,12 +246,7 @@ function Tasks({ d, onChanged }: { d: TodayData; onChanged: () => void }) {
         <button className="task-add" onClick={() => setAdding(true)}>+ Новая задача</button>
       )}
 
-      {note && (
-        <div className={`task-note ${note.bad ? "bad" : ""}`} role="status">
-          <span className="grow">{note.text}</span>
-          {note.undo !== undefined && <button className="link" onClick={() => undo(note.undo!)}>↩ Отменить</button>}
-        </div>
-      )}
+      {note && <NoteBar note={note} onUndo={undo} onClose={() => say(null)} />}
     </Card>
   );
 }
@@ -336,15 +296,8 @@ function courseOf(h: HabitToday, day: string) {
 }
 
 function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; onChanged: () => void }) {
-  const [note, setNote] = useState<Note | null>(null);
+  const [note, say] = useNote();
   const [busy, setBusy] = useState<number | null>(null);
-  const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  function say(n: Note) {
-    setNote(n);
-    clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setNote(null), 8000);
-  }
 
   // Щелчок по кружку: не отмечено — «сделал»; отмечено (или пропуск) — снять отметку, с «↩ Отменить».
   // ×N (несколько раз в день): щелчок — ещё одна отметка («2/8»), у полного дня — минус одна (не все N сразу); пропуск — снять.
@@ -360,25 +313,16 @@ function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; 
         if (r.undo) say({ text: `«${h.title}» — отметка снята`, undo: r.undo });
       } else {
         await post(`/api/habits/${h.id}/mark`, { status: "done" });
-        setNote(null);
+        say(null);
       }
       onChanged();
     } catch (e) {
-      say({ text: `Не получилось ${h.status ? "снять отметку" : "отметить"} «${h.title}»: ${(e as Error).message}`, bad: true });
+      say(failNote(`Не получилось ${h.status ? "снять отметку" : "отметить"} «${h.title}»`, e));
     } finally {
       setBusy(null);
     }
   }
-
-  async function undo(id: number) {
-    setNote(null);
-    try {
-      await post("/api/undo", { messageId: id });
-      onChanged();
-    } catch (e) {
-      say({ text: `Не получилось отменить: ${(e as Error).message}`, bad: true });
-    }
-  }
+  const undo = (id: number) => void undoNote(id, say, onChanged);
 
   return (
     <div className="side-block">
@@ -405,12 +349,7 @@ function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; 
           })}
         </ul>
       ) : <p className="muted small side-empty">Привычек нет. Напишите, например: «каждый день в 9 пить витамины»</p>}
-      {note && (
-        <div className={`task-note ${note.bad ? "bad" : ""}`} role="status">
-          <span className="grow">{note.text}</span>
-          {note.undo !== undefined && <button className="link" onClick={() => undo(note.undo!)}>↩ Отменить</button>}
-        </div>
-      )}
+      {note && <NoteBar note={note} onUndo={undo} onClose={() => say(null)} />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { type CSSProperties, type PointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { get, post } from "../api";
 import { Bars } from "../charts";
-import { Spinner } from "../components";
+import { LoadError, Spinner } from "../components";
 import { MONTHS, MONTHS_GEN, addDays, shortDay } from "../format";
 import {
   type MarkPoint, type RinaAct, type Span, PRESETS, applyRinaAct, bandText, clockDots, clockPos, daysText, dayName, durText, fixSpan, hourAt, marksText, plural,
@@ -36,16 +36,17 @@ export function HabitStatsPanel({ id, version = 0, finished = false, head, habit
 }) {
   const [s, setS] = useState<HabitStats | null>(null);
   const [error, setError] = useState("");
+  const [again, setAgain] = useState(0);
   useEffect(() => {
     let alive = true;
-    get<HabitStats>(`/api/habits/${id}/stats`).then((d) => alive && setS(d)).catch((e) => alive && setError((e as Error).message));
+    get<HabitStats>(`/api/habits/${id}/stats`).then((d) => { if (alive) { setS(d); setError(""); } }).catch((e) => alive && setError((e as Error).message));
     return () => { alive = false; };
-  }, [id, version]);
+  }, [id, version, again]);
 
   return (
     <div className="hg-panel hp" id={`hp-${id}`} style={{ gridColumn: "1 / -1" }}>
       {head}
-      {error ? <p className="muted small">Не загрузилось: {error}</p> : !s ? <Spinner /> : <StatsBody s={s} finished={finished} habit={habit} id={id} onChanged={onChanged} />}
+      {error && !s ? <LoadError error={error} onRetry={() => { setError(""); setAgain((n) => n + 1); }} /> : !s ? <Spinner /> : <StatsBody s={s} finished={finished} habit={habit} id={id} onChanged={onChanged} />}
     </div>
   );
 }

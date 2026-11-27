@@ -122,7 +122,8 @@ export async function ticketCard(store: Store, id: number, now = new Date()) {
 
 export interface TicketDeps {
   store: Store;
-  /** Письмо человеку: Telegram и лента уведомлений (billing.notify) — ответ, куда письмо на деле легло; нет — только лента. */
+  /** Письмо человеку общим Send (billing.notify: лента уведомлений, Web Push, Telegram) — ответ, куда письмо на деле легло;
+   *  нет (тесты без billing) — только лента. */
   tell?: (u: User, text: string) => Promise<{ feed: boolean; telegram: boolean }>;
 }
 /** Куда на деле ушёл ответ: в Telegram (и в ленту), только в ленту (Telegram не привязан) или Telegram не принял — только в ленту. */

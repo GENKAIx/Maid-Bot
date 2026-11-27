@@ -105,6 +105,12 @@ export interface Reply {
   proposal?: Proposal;
   /** Разобрать не вышло (модель не ответила): кнопки «Повторить» и «Оставить заметкой»; сервер и сам повторит (retryFailed). */
   failed?: boolean;
+  /** Это уточняющий вопрос: ничего не записано, следующая фраза дополнит исходную. Клиент держит вопрос на экране, пока не
+   *  ответят или не закроют (POST /api/messages/:id/dismiss — dismissClarify). */
+  clarify?: boolean;
+  /** Номер другого сообщения, чей уточняющий вопрос всё ещё ждёт ответа после этого ответа: пришла картинка или «какая
+   *  погода?» (ответом на вопрос не считаются) либо разбор ответа на вопрос упал. Клиент оставляет вопрос на экране. */
+  waiting?: number;
   /** План лёг на занятое время — кнопки «Сдвинуть на …» (если есть куда) и «Оставить» (clash.ts). */
   clash?: Clash;
   /** Нарисованная по просьбе картинка (draw.ts): показать в облачке и в переписке; id — для GET /api/drawings/:id. */
@@ -379,6 +385,9 @@ export class Pipeline {
     const r = await this.counted(async (c) => {
       try { return await this.handleOne(inc, c); } finally { route = c.missed ? "" : c.route; }
     });
+    // Вопрос другого сообщения всё ещё ждёт (это сообщение его не закрыло) — клиенту признак: вопрос с экрана не убирать.
+    const asked = await this.store.pendingClarify(inc.user.id);
+    if (asked && asked.id !== r.messageId) r.waiting = asked.id;
     if (!r.duplicate && (r.undoable || r.changes?.length)) this.changed(inc.user);
     // Счётчики фич: ветка, что записано (по виду карточки, раз на сообщение), картинка. Повтор доставки и упавшая ветка — не в счёт.
     if (inc.client && !r.duplicate) {
@@ -404,6 +413,11 @@ export class Pipeline {
     });
     if (!created && message.state === "done") {
       return { text: message.reply ?? p.saved[0], emotion: "neutral", messageId: message.id, undoable: false, duplicate: true };
+    }
+    // Повтор доставки сообщения, на которое уже задан вопрос (ответ с вопросом не дошёл до клиента): тот же вопрос ещё раз.
+    // Без этого повтор считался бы ответом на собственный вопрос («X (уточнение: X)»).
+    if (!created && message.state === "clarify" && message.reply) {
+      return { text: message.reply, emotion: "neutral", messageId: message.id, undoable: false, clarify: true, duplicate: true };
     }
     c.id = message.id;
     // Запрос к ИИ, взятый за это обращение (access.ts): модель не ответила — возвращается, а сообщение помечается «запрос
@@ -505,7 +519,7 @@ export class Pipeline {
       const q = `${p.clarify} ${parsed.clarify}`;
       c.route = "clarify";
       await s.setMessage(message.id, { state: "clarify", reply: q });
-      return { text: q, emotion: "neutral", messageId: message.id, undoable: false };
+      return { text: q, emotion: "neutral", messageId: message.id, undoable: false, clarify: true };
     }
 
     // Просьба нарисовать — рисуем, ничего не записываем.
@@ -1473,14 +1487,41 @@ export class Pipeline {
     const msg = await s.message(messageId);
     if (!msg || msg.user_id !== u.id) return "Не нашла сообщение.";
     await this.undo(u, messageId);
-    if (msg.state === "failed") await s.setMessage(msg.id, { state: "done", reply: "записано заметкой" });
+    // Неудавшийся ответ на ждущий вопрос: заметкой ложится исходная фраза вместе с ответом, и вопрос на этом закрыт —
+    // иначе следующая фраза приклеилась бы к нему как «уточнение».
+    const asked = msg.state === "failed" && msg.reply_to ? await s.message(msg.reply_to) : undefined;
+    const question = asked && asked.user_id === u.id && asked.state === "clarify" ? asked : undefined;
+    const text = question ? `${question.text} (${msg.text})` : msg.text;
+    // И неудавшийся разбор, и ждущий вопрос на этом закрыты: фон не повторит, следующая фраза не станет «уточнением».
+    if (msg.state === "failed" || msg.state === "clarify") await s.setMessage(msg.id, { state: "done", reply: "записано заметкой" });
+    if (question) await s.setMessage(question.id, { state: "done", reply: "записано заметкой" });
+    if (msg.state === "clarify") await this.closeAnswers(u, msg.id);
     await s.transaction(async () => {
-      const id = await s.addDiary(u.id, msg.day_key, "notes", msg.text, msg.id);
+      const id = await s.addDiary(u.id, msg.day_key, "notes", text, msg.id);
       await s.logAction(u.id, msg.id, "add", "diary", id);
-      const sid = await s.addDiary(u.id, msg.day_key, "summary", `[${timeOf(at, u.tz)}] ${msg.text}`, msg.id);
+      const sid = await s.addDiary(u.id, msg.day_key, "summary", `[${timeOf(at, u.tz)}] ${text}`, msg.id);
       await s.logAction(u.id, msg.id, "add", "diary", sid);
     });
     return "Записала целиком в заметки.";
+  }
+
+  /** Закрыть уточняющий вопрос без ответа (крестик у вопроса на сайте): сообщение больше не ждёт — следующая фраза разбирается
+   *  как новая. Фраза при этом не записана (клиент возвращает её в строку ввода). Чужое или не ждущее — closed: false. */
+  async dismissClarify(u: User, messageId: number): Promise<{ text: string; closed: boolean }> {
+    const msg = await this.store.message(messageId);
+    if (!msg || msg.user_id !== u.id) return { text: "Не нашла этот вопрос.", closed: false };
+    if (msg.state !== "clarify") return { text: "Этот вопрос уже закрыт.", closed: false };
+    await this.store.setMessage(msg.id, { state: "done" });
+    await this.closeAnswers(u, msg.id);
+    return { text: "Вопрос сняла. Эту фразу не записала.", closed: true };
+  }
+
+  /** Вопрос закрыт без ответа (крестик, «Оставить заметкой»): ответы на него, разбор которых упал (failed), тоже закрыты —
+   *  иначе фоновый повтор разобрал бы «вечера» как отдельную фразу. */
+  private async closeAnswers(u: User, questionId: number) {
+    for (const m of await this.store.repliesTo(u.id, questionId)) {
+      if (m.state === "failed") await this.store.setMessage(m.id, { state: "done", reply: "Вопрос закрыт, ответ на него не записала." });
+    }
   }
 
   private async answer(u: User, r: Parsed, question: string, today: string): Promise<{ text: string; days: string[] }> {

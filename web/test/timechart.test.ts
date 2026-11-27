@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DAY_END, hhmm, lineRuns, medianMin, timeScale, tipLeft, tipTop, toMin } from "../src/timechart.ts";
+import { DAY_END, hhmm, lineRuns, medianMin, timeScale, barTip, tipLeft, tipTop, toMin } from "../src/timechart.ts";
+import { readFileSync } from "node:fs";
 
 // График «Во сколько отмечали» в раскрытой привычке: шкала времени, медиана, куски линии, подсказка над точкой
 // (отрезки, полосы «обычно» и подписи дней — web/test/habit-panel.test.ts).
@@ -40,4 +41,23 @@ test("подсказка у краёв по своей ширине, у верх
   assert.equal(tipLeft(45, 100, 320), 4, "у левого края — прижата влево");
   assert.equal(tipTop(100), 70);
   assert.equal(tipTop(12), 22);
+});
+
+test("подсказка столбика: у краёв прижата, высокий столбик не закрывает", () => {
+  const base = { barW: 20, tipW: 100, tipH: 22, w: 320 };
+  assert.deepEqual(barTip({ ...base, x: 160, barTop: 80 }), { left: 110, top: 0 }, "низкий столбик в середине — по центру над ним");
+  assert.deepEqual(barTip({ ...base, x: 10, barTop: 80 }), { left: 4, top: 0 }, "первый столбик — не уходит за левый край");
+  assert.deepEqual(barTip({ ...base, x: 310, barTop: 80 }), { left: 216, top: 0 }, "последний столбик — не уходит за правый край");
+  assert.deepEqual(barTip({ ...base, x: 160, barTop: 0 }), { left: 176, top: 0 }, "высокий столбик — подсказка справа от него");
+  assert.deepEqual(barTip({ ...base, x: 310, barTop: 0 }), { left: 194, top: 0 }, "высокий у правого края — слева от него");
+  assert.deepEqual(barTip({ ...base, tipW: 300, x: 160, barTop: 0 }), { left: 10, top: 0 }, "сбоку не помещается — остаётся над столбиком в пределах поля");
+  assert.deepEqual(barTip({ ...base, tipW: 0, tipH: 0, w: 0, x: 0, barTop: 0 }), { left: 4, top: 0 }, "до замера — без NaN");
+});
+
+test("меньше движения: бесконечные анимации не мелькают", () => {
+  const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{[^}]*animation-iteration-count: 1 !important/, "общий выключатель: один круг");
+  assert.match(css, /prefers-reduced-motion: reduce\) \{ \.composer \.mic\.rec, \.composer \.rec-dot \{ animation: none; \} \}/, "точка записи стоит");
+  assert.match(css, /prefers-reduced-motion: reduce\) \{ \.spinner \{ animation-duration: 2\.4s !important; animation-iteration-count: infinite !important; \} \}/, "кружок загрузки идёт медленно");
+  assert.match(css, /\.chart-area > \.chart-tip \{ transform: none; width: max-content;/, "подсказка столбиков не сдвигается на полширины и не сжимается");
 });

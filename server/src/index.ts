@@ -7,12 +7,12 @@ import { Store } from "./db.ts";
 import { callLlm, isOpenRouter, llmReady, onLlmCall, onLlmUsage, setLiteModel } from "./llm.ts";
 import { backupName, exportJson } from "./backup.ts";
 import type { User } from "./db.ts";
-import { NOTICES_KEEP } from "./notices.ts";
 import { Pipeline } from "./pipeline.ts";
 import { callDraw, drawReady } from "./draw.ts";
 import { WIDGET_UPDATES } from "./widget.ts";
 import { Push } from "./push.ts";
-import { Scheduler, type Send } from "./scheduler.ts";
+import { Scheduler } from "./scheduler.ts";
+import { makeSend } from "./send.ts";
 import { DbCopies, dbFileBytes, sendEach } from "./snapshot.ts";
 import { webhookSecret } from "./webhook.ts";
 import { Alerts, noteSendFailure } from "./alerts.ts";
@@ -82,14 +82,10 @@ if (tg) {
 const billing = tg?.billing ?? new Billing(store, null, { secret: billingSecret(config.telegramToken || "no-bot") });
 
 // Уведомление уходит всюду, где пользователь есть: в Telegram и на все push-подписки браузеров.
-const send: Send = async (u, text, emotion, buttons, kind) => {
-  await store.addNotice(u.id, text, emotion, buttons?.length ? JSON.stringify(buttons) : "", kind ?? "");
-  await store.pruneNotices(u.id, NOTICES_KEEP);
-  const jobs: Promise<unknown>[] = [push.send(u, text, emotion, buttons)];
-  // Сбой отправки в Telegram — в счёт правила send_fail (alerts.ts; «бот заблокирован» не в счёт) и дальше, как раньше.
-  if (tg && u.chat_id) jobs.push(tg.send(u, text, emotion, buttons).catch((e) => { noteSendFailure(e); throw e; }));
-  await Promise.all(jobs);
-};
+// Сборка — send.ts. Сбой отправки в Telegram — в счёт правила send_fail (alerts.ts; «бот заблокирован» не в счёт) и дальше, как раньше.
+const { send, deliver } = makeSend({ store, push, telegram: tg?.send, onTelegramFail: noteSendFailure });
+// Письма о подписке, ответы на обращения и письма об аккаунте (billing.notify) — тем же путём: лента, Web Push, Telegram.
+billing.deliver = deliver;
 // Резервная копия раз в сутки — в Telegram (если бот есть); в приложении — «Скачать копию».
 const backup = tg
   ? async (u: User) => {

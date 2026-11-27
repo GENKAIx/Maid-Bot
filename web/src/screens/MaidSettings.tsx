@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
-import { Card, Empty, Spinner } from "../components";
+import { Card, Empty, NoteBar, Spinner, useNote } from "../components";
 
 // Часть «Рина» экрана «Персонализация» (Persona.tsx; 19–20.11.2026 — вкладка «Настроек», до того — «Горничная»): как и когда горничная с вами общается — характер, внешность (цвет волос и глаз), время сообщений, напоминания о планах, игры.
 // Техническое (тема, push, расход модели, вход) — в «Настройках». Кто она — карточка RINA в server/src/personas.ts.
@@ -150,7 +150,7 @@ function EventReminders({ me, busy, onSave }: { me: Me; busy: boolean; onSave: (
 export function MaidSettings() {
   const [me, setMe] = useState<Me | null>(null);
   const [personas, setPersonas] = useState<PersonaInfo[] | null>(null);
-  const [msg, setMsg] = useState("");
+  const [msg, sayMsg] = useNote();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [lookNote, setLookNote] = useState<LookNote | null>(null);
@@ -171,8 +171,9 @@ export function MaidSettings() {
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!me || !personas) return <Spinner />;
 
-  // say — куда сказать итог: по умолчанию общее сообщение вверху страницы.
-  async function save(patch: Partial<Me>, say: (text: string, bad?: boolean) => void = setMsg): Promise<Me | null> {
+  // say — куда сказать итог: по умолчанию общая плашка страницы (сбой — красная, role="alert"; «Сохранено.» — обычная, role="status").
+  const sayPage = (text: string, bad?: boolean) => sayMsg(bad ? { text: `Не сохранилось: ${text}`, bad } : { text });
+  async function save(patch: Partial<Me>, say: (text: string, bad?: boolean) => void = sayPage): Promise<Me | null> {
     setSaving(true);
     try {
       const fresh = await post<Me>("/api/settings", patch);
@@ -212,7 +213,6 @@ export function MaidSettings() {
 
   return (
     <div className="screen">
-      {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="cards rina">
         <Card title="Характер" className="reveal">
           <div className="persona-pick" role="radiogroup" aria-label="Характер">
@@ -258,6 +258,8 @@ export function MaidSettings() {
           </div>
         </Card>
       </div>
+      {/* Внизу и прилипает к низу экрана: итог виден у любой карточки, и на телефоне. */}
+      {msg && <NoteBar note={msg} className="note-stick" onClose={() => sayMsg(null)} />}
     </div>
   );
 }

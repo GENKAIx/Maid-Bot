@@ -3,7 +3,8 @@ import { clientHeaders, get, getToken, post } from "../api";
 import { daysLeft, isPayUrl, planView, promoAllowed, resetText, todayBars, type Access } from "../billing";
 import { promoInput } from "../announce";
 import { SupportCard } from "./Support";
-import { Empty, Ring, Spinner } from "../components";
+import { LoadError, NoteBar, Ring, Spinner, useNote } from "../components";
+import { backupName, backupProblem, failNote } from "../notice";
 import { currentSubscription, isIos, pushSupported, standalone, subscribe, unsubscribe } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { track } from "../usage";
@@ -48,7 +49,8 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
   const [me, setMe] = useState<Me | null>(null);
   const [push, setPush] = useState<PushInfo | null>(null);
   const [here, setHere] = useState<string | null>(null);
-  const [msg, setMsg] = useState("");
+  // Итог и сбой действий (уведомления, выход на устройстве, копия) — плашка; error — только сбой загрузки экрана.
+  const [msg, say] = useNote();
   const [error, setError] = useState("");
   const [theme, pickTheme] = useState<Theme>(getTheme());
   const [at, setAt] = useState<GroupId>("tariff");
@@ -58,6 +60,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
     try {
       const [m, p, s] = await Promise.all([get<Me>("/api/me"), get<PushInfo>("/api/push/key"), currentSubscription().catch(() => null)]);
       setMe(m); setPush(p); setHere(s?.endpoint ?? null);
+      setError("");
     } catch (e) {
       setError((e as Error).message);
     }
@@ -75,7 +78,7 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
     return () => io.disconnect();
   }, [me, push]);
 
-  if (error) return <Empty>Нет связи: {error}</Empty>;
+  if (error && (!me || !push)) return <LoadError error={error} onRetry={() => { setError(""); void load(); }} />;
   if (!me || !push) return <Spinner />;
 
   const subscribedHere = Boolean(here && push.subs.some((s) => s.endpoint === here));
@@ -83,45 +86,55 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
   const canPush = pushSupported() && !(isIos() && !standalone());
 
   async function toggle() {
-    setMsg("");
+    say(null);
     try {
       if (subscribedHere) {
         await unsubscribe();
-        setMsg("Уведомления на этом устройстве выключены.");
+        say({ text: "Уведомления на этом устройстве выключены." });
       } else {
         const err = await subscribe(label);
-        setMsg(err || "Готово: уведомления будут приходить сюда.");
+        say(err ? { text: err, bad: true } : { text: "Готово: уведомления будут приходить сюда." });
       }
       await load();
     } catch (e) {
-      setMsg((e as Error).message);
+      say(failNote("Не получилось переключить уведомления", e));
     }
   }
   async function testPush() {
+    say(null);
     try {
       const r = await post<{ sent: number }>("/api/push/test");
-      setMsg(r.sent ? `Отправлено на ${r.sent} устр.` : "Подписок нет — сначала включите уведомления.");
+      say({ text: r.sent ? `Отправлено на ${r.sent} устр.` : "Подписок нет — сначала включите уведомления." });
     } catch (e) {
-      setMsg((e as Error).message);
+      say(failNote("Не получилось проверить уведомления", e));
     }
   }
   async function dropSession(s: Me["sessions"][number]) {
     if (!me || !confirm(`Выйти на «${s.label || "устройство"}»? Там придётся войти заново.`)) return;
+    say(null);
     try {
       const r = await post<{ sessions: Me["sessions"] }>("/api/sessions/drop", { id: s.id });
       setMe({ ...me, sessions: r.sessions.map((x) => ({ ...x, current: me.sessions.find((y) => y.id === x.id)?.current })) });
     } catch (e) {
-      setError((e as Error).message);
+      say(failNote(`Не получилось выйти на «${s.label || "устройство"}»`, e));
     }
   }
+  // Копия: сервер отказал или связи нет — файл не скачивается (иначе в нём оказался бы текст ошибки), причина — в плашке.
   async function backup() {
-    const r = await fetch("/api/backup", { headers: { ...clientHeaders(), Authorization: `Bearer ${getToken()}` } });
-    const blob = await r.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = (r.headers.get("content-disposition") ?? "").match(/filename="([^"]+)"/)?.[1] ?? "maid-backup.json";
-    a.click();
-    URL.revokeObjectURL(a.href);
+    say(null);
+    try {
+      const r = await fetch("/api/backup", { headers: { ...clientHeaders(), Authorization: `Bearer ${getToken()}` } }).catch(() => null);
+      if (!r) throw new Error("нет связи с сервером");
+      if (!r.ok) throw new Error(backupProblem(r.status, await r.json().catch(() => null)));
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = backupName(r.headers.get("content-disposition"));
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      say(failNote("Копия не скачалась", e));
+    }
   }
   const jump = (id: GroupId) => {
     setAt(id);
@@ -137,8 +150,6 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
         ))}
       </nav>
       <div className="set-body" ref={body}>
-        {msg && <div className="toast"><div className="toast-text" role="status">{msg}</div><button className="ghost" onClick={() => setMsg("")} aria-label="Закрыть">✕</button></div>}
-
         <Group id="tariff" title="Тариф">
           <TariffCard access={me.access} onChanged={() => void load()} />
         </Group>
@@ -199,6 +210,8 @@ export function Settings({ onLogout }: { onLogout: () => void }) {
         <Group id="help" title="Помощь">
           <SupportCard />
         </Group>
+        {/* Внизу и прилипает к низу экрана: видно у любой группы, где бы ни нажали. */}
+        {msg && <NoteBar note={msg} className="note-stick" onClose={() => say(null)} />}
       </div>
     </div>
   );

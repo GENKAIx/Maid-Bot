@@ -704,7 +704,8 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
       // Много кнопок (оценка дня — десять) — рядами по пять: в один ряд Telegram столько не берёт.
       buttons.forEach((b, i) => {
         if (i && i % 5 === 0 && buttons.length > 5) markup!.row();
-        markup!.text(b.text, b.data);
+        if (b.url) markup!.url(b.text, b.url);
+        else markup!.text(b.text, b.data);
       });
     }
     const img = emotionImage(u.persona, emotion);
