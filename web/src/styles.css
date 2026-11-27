@@ -906,8 +906,8 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
 
 /* Раздел «Виджет» (screens/Widget.tsx): флажки в две колонки, режимы сделанных задач с живыми картинками */
 /* одна колонка, как настройки Discord: разделы друг за другом, одна настройка — одна строка */
-.wp-list { max-width: 960px; margin-top: 18px; display: grid; gap: 26px; }
-.wp-sec h3 { margin: 0 0 2px; font-size: 13.5px; font-weight: 700; letter-spacing: .02em; color: var(--muted); }
+.wp-list { margin-top: 14px; display: grid; gap: 14px; }
+.wp-sec h3, .wp-aside-head h3 { margin: 0 0 2px; font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .wp-set { padding: 14px 0; border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
 .wp-set-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .wp-set-text { display: grid; gap: 2px; min-width: 0; }
@@ -1511,4 +1511,32 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
   .trash-text { flex-basis: calc(100% - 48px); }
   .trash-text span { white-space: normal; }
   .trash-left { flex: 1; width: auto; margin-left: 46px; }
+}
+
+/* «Настройки → Виджет» (27.11.2026, дизайн v2): группы карточками, справа — живая копия «Так это выглядит». */
+.wp { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; max-width: 1240px; }
+.wp-main { min-width: 0; grid-column: 1; grid-row: 1; }
+.wp-sec.card { padding-top: 14px; padding-bottom: 2px; }
+.wp-sec > .wp-set:last-child { border-bottom: 0; }
+.wp-aside { grid-column: 2; grid-row: 1; position: sticky; top: 0; display: grid; gap: 10px; }
+.wp-aside-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wp-aside-head h3 { margin: 0; }
+.wp-aside .wp-say { height: 200px; margin: 0; }
+.wp-mini { --wa: #b79cff; --wd: #4fd09a; display: grid; gap: 7px; padding: 12px 14px; border-radius: 14px; font-family: "Onest", "Segoe UI", system-ui, sans-serif;
+  font-size: 13.5px; color: #ece8f6; background: color-mix(in srgb, #1d1830 var(--wop, 92%), transparent); border: 1px solid rgba(255, 255, 255, .1);
+  background-image: none; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
+.wp-mini.ts-s { font-size: 12.5px; } .wp-mini.ts-l { font-size: 15px; }
+.wp-mini p { margin: 0; display: flex; align-items: center; gap: 8px; }
+.wp-mini-head { font-size: .8em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--wa); }
+.wp-mini i { flex: none; width: 14px; height: 14px; border: 1.5px solid #a8a1bd; border-radius: 4px; font-style: normal; font-size: 10px; display: grid; place-items: center; line-height: 1; }
+.wp-mini .hb i { border-color: var(--wd); border-radius: 50%; }
+.wp-mini .did { opacity: .5; }
+.wp-mini .did i { background: var(--wd); border-color: var(--wd); color: #1d1830; }
+.wp-mini .nx em { font-style: normal; font-weight: 700; color: var(--wa); font-variant-numeric: tabular-nums; }
+.wp-mini .nx.ahead { opacity: .65; }
+.wp-mini-empty { color: #a8a1bd; font-size: .9em; }
+@media (max-width: 1100px) {
+  .wp { grid-template-columns: minmax(0, 1fr); }
+  .wp-aside { grid-column: 1; grid-row: 1; position: static; max-width: 560px; }
+  .wp-main { grid-row: 2; }
 }

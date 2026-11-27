@@ -1,9 +1,12 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { get, post } from "../api";
 import { Card, Empty, Spinner } from "../components";
 import { navigate } from "../router";
 
-// Виджет на рабочем столе: что на панели, горничная, задачи, сроки самонажатия кнопок. Настройки живут в программе на ПК
+// Виджет на рабочем столе: что на панели, горничная, задачи, сроки самонажатия кнопок. С 27.11.2026 — по дизайну v2: группы
+// карточками слева, справа (на узком экране — сверху) живая копия «Так это выглядит»: облачко печатает с выбранной скоростью и
+// звуком, панель под ним — в выбранном цвете, размере текста, непрозрачности и с включёнными разделами; «Ещё реплику» — другая фраза.
+// Настройки живут в программе на ПК
 // (desktop/src/preload-app.js → main.js «app:widget-*»), сайт их только показывает и меняет; в браузере и на телефоне раздела нет.
 
 export interface WidgetPrefs {
@@ -207,10 +210,16 @@ function Choices<T extends string>({ value, options, onPick, label }: { value: T
 
 // Как печатает виджет (desktop/renderer/widget.js, planType/runType): знаков в секунду, паузы после знаков, «бип» на каждую третью букву.
 const TYPE_CPS = { slow: 22, normal: 35, fast: 60 };
-const SAY = "Записала: купить хлеб завтра к 10:00. Не забудь пакет!";
-const SAY_AT = (speed: keyof typeof TYPE_CPS) => {
+// Реплики облачка в «Так это выглядит»; «Ещё реплику» — следующая по кругу.
+const SAYS = [
+  "Записала: купить хлеб завтра к 10:00. Не забудь пакет!",
+  "Доброе утро! В 10:00 врач, а хлеб ещё не куплен.",
+  "Зарядка шестой день подряд — так держать!",
+  "В 14:30 созвон. Напомню за 15 минут.",
+];
+const SAY_AT = (speed: keyof typeof TYPE_CPS, say: string) => {
   let t = 0;
-  return [...SAY].map((ch) => { const now = t; t += 1000 / TYPE_CPS[speed] + (/[.!?…]/.test(ch) ? 260 : /[,;:]/.test(ch) ? 120 : 0); return now; });
+  return [...say].map((ch) => { const now = t; t += 1000 / TYPE_CPS[speed] + (/[.!?…]/.test(ch) ? 260 : /[,;:]/.test(ch) ? 120 : 0); return now; });
 };
 
 let actx: AudioContext | null = null;
@@ -265,7 +274,7 @@ function blip(base: number) {
 }
 
 /** Живая копия облачка виджета: пусто → облачко появляется → текст печатается (или сразу целиком) → висит → пропадает, по кругу. */
-function SayPreview({ mode, speed, side, mute, ping, popSound }: { mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast"; side: "left" | "right"; mute: boolean; ping: number; popSound: Pop }) {
+function SayPreview({ say, mode, speed, side, mute, ping, popSound }: { say: string; mode: "sound" | "quiet" | "off"; speed: "slow" | "normal" | "fast"; side: "left" | "right"; mute: boolean; ping: number; popSound: Pop }) {
   const [t, setT] = useState(0);
   const [hover, setHover] = useState(false);
   const [loudTill, setLoudTill] = useState(0); // после выбора — один показ со звуком
@@ -275,7 +284,7 @@ function SayPreview({ mode, speed, side, mute, ping, popSound }: { mode: "sound"
     const id = setInterval(() => setT(performance.now() - t0), 16);
     return () => clearInterval(id);
   }, [mode, speed, ping]);
-  const at = SAY_AT(speed);
+  const at = SAY_AT(speed, say);
   const typed = mode !== "off";
   const GAP = 900, POP = 200;
   const total = typed ? at[at.length - 1] + 60 : 0;
@@ -283,9 +292,9 @@ function SayPreview({ mode, speed, side, mute, ping, popSound }: { mode: "sound"
   const c = t % cycle;
   const since = c - GAP - POP; // от конца появления облачка
   const up = c >= GAP && c < cycle - 300;
-  const shown = !typed ? SAY.length : since < 0 ? 0 : at.filter((x) => x <= since).length;
-  const letters = [...SAY].slice(0, shown).filter((ch) => /\S/.test(ch)).length;
-  const beep = mode === "sound" && since >= 0 && shown < SAY.length ? Math.floor((letters + 2) / 3) : -1;
+  const shown = !typed ? say.length : since < 0 ? 0 : at.filter((x) => x <= since).length;
+  const letters = [...say].slice(0, shown).filter((ch) => /\S/.test(ch)).length;
+  const beep = mode === "sound" && since >= 0 && shown < say.length ? Math.floor((letters + 2) / 3) : -1;
   // Звук — как у виджета (typeBlip): короткий «бип» на каждую третью букву. Слышно при наведении и один круг после выбора.
   useEffect(() => { if (ping) setLoudTill(performance.now() + cycle); }, [ping]); // eslint-disable-line react-hooks/exhaustive-deps
   const audible = hover || performance.now() < loudTill;
@@ -308,10 +317,30 @@ function SayPreview({ mode, speed, side, mute, ping, popSound }: { mode: "sound"
     <div className={`wp-say side-${side}`} onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}>
       <div className="wp-say-hint">{mode !== "sound" && popSound === "off" ? "" : mute ? "🔇 звуки выключены" : sounds && audible ? "🔊 со звуком" : "🔈 наведите — будет слышно"}</div>
       <div className={`wp-say-bubble${up ? " up" : ""}${c >= cycle - 300 ? " out" : ""}`} key={Math.floor(t / cycle)}>
-        {[...SAY].map((ch, i) => <span key={i} className={i < shown ? "on" : ""}>{ch}</span>)}
+        {[...say].map((ch, i) => <span key={i} className={i < shown ? "on" : ""}>{ch}</span>)}
       </div>
       {mode === "sound" && beep > 0 && <div className="wp-say-beep" key={beep}>♪</div>}
       <img className="wp-say-maid" src="/maid/idle.webp" alt="" />
+    </div>
+  );
+}
+
+/** Живая копия панели виджета для «Так это выглядит»: цвет, размер текста, непрозрачность, какие разделы видны, сколько ближайших планов. */
+function PanelPreview({ p, opacity }: { p: Required<WidgetPrefs>; opacity: number }) {
+  const day = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  const s = p.sections;
+  const empty = s.next === false && s.habits === false && s.tasks === false;
+  return (
+    <div className={`wp-mini acc-${p.accent} ts-${p.textSize}`} style={{ "--wop": `${Math.round(opacity * 100)}%` } as CSSProperties}>
+      <b className="wp-mini-head">Сегодня · {day}</b>
+      {s.next !== false && PLANS.slice(0, p.nextCount).map(([when, what], i) => <p key={what} className={`nx${i ? " ahead" : ""}`}><em>{when}</em>{what}</p>)}
+      {s.habits !== false && <p className="hb"><i />Зарядка · 6 дней подряд</p>}
+      {s.tasks !== false && <>
+        <p><i />Купить хлеб</p>
+        <p><i />Оплатить свет</p>
+        {p.doneTasks === "keep" && <p className="did"><i>✓</i><s>Пить Аевит</s></p>}
+      </>}
+      {empty && <p className="wp-mini-empty">Разделы выключены — на панели только часы</p>}
     </div>
   );
 }
@@ -384,6 +413,7 @@ export function Widget() {
   const [ping, setPing] = useState(0); // выбрали что-то про облачко — показать его ещё раз со звуком
   const [ask, setAsk] = useState<"add" | "clash">("add"); // какой пример самонажатия показать
   const [gen, setGen] = useState<General | null>(null);
+  const [line, setLine] = useState(0); // какая реплика в «Так это выглядит»
   // «Предупредить о дожде за час» — настройка сервера (users.weather_rain), одна на все устройства; город — из «О вас».
   const [wx, setWx] = useState<{ rain: boolean; city: boolean } | null>(null);
 
@@ -420,10 +450,19 @@ export function Widget() {
 
   return (
     <div className="screen wp">
-      <p className="muted small">Панель с горничной на рабочем столе этого компьютера. Меняется сразу; на других устройствах — свои настройки.</p>
+      <aside className="wp-aside">
+        <div className="wp-aside-head">
+          <h3>Так это выглядит</h3>
+          <button onClick={() => { setLine((n) => n + 1); setPing((n) => n + 1); }}>Ещё реплику</button>
+        </div>
+        <SayPreview say={SAYS[line % SAYS.length]} mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} mute={p.mute} ping={ping} popSound={p.popSound} />
+        <PanelPreview p={p} opacity={opacity} />
+      </aside>
+      <div className="wp-main">
+      <p className="muted small">Всё сохраняется само. Панель с горничной на рабочем столе этого компьютера; на других устройствах — свои настройки.</p>
       {msg && <div className="toast" style={{ marginTop: 12 }}><div className="toast-text">{msg}</div><button className="ghost" onClick={() => setMsg("")}>✕</button></div>}
       <div className="wp-list">
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Окно</h3>
           <Setting title="Виджет на рабочем столе" hint={p.show !== false ? "Включён. Пропал с экрана — «Показать снова»" : "Выключен — панели с горничной на экране нет"}
             side={<Toggle label="Виджет на рабочем столе" on={p.show !== false} set={(show) => save({ show })} />} />
@@ -437,7 +476,7 @@ export function Widget() {
             side={<button onClick={() => { void bridge.resetWidget(); setMsg("Виджет вернулся в правый нижний угол."); }}>Вернуть в угол</button>} />
         </section>
 
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Горничная</h3>
           <Setting title="Где стоит">
             <Cards label="Где стоит" value={p.side} onPick={(side) => save({ side })}
@@ -449,7 +488,7 @@ export function Widget() {
           </Setting>}
         </section>
 
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Что на панели</h3>
           {SECTIONS.map(([k, name]) => (
             <Setting key={k} title={name} side={<Toggle label={name} on={p.sections[k] !== false} set={(on) => save({ sections: { [k]: on } })} />} />
@@ -469,7 +508,7 @@ export function Widget() {
             side={<Segment label="Важные даты" value={p.dateLead} onPick={(dateLead) => save({ dateLead })} options={[["0", "В тот день"], ["1", "1 день"], ["3", "3 дня"], ["7", "Неделю"]]} />} />
         </section>
 
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Вид панели</h3>
           <Setting title="Цвет">
             <Cards label="Цвет" value={p.accent} onPick={(accent) => save({ accent })}
@@ -487,7 +526,7 @@ export function Widget() {
             side={<Segment label="Опыт и уровень в шапке" value={p.xpBar} onPick={(xpBar) => save({ xpBar })} options={[["always", "Всегда"], ["event", "По событию"]]} />} />
         </section>
 
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Задачи</h3>
           <Setting title="Сколько задач видно" hint="От 1 до 500. Больше — кнопка «Ещё» в конце списка"
             side={<TaskCount value={p.taskCount ?? 100} onSave={(taskCount) => save({ taskCount })} />} />
@@ -512,11 +551,8 @@ export function Widget() {
           </Setting>
         </section>
 
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Облачко</h3>
-          <Setting title="Так это выглядит" hint="Меняйте настройки ниже — облачко покажет сразу">
-            <SayPreview mode={p.typing} speed={p.typeSpeed} side={p.side === "left" ? "left" : "right"} mute={p.mute} ping={ping} popSound={p.popSound} />
-          </Setting>
           <Setting title="Звуки" hint="Все звуки виджета"
             side={<Toggle label="Звуки" on={!p.mute} set={(on) => { void save({ mute: !on }); setPing((n) => n + 1); }} />} />
           <Setting title="Звук облачка" hint="Когда облачко появляется"
@@ -535,7 +571,7 @@ export function Widget() {
           </Setting>
         </section>
 
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Если не ответить</h3>
           <Setting title="Так это выглядит" hint="Кнопка заполняется полосой; пока курсор на облачке — ждёт"
             side={<Segment label="Пример" value={ask} onPick={(v) => { setAsk(v); setPing((n) => n + 1); }} options={[["add", "«Добавить?»"], ["clash", "Занятое время"]]} />}>
@@ -547,7 +583,7 @@ export function Widget() {
             side={<Segment label="«Оставить» через" value={p.clashWait} onPick={(clashWait) => { void save({ clashWait }); setAsk("clash"); setPing((n) => n + 1); }} options={[[5, "5 с"], [10, "10 с"], [20, "20 с"], [30, "30 с"]]} />} />
         </section>
 
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Сон</h3>
           <Setting title="Засыпает, если вас нет" hint={p.napAfter ? "Компьютер не трогали — дремлет и молчит, уведомления копит в ящике" : "Не спит, даже если вы ушли"}
             side={<Segment label="Засыпает через" value={p.napAfter} onPick={(napAfter) => save({ napAfter })} options={[[5, "5 мин"], [15, "15 мин"], [30, "30 мин"], [60, "Час"], [0, "Не засыпать"]]} />} />
@@ -564,7 +600,7 @@ export function Widget() {
           </>}
         </section>
 
-        <section className="wp-sec reveal">
+        <section className="card wp-sec reveal">
           <h3>Погода</h3>
           {wx && !wx.city && <Setting title="Город не указан" hint="Погода — по городу из «Персонализации → О вас»"
             side={<button type="button" className="link" onClick={() => navigate("/persona")}>Указать</button>} />}
@@ -576,7 +612,7 @@ export function Widget() {
             side={<Toggle label="Предупредить о дожде за час" on={wx.rain} set={(rain) => void saveRain(rain)} />} />}
         </section>
 
-        {gen && <section className="wp-sec reveal">
+        {gen && <section className="card wp-sec reveal">
           <h3>Программа</h3>
           <Setting title="Запускать с Windows" hint={gen.canAutostart ? "Горничная появляется сама, когда вы включаете компьютер" : "Работает в установленной программе"}
             side={<Toggle label="Запускать с Windows" on={gen.autostart} set={(autostart) => void saveGen({ autostart })} />} />
@@ -585,6 +621,7 @@ export function Widget() {
           <Setting title="Взять или отпустить виджет" hint="Виджет ловит мышь — его можно двигать и нажимать"
             side={<KeyPicker label="Взять или отпустить виджет" value={gen.keys.grab} onPick={(grab) => void saveGen({ keys: { grab } })} />} />
         </section>}
+      </div>
       </div>
     </div>
   );
