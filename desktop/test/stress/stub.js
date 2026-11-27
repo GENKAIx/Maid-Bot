@@ -40,6 +40,7 @@
     saveSettings: (patch) => invoke("settings:set", patch),
     track: (name) => send("usage", name),
     login: (form) => invoke("settings:login", form),
+    switchBack: () => invoke("settings:switch-back"),
     trackNow: () => invoke("tracker:now"),
     idle: () => (stress.idle !== undefined ? Promise.resolve(stress.idle) : invoke("idle")),
     changed: () => send("changed"),

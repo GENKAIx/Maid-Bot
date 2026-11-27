@@ -16,11 +16,13 @@
 // Этап 6 «Тарифы и управление» (24.11.2026): «Переключатели» (server/src/switches.ts), «Промокоды» (promo.ts), «Обращения»
 // (support.ts), «Объявления» (announce.ts), «Прогноз» (prognosis.ts); screens/AdminManage.tsx. Новая категория «Связь с людьми».
 // Промпты (27.11.2026): тексты для ИИ, которые владелец правит без выкладки, — версии и откат (server/src/prompts.ts; screens/AdminPrompts.tsx).
+// Тестовые аккаунты (27.11.2026): аккаунты без Telegram для проверки программы на ПК — создать, войти в программе, сбросить к чистому
+// (server/src/admin-tests.ts; screens/AdminTests.tsx).
 // stage — с какого этапа раздел живой (ADMIN_LIVE_STAGE и меньше — живой, больше — «появится на этапе N»).
 
 export const ADMIN_LIVE_STAGE = 5;
 
-export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "promo" | "prognosis" | "spend" | "audience" | "quality" | "features" | "switches" | "showcase" | "tickets" | "news" | "health" | "alerts" | "releases" | "crashes" | "backups" | "log" | "prompts";
+export type AdminSectionId = "overview" | "analytics" | "users" | "account" | "payments" | "tariffs" | "caps" | "promo" | "prognosis" | "spend" | "audience" | "quality" | "features" | "switches" | "showcase" | "tickets" | "news" | "health" | "alerts" | "releases" | "crashes" | "backups" | "log" | "prompts" | "tests";
 
 // Меню по категориям (24.11.2026): group — заголовок категории (ADMIN_GROUPS, по порядку), icon — имя в icons.tsx.
 export const ADMIN_GROUPS = ["Обзор", "Люди и деньги", "ИИ", "Промпты", "Продукт", "Связь с людьми", "Система"] as const;
@@ -32,6 +34,8 @@ export const ADMIN_SECTIONS: { id: AdminSectionId; title: string; stage: number;
   { id: "users", title: "Пользователи", stage: 1, group: "Люди и деньги", icon: "adm-users" },
   // Аккаунт по номеру (этап 3 «Тарифы и управление», screens/AdminAccount.tsx): /admin/account/<номер>.
   { id: "account", title: "Аккаунт", stage: 0, group: "Люди и деньги", icon: "adm-id" },
+  // Тестовые аккаунты (27.11.2026, screens/AdminTests.tsx): рядом с карточкой — удаляются там же, «Удалить».
+  { id: "tests", title: "Тестовые аккаунты", stage: 0, group: "Люди и деньги", icon: "adm-tests" },
   { id: "payments", title: "Оплаты", stage: 0, group: "Люди и деньги", icon: "adm-star" },
   // Тарифы из базы (24.11.2026, screens/AdminTariffs.tsx): рядом с оплатами — это те же деньги; отдельная категория из двух пунктов
   // только раздула бы меню, а лимиты в штуках (этап 2) лягут в эти же два раздела.
@@ -113,6 +117,9 @@ export const ADMIN_ACTIONS: Record<string, string> = {
   prompt_select: "выбрал версию промпта",
   preview: "открыл живой показ виджета (витрина)",
   openrouter_refresh: "обновил счёт OpenRouter",
+  test_create: "создал тестовый аккаунт",
+  test_token: "выдал ключ тестового аккаунта для ПК",
+  test_reset: "сбросил тестовый аккаунт к чистому",
 };
 
 // ——— Выпуски и падения (этап 5; типы — копия server/src/releases.ts releasesView и server/src/crashes.ts adminCrashes).
@@ -361,6 +368,8 @@ export interface AccountCard {
   devices: { client: string; version: string; last_seen: string; count: number }[];
   last_seen: string | null;
   log: { at: string; who: string; action: string; detail: string; reason: string }[];
+  /** 1 — тестовый аккаунт (server/src/admin-tests.ts, «Тестовые аккаунты»); старый сервер поля не присылает. */
+  is_test?: 0 | 1;
 }
 
 /** Номер аккаунта из адреса /admin/account/<номер> (нет или не число — null). */
@@ -413,6 +422,30 @@ export function accountCan(c: Pick<AccountCard, "plan" | "kind" | "live_sub" | "
     unfreeze: Boolean(c.frozen_at),
     delete: !c.protected,
   };
+}
+
+// ——— Тестовые аккаунты (27.11.2026, GET /api/admin/tests; типы — копия server/src/admin-tests.ts testsView и Store.testAccounts).
+export interface TestAccountRow {
+  id: number; plan: string; created_at: string; frozen_at: string | null;
+  /** Последний вход: когда, клиент и версия ("" — неизвестно); sessions — сколько входов открыто. */
+  last_seen: string | null; client: string; version: string; sessions: number;
+}
+export interface TestsData { max: number; items: TestAccountRow[] }
+/** Ответ «Создать»: логин и пароль — только здесь и один раз. */
+export interface TestCreated extends TestsData { ok: true; text: string; id: number; login: string; password: string }
+
+/** Последний вход тестового: «Программа на ПК 0.1.95 · вчера», «входов нет». */
+export function testSeenText(r: Pick<TestAccountRow, "last_seen" | "client" | "version" | "sessions">, now = new Date()): string {
+  if (!r.sessions && !r.last_seen) return "входов нет";
+  const who = [r.client ? (CLIENT_NAMES[r.client] ?? r.client) : "", r.version].filter(Boolean).join(" ");
+  return `${who || "вход"} · ${ago(r.last_seen, now)}`;
+}
+
+/** Кнопки строки тестового аккаунта. inApp — сайт открыт в программе на ПК и она умеет входить в тестовый (мост
+ *  maidDesktop.enterTest): тогда «Войти в программе на ПК» (ключ уходит программе, на экран не выводится); в браузере — «Показать
+ *  ключ» (один раз). Замороженному ключ не выдаётся (сервер — 409), сброс и карточка — всегда. */
+export function testActs(r: Pick<TestAccountRow, "frozen_at">, inApp: boolean): ("enter" | "key" | "reset" | "card")[] {
+  return [...(r.frozen_at ? [] : [inApp ? ("enter" as const) : ("key" as const)]), "reset", "card"];
 }
 
 // ——— Оплаты (24.11.2026, подписка Telegram Stars: server/src/billing.ts, отчёт — admin-stats.ts adminPayments).
@@ -652,6 +685,7 @@ export interface AiData {
   source: "llm_usage" | "llm_calls";
   kpi: {
     total_micro: Pair; calls: Pair;
+    tests_micro?: Pair;                // из total_micro — тестовые аккаунты (server admin-analytics.ts; у старых отчётов из кэша поля нет)
     unpriced_calls: Pair;              // вызовы без цены (их расход — ноль)
     forecast_month_micro: number | null; // Σ за 7 полных прошедших дней UTC / 7 × 30; не зависит от интервала
     capped_users: Pair;                // различные user_id с gate.day_cap / calls_cap / draws_cap / voice_cap > 0 в днях окна

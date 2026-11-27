@@ -18,11 +18,14 @@ const settingsPage = { id: "settings" }, widgetWc = { id: "widget" }, stranger =
 const st = { settings: { server: "", token: "" }, saved: 0 };
 const { loginOnServer } = new Function(
   "maidLog", "ipcMain", "isSettingsPage", "widget", "settings", "serverBase", "canEncrypt", "safeStorage", "saveSettings", "refreshTray", "broadcast", "shown", "mainWin", "app",
+  // Тестовый аккаунт (переход и возврат — test-switch.test.cjs на стенде): здесь — обычный аккаунт, тест не меняется.
+  "inTurn", "testTurn", "dropKey", "siteUse", "usage", "crashes",
   code + "; return { loginOnServer };",
 )(
   (...a) => log.push(a.join(" ")), { handle: (name, fn) => (handlers[name] = fn) }, (wc) => wc === settingsPage, { webContents: widgetWc }, st.settings,
   (s) => { try { const u = new URL(String(s)); return /^https?:$/.test(u.protocol) ? u.origin : null; } catch { return null; } },
   () => false, null, () => st.saved++, () => {}, () => {}, () => ({ ok: true }), null, { getVersion: () => "0.1.89" },
+  (fn) => Promise.resolve().then(fn), async () => false, async () => {}, () => {}, null, null,
 );
 
 const bodies = [];

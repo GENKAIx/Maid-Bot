@@ -35,6 +35,9 @@ interface Bridge {
   checkUpdate?(): Promise<Upd | null>;
   installUpdate?(): Promise<Upd | null>;
   onUpdate?(cb: (s: Upd) => void): () => void;
+  // Войти в тестовый аккаунт ключом из админки («Тестовые аккаунты», screens/AdminTests.tsx; desktop/src/preload-app.js →
+  // main.js settings:enter-test): программа откладывает свой ключ и ставит тестовый. В старых версиях нет — там «Показать ключ».
+  enterTest?(token: string): Promise<{ ok: boolean; error?: string } | null>;
 }
 interface Upd { version: string; status: "idle" | "checking" | "latest" | "available" | "downloading" | "ready" | "error" | "dev"; next?: string; percent?: number; error?: string }
 /** Подсказка под «Версия программы» по состоянию обновления. */

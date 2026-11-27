@@ -83,6 +83,8 @@ function Period({ value, onChange }: { value: number; onChange: (v: number) => v
 type Overview = {
   users: number; new_week: number; active_day: number; active_week: number; active_month: number;
   spend_today: number; spend_month: number; spend_forecast: number; unpriced_month: number;
+  /** Из расхода месяца — на тестовые аккаунты (admin-tests.ts); старый сервер не присылает. */
+  spend_tests_month?: { accounts: number; calls: number; cost: number };
   requests_week: number; failed_week: number; clarify_week: number; undone_week: number;
   online: { total: number; clients: { client: string; users: number }[] };
   /** Подписка Telegram Stars (admin-stats.ts billingOverview); старый сервер не присылает. */
@@ -125,6 +127,9 @@ export function AdminOverview() {
         <Kpi title="Сегодня" value={usd(o.spend_today)} />
         <Kpi title="В этом месяце" value={usd(o.spend_month)} hint={o.unpriced_month ? `без цены: ${o.unpriced_month} запр.` : undefined} />
         <Kpi title="Прогноз на месяц" value={usd(o.spend_forecast)} hint="по среднему за 7 дней" />
+        {o.spend_tests_month && o.spend_tests_month.accounts > 0 && (
+          <Kpi title="Из них тесты" value={usd(o.spend_tests_month.cost)} hint={`${o.spend_tests_month.accounts} тест. акк. · ${o.spend_tests_month.calls} запр.`} />
+        )}
       </div>
       <h2 className="adm-h2">Разбор за 7 дней</h2>
       <div className="adm-kpis">
@@ -141,6 +146,8 @@ type UserRow = {
   id: number; name: string; login: string | null; created_at: string; last_at: string | null; total: number; n30: number;
   ai30: number; manual30: number; undone30: number; cost30: number; background30: number; cost_month: number; cost_total: number;
   devices: { client: string; version: string; last_seen: string; count: number }[];
+  /** Тестовый аккаунт (admin-tests.ts): в таблице с меткой, в счёте людей его нет. */
+  test?: boolean;
 };
 const USER_COLS: { key: keyof UserRow; title: string; num?: boolean; hint?: string }[] = [
   { key: "name", title: "Человек" },
@@ -164,7 +171,7 @@ export function AdminUsers() {
     k === "created_at" ? new Date(r.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "2-digit" })
     : k === "last_at" ? ago(r.last_at)
     : k === "cost30" || k === "cost_total" ? usd(r[k] as number)
-    : k === "name" ? <>{r.name}{r.login && r.login !== r.name && <span className="adm-muted"> · {r.login}</span>}</>
+    : k === "name" ? <>{r.name}{r.login && r.login !== r.name && <span className="adm-muted"> · {r.login}</span>}{r.test && <> <span className="adm-acc-test">тест</span></>}</>
     : String(r[k]);
   return (
     <div className="adm-split">
@@ -225,7 +232,9 @@ export function AdminUsers() {
 type Sum = { calls: number; input: number; output: number; cost: number; priced: number };
 type SpendReport = {
   days: (Sum & { day: string; kinds: Record<string, number> })[]; total: Sum; month: Sum; forecast: number;
-  kinds: (Sum & { kind: string })[]; models: (Sum & { model: string })[]; byUser: { user_id: number; name: string; calls: number; cost: number; background: number }[];
+  kinds: (Sum & { kind: string })[]; models: (Sum & { model: string })[]; byUser: { user_id: number; name: string; calls: number; cost: number; background: number; test?: boolean }[];
+  /** Расход тестовых аккаунтов за период (admin-tests.ts) — входит и в общий итог; старый сервер не присылает. */
+  tests?: { accounts: number; calls: number; cost: number };
   heavy: { name: string; at: string; source: string; route: string; calls: number }[]; routes: { route: string; messages: number; calls: number }[];
 };
 const routeName = (r: string) => ROUTE_NAMES[r] ?? r;
@@ -244,7 +253,7 @@ export function AdminSpend() {
     day: d.day,
     values: [...top.map((k) => d.kinds[k] ?? 0), ...(r.kinds.length > 4 ? [Object.entries(d.kinds).filter(([k]) => !top.includes(k)).reduce((s, [, v]) => s + v, 0)] : [])],
   }));
-  const list = by === "user" ? r.byUser.map((x) => ({ key: `u${x.user_id}`, name: x.name, calls: x.calls, cost: x.cost, extra: x.background ? `фоновый ${usd(x.background)}` : "" }))
+  const list = by === "user" ? r.byUser.map((x) => ({ key: `u${x.user_id}`, name: x.test ? `${x.name} · тест` : x.name, calls: x.calls, cost: x.cost, extra: x.background ? `фоновый ${usd(x.background)}` : "" }))
     : by === "kind" ? r.kinds.map((x) => ({ key: `k${x.kind}`, name: KIND_NAMES[x.kind] ?? x.kind, calls: x.calls, cost: x.cost, extra: "" }))
     : r.models.map((x) => ({ key: `m${x.model}`, name: x.model, calls: x.calls, cost: x.cost, extra: `${Math.round((x.input + x.output) / 1000)}k ток.` }));
   const max = Math.max(1e-9, ...list.map((x) => x.cost));
@@ -256,6 +265,7 @@ export function AdminSpend() {
         <Kpi title="В этом месяце" value={usd(r.month.cost)} />
         <Kpi title="Прогноз на месяц" value={usd(r.forecast)} hint="по среднему за 7 дней" />
         <Kpi title="Без цены" value={r.total.calls - r.total.priced} hint="провайдер не сообщил" />
+        {r.tests && r.tests.accounts > 0 && <Kpi title="Из них тесты" value={usd(r.tests.cost)} hint={`${r.tests.accounts} тест. акк. · ${r.tests.calls} запр.`} />}
       </div>
       <div className="adm-panel"><AdmBars days={bars} parts={parts} format={usd} /></div>
       <div className="adm-toolbar">

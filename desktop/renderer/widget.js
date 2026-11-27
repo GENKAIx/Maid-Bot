@@ -2286,6 +2286,11 @@ function bindRelogin() {
   maid.settings().then((s) => {
     const server = String(s?.server ?? "");
     if (!$("#rlServer").value) $("#rlServer").value = RELOGIN_DEV.test(server) ? "" : server;
+    // Устарел тестовый ключ (сброс в админке) — свой отложен: вернуться в него без пароля.
+    if (s?.testId && s.hasHome && !$("#rlBack")) {
+      form.querySelector(".relogin-msg").insertAdjacentHTML("afterend", `<button type="button" class="relogin-back" id="rlBack">Вернуться в свой аккаунт</button>`);
+      $("#rlBack").onclick = () => void testGo($("#rlBack"));
+    }
   }).catch(() => {});
   const busy = (on, text = "", bad = false) => {
     $("#rlGo").disabled = on;
@@ -3012,7 +3017,36 @@ async function loadCfg() {
   }
   localStorage.removeItem("maid.mute");
   applyCfg();
+  testMarkShow(s);
 }
+// Тестовый аккаунт (main.js settings:enter-test, 27.11.2026): метка «ТЕСТ» в шапке и на свёрнутой карточке, чтобы не перепутать
+// аккаунты; щелчок по ней — вернуться в свой аккаунт (settings:switch-back: тестовый ключ закрывается, свой встаёт на место).
+function testMarkShow(s) {
+  const id = Number.isInteger(s?.testId) ? s.testId : null;
+  const tip = id ? `Тестовый аккаунт #${id} · щелчок — ${s.hasHome ? "вернуться в свой аккаунт" : "выйти из тестового (свой ключ не отложен — войдёте своим логином)"}` : "";
+  for (const el of [$("#testMark"), $("#miniTest")]) {
+    el.classList.toggle("hidden", !id);
+    el.title = tip;
+    el.setAttribute("aria-label", tip || "Тестовый аккаунт");
+  }
+  // Кнопка «Вернуться в свой аккаунт» в форме входа (bindRelogin) — только пока есть куда: после возврата (или свой устарел) её нет.
+  if (!(id && s?.hasHome)) $("#rlBack")?.remove();
+}
+async function testGo(btn) {
+  for (const el of [$("#testMark"), $("#miniTest"), btn]) if (el) el.disabled = true;
+  try {
+    const s = await maid.switchBack();
+    testMarkShow(s); // метка и кнопка возврата в форме входа — по новому состоянию сразу, не дожидаясь loadCfg
+    loadFail = "";
+    say(s?.loginStale ? "Ваш вход устарел — войдите своим логином и паролем." : "Вернулась в ваш аккаунт.", { ms: 5000 });
+  } catch (err) {
+    say(String(err?.message ?? err).replace(/^Error invoking remote method '[^']*': (Error: )?/, ""), { ms: 7000 });
+  } finally {
+    for (const el of [$("#testMark"), $("#miniTest"), btn]) if (el) el.disabled = false;
+    btn?.blur();
+  }
+}
+for (const el of [$("#testMark"), $("#miniTest")]) el.addEventListener("click", (e) => { e.stopPropagation(); void testGo(el); });
 // Секунды до самонажатия кнопки (настройки виджета): число 3…60, иначе — по умолчанию.
 function secs(v, d) {
   const n = Number(v);

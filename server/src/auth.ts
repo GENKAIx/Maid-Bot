@@ -131,10 +131,11 @@ export async function userByToken(store: Store, token: string): Promise<User | u
 }
 
 /** Админ сайта (24.11.2026, docs/review/админка-2026-11-24.html): chat id из ADMIN_CHAT_IDS (пусто — первый из ALLOWED_CHAT_IDS)
- *  и вход по сессии. Запасной DESKTOP_TOKEN подставляет того же владельца, но в админку не пускает: ключ лежит в программе на ПК. */
+ *  и вход по сессии. Запасной DESKTOP_TOKEN подставляет того же владельца, но в админку не пускает: ключ лежит в программе на ПК.
+ *  Тестовый аккаунт (users.is_test, admin-tests.ts) — никогда не админ, даже с chat id админа. */
 export function isAdmin(u: User, via: Via): boolean {
   const admins = config.adminChatIds.length ? config.adminChatIds : config.allowedChatIds.slice(0, 1);
-  return via === "session" && Boolean(u.chat_id) && admins.includes(String(u.chat_id));
+  return via === "session" && !Number(u.is_test ?? 0) && Boolean(u.chat_id) && admins.includes(String(u.chat_id));
 }
 
 /** Запасной DESKTOP_TOKEN сессий не пишет: когда и с какой версией он был в последний раз — в памяти (для админки). */

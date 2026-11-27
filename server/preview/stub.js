@@ -162,6 +162,8 @@
       return clone(P.settings);
     },
     login: async () => { throw new Error("в витрине вход не нужен"); },
+    // Тестовый аккаунт (desktop main.js settings:switch-back): в витрине теста нет — возвращаться некуда, настройки как есть.
+    switchBack: async () => clone(P.settings),
     trackNow: async () => ({}),
     idle: async () => 0,
     changed: quiet("changed"),

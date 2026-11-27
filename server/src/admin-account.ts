@@ -57,8 +57,10 @@ export const SWEEP_AFTER_MS = 120_000;
 export const ACCOUNT_ACTIONS = ["extend", "grant", "bonus", "freeze", "unfreeze", "delete"] as const;
 export type AccountAction = (typeof ACCOUNT_ACTIONS)[number];
 
-/** Строки журнала админа про один аккаунт (карточка): действия отсюда и возврат звёзд. */
-const ACCOUNT_LOG = new Set<string>([...ACCOUNT_ACTIONS, "refund", "refund-fail", "delete-fail", "ticket_answer", "ticket_status"]);
+/** Строки журнала админа про один аккаунт (карточка): действия отсюда, возврат звёзд и тестовые аккаунты (admin-tests.ts). */
+const ACCOUNT_LOG = new Set<string>([
+  ...ACCOUNT_ACTIONS, "refund", "refund-fail", "delete-fail", "ticket_answer", "ticket_status", "test_create", "test_token", "test_reset",
+]);
 
 export interface AccountDeps {
   store: Store;
@@ -76,6 +78,23 @@ export interface AccountDeps {
 
 const DAY = 86_400_000;
 const dmy = (iso: string) => iso.slice(0, 10).split("-").reverse().join(".");
+
+/** Номер аккаунта, набранный вручную для подтверждения (удаление, сброс тестового — admin-tests.ts): цифрами, по желанию с «#»
+ *  («01042» — это #1042, как поле на сайте, accountQuery). Не тот номер — 400. */
+export function confirmedId(v: unknown, id: number, what: string) {
+  const typed = typeof v === "number" ? String(v) : typeof v === "string" ? v.trim().replace(/^#/, "") : "";
+  if (!/^\d{1,12}$/.test(typed) || Number(typed) !== id) throw new AccountError(400, `наберите номер аккаунта (${id}) — так видно, что ${what} тот самый`);
+}
+
+/** Забыть номер в памяти сервера (частота ИИ — forget у AiGate, присутствие, счётчики фич и падений, кэш аналитики) — после
+ *  удаления аккаунта и сброса тестового (admin-tests.ts). */
+export function forgetAccount(id: number, forget?: (id: number) => void) {
+  forgetPresence(id);
+  forgetFeatureUser(id);
+  forgetCrashUser(id);
+  forget?.(id);
+  resetAnalyticsCache();
+}
 
 /** Причина — обязательна: 3..300 знаков. */
 export function accountReason(v: unknown): string {
@@ -155,6 +174,8 @@ export async function accountCard(store: Store, id: number, now = new Date(), ow
     /** Идёт оплаченная подписка Telegram и продление не отменено (по ней спишутся звёзды). */
     live_sub: renewingSub(u, now),
     frozen_at: u.frozen_at ?? null,
+    /** 1 — тестовый аккаунт (admin-tests.ts): ему можно «Сбросить к чистому» и выдать ключ для ПК. */
+    is_test: Number(u.is_test ?? 0) === 1 ? 1 : 0,
     /** Владельца и админа заморозить нельзя. */
     protected: isOwner(u, owners),
     /** Что кончилось бы (или кончилось): проба, подарок, подписка. */
@@ -212,9 +233,7 @@ export async function accountAction(deps: AccountDeps, by: User, id: number, act
 
   if (action === "delete") {
     if (u.id === by.id || isOwner(u, owners)) throw new AccountError(403, "владельца и админа удалить нельзя");
-    // Номер — цифрами, по желанию с «#» (как поле на сайте, accountQuery): «01042» — это #1042.
-    const typed = typeof b.confirm === "number" ? String(b.confirm) : typeof b.confirm === "string" ? b.confirm.trim().replace(/^#/, "") : "";
-    if (!/^\d{1,12}$/.test(typed) || Number(typed) !== u.id) throw new AccountError(400, `наберите номер аккаунта (${u.id}) — так видно, что удаляете тот самый`);
+    confirmedId(b.confirm, u.id, "удаляете");
     // Продление не отменилось — не удалять: после удаления Telegram id и charge_id стёрты, отменить подписку с сервера уже нечем.
     const sub = await stopRenewal();
     if (sub === "failed") {
@@ -233,11 +252,7 @@ export async function accountAction(deps: AccountDeps, by: User, id: number, act
       throw new AccountError(500, `Удаление #${u.id} не прошло (ошибка базы), аккаунт на месте.` +
         (sub === "canceled" ? " Продление подписки Telegram при этом уже отменено." : ""));
     }
-    forgetPresence(u.id);
-    forgetFeatureUser(u.id);
-    forgetCrashUser(u.id);
-    deps.forget?.(u.id);
-    resetAnalyticsCache();
+    forgetAccount(u.id, deps.forget);
     // Что дописали уже начатые дела (ответ модели, обход планировщика, пачка счётчиков) — убрать ещё раз чуть позже.
     const sweep = setTimeout(() => void store.sweepOrphans().catch((e: Error) => console.error("[account] хвосты", e.message)), SWEEP_AFTER_MS);
     sweep.unref?.();

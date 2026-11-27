@@ -100,6 +100,8 @@ main { display: flex; flex-direction: column; min-width: 0; }
 /* Вход логином и паролем: вошли — блок спрятан до «Войти под другим логином». */
 .form .login-box { margin: 0 0 8px; }
 .form .login-box.closed { display: none; }
+/* Тестовый аккаунт (app.js renderSettings): полоска над настройками — номер и «Вернуться в свой». */
+.test-strip { justify-content: space-between; padding: 10px 12px; border-radius: 10px; background: rgba(240, 164, 107, .14); border: 1px solid rgba(240, 164, 107, .45); }
 .row { display: flex; gap: 10px; align-items: center; }
 
 /* --- виджет --- */
@@ -387,6 +389,16 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .relogin button { width: auto; height: 28px; padding: 0 14px; border-radius: 14px; font-size: 12px; font-weight: 600; background: var(--accent); color: #fff; border: 0; }
 .relogin button:hover { filter: brightness(1.1); }
 .relogin button:disabled { opacity: .6; }
+.relogin .relogin-back { justify-self: start; background: rgba(240, 164, 107, .9); }
+/* Тестовый аккаунт (widget.js testMarkShow): маленькая метка «ТЕСТ» в шапке и на свёрнутой карточке, щелчок — вернуться в свой. */
+.test-mark { flex: none; align-self: center; padding: 2px 6px; border: 1px solid rgba(240, 164, 107, .7); border-radius: 6px; background: rgba(240, 164, 107, .18);
+  color: #f6b98a; font-size: 10px; font-weight: 700; letter-spacing: .06em; line-height: 1.2; cursor: pointer; }
+.test-mark:hover { background: rgba(240, 164, 107, .32); }
+.test-mark:disabled { opacity: .6; cursor: progress; }
+.test-mark.hidden { display: none; }
+/* В шапке развёрнутого виджета метка — «язычок» у верхнего края, вне ряда часов и даты: дата не переносится и не обрезается. */
+.w .head { position: relative; }
+.w .head #testMark { position: absolute; top: 0; left: 50%; transform: translateX(-50%); border-top: 0; border-radius: 0 0 6px 6px; padding: 1px 8px 2px; }
 .chat .ob-acts .ob-later { background: rgba(255, 255, 255, .1); color: var(--text); }
 .chat .ob-acts .ob-later:hover { background: rgba(255, 255, 255, .18); }
 @keyframes obSpin { to { transform: rotate(360deg); } }

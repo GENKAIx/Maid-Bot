@@ -33,7 +33,7 @@ export function AdminAccount() {
   const [q, setQ] = useState(id ? String(id) : "");
   const [card, setCard] = useState<AccountCard | null>(null);
   const [err, setErr] = useState("");
-  const [gone, setGone] = useState<{ id: number; text: string } | null>(null);
+  const [gone, setGone] = useState<{ id: number; text: string; test?: boolean } | null>(null);
   const lost = useContext(AdminLost);
   useEffect(() => {
     if (!id || gone?.id === id) return;
@@ -61,17 +61,17 @@ export function AdminAccount() {
         <span className="adm-muted adm-small">Номер — из «Пользователей» или из сообщения человека. Имён, текстов и чатов здесь нет — только числа.</span>
       </form>
       {!id ? null : gone?.id === id ? <AccountGone {...gone} /> : !card ? (err ? <span className="adm-err" role="alert">{err}</span> : <Loading />)
-        : <AccountCardView card={card} onCard={setCard} onDeleted={(text) => { setCard(null); setGone({ id: card.id, text }); }} />}
+        : <AccountCardView card={card} onCard={setCard} onDeleted={(text) => { setCard(null); setGone({ id: card.id, text, test: Boolean(card.is_test) }); }} />}
     </div>
   );
 }
 
 /** Вместо карточки после удаления: номера больше нет. */
-export function AccountGone({ id, text }: { id: number; text: string }) {
+export function AccountGone({ id, text, test }: { id: number; text: string; test?: boolean }) {
   return (
     <section className="adm-panel" role="status">
       <b>Аккаунт #{id} удалён</b>
-      <span className="adm-muted">{text} Записано в журнал админа. С того же Telegram человек может зарегистрироваться заново (/start) — с новым номером.</span>
+      <span className="adm-muted">{text} Записано в журнал админа. {test ? "Новый тестовый — в «Тестовых аккаунтах»." : "С того же Telegram человек может зарегистрироваться заново (/start) — с новым номером."}</span>
     </section>
   );
 }
@@ -83,7 +83,16 @@ export function AccountCardView({ card: c, onCard, onDeleted }: { card: AccountC
   return (
     <div className="adm-acc-grid">
       <section className="adm-panel">
-        <div className="adm-card-head"><b className="adm-num">#{c.id}</b>{c.frozen_at && <span className="adm-acc-frozen">заморожен {date(c.frozen_at)}</span>}</div>
+        <div className="adm-card-head">
+          <b className="adm-num">#{c.id}</b>{c.is_test ? <span className="adm-acc-test" title="Аккаунт без Telegram для проверки программы на ПК">тестовый</span> : null}
+          {c.frozen_at && <span className="adm-acc-frozen">заморожен {date(c.frozen_at)}</span>}
+        </div>
+        {c.is_test ? (
+          <p className="adm-muted adm-small">
+            Тестовый аккаунт: вход в программе на ПК и «Сбросить к чистому» — в разделе{" "}
+            <a className="adm-link" href="/admin/tests" onClick={(e) => { e.preventDefault(); navigate("/admin/tests"); }}>«Тестовые аккаунты»</a>; удалить — здесь, «Удалить».
+          </p>
+        ) : null}
         <dl className="adm-acc-facts">
           <dt>Тариф</dt><dd>{accountPlanText(c)}{c.live_sub && <span className="adm-muted"> · списывается в Telegram</span>}</dd>
           <dt>С нами</dt><dd className="adm-num">с {date(c.created_at)}, {c.days_with_us} дн.</dd>

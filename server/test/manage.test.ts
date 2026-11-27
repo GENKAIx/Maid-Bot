@@ -51,7 +51,7 @@ for (const [name, open] of BASES) {
   test(`${name}: шаг 36 — переключатели, промокоды, обращения, объявления; одно применение кода на человека`, async () => {
     const store = await open();
     try {
-      assert.equal(await store.kvGet("schema_version"), "40");
+      assert.equal(await store.kvGet("schema_version"), "41");
       const p = await people(store);
       await store.setFeatureSwitch("draw", false, NOW, 1);
       await store.setFeatureSwitch("draw", true, NOW, 2);

@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("maid", {
   saveSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
   /** Вход логином и паролем: окно настроек — { server, login, password }, виджет — { server, login, password } (пустой адрес — из настроек). */
   login: (form) => ipcRenderer.invoke("settings:login", form),
+  /** Тестовый аккаунт (settings.testId): вернуться в свой — тестовый ключ закрывается, свой отложенный встаёт на место (main.js). */
+  switchBack: () => ipcRenderer.invoke("settings:switch-back"),
   trackNow: () => ipcRenderer.invoke("tracker:now"),
   idle: () => ipcRenderer.invoke("idle"),
   changed: () => ipcRenderer.send("changed"),

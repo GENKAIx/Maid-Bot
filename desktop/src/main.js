@@ -108,6 +108,17 @@ function loadSettings() {
       saveSettings();
     }
     delete settings.siteTokenEnc; // до 0.1.34 у сайта был свой вход — теперь один ключ на программу
+    // Тестовый аккаунт (settings:enter-test): номер — целое число, свой ключ — строка; другое (правили руками) — не тест.
+    if (settings.testId !== undefined && !(Number.isInteger(settings.testId) && settings.testId > 0)) delete settings.testId;
+    if (settings.homeTokenEnc !== undefined && typeof settings.homeTokenEnc !== "string") delete settings.homeTokenEnc;
+    if (settings.homeServer !== undefined && !serverBase(settings.homeServer)) delete settings.homeServer;
+    // Отложенный свой ключ без номера теста — «сирота» (правили руками, старая сборка писала их двумя записями): программа не в тесте,
+    // её ключ и есть свой — сирота при возврате подменил бы его старым.
+    if (!settings.testId && (settings.homeTokenEnc !== undefined || settings.homeServer !== undefined)) {
+      maidLog("тестовый: отложенный ключ без теста — убран");
+      delete settings.homeTokenEnc;
+      delete settings.homeServer;
+    }
     // До 0.1.38 программам из Store и без своего значка уходил серый «программа» — разослать значки заново (icons.js).
     if ((settings.tracker.iconsVer ?? 1) < 2) {
       settings.tracker.iconsSent = [];
@@ -753,6 +764,9 @@ function showQuick() {
 function refreshTray() {
   if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
+    // Программа в тестовом аккаунте (settings:enter-test) — возврат в свой отсюда, даже если окно сайта не открывается.
+    // Свой ключ не отложен (вошли в тестовый без своего входа) — честно «выйти из тестового», как в настройках и метке «ТЕСТ».
+    ...(settings.testId ? [{ label: `Тест #${settings.testId} — ${settings.homeTokenEnc ? "вернуться в свой аккаунт" : "выйти из тестового"}`, click: backFromTray }, { type: "separator" }] : []),
     { label: "Открыть", click: () => showMain() },
     { label: "Настройки", click: () => showMain(true) },
     { label: `Быстрая запись (${settings.keys.quick.replace("Control", "Ctrl")})`, click: showQuick },
@@ -929,8 +943,8 @@ ipcMain.on("open-section", (e, p) => {
   showMain();
   mainWin?.loadURL(settings.server.replace(/\/$/, "") + p);
 });
-// Окнам — настройки без ключа.
-const shown = () => { const { token: _t, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), loginStale, insecure: insecure(settings.server), tracker: { ...settings.tracker, state: trackerState } }; };
+// Окнам — настройки без ключа и без своего отложенного ключа (тестовый аккаунт: только номер testId и признак hasHome).
+const shown = () => { const { token: _t, homeTokenEnc: _h, homeServer: _hs, ...rest } = settings; return { ...rest, hasToken: Boolean(token() || tokenEnc), loginStale, insecure: insecure(settings.server), testId: settings.testId ?? null, hasHome: Boolean(settings.homeTokenEnc), tracker: { ...settings.tracker, state: trackerState } }; };
 // http:// не на этом компьютере — ключ и дневник идут открытым текстом.
 function insecure(s) {
   try { const u = new URL(String(s)); return u.protocol === "http:" && !/^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(u.hostname); } catch { return false; }
@@ -981,25 +995,33 @@ ipcMain.handle("settings:login", async (e, form) => {
   if (!login || !password) throw new Error("Впишите логин и пароль.");
   const { token: key, origin } = await loginOnServer(base, login, password, "Программа на ПК");
   if (origin !== base) maidLog("вход: сервер на другом адресе:", base, "→", origin);
-  settings.server = origin;
-  settings.token = key;
-  tokenEnc = "";
-  loginStale = false;
-  saveSettings();
-  refreshTray();
-  maidLog("вход в программу выполнен");
-  // Сайт в главном окне — с тем же входом сразу (иначе он остался бы на странице входа).
-  if (mainWin && !mainWin.isDestroyed() && !mainWin.isLocal) {
-    mainWin.webContents.executeJavaScript(`localStorage.setItem("maid.token", ${JSON.stringify(key)}); location.reload();`).catch(() => {});
-  }
-  broadcast("changed", null);
-  return shown();
+  // Вошли логином и паролем тестового аккаунта (27.11.2026) — свой ключ откладывается, как при входе из админки (testTurn): в ту же
+  // запись на диск, что и новый ключ. Не узнать, тестовый ли (нет связи), или свой ключ некуда отложить — отказ, новый ключ закрыт.
+  return inTurn(async () => {
+    const turned = await testTurn(origin, key).catch(async (err) => { await dropKey(origin, key); throw err; });
+    settings.server = origin;
+    settings.token = key;
+    tokenEnc = "";
+    loginStale = false;
+    if (turned) { usage?.drop(); crashes?.drop(); } // счёт и падения прежнего аккаунта — не под новым ключом (как site-login:keep)
+    saveSettings();
+    refreshTray();
+    maidLog("вход в программу выполнен");
+    // Сайт в главном окне — с тем же входом сразу (иначе он остался бы на странице входа).
+    siteUse(key);
+    broadcast("changed", null);
+    // Прежний тестовый ключ — закрыть после того, как сайт получил новый (иначе его запросы с прежним ключом поймали бы 401).
+    if (turned?.old) await dropKey(turned.oldBase, turned.old);
+    return shown();
+  });
 });
 ipcMain.handle("settings:set", (e, patch) => {
   patch = { ...patch };
-  // Адрес сервера и ключ меняет только вход (settings:login).
+  // Адрес сервера и ключ меняет только вход (settings:login), свой отложенный ключ и номер тестового — только переход в тест и возврат.
   delete patch.server;
   delete patch.token;
+  delete patch.homeTokenEnc;
+  delete patch.testId;
   settings ={ ...settings, ...patch, widget: { ...settings.widget, ...patch.widget }, tracker: { ...settings.tracker, ...patch.tracker }, keys: { ...settings.keys, ...patch.keys } };
   saveSettings();
   registerKeys();
@@ -1011,6 +1033,186 @@ ipcMain.handle("settings:set", (e, patch) => {
   broadcast("changed", null);
   return shown();
 });
+
+// --- тестовый аккаунт (27.11.2026, админка «Тестовые аккаунты»: server/src/admin-tests.ts, web/src/screens/AdminTests.tsx) ---
+// Админ входит программой в тестовый аккаунт (ключ из админки — settings:enter-test, или логин и пароль тестового — settings:login)
+// и возвращается в свой одной кнопкой (settings:switch-back: настройки, метка «ТЕСТ» в виджете, меню значка у часов, «Выйти» на сайте).
+// Свой ключ до перехода шифруется защитой Windows (проверка расшифровкой) и ложится на диск (settings.homeTokenEnc и его сервер
+// homeServer) той же атомарной записью, что номер теста и тестовый ключ: на диске не бывает тестового ключа без своего. Переход из теста
+// в другой тест его не трогает (прежний тестовый ключ закрывается на сервере), он переживает перезапуск программы. Свой ключ уходит
+// только на свой сервер: тестовый — только на том же сервере, что и свой вход. Не узнать, тестовый ли новый ключ (нет связи), или свой
+// ещё не расшифровался — переход отменён, свой на месте. Окнам — только признаки hasHome и testId (shown). Свой ключ устарел (401) —
+// возврат открывает обычную форму входа, данные на сервере целы.
+// Сайт переключается раньше, чем прежний ключ закрывается на сервере; «вышли» от старой страницы до её перезагрузки (её запрос поймал
+// 401 на прежнем ключе — сайт стёр вход) не считается выходом: sitePending — до site-login:get новой страницы.
+let sitePending = false;
+/** Сайт в главном окне — с этим ключом ("" — без входа): кладём ему localStorage «maid.token» и перезагружаем (или идём на to). */
+function siteUse(key, to) {
+  if (!mainWin || mainWin.isDestroyed() || mainWin.isLocal) return;
+  const put = key ? `localStorage.setItem("maid.token", ${JSON.stringify(key)});` : `localStorage.removeItem("maid.token");`;
+  sitePending = true;
+  mainWin.webContents.executeJavaScript(`${put} ${to ? `location.assign(${JSON.stringify(to)})` : "location.reload()"};`).catch(() => { sitePending = false; });
+}
+/** Чей ключ: GET /api/me с ним → { status, me }; нет связи — status 0. */
+async function whoIs(base, key) {
+  try {
+    const res = await fetch(new URL("/api/me", base), { headers: { Authorization: `Bearer ${key}`, ...maidHeaders() }, signal: AbortSignal.timeout(30_000) });
+    return { status: res.status, me: await res.json().catch(() => null) };
+  } catch (e) {
+    maidLog("тестовый: /api/me без ответа:", e?.cause?.code ?? e?.name ?? e?.message ?? e);
+    return { status: 0, me: null };
+  }
+}
+/** Номер тестового аккаунта (is_test === 1), 0 — обычный аккаунт, null — не узнать (нет связи, ошибка сервера). */
+const testOf = (r) => (r.status !== 200 || !r.me || !Number.isInteger(r.me.id) ? null : r.me.is_test === 1 ? r.me.id : r.me.is_test === 0 ? 0 : null);
+/** Закрыть ключ на сервере (POST /api/logout); не вышло — сессия умрёт сама через 90 дней простоя. */
+async function dropKey(base, key) {
+  if (!base || !key) return;
+  try {
+    const res = await fetch(new URL("/api/logout", base), { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...maidHeaders() }, body: "{}", signal: AbortSignal.timeout(15_000) });
+    if (!res.ok && res.status !== 401) maidLog("тестовый: выход ключом — сервер ответил", res.status);
+  } catch (e) {
+    maidLog("тестовый: выход ключом без ответа:", e?.cause?.code ?? e?.name ?? e?.message ?? e);
+  }
+}
+/** Отложить свой ключ (программа не в тесте): зашифровать и проверить расшифровкой — в память, вместе с его сервером. На диск он
+ *  ложится той же записью (saveSettings), что номер теста и тестовый ключ. Прежний отложенный без теста — сирота, не свой: заменяется.
+ *  Своего ключа нет — откладывать нечего; он есть, но ещё не расшифровался (tokenEnc) — отказ: иначе тестовый затёр бы его. */
+function holdHome(cur) {
+  delete settings.homeTokenEnc;
+  delete settings.homeServer;
+  if (!cur) {
+    if (tokenEnc) throw new Error("Свой ключ ещё не расшифровался (защита Windows) — переход в тестовый отменён, попробуйте через минуту.");
+    return;
+  }
+  if (!canEncrypt()) throw new Error("Защита Windows недоступна — свой ключ некуда надёжно отложить. Переход в тестовый отменён.");
+  const enc = safeStorage.encryptString(cur).toString("base64");
+  if (safeStorage.decryptString(Buffer.from(enc, "base64")) !== cur) throw new Error("Свой ключ не отложился (защита Windows). Переход в тестовый отменён.");
+  settings.homeTokenEnc = enc;
+  settings.homeServer = serverBase();
+  maidLog("тестовый: свой ключ отложен");
+}
+/** Свой отложенный ключ. Не расшифровался — ошибка, отложенный остаётся на месте (попробовать ещё раз). */
+function homeKey() {
+  let key = "";
+  try { key = safeStorage.decryptString(Buffer.from(settings.homeTokenEnc, "base64")); } catch (e) { maidLog("тестовый: свой ключ не расшифровался:", e?.message ?? e); }
+  if (!keyOk(key)) throw new Error("Свой ключ пока не расшифровался (защита Windows) — попробуйте ещё раз через минуту.");
+  return key;
+}
+/** Смена аккаунта: счёт фич и падения прежнего — выбросить (usage.js, crashes.js), записать (одной записью — ключ, свой отложенный и
+ *  номер теста), меню значка, сайт (key не задан — сайт не трогать: он сам и сменил вход), окна. */
+function afterSwitch(key, to) {
+  usage?.drop();
+  crashes?.drop();
+  saveSettings();
+  refreshTray();
+  if (key !== undefined) siteUse(key, to);
+  broadcast("changed", null);
+}
+// Переходы — по одному: двойной щелчок «Вернуться» или вход в тест посреди возврата не должны перепутать ключи.
+let switching = Promise.resolve();
+const inTurn = (fn) => (switching = switching.then(fn, fn));
+/** Ключ key с сервера base вот-вот станет ключом программы (вход логином и паролем, вход на сайте): тестовый ли он и что со своим
+ *  ключом. null — аккаунт не сменился между тестом и обычным; { old, oldBase } — сменился (old — прежний тестовый ключ: закрыть
+ *  на сервере oldBase после того, как сайт получит новый; "" — закрывать нечего). Не узнать, тестовый ли (нет связи), а свой вход
+ *  есть — отказ (ошибка): молча поставить новый ключ значило бы потерять свой или не дать вернуться в него. */
+async function testTurn(base, key) {
+  const cur = token();
+  if (key === cur) return null;
+  const id = testOf(await whoIs(base, key));
+  const was = serverBase();
+  if (id === null) {
+    if (!cur && !tokenEnc && !settings.testId) return null; // своего входа нет — терять нечего, обычный вход
+    throw new Error("Нет связи с сервером — не узнать, какой это аккаунт. Свой вход не тронут, попробуйте войти ещё раз.");
+  }
+  if (id > 0) {
+    if (base !== was && (cur || tokenEnc || settings.testId)) throw new Error(`Тестовый аккаунт — только на том же сервере, что и ваш вход (${was}). Переход отменён.`);
+    const old = settings.testId ? cur : ""; // тест → тест: свой ключ на месте, прежний тестовый закрыть
+    if (!settings.testId) holdHome(cur);
+    settings.testId = id;
+    maidLog(`тестовый: вход в тестовый #${id}`);
+    return { old, oldBase: was };
+  }
+  if (!settings.testId) return null;
+  // Из теста вошли обычным аккаунтом (своим логином и паролем): тест закрыт, отложенный ключ больше не нужен.
+  delete settings.homeTokenEnc;
+  delete settings.homeServer;
+  delete settings.testId;
+  maidLog("тестовый: вошли обычным аккаунтом — тест закрыт");
+  return { old: cur, oldBase: was };
+}
+/** Войти в тестовый аккаунт ключом из админки: только ключ тестового (GET /api/me → is_test === 1). */
+async function enterTest(key) {
+  if (!keyOk(key)) throw new Error("Неверный ключ.");
+  const base = serverBase();
+  if (!base) throw new Error("Неверный адрес сервера в настройках.");
+  const cur = token();
+  if (key === cur) return;
+  const r = await whoIs(base, key);
+  const id = testOf(r);
+  if (!id) throw new Error(r.status === 0 ? "Нет связи с сервером." : r.status === 401 ? "Сервер не принял ключ." : "Это не тестовый аккаунт — программа его не принимает.");
+  const old = settings.testId ? cur : ""; // тест → тест: прежний тестовый закрыть, свой на месте
+  if (!settings.testId) holdHome(cur); // свой ключ не расшифровался — отказ здесь, ничего не тронуто
+  settings.token = key;
+  tokenEnc = "";
+  settings.testId = id;
+  loginStale = false;
+  maidLog(`тестовый: вход в тестовый #${id} из админки`);
+  afterSwitch(key, "/"); // одна запись на диск: тестовый ключ, номер и свой отложенный — вместе
+  await dropKey(base, old);
+}
+/** Вернуться в свой аккаунт: свой ключ — на место (проверка — только на его сервере), сайт — на свой ключ, потом тестовый ключ
+ *  закрыть на сервере. Свой устарел (401) — форма входа. */
+async function switchBack(why) {
+  if (!settings.testId && !settings.homeTokenEnc) return; // уже в своём (второй щелчок)
+  const base = serverBase(); // сервер тестового ключа
+  const homeBase = settings.homeTokenEnc ? (settings.homeServer ?? base) : base; // свой ключ — только на свой сервер
+  const home = settings.homeTokenEnc ? homeKey() : ""; // не расшифровался — ошибка, ничего не тронуто
+  const live = home && homeBase ? (await whoIs(homeBase, home)).status !== 401 : false; // нет связи — ключ оставить: проверит первый запрос
+  const cur = token();
+  settings.token = live ? home : "";
+  if (homeBase) settings.server = homeBase;
+  tokenEnc = "";
+  loginStale = !live;
+  delete settings.homeTokenEnc;
+  delete settings.homeServer;
+  delete settings.testId;
+  maidLog(`тестовый: возврат в свой аккаунт (${why})`, live ? "" : home ? "— свой ключ устарел, нужен вход" : "— своего ключа не было, нужен вход");
+  if (homeBase === base) afterSwitch(settings.token);
+  else {
+    // Свой сервер — другой: страница тестового сервера свой ключ не видит — окно сайта открывается заново, на своём сервере.
+    afterSwitch();
+    if (mainWin && !mainWin.isDestroyed() && !mainWin.isLocal) mainWin.loadURL(homeBase);
+  }
+  if (cur && cur !== home) await dropKey(base, cur);
+}
+// Сайт в главном окне, страница админки (/admin…) на сервере из настроек — и только она.
+ipcMain.handle("settings:enter-test", async (e, key) => {
+  let admin = false;
+  try { admin = fromApp(e) && new URL(e.senderFrame.url).pathname.startsWith("/admin"); } catch { /* нет адреса — не админка */ }
+  if (!admin) {
+    maidLog("тестовый: вход не со страницы админки");
+    return { ok: false, error: "неверный запрос" };
+  }
+  try {
+    await inTurn(() => enterTest(typeof key === "string" ? key : ""));
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err?.message ?? err) };
+  }
+});
+// Окно настроек, виджет или сайт в главном окне.
+ipcMain.handle("settings:switch-back", async (e) => {
+  if (!isSettingsPage(e.sender) && !fromWidget(e) && !fromApp(e)) throw new Error("неверный запрос");
+  await inTurn(() => switchBack(clientOfWin(e.sender) === "widget" ? "виджет" : "окно"));
+  return shown();
+});
+function backFromTray() {
+  void inTurn(() => switchBack("меню значка")).catch((err) => {
+    maidLog("тестовый: возврат из меню не вышел:", err?.message ?? err);
+    new Notification({ title: "Горничная", body: String(err?.message ?? err) }).show();
+  });
+}
 // --- раздел «Виджет» полной версии (сайт в главном окне, preload-app.js) ---
 // Только из главного окна и только со страницы сервера из настроек; только эти поля и только допустимые значения.
 const fromApp = (e) => {
@@ -1028,11 +1230,30 @@ ipcMain.on("site-login:get", (e) => {
     e.returnValue = "";
     return maidLog("вход сайта: просьба не из главного окна");
   }
+  sitePending = false; // новая страница — её «вышли» снова считается
   e.returnValue = token() || "";
 });
 ipcMain.on("site-login:keep", (e, t) => {
   if (!fromApp(e)) return maidLog("вход сайта: пришёл не из главного окна");
   if (typeof t !== "string" || (t && !keyOk(t))) return;
+  // Программа только что сменила сайту ключ (siteUse), а старая страница ещё жива: её «вышли» (запрос поймал 401 на прежнем ключе) —
+  // не выход. Новая страница возьмёт ключ программы (site-login:get).
+  if (!t && sitePending) return maidLog("вход сайта: выход старой страницы после смены ключа — не в счёт");
+  // В тестовом аккаунте (testId): вышли на сайте — возврат в свой аккаунт, а не выход совсем; вошли на сайте — тот же разбор,
+  // что у входа логином и паролем (testTurn: тест → тест — свой ключ на месте, обычный аккаунт — тест закрыт).
+  if (settings.testId && t !== settings.token) {
+    void inTurn(async () => {
+      if (!t) return switchBack("вышли на сайте");
+      const turned = await testTurn(serverBase(), t);
+      settings.token = t;
+      tokenEnc = "";
+      loginStale = false;
+      maidLog("вошли на сайте — это и вход программы");
+      afterSwitch(); // сайт уже с этим ключом — не перезагружать
+      if (turned?.old) await dropKey(turned.oldBase, turned.old);
+    }).catch((err) => maidLog("тестовый: смена входа на сайте:", err?.message ?? err));
+    return;
+  }
   if (t) {
     if (t === settings.token) return;
     settings.token = t;

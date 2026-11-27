@@ -795,6 +795,12 @@ CREATE TABLE IF NOT EXISTS prompt_active (
   updated_by INTEGER NOT NULL DEFAULT 0
 );
 `,
+  // Шаг 41: тестовые аккаунты (27.11.2026, admin-tests.ts). users.is_test = 1 — аккаунт для проверки программы на ПК, созданный из
+  // админки → «Тестовые аккаунты»: без Telegram (chat_id NULL), план friend. Не админ (auth.ts isAdmin), не в счёте людей, регистраций,
+  // планов, аналитики и падений выпуска; расход ИИ — отдельной строкой «тесты».
+  `
+ALTER TABLE users ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0;
+`,
 ];
 
 /** Строка «Счёта OpenRouter» (шаг 38, openrouter-bill.ts): день UTC × модель × провайдер; деньги — миллионные доллара. */
@@ -863,6 +869,8 @@ const tariffRow = (r: Record<string, unknown>): TariffHistoryRow => ({
 /** Аккаунт в сводке владельца: last_at — последнее сообщение (ISO), recent — сообщений за период, month/total — расход ИИ в долларах. */
 export interface AccountRow {
   id: number; name: string; login: string | null; chat_id: string | null; created_at: string; last_at: string | null; recent: number; month: number; total: number;
+  /** Тестовый аккаунт (users.is_test, шаг 41). */
+  test: boolean;
 }
 
 /** Строка расхода: день (UTC) × на что × модель. cost — доллары. */
@@ -935,6 +943,8 @@ export interface User {
   trial_len_days: number | null;
   /** Когда аккаунт заморозил админ (шаг 33, admin-account.ts; ISO); null или нет поля — не заморожен (access.ts isFrozen). */
   frozen_at?: string | null;
+  /** 1 — тестовый аккаунт из админки (шаг 41, admin-tests.ts): не админ, не в счёте людей и аналитики; 0 — обычный. */
+  is_test?: number;
 }
 
 /** Оплата Telegram Stars (billing.ts): kind — first | renew | once; refunded_at — когда вернули. */
@@ -1198,7 +1208,8 @@ export const ACCOUNT_TABLES = [
 ] as const;
 /** Деньги остаются, но отвязываются от человека — суммы и счёт людей в отчётах не меняются: оплаты и журнал подписки — на номер −id
  *  (отрицательных у живых нет; разные удалённые — разные плательщики), Telegram id плательщика в payments стирается; расход модели
- *  (llm_usage, llm_calls) — на 0, «без человека», как записи до учёта по людям (строки llm_usage одного дня складываются). */
+ *  (llm_usage, llm_calls) — на 0, «без человека», как записи до учёта по людям (строки llm_usage одного дня складываются); у
+ *  тестового аккаунта (users.is_test) — на −id: строка «тесты» в расходе. Сброс тестового (wipeAccountData) деньги не трогает. */
 export const ACCOUNT_DETACH_TABLES = ["payments", "billing_events", "llm_usage", "llm_calls"] as const;
 /** user_id здесь — админ, сделавший действие (не тот, о ком оно); админа удалить нельзя — строки не трогаются. Строки журнала админа
  *  про удалённого («#N …» в detail) тоже остаются: там только номер. Список — ровно таблицы со столбцом user_id (account-delete.test
@@ -1213,6 +1224,20 @@ export const USER_KV_PREFIX = [
 ] as const;
 /** Наибольший номер удалённого аккаунта (SQLite: новый номер — больше него, Store.newUserId). */
 export const USERS_GONE_KEY = "users:gone_max";
+/** «Сбросить к чистому» тестовый аккаунт (Store.wipeAccountData, admin-tests.ts): поля users, которые возвращаются к значениям по
+ *  умолчанию схемы (как у новой записи), и поля, которые остаются (номер, вход, пояс, план и срок, заморозка, признак теста). Каждый
+ *  столбец users — ровно в одном из двух списков: account-delete.test сверяет со схемой (и значения — с DEFAULT в SQLite). */
+export const USER_RESET = {
+  name: "", persona: "strict", morning_time: "09:00", tomorrow_time: "20:00", evening_time: "22:00", event_lead_min: 60, game_alerts: 1,
+  game_first_min: 120, game_every_min: 120, event_reminders: "", habit_first: "12:00", habit_last: "23:00", maid_hair: "red", maid_eyes: "violet",
+  address: "master", city: "", wake: 7, bed: "auto", ask: "", weather_rain: 0,
+} as const satisfies Partial<Record<keyof User, string | number>>;
+export const USER_KEEP = [
+  "id", "login", "password_hash", "chat_id", "tz", "created_at", "plan", "access_until", "tg_user_id", "sub_charge_id", "sub_canceled",
+  "trial_len_days", "frozen_at", "is_test",
+] as const satisfies readonly (keyof User)[];
+/** Строки не тестовых людей (users.is_test, шаг 41): условие для таблиц со столбцом user_id. */
+const NOT_TEST_SQL = "user_id NOT IN (SELECT id FROM users WHERE is_test = 1)";
 
 export class Store {
   private constructor(readonly driver: Driver) {}
@@ -1308,22 +1333,25 @@ export class Store {
     login: string; passwordHash: string; name?: string; tz: string; chatId?: string | null; plan?: string; accessUntil?: string | null; at?: Date;
     /** Вид бесплатного срока (users.trial_len_days): длина пробы в днях, 0 — подарок. */
     trialLenDays?: number | null;
+    /** Тестовый аккаунт из админки (users.is_test, admin-tests.ts). */
+    isTest?: boolean;
   }): Promise<User> {
     const [idCol, idVal] = this.newUserId();
     const id = await this.insert(
-      `INSERT INTO users (${idCol}login, password_hash, chat_id, name, tz, created_at, plan, access_until, trial_len_days) VALUES (${idVal}?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (${idCol}login, password_hash, chat_id, name, tz, created_at, plan, access_until, trial_len_days, is_test) VALUES (${idVal}?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       u.login.toLowerCase(), u.passwordHash, u.chatId ?? null, u.name ?? "", u.tz, (u.at ?? new Date()).toISOString(), u.plan ?? "", u.accessUntil ?? null,
-      u.trialLenDays ?? null,
+      u.trialLenDays ?? null, u.isTest ? 1 : 0,
     );
     return (await this.user(id))!;
   }
-  /** Сколько учётных записей создано с since (ISO) — потолок регистраций в час (invite.ts signUp, тариф signupsPerHour). */
+  /** Сколько учётных записей создано с since (ISO) — потолок регистраций в час (invite.ts signUp, тариф signupsPerHour). Тестовые
+   *  (is_test) — не в счёте: пачка тестов не закрывает регистрацию людям. */
   async countUsersSince(since: string): Promise<number> {
-    return Number((await this.get<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE created_at >= ?", since))?.n ?? 0);
+    return Number((await this.get<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? AND is_test = 0", since))?.n ?? 0);
   }
-  /** Новые с since (ISO): для сводки владельцу раз в сутки — только счёт, логин и план (без chat id и текстов). */
+  /** Новые с since (ISO): для сводки владельцу раз в сутки — только счёт, логин и план (без chat id и текстов). Без тестовых. */
   async usersCreatedSince(since: string): Promise<{ id: number; login: string | null; plan: string }[]> {
-    const rows = await this.all<Record<string, unknown>>("SELECT id, login, plan FROM users WHERE created_at >= ? ORDER BY id", since);
+    const rows = await this.all<Record<string, unknown>>("SELECT id, login, plan FROM users WHERE created_at >= ? AND is_test = 0 ORDER BY id", since);
     return rows.map((r) => ({ id: Number(r.id), login: r.login == null ? null : String(r.login), plan: String(r.plan ?? "") }));
   }
   /** Кто платит этим Telegram (tg_user_id или chat_id). */
@@ -1456,14 +1484,14 @@ export class Store {
     const r = await this.get<{ n: number }>("SELECT SUM(amount) AS n FROM payments WHERE paid_at >= ? AND refunded_at IS NULL AND currency = 'XTR'", since);
     return Number(r?.n ?? 0);
   }
-  /** Сколько людей на каком плане (админка): активные подписки и пробы, у кого срок кончился. */
+  /** Сколько людей на каком плане (админка): активные подписки и пробы, у кого срок кончился. Тестовые (is_test) — не в счёте. */
   async planCounts(now: string): Promise<{ paid: number; trial: number; expired: number; friend: number }> {
     const r = await this.get<Record<string, unknown>>(
       `SELECT SUM(CASE WHEN plan = 'paid' AND access_until >= ? THEN 1 ELSE 0 END) AS paid,
               SUM(CASE WHEN plan = 'trial' AND access_until >= ? THEN 1 ELSE 0 END) AS trial,
               SUM(CASE WHEN plan = 'free' OR (plan IN ('trial', 'paid') AND (access_until IS NULL OR access_until < ?)) THEN 1 ELSE 0 END) AS expired,
               SUM(CASE WHEN plan = 'friend' THEN 1 ELSE 0 END) AS friend
-       FROM users`, now, now, now,
+       FROM users WHERE is_test = 0`, now, now, now,
     );
     const n = (v: unknown) => Number(v ?? 0) || 0;
     return { paid: n(r?.paid), trial: n(r?.trial), expired: n(r?.expired), friend: n(r?.friend) };
@@ -2221,7 +2249,7 @@ export class Store {
    *  Строка с id 0 — расход ничей или записанный до учёта по людям. */
   async accounts(month: string, since: string): Promise<AccountRow[]> {
     const users = await this.all<Record<string, unknown>>(
-      `SELECT u.id, u.name, u.login, u.chat_id, u.created_at,
+      `SELECT u.id, u.name, u.login, u.chat_id, u.created_at, u.is_test,
          (SELECT MAX(received_at) FROM messages m WHERE m.user_id = u.id) AS last_at,
          (SELECT COUNT(*) FROM messages m WHERE m.user_id = u.id AND m.received_at >= ?) AS recent
        FROM users u ORDER BY u.id`, since,
@@ -2233,10 +2261,10 @@ export class Store {
     const rows: AccountRow[] = users.map((u) => ({
       id: Number(u.id), name: String(u.name ?? ""), login: u.login == null ? null : String(u.login), chat_id: u.chat_id == null ? null : String(u.chat_id),
       created_at: String(u.created_at ?? ""), last_at: u.last_at == null ? null : String(u.last_at), recent: Number(u.recent ?? 0),
-      month: cost.get(Number(u.id))?.month ?? 0, total: cost.get(Number(u.id))?.total ?? 0,
+      month: cost.get(Number(u.id))?.month ?? 0, total: cost.get(Number(u.id))?.total ?? 0, test: Number(u.is_test ?? 0) === 1,
     }));
     const nobody = cost.get(0);
-    if (nobody && nobody.total > 0) rows.push({ id: 0, name: "", login: null, chat_id: null, created_at: "", last_at: null, recent: 0, ...nobody });
+    if (nobody && nobody.total > 0) rows.push({ id: 0, name: "", login: null, chat_id: null, created_at: "", last_at: null, recent: 0, ...nobody, test: false });
     return rows;
   }
   async kvGet(key: string): Promise<string | undefined> {
@@ -2439,42 +2467,86 @@ export class Store {
    *  (строка журнала админа: не записалась — не удалено ничего). */
   async deleteAccount(id: number, extra: ((n: { deleted: number; detached: number }) => Promise<void>) | null = null): Promise<{ deleted: number; detached: number }> {
     return this.transaction(async () => {
-      let deleted = 0, detached = 0;
-      const del = async (sql: string, ...args: unknown[]) => { deleted += await this.run(sql, ...args); };
-      // Отметка /paysupport (bot.ts) — по Telegram id, не по номеру: взять его, пока запись users есть (в личке chat_id = tg id).
-      const me = await this.get<{ chat_id: unknown; tg_user_id: unknown }>("SELECT chat_id, tg_user_id FROM users WHERE id = ?", id);
-      for (const t of new Set([me?.tg_user_id, me?.chat_id].map((x) => String(x ?? "")).filter(Boolean))) await del("DELETE FROM kv WHERE key LIKE ?", `paysupport:${t}:%`);
-      // kv по строкам человека — пока строки есть: долг разбора и повтор (по сообщению), раскладка серии (по плану), отметки
-      // «уже напомнила» о датах и привычках (по строке).
-      await del(
-        `DELETE FROM kv WHERE key IN (SELECT ('owe:' || id) FROM messages WHERE user_id = ?) OR key IN (SELECT ('retry:' || id) FROM messages WHERE user_id = ?)
-          OR key IN (SELECT ('series:' || id || ':laid') FROM events WHERE user_id = ?)
-          OR EXISTS (SELECT 1 FROM dates d WHERE d.user_id = ? AND kv.key LIKE ('date:' || d.id || ':%'))
-          OR EXISTS (SELECT 1 FROM habits h WHERE h.user_id = ? AND kv.key LIKE ('habit:' || h.id || ':%'))`,
-        id, id, id, id, id,
-      );
-      const exact = USER_KV_EXACT.map((p) => `${p}:${id}`);
-      await del(`DELETE FROM kv WHERE key IN (${exact.map(() => "?").join(", ")})`, ...exact);
-      for (const p of USER_KV_PREFIX) await del("DELETE FROM kv WHERE key LIKE ? AND key NOT LIKE '%:laid'", `${p}:${id}:%`);
-      await del("DELETE FROM habit_marks WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)", id);
-      for (const t of ACCOUNT_TABLES) await del(`DELETE FROM ${t} WHERE user_id = ?`, id);
-      detached += await this.run("UPDATE payments SET user_id = ?, tg_user_id = '' WHERE user_id = ?", -id, id);
-      detached += await this.run("UPDATE billing_events SET user_id = ? WHERE user_id = ?", -id, id);
-      detached += await this.run(
-        `INSERT INTO llm_usage (day, user_id, kind, model, calls, input, output, micro_usd, priced)
-          SELECT day, 0, kind, model, calls, input, output, micro_usd, priced FROM llm_usage WHERE user_id = ?
-          ON CONFLICT (day, user_id, kind, model) DO UPDATE SET calls = llm_usage.calls + excluded.calls, input = llm_usage.input + excluded.input,
-            output = llm_usage.output + excluded.output, micro_usd = llm_usage.micro_usd + excluded.micro_usd, priced = llm_usage.priced + excluded.priced`,
-        id,
-      );
-      await this.run("DELETE FROM llm_usage WHERE user_id = ?", id);
-      detached += await this.run("UPDATE llm_calls SET user_id = 0 WHERE user_id = ?", id);
-      deleted += await this.run("DELETE FROM users WHERE id = ?", id);
+      const n = await this.wipeRows(id, true);
+      n.deleted += await this.run("DELETE FROM users WHERE id = ?", id);
       const gone = Number((await this.kvGet(USERS_GONE_KEY)) ?? 0);
       if (id > gone) await this.kvSet(USERS_GONE_KEY, String(id));
-      if (extra) await extra({ deleted, detached });
-      return { deleted, detached };
+      if (extra) await extra(n);
+      return n;
     });
+  }
+  /** «Сбросить к чистому» тестовый аккаунт (admin-tests.ts reset) одной транзакцией: те же строки и ключи, что при удалении
+   *  (wipeRows — общая часть с deleteAccount: строки ACCOUNT_TABLES, и входы тоже, ключи kv), а сама запись users остаётся с тем же
+   *  номером и входом: поля USER_RESET — к значениям по умолчанию. Деньги (ACCOUNT_DETACH_TABLES: расход модели, оплаты) остаются на
+   *  его номере — запись жива, отвязывать не от кого, и строка «тесты» в расходе не теряет уже потраченное (27.11.2026). extra — в той
+   *  же транзакции (строка журнала). */
+  async wipeAccountData(id: number, extra: ((n: { deleted: number; detached: number }) => Promise<void>) | null = null): Promise<{ deleted: number; detached: number }> {
+    return this.transaction(async () => {
+      const n = await this.wipeRows(id, false);
+      const cols = Object.keys(USER_RESET);
+      await this.run(`UPDATE users SET ${cols.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`, ...Object.values(USER_RESET), id);
+      if (extra) await extra(n);
+      return n;
+    });
+  }
+  /** Общая часть удаления и сброса (без транзакции — её открывает вызывающий): ключи kv с номером человека и номерами его строк,
+   *  все строки ACCOUNT_TABLES (и отметки его привычек); detach — деньги отвязать (ACCOUNT_DETACH_TABLES, только при удалении).
+   *  Расход модели удалённого тестового (users.is_test) — на номер −id, а не на 0: строка «тесты» в расходе (admin-stats.ts) его
+   *  видит и после удаления (отрицательных номеров у расхода людей нет). Запись users не трогается. */
+  private async wipeRows(id: number, detach: boolean): Promise<{ deleted: number; detached: number }> {
+    let deleted = 0, detached = 0;
+    const del = async (sql: string, ...args: unknown[]) => { deleted += await this.run(sql, ...args); };
+    // Отметка /paysupport (bot.ts) — по Telegram id, не по номеру: взять его, пока запись users есть (в личке chat_id = tg id).
+    const me = await this.get<{ chat_id: unknown; tg_user_id: unknown; is_test: unknown }>("SELECT chat_id, tg_user_id, is_test FROM users WHERE id = ?", id);
+    for (const t of new Set([me?.tg_user_id, me?.chat_id].map((x) => String(x ?? "")).filter(Boolean))) await del("DELETE FROM kv WHERE key LIKE ?", `paysupport:${t}:%`);
+    // kv по строкам человека — пока строки есть: долг разбора и повтор (по сообщению), раскладка серии (по плану), отметки
+    // «уже напомнила» о датах и привычках (по строке).
+    await del(
+      `DELETE FROM kv WHERE key IN (SELECT ('owe:' || id) FROM messages WHERE user_id = ?) OR key IN (SELECT ('retry:' || id) FROM messages WHERE user_id = ?)
+        OR key IN (SELECT ('series:' || id || ':laid') FROM events WHERE user_id = ?)
+        OR EXISTS (SELECT 1 FROM dates d WHERE d.user_id = ? AND kv.key LIKE ('date:' || d.id || ':%'))
+        OR EXISTS (SELECT 1 FROM habits h WHERE h.user_id = ? AND kv.key LIKE ('habit:' || h.id || ':%'))`,
+      id, id, id, id, id,
+    );
+    const exact = USER_KV_EXACT.map((p) => `${p}:${id}`);
+    await del(`DELETE FROM kv WHERE key IN (${exact.map(() => "?").join(", ")})`, ...exact);
+    for (const p of USER_KV_PREFIX) await del("DELETE FROM kv WHERE key LIKE ? AND key NOT LIKE '%:laid'", `${p}:${id}:%`);
+    await del("DELETE FROM habit_marks WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)", id);
+    for (const t of ACCOUNT_TABLES) await del(`DELETE FROM ${t} WHERE user_id = ?`, id);
+    if (!detach) return { deleted, detached };
+    const spendTo = Number(me?.is_test ?? 0) === 1 ? -id : 0;
+    detached += await this.run("UPDATE payments SET user_id = ?, tg_user_id = '' WHERE user_id = ?", -id, id);
+    detached += await this.run("UPDATE billing_events SET user_id = ? WHERE user_id = ?", -id, id);
+    detached += await this.run(
+      `INSERT INTO llm_usage (day, user_id, kind, model, calls, input, output, micro_usd, priced)
+        SELECT day, ${Math.trunc(spendTo)}, kind, model, calls, input, output, micro_usd, priced FROM llm_usage WHERE user_id = ?
+        ON CONFLICT (day, user_id, kind, model) DO UPDATE SET calls = llm_usage.calls + excluded.calls, input = llm_usage.input + excluded.input,
+          output = llm_usage.output + excluded.output, micro_usd = llm_usage.micro_usd + excluded.micro_usd, priced = llm_usage.priced + excluded.priced`,
+      id,
+    );
+    await this.run("DELETE FROM llm_usage WHERE user_id = ?", id);
+    detached += await this.run("UPDATE llm_calls SET user_id = ? WHERE user_id = ?", spendTo, id);
+    return { deleted, detached };
+  }
+  /** Тестовые аккаунты (admin-tests.ts): номер, план, когда создан, заморожен ли, последний вход (когда, клиент, версия) и сколько
+   *  входов. Без логина, имени и chat id. */
+  async testAccounts(): Promise<{ id: number; plan: string; created_at: string; frozen_at: string | null; last_seen: string | null; client: string; version: string; sessions: number }[]> {
+    const rows = await this.all<Record<string, unknown>>(
+      `SELECT u.id, u.plan, u.created_at, u.frozen_at,
+         (SELECT MAX(s.last_seen) FROM sessions s WHERE s.user_id = u.id) AS last_seen,
+         (SELECT s.client FROM sessions s WHERE s.user_id = u.id ORDER BY s.last_seen DESC LIMIT 1) AS client,
+         (SELECT s.version FROM sessions s WHERE s.user_id = u.id ORDER BY s.last_seen DESC LIMIT 1) AS version,
+         (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id) AS sessions
+       FROM users u WHERE u.is_test = 1 ORDER BY u.id`,
+    );
+    return rows.map((r) => ({
+      id: Number(r.id), plan: String(r.plan ?? ""), created_at: String(r.created_at ?? ""), frozen_at: r.frozen_at == null ? null : String(r.frozen_at),
+      last_seen: r.last_seen == null ? null : String(r.last_seen), client: String(r.client ?? ""), version: String(r.version ?? ""), sessions: Number(r.sessions ?? 0),
+    }));
+  }
+  /** Номера тестовых аккаунтов (users.is_test) — чтобы отчёты админки и аналитика их не считали. */
+  async testUserIds(): Promise<Set<number>> {
+    return new Set((await this.all<{ id: number }>("SELECT id FROM users WHERE is_test = 1")).map((r) => Number(r.id)));
   }
   /** Хвосты удалённых (номер ≤ USERS_GONE_KEY, записи users нет): то, что дописали уже начатые до удаления дела — разбор сообщения
    *  после ответа модели, обход планировщика по старому списку, пачка счётчиков фич. Удаляются так же, как в deleteAccount: строки
@@ -2627,19 +2699,20 @@ export class Store {
       }
     });
   }
-  /** По версиям с fromDay: людей с этой версией, из них с падением, падений всего. */
+  /** По версиям с fromDay: людей с этой версией, из них с падением, падений всего. Тестовые ПК (users.is_test) — не в счёте: их
+   *  падения не ставят выпуск на паузу (releases.ts, правило release_crash). */
   async crashVersions(fromDay: string): Promise<{ version: string; active: number; crashed: number; crashes: number }[]> {
     const rows = await this.all<Record<string, unknown>>(
       `SELECT version, COUNT(DISTINCT user_id) AS active, COUNT(DISTINCT CASE WHEN crashes > 0 THEN user_id END) AS crashed,
-        SUM(crashes) AS crashes FROM desktop_days WHERE day_key >= ? GROUP BY version`, fromDay,
+        SUM(crashes) AS crashes FROM desktop_days WHERE day_key >= ? AND ${NOT_TEST_SQL} GROUP BY version`, fromDay,
     );
     return rows.map((r) => ({ version: String(r.version), active: Number(r.active), crashed: Number(r.crashed ?? 0), crashes: Number(r.crashes ?? 0) }));
   }
-  /** По дням с fromDay (все версии): людей с программой, из них с падением, падений. */
+  /** По дням с fromDay (все версии): людей с программой, из них с падением, падений. Без тестовых ПК. */
   async crashDays(fromDay: string): Promise<{ day: string; active: number; crashed: number; crashes: number }[]> {
     const rows = await this.all<Record<string, unknown>>(
       `SELECT day_key AS day, COUNT(DISTINCT user_id) AS active, COUNT(DISTINCT CASE WHEN crashes > 0 THEN user_id END) AS crashed,
-        SUM(crashes) AS crashes FROM desktop_days WHERE day_key >= ? GROUP BY day_key ORDER BY day_key`, fromDay,
+        SUM(crashes) AS crashes FROM desktop_days WHERE day_key >= ? AND ${NOT_TEST_SQL} GROUP BY day_key ORDER BY day_key`, fromDay,
     );
     return rows.map((r) => ({ day: String(r.day), active: Number(r.active), crashed: Number(r.crashed ?? 0), crashes: Number(r.crashes ?? 0) }));
   }
@@ -2729,14 +2802,15 @@ export class Store {
     const early = (v: string | null) => (v == null ? mark : mark == null ? v : v.slice(0, 10) <= mark.slice(0, 10) ? v : mark);
     return { payments: s(r?.payments), billing_events: early(s(r?.billing_events)), feature_events: s(r?.feature_events), gate: early(s(r?.gate)), llm_calls: s(r?.llm_calls), presence: s(r?.presence) };
   }
-  /** Люди для аналитики: пояс, когда пришли, план и срок. owner — chat id среди owners (сам chat id наружу не идёт). */
-  async analyticsUsers(owners: string[]): Promise<{ id: number; tz: string; created_at: string; plan: string; access_until: string | null; sub_canceled: number; trial_len_days: number | null; owner: boolean }[]> {
-    const rows = await this.all<Record<string, unknown>>("SELECT id, tz, created_at, plan, access_until, sub_canceled, trial_len_days, chat_id FROM users ORDER BY id");
+  /** Люди для аналитики: пояс, когда пришли, план и срок. owner — chat id среди owners (сам chat id наружу не идёт); test — тестовый
+   *  аккаунт (users.is_test: admin-analytics.ts его отбрасывает). */
+  async analyticsUsers(owners: string[]): Promise<{ id: number; tz: string; created_at: string; plan: string; access_until: string | null; sub_canceled: number; trial_len_days: number | null; owner: boolean; test: boolean }[]> {
+    const rows = await this.all<Record<string, unknown>>("SELECT id, tz, created_at, plan, access_until, sub_canceled, trial_len_days, chat_id, is_test FROM users ORDER BY id");
     return rows.map((r) => ({
       id: Number(r.id), tz: String(r.tz ?? ""), created_at: String(r.created_at ?? ""), plan: String(r.plan ?? ""),
       access_until: r.access_until == null ? null : String(r.access_until), sub_canceled: Number(r.sub_canceled ?? 0) || 0,
       trial_len_days: r.trial_len_days == null ? null : Number(r.trial_len_days),
-      owner: r.chat_id != null && owners.includes(String(r.chat_id)),
+      owner: r.chat_id != null && owners.includes(String(r.chat_id)), test: Number(r.is_test ?? 0) === 1,
     }));
   }
   /** Оплаты звёздами (XTR) с paid_at раньше beforeIso: человек, сумма, вид, сроки, возврат. Без payload, charge_id и Telegram id. */

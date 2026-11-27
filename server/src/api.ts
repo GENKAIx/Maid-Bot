@@ -8,6 +8,7 @@ import { PREVIEW_PREFIX, PreviewFiles, PreviewPasses, previewCookie, previewKey,
 import { authByToken, clientMeta, isAdmin, login, LoginGate, tokenHash } from "./auth.ts";
 import { adminJournal, adminUntil, confirmAdminCode, issueAdminCode, leaveAdmin } from "./admin.ts";
 import { accountAction, accountCard, AccountError, accountReason, MAX_ACCOUNT_ID } from "./admin-account.ts";
+import { createTestAccount, testAccountAction, testsView } from "./admin-tests.ts";
 import { adminAudience, adminFeatures, adminHealth, adminOverview, adminPayments, adminQualityReport, adminSpend, adminUsers } from "./admin-stats.ts";
 import { cachedAnalytics, parseAnalyticsQuery } from "./admin-analytics.ts";
 import { acceptUsage, countFeature, countPersona, featureClient, USAGE_MAX_KEYS } from "./feature-events.ts";
@@ -467,6 +468,18 @@ export function createApi(deps: ApiDeps) {
       }
       throw new HttpError(404, "нет такого адреса");
     }
+    // Тестовые аккаунты (admin-tests.ts): список (только #id и числа), создать, ключ для программы на ПК, сбросить к чистому. Причина
+    // обязательна; логин с паролем и ключ — один раз в ответе (в журнал не идут); ключ и сброс — только тестовому (иначе 403).
+    if (m === "GET" && p === "/api/admin/tests") return testsView(store);
+    const tst = /^\/api\/admin\/tests(?:\/(\d{1,12})\/(token|reset))?$/.exec(p);
+    if (tst && m === "POST") {
+      const body = await readJson(req, 20_000);
+      const forget = (x: number) => deps.pipeline.gate?.forget(x);
+      if (!tst[1]) return guardAsync(() => createTestAccount({ store }, u, body));
+      const id = Number(tst[1]);
+      if (id > MAX_ACCOUNT_ID) throw new HttpError(404, `нет аккаунта #${tst[1]}`);
+      return guardAsync(() => testAccountAction({ store, forget }, u, id, tst[2], body));
+    }
     // Тарифы из базы (tariffs.ts): текущие числа, по умолчанию, история и экономика; «Применить» (причина обязательна) и откат —
     // с проверкой чисел (400), строкой истории и записью в журнал админки.
     if (m === "GET" && p === "/api/admin/tariffs") return tariffsView(store);
@@ -746,6 +759,8 @@ export function createApi(deps: ApiDeps) {
         // лимитов в штуках на сегодня и время сброса (друзья, владелец и без доступа — null: без лимита или ИИ закрыт).
         access: { ...accessView(a), price: await priceOf(u, a), today: await todayView(store, u, a) },
         admin: isAdmin(u, auth.via), // пункт «Админка» в меню сайта; сами данные админки — только через /api/admin/* с кодом
+        // Тестовый аккаунт (admin-tests.ts): 1 — да, 0 — нет. Программа на ПК принимает ключ из админки только при is_test === 1.
+        is_test: Number(u.is_test ?? 0) === 1 ? 1 : 0,
         sessions: (await store.sessionsOf(u.id)).map((s) => ({ ...s, current: s.id === mine })),
       };
     }

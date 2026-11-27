@@ -5,6 +5,7 @@ import { Icon } from "../icons";
 import { AdminAudience, AdminFeatures, AdminHealth, AdminLost, AdminOverview, AdminPayments, AdminQuality, AdminSpend, AdminUsers } from "./AdminSections";
 import { AdminTariffs } from "./AdminTariffs";
 import { AdminAccount } from "./AdminAccount";
+import { AdminTests } from "./AdminTests";
 import { AdminAlerts, AdminBackups } from "./AdminAlerts";
 import { AdminLoad } from "./AdminLoad";
 import { AdminCrashes, AdminReleases } from "./AdminReleases";
@@ -135,6 +136,7 @@ function Shell({ section, until, onOut }: { section: string; until: string; onOu
           : section === "analytics" ? <Suspense fallback={<span className="adm-muted">Загрузка…</span>}><AdminAnalytics /></Suspense>
           : section === "users" ? <AdminUsers />
           : section === "account" ? <AdminAccount />
+          : section === "tests" ? <AdminTests />
           : section === "payments" ? <AdminPayments />
           : section === "tariffs" ? <AdminTariffs key="plans" part="plans" />
           : section === "caps" ? <AdminTariffs key="caps" part="caps" />

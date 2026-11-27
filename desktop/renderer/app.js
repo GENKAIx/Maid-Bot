@@ -68,6 +68,7 @@ async function renderSettings() {
   content.innerHTML = `
     <h2>Настройки</h2>
     <div class="form">
+      ${s.testId ? `<div class="row test-strip"><span><b>Тестовый аккаунт #${Number(s.testId)}</b>${s.hasHome ? "" : ` <span class="muted small">· свой ключ не отложен — после выхода войдите своим логином</span>`}</span><button class="primary" id="testBack">${s.hasHome ? "Вернуться в свой" : "Выйти из тестового"}</button></div>` : ""}
       ${logged ? `<div class="row"><span class="muted">Вход выполнен: ${esc(s.server)}</span><button id="relogin">Войти под другим логином</button></div>` : ""}
       <div class="form login-box${logged ? " closed" : ""}" id="loginBox">
         ${s.loginStale ? `<p class="high">Вход устарел: сервер больше не принимает его. Войдите снова.</p>` : ""}
@@ -89,6 +90,15 @@ async function renderSettings() {
       <div class="row"><button class="primary" id="save">Сохранить</button><button id="tnow">Отправить ПК сейчас</button></div>
     </div>`;
   const plain = (e) => String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+  // Тестовый аккаунт (main.js settings:switch-back): тестовый ключ закрывается, свой встаёт на место; свой устарел — форма входа.
+  if ($("#testBack")) $("#testBack").onclick = async () => {
+    toast("Возвращаюсь в свой аккаунт…");
+    try { await maid.switchBack(); } catch (e) { return toast(esc(plain(e))); }
+    today = null;
+    const now = await maid.settings();
+    toast(now.loginStale ? "Свой вход устарел — войдите снова" : "Вы снова в своём аккаунте ✓");
+    renderSettings();
+  };
   if ($("#relogin")) $("#relogin").onclick = () => { $("#loginBox").classList.remove("closed"); $("#login").focus(); };
   // Вход: адрес, логин и пароль — программа получает ключ сама и открывает свой аккаунт (сайт) в этом окне.
   const doLogin = async () => {

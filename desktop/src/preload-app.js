@@ -28,6 +28,10 @@ contextBridge.exposeInMainWorld("maidDesktop", {
   update: () => ipcRenderer.invoke("app:update-get"),
   checkUpdate: () => ipcRenderer.invoke("app:update-check"),
   installUpdate: () => ipcRenderer.invoke("app:update-install"),
+  // Тестовый аккаунт (админка «Тестовые аккаунты», web/src/screens/AdminTests.tsx): войти ключом из админки — только со страницы
+  // /admin (main.js settings:enter-test проверит, что ключ тестового) — и вернуться в свой. Ответ — { ok, error? }.
+  enterTest: (token) => ipcRenderer.invoke("settings:enter-test", token),
+  switchBack: () => ipcRenderer.invoke("settings:switch-back").then(() => ({ ok: true }), (e) => ({ ok: false, error: String(e?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "") })),
   onUpdate: (cb) => {
     const fn = (_e, s) => cb(s);
     ipcRenderer.on("app:update", fn);

@@ -206,6 +206,10 @@ const LATE_MIN = 180;
 /** Напоминание о привычке позже часа уже не шлём. */
 const HABIT_LATE_MIN = 60;
 
+/** Утро, итог дня и закономерности с моделью у тестового аккаунта (users.is_test, admin-tests.ts) — пока его входом пользовались
+ *  не раньше стольких часов назад; иначе — как без доступа к ИИ (без слов горничной): расход ИИ — настоящие деньги. */
+export const TEST_AI_IDLE_HOURS = 24;
+
 function minutesOf(t: string) {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
@@ -219,8 +223,11 @@ export class Scheduler {
   /** Платный доступ (access.ts): можно ли тратить ИИ на человека. Нельзя — утро и итог дня без слов горничной, без закономерностей;
    *  напоминания, вопросы про привычки, даты и копия — как всегда (бесплатно). null — всем можно (тесты); index.ts ставит его всегда. */
   aiFor: ((u: User, now: Date) => boolean) | null = null;
-  /** Модель для этого человека сейчас или null (нет ключа или нет доступа). */
+  /** Тестовые аккаунты без входа за TEST_AI_IDLE_HOURS (считается в начале такта): им модель планировщика не зовётся. */
+  private idleTests = new Set<number>();
+  /** Модель для этого человека сейчас или null (нет ключа, нет доступа или тестовый без входа за сутки). */
   private llmOf(u: User, now: Date): LlmCall | null {
+    if (this.idleTests.has(u.id)) return null;
     return this.llm && (!this.aiFor || this.aiFor(u, now)) ? this.llm : null;
   }
 
@@ -264,6 +271,8 @@ export class Scheduler {
         if (!stale) await this.safeSend(u, r.text, "neutral", buttons, reminderKind(buttons));
         await this.store.markReminder(r.id, stale ? "cancelled" : "sent");
       }
+      const idleSince = new Date(now.getTime() - TEST_AI_IDLE_HOURS * 3600_000).toISOString();
+      this.idleTests = new Set((await this.store.testAccounts()).filter((t) => !t.last_seen || t.last_seen < idleSince).map((t) => t.id));
       for (const u of await this.store.users()) {
         // Утро, итог дня и прочее — для этого человека: расход ИИ на его счёт.
         await asUser(u.id, async () => {

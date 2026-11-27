@@ -409,7 +409,8 @@ function AiView({ labels, d }: ViewProps<AiData>) {
       ]} />
       <Block title="Расход на ИИ" desc="Главная статья трат. Нужен, чтобы цена подписки всегда была выше того, что тратит средний и самый активный человек.">
         <div className="ana-kpis">
-          <Kpi title="Всего за интервал" pair={k.total_micro} fmt={microText} inverse value={microText(k.total_micro.cur)} hint={`все назначения · ${numText(k.calls.cur)} вызовов`} />
+          <Kpi title="Всего за интервал" pair={k.total_micro} fmt={microText} inverse value={microText(k.total_micro.cur)}
+            hint={`все назначения · ${numText(k.calls.cur)} вызовов${k.tests_micro?.cur ? ` · из них тесты ${microText(k.tests_micro.cur)}` : ""}`} />
           <Kpi title="Прогноз на месяц" value={microText(k.forecast_month_micro)} hint="по среднему за 7 дней" />
           <Kpi title="Упёрлись в лимит" pair={k.capped_share} fmt={shareText} inverse value={shareText(k.capped_share.cur)} hint={`активных хоть раз за интервал (${numText(k.capped_users.cur)} чел.)`} />
           <Kpi title="Самый дорогой" value={k.top_user ? microText(k.top_user.micro) : "—"} hint={k.top_user ? `за интервал, номер #${k.top_user.user_id}` : "за интервал никого"} />

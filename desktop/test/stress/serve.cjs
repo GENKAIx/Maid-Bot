@@ -51,6 +51,12 @@ const PORT = Number(process.env.STRESS_PORT) || 8799;
         if (b.latency !== undefined) { const [lo, hi] = [].concat(b.latency); srv.latency = () => lo + Math.random() * ((hi ?? lo) - lo); }
         if (b.latencyOf) srv.latency = (p) => { for (const [re, ms] of Object.entries(b.latencyOf)) if (new RegExp(re).test(p)) return ms; return 0; };
         if (b.token) srv.token = b.token;
+        // Войти «из админки» в тестовый аккаунт #N (как кнопка «Войти в программе на ПК»): {"enterTest": 7}.
+        if (b.enterTest) {
+          h.peek("showMain()");
+          const r = await h.invoke("settings:enter-test", [srv.testKey(b.enterTest)], h.mainWin(), srv.url + "/admin/tests");
+          if (!r.ok) return send(200, { error: r.error });
+        }
         if (b.notice) srv.notices.push({ id: srv.notices.length + 1, text: b.notice, emotion: "neutral", buttons: b.buttons });
         if (b.patch) Object.assign(srv.state, b.patch);
         if (b.weather !== undefined) srv.weather = b.weather; // погода для виджета: {"weather": {day, icon, temp, text, plan, move, sky, …}}

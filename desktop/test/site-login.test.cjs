@@ -14,7 +14,8 @@ const st = { saved: 0, changed: 0, dropped: 0, crashDropped: 0 };
 const settings = { server: "https://maid.example", token: "tok-prog" };
 const box = new Function(
   "ipcMain", "fromApp", "token", "settings", "maidLog", "saveSettings", "refreshTray", "broadcast", "usage", "crashes",
-  "let loginStale = false, tokenEnc = '';" + code + "; return { get stale() { return loginStale; }, setEnc(v) { tokenEnc = v; } };",
+  // sitePending (main.js siteUse): программа сама сменила сайту ключ — здесь не меняла.
+  "let loginStale = false, tokenEnc = '', sitePending = false;" + code + "; return { get stale() { return loginStale; }, setEnc(v) { tokenEnc = v; } };",
 )(
   { on: (name, fn) => (handlers[name] = fn) }, (e) => e.sender === app, () => settings.token, settings,
   (...a) => log.push(a.join(" ")), () => st.saved++, () => {}, (ch) => ch === "changed" && st.changed++,

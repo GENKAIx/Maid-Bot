@@ -476,3 +476,22 @@ body.admin-body { background: #0f1114; }
 .adm-pr-edit { font-family: var(--a-mono); font-size: 12.5px; line-height: 1.5; }
 .adm-pr-vars ul { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .adm-pr .adm-table .adm-notes-past { border-top: 0; padding-top: 0; min-width: 260px; }
+
+/* «Тестовые аккаунты» (27.11.2026, screens/AdminTests.tsx): логин, пароль или ключ один раз — рамкой акцента, с копированием. */
+.adm-ts-acts { justify-content: flex-end; }
+.adm-ts-secret { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--a-accent); border-radius: 10px; background: var(--a-panel-2); }
+.adm-ts-val { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.adm-ts-val code { padding: 4px 8px; border-radius: 6px; background: var(--a-bg); overflow-wrap: anywhere; user-select: all; }
+.adm-acc-test { font-family: var(--a-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--a-accent); color: var(--a-accent); }
+.adm-ts-create { align-items: center; }
+.adm-ts-k { display: none; color: var(--a-muted); }
+/* Телефон: строка таблицы — карточка (номер, создан, вход, входов, состояние в строку; кнопки — под ними). */
+@media (max-width: 520px) {
+  .adm-ts-acts { justify-content: flex-start; }
+  .adm-ts-table thead { display: none; }
+  .adm-ts-table tr { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--a-line); }
+  .adm-ts-table td { display: block; padding: 0; border: 0; text-align: left; }
+  .adm-ts-table td.adm-ts-btns { flex-basis: 100%; padding-top: 6px; }
+  .adm-ts-table tr.adm-al-ch td { flex-basis: 100%; }
+  .adm-ts-k { display: inline; }
+}

@@ -11,7 +11,7 @@ import { hashPassword } from "../src/auth.ts";
 import { Billing, signPayload, type StarsApi } from "../src/billing.ts";
 import { config } from "../src/config.ts";
 import {
-  ACCOUNT_ACTOR_TABLES, ACCOUNT_DETACH_TABLES, ACCOUNT_TABLES, Store, USER_KV_EXACT, USER_KV_PREFIX, USERS_GONE_KEY,
+  ACCOUNT_ACTOR_TABLES, ACCOUNT_DETACH_TABLES, ACCOUNT_TABLES, Store, USER_KEEP, USER_KV_EXACT, USER_KV_PREFIX, USER_RESET, USERS_GONE_KEY,
 } from "../src/db.ts";
 import { PgDriver } from "../src/driver.ts";
 import { countFeature, flushFeatures, resetFeatureEvents } from "../src/feature-events.ts";
@@ -260,6 +260,51 @@ for (const [name, open] of Object.entries(BACKENDS)) {
       const card = (await s.call(`/api/admin/account/${nu.id}`)).body;
       assert.deepEqual([card.payments.length, card.log.length], [0, 0], "у нового — ни чужих оплат, ни чужого журнала");
       assert.equal((await s.store.ensureUser("13", "Новый", TZ)).id > nu.id, true, "и первый вход из бота — тоже новый номер");
+    } finally {
+      await s.close();
+    }
+  });
+
+  // «Сбросить к чистому» тестовый аккаунт (admin-tests.ts reset, Store.wipeAccountData) — по тем же спискам, что удаление (общая
+  // часть wipeRows): новая таблица с user_id без решения роняет тест выше, а здесь видно, что сброс её тоже чистит.
+  test(`сбросить тестовый к чистому (${name}): все строки во всех таблицах с user_id и ключи kv — как при удалении, запись users на месте`, async () => {
+    const s = await stand(open);
+    try {
+      const schema = await schemaOf(s.store);
+      const withUser = [...schema].filter(([, cols]) => cols.some((c) => c.name === "user_id")).map(([t]) => t).sort();
+      // Каждый столбец users — либо сбрасывается (USER_RESET), либо остаётся (USER_KEEP); в SQLite значения — как DEFAULT схемы.
+      const userCols = schema.get("users")!.map((c) => c.name).sort();
+      assert.deepEqual(userCols, [...Object.keys(USER_RESET), ...USER_KEEP].sort(), "новый столбец users — решите в db.ts (USER_RESET или USER_KEEP), что с ним при сбросе");
+      if (s.store.driver.dialect === "sqlite") {
+        const dflt = new Map((await s.store.driver.all<{ name: string; dflt_value: string | null }>("SELECT name, dflt_value FROM pragma_table_info('users')")).map((c) => [c.name, c.dflt_value]));
+        for (const [k, v] of Object.entries(USER_RESET)) assert.equal(dflt.get(k), typeof v === "number" ? String(v) : `'${v}'`, `USER_RESET.${k} — как DEFAULT в схеме`);
+      }
+      const t = await s.store.createUser({ login: "test-wipe01", passwordHash: "x", tz: TZ, chatId: null, plan: "friend", isTest: true });
+      await s.store.updateUser(t.id, { name: "Тестер", persona: "kind", maid_hair: "black", wake: 9, weather_rain: 1 });
+      const a = await fill(s.store, schema, t.id);
+      const b = await fill(s.store, schema, s.bob.id);
+      const bobRows = async () => Object.fromEntries(await Promise.all(withUser.map(async (x) => [x, await count(s.store, `SELECT COUNT(*) AS n FROM ${x} WHERE user_id = ?`, s.bob.id)])));
+      const bob0 = await bobRows();
+      const r = await s.store.wipeAccountData(t.id);
+      assert.ok(r.deleted > withUser.length, `удалено строк: ${r.deleted}`);
+      for (const x of withUser) {
+        if ((ACCOUNT_ACTOR_TABLES as readonly string[]).includes(x)) continue;
+        // Деньги (расход модели, оплаты) остаются на номере тестового: запись жива, строка «тесты» в расходе не теряет потраченное.
+        if ((ACCOUNT_DETACH_TABLES as readonly string[]).includes(x)) {
+          assert.ok(await count(s.store, `SELECT COUNT(*) AS n FROM ${x} WHERE user_id = ?`, t.id) > 0, `${x}: деньги тестового ушли с его номера при сбросе`);
+          continue;
+        }
+        assert.equal(await count(s.store, `SELECT COUNT(*) AS n FROM ${x} WHERE user_id = ?`, t.id), 0, `${x}: остались строки после сброса`);
+      }
+      assert.equal(r.detached, 0, "сброс ничего не отвязывает");
+      assert.equal(await count(s.store, "SELECT COUNT(*) AS n FROM habit_marks WHERE habit_id = ?", a.habit), 0);
+      for (const k of a.keys) assert.equal(await s.store.kvGet(k), undefined, `kv ${k}`);
+      for (const k of b.keys) assert.equal(await s.store.kvGet(k), "1", `kv другого человека ${k}`);
+      assert.deepEqual(await bobRows(), bob0, "строки другого человека — на месте");
+      const u = (await s.store.user(t.id))!;
+      assert.deepEqual([u.id, u.login, u.password_hash, u.plan, Number(u.is_test), u.tz], [t.id, "test-wipe01", "x", "friend", 1, TZ], "запись, вход и признак — на месте");
+      for (const [k, v] of Object.entries(USER_RESET)) assert.equal((u as unknown as Record<string, unknown>)[k], v, `users.${k} сброшен`);
+      assert.equal(await s.store.kvGet(USERS_GONE_KEY), undefined, "сброс — не удаление: номер не в «удалённых»");
     } finally {
       await s.close();
     }

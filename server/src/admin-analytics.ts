@@ -73,7 +73,7 @@ export interface MoneyData {
     ltv_stars: Pair;            // всё время до конца окна: Σ(оплаты) − Σ(возвраты) / различные платившие (без полностью возвращённых); 0 платящих → null
     avg_check_stars: Pair;      // Σ amount оплат в периоде (без вычета возвратов) / число этих оплат; 0 оплат → null
     payments: Pair;             // число оплат в периоде
-    ai_per_active_micro: Pair;  // ai_micro / active; active=0 → null
+    ai_per_active_micro: Pair;  // расход ИИ людей (без тестовых) / active; active=0 → null
   };
   series: {
     sub_stars: number[]; once_stars: number[];
@@ -135,12 +135,13 @@ export interface AiData {
   source: "llm_usage" | "llm_calls";
   kpi: {
     total_micro: Pair; calls: Pair;
+    tests_micro: Pair;                 // из total_micro — расход тестовых аккаунтов (users.is_test; удалённый тестовый — user_id < 0): деньги настоящие, в итоге они есть
     unpriced_calls: Pair;              // llm_usage: calls − priced (у них цена 0 — честно показать); на h — llm_calls с micro_usd=0 и error_code=''
     forecast_month_micro: number | null; // Σ за 7 полных прошедших дней UTC / 7 × 30; не зависит от интервала
     capped_users: Pair;                // различные user_id с gate.day_cap / calls_cap / draws_cap / voice_cap > 0 в днях окна (правило since по meta.since.gate)
     capped_share: Pair;                // capped_users / active; active=0 → null
     active: Pair;
-    top_user: { user_id: number; micro: number } | null; // самый дорогой за период (user_id > 0)
+    top_user: { user_id: number; micro: number } | null; // самый дорогой за период (user_id > 0, не тестовый)
     subscribers: number;               // plan='paid' со живым сроком сейчас
     subscriber_avg_micro: number | null;          // средний расход ИИ подписчика за период
     subscriber_avg_revenue_micro: number | null;  // чистые звёзды подписки за период / subscribers × star_usd × 1e6
@@ -345,6 +346,8 @@ interface Ctx {
   cur: Win; prev: Win;
   since: Since; notes: Set<AnalyticsNote>;
   users: AUser[]; tzOf: (id: number) => string;
+  /** Тестовый аккаунт (users.is_test) или удалённый тестовый (user_id < 0 в расходе модели): деньги — в итогах, в счёте людей — нет. */
+  isTest: (id: number) => boolean;
 }
 
 const ZONES: Record<AnalyticsReportId, "user" | "utc"> = { money: "utc", subs: "utc", ai: "utc", act: "user", ret: "user", feat: "user", parse: "user" };
@@ -473,12 +476,14 @@ async function moneyReport(c: Ctx): Promise<MoneyData> {
   const st = { cur: payStats(c.cur, pays), prev: payStats(c.prev, pays) };
   const S = (w: Win) => (w === c.cur ? st.cur : st.prev);
   const A = (w: Win) => (w === c.cur ? act.cur : act.prev);
-  const aiSeries = (w: Win) => {
+  // Расход ИИ — весь, с тестовыми аккаунтами (деньги настоящие: выручка − ИИ = маржа); «на активного» — только расход людей.
+  const aiSeries = (w: Win, people = false) => {
     const out = zeros(w);
-    for (const r of ai.rows) { const i = ai.pos(w, r); if (i >= 0) out[i] += r.micro; }
+    for (const r of ai.rows) { const i = ai.pos(w, r); if (i >= 0 && !(people && c.isTest(r.user_id))) out[i] += r.micro; }
     return out;
   };
   const aiB = { cur: aiSeries(c.cur), prev: aiSeries(c.prev) };
+  const aiP = { cur: aiSeries(c.cur, true), prev: aiSeries(c.prev, true) };
   const B = (w: Win) => (w === c.cur ? aiB.cur : aiB.prev);
   const aiTotal = (w: Win) => (aiOk(c, w) ? sum(B(w)) : null);
   const revenue = (w: Win) => sum(S(w).net);
@@ -502,7 +507,7 @@ async function moneyReport(c: Ctx): Promise<MoneyData> {
       ltv_stars: pair(c, (w) => ltv(w, pays)),
       avg_check_stars: pair(c, (w) => div(S(w).paidSum, S(w).count)),
       payments: pair(c, (w) => S(w).count),
-      ai_per_active_micro: pair(c, (w) => roundOrNull(div(aiTotal(w), activeN(w)))),
+      ai_per_active_micro: pair(c, (w) => (aiOk(c, w) ? roundOrNull(div(sum(w === c.cur ? aiP.cur : aiP.prev), activeN(w))) : null)),
     },
     series: {
       sub_stars: cur.sub, once_stars: cur.once, refund_stars: cur.refund,
@@ -510,7 +515,7 @@ async function moneyReport(c: Ctx): Promise<MoneyData> {
       ai_micro: aiB.cur,
       active: activeB,
       arpu_stars: cur.net.map((x, i) => div(x, activeB[i])),
-      ai_per_active_micro: aiB.cur.map((x, i) => roundOrNull(div(x, activeB[i]))),
+      ai_per_active_micro: aiP.cur.map((x, i) => roundOrNull(div(x, activeB[i]))),
     },
   };
 }
@@ -651,7 +656,7 @@ async function aiReport(c: Ctx): Promise<AiData> {
   const capped = (w: Win) => gated(c, w, c.since.gate, () => caps.get(w)!);
   // Самый дорогой за период.
   const byUser = new Map<number, number>();
-  for (const r of curRows) if (r.user_id > 0) byUser.set(r.user_id, (byUser.get(r.user_id) ?? 0) + r.micro);
+  for (const r of curRows) if (r.user_id > 0 && !c.isTest(r.user_id)) byUser.set(r.user_id, (byUser.get(r.user_id) ?? 0) + r.micro);
   let top: { user_id: number; micro: number } | null = null;
   for (const [user_id, micro] of byUser) if (micro > 0 && (!top || micro > top.micro || (micro === top.micro && user_id < top.user_id))) top = { user_id, micro };
   // Подписчики сейчас: средний расход за период и средняя чистая выручка подписки за период.
@@ -697,6 +702,7 @@ async function aiReport(c: Ctx): Promise<AiData> {
     source: ai.source,
     kpi: {
       total_micro: pair(c, (w) => tot(w, (r) => r.micro)),
+      tests_micro: pair(c, (w) => tot(w, (r) => (c.isTest(r.user_id) ? r.micro : 0))),
       calls: pair(c, (w) => tot(w, (r) => r.calls)),
       unpriced_calls: pair(c, (w) => tot(w, (r) => r.unpriced)),
       forecast_month_micro: Math.round(last7.reduce((s, r) => s + r.micro, 0) / 7 * 30),
@@ -1000,11 +1006,14 @@ export async function analyticsReport(store: Store, q: AnalyticsQuery, now = new
     payments: day(raw.payments), billing_events: day(raw.billing_events), feature_events: day(raw.feature_events),
     gate: day(raw.gate), llm_calls: day(raw.llm_calls), presence: day(raw.presence),
   };
-  const users = await store.analyticsUsers(ownerIds());
+  // Тестовые аккаунты (users.is_test, admin-tests.ts) — не люди: ни в списке людей, ни в строках по людям (withoutTests).
+  const everyone = await store.analyticsUsers(ownerIds());
+  const tests = new Set(everyone.filter((u) => u.test).map((u) => u.id));
+  const users = everyone.filter((u) => !u.test);
   const tz = new Map(users.map((u) => [u.id, validTz(u.tz)]));
   const c: Ctx = {
-    store, q, now, nowMs, zone, today, cur, prev, since, notes: new Set(), users,
-    tzOf: (id) => tz.get(id) ?? config.defaultTimezone,
+    store: withoutTests(store, tests), q, now, nowMs, zone, today, cur, prev, since, notes: new Set(), users,
+    tzOf: (id) => tz.get(id) ?? config.defaultTimezone, isTest: (id) => tests.has(id) || id < 0,
   };
   const data = await ({ money: moneyReport, subs: subsReport, ai: aiReport, act: actReport, ret: retReport, feat: featReport, parse: parseReport }[q.report] as (c: Ctx) => Promise<unknown>)(c);
   const meta: AnalyticsMeta = {
@@ -1013,6 +1022,25 @@ export async function analyticsReport(store: Store, q: AnalyticsQuery, now = new
     star_usd: tariffs().starUsd, since, notes: [...c.notes],
   };
   return { meta, report: q.report, data } as AnalyticsResponse;
+}
+
+/** Хранилище для отчётов без строк тестовых аккаунтов: выборки по людям (user_id) — без номеров из tests. Суммы без человека
+ *  (analyticsParseKinds, analyticsFeatureSums) их не различают — там тесты остаются. Расход модели (analyticsUsage, analyticsCalls)
+ *  не фильтруется: это настоящие деньги — в итогах ИИ и марже они есть, тестовые отделяет Ctx.isTest (tests_micro, «на активного»). */
+function withoutTests(store: Store, tests: Set<number>): Store {
+  if (!tests.size) return store;
+  const keep = <T extends { user_id: number }>(rows: T[]) => rows.filter((r) => !tests.has(r.user_id));
+  const v = Object.create(store) as Store;
+  v.analyticsActiveDays = async (...a) => keep(await store.analyticsActiveDays(...a));
+  v.analyticsActiveHours = async (...a) => {
+    const r = await store.analyticsActiveHours(...a);
+    return { messages: keep(r.messages), presence: keep(r.presence) };
+  };
+  v.analyticsPayments = async (...a) => keep(await store.analyticsPayments(...a));
+  v.analyticsMessages = async (...a) => keep(await store.analyticsMessages(...a));
+  v.analyticsFeatureUsers = async (...a) => keep(await store.analyticsFeatureUsers(...a));
+  v.billingEvents = async (...a) => keep(await store.billingEvents(...a));
+  return v;
 }
 
 /** Пояс из базы, который понимает Intl; иначе — пояс сервера по умолчанию. */

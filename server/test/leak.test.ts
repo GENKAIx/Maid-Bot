@@ -116,10 +116,10 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     // Столбцы шага 27 (платный доступ) — убрать: миграция с шага 24 добавит их снова.
     await store.driver.exec("ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
     // Шаг 39 (habits.finished_at) — миграция добавит снова.
-    await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at;");
+    await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at; ALTER TABLE users DROP COLUMN is_test;");
     await store.kvSet("schema_version", "24");
     const again = await Store.over(store.driver);
-    assert.equal(await again.kvGet("schema_version"), "40");
+    assert.equal(await again.kvGet("schema_version"), "41");
     assert.deepEqual((await replies(again)).map((r) => r.reply), ["other", `${CHAT_FAILED}other`, "Записала."]);
     await again.close();
   });

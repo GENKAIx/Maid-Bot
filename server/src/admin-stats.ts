@@ -44,10 +44,10 @@ export function quantile(sorted: number[], q: number): number | null {
 
 /** Кто онлайн сейчас по клиентам: вход за ADMIN_ONLINE_MIN минут (last_seen пишется раз в минуту), DESKTOP_TOKEN — из памяти,
  *  Telegram — был запрос в этот час по поясу человека (у бота входа нет, точнее часа не знаем). */
-async function onlineNow(store: Store, now: Date) {
+async function onlineNow(store: Store, now: Date, tests: Set<number>) {
   const since = iso(now.getTime() - ADMIN_ONLINE_MIN * 60_000);
   const by = new Map<string, Set<number>>();
-  const add = (client: string, id: number) => (by.get(client) ?? by.set(client, new Set()).get(client)!).add(id);
+  const add = (client: string, id: number) => void (tests.has(id) || (by.get(client) ?? by.set(client, new Set()).get(client)!).add(id));
   for (const s of await store.adminSessions(since)) add(clientOf(s), s.user_id);
   for (const d of desktopTokenSeen()) if (d.at >= since) add("desktop", d.userId);
   const tz = new Map((await store.users()).map((u) => [u.id, u.tz]));
@@ -61,9 +61,19 @@ async function onlineNow(store: Store, now: Date) {
   return { total: all.size, clients: [...by].map(([client, s]) => ({ client, users: s.size })).sort((a, b) => b.users - a.users) };
 }
 
-async function people(store: Store, now: Date) {
-  const rows = (await store.accounts(utcDay(now).slice(0, 7), iso(now.getTime() - 7 * DAY))).filter((x) => x.id);
-  return new Map(rows.map((x) => [x.id, { id: x.id, name: x.name || x.login || `#${x.id}`, login: x.login, created_at: x.created_at }]));
+/** Люди для отчётов. Тестовые аккаунты (users.is_test, admin-tests.ts) — только с withTests (таблица «Пользователи» и расход по
+ *  людям — с меткой test); в счёте людей, активных, онлайн и аудитории их нет. */
+async function people(store: Store, now: Date, withTests = false) {
+  const rows = (await store.accounts(utcDay(now).slice(0, 7), iso(now.getTime() - 7 * DAY))).filter((x) => x.id && (withTests || !x.test));
+  return new Map(rows.map((x) => [x.id, { id: x.id, name: x.name || x.login || `#${x.id}`, login: x.login, created_at: x.created_at, test: x.test }]));
+}
+
+/** Расход тестовых аккаунтов за дни с from по to (UTC, включительно) — отдельная строка «тесты»: деньги настоящие, не прячем.
+ *  Удалённый тестовый — номер −id (Store.deleteAccount: расход модели удалённого тестового отвязывается на −id, обычного — на 0). */
+const isTestSpend = (tests: Set<number>, id: number) => tests.has(id) || id < 0;
+async function testsSpend(store: Store, tests: Set<number>, from: string, to: string) {
+  const rows = (await store.adminSpendByUser(from, to)).filter((r) => isTestSpend(tests, r.user_id));
+  return { accounts: tests.size, calls: rows.reduce((s, r) => s + r.calls, 0), cost: rows.reduce((s, r) => s + r.cost, 0) };
 }
 
 /** Прогноз месяца (дни UTC): потрачено до вчера + среднее за 7 полных прошедших дней × дни с сегодняшнего до конца месяца.
@@ -81,9 +91,10 @@ async function forecast(store: Store, now: Date) {
 
 export async function adminOverview(store: Store, now = new Date()) {
   const who = await people(store, now);
+  const tests = await store.testUserIds();
   const week = iso(now.getTime() - 7 * DAY);
   const t = today(now);
-  const active = await store.adminActiveDays(addDays(t, -29));
+  const active = (await store.adminActiveDays(addDays(t, -29))).filter((a) => !tests.has(a.user_id));
   const usersIn = (from: string) => new Set(active.filter((a) => a.day >= from).map((a) => a.user_id)).size;
   const { month, todayCost, forecast: spendForecast } = await forecast(store, now);
   const q = await store.adminQuality(addDays(t, -6));
@@ -93,8 +104,10 @@ export async function adminOverview(store: Store, now = new Date()) {
     new_week: [...who.values()].filter((x) => x.created_at >= week).length,
     active_day: usersIn(t), active_week: usersIn(addDays(t, -6)), active_month: usersIn(addDays(t, -29)),
     spend_today: todayCost, spend_month: month.cost, spend_forecast: spendForecast, unpriced_month: month.calls - month.priced,
+    // Из расхода месяца (он — весь, с тестами) — сколько ушло на тестовые аккаунты (admin-tests.ts): строка «тесты».
+    spend_tests_month: await testsSpend(store, tests, `${utcDay(now).slice(0, 7)}-01`, utcDay(now)),
     requests_week: sum("requests"), failed_week: sum("failed"), clarify_week: sum("clarify"), undone_week: sum("undone"),
-    online: await onlineNow(store, now),
+    online: await onlineNow(store, now, tests),
     // Платный доступ (billing.ts): звёзды за 30 дней без возвратов, сколько активных подписок и проб, у скольких срок кончился.
     billing: await billingOverview(store, now),
   };
@@ -116,9 +129,10 @@ export async function adminPayments(store: Store, limit = 200) {
   }));
 }
 
-/** Таблица людей: когда пришёл, последнее обращение, за 30 дней — обращений, с ИИ и без, отмен; расход за 30 дней, месяц и всего. */
+/** Таблица людей: когда пришёл, последнее обращение, за 30 дней — обращений, с ИИ и без, отмен; расход за 30 дней, месяц и всего.
+ *  Тестовые аккаунты — тоже, с меткой test (чтобы не искать их отдельно). */
 export async function adminUsers(store: Store, now = new Date()) {
-  const who = await people(store, now);
+  const who = await people(store, now, true);
   const since = iso(now.getTime() - 30 * DAY);
   const stats = new Map((await store.adminUserStats(since)).map((r) => [r.user_id, r]));
   const utc = utcDay(now);
@@ -143,7 +157,7 @@ export async function adminUsers(store: Store, now = new Date()) {
       id: p.id, name: p.name, login: p.login, created_at: p.created_at, last_at: s?.last_at ?? null,
       total: s?.total ?? 0, n30: s?.n30 ?? 0, ai30: s?.ai30 ?? 0, manual30: s?.manual30 ?? 0, undone30: s?.undone30 ?? 0,
       cost30: spend30.get(p.id)?.cost ?? 0, background30: spend30.get(p.id)?.background ?? 0,
-      cost_month: spendMonth.get(p.id)?.cost ?? 0, cost_total: spendAll.get(p.id)?.cost ?? 0,
+      cost_month: spendMonth.get(p.id)?.cost ?? 0, cost_total: spendAll.get(p.id)?.cost ?? 0, test: p.test,
     };
   }).sort((a, b) => b.cost30 - a.cost30 || b.n30 - a.n30);
 }
@@ -154,9 +168,13 @@ export async function adminSpend(store: Store, days: number, now = new Date()) {
   const utc = utcDay(now);
   const from = addDays(utc, 1 - n);
   const report = usageReport(await store.usageDays(from, utc), n, await store.llmUsage(utc.slice(0, 7)), utc);
-  const who = await people(store, now);
+  const who = await people(store, now, true);
+  const tests = await store.testUserIds();
   const byUser = (await store.adminSpendByUser(from, utc))
-    .map((r) => ({ user_id: r.user_id, name: r.user_id ? (who.get(r.user_id)?.name ?? `#${r.user_id}`) : "без человека", calls: r.calls, cost: r.cost, background: r.background }))
+    .map((r) => ({
+      user_id: r.user_id, name: r.user_id < 0 ? `тест #${-r.user_id} (удалён)` : r.user_id ? (who.get(r.user_id)?.name ?? `#${r.user_id}`) : "без человека",
+      calls: r.calls, cost: r.cost, background: r.background, test: isTestSpend(tests, r.user_id),
+    }))
     .sort((a, b) => b.cost - a.cost);
   // Дорогие сообщения (этап 2): больше всего вызовов модели (messages.llm_calls, с шага 24) — кто, когда, ветка, без текста.
   // Цены у сообщения нет: журнал попыток (llm_calls) с сообщением не связан, а угадывать по человеку и времени — нечестно.
@@ -164,14 +182,16 @@ export async function adminSpend(store: Store, days: number, now = new Date()) {
   const heavy = (await store.adminHeavyMessages(since)).map((m) => ({
     name: who.get(m.user_id)?.name ?? `#${m.user_id}`, at: m.received_at, source: m.source, route: m.route, calls: m.llm_calls,
   }));
-  return { ...report, byUser, forecast: (await forecast(store, now)).forecast, heavy, routes: await store.adminRoutes(since) };
+  // tests — строка «тесты»: расход тестовых аккаунтов за те же дни (он входит и в общий итог — деньги настоящие).
+  return { ...report, byUser, tests: await testsSpend(store, tests, from, utc), forecast: (await forecast(store, now)).forecast, heavy, routes: await store.adminRoutes(since) };
 }
 
 /** Аудитория: активные по дням (за день, 7 и 30 дней), удержание по неделям прихода, кто пропал, откуда пишут. */
 export async function adminAudience(store: Store, now = new Date()) {
   const t = today(now);
   const from = addDays(t, -119);
-  const active = await store.adminActiveDays(from);
+  const tests = await store.testUserIds();
+  const active = (await store.adminActiveDays(from)).filter((a) => !tests.has(a.user_id));
   const byDay = new Map<string, Set<number>>();
   for (const a of active) (byDay.get(a.day) ?? byDay.set(a.day, new Set()).get(a.day)!).add(a.user_id);
   const within = (end: string, len: number) => {
@@ -222,7 +242,7 @@ export async function adminAudience(store: Store, now = new Date()) {
     x.users.add(id);
   };
   const month = iso(now.getTime() - 30 * DAY);
-  for (const s of await store.adminSessions(month)) if (DESKTOP_CLIENTS.includes(clientOf(s))) addVer(s.version, s.user_id);
+  for (const s of await store.adminSessions(month)) if (DESKTOP_CLIENTS.includes(clientOf(s)) && !tests.has(s.user_id)) addVer(s.version, s.user_id);
   for (const d of desktopTokenSeen()) if (d.at >= month) addVer(d.version, d.userId);
   const versions = [...ver].map(([version, x]) => ({ version, devices: x.devices, users: x.users.size })).sort((a, b) => cmpVersion(a.version, b.version));
   const clients = await store.adminPresenceClients(addDays(t, -6));
@@ -300,9 +320,10 @@ export async function adminFeatures(store: Store, now = new Date()) {
     return m.get(client) ?? m.set(client, blank()).get(client)!;
   };
   const clients = new Map<string, { uses30: number; who: Set<number> }>();
-  // Имена, убранные из списка, в отчёт не идут (в базе доживают свой срок).
+  // Имена, убранные из списка, в отчёт не идут (в базе доживают свой срок). Тестовые аккаунты (admin-tests.ts) — не в счёте.
+  const tests = await store.testUserIds();
   for (const r of await store.adminFeatureRows(addDays(t, 1 - 7 * ADMIN_FEATURE_WEEKS))) {
-    if (!FEATURE_IDS.has(r.feature)) continue;
+    if (!FEATURE_IDS.has(r.feature) || tests.has(r.user_id)) continue;
     const ago = Math.max(0, Math.round((tMs - Date.parse(`${r.day}T00:00:00Z`)) / DAY));
     const w = ADMIN_FEATURE_WEEKS - 1 - Math.floor(ago / 7);
     for (const s of [statOf(r.feature, ""), statOf(r.feature, r.client)]) {

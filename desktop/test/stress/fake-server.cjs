@@ -89,8 +89,13 @@ function xpLevel(xp) {
 function create() {
   const srv = {
     token: "good-key",
-    logins: { user: "pass" },
-    sessions: [], // выданные ключи (вход логином и паролем)
+    logins: { user: "pass", "test-ab12cd": "testpass" },
+    // Логин тестового аккаунта (server/src/admin-tests.ts) → его номер: вход им даёт ключ тестового (is_test 1 в /api/me).
+    testLogins: { "test-ab12cd": 7 },
+    sessions: [], // выданные ключи (вход логином и паролем); у ключа тестового аккаунта — test: номер
+    /** Ключ тестового аккаунта #id, как POST /api/admin/tests/<id>/token (выдаётся один раз, каждый раз новый). */
+    testKey(id) { const token = `test-key-${srv.sessions.length + 1}`; srv.sessions.push({ token, label: "Тест: программа на ПК", test: id }); return token; },
+    logouts: [], // какие ключи закрыты через POST /api/logout
     log: [], // { method, path, auth, body, at }
     fault: null,
     dataset: "normal",
@@ -246,13 +251,25 @@ function create() {
     if (req.method === "POST" && p === "/api/login") {
       if (srv.logins[body?.login] !== body?.password) return finish(401, { error: "неверный логин или пароль" });
       const token = `key-${srv.sessions.length + 1}`;
-      srv.sessions.push({ token, label: body.label, login: body.login });
+      srv.sessions.push({ token, label: body.label, login: body.login, ...(srv.testLogins[body.login] ? { test: srv.testLogins[body.login] } : {}) });
       return finish(200, { token });
     }
     if (!p.startsWith("/api/")) { res.writeHead(404); return res.end("нет такого адреса"); }
     const key = rec.auth.replace(/^Bearer\s+/i, "");
     if (key !== srv.token && !srv.sessions.some((s) => s.token === key)) return finish(401, { error: "нужен вход (логин и пароль) или ключ" });
 
+    // Кто вошёл (как server/src/api.ts /api/me): у ключа тестового — его номер и is_test 1, у остальных — #1 и is_test 0.
+    if (req.method === "GET" && p === "/api/me") {
+      const s = srv.sessions.find((x) => x.token === key);
+      return finish(200, { id: s?.test ?? 1, is_test: s?.test ? 1 : 0, admin: !s?.test, chat_id: null, access: { plan: s?.test ? "friend" : "owner" }, sessions: [] });
+    }
+    // Выход (как /api/logout): ключ больше не принимается.
+    if (req.method === "POST" && p === "/api/logout") {
+      srv.logouts.push(key);
+      srv.sessions = srv.sessions.filter((x) => x.token !== key);
+      if (key === srv.token) srv.token = "logged-out";
+      return finish(200, { ok: true });
+    }
     if (req.method === "GET" && p === "/api/today") return finish(200, today());
     if (req.method === "GET" && p === "/api/notices") {
       const after = Number(url.searchParams.get("after")) || 0;
