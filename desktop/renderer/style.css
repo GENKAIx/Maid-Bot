@@ -761,8 +761,6 @@ body.quick { background: transparent; }
 /* Вчерашний пропуск, который можно спасти: пунктир и золото. */
 /* Привычки — круглая отметка (задачи — квадрат), у курса справа полоска и «9/30». */
 .w .list li.habit .mark { border-radius: 50%; }
-/* Время отметки «✓ 21:14» (widget.js, markAtHtml): мелко и тихо сразу за галочкой; размер постоянный, правил наведения нет. */
-.w .list li.habit .mark-at { flex: none; margin-left: -6px; font-size: 10.5px; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Отмеченная привычка не зачёркивается и не бледнеет вся: завтра она вернётся. Тише только название; галочка, серия и полоска — в полную яркость. */
 .w .list li.habit.did .t { opacity: .75; }
 /* Название привычки — ссылка на её статистику в главном окне. */
