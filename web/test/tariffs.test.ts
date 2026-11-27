@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ADMIN_ACTIONS, ADMIN_SECTIONS, adminNavGroups, adminSection } from "../src/admin.ts";
-import { planView, todayText } from "../src/billing.ts";
+import { daysLeft, planView, resetText, todayBars } from "../src/billing.ts";
 import {
   changeText, checkTariffValue, fromInput, money, PART_KEYS, TARIFF_KEYS, tariffDiff, tariffWarnings, toInput, undoPreview, worstDay, type TariffsData,
   type TariffValues,
@@ -192,11 +192,23 @@ test("«Общие потолки»: карточка «Что увидит че
   assert.ok(!page("plans").includes("Что увидит человек"), "тексты — в «Общих потолках»");
 });
 
-test("блок «Тариф» на сайте: остаток на сегодня простыми словами; друзья и старый сервер — без строки", () => {
+test("блок «Тариф» на сайте: остатки полосками (картинки — только если есть на тарифе), когда обновятся, дни в кольце", () => {
   const t = { calls: { used: 12, limit: 60 }, draws: { used: 1, limit: 3 }, voice_sec: { used: 130, limit: 600 }, resets_at: "2026-11-24T21:00:00.000Z" };
-  assert.match(todayText(t)!, /^Сегодня осталось: 48 запросов из 60, 2 картинки из 3, 7 мин голоса из 10\. Обновится /);
-  assert.match(todayText({ ...t, draws: { used: 0, limit: 0 }, calls: { used: 60, limit: 60 } })!, /0 запросов из 60, картинок на тарифе нет/);
-  assert.match(todayText({ ...t, calls: { used: 59, limit: 60 } })!, /1 запрос из 60/);
-  assert.equal(todayText(null), null);
-  assert.equal(todayText(undefined), null);
+  assert.deepEqual(todayBars(t), [
+    { title: "Запросы к Рине", used: 12, limit: 60, left: 48 },
+    { title: "Картинки", used: 1, limit: 3, left: 2 },
+    { title: "Аудиоразбор, мин", used: 3, limit: 10, left: 7 },
+  ]);
+  assert.deepEqual(todayBars({ ...t, draws: { used: 0, limit: 0 } }).map((b) => b.title), ["Запросы к Рине", "Аудиоразбор, мин"], "картинок на тарифе нет — полоски нет");
+  assert.deepEqual(todayBars({ ...t, calls: { used: 70, limit: 60 } })[0], { title: "Запросы к Рине", used: 60, limit: 60, left: 0 }, "больше лимита не рисуем");
+  assert.deepEqual(todayBars(null), []);
+  assert.match(resetText(t)!, /^обновятся \d+ ноября в \d\d:\d\d$/);
+  assert.equal(resetText({ ...t, resets_at: "не дата" }), null);
+  assert.equal(resetText(undefined), null);
+  const now = Date.parse("2026-11-27T12:00:00Z");
+  assert.equal(daysLeft({ plan: "trial", until: null, canceled: false, trial_left_days: 5 }, now), 5);
+  assert.equal(daysLeft({ plan: "paid", until: "2026-12-09T10:00:00Z", canceled: false, trial_left_days: null }, now), 12);
+  assert.equal(daysLeft({ plan: "paid", until: "2026-11-01T10:00:00Z", canceled: true, trial_left_days: null }, now), 0);
+  assert.equal(daysLeft({ plan: "friend", until: null, canceled: false, trial_left_days: null }, now), null);
+  assert.equal(daysLeft(null, now), null);
 });

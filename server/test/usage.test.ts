@@ -164,18 +164,11 @@ test("/api/usage: дни, назначения, итог месяца — тол
   }
 });
 
-test("каждое назначение расхода (USAGE_KINDS) — на сайте со своим названием и своим цветом (Spend.tsx)", () => {
-  // Без строки в KIND_NAMES в «На что ушло» видно сырое «correct · 3», без цвета — полоска цвета «Разбора сообщений».
-  const site = readFileSync(new URL("../../web/src/screens/Spend.tsx", import.meta.url), "utf8");
-  const table = (name: string): Record<string, string> => {
-    const body = site.match(new RegExp(`const ${name}: Record<string, string> = \{([^}]*)\};`))?.[1] ?? "";
-    return Object.fromEntries([...body.matchAll(/(\w+): "([^"]*)"/g)].map((m) => [m[1], m[2]]));
-  };
-  const names = table("KIND_NAMES");
-  const colors = table("KIND_COLORS");
-  for (const k of USAGE_KINDS) {
-    assert.ok(names[k], `нет названия у «${k}»`);
-    assert.ok(colors[k], `нет цвета у «${k}»`);
-  }
-  assert.equal(new Set(USAGE_KINDS.map((k) => colors[k])).size, USAGE_KINDS.length, "цвета не повторяются");
+test("каждое назначение расхода (USAGE_KINDS) — в админке со своим названием (AdminSections.tsx, раздел «Расход на ИИ»)", () => {
+  // Без строки в KIND_NAMES в разбивке «по назначению» видно сырое «correct». Пользователю расход на сайте с 27.11.2026 не показывается.
+  const site = readFileSync(new URL("../../web/src/screens/AdminSections.tsx", import.meta.url), "utf8");
+  const body = site.match(/const KIND_NAMES: Record<string, string> = \{([^}]*)\};/)?.[1] ?? "";
+  const names = Object.fromEntries([...body.matchAll(/(\w+): "([^"]*)"/g)].map((m) => [m[1], m[2]]));
+  for (const k of USAGE_KINDS) assert.ok(names[k], `нет названия у «${k}»`);
+  assert.equal(new Set(USAGE_KINDS.map((k) => names[k])).size, USAGE_KINDS.length, "названия не повторяются");
 });

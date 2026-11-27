@@ -57,22 +57,35 @@ export function refusedView(no: Refused | null): { clear: boolean; error: boolea
 const dayText = (iso: string) => new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 const daysWord = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? "день" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "дня" : "дней");
 
-const plural = (n: number, one: string, few: string, many: string) =>
-  n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
 
-/** Остаток на сегодня простыми словами для блока «Тариф»: «Сегодня осталось: 48 запросов из 60, 3 картинки из 3, 10 мин голоса
- *  из 10. Обновится в 00:00.» Лимит 0 — «картинок на тарифе нет». Нет данных — null. */
-export function todayText(t: Today | null | undefined): string | null {
-  if (!t) return null;
-  const left = (u: Used) => Math.max(0, u.limit - u.used);
-  const part = (u: Used, word: (n: number) => string, none: string) => (u.limit === 0 ? none : `${left(u)} ${word(left(u))} из ${u.limit}`);
-  const calls = part(t.calls, (n) => plural(n, "запрос", "запроса", "запросов"), "запросов к ИИ на тарифе нет");
-  const draws = part(t.draws, (n) => plural(n, "картинка", "картинки", "картинок"), "картинок на тарифе нет");
-  const vl = Math.floor(t.voice_sec.limit / 60), vleft = Math.floor(left(t.voice_sec) / 60);
-  const voice = t.voice_sec.limit === 0 ? "голоса на тарифе нет" : `${vleft} мин голоса из ${vl}`;
-  const at = new Date(t.resets_at);
-  const when = Number.isFinite(at.getTime()) ? ` Обновится ${at.toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.` : "";
-  return `Сегодня осталось: ${calls}, ${draws}, ${voice}.${when}`;
+/** Остатки на сегодня полосками для блока «Тариф» (27.11.2026, дизайн v2): запросы к Рине, картинки (только если они есть
+ *  на тарифе) и аудиоразбор в минутах. used/limit — в тех же единицах, что подпись (голос — в минутах). Нет данных — []. */
+export interface TodayBar { title: string; used: number; limit: number; left: number }
+export function todayBars(t: Today | null | undefined): TodayBar[] {
+  if (!t) return [];
+  const bar = (title: string, used: number, limit: number): TodayBar => ({ title, used: Math.min(used, limit), limit, left: Math.max(0, limit - used) });
+  const out = [bar("Запросы к Рине", t.calls.used, t.calls.limit)];
+  if (t.draws.limit > 0) out.push(bar("Картинки", t.draws.used, t.draws.limit));
+  out.push(bar("Аудиоразбор, мин", Math.ceil(t.voice_sec.used / 60), Math.floor(t.voice_sec.limit / 60)));
+  return out;
+}
+
+/** Когда обновятся остатки: «обновятся 25 ноября в 00:00» (полночь по поясу человека, в часах браузера). Нет даты — null. */
+export function resetText(t: Today | null | undefined): string | null {
+  const at = t ? new Date(t.resets_at) : null;
+  if (!at || !Number.isFinite(at.getTime())) return null;
+  return `обновятся ${at.toLocaleString("ru-RU", { day: "numeric", month: "long" })} в ${at.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+/** Сколько дней осталось — число в кольце блока «Тариф»: проба — trial_left_days, подписка — дни до until (вверх). Без срока — null. */
+export function daysLeft(a: Access | null | undefined, now = Date.now()): number | null {
+  if (!a) return null;
+  if (a.plan === "trial") return a.trial_left_days ?? null;
+  if (a.plan === "paid" && a.until) {
+    const ms = new Date(a.until).getTime() - now;
+    return Number.isFinite(ms) ? Math.max(0, Math.ceil(ms / 86_400_000)) : null;
+  }
+  return null;
 }
 
 export interface PlanView { title: string; text: string; pay: boolean; cancel: boolean; resume: boolean }
