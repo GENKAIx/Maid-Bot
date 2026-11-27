@@ -1,0 +1,675 @@
+<article class="piece" id="p-a-ops">
+<header>
+<p class="eyebrow">Админка · Чего не хватает, часть 2</p>
+<h2>Спать спокойно: связи, ночные задачи, деньги и утренняя сводка</h2>
+<p>Сейчас владелец узнаёт о сбое, только когда сервер сам успел написать. Если упал весь сервер, писать некому. Четыре новых раздела показывают, что работает, что упало ночью и сходятся ли деньги, а утром одно сообщение в Telegram говорит, нужно ли вообще открывать админку.</p>
+</header>
+<button class="replay" type="button">Повторить анимацию</button>
+<nav class="ops-nav" aria-label="Разделы макета">
+<button type="button" data-s="links" aria-pressed="true"><small>Система</small><b>Состояние связей</b><em class="bad" data-badge="links">1 сбой</em></button>
+<button type="button" data-s="jobs" aria-pressed="false"><small>Система</small><b>Фоновые задачи</b><em class="bad" data-badge="jobs">1 упала</em></button>
+<button type="button" data-s="money" aria-pressed="false"><small>Люди и деньги</small><b>Деньги и сверка</b><em class="warn" data-badge="money">1 расхождение</em></button>
+<button type="button" data-s="brief" aria-pressed="false"><small>Обзор</small><b>Сводка владельцу</b><em class="mute" data-badge="brief">каждое утро</em></button>
+</nav>
+<p class="ops-cap" aria-live="polite">Всё, без чего сервис стоит: Telegram, ИИ, погода, уведомления, копия базы и сторож снаружи. Цвет всегда вместе со словом.</p>
+<div class="adm" data-k="links" data-section="Состояние связей" data-group="Система">
+<div class="panel hero">
+<div class="hero-l">
+<span class="dk">Сейчас, 09:40</span>
+<p class="hnum"><span data-c="ok">3</span><i>из 6 в порядке</i></p>
+<div class="segbar" aria-hidden="true"></div>
+<p class="dsoft legend"></p>
+</div>
+<div class="hero-r">
+<button type="button" class="dbtn primary big-b" data-act="checkall">Проверить всё</button>
+<p class="dmuted watch"><span class="pulse" aria-hidden="true"></span>Сторож снаружи заходил на сайт 38 с назад: отвечает.</p>
+</div>
+</div>
+<div class="lks"></div>
+</div>
+<div class="adm" data-k="jobs" data-section="Фоновые задачи" data-group="Система" hidden>
+<div class="dg3 kp">
+<div class="panel"><span class="dk">Запусков сегодня</span><p class="dv" data-n="612">612</p><span class="dmuted">с полуночи</span></div>
+<div class="panel"><span class="dk">Упало</span><p class="dv" data-failn>1</p><span class="st bad" data-failst>счёт поставщика</span></div>
+<div class="panel"><span class="dk">Следующая</span><p class="dv">10:00</p><span class="dmuted">утренние письма, через 20 мин</span></div>
+</div>
+<div class="panel">
+<h4>Расписание суток</h4>
+<div class="tl-wrap"><div class="tl"></div></div>
+<p class="tl-tip dsoft" aria-live="polite">Нажмите на отметку, чтобы увидеть запуск.</p>
+</div>
+<div class="panel jl"></div>
+</div>
+<div class="adm" data-k="money" data-section="Деньги и сверка" data-group="Люди и деньги" hidden>
+<div class="dg2">
+<div class="panel">
+<h4>Сверка оплат за ноябрь</h4>
+<p class="dsoft rc-sum"></p>
+<div class="cal-h" aria-hidden="true"><i>пн</i><i>вт</i><i>ср</i><i>чт</i><i>пт</i><i>сб</i><i>вс</i></div>
+<div class="cal"></div>
+<div class="rc-d" aria-live="polite"></div>
+</div>
+<div class="panel stars">
+<h4>Звёзды Telegram</h4>
+<span class="dk">На счёте</span>
+<p class="hnum"><span data-bal>18 450</span><i>★</i></p>
+<div class="sbar" aria-hidden="true"><b></b></div>
+<dl class="sdl">
+<div><dt><i class="sw av"></i>Можно вывести</dt><dd data-av>12 300 ★ ≈ 13 900 ₽</dd></div>
+<div><dt><i class="sw hold"></i>Освободится 18 декабря</dt><dd>6 150 ★</dd></div>
+</dl>
+<button type="button" class="dbtn primary" data-act="wd">Вывести 12 300 ★</button>
+<div class="wd" hidden>
+<p>12 300 ★ уйдут на ваш кошелёк через Fragment. Обычно деньги доходят за 1–3 дня.</p>
+<div class="row"><button type="button" class="dbtn primary" data-act="wdok">Подтвердить вывод</button><button type="button" class="dbtn" data-act="wdno">Отмена</button></div>
+</div>
+<p class="dmuted wd-last">Прошлый вывод: 2 ноября, 9 800 ★, дошёл.</p>
+</div>
+</div>
+<div class="panel">
+<div class="ph">
+<h4>Итог месяца для налогов</h4>
+<div class="dseg" role="group" aria-label="Месяц"><button type="button" data-m="oct" aria-pressed="false">Октябрь</button><button type="button" data-m="nov" aria-pressed="true">Ноябрь</button></div>
+<button type="button" class="dbtn" data-act="csv">Скачать CSV</button>
+</div>
+<div class="tax"></div>
+<p class="dmuted csv-t" aria-live="polite">В файле каждая оплата и возврат отдельной строкой: дата, номер аккаунта, сумма. Без имён.</p>
+</div>
+</div>
+<div class="adm" data-k="brief" data-section="Сводка владельцу" data-group="Обзор" hidden>
+<div class="br">
+<div class="panel br-set">
+<h4>Что присылать</h4>
+<div class="tgl"></div>
+<h4 class="mt">Во сколько</h4>
+<div class="dseg" role="group" aria-label="Время сводки" data-time></div>
+<h4 class="mt">Тихие часы</h4>
+<div class="row qh">
+<label>с <select data-q="from"><option>21:00</option><option>22:00</option><option selected>23:00</option><option>00:00</option></select></label>
+<label>до <select data-q="to"><option>06:00</option><option>07:00</option><option selected>08:00</option><option>09:00</option></select></label>
+</div>
+<p class="dsoft qh-t" aria-live="polite"></p>
+<button type="button" class="dbtn" data-act="send">Прислать пример сейчас</button>
+</div>
+<div class="br-tg">
+<div class="tg">
+<div class="tg-head"><img src="maid/letter.webp" alt=""><div>Рина · для владельца<small>бот</small></div></div>
+<div class="tg-body"><div class="tg-in msg"></div><div class="tg-btns"><button type="button">Открыть админку</button><button type="button">Отложить до вечера</button></div></div>
+</div>
+</div>
+</div>
+<div class="panel">
+<div class="ph">
+<h4>Журнал ошибок сервера</h4>
+<div class="dseg" role="group" aria-label="Период"><button type="button" data-p="d" aria-pressed="true">Сутки</button><button type="button" data-p="w" aria-pressed="false">7 дней</button></div>
+</div>
+<div class="ej"></div>
+<p class="dmuted">Хранятся только адрес, код ответа и время. Тексты запросов и ответов не записываются.</p>
+</div>
+</div>
+<div class="notes">
+<div><h4>Что изменилось</h4><ul>
+<li>Шесть связей на одной панели: цвет со словом, последний успех, история за сутки и проверка по кнопке.</li>
+<li>Ночные задачи лентой суток: видно, что уже прошло, что упало и когда следующий раз. Упавшую можно перезапустить.</li>
+<li>Сверка «наши записи ↔ Telegram» по дням и итог месяца для налогов с выгрузкой.</li>
+<li>Утренняя сводка: вы выбираете пункты и время, ночью приходят только красные сбои.</li>
+</ul></div>
+<div><h4>Анимации</h4><ul>
+<li>При показе раздела карточки поднимаются по очереди, полоски истории и суммы растут слева направо, числа досчитываются.</li>
+<li>«Проверить сейчас»: по карточке идёт полоса проверки, значок меняется на итог, «последний успех» вспыхивает.</li>
+<li>Перезапуск задачи: полоса хода и счётчик секунд, потом новая отметка на ленте.</li>
+<li>Сводка: строки сообщения появляются и уходят вслед за переключателями. Единственное «дыхание» у точки сторожа.</li>
+</ul></div>
+<div><h4>Что нужно в коде</h4><ul>
+<li>Связи: правила вебхука, сбоев отправки и счёт поставщика уже есть (alerts.ts, openrouter-bill.ts). Погода и push сейчас ничего не считают, нужен счётчик. Запасного поставщика нет совсем (llm.ts).</li>
+<li>Внешний сторож: отдельный бесплатный сервис пингует /healthz и пишет в Telegram, около часа работы.</li>
+<li>Задачи: таблицы запусков нет, писать каждый такт планировщика (начало, длительность, итог) и ручку перезапуска.</li>
+<li>Сверка: getStarTransactions нигде не вызывается, надо запрашивать раз в сутки. Сводка: данные есть, правило newcomers расширить. Журнал 5xx: новая таблица по образцу crash_events.</li>
+</ul></div>
+</div>
+<style>
+#p-a-ops { --ops-gap: 14px; }
+#p-a-ops .ops-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+#p-a-ops .ops-nav button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; min-height: 64px; min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; transition: border-color .2s var(--ease), background .2s var(--ease); }
+#p-a-ops .ops-nav button:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+#p-a-ops .ops-nav button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+#p-a-ops .ops-nav small { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+#p-a-ops .ops-nav b { font-size: 14px; color: var(--text); }
+#p-a-ops .ops-nav em { font-style: normal; font-size: 11.5px; font-weight: 600; }
+#p-a-ops .ops-nav em.bad { color: var(--bad); } #p-a-ops .ops-nav em.warn { color: var(--warn); } #p-a-ops .ops-nav em.ok { color: var(--ok); } #p-a-ops .ops-nav em.mute { color: var(--muted); }
+#p-a-ops .ops-cap { color: var(--soft); font-size: 14px; }
+#p-a-ops .adm[hidden] { display: none; }
+#p-a-ops .adm .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+#p-a-ops .adm .dbtn { min-height: 36px; transition: border-color .2s var(--ease), opacity .2s; }
+#p-a-ops .adm .dbtn:hover { border-color: var(--d-accent); }
+#p-a-ops .adm .dbtn:disabled { opacity: .6; cursor: default; }
+#p-a-ops .adm .ph { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+#p-a-ops .adm .ph h4 { margin: 0; margin-right: auto; }
+#p-a-ops .adm .mt { margin-top: 16px; }
+#p-a-ops .adm .dseg { display: inline-flex; background: var(--d-panel-2); border: 1px solid var(--d-line); border-radius: 9px; padding: 2px; gap: 2px; flex-wrap: wrap; }
+#p-a-ops .adm .dseg button { background: none; border: 0; border-radius: 7px; padding: 6px 11px; min-height: 32px; font-size: 12.5px; color: var(--d-muted); font-weight: 600; }
+#p-a-ops .adm .dseg button[aria-pressed="true"] { background: var(--d-panel-3); color: var(--d-text); }
+#p-a-ops .adm .hnum { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 8px; }
+#p-a-ops .adm .hnum span { font: 800 40px/1 var(--fd); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+#p-a-ops .adm .hnum i { font-style: normal; color: var(--d-soft); font-size: 15px; }
+#p-a-ops .adm .stars .hnum i { color: var(--d-star); font-size: 22px; }
+#p-a-ops .hero { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+#p-a-ops .hero-l { flex: 1 1 260px; min-width: 0; }
+#p-a-ops .hero-r { flex: 0 1 300px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+#p-a-ops .big-b { min-height: 42px; font-size: 13.5px; }
+#p-a-ops .segbar { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; max-width: 360px; }
+#p-a-ops .segbar i { height: 8px; border-radius: 4px; background: var(--d-muted); transition: background .4s var(--ease); }
+#p-a-ops .segbar i.ok { background: var(--d-ok); } #p-a-ops .segbar i.warn { background: var(--d-warn); } #p-a-ops .segbar i.bad { background: var(--d-bad); }
+#p-a-ops .legend { margin-top: 8px; font-size: 12.5px; }
+#p-a-ops .watch { display: flex; gap: 8px; align-items: center; font-size: 12.5px; }
+#p-a-ops .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--d-ok); flex: none; animation: a-ops-breathe 2.6s ease-in-out infinite; }
+#p-a-ops .lks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 12px; }
+#p-a-ops .lk { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; border-left: 3px solid var(--d-line-2); transition: border-color .4s var(--ease); }
+#p-a-ops .lk.ok { border-left-color: var(--d-ok); } #p-a-ops .lk.warn { border-left-color: var(--d-warn); } #p-a-ops .lk.bad { border-left-color: var(--d-bad); }
+#p-a-ops .lk-h { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#p-a-ops .lk-h b { flex: 1; min-width: 0; font-size: 14px; }
+#p-a-ops .lk-ic { width: 30px; height: 30px; border-radius: 9px; background: var(--d-panel-2); display: grid; place-items: center; color: var(--d-soft); flex: none; }
+#p-a-ops .lk-ic svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#p-a-ops .lk dl { margin: 0; display: grid; gap: 4px; font-size: 12.5px; }
+#p-a-ops .lk dl div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; }
+#p-a-ops .lk dt { color: var(--d-muted); }
+#p-a-ops .lk dd { margin: 0; color: var(--d-soft); min-width: 0; }
+#p-a-ops .lk-note { font-size: 12px; color: var(--d-warn); }
+#p-a-ops .lk.bad .lk-note { color: var(--d-bad); }
+#p-a-ops .strip { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 2px; background: none; border: 0; padding: 6px 0; width: 100%; min-height: 26px; }
+#p-a-ops .strip i { height: 14px; border-radius: 2px; background: color-mix(in srgb, var(--d-ok) 70%, transparent); transform-origin: bottom; }
+#p-a-ops .strip i.w { background: var(--d-warn); } #p-a-ops .strip i.b { background: var(--d-bad); } #p-a-ops .strip i.sel { outline: 1.5px solid var(--d-text); outline-offset: 1px; }
+#p-a-ops .lk-tip { font-size: 11.5px; color: var(--d-muted); margin-top: -6px; min-height: 1.5em; }
+#p-a-ops .lk-f { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; margin-top: auto; }
+#p-a-ops .lk-f b { color: var(--d-text); font-weight: 600; }
+#p-a-ops .lk-f b.flash { animation: a-ops-flash .9s var(--ease); }
+#p-a-ops .lk .dbtn { display: inline-flex; align-items: center; gap: 6px; }
+#p-a-ops .spin { width: 13px; height: 13px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; display: none; }
+#p-a-ops .lk.checking .spin { display: inline-block; animation: a-ops-spin .55s linear 2; }
+#p-a-ops .scan { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--d-accent); transform: scaleX(0); transform-origin: left; }
+#p-a-ops .lk.checking .scan { animation: a-ops-scan 1.1s var(--ease) both; }
+#p-a-ops .lk.checking dl { opacity: .55; transition: opacity .2s; }
+#p-a-ops .kp .panel { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+#p-a-ops .tl-wrap { overflow-x: auto; padding-bottom: 4px; }
+#p-a-ops .tl { min-width: 600px; display: grid; gap: 8px; position: relative; }
+#p-a-ops .tl-r { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 10px; }
+#p-a-ops .tl-r > span { font-size: 12px; color: var(--d-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#p-a-ops .tr { position: relative; height: 26px; border-radius: 6px; background: var(--d-panel-2); }
+#p-a-ops .tr .win { position: absolute; top: 5px; bottom: 5px; border-radius: 4px; background: color-mix(in srgb, var(--d-accent) 16%, transparent); }
+#p-a-ops .tr .tick { position: absolute; top: 8px; bottom: 8px; left: 0; border-radius: 3px; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--d-ok) 75%, transparent) 0 1px, transparent 1px 4px); }
+#p-a-ops .tr .tick.fut { opacity: .35; }
+#p-a-ops .mk { position: absolute; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; border: 0; background: none; padding: 0; display: grid; place-items: center; }
+#p-a-ops .mk::before { content: ""; width: 11px; height: 11px; border-radius: 50%; background: var(--d-ok); box-shadow: 0 0 0 2px var(--d-panel-2); }
+#p-a-ops .mk.fut::before { background: var(--d-panel); border: 2px solid var(--d-muted); width: 9px; height: 9px; }
+#p-a-ops .mk.bad::before { background: var(--d-bad); width: 13px; height: 13px; }
+#p-a-ops .mk.sel::before { box-shadow: 0 0 0 2px var(--d-panel-2), 0 0 0 4px var(--d-text); }
+#p-a-ops .tl-ax { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 10px; font-size: 10.5px; color: var(--d-muted); }
+#p-a-ops .tl-ax div { position: relative; height: 14px; }
+#p-a-ops .tl-ax i { position: absolute; font-style: normal; transform: translateX(-50%); }
+#p-a-ops .now { position: absolute; top: 16px; bottom: 18px; width: 2px; background: var(--d-accent); border-radius: 2px; pointer-events: none; }
+#p-a-ops .now::after { content: "сейчас"; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--d-accent); font-weight: 700; }
+#p-a-ops .tl { padding-top: 16px; }
+#p-a-ops .tl-tip { font-size: 12.5px; margin-top: 8px; min-height: 1.6em; }
+#p-a-ops .jr { display: grid; grid-template-columns: minmax(0, 1.3fr) 70px 80px minmax(0, 2fr) minmax(0, 1fr) 120px; gap: 10px; align-items: center; padding: 9px 8px; border-bottom: 1px solid var(--d-line); font-size: 12.5px; position: relative; }
+#p-a-ops .jr:last-child { border-bottom: 0; }
+#p-a-ops .jr.head { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--d-muted); padding-top: 0; }
+#p-a-ops .jr > * { min-width: 0; }
+#p-a-ops .jr b { font-weight: 600; }
+#p-a-ops .jr.fail { background: color-mix(in srgb, var(--d-bad) 9%, transparent); border-radius: 8px; box-shadow: inset 3px 0 0 var(--d-bad); }
+#p-a-ops .jr .res { color: var(--d-soft); }
+#p-a-ops .jr.fail .res { color: var(--d-bad); }
+#p-a-ops .jr .prog { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--d-accent); transform: scaleX(0); transform-origin: left; }
+#p-a-ops .jr.running .prog { animation: a-ops-scan 1.4s linear both; }
+#p-a-ops .jr.done { animation: a-ops-okflash .9s var(--ease); }
+#p-a-ops .lbl { display: none; color: var(--d-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
+#p-a-ops .rc-sum { font-size: 12.5px; margin: -2px 0 10px; }
+#p-a-ops .cal-h, #p-a-ops .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+#p-a-ops .cal-h i { font-style: normal; font-size: 10.5px; color: var(--d-muted); text-align: center; }
+#p-a-ops .cal button { min-height: 40px; border-radius: 8px; border: 1px solid var(--d-line); background: var(--d-panel-2); color: var(--d-soft); font-size: 12px; padding: 3px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; line-height: 1.15; font-variant-numeric: tabular-nums; }
+#p-a-ops .cal button span { font-size: 10.5px; font-weight: 700; }
+#p-a-ops .cal button.ok span { color: var(--d-ok); }
+#p-a-ops .cal button.bad { border-color: var(--d-warn); background: color-mix(in srgb, var(--d-warn) 14%, transparent); color: var(--d-text); }
+#p-a-ops .cal button.bad span { color: var(--d-warn); }
+#p-a-ops .cal button.pend span { color: var(--d-muted); }
+#p-a-ops .cal button[aria-pressed="true"] { outline: 2px solid var(--d-accent); outline-offset: 1px; }
+#p-a-ops .cal button.fixed { animation: a-ops-okflash .9s var(--ease); }
+#p-a-ops .rc-d { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--d-panel-2); font-size: 12.5px; display: grid; gap: 6px; min-height: 74px; }
+#p-a-ops .rc-d .cmp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#p-a-ops .rc-d .cmp div { min-width: 0; }
+#p-a-ops .rc-d .cmp b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+#p-a-ops .stars { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+#p-a-ops .stars .hnum { margin: 0; }
+#p-a-ops .sbar { width: 100%; height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--d-star) 22%, transparent); overflow: hidden; }
+#p-a-ops .sbar b { display: block; height: 100%; width: 66.7%; background: var(--d-star); border-radius: 5px; transform-origin: left; transition: width .7s var(--ease); }
+#p-a-ops .sdl { margin: 0; display: grid; gap: 4px; width: 100%; font-size: 12.5px; }
+#p-a-ops .sdl div { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+#p-a-ops .sdl dt { color: var(--d-muted); display: flex; align-items: center; gap: 6px; }
+#p-a-ops .sdl dd { margin: 0; font-variant-numeric: tabular-nums; }
+#p-a-ops .sw { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+#p-a-ops .sw.av { background: var(--d-star); } #p-a-ops .sw.hold { background: color-mix(in srgb, var(--d-star) 30%, transparent); }
+#p-a-ops .wd { width: 100%; padding: 10px 12px; border-radius: 10px; background: var(--d-panel-2); border: 1px solid var(--d-line-2); display: grid; gap: 8px; font-size: 12.5px; animation: a-ops-rise .3s var(--ease); }
+#p-a-ops .wd[hidden] { display: none; }
+#p-a-ops .wd-last { font-size: 12px; }
+#p-a-ops .tax { display: grid; gap: 8px; }
+#p-a-ops .tx { display: grid; grid-template-columns: 130px minmax(0, 1fr) 110px; gap: 12px; align-items: center; font-size: 13px; }
+#p-a-ops .tx > * { min-width: 0; }
+#p-a-ops .tx .bar { height: 12px; border-radius: 4px; background: var(--d-panel-2); overflow: hidden; }
+#p-a-ops .tx .bar b { display: block; height: 100%; border-radius: 4px; background: var(--d-muted); transform-origin: left; transition: width .6s var(--ease); }
+#p-a-ops .tx.inc .bar b { background: var(--s4); }
+#p-a-ops .tx.res { border-top: 1px solid var(--d-line); padding-top: 10px; font-weight: 700; }
+#p-a-ops .tx.res .bar b { background: var(--d-ok); }
+#p-a-ops .tx .sum { text-align: right; font-variant-numeric: tabular-nums; }
+#p-a-ops .csv-t { font-size: 12px; margin-top: 10px; }
+#p-a-ops .csv-t.ok { color: var(--d-ok); }
+#p-a-ops .br { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 14px; align-items: start; }
+#p-a-ops .br-tg { display: flex; justify-content: center; min-width: 0; }
+#p-a-ops .br-tg .tg { width: 100%; max-width: 360px; }
+#p-a-ops .tgl { display: grid; gap: 2px; }
+#p-a-ops .tgl button { display: flex; align-items: center; gap: 10px; background: none; border: 0; border-radius: 8px; padding: 6px 6px; min-height: 38px; text-align: left; color: var(--d-text); font-size: 13px; }
+#p-a-ops .tgl button:hover { background: var(--d-panel-2); }
+#p-a-ops .tgl button small { color: var(--d-muted); font-size: 11.5px; margin-left: auto; text-align: right; }
+#p-a-ops .sx { width: 34px; height: 20px; border-radius: 10px; background: var(--d-panel-3); border: 1px solid var(--d-line-2); position: relative; flex: none; transition: background .2s var(--ease); }
+#p-a-ops .sx::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--d-muted); transition: transform .25s var(--ease), background .2s; }
+#p-a-ops .tgl button[aria-pressed="true"] .sx { background: color-mix(in srgb, var(--d-accent) 40%, transparent); border-color: var(--d-accent); }
+#p-a-ops .tgl button[aria-pressed="true"] .sx::after { transform: translateX(14px); background: var(--d-text); }
+#p-a-ops .qh label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--d-soft); }
+#p-a-ops .qh select { background: var(--d-panel-2); border: 1px solid var(--d-line-2); border-radius: 8px; color: var(--d-text); padding: 6px 8px; min-height: 36px; }
+#p-a-ops .qh-t { font-size: 12.5px; margin: 8px 0 12px; }
+#p-a-ops .qh-t.warn { color: var(--d-warn); }
+#p-a-ops .msg { max-width: 100%; white-space: normal; display: grid; gap: 3px; }
+#p-a-ops .msg p { margin: 0; }
+#p-a-ops .msg p.in { animation: a-ops-rise .35s var(--ease) both; }
+#p-a-ops .msg .att { margin-top: 4px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--t-text) 14%, transparent); }
+#p-a-ops .msg .tm { justify-self: end; font-size: 11px; color: var(--t-muted); }
+#p-a-ops .msg .off { color: var(--t-muted); }
+#p-a-ops .msg.pop { animation: a-ops-pop .5s var(--ease); }
+#p-a-ops .ej { display: grid; }
+#p-a-ops .er { display: grid; grid-template-columns: minmax(0, 1.6fr) 54px 46px minmax(0, 1.4fr) minmax(0, 1.3fr); gap: 10px; align-items: center; padding: 8px; border-bottom: 1px solid var(--d-line); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+#p-a-ops .er > * { min-width: 0; }
+#p-a-ops .er.head { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--d-muted); padding-top: 0; }
+#p-a-ops .er code { font: 600 12px ui-monospace, Consolas, monospace; color: var(--d-text); overflow-wrap: anywhere; }
+#p-a-ops .er .cd { color: var(--d-bad); font-weight: 700; }
+#p-a-ops .er .bar { height: 8px; border-radius: 4px; background: var(--d-panel-2); overflow: hidden; }
+#p-a-ops .er .bar b { display: block; height: 100%; background: var(--d-bad); border-radius: 4px; transform-origin: left; }
+#p-a-ops .er .wh { color: var(--d-muted); font-size: 12px; }
+#p-a-ops .go .ani { animation: a-ops-rise .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms); }
+#p-a-ops .go .strip i { animation: a-ops-grow .4s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms + var(--j, 0) * 14ms); }
+#p-a-ops .go .tax .bar b, #p-a-ops .go .er .bar b, #p-a-ops .go .sbar b { animation: a-ops-bar .8s var(--ease) both; animation-delay: calc(var(--i, 0) * 80ms + 120ms); }
+#p-a-ops .go .mk { animation: a-ops-pop .4s var(--ease) both; animation-delay: calc(var(--j, 0) * 40ms + 200ms); }
+#p-a-ops .go .now { animation: a-ops-slide .9s var(--ease) both; }
+#p-a-ops .go .cal button { animation: a-ops-rise .35s var(--ease) both; animation-delay: calc(var(--j, 0) * 18ms); }
+@keyframes a-ops-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes a-ops-grow { from { transform: scaleY(0); } to { transform: none; } }
+@keyframes a-ops-bar { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes a-ops-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes a-ops-slide { from { left: 130px; opacity: 0; } }
+@keyframes a-ops-scan { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes a-ops-spin { to { transform: rotate(360deg); } }
+@keyframes a-ops-flash { 0% { color: var(--d-accent); } 100% { color: var(--d-text); } }
+@keyframes a-ops-okflash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--d-ok) 60%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+@keyframes a-ops-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@media (max-width: 860px) {
+#p-a-ops .ops-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#p-a-ops .br { grid-template-columns: minmax(0, 1fr); }
+#p-a-ops .jr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 10px; padding: 10px 8px; }
+#p-a-ops .jr.head { display: none; }
+#p-a-ops .jr .n { grid-column: 1 / -1; }
+#p-a-ops .jr .res { grid-column: 1 / -1; }
+#p-a-ops .lbl { display: block; }
+#p-a-ops .er { grid-template-columns: minmax(0, 1fr) 44px 40px; }
+#p-a-ops .er.head { display: none; }
+#p-a-ops .er .bar { grid-column: 1 / -1; }
+#p-a-ops .er .wh { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+#p-a-ops .tx { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
+#p-a-ops .tx .bar { grid-column: 1 / -1; grid-row: 2; }
+#p-a-ops .adm .hnum span { font-size: 32px; }
+#p-a-ops .lk dl div { grid-template-columns: 84px minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { #p-a-ops *, #p-a-ops *::before, #p-a-ops *::after { animation-duration: .01s !important; animation-iteration-count: 1 !important; transition-duration: .01s !important; } }
+</style>
+<script>(function () {
+"use strict";
+var root = document.getElementById("p-a-ops");
+var MM = window.MaidMock || { onSeen: function (el, fn) { fn(); }, reduce: false };
+function q(s, el) { return (el || root).querySelector(s); }
+function qa(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+function nf(n) { return Math.round(n).toLocaleString("ru-RU"); }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+var WORD = { ok: "в порядке", warn: "внимание", bad: "сбой" };
+var cur = "links";
+function countUp(el, to, fmt, ms) {
+fmt = fmt || nf;
+if (MM.reduce) { el.textContent = fmt(to); return; }
+var t0 = null, d = ms || 700;
+function step(t) { if (!t0) t0 = t; var k = Math.min(1, (t - t0) / d); k = 1 - Math.pow(1 - k, 3); el.textContent = fmt(to * k); if (k < 1) requestAnimationFrame(step); }
+requestAnimationFrame(step);
+}
+function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+var IC = {
+tg: '<path d="M21 4L3 11l6 2 2 6 3-4 5 4z"/><path d="M9 13l12-9"/>',
+ai: '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/>',
+wx: '<path d="M7 18a4 4 0 1 1 .6-8A5 5 0 0 1 17 9a4.5 4.5 0 0 1 0 9z"/>',
+push: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+db: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3 3 7 3s7-1.3 7-3"/>',
+watch: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
+};
+function hist(bad, warn) { var a = []; for (var i = 0; i < 24; i++) a.push(bad.indexOf(i) >= 0 ? "b" : warn.indexOf(i) >= 0 ? "w" : "o"); return a; }
+var LINKS = [
+{ k: "tg", n: "Telegram", st: "ok", l: [["Вебхук", "принимает, секрет на месте"], ["Отправка", "99,8 % за сутки, не ушли 4 из 2 116"]], last: "2 мин назад", h: hist([], [17]),
+steps: ["Спрашиваю вебхук…", "Шлю пробное сообщение вам…"], res: { last: "только что" } },
+{ k: "ai", n: "Поставщик ИИ", st: "warn", l: [["Ключ", "работает"], ["Остаток", "$18,40, хватит примерно на 9 дней"], ["Запасной", "подключён, отвечал вчера в 04:00"]], note: "Пополните до 4 декабря, иначе Рина замолчит", last: "1 мин назад", h: hist([], [18, 19]),
+steps: ["Проверяю ключ…", "Запрашиваю остаток…", "Стучусь к запасному…"], res: { last: "только что" } },
+{ k: "wx", n: "Погода", st: "bad", l: [["Ответ", "нет 40 мин, 3 попытки подряд"], ["Сейчас", "показываю прогноз из запаса на 6 ч"]], note: "Утренние письма уйдут со старым прогнозом", last: "в 09:00", h: hist([23], [22]),
+steps: ["Запрашиваю прогноз для Москвы…"], res: { st: "ok", last: "только что", l: [["Ответ", "420 мс"], ["Сейчас", "прогноз свежий, запас обновлён"]], note: "" } },
+{ k: "push", n: "Уведомления в браузере", st: "ok", l: [["Доставлено", "312 из 315 за сутки"], ["Отписались", "0 за неделю"]], last: "6 мин назад", h: hist([], []),
+steps: ["Шлю проверочное уведомление себе…"], res: { last: "только что" } },
+{ k: "db", n: "Копия базы", st: "warn", l: [["Ночная", "03:00, дошла в Telegram"], ["Размер", "46 МБ из 50 МБ предела"], ["Возврат", "проверен 6 дней назад"]], note: "Примерно через 12 дней копия перестанет помещаться", last: "в 03:00", h: hist([], []),
+steps: ["Открываю вчерашнюю копию…", "Пробую поднять её рядом…"], res: { last: "только что", l: [["Ночная", "03:00, дошла в Telegram"], ["Размер", "46 МБ из 50 МБ предела"], ["Возврат", "проверен только что, 1 753 таблицы сошлись"]] } },
+{ k: "watch", n: "Внешний сторож", st: "ok", l: [["Где", "отдельный сервис, проверяет сайт раз в минуту"], ["Ответ", "38 с назад, 210 мс"], ["Если упадёт", "напишет вам в Telegram через 2 мин"]], last: "38 с назад", h: hist([], []),
+steps: ["Прошу сторожа зайти на сайт…"], res: { last: "только что" } }
+];
+function lkBody(o) {
+return o.l.map(function (r) { return "<div><dt>" + r[0] + "</dt><dd>" + esc(r[1]) + "</dd></div>"; }).join("");
+}
+function lkStrip(o) { return o.h.map(function (c, j) { return '<i class="' + (c === "o" ? "" : c) + '" style="--j:' + j + '"></i>'; }).join(""); }
+function hourOf(j) { var h = (10 + j) % 24; return (h < 10 ? "0" : "") + h + ":00"; }
+function buildLinks() {
+q(".lks").innerHTML = LINKS.map(function (o, i) {
+return '<div class="panel lk ani ' + o.st + '" data-l="' + o.k + '" style="--i:' + i + '">' +
+'<div class="lk-h"><span class="lk-ic">' + '<svg viewBox="0 0 24 24" aria-hidden="true">' + IC[o.k] + '</svg></span><b>' + o.n + '</b><span class="st ' + o.st + '" data-st>' + WORD[o.st] + "</span></div>" +
+"<dl>" + lkBody(o) + "</dl>" +
+'<p class="lk-note"' + (o.note ? "" : " hidden") + ">" + (o.note || "") + "</p>" +
+'<button type="button" class="strip" style="--i:' + i + '" aria-label="' + o.n + ': история за сутки по часам">' + lkStrip(o) + "</button>" +
+'<p class="lk-tip">Сутки по часам. Нажмите на час.</p>' +
+'<div class="lk-f"><span class="dmuted">Последний успех: <b data-last>' + o.last + '</b></span><button type="button" class="dbtn" data-act="check"><i class="spin" aria-hidden="true"></i><span>Проверить сейчас</span></button></div>' +
+'<i class="scan" aria-hidden="true"></i></div>';
+}).join("");
+summary();
+}
+function summary() {
+var c = { ok: 0, warn: 0, bad: 0 };
+LINKS.forEach(function (o) { c[o.st]++; });
+var sorted = LINKS.map(function (o) { return o.st; }).sort(function (a, b) { return ["ok", "warn", "bad"].indexOf(a) - ["ok", "warn", "bad"].indexOf(b); });
+q(".segbar").innerHTML = sorted.map(function (s) { return '<i class="' + s + '"></i>'; }).join("");
+q('[data-c="ok"]').textContent = c.ok;
+q(".legend").textContent = c.ok + " в порядке · " + c.warn + " внимание · " + c.bad + " сбой";
+var b = q('[data-badge="links"]');
+if (c.bad) { b.className = "bad"; b.textContent = c.bad + " сбой"; }
+else if (c.warn) { b.className = "warn"; b.textContent = c.warn + " внимание"; }
+else { b.className = "ok"; b.textContent = "всё в порядке"; }
+}
+function check(card, after) {
+if (card.classList.contains("checking")) return;
+var o = LINKS.filter(function (x) { return x.k === card.dataset.l; })[0];
+var btn = q('[data-act="check"]', card), lab = q("span", btn), st = q("[data-st]", card), tip = q(".lk-tip", card);
+btn.disabled = true; card.classList.add("checking");
+st.className = "st mute"; st.textContent = "проверяю";
+var step = 0, per = MM.reduce ? 0 : Math.round(1100 / o.steps.length);
+lab.textContent = "Проверяю…"; tip.textContent = o.steps[0];
+var iv = setInterval(function () { step++; if (step < o.steps.length) tip.textContent = o.steps[step]; }, per || 1);
+setTimeout(function () {
+clearInterval(iv);
+var r = o.res;
+if (r.st) { card.classList.remove(o.st); o.st = r.st; card.classList.add(o.st); o.h[23] = "o"; q(".strip", card).innerHTML = lkStrip(o); }
+if (r.l) { o.l = r.l; q("dl", card).innerHTML = lkBody(o); }
+if (r.note !== undefined) { o.note = r.note; var nt = q(".lk-note", card); nt.textContent = r.note; nt.hidden = !r.note; }
+st.className = "st " + o.st; st.textContent = WORD[o.st];
+var lb = q("[data-last]", card); lb.textContent = r.last; restart(lb, "flash");
+tip.textContent = o.st === "ok" ? "Проверено в 09:40: отвечает." : "Проверено в 09:40: работает, но " + (o.k === "ai" ? "денег мало." : "место кончается.");
+card.classList.remove("checking"); btn.disabled = false; lab.textContent = "Проверить сейчас";
+summary();
+if (after) after();
+}, MM.reduce ? 10 : 1150);
+}
+root.addEventListener("click", function (e) {
+var s = e.target.closest(".strip");
+if (s && root.contains(s)) {
+var card = s.closest(".lk"), o = LINKS.filter(function (x) { return x.k === card.dataset.l; })[0], tip = q(".lk-tip", card);
+qa("i", s).forEach(function (x) { x.classList.remove("sel"); });
+if (e.detail === 0 || !e.clientX) {
+var nb = o.h.filter(function (c) { return c === "b"; }).length, nw = o.h.filter(function (c) { return c === "w"; }).length;
+tip.textContent = "За сутки: " + (24 - nb - nw) + " ч в порядке" + (nw ? ", " + nw + " ч с замечаниями" : "") + (nb ? ", " + nb + " ч сбой" : "") + ".";
+return;
+}
+var rc = s.getBoundingClientRect(), j = Math.max(0, Math.min(23, Math.floor((e.clientX - rc.left) / rc.width * 24)));
+qa("i", s)[j].classList.add("sel");
+var c = o.h[j];
+tip.textContent = hourOf(j) + "–" + hourOf(j + 1) + ": " + (c === "o" ? "в порядке" : c === "w" ? "отвечала медленно, до 4 с" : "не отвечала");
+return;
+}
+var b = e.target.closest("[data-act]");
+if (!b || !root.contains(b)) return;
+var a = b.dataset.act;
+if (a === "check") check(b.closest(".lk"));
+else if (a === "checkall") {
+b.disabled = true; b.textContent = "Проверяю…";
+var cards = qa(".lk"), n = 0;
+cards.forEach(function (c, i) { setTimeout(function () { check(c, function () { if (++n === cards.length) { b.disabled = false; b.textContent = "Проверить всё"; } }); }, MM.reduce ? 0 : i * 220); });
+}
+else if (a === "restart") restartJob(b);
+else if (a === "fix") fixDay(+b.dataset.d);
+else if (a === "wd") { q(".wd").hidden = false; b.hidden = true; }
+else if (a === "wdno") { q(".wd").hidden = true; q('[data-act="wd"]').hidden = false; }
+else if (a === "wdok") withdraw();
+else if (a === "csv") csv();
+else if (a === "send") sendSample();
+});
+var NOW = 9 + 40 / 60;
+var JOBS = [
+{ n: "Напоминания", every: true, last: "09:40", dur: "0,8 с", res: "отправлено 6", next: "09:41" },
+{ n: "Утренние письма", win: [6, 11], at: [6, 7, 8, 9, 9.5, 10, 10.5], last: "09:30", dur: "1 мин 12 с", res: "ушло 23 письма, у каждого в его час", next: "10:00" },
+{ n: "Вечерние итоги", win: [20, 23.5], at: [20, 21, 22, 23], last: "вчера 23:00", dur: "48 с", res: "131 итог, все дошли", next: "20:00" },
+{ n: "Ночная копия", at: [3], last: "03:00", dur: "41 с", res: "46 МБ, дошла в Telegram", next: "завтра 03:00" },
+{ n: "Счёт поставщика", at: [4, 16], fail: 4, last: "04:00", dur: "1 мин 30 с", res: "упала: поставщик не ответил за 30 с, 3 попытки", next: "16:00" },
+{ n: "Чистка", at: [4.5], last: "04:30", dur: "12 с", res: "удалено 2 340 старых записей журнала", next: "завтра 04:30" }
+];
+function hm(h) { var H = Math.floor(h), M = Math.round((h - H) * 60); return (H < 10 ? "0" : "") + H + ":" + (M < 10 ? "0" : "") + M; }
+function pc(h) { return (h / 24 * 100).toFixed(3) + "%"; }
+function buildTl() {
+var j = 0, html = JOBS.map(function (o, i) {
+var tr = "";
+if (o.win) tr += '<i class="win" style="left:' + pc(o.win[0]) + ";width:" + pc(o.win[1] - o.win[0]) + '"></i>';
+if (o.every) tr += '<i class="tick" style="width:' + pc(NOW) + '"></i><i class="tick fut" style="left:' + pc(NOW) + ";width:" + pc(24 - NOW) + '"></i>';
+(o.at || []).forEach(function (h) {
+var fut = h > NOW, bad = o.fail === h;
+var lab = o.n + ", " + hm(h) + ", " + (bad ? "упала" : fut ? "по расписанию" : o.re === h ? "перезапуск, готово" : "готово");
+tr += '<button type="button" class="mk' + (fut ? " fut" : "") + (bad ? " bad" : "") + '" style="left:' + pc(h) + ";--j:" + (j++) + '" data-job="' + i + '" data-h="' + h + '" aria-label="' + lab + '"></button>';
+});
+return '<div class="tl-r ani" style="--i:' + i + '"><span>' + o.n + '</span><div class="tr">' + tr + "</div></div>";
+}).join("");
+var ax = "";
+for (var h = 0; h <= 24; h += 3) ax += '<i style="left:' + pc(h) + '">' + (h < 10 ? "0" : "") + h + "</i>";
+html += '<div class="tl-ax"><span></span><div>' + ax + "</div></div>";
+html += '<i class="now" style="left:calc(130px + 10px + (100% - 140px) * ' + (NOW / 24).toFixed(4) + ')"></i>';
+q(".tl").innerHTML = html;
+}
+function buildJobs() {
+var head = '<div class="jr head"><span>Задача</span><span>Запуск</span><span>Длилась</span><span>Итог</span><span>Следующий</span><span></span></div>';
+q(".jl").innerHTML = "<h4>Последние запуски</h4>" + head + JOBS.map(function (o, i) {
+var f = o.fail !== undefined && !o.fixed;
+return '<div class="jr ani' + (f ? " fail" : "") + '" data-j="' + i + '" style="--i:' + (i + 2) + '">' +
+'<b class="n">' + o.n + (o.every ? ' <span class="dmuted">каждую минуту</span>' : "") + "</b>" +
+'<span><span class="lbl">Запуск</span>' + o.last + "</span>" +
+'<span data-dur><span class="lbl">Длилась</span>' + o.dur + "</span>" +
+'<span class="res"><span class="st ' + (f ? "bad" : "ok") + '">' + (f ? "упала" : "готово") + "</span> " + esc(o.res) + "</span>" +
+'<span><span class="lbl">Следующий</span>' + o.next + "</span>" +
+"<span>" + (f ? '<button type="button" class="dbtn primary" data-act="restart" data-j="' + i + '">Перезапустить</button>' : "") + "</span>" +
+'<i class="prog" aria-hidden="true"></i></div>';
+}).join("");
+}
+function restartJob(b) {
+var i = +b.dataset.j, o = JOBS[i], row = b.closest(".jr"), dur = q("[data-dur]", row);
+b.disabled = true; b.textContent = "Идёт…"; restart(row, "running");
+var t0 = Date.now(), iv = setInterval(function () { dur.innerHTML = '<span class="lbl">Длилась</span>' + ((Date.now() - t0) / 1000).toFixed(1).replace(".", ",") + " с"; }, 100);
+setTimeout(function () {
+clearInterval(iv);
+o.fixed = true; o.last = "09:40"; o.dur = "2,1 с"; o.res = "счёт сверен, расхождение $0,04"; o.re = NOW; o.at = [4, NOW, 16];
+buildJobs(); buildTl();
+var nr = q('.jr[data-j="' + i + '"]'); restart(nr, "done");
+q("[data-failn]").textContent = "0";
+var fs = q("[data-failst]"); fs.className = "st ok"; fs.textContent = "все прошли";
+var bd = q('[data-badge="jobs"]'); bd.className = "ok"; bd.textContent = "все прошли";
+q(".tl-tip").textContent = "Счёт поставщика, 09:40: перезапуск прошёл за 2,1 с. Отметка в 04:00 осталась красной, это история.";
+}, MM.reduce ? 10 : 1400);
+}
+root.addEventListener("click", function (e) {
+var m = e.target.closest(".mk"); if (!m || !root.contains(m)) return;
+qa(".mk").forEach(function (x) { x.classList.remove("sel"); }); m.classList.add("sel");
+var o = JOBS[+m.dataset.job], h = +m.dataset.h, t;
+if (o.fail === h) t = o.n + ", " + hm(h) + ": упала через 1 мин 30 с. Поставщик не ответил за 30 с, 3 попытки.";
+else if (h > NOW) t = o.n + ", " + hm(h) + ": запуск по расписанию.";
+else if (o.re === h) t = o.n + ", " + hm(h) + ": перезапуск вручную, 2,1 с, готово.";
+else t = o.n + ", " + hm(h) + ": готово за " + o.dur + ".";
+q(".tl-tip").textContent = t;
+});
+var DAYS = [], BAD = 18, TODAY = 27, fixed = false;
+for (var d = 1; d <= 30; d++) { var c = 3 + (d * 7) % 5; DAYS.push({ d: d, our: c, tg: d === BAD ? c + 1 : c, refund: d === 9 }); }
+function dayState(o) { return o.d > TODAY ? "fut" : o.d === TODAY ? "pend" : (o.our !== o.tg ? "bad" : "ok"); }
+function buildCal() {
+var off = 6, html = "";
+for (var k = 0; k < off; k++) html += "<span></span>";
+html += DAYS.map(function (o, j) {
+var s = dayState(o);
+if (s === "fut") return '<button type="button" class="pend" disabled aria-label="' + o.d + ' ноября, ещё не наступило" style="--j:' + j + '">' + o.d + "<span>·</span></button>";
+var w = s === "ok" ? "✓" : s === "bad" ? "≠" : "…";
+var lab = o.d + " ноября: " + (s === "ok" ? "сошлось" : s === "bad" ? "расхождение" : "день идёт");
+return '<button type="button" class="' + s + '" data-day="' + o.d + '" aria-pressed="false" aria-label="' + lab + '" style="--j:' + j + '">' + o.d + "<span>" + w + "</span></button>";
+}).join("");
+q(".cal").innerHTML = html;
+var nb = DAYS.filter(function (o) { return dayState(o) === "bad"; }).length;
+q(".rc-sum").textContent = (TODAY - 1 - nb) + " дней сошлось · " + (nb ? nb + " расхождение · " : "") + "сегодня день ещё идёт. Сверка с Telegram в 05:00.";
+var bd = q('[data-badge="money"]');
+if (nb) { bd.className = "warn"; bd.textContent = nb + " расхождение"; } else { bd.className = "ok"; bd.textContent = "всё сошлось"; }
+}
+function showDay(n) {
+var o = DAYS[n - 1], s = dayState(o), box = q(".rc-d");
+qa(".cal button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.day == n ? "true" : "false"); });
+var top = "<b>" + n + " ноября</b>";
+if (s === "pend") { box.innerHTML = top + "<span class=\"dsoft\">День ещё идёт: у нас пока " + o.our + " оплат на " + nf(o.our * 300) + " ★. Сверка завтра в 05:00.</span>"; return; }
+var cmp = '<div class="cmp"><div><span class="dmuted">У нас</span><b>' + o.our + " · " + nf(o.our * 300) + ' ★</b></div><div><span class="dmuted">В Telegram</span><b>' + o.tg + " · " + nf(o.tg * 300) + " ★</b></div></div>";
+if (s === "bad") box.innerHTML = top + cmp + '<span><span class="st warn">не сошлось</span> оплата #4821 на 300 ★ есть в Telegram, у нас записи нет. Человек заплатил, а подписка могла не продлиться.</span><div class="row"><button type="button" class="dbtn primary" data-act="fix" data-d="' + n + '">Записать оплату и продлить #4821</button></div>';
+else box.innerHTML = top + cmp + '<span><span class="st ok">сошлось</span> ' + (o.refund ? "в том числе возврат #4410 на 300 ★ есть у обоих." : (fixed && n === BAD ? "оплату #4821 записали вручную, подписка продлена до 18 декабря." : "оплаты совпали по номерам и суммам.")) + "</span>";
+}
+function fixDay(n) {
+fixed = true; DAYS[n - 1].our = DAYS[n - 1].tg; buildCal(); showDay(n);
+var b = q('.cal [data-day="' + n + '"]'); if (b) restart(b, "fixed");
+}
+var BAL = 18450, AV = 12300;
+function withdraw() {
+q(".wd").hidden = true;
+BAL -= AV; AV = 0;
+countUp(q("[data-bal]"), BAL, nf, 600);
+q("[data-av]").textContent = "0 ★";
+q(".sbar b").style.width = "0%";
+q(".wd-last").innerHTML = '<span class="st ok">заявка создана</span> 27 ноября в 09:41, 12 300 ★. Пришлю в Telegram, когда деньги дойдут.';
+}
+var TAX = {
+nov: { t: "Ноябрь 2026, по 27-е", r: [["Доход", 41280, "inc"], ["Возвраты", -1150], ["Расход на ИИ", -6920], ["Сервер", -1400]] },
+oct: { t: "Октябрь 2026", r: [["Доход", 36540, "inc"], ["Возвраты", -600], ["Расход на ИИ", -6110], ["Сервер", -1400]] }
+};
+var month = "nov";
+function buildTax() {
+var m = TAX[month], inc = m.r[0][1], left = m.r.reduce(function (s, r) { return s + r[1]; }, 0);
+var rows = m.r.concat([["Остаётся", left, "res"]]);
+q(".tax").innerHTML = rows.map(function (r, i) {
+var v = r[1];
+return '<div class="tx ani ' + (r[2] || "") + '" style="--i:' + i + '"><span>' + r[0] + '</span><div class="bar"><b style="width:' + (Math.abs(v) / inc * 100).toFixed(1) + '%;--i:' + i + '"></b></div><span class="sum" data-v="' + v + '">' + (v < 0 ? "−" : "") + nf(Math.abs(v)) + " ₽</span></div>";
+}).join("");
+if (q('.adm[data-k="money"]').classList.contains("go")) qa(".tax .sum").forEach(function (s) { var v = +s.dataset.v; countUp(s, Math.abs(v), function (x) { return (v < 0 ? "−" : "") + nf(x) + " ₽"; }); });
+}
+function csv() {
+var m = TAX[month], lines = ["Статья;Сумма, ₽"];
+m.r.forEach(function (r) { lines.push(r[0] + ";" + r[1]); });
+lines.push("Остаётся;" + m.r.reduce(function (s, r) { return s + r[1]; }, 0));
+var name = "gornichnaya-" + (month === "nov" ? "2026-11" : "2026-10") + ".csv", t = q(".csv-t");
+t.className = "dmuted csv-t ok"; t.textContent = "Файл " + name + " готов: итог и " + (month === "nov" ? "118" : "104") + " строк оплат и возвратов.";
+}
+var ITEMS = [
+{ k: "people", n: "Люди", s: "новые и активные", on: true, t: "Новых 12, активных 148, на 6 больше обычного" },
+{ k: "pay", n: "Оплаты", s: "число и сумма", on: true, t: "Оплат 3, всего 900 ★, это около 1 020 ₽" },
+{ k: "pl", n: "Доход против расхода", s: "ИИ и сервер", on: true, t: "Доход 1 020 ₽, расход 284 ₽: ИИ 237, сервер 47" },
+{ k: "crash", n: "Падения программы", s: "по версиям", on: true, t: "1 падение: версия 1.8.2, аккаунт #3317" },
+{ k: "err", n: "Ошибки сервера", s: "коды 5xx", on: true, t: "28 ошибок сервера, чаще всего /api/messages 502" },
+{ k: "sup", n: "Обращения", s: "открытые", on: true, t: "2 открытых обращения: #912, #915" },
+{ k: "att", n: "Что требует внимания", s: "список дел", on: true, t: "Требует внимания:<br>• денег у поставщика ИИ на 9 дней<br>• погода не отвечала 40 минут<br>• счёт поставщика упал в 04:00" }
+];
+var TIMES = ["07:00", "08:00", "09:00", "10:00"], time = "08:00";
+function buildToggles() {
+q(".tgl").innerHTML = ITEMS.map(function (o, i) { return '<button type="button" class="ani" style="--i:' + i + '" aria-pressed="' + o.on + '" data-it="' + o.k + '"><i class="sx" aria-hidden="true"></i>' + o.n + "<small>" + o.s + "</small></button>"; }).join("");
+q("[data-time]").innerHTML = TIMES.map(function (t) { return '<button type="button" data-t="' + t + '" aria-pressed="' + (t === time) + '">' + t + "</button>"; }).join("");
+}
+function buildMsg(changed) {
+var on = ITEMS.filter(function (o) { return o.on; }), m = q(".msg");
+var html = "<p>Доброе утро! Сводка за 26 ноября.</p>";
+if (!on.length) html += '<p class="off">Все пункты выключены. Сводка приходить не будет, сбои красного уровня останутся.</p>';
+html += on.map(function (o) { return '<p data-ln="' + o.k + '" class="' + (o.k === "att" ? "att" : "") + (o.k === changed ? " in" : "") + '">' + o.t + "</p>"; }).join("");
+html += '<span class="tm">' + time + "</span>";
+m.innerHTML = html;
+}
+function quiet() {
+var f = q('[data-q="from"]').value, t = q('[data-q="to"]').value, p = q(".qh-t");
+var inQ = time < t;
+p.className = "dsoft qh-t" + (inQ ? " warn" : "");
+p.textContent = "С " + f + " до " + t + " приходят только красные сбои. Остальное подождёт утренней сводки." + (inQ ? " Сводка в " + time + " попадает в тихие часы, но её вы заказали сами, она придёт." : "");
+}
+function sendSample() {
+var m = q(".msg"); buildMsg(); restart(m, "pop");
+q(".tm", m).textContent = "только что";
+}
+root.addEventListener("click", function (e) {
+var it = e.target.closest("[data-it]");
+if (it && root.contains(it)) {
+var o = ITEMS.filter(function (x) { return x.k === it.dataset.it; })[0];
+o.on = !o.on; it.setAttribute("aria-pressed", o.on); buildMsg(o.on ? o.k : null); return;
+}
+var tb = e.target.closest("[data-t]");
+if (tb && root.contains(tb)) { time = tb.dataset.t; qa("[data-t]").forEach(function (b) { b.setAttribute("aria-pressed", b === tb); }); buildMsg(); quiet(); return; }
+var dd = e.target.closest("[data-day]");
+if (dd && root.contains(dd)) { showDay(+dd.dataset.day); return; }
+var mb = e.target.closest("[data-m]");
+if (mb && root.contains(mb)) { month = mb.dataset.m; qa("[data-m]").forEach(function (b) { b.setAttribute("aria-pressed", b === mb); }); buildTax(); q(".csv-t").className = "dmuted csv-t"; return; }
+var pb = e.target.closest("[data-p]");
+if (pb && root.contains(pb)) { per = pb.dataset.p; qa("[data-p]").forEach(function (b) { b.setAttribute("aria-pressed", b === pb); }); buildErr(); restart(q('.adm[data-k="brief"]'), "go"); }
+});
+qa(".qh select").forEach(function (s) { s.addEventListener("change", quiet); });
+var ERR = {
+d: [["POST /api/messages", 502, 14, "03:12", "03:41"], ["GET /api/weather", 504, 9, "08:22", "09:02"], ["POST /api/sync", 500, 3, "вчера 11:05", "вчера 18:40"], ["GET /api/diary/search", 503, 2, "вчера 21:14", "вчера 21:15"]],
+w: [["POST /api/messages", 502, 61, "21 ноя 02:50", "сегодня 03:41"], ["GET /api/weather", 504, 22, "23 ноя 08:10", "сегодня 09:02"], ["POST /api/sync", 500, 17, "20 ноя 10:00", "вчера 18:40"], ["GET /api/diary/search", 503, 9, "22 ноя 21:00", "вчера 21:15"], ["POST /api/draw", 500, 4, "24 ноя 14:20", "25 ноя 16:02"]]
+};
+var per = "d";
+function buildErr() {
+var rows = ERR[per], max = rows[0][2], tot = rows.reduce(function (s, r) { return s + r[2]; }, 0);
+q(".ej").innerHTML = '<div class="er head"><span>Адрес</span><span>Код</span><span>Раз</span><span></span><span>Первый и последний</span></div>' + rows.map(function (r, i) {
+return '<div class="er ani" style="--i:' + i + '"><code>' + r[0] + '</code><span class="cd">' + r[1] + "</span><b>" + r[2] + '</b><div class="bar"><b style="width:' + (r[2] / max * 100).toFixed(1) + "%;--i:" + i + '"></b></div><span class="wh">' + r[3] + " → " + r[4] + "</span></div>";
+}).join("") + '<div class="er"><b>Всего</b><span></span><b>' + tot + "</b><span></span><span class=\"wh\">" + (per === "d" ? "за сутки" : "за 7 дней") + "</span></div>";
+}
+var CAPS = {
+links: "Всё, без чего сервис стоит: Telegram, ИИ, погода, уведомления, копия базы и сторож снаружи. Цвет всегда вместе со словом.",
+jobs: "Что сервер делает сам по расписанию. Красная отметка на ленте значит, что запуск упал. Строку с ошибкой можно перезапустить.",
+money: "Каждый день сверяем свои записи об оплатах с выпиской Telegram. Внизу итог месяца, который можно отдать бухгалтеру.",
+brief: "Одно сообщение утром вместо десятка оповещений за ночь. Справа видно, как оно будет выглядеть с вашими настройками."
+};
+function play() {
+var a = q('.adm[data-k="' + cur + '"]');
+if (MM.reduce) { a.classList.remove("go"); return; }
+restart(a, "go");
+if (cur === "links") countUp(q('[data-c="ok"]'), LINKS.filter(function (o) { return o.st === "ok"; }).length, function (v) { return String(Math.round(v)); }, 500);
+if (cur === "jobs") countUp(q("[data-n]"), 612, nf, 800);
+if (cur === "money") { countUp(q("[data-bal]"), BAL, nf, 800); buildTax(); }
+}
+qa(".ops-nav button").forEach(function (b) {
+b.addEventListener("click", function () {
+cur = b.dataset.s;
+qa(".ops-nav button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+qa(".adm[data-k]").forEach(function (a) { a.hidden = a.dataset.k !== cur; });
+q(".ops-cap").textContent = CAPS[cur];
+play();
+});
+});
+buildLinks(); buildTl(); buildJobs(); buildCal(); showDay(BAD); buildTax(); buildToggles(); buildMsg(); quiet(); buildErr();
+MM.onSeen(root, play);
+root.addEventListener("replay", play);
+})();</script>
+</article>

@@ -1,0 +1,676 @@
+<article class="piece" id="p-d-dates">
+  <header>
+    <p class="eyebrow">Экран · Планы → Даты</p>
+    <h2>Даты, до которых видно, сколько осталось</h2>
+    <p>Сейчас дата правится формой: день и месяц в двух полях, а человек и идея подарка в базе есть, но в форме их не видно. Новый экран начинается с ближайшей даты и обратного отсчёта, дальше идёт лента по месяцам. Дата правится прямо в строке, добавляется одной фразой, а Рина вовремя спрашивает про подарок.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="dates-bar">
+    <div class="dates-var" role="group" aria-label="Вариант экрана">
+      <button type="button" data-var="a" aria-pressed="true">Вариант А · Лента отсчёта</button>
+      <button type="button" data-var="b" aria-pressed="false">Вариант Б · Год кольцом</button>
+    </div>
+    <button type="button" class="dates-dayx" data-act="dayx" aria-pressed="false">Показать, как выглядит день рождения мамы</button>
+  </div>
+  <p class="dates-advice">Советую А как основной экран: ближайшее крупно, всё правится в строке. Кольцо года хорошо как второй вид, чтобы увидеть, где в году густо.</p>
+
+  <div class="app dates-a" data-hub="plans" data-tab="Даты" data-title="Даты">
+    <div class="dates-add">
+      <div class="dates-addrow">
+        <svg class="dates-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <input type="text" class="dates-addin" aria-label="Новая дата одной фразой" placeholder="у Саши день рождения 14 марта 1995" autocomplete="off">
+        <button type="button" class="btn primary" data-act="add">Добавить</button>
+      </div>
+      <p class="dates-prev" aria-live="polite"></p>
+    </div>
+
+    <section class="dates-hero" aria-label="Ближайшая дата"></section>
+
+    <div class="rina dates-rina">
+      <img src="maid/present.webp" alt="Рина" width="64" height="68">
+      <div class="dates-rtx"><p></p><div class="dates-racts"></div></div>
+    </div>
+
+    <div class="dates-filt" role="group" aria-label="Какие даты показать"></div>
+    <div class="dates-feed"></div>
+    <div class="dates-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
+  </div>
+
+  <div class="app dates-b" data-hub="plans" data-tab="Даты" data-title="Даты" hidden>
+    <div class="rina dates-rina">
+      <img src="maid/analysis.webp" alt="Рина" width="64" height="68">
+      <div class="dates-rtx"><p></p><div class="dates-racts"></div></div>
+    </div>
+    <div class="dates-yr">
+      <div class="dates-ringbox">
+        <svg class="dates-year" viewBox="0 0 420 420" role="group" aria-label="Год кольцом: точки дат по месяцам, стрелка показывает сегодня"></svg>
+        <div class="dates-leg"></div>
+      </div>
+      <aside class="card dates-bcard" aria-live="polite"></aside>
+    </div>
+    <div class="dates-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Сверху ближайшая дата: «через 4 дня · маме 58», кольцо отсчёта и поле «Что подарить» прямо в карточке.</li>
+      <li>Лента по месяцам, у каждого вида свой значок и оттенок: день рождения, годовщина, праздник, памятная, другое. Отбор по виду одной кнопкой.</li>
+      <li>Щелчок по строке раскрывает правку на месте: маленький календарь вместо двух полей, год «если знаете», человек, подарок, «напомнить за 1 / 3 / 7 / 14 дней».</li>
+      <li>Добавление фразой «у Саши день рождения 14 марта 1995»: ниже сразу видно, как Рина её поняла.</li>
+      <li>«Удалить» и любая правка отменяются кнопкой «Отменить», без вопросов «Вы уверены?».</li>
+      <li>Вариант Б: год кольцом, стрелка «сегодня», дуга до ближайшей даты, щелчок по точке открывает карточку.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Кольцо отсчёта заполняется, а число дней досчитывает вниз до значения: видно, что дата приближается.</li>
+      <li>Месяцы ленты выезжают по очереди, новая дата вспыхивает на своём месте.</li>
+      <li>В день даты лёгкое конфетти один раз, кольцо становится полным.</li>
+      <li>Б: стрелка поворачивается от 1 января к сегодняшнему дню, точки появляются, дуга до ближайшей даты прорисовывается.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Название, дата, вид, «каждый год», год, возраст и «через сколько» уже приходят с сервера (<code>/api/dates</code>).</li>
+      <li>Человек (<code>person</code>) и заметка (<code>notes</code>) есть в базе, надо отдать их на сайт и показать.</li>
+      <li>Своего «напомнить за N дней» у даты нет: дописать поле и напоминание в боте.</li>
+      <li>Разбор фразы взять у бота, он уже понимает даты словами. Для «маме 58» нужен падеж имени: просить у модели при разборе.</li>
+      <li>Отмена уже есть (<code>/api/undo</code>), её нужно звать и для правки в строке.</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-dates .dates-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+#p-d-dates .dates-var { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+#p-d-dates .dates-var button { background: none; border: 0; border-radius: 9px; padding: 7px 14px; min-height: 36px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+#p-d-dates .dates-var button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+#p-d-dates .dates-dayx { background: none; border: 1px dashed var(--gold); color: var(--gold); border-radius: 99px; padding: 7px 14px; min-height: 36px; font-size: 13px; font-weight: 600; }
+#p-d-dates .dates-dayx[aria-pressed="true"] { background: color-mix(in srgb, var(--gold) 14%, transparent); }
+#p-d-dates .dates-advice { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
+#p-d-dates .notes code { font-size: 12.5px; color: var(--text); }
+#p-d-dates .dates-i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+#p-d-dates .app .btn, #p-d-dates .app .chip { min-height: 36px; }
+#p-d-dates .app [data-k="bday"] { --k: var(--a-gold); }
+#p-d-dates .app [data-k="anniv"] { --k: color-mix(in srgb, var(--a-bad) 80%, var(--a-accent)); }
+#p-d-dates .app [data-k="hol"] { --k: var(--a-accent); }
+#p-d-dates .app [data-k="memo"] { --k: color-mix(in srgb, var(--a-soft) 55%, var(--a-ok)); }
+#p-d-dates .app [data-k="other"] { --k: var(--a-muted); }
+#p-d-dates .dates-badge { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--k); background: color-mix(in srgb, var(--k) 16%, transparent); flex: none; }
+#p-d-dates .dates-badge .dates-i { width: 20px; height: 20px; }
+
+#p-d-dates .dates-add { display: flex; flex-direction: column; gap: 6px; }
+#p-d-dates .dates-addrow { display: flex; align-items: center; gap: 10px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 14px; padding: 6px 6px 6px 14px; color: var(--a-muted); }
+#p-d-dates .dates-addrow:focus-within { border-color: var(--a-accent); }
+#p-d-dates .dates-addin { flex: 1; min-width: 0; border: 0; background: none; outline: none; padding: 8px 0; font-size: 14.5px; color: var(--a-text); }
+#p-d-dates .dates-addin::placeholder { color: var(--a-muted); }
+#p-d-dates .dates-prev { min-height: 22px; font-size: 13px; color: var(--a-muted); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-left: 4px; }
+#p-d-dates .dates-prev b { color: var(--a-text); font-weight: 650; }
+#p-d-dates .dates-pk { display: inline-flex; align-items: center; gap: 5px; color: var(--k); font-weight: 650; }
+#p-d-dates .dates-pk .dates-i { width: 15px; height: 15px; }
+
+#p-d-dates .dates-hero { position: relative; overflow: hidden; display: grid; grid-template-columns: 136px minmax(0, 1fr) 230px; gap: 22px; align-items: center; padding: 20px 22px; border-radius: var(--a-r); border: 1px solid color-mix(in srgb, var(--k) 40%, var(--a-line)); background: linear-gradient(120deg, color-mix(in srgb, var(--k) 14%, var(--a-surface)), var(--a-surface) 60%); }
+#p-d-dates .dates-ring { position: relative; width: 136px; height: 136px; }
+#p-d-dates .dates-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+#p-d-dates .dates-ring .dates-trk { fill: none; stroke: var(--a-surface-3); stroke-width: 10; }
+#p-d-dates .dates-ring .dates-arc { fill: none; stroke: var(--k); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset .9s var(--ease); }
+#p-d-dates .dates-rc { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+#p-d-dates .dates-rc b { font: 800 44px/1 var(--fd); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+#p-d-dates .dates-rc small { margin-top: 4px; font-size: 12px; color: var(--a-muted); font-weight: 600; }
+#p-d-dates .dates-rc .dates-i { width: 40px; height: 40px; color: var(--k); }
+#p-d-dates .dates-hm { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+#p-d-dates .dates-kw { display: inline-flex; align-items: center; gap: 6px; color: var(--k); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+#p-d-dates .dates-kw .dates-i { width: 15px; height: 15px; }
+#p-d-dates .dates-h1 { margin: 0; font: 800 34px/1.05 var(--fd); letter-spacing: -.025em; }
+#p-d-dates .dates-h1 span { color: var(--k); }
+#p-d-dates .dates-hs { color: var(--a-soft); font-size: 14px; }
+#p-d-dates .dates-gift { margin-top: 6px; display: flex; align-items: center; gap: 8px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 12px; padding: 4px 6px 4px 12px; color: var(--k); max-width: 460px; }
+#p-d-dates .dates-gift:focus-within { border-color: var(--k); }
+#p-d-dates .dates-gift input { flex: 1; min-width: 0; border: 0; background: none; outline: none; padding: 7px 0; color: var(--a-text); font-size: 13.5px; }
+#p-d-dates .dates-gift input::placeholder { color: var(--a-muted); }
+#p-d-dates .dates-gift label { font-size: 12px; font-weight: 700; color: var(--a-muted); white-space: nowrap; }
+#p-d-dates .dates-next { min-width: 0; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--a-line); padding-left: 18px; }
+#p-d-dates .dates-next > small { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); }
+#p-d-dates .dates-nx { display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 6px; margin: 0 -6px; border-radius: 10px; text-align: left; min-width: 0; color: var(--a-text); }
+#p-d-dates .dates-nx:hover { background: var(--a-surface-2); }
+#p-d-dates .dates-nx .dates-badge { width: 32px; height: 32px; border-radius: 10px; }
+#p-d-dates .dates-nx span { min-width: 0; display: flex; flex-direction: column; font-size: 13px; line-height: 1.3; }
+#p-d-dates .dates-nx span b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#p-d-dates .dates-nx span i { font-style: normal; color: var(--a-muted); font-size: 12px; }
+#p-d-dates .dates-conf { position: absolute; inset: 0; pointer-events: none; }
+#p-d-dates .dates-conf i { position: absolute; top: -12px; width: 7px; height: 11px; border-radius: 2px; animation: d-dates-fall 1.6s var(--ease) forwards; }
+
+#p-d-dates .dates-rtx { display: flex; flex-direction: column; gap: 6px; min-width: 0; align-items: flex-start; }
+#p-d-dates .dates-racts { display: flex; gap: 6px; flex-wrap: wrap; }
+#p-d-dates .dates-racts:empty { display: none; }
+#p-d-dates .dates-say p { animation: d-dates-rise .45s var(--ease) both; }
+
+#p-d-dates .dates-filt { display: flex; flex-wrap: wrap; gap: 6px; }
+#p-d-dates .dates-filt .chip .dates-i { width: 15px; height: 15px; color: var(--k, currentColor); }
+#p-d-dates .dates-filt .chip em { font-style: normal; color: var(--a-muted); font-variant-numeric: tabular-nums; }
+#p-d-dates .dates-feed { display: flex; flex-direction: column; gap: 16px; }
+#p-d-dates .dates-mon { display: flex; flex-direction: column; gap: 4px; }
+#p-d-dates .dates-mon.dates-in { animation: d-dates-rise .55s var(--ease) both; }
+#p-d-dates .dates-mh { display: flex; align-items: baseline; gap: 10px; padding: 0 4px 4px; border-bottom: 1px solid var(--a-line); }
+#p-d-dates .dates-mh h4 { margin: 0; font: 700 16px/1.2 var(--fd); }
+#p-d-dates .dates-mh span { color: var(--a-muted); font-size: 12.5px; }
+#p-d-dates .dates-item { border-radius: 14px; }
+#p-d-dates .dates-item.dates-open { background: var(--a-surface); border: 1px solid var(--a-line); box-shadow: var(--a-shadow); margin: 4px 0; }
+#p-d-dates .dates-item.dates-new { animation: d-dates-flash 1.2s var(--ease); }
+#p-d-dates .dates-row { width: 100%; display: grid; grid-template-columns: 40px 46px minmax(0, 1fr) auto; grid-template-areas: "b d m w"; gap: 12px; align-items: center; border: 0; background: none; color: var(--a-text); text-align: left; padding: 9px 10px; border-radius: 14px; }
+#p-d-dates .dates-row:hover { background: var(--a-surface); }
+#p-d-dates .dates-open .dates-row:hover { background: none; }
+#p-d-dates .dates-row .dates-badge { grid-area: b; }
+#p-d-dates .dates-day { grid-area: d; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+#p-d-dates .dates-day b { font: 700 22px/1 var(--fd); font-variant-numeric: tabular-nums; }
+#p-d-dates .dates-day small { color: var(--a-muted); font-size: 11.5px; margin-top: 3px; }
+#p-d-dates .dates-mid { grid-area: m; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+#p-d-dates .dates-mid b { font-weight: 650; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#p-d-dates .dates-mid span { color: var(--a-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#p-d-dates .dates-mid span i { font-style: normal; color: var(--k); }
+#p-d-dates .dates-when { grid-area: w; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#p-d-dates .dates-when b { font-weight: 700; }
+#p-d-dates .dates-when b.dates-soon { color: var(--k); }
+#p-d-dates .dates-when small { display: inline-flex; align-items: center; gap: 4px; color: var(--a-muted); font-size: 11.5px; }
+#p-d-dates .dates-when small .dates-i { width: 13px; height: 13px; }
+
+#p-d-dates .dates-ed { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 18px; padding: 6px 14px 14px; animation: d-dates-open .35s var(--ease); }
+#p-d-dates .dates-cal { background: var(--a-surface-2); border-radius: 12px; padding: 10px; align-self: start; }
+#p-d-dates .dates-calh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+#p-d-dates .dates-calh b { font-weight: 700; font-size: 14px; }
+#p-d-dates .dates-ib { width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-soft); flex: none; }
+#p-d-dates .dates-ib:hover { border-color: var(--a-accent); color: var(--a-text); }
+#p-d-dates .dates-calw, #p-d-dates .dates-calg { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
+#p-d-dates .dates-calw span { font-size: 11px; color: var(--a-muted); padding: 2px 0; }
+#p-d-dates .dates-calg button { aspect-ratio: 1; min-height: 30px; border: 0; border-radius: 8px; background: none; color: var(--a-text); font-size: 12.5px; font-variant-numeric: tabular-nums; padding: 0; }
+#p-d-dates .dates-calg button:hover { background: var(--a-surface-3); }
+#p-d-dates .dates-calg button.dates-td { box-shadow: inset 0 0 0 1px var(--a-accent); }
+#p-d-dates .dates-calg button[aria-pressed="true"] { background: var(--k); color: var(--a-bg); font-weight: 700; }
+#p-d-dates .dates-calnote { margin-top: 8px; font-size: 12px; color: var(--a-muted); }
+#p-d-dates .dates-f { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+#p-d-dates .dates-lbl { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; color: var(--a-muted); min-width: 0; }
+#p-d-dates .dates-in { width: 100%; min-width: 0; min-height: 38px; border: 1px solid var(--a-line); background: var(--a-surface-2); border-radius: 10px; padding: 7px 11px; font-size: 14px; font-weight: 400; color: var(--a-text); resize: vertical; }
+#p-d-dates .dates-in:focus { outline: none; border-color: var(--a-accent); }
+#p-d-dates .dates-in::placeholder { color: var(--a-muted); }
+#p-d-dates .dates-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: end; }
+#p-d-dates .dates-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+#p-d-dates .dates-chips .chip .dates-i { width: 15px; height: 15px; color: var(--k); }
+#p-d-dates .dates-remw { font-size: 12.5px; color: var(--a-soft); display: flex; align-items: center; gap: 6px; }
+#p-d-dates .dates-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--a-line); padding-top: 12px; }
+#p-d-dates .dates-del { color: var(--a-bad); }
+#p-d-dates .dates-empty { color: var(--a-muted); padding: 18px; text-align: center; border: 1px dashed var(--a-line); border-radius: 14px; }
+
+#p-d-dates .dates-toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px); background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 8px 8px 8px 14px; font-size: 13px; box-shadow: var(--a-shadow); animation: d-dates-toast .3s var(--ease); }
+#p-d-dates .dates-toast span { min-width: 0; }
+#p-d-dates .dates-toast button { border: 0; background: color-mix(in srgb, var(--a-bg) 14%, transparent); color: inherit; border-radius: 8px; padding: 6px 10px; min-height: 36px; font-weight: 700; flex: none; }
+#p-d-dates .dates-toast[hidden] { display: none; }
+
+#p-d-dates .dates-yr { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+#p-d-dates .dates-ringbox { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#p-d-dates .dates-year { width: 100%; max-width: 440px; height: auto; display: block; overflow: visible; }
+#p-d-dates .dates-year .dates-ms { fill: none; stroke-width: 26; stroke: var(--a-surface-2); }
+#p-d-dates .dates-year .dates-ms.dates-alt { stroke: var(--a-surface-3); }
+#p-d-dates .dates-year .dates-ml { font: 600 11.5px var(--f); fill: var(--a-muted); text-anchor: middle; dominant-baseline: middle; }
+#p-d-dates .dates-year .dates-ml.dates-cur { fill: var(--a-text); font-weight: 800; }
+#p-d-dates .dates-year .dates-hl { fill: none; stroke: var(--a-accent); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset .9s var(--ease) .3s; }
+#p-d-dates .dates-year .dates-arrow { transform-box: view-box; transform-origin: 210px 210px; transition: transform .9s var(--ease); }
+#p-d-dates .dates-year .dates-arrow path { fill: none; stroke: var(--a-text); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+#p-d-dates .dates-year .dates-arrow circle { fill: var(--a-text); }
+#p-d-dates .dates-year .dates-pt { cursor: pointer; outline: none; }
+#p-d-dates .dates-year .dates-pt circle { fill: var(--k); stroke: var(--a-bg); stroke-width: 2.5; transition: r .2s var(--ease); }
+#p-d-dates .dates-year .dates-pt .dates-halo { fill: none; stroke: var(--k); stroke-width: 2; opacity: 0; }
+#p-d-dates .dates-year .dates-pt:hover .dates-halo, #p-d-dates .dates-year .dates-pt:focus-visible .dates-halo, #p-d-dates .dates-year .dates-pt.dates-sel .dates-halo { opacity: 1; }
+#p-d-dates .dates-year .dates-pt.dates-pop { animation: d-dates-pop .5s var(--ease) both; transform-box: fill-box; transform-origin: center; }
+#p-d-dates .dates-year .dates-c1 { font: 600 12px var(--f); fill: var(--a-muted); text-anchor: middle; }
+#p-d-dates .dates-year .dates-c2 { font: 800 22px var(--fd); fill: var(--a-text); text-anchor: middle; }
+#p-d-dates .dates-year .dates-c3 { font: 600 12.5px var(--f); fill: var(--a-soft); text-anchor: middle; }
+#p-d-dates .dates-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 12.5px; color: var(--a-soft); }
+#p-d-dates .dates-leg span { display: inline-flex; align-items: center; gap: 5px; }
+#p-d-dates .dates-leg .dates-i { width: 15px; height: 15px; color: var(--k); }
+#p-d-dates .dates-bcard { display: flex; flex-direction: column; gap: 10px; }
+#p-d-dates .dates-bcard .dates-h1 { font-size: 22px; }
+#p-d-dates .dates-bwhen { font: 800 30px/1 var(--fd); color: var(--k); letter-spacing: -.02em; }
+
+#p-d-dates .dates-noanim, #p-d-dates .dates-noanim * { transition: none !important; }
+@keyframes d-dates-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes d-dates-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes d-dates-flash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-accent) 60%, transparent); background: var(--a-accent-soft); } 100% { box-shadow: 0 0 0 12px transparent; background: transparent; } }
+@keyframes d-dates-toast { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+@keyframes d-dates-pop { from { transform: scale(0); } 70% { transform: scale(1.25); } to { transform: scale(1); } }
+@keyframes d-dates-fall { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), 230px) rotate(var(--rot)); opacity: 0; } }
+@media (max-width: 900px) {
+  #p-d-dates .dates-hero { grid-template-columns: 120px minmax(0, 1fr); }
+  #p-d-dates .dates-ring { width: 120px; height: 120px; }
+  #p-d-dates .dates-next { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--a-line); padding: 12px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+  #p-d-dates .dates-next > small { grid-column: 1 / -1; }
+  #p-d-dates .dates-yr { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  #p-d-dates .dates-ed { grid-template-columns: 1fr; padding: 4px 10px 12px; }
+  #p-d-dates .dates-toast { bottom: 76px; }
+}
+@media (max-width: 560px) {
+  #p-d-dates .dates-hero { grid-template-columns: 1fr; justify-items: start; gap: 14px; padding: 16px; }
+  #p-d-dates .dates-hm { width: 100%; }
+  #p-d-dates .dates-ring { width: 104px; height: 104px; }
+  #p-d-dates .dates-rc b { font-size: 36px; }
+  #p-d-dates .dates-h1 { font-size: 27px; }
+  #p-d-dates .dates-next { width: 100%; grid-template-columns: 1fr; }
+  #p-d-dates .dates-row { grid-template-columns: 36px 40px minmax(0, 1fr); grid-template-areas: "b d m" "b d w"; row-gap: 2px; }
+  #p-d-dates .dates-when { flex-direction: row; justify-content: flex-start; gap: 8px; text-align: left; }
+  #p-d-dates .dates-row .dates-badge { width: 36px; height: 36px; }
+  #p-d-dates .dates-two { grid-template-columns: 1fr; }
+  #p-d-dates .dates-addrow .btn { padding: 8px 10px; }
+}
+  </style>
+
+<script>(function () {
+"use strict";
+var root = document.getElementById("p-d-dates");
+var MM = window.MaidMock || { reduce: false, onSeen: function (e, f) { f(); } };
+var MG = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+var MI = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+var MS = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+var WD = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+var WS = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+var P = '<svg class="dates-i" viewBox="0 0 24 24" aria-hidden="true">';
+var IC = {
+  bday: P + '<path d="M4 20h16M5 20v-7h14v7M5 16.5c2 1.4 3.5-1.4 5 0s3.5 1.4 5 0 3 1 4 0M12 13V9.5M12 7c-1-1 0-3 0-3s1 2 0 3"/></svg>',
+  anniv: P + '<path d="M12 20s-7-4.4-7-9.5A4 4 0 0 1 12 8a4 4 0 0 1 7 2.5C19 15.6 12 20 12 20z"/></svg>',
+  hol: P + '<path d="M12 3.5l2.5 5.3 5.8.7-4.3 4 1.1 5.8L12 16.4l-5.1 2.9 1.1-5.8-4.3-4 5.8-.7z"/></svg>',
+  memo: P + '<path d="M7 4h10v16l-5-3.6L7 20z"/></svg>',
+  other: P + '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>',
+  gift: P + '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11M12 9C10 5 6 5 6 7.5S9 9 12 9zM12 9c2-4 6-4 6-1.5S15 9 12 9z"/></svg>',
+  bell: P + '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5h4"/></svg>',
+  prev: P + '<path d="M15 5l-7 7 7 7"/></svg>',
+  next: P + '<path d="M9 5l7 7-7 7"/></svg>',
+  trash: P + '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>'
+};
+var KINDS = [["bday", "День рождения", "Дни рождения"], ["anniv", "Годовщина", "Годовщины"], ["hol", "Праздник", "Праздники"], ["memo", "Памятная", "Памятные"], ["other", "Другое", "Другое"]];
+function kname(k) { for (var i = 0; i < KINDS.length; i++) if (KINDS[i][0] === k) return KINDS[i]; return KINDS[4]; }
+var REM = [0, 1, 3, 7, 14];
+var uid = 0;
+function D(k, t, d, m, y, o) { o = o || {}; return { id: ++uid, k: k, t: t, d: d, m: m, y: y || null, yr: o.yr !== false, p: o.p || "", g: o.g || "", dat: o.dat || "", n: o.n || "", rem: o.rem == null ? 7 : o.rem }; }
+var dates = [
+  D("bday", "День рождения мамы", 1, 12, 1968, { p: "Мама", g: "мамы", dat: "маме", rem: 7 }),
+  D("anniv", "Годовщина с Аней", 12, 12, 2019, { p: "Аня", n: "Столик в «Пряностях» на 19:00", rem: 7 }),
+  D("hol", "Новый год", 1, 1, null, { n: "Ёлку купить до 25-го", rem: 14 }),
+  D("bday", "День рождения Димы", 3, 1, 1994, { p: "Дима", g: "Димы", dat: "Диме", rem: 3 }),
+  D("bday", "День рождения папы", 9, 2, 1965, { p: "Папа", g: "папы", dat: "папе", n: "Термос в машину", rem: 7 }),
+  D("hol", "8 Марта", 8, 3, null, { rem: 3 }),
+  D("other", "Техосмотр машины", 15, 5, null, { rem: 14 }),
+  D("other", "Свадьба Оли и Макса", 13, 6, 2027, { yr: false, n: "Забрать костюм из химчистки", rem: 14 }),
+  D("bday", "День рождения Лены", 22, 7, 1997, { p: "Лена, сестра", g: "Лены", dat: "Лене", rem: 7 }),
+  D("memo", "Переезд в свою квартиру", 20, 8, 2022, { rem: 0 }),
+  D("bday", "День рождения Барсика", 5, 10, 2020, { p: "Барсик, кот", g: "Барсика", dat: "Барсику", n: "Новая когтеточка", rem: 1 }),
+  D("memo", "Первый день на работе", 17, 11, 2021, { rem: 0 })
+];
+var BASE = { y: 2026, m: 11, d: 27 }, DAYX = { y: 2026, m: 12, d: 1 };
+var T = BASE, open = null, calM = {}, filt = "all", selB = null, toastT = 0, playing = false, fsnap = null;
+
+function q(s, el) { return (el || root).querySelector(s); }
+function qa(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function pl(n, a) { var m10 = n % 10, m100 = n % 100; return a[(m10 === 1 && m100 !== 11) ? 0 : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 1 : 2]; }
+var LET = ["год", "года", "лет"], DN = ["день", "дня", "дней"];
+function utc(y, m, d) { return Date.UTC(y, m - 1, d); }
+function occ(x) {
+  var y = T.y, t0 = utc(T.y, T.m, T.d);
+  if (!x.yr && x.y) y = x.y;
+  else if (utc(y, x.m, x.d) < t0) y++;
+  var ms = utc(y, x.m, x.d), dt = new Date(ms);
+  return { y: y, ms: ms, days: Math.round((ms - t0) / 864e5), wd: dt.getUTCDay() };
+}
+function age(x, o) { return x.y && x.yr ? o.y - x.y : null; }
+function whenT(n) { if (n === 0) return "сегодня"; if (n === 1) return "завтра"; if (n === 2) return "послезавтра"; if (n > 60) { var mm = Math.round(n / 30.4); return "через " + mm + " мес"; } return "через " + n + " " + pl(n, DN); }
+function subT(x, o) {
+  var a = age(x, o), s = "";
+  if (x.k === "bday" && a != null) s = o.days === 0 ? "сегодня " + a + " " + pl(a, LET) : "исполнится " + a;
+  else if (x.k === "anniv" && a != null) s = a + " " + pl(a, LET) + " вместе";
+  else if (x.k === "memo" && a != null) s = a + " " + pl(a, LET) + " с того дня";
+  else if (x.k === "hol") s = "праздник";
+  var w = [];
+  if (x.p) w.push(x.p);
+  if (s) w.push(s);
+  return w.join(" · ");
+}
+function dateT(o, x, withY) { return WD[o.wd] + ", " + x.d + " " + MG[x.m - 1] + (withY || o.y !== T.y ? " " + o.y : ""); }
+function remT(x, o) {
+  if (!x.rem) return "Без напоминания";
+  var r = new Date(o.ms - x.rem * 864e5), s = r.getUTCDate() + " " + MG[r.getUTCMonth()];
+  return (o.days < x.rem ? "Напомнила " : "Напомню ") + s + ", за " + x.rem + " " + pl(x.rem, DN);
+}
+function sorted() { return dates.map(function (x) { return { x: x, o: occ(x) }; }).sort(function (a, b) { return a.o.ms - b.o.ms; }); }
+function byId(id) { for (var i = 0; i < dates.length; i++) if (dates[i].id === id) return dates[i]; return null; }
+function snap() { return JSON.stringify(dates); }
+
+function toast(text, s) {
+  qa(".dates-toast").forEach(function (t) {
+    t.hidden = false; t.style.animation = "none"; void t.offsetWidth; t.style.animation = "";
+    q("span", t).textContent = text; t.dataset.snap = s;
+  });
+  clearTimeout(toastT);
+  toastT = setTimeout(function () { qa(".dates-toast").forEach(function (t) { t.hidden = true; }); }, 6500);
+}
+
+/* ——— герой: ближайшая дата */
+function renderHero(anim) {
+  var s = sorted(), first = s[0], h = q(".dates-hero");
+  if (!first) { h.innerHTML = '<p class="dates-empty">Дат пока нет. Напишите первую строкой выше.</p>'; return; }
+  var x = first.x, o = first.o, a = age(x, o), kn = kname(x.k);
+  var head = o.days === 0 ? "Сегодня" : whenT(o.days);
+  var who = x.dat && a != null ? x.dat + " " + a : subT(x, o);
+  var C = 2 * Math.PI * 58, frac = o.days === 0 ? 1 : Math.max(.06, 1 - o.days / 30);
+  var center = o.days === 0 ? IC[x.k] + "<small>сегодня</small>" : '<b class="dates-cnt">' + o.days + "</b><small>" + pl(o.days, DN) + "</small>";
+  var gl = x.k === "bday" || x.k === "anniv" ? "Что подарить" : "Заметка";
+  h.dataset.k = x.k;
+  h.innerHTML =
+    '<div class="dates-ring" role="img" aria-label="' + (o.days === 0 ? "Сегодня" : "Осталось " + o.days + " " + pl(o.days, DN)) + '"><svg viewBox="0 0 136 136" aria-hidden="true"><circle class="dates-trk" cx="68" cy="68" r="58"/><circle class="dates-arc" cx="68" cy="68" r="58" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + (C * (1 - frac)).toFixed(1) + '"/></svg><div class="dates-rc">' + center + "</div></div>" +
+    '<div class="dates-hm"><span class="dates-kw">' + IC[x.k] + kn[1] + '</span><h3 class="dates-h1">' + esc(head) + (who ? ' <span>· ' + esc(who) + "</span>" : "") + '</h3><p class="dates-hs">' + esc(x.t) + " · " + dateT(o, x) + '</p>' +
+    '<div class="dates-gift">' + IC.gift + '<label for="d-dates-gift">' + gl + '</label><input id="d-dates-gift" data-hid="' + x.id + '" value="' + esc(x.n) + '" placeholder="Запишите идею, Рина напомнит" autocomplete="off"></div></div>' +
+    '<div class="dates-next"><small>Дальше</small>' + s.slice(1, 3).map(function (r) {
+      return '<button type="button" class="dates-nx" data-k="' + r.x.k + '" data-goto="' + r.x.id + '"><span class="dates-badge">' + IC[r.x.k] + "</span><span><b>" + esc(r.x.t) + "</b><i>" + r.x.d + " " + MG[r.x.m - 1] + " · " + whenT(r.o.days) + "</i></span></button>";
+    }).join("") + "</div>";
+  if (anim && !MM.reduce) {
+    var arc = q(".dates-arc", h), cnt = q(".dates-cnt", h), target = C * (1 - frac);
+    arc.style.transition = "none"; arc.setAttribute("stroke-dashoffset", C.toFixed(1)); void arc.getBoundingClientRect();
+    arc.style.transition = ""; requestAnimationFrame(function () { arc.setAttribute("stroke-dashoffset", target.toFixed(1)); });
+    if (cnt) {
+      var from = Math.min(30, o.days + 26), t0 = performance.now();
+      (function tick(t) { var k = Math.min(1, (t - t0) / 850), e = 1 - Math.pow(1 - k, 3); cnt.textContent = Math.round(from + (o.days - from) * e); if (k < 1) requestAnimationFrame(tick); })(t0);
+    }
+  }
+  if (o.days === 0 && anim) confetti(h);
+}
+function confetti(h) {
+  if (MM.reduce) return;
+  var box = document.createElement("div"); box.className = "dates-conf"; box.setAttribute("aria-hidden", "true");
+  var cols = ["var(--a-gold)", "var(--a-accent)", "var(--a-ok)", "color-mix(in srgb, var(--a-bad) 80%, var(--a-accent))"], r = 7;
+  for (var i = 0; i < 26; i++) {
+    r = (r * 9301 + 49297) % 233280; var f = r / 233280;
+    var it = document.createElement("i");
+    it.style.left = (4 + f * 92).toFixed(1) + "%"; it.style.background = cols[i % 4];
+    it.style.setProperty("--dx", ((f - .5) * 80).toFixed(0) + "px"); it.style.setProperty("--rot", (200 + f * 400).toFixed(0) + "deg");
+    it.style.animationDelay = (i % 9) * 60 + "ms";
+    box.appendChild(it);
+  }
+  h.appendChild(box);
+  setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 2400);
+}
+
+/* ——— Рина */
+function rinaSay(app, text, acts) {
+  var r = q(".dates-rina", app);
+  q("p", r).innerHTML = text;
+  q(".dates-racts", r).innerHTML = (acts || []).map(function (a) { return '<button type="button" class="btn" data-act="' + a[0] + '">' + a[1] + "</button>"; }).join("");
+  r.classList.remove("dates-say"); void r.offsetWidth; if (!MM.reduce) r.classList.add("dates-say");
+}
+function renderRina() {
+  var s = sorted(), A = q(".dates-a"), B = q(".dates-b"), img = q(".dates-rina img", A);
+  if (!s.length) { rinaSay(A, "Дат нет. Расскажите, у кого скоро праздник, я запомню."); return; }
+  var x = s[0].x, o = s[0].o, a = age(x, o);
+  var g = x.k === "bday" ? "дня рождения " + esc(x.g || x.t) : x.k === "anniv" ? "годовщины" : "«" + esc(x.t) + "»";
+  if (o.days === 0) {
+    img.src = "maid/excited.webp";
+    rinaSay(A, "Сегодня " + (x.dat ? esc(x.dat) + " <b>" + a + "</b>" : "<b>" + esc(x.t) + "</b>") + "! " + (x.n ? "Подарок записан: «" + esc(x.n) + "». " : "") + "Позвоните до обеда, вечером все поздравляют разом.", [["remcall", "Напомнить в 11:00"]]);
+  } else if ((x.k === "bday" || x.k === "anniv") && o.days <= 7 && !x.n) {
+    img.src = "maid/present.webp";
+    rinaSay(A, "До " + g + " <b>" + o.days + " " + pl(o.days, DN) + "</b>, а идеи подарка пока нет. Запишем сейчас, пока помните?", [["gift", "Записать идею"]]);
+  } else if (x.n && o.days <= 14) {
+    img.src = "maid/proud.webp";
+    rinaSay(A, "Идея есть: <b>«" + esc(x.n) + "»</b>. Напомню за 3 дня до " + g + ", чтобы вы успели купить.");
+  } else {
+    img.src = "maid/list.webp";
+    rinaSay(A, "Ближайшая дата " + whenT(o.days) + ": " + esc(x.t) + ". Всё под присмотром.");
+  }
+  var six = s.filter(function (r) { return r.o.days <= 42; }), gifts = six.filter(function (r) { return (r.x.k === "bday" || r.x.k === "anniv") && !r.x.n; });
+  rinaSay(B, "За шесть недель у вас <b>" + six.length + " " + pl(six.length, ["дата", "даты", "дат"]) + "</b>, самый плотный отрезок года." + (gifts.length ? " Без идеи подарка: " + gifts.map(function (r) { return esc(r.x.g || r.x.t); }).join(", ") + "." : " Подарки на всё уже придуманы."), gifts.length ? [["bpick", "Открыть " + esc(gifts[0].x.g || gifts[0].x.t)]] : []);
+  B.dataset.pick = gifts.length ? gifts[0].x.id : "";
+}
+
+/* ——— лента */
+function renderFilt() {
+  var cnt = { all: dates.length };
+  dates.forEach(function (x) { cnt[x.k] = (cnt[x.k] || 0) + 1; });
+  q(".dates-filt").innerHTML = '<button type="button" class="chip" data-filt="all" aria-pressed="' + (filt === "all") + '">Все <em>' + cnt.all + "</em></button>" + KINDS.filter(function (k) { return cnt[k[0]]; }).map(function (k) {
+    return '<button type="button" class="chip" data-k="' + k[0] + '" data-filt="' + k[0] + '" aria-pressed="' + (filt === k[0]) + '">' + IC[k[0]] + k[2] + " <em>" + cnt[k[0]] + "</em></button>";
+  }).join("");
+}
+function rowHead(x, o) {
+  var soon = o.days <= 7;
+  return '<span class="dates-badge" aria-hidden="true">' + IC[x.k] + '</span><span class="dates-day"><b>' + x.d + "</b><small>" + WS[o.wd] + '</small></span><span class="dates-mid"><b>' + esc(x.t) + "</b><span>" + esc(subT(x, o) || kname(x.k)[1]) + (x.n ? ' · <i>' + IC.gift.replace('class="dates-i"', 'class="dates-i" style="width:13px;height:13px;vertical-align:-2px"') + "</i> " + esc(x.n) : "") + '</span></span><span class="dates-when"><b class="' + (soon ? "dates-soon" : "") + '">' + whenT(o.days) + "</b><small>" + (x.rem ? IC.bell + "за " + x.rem + " " + pl(x.rem, DN) : "без напоминания") + "</small></span>";
+}
+function renderFeed(anim) {
+  var s = sorted().filter(function (r) { return filt === "all" || r.x.k === filt; }), feed = q(".dates-feed"), groups = [], cur = null;
+  s.forEach(function (r) {
+    var key = r.o.y + "-" + r.x.m;
+    if (!cur || cur.key !== key) { cur = { key: key, m: r.x.m, y: r.o.y, rows: [] }; groups.push(cur); }
+    cur.rows.push(r);
+  });
+  if (!groups.length) { feed.innerHTML = '<p class="dates-empty">Таких дат нет.</p>'; return; }
+  feed.innerHTML = groups.map(function (g, gi) {
+    return '<section class="dates-mon' + (anim && !MM.reduce ? " dates-in" : "") + '" style="animation-delay:' + Math.min(gi, 8) * 70 + 'ms"><div class="dates-mh"><h4>' + MI[g.m - 1] + (g.y !== T.y ? " " + g.y : "") + "</h4><span>" + g.rows.length + " " + pl(g.rows.length, ["дата", "даты", "дат"]) + "</span></div>" +
+      g.rows.map(function (r) {
+        var isO = open === r.x.id;
+        return '<div class="dates-item' + (isO ? " dates-open" : "") + '" data-id="' + r.x.id + '" data-k="' + r.x.k + '"><button type="button" class="dates-row" data-act="toggle" aria-expanded="' + isO + '">' + rowHead(r.x, r.o) + "</button>" + (isO ? edHTML(r.x, r.o) : "") + "</div>";
+      }).join("") + "</section>";
+  }).join("");
+}
+function calHTML(x) {
+  var cm = calM[x.id] || x.m, cy = !x.yr && x.y ? x.y : cm >= T.m ? T.y : T.y + 1;
+  var first = new Date(utc(cy, cm, 1)).getUTCDay(), lead = (first + 6) % 7, n = new Date(utc(cy, cm + 1, 0)).getUTCDate(), h = "";
+  for (var i = 0; i < lead; i++) h += "<span></span>";
+  for (var d = 1; d <= n; d++) {
+    var on = cm === x.m && d === x.d, td = cm === T.m && d === T.d && cy === T.y;
+    h += '<button type="button" data-day="' + d + '" aria-pressed="' + on + '" class="' + (td ? "dates-td" : "") + '" aria-label="' + d + " " + MG[cm - 1] + (td ? ", сегодня" : "") + '">' + d + "</button>";
+  }
+  return '<div class="dates-cal"><div class="dates-calh"><button type="button" class="dates-ib" data-cal="-1" aria-label="Предыдущий месяц">' + IC.prev + "</button><b>" + MI[cm - 1] + " " + cy + '</b><button type="button" class="dates-ib" data-cal="1" aria-label="Следующий месяц">' + IC.next + '</button></div><div class="dates-calw" aria-hidden="true"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div><div class="dates-calg">' + h + '</div><p class="dates-calnote">Сейчас: ' + x.d + " " + MG[x.m - 1] + ". Щёлкните другой день.</p></div>";
+}
+function edHTML(x, o) {
+  var gl = x.k === "bday" || x.k === "anniv" ? "Что подарить" : "Заметка";
+  return '<div class="dates-ed">' + calHTML(x) + '<div class="dates-f">' +
+    '<label class="dates-lbl">Название<input class="dates-in" data-f="t" value="' + esc(x.t) + '" autocomplete="off"></label>' +
+    '<div class="dates-lbl">Вид<div class="dates-chips">' + KINDS.map(function (k) { return '<button type="button" class="chip" data-k="' + k[0] + '" data-kind="' + k[0] + '" aria-pressed="' + (x.k === k[0]) + '">' + IC[k[0]] + k[1] + "</button>"; }).join("") + "</div></div>" +
+    '<div class="dates-two"><label class="dates-lbl">Год, если знаете<input class="dates-in" data-f="y" inputmode="numeric" maxlength="4" value="' + (x.y || "") + '" placeholder="не знаю" autocomplete="off"></label><button type="button" class="chip" data-act="yearly" aria-pressed="' + x.yr + '">Каждый год</button></div>' +
+    '<label class="dates-lbl">Человек<input class="dates-in" data-f="p" value="' + esc(x.p) + '" placeholder="Кого касается" autocomplete="off"></label>' +
+    '<label class="dates-lbl">' + gl + '<textarea class="dates-in" data-f="n" rows="2" placeholder="' + (gl === "Заметка" ? "Что важно помнить" : "Идея подарка") + '">' + esc(x.n) + "</textarea></label>" +
+    '<div class="dates-lbl">Напомнить за<div class="dates-chips">' + REM.map(function (r) { return '<button type="button" class="chip" data-rem="' + r + '" aria-pressed="' + (x.rem === r) + '">' + (r ? r + " " + pl(r, DN) : "Не надо") + "</button>"; }).join("") + '</div></div><p class="dates-remw">' + IC.bell + '<span>' + remT(x, o) + "</span></p></div>" +
+    '<div class="dates-foot"><button type="button" class="btn ghost dates-del" data-act="del">' + IC.trash + 'Удалить</button><button type="button" class="btn primary" data-act="toggle">Готово</button></div></div>';
+}
+function refreshHead(x) {
+  var it = q('.dates-a .dates-item[data-id="' + x.id + '"]'), o = occ(x);
+  if (!it) return;
+  q(".dates-row", it).innerHTML = rowHead(x, o);
+  var rw = q(".dates-remw span", it); if (rw) rw.textContent = remT(x, o);
+}
+function renderAll(anim, focusSel) {
+  renderHero(anim); renderRina(); renderFilt(); renderFeed(anim); renderB(anim);
+  if (focusSel) { var f = q(focusSel); if (f) f.focus(); }
+}
+
+/* ——— добавление строкой */
+function parse(s) {
+  var t = s.trim(); if (!t) return null;
+  var d, m, y = null, mt = t.match(/(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)(?:\s+(\d{4}))?/i);
+  if (mt) { d = +mt[1]; m = MG.indexOf(mt[2].toLowerCase()) + 1; y = mt[3] ? +mt[3] : null; }
+  else { mt = t.match(/(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?/); if (!mt) return { err: true }; d = +mt[1]; m = +mt[2]; y = mt[3] ? +mt[3] : null; }
+  if (m < 1 || m > 12 || d < 1 || d > 31) return { err: true };
+  var low = t.toLowerCase(), k = /рожден|(^|\s)др(\s|$)/.test(low) ? "bday" : /годовщин|свадьб.*лет|вместе/.test(low) ? "anniv" : /праздник/.test(low) ? "hol" : /памят|помн/.test(low) ? "memo" : "other";
+  var pm = t.match(/(?:^|\s)у\s+([А-ЯЁа-яё]+)/), g = "", p = "", dat = "";
+  if (pm) { g = pm[1]; p = /ы$/.test(g) || /[жшчщкгх]и$/.test(g) ? g.slice(0, -1) + "а" : /и$/.test(g) ? g.slice(0, -1) + "я" : /а$/.test(g) ? g.slice(0, -1) : g; dat = /[ая]$/.test(p) ? p.slice(0, -1) + "е" : p + "у"; }
+  var rest = t.replace(mt[0], "").replace(/(?:^|\s)у\s+[А-ЯЁа-яё]+/, "").replace(/\s+/g, " ").trim();
+  var title = k === "bday" && g ? "День рождения " + g : rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : kname(k)[1];
+  return { k: k, t: title, d: d, m: m, y: y, p: p, g: g, dat: dat };
+}
+function renderPrev() {
+  var v = q(".dates-addin").value, r = parse(v), el = q(".dates-prev");
+  if (!r) { el.innerHTML = "Напишите словами: кто, что и когда. Год можно не писать."; return; }
+  if (r.err) { el.innerHTML = "Не вижу дату. Добавьте, например, «14 марта»."; return; }
+  var x = D(r.k, r.t, r.d, r.m, r.y, { p: r.p }); uid--;
+  var o = occ(x), kn = kname(r.k);
+  el.innerHTML = 'Поняла так: <span class="dates-pk" data-k="' + r.k + '">' + IC[r.k] + kn[1] + "</span> · <b>" + esc(r.t) + "</b> · " + r.d + " " + MG[r.m - 1] + (r.y ? " " + r.y : "") + (subT(x, o) ? " · " + esc(subT(x, o)) : "") + " · " + whenT(o.days);
+}
+function addLine() {
+  var inp = q(".dates-addin"), r = parse(inp.value);
+  if (!r || r.err) { inp.focus(); renderPrev(); return; }
+  var s = snap(), x = D(r.k, r.t, r.d, r.m, r.y, { p: r.p, g: r.g, dat: r.dat, rem: r.k === "bday" ? 7 : 3 });
+  dates.push(x); inp.value = ""; filt = "all"; open = null;
+  renderAll(false); renderPrev();
+  var it = q('.dates-a .dates-item[data-id="' + x.id + '"]');
+  if (it) { if (!MM.reduce) it.classList.add("dates-new"); it.scrollIntoView({ block: "nearest", behavior: MM.reduce ? "auto" : "smooth" }); }
+  toast("Добавлено: «" + x.t + "», " + x.d + " " + MG[x.m - 1], s);
+}
+
+/* ——— вариант Б: год кольцом */
+var CX = 210, CY = 210, RR = 150;
+function doy(m, d) { return (utc(2026, m, d) - utc(2026, 1, 1)) / 864e5; }
+function ang(m, d) { return doy(m, d) / 365 * 360; }
+function pt(r, a) { var t = a * Math.PI / 180; return [CX + r * Math.sin(t), CY - r * Math.cos(t)]; }
+function arc(r, a1, a2) { var p1 = pt(r, a1), p2 = pt(r, a2), big = ((a2 - a1 + 360) % 360) > 180 ? 1 : 0; return "M" + p1[0].toFixed(1) + " " + p1[1].toFixed(1) + "A" + r + " " + r + " 0 " + big + " 1 " + p2[0].toFixed(1) + " " + p2[1].toFixed(1); }
+function renderB(anim) {
+  var svg = q(".dates-year"), s = sorted(), h = "";
+  for (var m = 1; m <= 12; m++) {
+    var a1 = ang(m, 1) + .9, a2 = (m === 12 ? 360 : ang(m + 1, 1)) - .9, mid = (a1 + a2) / 2, lp = pt(RR + 34, mid);
+    h += '<path class="dates-ms' + (m % 2 ? "" : " dates-alt") + '" d="' + arc(RR, a1, a2) + '"/><text class="dates-ml' + (m === T.m ? " dates-cur" : "") + '" x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '">' + MS[m - 1] + "</text>";
+  }
+  var ta = ang(T.m, T.d), nx = s[0];
+  if (nx && nx.o.days > 0) {
+    var na = ang(nx.x.m, nx.x.d), len = ((na - ta + 360) % 360) / 360 * 2 * Math.PI * RR;
+    h += '<path class="dates-hl" d="' + arc(RR, ta, na) + '" stroke-dasharray="' + len.toFixed(1) + '" stroke-dashoffset="' + (anim && !MM.reduce ? len.toFixed(1) : 0) + '" data-len="' + len.toFixed(1) + '"/>';
+  }
+  var pts = dates.map(function (x) { return { x: x, a: ang(x.m, x.d) }; }).sort(function (a, b) { return a.a - b.a; }), prev = null;
+  pts.forEach(function (p, i) {
+    p.r = prev && p.a - prev.a < 7 && prev.r === RR ? RR - 28 : RR; prev = p;
+    var c = pt(p.r, p.a), o = occ(p.x), sel = selB === p.x.id;
+    h += '<g class="dates-pt' + (sel ? " dates-sel" : "") + (anim && !MM.reduce ? " dates-pop" : "") + '" style="animation-delay:' + (300 + i * 45) + 'ms" data-k="' + p.x.k + '" data-pick="' + p.x.id + '" tabindex="0" role="button" aria-pressed="' + sel + '" aria-label="' + esc(p.x.t) + ", " + p.x.d + " " + MG[p.x.m - 1] + ", " + whenT(o.days) + '"><circle class="dates-halo" cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" r="15"/><circle cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" r="' + (sel ? 10 : 8) + '"/></g>';
+  });
+  h += '<g class="dates-arrow" style="transform:rotate(' + (anim && !MM.reduce ? 0 : ta) + 'deg)" aria-hidden="true"><path d="M210 140V98M203 106l7-10 7 10"/><circle cx="210" cy="140" r="4"/></g>';
+  h += '<text class="dates-c1" x="210" y="196">сегодня</text><text class="dates-c2" x="210" y="224">' + T.d + " " + MG[T.m - 1] + '</text><text class="dates-c3" x="210" y="248">' + (nx ? (nx.o.days === 0 ? "дата сегодня" : "до ближайшей " + nx.o.days + " " + pl(nx.o.days, DN)) : "") + "</text>";
+  svg.innerHTML = h;
+  if (anim && !MM.reduce) requestAnimationFrame(function () { requestAnimationFrame(function () {
+    var ar = q(".dates-arrow", svg), hl = q(".dates-hl", svg);
+    if (ar) ar.style.transform = "rotate(" + ta + "deg)";
+    if (hl) hl.setAttribute("stroke-dashoffset", "0");
+  }); });
+  var cnt = {}; dates.forEach(function (x) { cnt[x.k] = (cnt[x.k] || 0) + 1; });
+  q(".dates-leg").innerHTML = KINDS.filter(function (k) { return cnt[k[0]]; }).map(function (k) { return '<span data-k="' + k[0] + '">' + IC[k[0]] + k[2] + " " + cnt[k[0]] + "</span>"; }).join("");
+  renderBCard();
+}
+function renderBCard() {
+  var c = q(".dates-bcard"), x = byId(selB) || (sorted()[0] || {}).x;
+  if (!x) { c.innerHTML = '<p class="muted">Дат нет.</p>'; return; }
+  var o = occ(x), kn = kname(x.k), gl = x.k === "bday" || x.k === "anniv" ? "Что подарить" : "Заметка";
+  c.dataset.k = x.k;
+  c.innerHTML = '<div class="row"><span class="dates-badge">' + IC[x.k] + '</span><span class="dates-kw">' + kn[1] + "</span></div>" +
+    '<p class="dates-bwhen">' + (o.days === 0 ? "Сегодня" : whenT(o.days)) + '</p><h3 class="dates-h1">' + esc(x.t) + '</h3><p class="soft">' + dateT(o, x) + (subT(x, o) ? "<br>" + esc(subT(x, o)) : "") + "</p>" +
+    '<label class="dates-lbl">' + gl + '<input class="dates-in" data-bf="n" data-bid="' + x.id + '" value="' + esc(x.n) + '" placeholder="Запишите идею" autocomplete="off"></label>' +
+    '<div class="dates-lbl">Напомнить за<div class="dates-chips">' + REM.map(function (r) { return '<button type="button" class="chip" data-brem="' + r + '" aria-pressed="' + (x.rem === r) + '">' + (r ? r + " " + pl(r, DN) : "Не надо") + "</button>"; }).join("") + "</div></div>" +
+    '<button type="button" class="btn" data-act="tofeed" data-id="' + x.id + '">Править в ленте</button>';
+}
+function setCenter(x) {
+  var svg = q(".dates-year"), c1 = q(".dates-c1", svg), c2 = q(".dates-c2", svg), c3 = q(".dates-c3", svg), nx = sorted()[0];
+  if (!c1) return;
+  if (x) { var o = occ(x); c1.textContent = x.d + " " + MG[x.m - 1]; c2.textContent = x.t.length > 20 ? x.t.slice(0, 19) + "…" : x.t; c3.textContent = whenT(o.days); }
+  else { c1.textContent = "сегодня"; c2.textContent = T.d + " " + MG[T.m - 1]; c3.textContent = nx ? (nx.o.days === 0 ? "дата сегодня" : "до ближайшей " + nx.o.days + " " + pl(nx.o.days, DN)) : ""; }
+}
+
+/* ——— события */
+root.addEventListener("click", function (e) {
+  var b = e.target.closest("button, .dates-pt"); if (!b || !root.contains(b)) return;
+  var act = b.dataset.act, it = b.closest(".dates-item"), x = it ? byId(+it.dataset.id) : null, s;
+  if (b.dataset.var) {
+    qa(".dates-var button").forEach(function (v) { v.setAttribute("aria-pressed", v === b); });
+    q(".dates-a").hidden = b.dataset.var !== "a"; q(".dates-b").hidden = b.dataset.var !== "b";
+    if (b.dataset.var === "b") renderB(true); else { renderHero(true); renderFeed(true); }
+    return;
+  }
+  if (act === "dayx") {
+    var on = T === BASE; T = on ? DAYX : BASE; open = null;
+    b.setAttribute("aria-pressed", on); b.textContent = on ? "Вернуть 27 ноября" : "Показать, как выглядит день рождения мамы";
+    renderAll(true); return;
+  }
+  if (act === "undo") {
+    var t = b.closest(".dates-toast"); dates = JSON.parse(t.dataset.snap); open = null;
+    qa(".dates-toast").forEach(function (z) { z.hidden = true; }); renderAll(false); return;
+  }
+  if (act === "add") { addLine(); return; }
+  if (act === "gift") { var gi = q("#d-dates-gift"); if (gi) gi.focus(); return; }
+  if (act === "remcall") { rinaSay(q(".dates-a"), "Хорошо, напомню в <b>11:00</b>. Я и сама поздравлю, если разрешите."); return; }
+  if (act === "bpick") { var pid = +q(".dates-b").dataset.pick; selB = pid; renderB(false); var bi = q('.dates-bcard [data-bf="n"]'); if (bi) bi.focus(); return; }
+  if (act === "tofeed") {
+    var id = +b.dataset.id; open = id; calM = {}; filt = "all";
+    q('.dates-var [data-var="a"]').click(); open = id; renderFeed(false);
+    var r = q('.dates-a .dates-item[data-id="' + id + '"]'); if (r) { r.scrollIntoView({ block: "nearest" }); q(".dates-in", r).focus(); }
+    return;
+  }
+  if (b.dataset.filt) { filt = b.dataset.filt; open = null; renderFilt(); renderFeed(true); return; }
+  if (b.dataset.goto) {
+    open = +b.dataset.goto; filt = "all"; renderFilt(); renderFeed(false);
+    var g = q('.dates-a .dates-item[data-id="' + open + '"]'); if (g) { g.scrollIntoView({ block: "nearest", behavior: MM.reduce ? "auto" : "smooth" }); q(".dates-row", g).focus(); }
+    return;
+  }
+  if (b.dataset.pick) { selB = +b.dataset.pick; renderB(false); var f = q('.dates-pt[data-pick="' + selB + '"]'); if (f) f.focus(); return; }
+  if (b.dataset.brem) { x = byId(+q('.dates-bcard [data-bid]').dataset.bid); s = snap(); x.rem = +b.dataset.brem; renderAll(false); toast(x.rem ? "Напомню за " + x.rem + " " + pl(x.rem, DN) : "Напоминание выключено", s); return; }
+  if (!x) return;
+  if (act === "toggle") {
+    var was = open === x.id; open = was ? null : x.id; calM = {};
+    renderFeed(false);
+    var rr = q('.dates-a .dates-item[data-id="' + x.id + '"] .dates-row'); if (rr) rr.focus();
+    return;
+  }
+  if (act === "del") {
+    s = snap(); dates = dates.filter(function (z) { return z !== x; }); open = null;
+    renderAll(false); toast("«" + x.t + "» в корзине", s); return;
+  }
+  s = snap(); var fs = null, msg = "";
+  if (b.dataset.cal) { var cm = (calM[x.id] || x.m) + +b.dataset.cal; calM[x.id] = cm < 1 ? 12 : cm > 12 ? 1 : cm; renderFeed(false); q('.dates-a .dates-item[data-id="' + x.id + '"] [data-cal="' + b.dataset.cal + '"]').focus(); return; }
+  if (b.dataset.day) { x.d = +b.dataset.day; x.m = calM[x.id] || x.m; msg = "Дата: " + x.d + " " + MG[x.m - 1]; fs = '[data-day="' + x.d + '"]'; }
+  else if (b.dataset.kind) { x.k = b.dataset.kind; msg = "Вид: " + kname(x.k)[1].toLowerCase(); fs = '[data-kind="' + x.k + '"]'; }
+  else if (b.dataset.rem) { x.rem = +b.dataset.rem; msg = x.rem ? "Напомню за " + x.rem + " " + pl(x.rem, DN) : "Напоминание выключено"; fs = '[data-rem="' + x.rem + '"]'; }
+  else if (act === "yearly") { x.yr = !x.yr; msg = x.yr ? "Повторять каждый год" : "Только один раз"; fs = '[data-act="yearly"]'; }
+  else return;
+  renderAll(false, '.dates-a .dates-item[data-id="' + x.id + '"] ' + fs);
+  toast(msg, s);
+});
+root.addEventListener("focusin", function (e) {
+  var t = e.target;
+  if (t.matches("[data-f], #d-dates-gift, [data-bf]")) fsnap = snap();
+  var p = t.closest(".dates-pt"); if (p) setCenter(byId(+p.dataset.pick));
+});
+root.addEventListener("focusout", function (e) { if (e.target.closest(".dates-pt")) setCenter(null); });
+root.addEventListener("mouseover", function (e) { var p = e.target.closest(".dates-pt"); if (p) setCenter(byId(+p.dataset.pick)); });
+root.addEventListener("mouseout", function (e) { var p = e.target.closest(".dates-pt"); if (p && !p.contains(e.relatedTarget)) setCenter(null); });
+root.addEventListener("input", function (e) {
+  var t = e.target, x;
+  if (t.classList.contains("dates-addin")) { renderPrev(); return; }
+  if (t.id === "d-dates-gift") { x = byId(+t.dataset.hid); x.n = t.value; refreshHead(x); return; }
+  if (t.dataset.bf) { x = byId(+t.dataset.bid); x.n = t.value; refreshHead(x); return; }
+  var it = t.closest(".dates-item"); if (!it || !t.dataset.f) return;
+  x = byId(+it.dataset.id);
+  if (t.dataset.f === "y") { t.value = t.value.replace(/\D/g, ""); var y = +t.value; x.y = y >= 1900 && y <= 2100 ? y : null; }
+  else x[t.dataset.f] = t.value;
+  refreshHead(x);
+});
+root.addEventListener("change", function (e) {
+  var t = e.target; if (t.classList.contains("dates-addin") || !fsnap || fsnap === snap()) return;
+  var x = t.id === "d-dates-gift" ? byId(+t.dataset.hid) : t.dataset.bf ? byId(+t.dataset.bid) : byId(+((t.closest(".dates-item") || {}).dataset || {}).id);
+  if (!x) return;
+  var s = fsnap; fsnap = snap();
+  var lbl = { t: "Название", y: "Год", p: "Человек", n: "Заметка" }[t.dataset.f || "n"];
+  if (t.id === "d-dates-gift" || t.dataset.bf) { renderRina(); if (t.dataset.bf) renderHero(false); else renderBCard(); toast(x.n ? "Идея записана: «" + x.n + "»" : "Идея стёрта", s); return; }
+  refreshHead(x); renderHero(false); renderRina(); renderB(false);
+  toast(lbl + " сохранено", s);
+});
+root.addEventListener("keydown", function (e) {
+  if (e.target.classList.contains("dates-addin") && e.key === "Enter") { e.preventDefault(); addLine(); return; }
+  if (e.target.id === "d-dates-gift" && e.key === "Enter") { e.target.blur(); return; }
+  var p = e.target.closest(".dates-pt");
+  if (p && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); p.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
+});
+
+function play() {
+  if (playing) return; playing = true;
+  open = null; renderAll(true); renderPrev();
+  setTimeout(function () { playing = false; }, 300);
+}
+renderAll(false); renderPrev();
+MM.onSeen(root, play);
+root.addEventListener("replay", play);
+})();</script>
+</article>

@@ -1,0 +1,709 @@
+<article class="piece" id="p-w-entry">
+  <header>
+    <p class="eyebrow">Слабое место · Вход и первая минута</p>
+    <h2>Шесть цифр, два честных вопроса и три действия</h2>
+    <p>Сейчас новичок переписывает из Telegram логин и случайный пароль. Счёт времени за компьютером и автозапуск включаются без вопроса. Экскурсия состоит из 11 подсказок, которые нужно прочитать. Ниже та же первая минута, собранная заново: вход кодом, два понятных выключателя и экскурсия, после которой у человека уже есть первая запись.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="nav">
+    <div class="steps" role="group" aria-label="Шаги сценария">
+      <button type="button" data-go="1" aria-pressed="true"><i>1</i><span>Вход кодом</span></button>
+      <button type="button" data-go="2" aria-pressed="false"><i>2</i><span>Согласие</span></button>
+      <button type="button" data-go="3" aria-pressed="false"><i>3</i><span>Экскурсия</span></button>
+    </div>
+    <div class="navb">
+      <button type="button" data-nav="-1" disabled>← Назад</button>
+      <button type="button" data-nav="1" class="go">Дальше →</button>
+    </div>
+    <p class="status" aria-live="polite">Три шага идут по очереди. Любой можно попробовать самому.</p>
+  </div>
+
+  <div class="stage">
+    <div class="shot scene" data-shot="1">
+      <figure class="f-login">
+        <div class="app plain lg">
+          <div class="lg-face"><img src="maid/hello.webp" alt="" width="96" height="102"></div>
+          <div class="lg-in">
+            <p class="lg-k">Горничная · вход</p>
+            <h3>Введите код из Telegram</h3>
+            <p class="lg-sub">Рина пришлёт шесть цифр в чат. Логин и пароль не нужны.</p>
+            <div class="cells" role="group" aria-label="Код из шести цифр">
+              <input type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="Цифра 1">
+              <input type="text" inputmode="numeric" autocomplete="off" aria-label="Цифра 2">
+              <input type="text" inputmode="numeric" autocomplete="off" aria-label="Цифра 3">
+              <span aria-hidden="true"></span>
+              <input type="text" inputmode="numeric" autocomplete="off" aria-label="Цифра 4">
+              <input type="text" inputmode="numeric" autocomplete="off" aria-label="Цифра 5">
+              <input type="text" inputmode="numeric" autocomplete="off" aria-label="Цифра 6">
+            </div>
+            <p class="lg-msg" aria-live="polite">Код действует 5 минут</p>
+            <div class="lg-acts">
+              <button type="button" class="btn" data-act="paste">Вставить</button>
+              <button type="button" class="btn ghost" data-act="new">Прислать новый код</button>
+            </div>
+          </div>
+          <div class="lg-ok" hidden>
+            <svg class="ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"/><path d="M20 33l8 8 16-17"/></svg>
+            <h3>Вы вошли</h3>
+            <p class="lg-sub">Компьютер запомнен как «Домашний ПК». В следующий раз код не понадобится.</p>
+            <div class="lg-acts">
+              <button type="button" class="btn primary" data-go="2">Дальше: два вопроса</button>
+              <button type="button" class="btn ghost" data-act="self1">Ввести код самому</button>
+            </div>
+          </div>
+        </div>
+        <figcaption>Программа на компьютере. Одно поле вместо трёх: адрес сервера, логин и пароль убраны. Работают ввод с клавиатуры и вставка всего кода сразу.</figcaption>
+      </figure>
+      <figure class="f-tg">
+        <div class="tg">
+          <div class="tg-head"><img src="maid/idle.webp" alt=""><div>Рина<small>бот</small></div></div>
+          <div class="tg-body">
+            <span class="tg-day">сегодня</span>
+            <div class="tg-out">Войти в программу</div>
+            <div class="tg-in typing" id="w-entry-typing" hidden aria-label="Рина печатает"><i></i><i></i><i></i></div>
+            <div class="tg-in" id="w-entry-mcode">Код для входа в программу<b class="code" id="w-entry-code">482 913</b><small>Действует 5 минут. Никому его не сообщайте.</small></div>
+            <div class="tg-btns" id="w-entry-mbtns"><button type="button" id="w-entry-copy">Скопировать код</button></div>
+            <div class="tg-in" id="w-entry-mnote" hidden>Вход выполнен: «Домашний ПК», 09:41.<small>Если это были не вы, закройте доступ.</small></div>
+            <div class="tg-btns" id="w-entry-mnote2" hidden><button type="button" data-act="revoke">Это не я: закрыть доступ</button></div>
+          </div>
+        </div>
+        <figcaption>Telegram. Код приходит с кнопкой «Скопировать код». После входа Рина сообщает, с какого компьютера вошли.</figcaption>
+      </figure>
+    </div>
+
+    <div class="shot scene" data-shot="2" hidden>
+      <figure class="f-cs">
+        <div class="app plain cs">
+          <div class="cs-head">
+            <p class="lg-k">Первый запуск</p>
+            <h3>Два вопроса перед началом</h3>
+            <p class="soft">Оба выключены, пока вы не решите иначе. Передумать можно в любой момент: Настройки → Программа.</p>
+          </div>
+          <div class="cs-grid">
+            <div class="cs-opts">
+              <div class="card opt" data-k="track">
+                <div class="opt-top">
+                  <span class="opt-ic pc" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
+                  <div><b>Считать время за компьютером</b><span class="muted">Для раздела «Компьютер» в обзоре</span></div>
+                  <div class="sw-box"><button type="button" class="sw" data-k="track" aria-pressed="false" aria-label="Считать время за компьютером"><i></i></button><span class="sw-w">Выключено</span></div>
+                </div>
+                <dl class="facts">
+                  <dt>Видит</dt><dd>название открытой программы и сколько минут она на экране</dd>
+                  <dt>Не видит</dt><dd>что вы печатаете, пароли, содержимое окон</dd>
+                  <dt>Зачем</dt><dd>график дня, время на игры, напоминание о перерыве</dd>
+                </dl>
+              </div>
+              <div class="card opt" data-k="auto">
+                <div class="opt-top">
+                  <span class="opt-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.5 7a8 8 0 1 0 11 0"/></svg></span>
+                  <div><b>Запускаться вместе с Windows</b><span class="muted">Чтобы не открывать программу каждый день</span></div>
+                  <div class="sw-box"><button type="button" class="sw" data-k="auto" aria-pressed="false" aria-label="Запускаться вместе с Windows"><i></i></button><span class="sw-w">Выключено</span></div>
+                </div>
+                <dl class="facts">
+                  <dt>Включено</dt><dd>Рина появляется в углу экрана сразу после включения компьютера</dd>
+                  <dt>Выключено</dt><dd>открываете её сами, ярлыком на рабочем столе</dd>
+                  <dt>На сервер</dt><dd>ничего не уходит, это настройка самого компьютера</dd>
+                </dl>
+              </div>
+            </div>
+            <div class="card flow">
+              <div class="flow-n"><span class="big num" id="w-entry-cnt">2</span><span class="soft">вида данных уходит на сервер</span></div>
+              <p class="card-t mv">Уходит на сервер</p>
+              <ul class="fl" id="w-entry-sent">
+                <li class="mv"><span class="fi" aria-hidden="true"></span><div><b>Ваши записи</b><small>дела, привычки, заметки, сон, траты</small></div></li>
+                <li class="mv"><span class="fi" aria-hidden="true"></span><div><b>Сообщения Рине</b><small>их читает внешняя модель, чтобы понять фразу</small></div></li>
+              </ul>
+              <p class="card-t mv">Не собирается</p>
+              <ul class="fl no" id="w-entry-never">
+                <li class="mv" id="w-entry-trow"><span class="fi" aria-hidden="true"></span><div><b><i class="pcd"></i>Время за компьютером</b><small>название программы и минуты</small></div></li>
+                <li class="mv"><span class="fi" aria-hidden="true"></span><div><b>Набранный текст и пароли</b><small>Рина не следит за клавиатурой</small></div></li>
+                <li class="mv"><span class="fi" aria-hidden="true"></span><div><b>Снимки экрана и файлы</b><small>содержимое окон остаётся у вас</small></div></li>
+              </ul>
+            </div>
+          </div>
+          <div class="cs-foot">
+            <div class="rina cs-rina"><img src="maid/bow.webp" alt="" width="64" height="68"><p aria-live="polite">Пока оба выключены. Дела, привычки и дневник я веду и так.</p></div>
+            <button type="button" class="btn primary" data-go="3">Продолжить</button>
+          </div>
+        </div>
+        <figcaption>Окно первого запуска. Раньше обе настройки были включены молча. Теперь человек видит, что именно узнаёт Рина, и решает сам.</figcaption>
+      </figure>
+    </div>
+
+    <div class="shot scene" data-shot="3" hidden>
+      <figure class="f-wgt">
+        <div class="desk">
+          <div class="wgt">
+            <div class="wgt-top">
+              <div class="wgt-bubble" aria-live="polite"><small>Шаг 1 из 3</small><p>Напишите мне любое дело своими словами. Например: «завтра в 15 врач».</p></div>
+              <button type="button" class="pat" aria-label="Погладить Рину"><img src="maid/hello.webp" alt="" width="104" height="111"></button>
+            </div>
+            <div class="wgt-panel">
+              <div class="tprog"><i></i><i></i><i></i><button type="button" class="skip" data-act="skip">Пропустить</button></div>
+              <h5>Сегодня</h5>
+              <div id="w-entry-today">
+                <div class="wgt-row"><button type="button" class="ck" aria-pressed="false" aria-label="Отметить: Познакомиться с Риной"><i class="wgt-ck"></i></button><span class="tx">Познакомиться с Риной</span></div>
+              </div>
+              <h5>Завтра и позже</h5>
+              <div id="w-entry-tmr"><p class="empty">Пока пусто. Первая запись появится здесь.</p></div>
+              <div class="you" hidden></div>
+              <div class="parse" hidden></div>
+              <form class="say" autocomplete="off">
+                <input type="text" placeholder="завтра в 15 врач" aria-label="Сообщение Рине" maxlength="60">
+                <button type="submit" aria-label="Отправить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6"/></svg></button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <figcaption>Виджет в углу экрана. Напишите фразу, поставьте галочку, нажмите на Рину. Запись настоящая: она остаётся в планах.</figcaption>
+      </figure>
+      <figure class="f-tc">
+        <div class="tc">
+          <div class="tc-cmp">
+            <div><p class="tc-k">Было</p><p class="tc-n">11</p><p class="tc-s">подсказок, которые нужно прочитать</p></div>
+            <span class="tc-ar" aria-hidden="true">→</span>
+            <div><p class="tc-k">Стало</p><p class="tc-n new">3</p><p class="tc-s">действия своими руками</p></div>
+          </div>
+          <ol class="tc-list">
+            <li><i>1</i><div><b>Написать первую фразу</b><small>Рина разбирает её и кладёт запись в планы</small></div><em>сейчас</em></li>
+            <li><i>2</i><div><b>Поставить галочку</b><small>Так закрываются дела и привычки</small></div><em>ждёт</em></li>
+            <li><i>3</i><div><b>Погладить Рину</b><small>Знакомство с её характером</small></div><em>ждёт</em></li>
+          </ol>
+          <div class="tc-foot">
+            <p class="tc-end" hidden>Экскурсия пройдена. В планах уже лежит первая запись.</p>
+            <button type="button" class="tc-btn" data-act="self3">Пройти самому с начала</button>
+          </div>
+        </div>
+        <figcaption>Список шагов для ревью. В продукте его нет: человек видит только подсказку Рины и полоску из трёх делений.</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Вход: одно поле из шести цифр. Адрес сервера, логин и случайный пароль убраны. Код вставляется целиком одним действием.</li>
+      <li>После входа Рина пишет в Telegram, с какого компьютера вошли, и даёт кнопку «Это не я».</li>
+      <li>Согласие: счёт времени и автозапуск выключены, пока человек сам их не включит. Рядом простыми словами: что Рина видит, чего не видит, зачем это нужно.</li>
+      <li>Список «что уходит на сервер» меняется вместе с выключателем: 2 или 3 вида данных.</li>
+      <li>Экскурсия: 3 действия вместо 11 подсказок. Первая фраза настоящая, запись остаётся. Есть «Пропустить».</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Шаг 1: сообщения в чате приходят по очереди, код перелетает из Telegram в окно и встаёт в ячейки по цифре. Ячейки зеленеют и подпрыгивают волной, рисуется галочка. Неверный код: ячейки качаются и очищаются.</li>
+      <li>Шаг 2: строка «Время за компьютером» переезжает из «Не собирается» в «Уходит на сервер», цифра подпрыгивает, Рина отвечает на выбор.</li>
+      <li>Шаг 3: фраза печатается, Рина думает, слова раскладываются на «когда, время, что», запись перелетает в список. Галочка, сердечки при поглаживании. Цель текущего шага спокойно дышит.</li>
+      <li>Показ идёт сам по трём шагам и останавливается от любого нажатия в макете.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Входа кодом пока нет: бот присылает логин и пароль, формы в программе и на сайте ждут их. Нужно: бот выдаёт код на 5 минут, сервер меняет его на постоянный ключ этого компьютера, считает попытки, сообщает о входе и умеет закрыть доступ. Средняя работа.</li>
+      <li>Поле адреса сервера можно убрать сразу: адрес уже подставлен в установленной программе.</li>
+      <li>Согласие: сейчас счёт времени и автозапуск включены по умолчанию в настройках программы. Поменять на «выключено» и показывать окно один раз. Малая работа.</li>
+      <li>Перед выпуском сверить список «что уходит на сервер» с тем, что программа отправляет на самом деле, и добавить ссылку на политику конфиденциальности. Её текста пока нет.</li>
+      <li>Экскурсия: разбор фразы, галочка и поглаживание в виджете уже есть. Нужно переписать сценарий с 11 шагов на 3 и ждать настоящих действий. Первый разбор стоит сделать бесплатным. Средняя работа.</li>
+      <li>В макете разбор упрощён: понимает «сегодня», «завтра», «послезавтра» и время. В продукте это делает модель.</li>
+    </ul></div>
+  </div>
+
+  <style>
+    #p-w-entry [hidden] { display: none !important; }
+    #p-w-entry .app :focus-visible { outline-color: var(--a-accent); }
+    #p-w-entry .nav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+    #p-w-entry .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; flex: 1 1 360px; max-width: 580px; min-width: 0; }
+    #p-w-entry .steps button { display: flex; align-items: center; gap: 8px; min-height: 44px; min-width: 0; padding: 6px 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--soft); font-size: 13px; font-weight: 600; text-align: left; line-height: 1.2; transition: border-color .2s, background .2s, color .2s; }
+    #p-w-entry .steps span { min-width: 0; overflow-wrap: anywhere; }
+    #p-w-entry .steps i { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--line); color: var(--text); font: 700 11.5px/1 var(--fd); font-style: normal; transition: background .2s, color .2s; }
+    #p-w-entry .steps button[aria-pressed="true"] { border-color: var(--accent); color: var(--text); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+    #p-w-entry .steps button[aria-pressed="true"] i { background: var(--accent); color: var(--bg); }
+    #p-w-entry .steps button.was i { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+    #p-w-entry .navb { display: flex; gap: 6px; }
+    #p-w-entry .navb button { min-height: 40px; padding: 0 16px; border-radius: 99px; border: 1px solid var(--line); background: none; color: var(--text); font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+    #p-w-entry .navb button.go { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+    #p-w-entry .navb button:disabled { opacity: .4; cursor: default; }
+    #p-w-entry .status { flex-basis: 100%; color: var(--muted); font-size: 13px; min-height: 20px; }
+
+    #p-w-entry .stage { position: relative; min-width: 0; }
+    #p-w-entry .shot { animation: w-entry-in .45s var(--ease) both; }
+    #p-w-entry .fly { position: absolute; left: 0; top: 0; z-index: 5; pointer-events: none; background: var(--accent); color: var(--bg); font: 800 14px/1 var(--fd); letter-spacing: .06em; padding: 7px 12px; border-radius: 99px; white-space: nowrap; }
+    #p-w-entry .btn { min-height: 38px; }
+
+    #p-w-entry .f-login { flex: 1 1 360px; max-width: 440px; }
+    #p-w-entry .f-tg { flex: 0 1 340px; }
+    #p-w-entry .lg { text-align: center; padding: 26px 22px 22px; }
+    #p-w-entry .lg-face { width: 92px; height: 92px; margin: 0 auto 12px; border-radius: 50%; background: var(--a-accent-soft); display: grid; place-items: end center; overflow: hidden; }
+    #p-w-entry .lg-face img { width: 96px; height: 102px; margin-bottom: -14px; }
+    #p-w-entry .lg-k { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--a-muted); }
+    #p-w-entry .lg h3 { margin: 4px 0 6px; font: 700 21px/1.2 var(--fd); letter-spacing: -.01em; }
+    #p-w-entry .cs h3 { margin: 4px 0 6px; font: 700 21px/1.2 var(--fd); letter-spacing: -.01em; }
+    #p-w-entry .lg-sub { color: var(--a-soft); max-width: 34ch; margin: 0 auto; }
+    #p-w-entry .cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 8px repeat(3, minmax(0, 1fr)); gap: 7px; max-width: 340px; margin: 18px auto 8px; align-items: center; }
+    #p-w-entry .cells input { width: 100%; min-width: 0; height: 58px; padding: 0; text-align: center; font: 800 24px/1 var(--fd); font-variant-numeric: tabular-nums; color: var(--a-text); background: var(--a-surface); border: 1.5px solid var(--a-line); border-radius: 12px; caret-color: var(--a-accent); transition: border-color .2s, background .2s, color .2s; }
+    #p-w-entry .cells span { height: 2px; border-radius: 2px; background: var(--a-line); }
+    #p-w-entry .cells input.f { border-color: var(--a-accent); background: var(--a-accent-soft); }
+    #p-w-entry .cells.ok input { border-color: var(--a-ok); color: var(--a-ok); background: color-mix(in srgb, var(--a-ok) 12%, transparent); animation: w-entry-hop .5s var(--ease) both; animation-delay: calc(var(--i) * 60ms); }
+    #p-w-entry .cells.bad { animation: w-entry-shake .4s; }
+    #p-w-entry .cells.bad input { border-color: var(--a-bad); }
+    #p-w-entry .lg-msg { min-height: 21px; font-size: 13px; color: var(--a-muted); }
+    #p-w-entry .lg-msg.ok { color: var(--a-ok); font-weight: 650; }
+    #p-w-entry .lg-msg.bad { color: var(--a-bad); font-weight: 650; }
+    #p-w-entry .lg-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+    #p-w-entry .lg-ok { animation: w-entry-in .45s var(--ease) both; }
+    #p-w-entry .ring { width: 60px; height: 60px; fill: none; stroke: var(--a-ok); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; margin: 2px auto 4px; display: block; }
+    #p-w-entry .ring circle { stroke-dasharray: 176; animation: w-entry-draw .6s var(--ease) both; }
+    #p-w-entry .ring path { stroke-dasharray: 36; animation: w-entry-tick .35s var(--ease) .45s both; }
+    #p-w-entry .tg-body { min-height: 336px; }
+    #p-w-entry .tg-day { align-self: center; font-size: 11.5px; color: var(--t-muted); }
+    #p-w-entry .tg-in { animation: w-entry-pop .35s var(--ease) both; transform-origin: 0 100%; }
+    #p-w-entry .tg-btns { width: 86%; animation: w-entry-pop .35s var(--ease) both; transform-origin: 0 0; }
+    #p-w-entry .tg-btns button { min-height: 40px; transition: background .2s, transform .15s; }
+    #p-w-entry .tg-btns button.press { transform: scale(.96); background: color-mix(in srgb, var(--t-link) 30%, transparent); }
+    #p-w-entry .code { display: block; font: 800 27px/1.3 var(--fd); letter-spacing: .05em; font-variant-numeric: tabular-nums; color: var(--t-text); }
+    #p-w-entry .tg-body small { display: block; color: var(--t-muted); font-size: 12px; line-height: 1.35; margin-top: 2px; }
+    #p-w-entry .typing { display: flex; gap: 4px; padding: 12px 13px; }
+    #p-w-entry .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--t-muted); animation: w-entry-dot .8s ease-in-out 3; }
+    #p-w-entry .typing i:nth-child(2) { animation-delay: .15s; }
+    #p-w-entry .typing i:nth-child(3) { animation-delay: .3s; }
+
+    #p-w-entry .f-cs { flex: 1 1 100%; max-width: 900px; }
+    #p-w-entry .cs { display: flex; flex-direction: column; gap: 16px; }
+    #p-w-entry .cs-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+    #p-w-entry .cs-opts { display: grid; gap: 14px; min-width: 0; }
+    #p-w-entry .opt { transition: border-color .25s; }
+    #p-w-entry .opt.on { border-color: var(--a-accent); }
+    #p-w-entry .opt-top { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+    #p-w-entry .opt-top > div { min-width: 0; }
+    #p-w-entry .opt-top b { display: block; font-size: 15px; line-height: 1.25; }
+    #p-w-entry .opt-top .muted { font-size: 12.5px; }
+    #p-w-entry .opt-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--a-accent-soft); color: var(--a-accent); }
+    #p-w-entry .opt-ic.pc { background: color-mix(in srgb, var(--c-pc) 16%, transparent); color: var(--c-pc); }
+    #p-w-entry .opt-ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    #p-w-entry .sw-box { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    #p-w-entry .sw { width: 56px; height: 36px; padding: 0; border: 0; background: none; display: grid; place-items: center; border-radius: 99px; }
+    #p-w-entry .sw i { display: block; width: 50px; height: 28px; border-radius: 99px; background: var(--a-surface-3); border: 1px solid var(--a-line); position: relative; transition: background .25s, border-color .25s; }
+    #p-w-entry .sw i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--a-muted); transition: transform .3s var(--ease), background .25s; }
+    #p-w-entry .sw[aria-pressed="true"] i { background: var(--a-accent-strong); border-color: var(--a-accent-strong); }
+    #p-w-entry .sw[aria-pressed="true"] i::after { transform: translateX(22px); background: var(--a-on-accent); }
+    #p-w-entry .sw-w { font-size: 11px; font-weight: 650; color: var(--a-muted); }
+    #p-w-entry .opt.on .sw-w { color: var(--a-accent); }
+    #p-w-entry .facts { margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--a-line); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 7px 14px; font-size: 13px; }
+    #p-w-entry .facts dt { color: var(--a-muted); font-weight: 700; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding-top: 3px; }
+    #p-w-entry .facts dd { margin: 0; color: var(--a-soft); }
+    #p-w-entry .flow-n { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+    #p-w-entry .flow-n .big { display: inline-block; font-size: 40px; }
+    #p-w-entry .flow-n .big.pop { animation: w-entry-bump .4s var(--ease); }
+    #p-w-entry .fl { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
+    #p-w-entry .fl:last-child { margin-bottom: 0; }
+    #p-w-entry .fl li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 10px; border-radius: 10px; border: 1px solid transparent; background: var(--a-surface-2); }
+    #p-w-entry .fl li b { display: block; font-size: 13.5px; font-weight: 650; }
+    #p-w-entry .fl li small { display: block; font-size: 12px; color: var(--a-muted); line-height: 1.35; }
+    #p-w-entry .fi { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--a-accent-soft); color: var(--a-accent); }
+    #p-w-entry .fi::before { content: "↑"; }
+    #p-w-entry .fl.no li { background: none; border: 1px dashed var(--a-line); }
+    #p-w-entry .fl.no .fi { background: var(--a-surface-2); color: var(--a-muted); }
+    #p-w-entry .fl.no .fi::before { content: "✕"; }
+    #p-w-entry .fl.no b { color: var(--a-soft); }
+    #p-w-entry .pcd { display: inline-block; width: 8px; height: 8px; border-radius: 3px; background: var(--c-pc); margin-right: 7px; vertical-align: 1px; }
+    #p-w-entry .cs-foot { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; justify-content: space-between; }
+    #p-w-entry .cs-rina { flex: 1 1 300px; }
+
+    #p-w-entry .f-wgt { flex: 0 1 356px; }
+    #p-w-entry .f-tc { flex: 1 1 300px; max-width: 460px; }
+    #p-w-entry .desk { background: color-mix(in srgb, var(--card) 70%, transparent); border: 1px dashed var(--line); border-radius: 18px; padding: 18px 14px 14px; display: flex; justify-content: center; }
+    #p-w-entry .pat { background: none; border: 0; padding: 0; position: relative; flex: none; line-height: 0; border-radius: 16px; }
+    #p-w-entry .pat b { position: absolute; left: 50%; top: 6px; margin-left: calc((var(--i) - 1) * 24px - 8px); color: var(--w-accent); font-size: 17px; line-height: 1; pointer-events: none; z-index: 3; animation: w-entry-heart .9s ease-out both; animation-delay: calc(var(--i) * 110ms); }
+    #p-w-entry .pat.tgt img { animation: w-entry-nod 1.8s ease-in-out infinite; }
+    #p-w-entry .wgt-bubble small { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--w-btn); }
+    #p-w-entry .wgt-bubble.pop { animation: w-entry-pop .3s var(--ease); transform-origin: 100% 100%; }
+    #p-w-entry .tprog { display: flex; align-items: center; gap: 4px; min-height: 36px; }
+    #p-w-entry .tprog i { flex: 1; height: 4px; border-radius: 4px; background: var(--w-3); transition: background .3s; }
+    #p-w-entry .tprog i.c { background: var(--w-accent); }
+    #p-w-entry .tprog i.d { background: var(--w-ok); }
+    #p-w-entry .skip { background: none; border: 0; color: var(--w-muted); font-size: 12px; min-height: 36px; padding: 0 2px 0 10px; }
+    #p-w-entry .skip:hover { color: var(--w-text); }
+    #p-w-entry .wgt-row { min-height: 36px; padding: 0 4px; }
+    #p-w-entry .ck { width: 36px; height: 36px; margin: 0 -6px 0 -8px; background: none; border: 0; padding: 0; display: grid; place-items: center; border-radius: 10px; flex: none; }
+    #p-w-entry .ck .wgt-ck { display: block; position: relative; transition: background .2s, border-color .2s; }
+    #p-w-entry .ck.tgt .wgt-ck { border-color: var(--w-accent); animation: w-entry-breath 1.8s ease-in-out infinite; }
+    #p-w-entry .ck[aria-pressed="true"] .wgt-ck { background: var(--w-ok); border-color: var(--w-ok); animation: w-entry-bump .35s var(--ease); }
+    #p-w-entry .ck[aria-pressed="true"] .wgt-ck::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--w-bg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    #p-w-entry .tx { min-width: 0; overflow-wrap: anywhere; transition: color .25s; }
+    #p-w-entry .wgt-row.dn .tx { text-decoration: line-through; color: var(--w-muted); }
+    #p-w-entry .tm { color: var(--w-accent); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 42px; flex: none; }
+    #p-w-entry .wgt-row small { color: var(--w-muted); margin-left: auto; font-size: 11.5px; flex: none; }
+    #p-w-entry .wgt-row.new { animation: w-entry-flash 1.4s ease-out; }
+    #p-w-entry .empty { color: var(--w-muted); font-size: 12.5px; padding: 6px 4px; }
+    #p-w-entry .you { align-self: flex-end; max-width: 90%; background: var(--w-btn); color: var(--w-text); border-radius: 12px 12px 4px 12px; padding: 6px 11px; overflow-wrap: anywhere; animation: w-entry-pop .3s var(--ease) both; transform-origin: 100% 100%; }
+    #p-w-entry .parse { display: flex; flex-wrap: wrap; gap: 6px; }
+    #p-w-entry .parse span { display: inline-flex; flex-direction: column; min-width: 0; background: var(--w-3); border: 1px solid var(--w-line); border-radius: 9px; padding: 3px 10px 4px; font-weight: 600; overflow-wrap: anywhere; animation: w-entry-pop .3s var(--ease) both; animation-delay: calc(var(--i) * 200ms); }
+    #p-w-entry .parse small { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--w-muted); font-weight: 700; }
+    #p-w-entry .say { display: flex; gap: 6px; margin-top: 2px; border-radius: 12px; }
+    #p-w-entry .say input { flex: 1; min-width: 0; height: 40px; background: var(--w-2); border: 1px solid var(--w-line); border-radius: 10px; padding: 0 11px; color: var(--w-text); font-size: 13.5px; }
+    #p-w-entry .say input::placeholder { color: var(--w-muted); }
+    #p-w-entry .say button { width: 40px; height: 40px; flex: none; border: 0; border-radius: 10px; background: var(--w-btn); color: var(--w-text); display: grid; place-items: center; }
+    #p-w-entry .say svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    #p-w-entry .say.tgt { animation: w-entry-breath 1.8s ease-in-out infinite; }
+    #p-w-entry .say.no { animation: w-entry-shake .4s; }
+    #p-w-entry .tc { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+    #p-w-entry .tc-cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: center; }
+    #p-w-entry .tc-k { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+    #p-w-entry .tc-n { font: 800 46px/1.05 var(--fd); letter-spacing: -.03em; color: var(--muted); text-decoration: line-through; text-decoration-thickness: 2px; }
+    #p-w-entry .tc-n.new { color: var(--text); text-decoration: none; }
+    #p-w-entry .tc-s { font-size: 13px; color: var(--soft); line-height: 1.3; }
+    #p-w-entry .tc-ar { color: var(--accent); font-size: 22px; }
+    #p-w-entry .tc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    #p-w-entry .tc-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; transition: border-color .25s, background .25s; }
+    #p-w-entry .tc-list i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 700 12px/1 var(--fd); font-style: normal; background: var(--line); color: var(--text); transition: background .25s, color .25s; }
+    #p-w-entry .tc-list b { display: block; font-size: 14px; }
+    #p-w-entry .tc-list small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+    #p-w-entry .tc-list em { font-style: normal; font-size: 11.5px; font-weight: 650; color: var(--muted); white-space: nowrap; }
+    #p-w-entry .tc-list li.cur { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+    #p-w-entry .tc-list li.cur i { background: var(--accent); color: var(--bg); }
+    #p-w-entry .tc-list li.cur em { color: var(--accent); }
+    #p-w-entry .tc-list li.done i { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+    #p-w-entry .tc-list li.done em { color: var(--ok); }
+    #p-w-entry .tc-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; justify-content: space-between; }
+    #p-w-entry .tc-end { color: var(--ok); font-size: 13.5px; font-weight: 600; flex: 1 1 200px; animation: w-entry-in .4s var(--ease) both; }
+    #p-w-entry .tc-btn { min-height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: none; color: var(--soft); font-size: 13px; font-weight: 600; }
+    #p-w-entry .tc-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    @keyframes w-entry-in { from { opacity: 0; transform: translateY(10px); } }
+    @keyframes w-entry-pop { from { opacity: 0; transform: translateY(6px) scale(.94); } }
+    @keyframes w-entry-hop { 40% { transform: translateY(-8px); } }
+    @keyframes w-entry-shake { 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+    @keyframes w-entry-dot { 50% { opacity: .35; transform: translateY(-2px); } }
+    @keyframes w-entry-draw { from { stroke-dashoffset: 176; } }
+    @keyframes w-entry-tick { from { stroke-dashoffset: 36; } }
+    @keyframes w-entry-bump { 50% { transform: scale(1.28); } }
+    @keyframes w-entry-flash { from { background: color-mix(in srgb, var(--w-accent) 38%, transparent); } }
+    @keyframes w-entry-breath { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--w-accent) 55%, transparent); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--w-accent) 12%, transparent); } }
+    @keyframes w-entry-nod { 50% { transform: translateY(-4px); } }
+    @keyframes w-entry-heart { from { transform: translateY(10px) scale(.5); opacity: 0; } 30% { opacity: 1; } to { transform: translateY(-36px) scale(1.1); opacity: 0; } }
+
+    @media (min-width: 861px) { #p-w-entry .stage { min-height: 620px; } }
+    @media (max-width: 720px) {
+      #p-w-entry .f-login { flex-basis: 100%; max-width: 100%; }
+      #p-w-entry .f-tg { flex-basis: 100%; }
+      #p-w-entry .f-wgt { flex-basis: 100%; }
+      #p-w-entry .f-tc { flex-basis: 100%; max-width: 100%; }
+      #p-w-entry .lg { padding: 20px 14px 16px; }
+      #p-w-entry .cs { padding: 14px; }
+      #p-w-entry .cs-grid { grid-template-columns: minmax(0, 1fr); }
+      #p-w-entry .cells input { height: 52px; font-size: 22px; }
+      #p-w-entry .opt-top { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; }
+      #p-w-entry .opt-ic { width: 34px; height: 34px; border-radius: 10px; }
+      #p-w-entry .opt-top b { font-size: 14px; }
+      #p-w-entry .say input { font-size: 16px; }
+      #p-w-entry .tc-n { font-size: 38px; }
+      #p-w-entry .desk { padding: 14px 8px 10px; }
+      #p-w-entry .navb { flex: 1 1 100%; }
+      #p-w-entry .navb button { flex: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #p-w-entry *, #p-w-entry *::before, #p-w-entry *::after { animation-duration: .01s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01s !important; }
+    }
+  </style>
+
+  <script>
+  (function () {
+    "use strict";
+    var root = document.getElementById("p-w-entry");
+    if (!root) return;
+    var M = window.MaidMock || { reduce: false, onSeen: function (el, fn) { fn(); } };
+    function $(s) { return root.querySelector(s); }
+    function $$(s) { return Array.prototype.slice.call(root.querySelectorAll(s)); }
+    var stage = $(".stage"), shots = $$(".shot"), stepBtns = $$(".steps button"), back = $("[data-nav='-1']"), next = $("[data-nav='1']"), status = $(".status");
+    var step = 1, run = 0, auto = false;
+
+    function later(ms, fn) { var r = run; setTimeout(function () { if (r === run) fn(); }, ms); }
+    function seq(list) { var t = 0; list.forEach(function (p) { t += p[0]; later(t, p[1]); }); }
+    function wait(ms) { return M.reduce ? 0 : ms; }
+    function face(img, name) { var s = "maid/" + name + ".webp"; if (img.getAttribute("src") !== s) img.setAttribute("src", s); }
+    function again(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+    function flip(el, from) {
+      if (M.reduce || !el.animate) return;
+      var to = el.getBoundingClientRect(), dx = from.left - to.left, dy = from.top - to.top;
+      if (!dx && !dy) return;
+      el.animate([{ transform: "translate(" + dx + "px," + dy + "px)" }, { transform: "none" }], { duration: 520, easing: "cubic-bezier(.2,.8,.2,1)" });
+    }
+    function fly(a, b, text, cb) {
+      if (M.reduce || !stage.animate || !a.offsetParent || !b.offsetParent) { cb(); return; }
+      var g = document.createElement("span"); g.className = "fly"; g.textContent = text; stage.appendChild(g);
+      var s = stage.getBoundingClientRect(), ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      var x0 = ra.left - s.left + ra.width / 2 - g.offsetWidth / 2, y0 = ra.top - s.top + ra.height / 2 - g.offsetHeight / 2;
+      var x1 = rb.left - s.left + rb.width / 2 - g.offsetWidth / 2, y1 = rb.top - s.top + rb.height / 2 - g.offsetHeight / 2;
+      function tr(x, y, k) { return "translate(" + x + "px," + y + "px) scale(" + k + ")"; }
+      var r = run, an = g.animate([
+        { transform: tr(x0, y0, .7), opacity: 0 }, { transform: tr(x0, y0 - 8, 1), opacity: 1, offset: .2 },
+        { transform: tr(x1, y1, 1), opacity: 1, offset: .86 }, { transform: tr(x1, y1, .7), opacity: 0 }
+      ], { duration: 820, easing: "cubic-bezier(.4,0,.2,1)" });
+      an.onfinish = function () { g.remove(); if (r === run) cb(); };
+    }
+
+    /* шаг 1: вход кодом */
+    var cells = $$(".cells input"), cellBox = $(".cells"), lgMsg = $(".lg-msg"), lgIn = $(".lg-in"), lgOk = $(".lg-ok"), lgImg = $(".lg-face img");
+    var mTyping = $("#w-entry-typing"), mCode = $("#w-entry-mcode"), mBtns = $("#w-entry-mbtns"), mNote = $("#w-entry-mnote"), mNote2 = $("#w-entry-mnote2"), codeEl = $("#w-entry-code"), copyBtn = $("#w-entry-copy");
+    var code = "482913", clip = "", gen1 = 0;
+    cells.forEach(function (c, i) { c.style.setProperty("--i", i); });
+    function fmt(c) { return c.slice(0, 3) + " " + c.slice(3); }
+    function tg(k) { mTyping.hidden = k !== 1; mCode.hidden = mBtns.hidden = k < 2; mNote.hidden = mNote2.hidden = k < 3; }
+    function msg(text, kind) { lgMsg.textContent = text; lgMsg.className = "lg-msg" + (kind ? " " + kind : ""); }
+    function paint() { cells.forEach(function (c) { c.classList.toggle("f", !!c.value); }); }
+    function put(d) { cells.forEach(function (c, i) { c.value = d.charAt(i) || ""; }); paint(); }
+    function reset1(k) {
+      gen1++; put(""); cellBox.classList.remove("ok", "bad"); lgIn.hidden = false; lgOk.hidden = true; face(lgImg, "hello");
+      msg("Код действует 5 минут"); copyBtn.textContent = "Скопировать код"; codeEl.textContent = fmt(code); tg(k);
+    }
+    function final1() { reset1(3); put(code); cellBox.classList.add("ok"); lgIn.hidden = true; lgOk.hidden = false; face(lgImg, "happy"); }
+    function typeIn(d, from) {
+      var g = gen1; d = d.slice(0, 6 - from);
+      d.split("").forEach(function (ch, k) {
+        setTimeout(function () { if (g !== gen1) return; cells[from + k].value = ch; paint(); if (k === d.length - 1) verify(); }, wait(70 * k));
+      });
+    }
+    function verify() {
+      var v = cells.map(function (c) { return c.value; }).join(""), g = gen1;
+      if (v.length < 6) return;
+      if (v === code) {
+        cellBox.classList.remove("bad"); cellBox.classList.add("ok"); msg("✓ Код верный, вхожу", "ok"); face(lgImg, "excited");
+        if (cells.indexOf(document.activeElement) >= 0) document.activeElement.blur();
+        setTimeout(function () { if (g !== gen1) return; lgIn.hidden = true; lgOk.hidden = false; face(lgImg, "happy"); tg(3); }, wait(950));
+      } else {
+        again(cellBox, "bad"); msg("✕ Код не подошёл. Проверьте цифры", "bad"); face(lgImg, "worried");
+        setTimeout(function () { if (g !== gen1) return; put(""); cellBox.classList.remove("bad"); face(lgImg, "hello"); }, 750);
+      }
+    }
+    function spread(d, from) {
+      if (from === 0) put("");
+      typeIn(d, from);
+      if (d.length < 6 - from) cells[from + d.length].focus();
+    }
+    function doCopy(real) {
+      clip = code;
+      if (real && navigator.clipboard && navigator.clipboard.writeText) { try { navigator.clipboard.writeText(code).catch(function () {}); } catch (e) {} }
+      copyBtn.textContent = "Скопировано ✓";
+      if (lgOk.hidden) msg("Код скопирован. Вставьте его сюда");
+    }
+    function newCode(text) {
+      code = String(100000 + Math.floor(Math.random() * 900000)); clip = "";
+      reset1(0); tg(2); msg(text);
+    }
+    cells.forEach(function (c, i) {
+      c.addEventListener("input", function () {
+        var d = c.value.replace(/\D/g, "");
+        if (d.length > 1) { c.value = ""; spread(d, d.length >= 6 ? 0 : i); return; }
+        c.value = d; paint();
+        if (d) { if (i < 5) cells[i + 1].focus(); verify(); }
+      });
+      c.addEventListener("keydown", function (e) {
+        if (e.key === "Backspace" && !c.value && i > 0) { cells[i - 1].value = ""; paint(); cells[i - 1].focus(); e.preventDefault(); }
+        else if (e.key === "ArrowLeft" && i > 0) { cells[i - 1].focus(); e.preventDefault(); }
+        else if (e.key === "ArrowRight" && i < 5) { cells[i + 1].focus(); e.preventDefault(); }
+      });
+      c.addEventListener("paste", function (e) {
+        var cd = e.clipboardData || window.clipboardData, t = (cd ? cd.getData("text") : "").replace(/\D/g, "");
+        e.preventDefault(); if (t) spread(t, t.length >= 6 ? 0 : i);
+      });
+      c.addEventListener("focus", function () { c.select(); });
+    });
+    copyBtn.addEventListener("click", function () { doCopy(true); });
+    function demo1(done) {
+      reset1(0);
+      seq([[500, function () { tg(1); }], [900, function () { tg(2); }],
+        [950, function () { copyBtn.classList.add("press"); doCopy(false); }],
+        [320, function () { copyBtn.classList.remove("press"); fly(codeEl, cellBox, fmt(code), function () { put(""); typeIn(code, 0); later(2900, done); }); }]]);
+    }
+
+    /* шаг 2: согласие */
+    var opt = { track: false, auto: false }, sent = $("#w-entry-sent"), never = $("#w-entry-never"), trow = $("#w-entry-trow"), cnt = $("#w-entry-cnt"), csImg = $(".cs-rina img"), csSay = $(".cs-rina p"), sws = $$(".sw");
+    var SAY = {
+      "00": ["bow", "Пока оба выключены. Дела, привычки и дневник я веду и так."],
+      "10": ["salute", "Хорошо, <b>время считаю</b>. Запускать меня будете сами, ярлыком."],
+      "01": ["happy", "Буду <b>встречать вас</b> при включении компьютера. Время считать не стану."],
+      "11": ["thumbsup", "Спасибо за доверие. <b>Считаю время</b> и <b>встречаю вас</b> при включении."]
+    };
+    function setOpt(k, v, anim) {
+      opt[k] = v;
+      sws.forEach(function (b) {
+        if (b.dataset.k !== k) return;
+        b.setAttribute("aria-pressed", v ? "true" : "false");
+        b.parentNode.querySelector(".sw-w").textContent = v ? "Включено" : "Выключено";
+        b.closest(".opt").classList.toggle("on", v);
+      });
+      if (k === "track") {
+        var mv = $$(".flow .mv"), rs = mv.map(function (el) { return el.getBoundingClientRect(); });
+        if (v) sent.appendChild(trow); else never.insertBefore(trow, never.firstChild);
+        cnt.textContent = v ? "3" : "2";
+        if (anim) { mv.forEach(function (el, i) { flip(el, rs[i]); }); again(cnt, "pop"); }
+      }
+      var s = SAY[(opt.track ? "1" : "0") + (opt.auto ? "1" : "0")]; face(csImg, s[0]); csSay.innerHTML = s[1];
+    }
+    function reset2() { setOpt("track", false, false); setOpt("auto", false, false); }
+    sws.forEach(function (b) { b.addEventListener("click", function () { setOpt(b.dataset.k, b.getAttribute("aria-pressed") !== "true", true); }); });
+    function demo2(done) {
+      reset2();
+      seq([[1100, function () { setOpt("track", true, true); }], [1600, function () { setOpt("auto", true, true); }], [1900, done]]);
+    }
+
+    /* шаг 3: экскурсия делом */
+    var done3 = [false, false, false], skipped = false, gen3 = 0, tok = 0;
+    var pat = $(".pat"), wImg = $(".pat img"), bubble = $(".wgt-bubble"), bub = $(".wgt-bubble p"), bubK = $(".wgt-bubble small"), segs = $$(".tprog i"), skip = $(".skip");
+    var today = $("#w-entry-today"), tmr = $("#w-entry-tmr"), empty = $(".empty"), strip = $(".parse"), you = $(".you"), form = $(".say"), inp = $(".say input"), tcl = $$(".tc-list li"), tcEnd = $(".tc-end");
+    var HINT = [
+      ["hello", "Напишите мне любое дело своими словами. Например: «завтра в 15 врач»."],
+      ["list", "Теперь отметьте дело галочкой. Так закрываются задачи и привычки."],
+      ["shy", "И последнее: погладьте меня. Просто нажмите на меня."]
+    ];
+    function say(img, text) { face(wImg, img); bub.textContent = text; again(bubble, "pop"); }
+    function upd(quiet) {
+      var all = done3.indexOf(false) < 0, c = skipped ? -1 : done3.indexOf(false);
+      segs.forEach(function (s, i) { s.className = done3[i] ? "d" : i === c ? "c" : ""; });
+      tcl.forEach(function (li, i) {
+        li.className = done3[i] ? "done" : i === c ? "cur" : "";
+        li.querySelector("i").textContent = done3[i] ? "✓" : String(i + 1);
+        li.querySelector("em").textContent = done3[i] ? "готово" : i === c ? "сейчас" : skipped ? "пропущен" : "ждёт";
+      });
+      bubK.textContent = all ? "Экскурсия пройдена" : skipped ? "Без экскурсии" : "Шаг " + (c + 1) + " из 3";
+      tcEnd.hidden = !all; skip.hidden = all || skipped;
+      form.classList.toggle("tgt", c === 0); pat.classList.toggle("tgt", c === 2);
+      var first = today.querySelector(".ck[aria-pressed='false']");
+      $$(".ck").forEach(function (b) { b.classList.toggle("tgt", c === 1 && b === first); });
+      if (quiet) return;
+      if (all) say("proud", "Вот и вся экскурсия. Остальное подскажу по ходу дела.");
+      else if (skipped) say("bow", "Хорошо, без экскурсии. Понадоблюсь, просто напишите.");
+      else say(HINT[c][0], HINT[c][1]);
+    }
+    function react(img, text) { say(img, text); upd(true); var t = ++tok; setTimeout(function () { if (t === tok) upd(); }, wait(1700)); }
+    function parse(t) {
+      var s = t.toLowerCase().replace(/ё/g, "е"), day = "", time = "", m;
+      if (/послезавтра/.test(s)) day = "послезавтра"; else if (/завтра/.test(s)) day = "завтра"; else if (/сегодня/.test(s)) day = "сегодня";
+      m = s.match(/(\d{1,2})[:.](\d{2})/) || s.match(/(?:^|\s)в\s+(\d{1,2})(?=\s|$)/);
+      if (m && +m[1] < 24 && (!m[2] || +m[2] < 60)) time = ("0" + m[1]).slice(-2) + ":" + (m[2] || "00");
+      var title = t.replace(/послезавтра|завтра|сегодня/gi, " ");
+      if (time) title = title.replace(/(?:(^|\s)в\s+)?\d{1,2}[:.]\d{2}/i, " ").replace(/(^|\s)в\s+\d{1,2}(?=\s|$)/i, " ");
+      title = title.replace(/\s+/g, " ").replace(/^[\s,.;:]+|[\s,.;:]+$/g, "");
+      title = title ? title.charAt(0).toUpperCase() + title.slice(1) : "Дело";
+      return { day: day, time: time, title: title, later: day === "завтра" || day === "послезавтра" };
+    }
+    function addRow(p) {
+      var row = document.createElement("div"); row.className = "wgt-row added new";
+      if (p.later) {
+        row.innerHTML = '<span class="tm"></span><span class="tx"></span>' + (p.day === "послезавтра" ? "<small>послезавтра</small>" : "");
+        row.querySelector(".tm").textContent = p.time || "день";
+        tmr.appendChild(row); empty.hidden = true;
+      } else {
+        row.innerHTML = '<button type="button" class="ck" aria-pressed="false"><i class="wgt-ck"></i></button>' + (p.time ? '<span class="tm"></span>' : "") + '<span class="tx"></span>';
+        row.querySelector(".ck").setAttribute("aria-label", "Отметить: " + p.title);
+        if (p.time) row.querySelector(".tm").textContent = p.time;
+        today.appendChild(row);
+      }
+      row.querySelector(".tx").textContent = p.title;
+      return row;
+    }
+    function told(p) { return p.later ? "Записала: " + p.day + (p.time ? " в " + p.time : "") + ", «" + p.title + "»." : "Записала на сегодня" + (p.time ? " в " + p.time : "") + ": «" + p.title + "»."; }
+    function submit(text) {
+      text = text.trim();
+      if (!text) { again(form, "no"); react("listen", "Напишите пару слов. Например: «завтра в 15 врач»."); return; }
+      var p = parse(text), g = gen3; inp.value = ""; tok++;
+      you.textContent = text; you.hidden = false; strip.hidden = true; face(wImg, "think"); bub.textContent = "Разбираю вашу фразу…";
+      setTimeout(function () {
+        if (g !== gen3) return;
+        strip.innerHTML = ""; var n = 0;
+        [["когда", p.day || "сегодня"], ["время", p.time], ["что", p.title]].forEach(function (x) {
+          if (!x[1]) return;
+          var s = document.createElement("span"), k = document.createElement("small");
+          s.style.setProperty("--i", n++); k.textContent = x[0]; s.appendChild(k); s.appendChild(document.createTextNode(x[1])); strip.appendChild(s);
+        });
+        strip.hidden = false; face(wImg, "write");
+        setTimeout(function () {
+          if (g !== gen3) return;
+          var r0 = strip.getBoundingClientRect(); strip.hidden = true; you.hidden = true;
+          var row = addRow(p); flip(row, r0);
+          done3[0] = true; react("done", told(p));
+        }, wait(1250));
+      }, wait(600));
+    }
+    function tick(b) {
+      var on = b.getAttribute("aria-pressed") !== "true";
+      b.setAttribute("aria-pressed", on ? "true" : "false"); b.parentNode.classList.toggle("dn", on);
+      if (on) { done3[1] = true; react("thumbsup", "Отмечено. Одно нажатие, и дело закрыто."); } else upd();
+    }
+    function heart(i) {
+      var h = document.createElement("b"); h.textContent = "♥"; h.setAttribute("aria-hidden", "true"); h.style.setProperty("--i", i); pat.appendChild(h);
+      setTimeout(function () { h.remove(); }, 1400);
+    }
+    function doPat() {
+      if (!M.reduce) [0, 1, 2].forEach(heart);
+      done3[2] = true; react("giggle", "Спасибо, мне приятно.");
+    }
+    function reset3() {
+      gen3++; tok++; done3 = [false, false, false]; skipped = false;
+      $$(".wgt-row.added").forEach(function (r) { r.remove(); });
+      $$(".ck").forEach(function (b) { b.setAttribute("aria-pressed", "false"); b.parentNode.classList.remove("dn"); });
+      $$(".pat b").forEach(function (h) { h.remove(); });
+      empty.hidden = false; you.hidden = true; strip.hidden = true; inp.value = ""; upd();
+    }
+    function final3() {
+      reset3(); addRow(parse("завтра в 15 врач")).classList.remove("new");
+      var b = today.querySelector(".ck"); b.setAttribute("aria-pressed", "true"); b.parentNode.classList.add("dn");
+      done3 = [true, true, true]; upd();
+    }
+    form.addEventListener("submit", function (e) { e.preventDefault(); submit(inp.value); });
+    $(".wgt-panel").addEventListener("click", function (e) { var b = e.target.closest(".ck"); if (b) tick(b); });
+    pat.addEventListener("click", doPat);
+    function demo3(done) {
+      reset3();
+      var ph = "завтра в 15 врач", t = 900;
+      ph.split("").forEach(function (ch, i) { later(t + i * 55, function () { inp.value = ph.slice(0, i + 1); }); });
+      t += ph.length * 55 + 400; later(t, function () { submit(inp.value); });
+      t += 600 + 1250 + 2000; later(t, function () { var b = today.querySelector(".ck[aria-pressed='false']"); if (b) tick(b); });
+      t += 2100; later(t, doPat);
+      t += 2400; later(t, done);
+    }
+
+    /* показ шагов */
+    var DEMO = [demo1, demo2, demo3];
+    function show(n) {
+      step = n;
+      shots.forEach(function (s, i) { s.hidden = i !== n - 1; });
+      stepBtns.forEach(function (b, i) { b.setAttribute("aria-pressed", i === n - 1 ? "true" : "false"); b.classList.toggle("was", i < n - 1); });
+      back.disabled = n === 1; next.disabled = n === 3;
+    }
+    function stopAuto() {
+      run++; $$(".fly").forEach(function (g) { g.remove(); }); copyBtn.classList.remove("press");
+      if (!auto) return;
+      auto = false; if (step === 1 && mCode.hidden) tg(2);
+      status.textContent = "Показ остановлен. Пробуйте сами: всё нажимается.";
+    }
+    function playStep(n, chain) {
+      if (M.reduce) { show(n); status.textContent = "Анимации выключены. Показан готовый экран, всё нажимается."; return; }
+      run++; auto = true; show(n);
+      status.textContent = "Идёт показ: шаг " + n + " из 3. Нажмите на макет, чтобы попробовать самому.";
+      DEMO[n - 1](function () {
+        if (chain && n < 3) { later(900, function () { playStep(n + 1, true); }); return; }
+        auto = false; status.textContent = n === 3 ? "Показ окончен. Всё нажимается: попробуйте сами." : "Шаг показан. Попробуйте сами или идите дальше.";
+      });
+    }
+    function play() {
+      if (M.reduce) { run++; auto = false; final1(); reset2(); final3(); }
+      playStep(1, true);
+    }
+    stage.addEventListener("click", stopAuto, true);
+    stage.addEventListener("keydown", stopAuto, true);
+    root.addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b || !root.contains(b)) return;
+      var a = b.dataset.act;
+      if (b.dataset.go) playStep(+b.dataset.go, false);
+      else if (b.dataset.nav) playStep(Math.max(1, Math.min(3, step + +b.dataset.nav)), false);
+      else if (a === "paste") { if (clip) { put(""); typeIn(clip, 0); } else msg("Сначала нажмите «Скопировать код» в Telegram"); }
+      else if (a === "new") newCode("Прислала новый код. Прежний больше не действует");
+      else if (a === "revoke") newCode("Доступ закрыт. Для входа нужен новый код");
+      else if (a === "self1") { reset1(2); cells[0].focus({ preventScroll: true }); }
+      else if (a === "self3") { reset3(); inp.focus({ preventScroll: true }); }
+      else if (a === "skip") { skipped = true; tok++; upd(); }
+    });
+
+    reset2(); upd(true); show(1);
+    M.onSeen(root, play);
+    root.addEventListener("replay", play);
+  })();
+  </script>
+</article>

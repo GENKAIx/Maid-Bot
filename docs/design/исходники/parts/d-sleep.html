@@ -1,0 +1,678 @@
+<article class="piece" id="p-d-sleep">
+  <header>
+    <p class="eyebrow">Экран · Обзор → Сон</p>
+    <h2>Ночи, которые можно поправить рукой</h2>
+    <p>Две недели сна видны разом, рядом с целью из «О вас». Время отбоя и подъёма правится протягиванием края полосы, а сверху сразу видно главное: сколько вы спите, насколько ровно ложитесь и сколько недосыпа накопилось.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="ds-var" role="group" aria-label="Вариант экрана">
+    <button type="button" data-act="var" data-v="a" aria-pressed="true">Вариант А · Ночи</button>
+    <button type="button" data-act="var" data-v="b" aria-pressed="false">Вариант Б · Круг ночи</button>
+  </div>
+  <p class="ds-advice">Советую вариант А: две недели видны одним взглядом, края удобно тянуть, и сразу заметно, какие ночи вышли за цель. Круг нагляден для одной ночи, его можно оставить вторым видом.</p>
+
+  <div class="app" data-hub="stats" data-tab="Сон" data-title="Сон" data-v="a">
+    <div class="ds-head">
+      <div class="ds-hl">
+        <p class="ds-per">14–27 ноября</p>
+        <p class="ds-gl">Цель из «О вас»: отбой 23:30, подъём 07:00 · <button type="button" class="ds-link" data-act="goal">изменить</button></p>
+      </div>
+      <button type="button" class="btn primary ds-rec" data-act="rec">+ Записать сон</button>
+    </div>
+    <div class="ds-kpis"></div>
+    <div class="rina"><img src="maid/bedtime.webp" alt="" width="64" height="68"><p></p></div>
+    <section class="card">
+      <p class="card-t">Ночи <span class="ds-ct">2 недели · шкала 20:00–12:00</span></p>
+      <div class="ds-plot">
+        <div class="ds-col ds-days"><div class="ds-sp"></div></div>
+        <div class="ds-col ds-lane"><div class="ds-axis" aria-hidden="true"></div><div class="ds-bg" aria-hidden="true"></div><div class="ds-tip" role="status" hidden></div></div>
+        <div class="ds-col ds-lens"><div class="ds-sp"></div></div>
+      </div>
+      <div class="ds-leg">
+        <span><i class="ds-sw sl"></i>сон</span>
+        <span><i class="ds-sw gz"></i>цель 23:30–07:00</span>
+        <span><i class="ds-sw em"></i>не записано</span>
+        <span class="ds-hint">Потяните край полосы, чтобы поправить время. Шаг 15 минут.</span>
+      </div>
+      <div class="ds-ed"></div>
+    </section>
+    <section class="card">
+      <p class="card-t">Сон и оценка дня</p>
+      <div class="ds-scg">
+        <div class="ds-sct">
+          <p class="ds-con"></p>
+          <p class="ds-cons"></p>
+          <div class="ds-leg"><span><i class="ds-sw pt"></i>один день</span><span><i class="ds-sw av"></i>средняя оценка</span></div>
+        </div>
+        <div class="ds-scw">
+          <svg class="ds-sc" viewBox="0 0 340 200" role="img" aria-label="Точки: сколько часов сна и какая оценка дня"></svg>
+          <div class="ds-tip ds-stip" role="status" hidden></div>
+        </div>
+      </div>
+    </section>
+    <div class="ds-toast" role="status" hidden><span></span><button type="button" class="btn" data-act="undo">Отменить</button></div>
+  </div>
+
+  <div class="app" data-hub="stats" data-tab="Сон" data-title="Сон" data-v="b" hidden>
+    <div class="ds-head">
+      <div class="ds-hl">
+        <p class="ds-per">Неделя 21–27 ноября</p>
+        <p class="ds-gl">Цель из «О вас»: отбой 23:30, подъём 07:00 · <button type="button" class="ds-link" data-act="goal">изменить</button></p>
+      </div>
+      <button type="button" class="btn primary ds-rec" data-act="rec">+ Записать сон</button>
+    </div>
+    <div class="ds-kpis"></div>
+    <div class="ds-b">
+      <section class="card">
+        <p class="card-t">Выбранная ночь</p>
+        <svg class="ds-clock" viewBox="0 0 260 260" role="group" aria-label="Циферблат суток: дуга сна выбранной ночи"></svg>
+        <div class="ds-leg ds-cleg"><span><i class="ds-sw bd"></i>отбой</span><span><i class="ds-sw wk"></i>подъём</span><span><i class="ds-sw gl"></i>цель</span><span class="ds-hint">Ручки на круге тянутся пальцем или стрелками.</span></div>
+        <div class="ds-ed"></div>
+      </section>
+      <section class="card">
+        <p class="card-t">Неделя</p>
+        <div class="ds-week"></div>
+        <ul class="ds-wsum"></ul>
+        <div class="rina"><img src="maid/bedtime.webp" alt="" width="64" height="68"><p></p></div>
+      </section>
+    </div>
+    <div class="ds-toast" role="status" hidden><span></span><button type="button" class="btn" data-act="undo">Отменить</button></div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Строки высотой 40 px, у полосы ручки по краям: отбой и подъём правятся протягиванием с подсказкой времени, шаг 15 минут.</li>
+      <li>У выбранной ночи кнопки «−15 / +15 мин» и пять звёзд качества. Всё работает с клавиатуры и пальцем.</li>
+      <li>Цель из «О вас» видна зоной на шкале. Пустая ночь записывается одним нажатием, кнопка «+ Записать сон» всегда на виду.</li>
+      <li>Три главные цифры сверху и вывод про оценку дня одной фразой.</li>
+      <li>Удаление без окна «Вы уверены?»: вместо него плашка «Отменить» на 7 секунд.</li>
+      <li>Шкала 20:00–12:00 вместо 18:00–18:00, поэтому ночь занимает больше места.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Полосы по очереди вырастают слева направо, от отбоя к подъёму.</li>
+      <li>Цифры сверху досчитываются от нуля, полоска регулярности заполняется.</li>
+      <li>Пока тянете ручку, среднее, долг сна, вывод и точка на графике пересчитываются сразу.</li>
+      <li>Новая ночь вырастает из времени отбоя, плашка отмены мягко выезжает снизу.</li>
+      <li>В варианте Б дуги сна прорисовываются по кругу.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Своя таблица сна: отбой, подъём, качество. Сейчас время достаётся разбором текста дневника, качества нет совсем.</li>
+      <li>Запись «лёг, встал» уже есть на сервере: её нужно вызывать, когда отпускают ручку или жмут «±15».</li>
+      <li>Желаемые отбой и подъём уже хранятся в «О вас», их надо передать во вкладку.</li>
+      <li>Регулярность и долг сна считаются в программе по последним 7 ночам, сервер не нужен.</li>
+      <li>Отмена уже есть на сервере, подойдёт как есть.</li>
+      <li>Сон после 12:00 (ночная смена) шкала обрежет: для него нужен отдельный вид.</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-sleep [hidden] { display: none !important; }
+#p-d-sleep .ds-var { display: inline-flex; align-self: flex-start; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+#p-d-sleep .ds-var button { background: none; border: 0; border-radius: 9px; padding: 7px 14px; min-height: 36px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+#p-d-sleep .ds-var button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+#p-d-sleep .ds-advice { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
+#p-d-sleep .app-content { gap: 16px; }
+#p-d-sleep .ds-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+#p-d-sleep .ds-hl { min-width: 0; }
+#p-d-sleep .ds-per { font: 700 18px/1.2 var(--fd); letter-spacing: -.01em; }
+#p-d-sleep .ds-gl { color: var(--a-muted); font-size: 13px; margin-top: 3px; }
+#p-d-sleep .ds-link { background: none; border: 0; padding: 4px 2px; color: var(--a-accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+#p-d-sleep .ds-rec { min-height: 40px; padding: 9px 16px; }
+#p-d-sleep .ds-ct { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12.5px; }
+#p-d-sleep .ds-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#p-d-sleep .ds-kpi { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#p-d-sleep .ds-kpi small { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+#p-d-sleep .ds-big { font: 800 34px/1.05 var(--fd); letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#p-d-sleep .ds-big .u { font-size: .48em; font-weight: 700; color: var(--a-muted); margin: 0 .1em 0 .06em; letter-spacing: 0; }
+#p-d-sleep .ds-big.warn { color: var(--a-warn); }
+#p-d-sleep .ds-badge { font-style: normal; text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--a-warn); border: 1px solid color-mix(in srgb, var(--a-warn) 50%, transparent); border-radius: 99px; padding: 0 7px; }
+#p-d-sleep .ds-sub { font-size: 12.5px; color: var(--a-soft); min-width: 0; }
+#p-d-sleep .ds-sub.up { color: var(--a-ok); } #p-d-sleep .ds-sub.down { color: var(--a-bad); }
+#p-d-sleep .ds-meter { display: block; height: 6px; border-radius: 99px; background: var(--a-surface-3); overflow: hidden; }
+#p-d-sleep .ds-meter i { display: block; height: 100%; width: 0; background: var(--c-sleep); border-radius: inherit; }
+#p-d-sleep .ds-plot { display: grid; grid-template-columns: 58px minmax(0, 1fr) 64px; column-gap: 12px; }
+#p-d-sleep .ds-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#p-d-sleep .ds-sp, #p-d-sleep .ds-axis { height: 20px; flex: none; }
+#p-d-sleep .ds-day { height: 40px; border: 0; background: none; border-radius: 10px; padding: 0 8px; text-align: left; color: var(--a-soft); font-size: 13px; white-space: nowrap; }
+#p-d-sleep .ds-day span { color: var(--a-muted); margin-right: 3px; }
+#p-d-sleep .ds-day b { font-weight: 700; color: var(--a-text); font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-day[aria-pressed="true"] { background: var(--a-accent-soft); }
+#p-d-sleep .ds-day[aria-pressed="true"] b, #p-d-sleep .ds-day[aria-pressed="true"] span { color: var(--a-accent); }
+#p-d-sleep .ds-len { height: 40px; display: flex; align-items: center; justify-content: flex-end; font-weight: 650; font-size: 13px; color: var(--a-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#p-d-sleep .ds-len.short { color: var(--a-warn); }
+#p-d-sleep .ds-len.none { color: var(--a-muted); font-weight: 500; }
+#p-d-sleep .ds-lane { position: relative; }
+#p-d-sleep .ds-axis { position: relative; }
+#p-d-sleep .ds-axis span { position: absolute; top: 0; transform: translateX(-50%); font-size: 11px; color: var(--a-muted); font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-axis span:first-child { transform: none; } #p-d-sleep .ds-axis span:last-child { transform: translateX(-100%); }
+#p-d-sleep .ds-bg { position: absolute; left: 0; right: 0; top: 26px; bottom: 0; pointer-events: none; }
+#p-d-sleep .ds-bg i { position: absolute; top: -4px; bottom: 0; width: 1px; background: var(--a-grid); }
+#p-d-sleep .ds-goal { position: absolute; top: -6px; bottom: -2px; border-radius: 8px; background: color-mix(in srgb, var(--a-ok) 10%, transparent); border-left: 1.5px dashed color-mix(in srgb, var(--a-ok) 60%, transparent); border-right: 1.5px dashed color-mix(in srgb, var(--a-ok) 60%, transparent); }
+#p-d-sleep .ds-tr { position: relative; height: 40px; border-radius: 10px; background: color-mix(in srgb, var(--a-surface-3) 45%, transparent); cursor: pointer; }
+#p-d-sleep .ds-tr.sel { box-shadow: inset 0 0 0 1.5px var(--a-accent); }
+#p-d-sleep .ds-tr.empty { background: none; border: 1.5px dashed var(--a-line); cursor: default; }
+#p-d-sleep .ds-bar { position: absolute; top: 5px; bottom: 5px; border-radius: 8px; background: color-mix(in srgb, var(--c-sleep) 46%, transparent); border: 1px solid var(--c-sleep); display: flex; align-items: center; justify-content: center; transition: left .09s linear, width .09s linear; }
+#p-d-sleep .ds-tr.sel .ds-bar { border-width: 2px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-sleep) 22%, transparent); }
+#p-d-sleep .ds-bt { font-weight: 650; font-size: 11.5px; color: var(--a-text); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; padding: 0 16px; pointer-events: none; }
+#p-d-sleep .ds-bar.narrow .ds-bt { display: none; }
+#p-d-sleep .ds-h { position: absolute; top: -6px; bottom: -6px; width: 30px; display: flex; align-items: center; justify-content: center; cursor: ew-resize; touch-action: none; z-index: 2; border-radius: 8px; }
+#p-d-sleep .ds-h[data-f="bed"] { left: -16px; } #p-d-sleep .ds-h[data-f="wake"] { right: -16px; }
+#p-d-sleep .ds-h::after { content: ""; width: 6px; height: 20px; border-radius: 4px; background: var(--c-sleep); box-shadow: 0 0 0 2px var(--a-surface); transition: transform .15s var(--ease); }
+#p-d-sleep .ds-tr.sel .ds-h::after { height: 26px; width: 7px; }
+#p-d-sleep .ds-h:hover::after, #p-d-sleep .ds-h.on::after { transform: scale(1.25, 1.15); }
+#p-d-sleep .ds-h:focus-visible { outline: 2px solid var(--a-accent); outline-offset: -3px; }
+#p-d-sleep .ds-add { position: absolute; top: 50%; transform: translateY(-50%); height: 32px; padding: 0 12px; border-radius: 8px; border: 1px dashed var(--a-accent); background: var(--a-surface); color: var(--a-accent); font-weight: 650; font-size: 12.5px; white-space: nowrap; }
+#p-d-sleep .ds-add:hover { background: var(--a-accent-soft); }
+#p-d-sleep .ds-tip { position: absolute; z-index: 5; transform: translate(-50%, -100%); background: var(--a-surface-3); color: var(--a-text); border: 1px solid var(--a-line); border-radius: 8px; padding: 4px 10px; font-weight: 650; font-size: 12px; white-space: nowrap; pointer-events: none; box-shadow: var(--a-shadow); font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-leg { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 12.5px; color: var(--a-muted); margin-top: 12px; }
+#p-d-sleep .ds-leg > span { display: inline-flex; align-items: center; gap: 6px; }
+#p-d-sleep .ds-hint { color: var(--a-soft); }
+#p-d-sleep .ds-sw { width: 16px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+#p-d-sleep .ds-sw.sl { background: color-mix(in srgb, var(--c-sleep) 46%, transparent); border: 1px solid var(--c-sleep); }
+#p-d-sleep .ds-sw.gz { background: color-mix(in srgb, var(--a-ok) 12%, transparent); border: 1.5px dashed color-mix(in srgb, var(--a-ok) 60%, transparent); }
+#p-d-sleep .ds-sw.em { border: 1.5px dashed var(--a-line); }
+#p-d-sleep .ds-sw.pt { width: 10px; border-radius: 50%; background: var(--c-sleep); }
+#p-d-sleep .ds-sw.av { height: 0; border-top: 2.5px dashed var(--c-mood); border-radius: 0; }
+#p-d-sleep .ds-sw.bd { width: 12px; height: 12px; border-radius: 50%; background: var(--c-sleep); }
+#p-d-sleep .ds-sw.wk { width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--c-sleep); background: var(--a-surface); }
+#p-d-sleep .ds-sw.gl { height: 5px; border-radius: 99px; background: color-mix(in srgb, var(--a-ok) 65%, transparent); }
+#p-d-sleep .ds-ed { border-top: 1px solid var(--a-line); margin-top: 14px; padding-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+#p-d-sleep .ds-edh { display: flex; align-items: center; gap: 10px; }
+#p-d-sleep .ds-edh > div { flex: 1; min-width: 0; }
+#p-d-sleep .ds-edt { display: block; font-weight: 700; font-size: 15px; }
+#p-d-sleep .ds-edl { display: block; font-size: 13px; color: var(--a-soft); }
+#p-d-sleep .ds-nav { width: 36px; height: 36px; flex: none; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface-2); display: grid; place-items: center; padding: 0; }
+#p-d-sleep .ds-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#p-d-sleep .ds-nav:disabled { opacity: .4; cursor: default; }
+#p-d-sleep .ds-edb { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
+#p-d-sleep .ds-step, #p-d-sleep .ds-q { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#p-d-sleep .ds-lab { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; width: 64px; flex: none; }
+#p-d-sleep .ds-step button { height: 36px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-text); font-weight: 650; font-size: 12.5px; white-space: nowrap; }
+#p-d-sleep .ds-step button:hover:not(:disabled) { border-color: var(--a-accent); }
+#p-d-sleep .ds-step button:disabled { opacity: .4; cursor: default; }
+#p-d-sleep .ds-step b { font: 800 20px/1 var(--fd); font-variant-numeric: tabular-nums; min-width: 70px; text-align: center; }
+#p-d-sleep .ds-stars { display: flex; }
+#p-d-sleep .ds-star { width: 36px; height: 36px; border: 0; background: none; padding: 0; display: grid; place-items: center; border-radius: 8px; color: var(--a-surface-3); }
+#p-d-sleep .ds-star svg { width: 24px; height: 24px; fill: currentColor; transition: transform .2s var(--ease); }
+#p-d-sleep .ds-star.on { color: var(--a-gold); }
+#p-d-sleep .ds-star:hover svg { transform: scale(1.15); }
+#p-d-sleep .ds-qw { font-size: 13px; color: var(--a-soft); margin-left: 4px; }
+#p-d-sleep .ds-del { margin-left: auto; }
+#p-d-sleep .ds-edn { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--a-soft); }
+#p-d-sleep .ds-scg { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 20px; align-items: center; }
+#p-d-sleep .ds-sct { min-width: 0; }
+#p-d-sleep .ds-con { font-size: 17px; line-height: 1.45; text-wrap: pretty; }
+#p-d-sleep .ds-con b { font-weight: 750; }
+#p-d-sleep .ds-cons { color: var(--a-muted); font-size: 13px; margin-top: 6px; }
+#p-d-sleep .ds-scw { position: relative; min-width: 0; }
+#p-d-sleep svg.ds-sc { width: 100%; height: auto; display: block; overflow: visible; }
+#p-d-sleep .ds-sc .gl { stroke: var(--a-grid); stroke-width: 1; }
+#p-d-sleep .ds-sc .dv { stroke: var(--a-line); stroke-width: 1.5; stroke-dasharray: 3 4; }
+#p-d-sleep .ds-sc text { fill: var(--a-muted); font-size: 10.5px; font-family: var(--f); }
+#p-d-sleep .ds-sc text.avt { fill: var(--a-soft); font-size: 12px; font-weight: 700; }
+#p-d-sleep .ds-sc .av { stroke: var(--c-mood); stroke-width: 2.5; stroke-dasharray: 6 4; stroke-linecap: round; transition: all .3s var(--ease); }
+#p-d-sleep .ds-pt { cursor: pointer; outline: none; transition: transform .3s var(--ease); }
+#p-d-sleep .ds-pt .hit { fill: transparent; }
+#p-d-sleep .ds-pt .vis { fill: var(--c-sleep); stroke: var(--a-surface); stroke-width: 2; transform-box: fill-box; transform-origin: center; transition: transform .2s var(--ease); }
+#p-d-sleep .ds-pt.sel .vis { transform: scale(1.5); stroke: var(--a-text); }
+#p-d-sleep .ds-pt:focus-visible .vis { stroke: var(--a-accent); stroke-width: 3; }
+#p-d-sleep .ds-toast { position: sticky; bottom: 12px; z-index: 6; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; background: var(--a-surface-3); border: 1px solid var(--a-line); border-radius: 12px; box-shadow: var(--a-shadow); animation: d-sleep-rise .3s var(--ease); }
+#p-d-sleep .ds-toast span { flex: 1; min-width: 0; font-size: 13px; }
+#p-d-sleep .ds-b { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 14px; align-items: start; }
+#p-d-sleep svg.ds-clock { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
+#p-d-sleep .ds-clock .ring { fill: none; stroke: var(--a-surface-3); stroke-width: 18; }
+#p-d-sleep .ds-clock .goal { fill: none; stroke: color-mix(in srgb, var(--a-ok) 65%, transparent); stroke-width: 6; stroke-linecap: round; }
+#p-d-sleep .ds-arc { fill: none; stroke: var(--c-sleep); stroke-width: 18; stroke-linecap: round; stroke-dasharray: 100; }
+#p-d-sleep .ds-clock .tk { stroke: var(--a-muted); stroke-width: 1.2; }
+#p-d-sleep .ds-clock .tk.k { stroke: var(--a-soft); stroke-width: 2; }
+#p-d-sleep .ds-clock .hl { fill: var(--a-muted); font-size: 11px; text-anchor: middle; dominant-baseline: middle; font-family: var(--f); }
+#p-d-sleep .ds-clock .hl.k { fill: var(--a-soft); font-weight: 700; font-size: 12px; }
+#p-d-sleep .ds-clock .cb { fill: var(--a-text); font: 800 28px var(--fd); text-anchor: middle; }
+#p-d-sleep .ds-clock .cs { fill: var(--a-soft); font: 600 13px var(--f); text-anchor: middle; }
+#p-d-sleep .ds-clock .cg { fill: var(--a-muted); font: 500 11px var(--f); text-anchor: middle; }
+#p-d-sleep .ds-hd { cursor: grab; touch-action: none; outline: none; }
+#p-d-sleep .ds-hd .hit { fill: transparent; }
+#p-d-sleep .ds-hd .v { fill: var(--a-surface); stroke: var(--c-sleep); stroke-width: 4; transition: stroke-width .15s var(--ease); }
+#p-d-sleep .ds-hd[data-f="bed"] .v { fill: var(--c-sleep); stroke: var(--a-surface); stroke-width: 3; }
+#p-d-sleep .ds-hd:focus-visible .v, #p-d-sleep .ds-hd:hover .v { stroke: var(--a-accent); stroke-width: 5; }
+#p-d-sleep .ds-cleg { justify-content: center; }
+#p-d-sleep .ds-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+#p-d-sleep .ds-mini { border: 1px solid transparent; background: none; border-radius: 12px; padding: 6px 1px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11.5px; color: var(--a-muted); min-width: 0; }
+#p-d-sleep .ds-mini svg { width: 100%; max-width: 46px; height: auto; display: block; }
+#p-d-sleep .ds-mini b { font-weight: 700; font-size: 12px; color: var(--a-text); font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-mini[aria-pressed="true"] { background: var(--a-accent-soft); border-color: var(--a-accent); }
+#p-d-sleep .ds-mini .rg { fill: none; stroke: var(--a-surface-3); stroke-width: 5; }
+#p-d-sleep .ds-mini .rg.em { stroke: var(--a-line); stroke-dasharray: 3 3; stroke-width: 2; }
+#p-d-sleep .ds-mini .ds-arc { stroke-width: 5; }
+#p-d-sleep .ds-mini text { fill: var(--a-accent); font: 700 16px var(--f); text-anchor: middle; dominant-baseline: middle; }
+#p-d-sleep .ds-wsum { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; }
+#p-d-sleep .ds-wsum li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--a-line); padding-bottom: 8px; }
+#p-d-sleep .ds-wsum li span { color: var(--a-muted); }
+#p-d-sleep .ds-wsum li b { font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+#p-d-sleep.ds-play .ds-bar { animation: d-sleep-grow .7s var(--ease) both; animation-delay: calc(var(--i) * 45ms + 120ms); }
+#p-d-sleep.ds-play .ds-len { animation: d-sleep-fade .4s var(--ease) both; animation-delay: calc(var(--i) * 45ms + 500ms); }
+#p-d-sleep.ds-play .ds-pt .vis { animation: d-sleep-pop .45s var(--ease) both; animation-delay: calc(var(--i) * 40ms + 400ms); }
+#p-d-sleep.ds-play .ds-arc { animation: d-sleep-draw .9s var(--ease) both; animation-delay: calc(var(--i, 0) * 60ms + 100ms); }
+#p-d-sleep.ds-play .ds-hd { animation: d-sleep-fade .4s var(--ease) both; animation-delay: .8s; }
+#p-d-sleep .ds-tr.ds-new .ds-bar { animation: d-sleep-grow .55s var(--ease) both; }
+@keyframes d-sleep-grow { from { clip-path: inset(-10px 100% -10px -20px round 8px); } to { clip-path: inset(-10px -20px -10px -20px round 8px); } }
+@keyframes d-sleep-fade { from { opacity: 0; } }
+@keyframes d-sleep-pop { from { transform: scale(0); } }
+@keyframes d-sleep-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes d-sleep-rise { from { opacity: 0; transform: translateY(10px); } }
+@media (max-width: 720px) {
+  #p-d-sleep .ds-b, #p-d-sleep .ds-scg { grid-template-columns: minmax(0, 1fr); }
+  #p-d-sleep .ds-axis span.odd { display: none; }
+  #p-d-sleep .ds-ct { display: none; }
+}
+@media (max-width: 560px) {
+  #p-d-sleep .ds-kpis { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  #p-d-sleep .ds-kpi { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; row-gap: 4px; align-items: center; padding: 12px 14px; }
+  #p-d-sleep .ds-kpi .ds-big { grid-column: 1; grid-row: 1 / span 3; font-size: 26px; min-width: 104px; }
+  #p-d-sleep .ds-kpi small, #p-d-sleep .ds-kpi .ds-sub, #p-d-sleep .ds-kpi .ds-meter { grid-column: 2; }
+  #p-d-sleep .ds-plot { grid-template-columns: 44px minmax(0, 1fr) 50px; column-gap: 8px; }
+  #p-d-sleep .ds-day { padding: 0 4px; font-size: 12px; }
+  #p-d-sleep .ds-day span { display: block; margin: 0; font-size: 11px; line-height: 1.1; }
+  #p-d-sleep .ds-len { font-size: 12px; }
+  #p-d-sleep .ds-lab { width: 56px; }
+  #p-d-sleep .ds-del { margin-left: 0; }
+  #p-d-sleep .ds-hint { flex-basis: 100%; }
+}
+  </style>
+
+  <script>(function () {
+  "use strict";
+  var root = document.getElementById("p-d-sleep");
+  if (!root) return;
+  var MM = window.MaidMock || { reduce: false, onSeen: function (e, f) { f(); } };
+  var SPAN = 960, STEP = 15, MINLEN = 120, SHORT = 420;
+  function rel(h, m) { return (h * 60 + m - 1200 + 1440) % 1440; }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function clk(r) { var c = (Math.round(r) + 1200) % 1440; return pad(Math.floor(c / 60)) + ":" + pad(c % 60); }
+  function hm(m) { m = Math.round(m); return Math.floor(m / 60) + ":" + pad(m % 60); }
+  function dur(m, sh) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; if (!h) return r + " мин"; return h + " ч" + (r ? " " + pad(r) + (sh ? "" : " мин") : ""); }
+  function big(m) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; return h + '<span class="u">ч</span>' + (r ? " " + pad(r) + '<span class="u">мин</span>' : ""); }
+  function dec(x) { return x.toFixed(1).replace(".", ","); }
+  function pct(v) { return v / SPAN * 100; }
+  function $$(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+  var GOAL = { bed: rel(23, 30), wake: rel(7, 0) }, GLEN = GOAL.wake - GOAL.bed;
+  var WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+  var WDF = ["воскресенье", "понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"];
+  var QW = ["не отмечено", "плохо", "так себе", "нормально", "хорошо", "отлично"];
+  var RAW = [[0, 30, 9, 0, 4, 7], [1, 0, 9, 30, 3, 6], [0, 15, 7, 0, 2, 5], [23, 45, 7, 0, 4, 7], [23, 30, 7, 0, 5, 8], [0, 30, 7, 0, 3, 6], [23, 45, 7, 15, 4, 7],
+    [1, 30, 9, 45, 3, 6], null, [0, 45, 7, 0, 2, 5], [23, 30, 7, 0, 4, 8], [0, 0, 7, 15, 4, 7], [1, 15, 7, 0, 2, 4], [23, 45, 7, 30, 4, 7]];
+  var N = RAW.map(function (r, i) {
+    return { d: new Date(2026, 10, 14 + i), bed: r ? rel(r[0], r[1]) : null, wake: r ? rel(r[2], r[3]) : null, q: r ? r[4] : 0, r: r ? r[5] : 6 };
+  });
+  var sel = 13;
+  function has(n) { return n.bed != null; }
+  function len(n) { return has(n) ? n.wake - n.bed : null; }
+  function mean(a) { a = a.filter(function (x) { return x != null; }); return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : null; }
+  function sname(i) { var d = N[i].d; return WD[d.getDay()] + " " + d.getDate(); }
+  function lname(i) { var d = N[i].d; return "Ночь на " + WDF[d.getDay()] + ", " + d.getDate() + " ноября"; }
+  function plural(n, a, b, c) { var m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : (m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c); }
+
+  function stats() {
+    var wk = N.slice(7), rec = wk.filter(has), s = { avg: mean(wk.map(len)) || 0, prev: mean(N.slice(0, 7).map(len)), rec: rec.length, miss: 7 - rec.length, debt: 0, nshort: 0 };
+    var beds = rec.map(function (n) { return n.bed; }), mb = mean(beds) || 0;
+    s.sd = Math.sqrt(mean(beds.map(function (b) { return (b - mb) * (b - mb); })) || 0);
+    s.reg = Math.round(Math.max(0, 1 - s.sd / 180) * 100);
+    rec.forEach(function (n) { var l = len(n); if (l < GLEN) { s.debt += GLEN - l; s.nshort++; } });
+    s.late = mean(rec.map(function (n) { return n.bed - GOAL.bed; })) || 0;
+    var all = N.filter(has);
+    s.lo = mean(all.filter(function (n) { return len(n) < SHORT; }).map(function (n) { return n.r; }));
+    s.hi = mean(all.filter(function (n) { return len(n) >= SHORT; }).map(function (n) { return n.r; }));
+    s.all = all.length;
+    return s;
+  }
+
+  var IC = { l: "M15 5l-7 7 7 7", r: "M9 5l7 7-7 7" };
+  var STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 5.9L12 16.6l-5.3 2.9 1.1-5.9L3.4 9.5l6-.8z"/></svg>';
+  function kpiHTML() {
+    return '<div class="ds-kpi"><small>В среднем за неделю</small><b class="ds-big" data-k="avg"></b><span class="ds-sub" data-k="avgd"></span></div>' +
+      '<div class="ds-kpi"><small>Регулярность</small><b class="ds-big" data-k="reg"></b><i class="ds-meter"><i data-k="regm"></i></i><span class="ds-sub" data-k="regd"></span></div>' +
+      '<div class="ds-kpi"><small>Долг сна за неделю <em class="ds-badge" data-k="badge" hidden>много</em></small><b class="ds-big" data-k="debt"></b><span class="ds-sub" data-k="debtd"></span></div>';
+  }
+  function edHTML() {
+    var st = "";
+    for (var k = 1; k <= 5; k++) st += '<button type="button" class="ds-star" data-act="star" data-q="' + k + '" aria-label="Качество ' + k + ' из 5">' + STAR + "</button>";
+    function step(f, t) {
+      return '<div class="ds-step"><span class="ds-lab">' + t + '</span><button type="button" data-act="step" data-f="' + f + '" data-d="-15" aria-label="' + t + ' на 15 минут раньше">−15 мин</button><b data-k="' + f + '" aria-live="polite"></b><button type="button" data-act="step" data-f="' + f + '" data-d="15" aria-label="' + t + ' на 15 минут позже">+15 мин</button></div>';
+    }
+    return '<div class="ds-edh"><button type="button" class="ds-nav" data-act="prev" aria-label="Предыдущая ночь"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + IC.l + '"/></svg></button>' +
+      '<div><b class="ds-edt"></b><span class="ds-edl"></span></div>' +
+      '<button type="button" class="ds-nav" data-act="next" aria-label="Следующая ночь"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + IC.r + '"/></svg></button></div>' +
+      '<div class="ds-edb">' + step("bed", "Отбой") + step("wake", "Подъём") +
+      '<div class="ds-q"><span class="ds-lab">Качество</span><div class="ds-stars" role="group" aria-label="Качество ночи">' + st + '</div><span class="ds-qw"></span></div>' +
+      '<button type="button" class="btn ghost ds-del" data-act="del">Удалить сон</button></div>' +
+      '<div class="ds-edn"><span>Сон за эту ночь не записан.</span><button type="button" class="btn primary" data-act="addsel">+ Записать по цели</button></div>';
+  }
+  $$(".ds-kpis").forEach(function (el) { el.innerHTML = kpiHTML(); });
+  $$(".ds-ed").forEach(function (el) { el.innerHTML = edHTML(); });
+
+  /* ——— Вариант А: полосы */
+  var A = root.querySelector('.app[data-v="a"]'), B = root.querySelector('.app[data-v="b"]');
+  var lane = A.querySelector(".ds-lane"), days = A.querySelector(".ds-days"), lens = A.querySelector(".ds-lens"), tip = lane.querySelector(".ds-tip");
+  var ax = "", bg = "", h;
+  for (h = 0; h <= 8; h++) {
+    ax += '<span class="' + (h % 2 ? "odd" : "") + '" style="left:' + h * 12.5 + '%">' + clk(h * 120) + "</span>";
+    bg += '<i style="left:' + h * 12.5 + '%"></i>';
+  }
+  lane.querySelector(".ds-axis").innerHTML = ax;
+  lane.querySelector(".ds-bg").innerHTML = bg + '<div class="ds-goal" style="left:' + pct(GOAL.bed) + "%;width:" + pct(GLEN) + '%"></div>';
+  var rows = N.map(function (n, i) {
+    var d = document.createElement("button"); d.type = "button"; d.className = "ds-day"; d.dataset.act = "sel"; d.dataset.i = i;
+    d.innerHTML = "<span>" + WD[n.d.getDay()] + "</span><b>" + n.d.getDate() + "</b>"; d.setAttribute("aria-label", lname(i)); days.appendChild(d);
+    var tr = document.createElement("div"); tr.className = "ds-tr"; tr.dataset.i = i; tr.style.setProperty("--i", i);
+    tr.innerHTML = '<div class="ds-bar"><span class="ds-h" data-f="bed" data-i="' + i + '" role="slider" aria-valuemin="0" aria-valuemax="960"></span><span class="ds-bt"></span><span class="ds-h" data-f="wake" data-i="' + i + '" role="slider" aria-valuemin="0" aria-valuemax="960"></span></div>' +
+      '<button type="button" class="ds-add" data-act="add" data-i="' + i + '" style="left:' + pct(GOAL.bed) + '%">+ записать</button>';
+    lane.appendChild(tr);
+    var l = document.createElement("span"); l.className = "ds-len"; l.style.setProperty("--i", i); lens.appendChild(l);
+    return { d: d, tr: tr, bar: tr.querySelector(".ds-bar"), bt: tr.querySelector(".ds-bt"), hb: tr.querySelectorAll(".ds-h")[0], hw: tr.querySelectorAll(".ds-h")[1], add: tr.querySelector(".ds-add"), l: l };
+  });
+  function paintA() {
+    rows.forEach(function (o, i) {
+      var n = N[i], ok = has(n), l = len(n), s = i === sel;
+      o.tr.classList.toggle("empty", !ok); o.tr.classList.toggle("sel", s && ok);
+      o.bar.hidden = !ok; o.add.hidden = ok; o.d.setAttribute("aria-pressed", s);
+      if (ok) {
+        o.bar.style.left = pct(n.bed) + "%"; o.bar.style.width = pct(l) + "%";
+        o.bt.textContent = clk(n.bed) + "–" + clk(n.wake);
+        o.bar.classList.toggle("narrow", o.tr.clientWidth * l / SPAN < 104);
+        [o.hb, o.hw].forEach(function (hh) {
+          var f = hh.dataset.f; hh.tabIndex = s ? 0 : -1; hh.setAttribute("aria-valuenow", n[f]);
+          hh.setAttribute("aria-label", (f === "bed" ? "Отбой" : "Подъём") + ", " + sname(i)); hh.setAttribute("aria-valuetext", clk(n[f]));
+        });
+      }
+      o.l.className = "ds-len" + (!ok ? " none" : l < GLEN - 30 ? " short" : "");
+      o.l.textContent = ok ? (l < GLEN - 30 ? "↓ " : "") + dur(l, true) : "нет";
+    });
+  }
+  function showTip(i, txt, xp) {
+    var tr = rows[i].tr; tip.textContent = txt; tip.hidden = false;
+    var w = tip.offsetWidth, lw = lane.clientWidth, x = tr.offsetLeft + xp / 100 * tr.clientWidth;
+    tip.style.left = Math.max(w / 2, Math.min(lw - w / 2, x)) + "px"; tip.style.top = (tr.offsetTop - 6) + "px";
+  }
+  function tipEdge(i, f) { var n = N[i]; if (has(n)) showTip(i, (f === "bed" ? "Отбой " : "Подъём ") + clk(n[f]) + " · сон " + dur(len(n)), pct(n[f])); }
+  function tipNight(i) { var n = N[i]; showTip(i, sname(i) + " ноября · " + clk(n.bed) + " → " + clk(n.wake) + " · " + dur(len(n)), pct(n.bed + len(n) / 2)); }
+  function hideTip() { tip.hidden = true; }
+
+  /* ——— «Сон и оценка дня» */
+  var sc = A.querySelector(".ds-sc"), stip = A.querySelector(".ds-stip");
+  var L = 36, R = 330, T = 14, BT = 172;
+  function sx(m) { return L + (Math.max(300, Math.min(540, m)) - 300) / 240 * (R - L); }
+  function sy(r) { return T + (10 - r) / 9 * (BT - T); }
+  var sv = "";
+  [2, 4, 6, 8, 10].forEach(function (r) { sv += '<line class="gl" x1="' + L + '" x2="' + R + '" y1="' + sy(r) + '" y2="' + sy(r) + '"/><text x="' + (L - 8) + '" y="' + (sy(r) + 4) + '" text-anchor="end">' + r + "</text>"; });
+  [5, 6, 7, 8, 9].forEach(function (hh) { sv += '<text x="' + sx(hh * 60) + '" y="' + (BT + 18) + '" text-anchor="middle">' + hh + " ч</text>"; });
+  sv += '<line class="dv" x1="' + sx(SHORT) + '" x2="' + sx(SHORT) + '" y1="' + T + '" y2="' + BT + '"/>';
+  sv += '<line class="av" data-k="lo"/><line class="av" data-k="hi"/><text class="avt" data-k="lot"></text><text class="avt" data-k="hit"></text><g class="pts"></g>';
+  sc.innerHTML = sv;
+  var ptsG = sc.querySelector(".pts");
+  ptsG.innerHTML = N.map(function (n, i) { return '<g class="ds-pt" tabindex="0" data-i="' + i + '" style="--i:' + i + '"><circle class="hit" r="14"/><circle class="vis" r="6"/></g>'; }).join("");
+  var pts = $$(".ds-pt", ptsG);
+  function paintScatter(s) {
+    var seen = {};
+    pts.forEach(function (g, i) {
+      var n = N[i];
+      if (!has(n)) { g.setAttribute("display", "none"); return; }
+      var k = len(n) + "|" + n.r, c = seen[k] = (seen[k] || 0) + 1;
+      g.removeAttribute("display"); g.setAttribute("transform", "translate(" + (sx(len(n)) + (c - 1) * 9) + " " + sy(n.r) + ")");
+      g.classList.toggle("sel", i === sel);
+      g.setAttribute("aria-label", sname(i) + " ноября: сон " + dur(len(n)) + ", день на " + n.r);
+    });
+    function seg(key, v, x1, x2) {
+      var ln = sc.querySelector('[data-k="' + key + '"]'), tx = sc.querySelector('[data-k="' + key + 't"]');
+      if (v == null) { ln.setAttribute("display", "none"); tx.setAttribute("display", "none"); return; }
+      ln.removeAttribute("display"); tx.removeAttribute("display");
+      ln.setAttribute("x1", x1 + 4); ln.setAttribute("x2", x2 - 4); ln.setAttribute("y1", sy(v)); ln.setAttribute("y2", sy(v));
+      tx.setAttribute("x", (x1 + x2) / 2); tx.setAttribute("y", sy(v) - 8); tx.setAttribute("text-anchor", "middle"); tx.textContent = "в среднем " + dec(v);
+    }
+    seg("lo", s.lo, sx(300), sx(SHORT)); seg("hi", s.hi, sx(SHORT), sx(540));
+    var con = A.querySelector(".ds-con");
+    if (s.lo != null && s.hi != null) con.innerHTML = "После ночи от 7 часов вы оцениваете день в среднем на <b>" + dec(s.hi) + " из 10</b>. После короткой ночи только на <b>" + dec(s.lo) + "</b>.";
+    else con.innerHTML = "Пока все ночи " + (s.hi != null ? "длинные" : "короткие") + ", сравнивать не с чем.";
+    A.querySelector(".ds-cons").textContent = "Считаю по " + s.all + " " + plural(s.all, "записанной ночи", "записанным ночам", "записанным ночам") + ". Граница: 7 часов сна.";
+  }
+  function scTip(i) {
+    var n = N[i]; if (!has(n)) return;
+    stip.textContent = sname(i) + " ноября · сон " + dur(len(n)) + " · день на " + n.r; stip.hidden = false;
+    var b = sc.getBoundingClientRect(), k = b.width / 340, w = stip.offsetWidth, x = sx(len(n)) * k;
+    stip.style.left = Math.max(w / 2, Math.min(b.width - w / 2, x)) + "px"; stip.style.top = (sy(n.r) * k - 10) + "px";
+  }
+  sc.addEventListener("pointerover", function (e) { var g = e.target.closest(".ds-pt"); if (g) scTip(+g.dataset.i); });
+  sc.addEventListener("pointerleave", function () { stip.hidden = true; });
+  sc.addEventListener("focusin", function (e) { var g = e.target.closest(".ds-pt"); if (g) scTip(+g.dataset.i); });
+  sc.addEventListener("focusout", function () { stip.hidden = true; });
+  sc.addEventListener("click", function (e) { var g = e.target.closest(".ds-pt"); if (g) { select(+g.dataset.i); scTip(+g.dataset.i); } });
+  sc.addEventListener("keydown", function (e) { var g = e.target.closest(".ds-pt"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(+g.dataset.i); scTip(+g.dataset.i); } });
+
+  /* ——— Вариант Б: круг */
+  var clock = B.querySelector(".ds-clock"), C = 130, RR = 96, RG = 117;
+  function ang(r) { return ((r + 1200) % 1440) / 1440 * 360; }
+  function pt(a, r, c) { c = c || C; var t = a * Math.PI / 180; return [c + r * Math.sin(t), c - r * Math.cos(t)]; }
+  function arc(a0, a1, r, c) {
+    var sp = (a1 - a0 + 360) % 360 || .01, p0 = pt(a0, r, c), p1 = pt(a0 + sp, r, c);
+    return "M" + p0[0].toFixed(2) + " " + p0[1].toFixed(2) + " A" + r + " " + r + " 0 " + (sp > 180 ? 1 : 0) + " 1 " + p1[0].toFixed(2) + " " + p1[1].toFixed(2);
+  }
+  var cv = '<circle class="ring" cx="130" cy="130" r="' + RR + '"/><path class="goal" d="' + arc(ang(GOAL.bed), ang(GOAL.wake), RG) + '"/>';
+  for (h = 0; h < 24; h++) {
+    var k = h % 6 === 0, p0 = pt(h * 15, 125), p1 = pt(h * 15, k ? 131 : 128);
+    cv += '<line class="tk' + (k ? " k" : "") + '" x1="' + p0[0] + '" y1="' + p0[1] + '" x2="' + p1[0] + '" y2="' + p1[1] + '"/>';
+    if (h % 3 === 0) { var pl = pt(h * 15, 72); cv += '<text class="hl' + (k ? " k" : "") + '" x="' + pl[0] + '" y="' + pl[1] + '">' + pad(h) + "</text>"; }
+  }
+  cv += '<path class="ds-arc" pathLength="100"/>' +
+    '<g class="ds-hd" data-f="bed" tabindex="0" role="slider" aria-valuemin="0" aria-valuemax="960"><circle class="hit" r="22"/><circle class="v" r="12"/></g>' +
+    '<g class="ds-hd" data-f="wake" tabindex="0" role="slider" aria-valuemin="0" aria-valuemax="960"><circle class="hit" r="22"/><circle class="v" r="12"/></g>' +
+    '<text class="cb" x="130" y="128"></text><text class="cs" x="130" y="150"></text><text class="cg" x="130" y="168">цель ' + dur(GLEN, true) + "</text>";
+  clock.innerHTML = cv;
+  var carc = clock.querySelector(".ds-arc"), chd = $$(".ds-hd", clock);
+  var week = B.querySelector(".ds-week"), minis = [];
+  for (h = 7; h < 14; h++) {
+    var mb = document.createElement("button"); mb.type = "button"; mb.className = "ds-mini"; mb.dataset.act = "sel"; mb.dataset.i = h;
+    mb.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle class="rg" cx="24" cy="24" r="18"/><path class="ds-arc" pathLength="100" style="--i:' + (h - 6) + '"/><text x="24" y="25">+</text></svg><span>' + WD[N[h].d.getDay()] + "</span><b></b>";
+    week.appendChild(mb); minis.push(mb);
+  }
+  function paintB() {
+    var n = N[sel], ok = has(n);
+    carc.setAttribute("display", ok ? "inline" : "none");
+    chd.forEach(function (g) { g.setAttribute("display", ok ? "inline" : "none"); });
+    clock.querySelector(".cb").textContent = ok ? dur(len(n), true) : "нет записи";
+    clock.querySelector(".cs").textContent = ok ? clk(n.bed) + " → " + clk(n.wake) : sname(sel) + " ноября";
+    if (ok) {
+      carc.setAttribute("d", arc(ang(n.bed), ang(n.wake), RR));
+      chd.forEach(function (g) {
+        var f = g.dataset.f, p = pt(ang(n[f]), RR); g.setAttribute("transform", "translate(" + p[0].toFixed(2) + " " + p[1].toFixed(2) + ")");
+        g.dataset.i = sel; g.setAttribute("aria-valuenow", n[f]); g.setAttribute("aria-valuetext", clk(n[f]));
+        g.setAttribute("aria-label", (f === "bed" ? "Отбой" : "Подъём") + ", " + sname(sel));
+      });
+    }
+    minis.forEach(function (mb) {
+      var i = +mb.dataset.i, m = N[i], o = has(m), a = mb.querySelector(".ds-arc");
+      mb.setAttribute("aria-pressed", i === sel); mb.querySelector(".rg").setAttribute("class", "rg" + (o ? "" : " em"));
+      a.setAttribute("display", o ? "inline" : "none"); mb.querySelector("text").setAttribute("display", o ? "none" : "inline");
+      if (o) a.setAttribute("d", arc(ang(m.bed), ang(m.wake), 18, 24));
+      mb.querySelector("b").textContent = o ? hm(len(m)) : "нет";
+      mb.setAttribute("aria-label", lname(i) + (o ? ": " + dur(len(m)) : ": не записано"));
+    });
+    var lo = -1, hi = -1, cl = -1, best = 1e9;
+    for (var i = 7; i < 14; i++) {
+      if (!has(N[i])) continue; var l = len(N[i]);
+      if (lo < 0 || l < len(N[lo])) lo = i; if (hi < 0 || l > len(N[hi])) hi = i;
+      var dv = Math.abs(N[i].bed - GOAL.bed) + Math.abs(N[i].wake - GOAL.wake); if (dv < best) { best = dv; cl = i; }
+    }
+    B.querySelector(".ds-wsum").innerHTML = hi < 0 ? "<li><span>Ночей нет</span><b>запишите первую</b></li>" :
+      "<li><span>Самая длинная</span><b>" + sname(hi) + ", " + dur(len(N[hi])) + "</b></li><li><span>Самая короткая</span><b>" + sname(lo) + ", " + dur(len(N[lo])) + "</b></li><li><span>Ближе всего к цели</span><b>" + sname(cl) + ", " + clk(N[cl].bed) + " → " + clk(N[cl].wake) + "</b></li>";
+  }
+  function relFromPt(e) {
+    var b = clock.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * 260 - C, y = (e.clientY - b.top) / b.height * 260 - C;
+    var a = Math.atan2(x, -y) * 180 / Math.PI; if (a < 0) a += 360;
+    var r = (Math.round(a / 360 * 1440 / STEP) * STEP % 1440 - 1200 + 1440) % 1440;
+    return r > SPAN ? (r - SPAN < 1440 - r ? SPAN : 0) : r;
+  }
+
+  /* ——— общие части */
+  function paintEds() {
+    var n = N[sel], ok = has(n), l = len(n);
+    $$(".ds-ed").forEach(function (ed) {
+      ed.querySelector(".ds-edt").textContent = lname(sel);
+      var dv = ok ? l - GLEN : 0;
+      ed.querySelector(".ds-edl").textContent = ok ? dur(l) + " сна · " + (dv === 0 ? "ровно по цели" : "на " + dur(Math.abs(dv)) + (dv > 0 ? " больше" : " меньше") + " цели") : "Нет записи";
+      ed.querySelector(".ds-edb").hidden = !ok; ed.querySelector(".ds-edn").hidden = ok;
+      ed.querySelector('[data-act="prev"]').disabled = sel === 0; ed.querySelector('[data-act="next"]').disabled = sel === N.length - 1;
+      if (!ok) return;
+      ed.querySelector('[data-k="bed"]').textContent = clk(n.bed); ed.querySelector('[data-k="wake"]').textContent = clk(n.wake);
+      $$('[data-act="step"]', ed).forEach(function (b) {
+        var f = b.dataset.f, v = n[f] + +b.dataset.d;
+        b.disabled = f === "bed" ? (v < 0 || v > n.wake - MINLEN) : (v > SPAN || v < n.bed + MINLEN);
+      });
+      $$(".ds-star", ed).forEach(function (b) { var on = +b.dataset.q <= n.q; b.classList.toggle("on", on); b.setAttribute("aria-pressed", +b.dataset.q === n.q); });
+      ed.querySelector(".ds-qw").textContent = QW[n.q];
+    });
+  }
+  function paintKpis(s, e) {
+    if (e == null) e = 1;
+    $$('[data-k="avg"]').forEach(function (el) { el.innerHTML = big(s.avg * e); });
+    $$('[data-k="reg"]').forEach(function (el) { el.innerHTML = Math.round(s.reg * e) + '<span class="u">%</span>'; });
+    $$('[data-k="regm"]').forEach(function (el) { el.style.width = s.reg * e + "%"; });
+    $$('[data-k="debt"]').forEach(function (el) { el.innerHTML = big(s.debt * e); el.classList.toggle("warn", s.debt >= 120); });
+    $$('[data-k="badge"]').forEach(function (el) { el.hidden = s.debt < 120; });
+    var df = s.prev == null ? 0 : Math.round(s.avg - s.prev), t, c = "";
+    if (df >= 5) { t = "▲ на " + dur(df) + " больше, чем неделей раньше"; c = " up"; }
+    else if (df <= -5) { t = "▼ на " + dur(-df) + " меньше, чем неделей раньше"; c = " down"; }
+    else t = "как неделей раньше";
+    $$('[data-k="avgd"]').forEach(function (el) { el.textContent = t; el.className = "ds-sub" + c; });
+    var sp = Math.round(s.sd / 5) * 5;
+    $$('[data-k="regd"]').forEach(function (el) { el.textContent = s.rec < 2 ? "мало ночей для оценки" : sp <= 15 ? "ложитесь почти минута в минуту" : "время отбоя гуляет на ±" + sp + " мин"; });
+    $$('[data-k="debtd"]').forEach(function (el) {
+      el.textContent = (s.nshort ? "не добрали в " + s.nshort + " из " + s.rec + " ночей" : "все ночи по цели") + (s.miss ? ", " + s.miss + " " + plural(s.miss, "не записана", "не записаны", "не записаны") : "");
+    });
+  }
+  function rinaSay(s) {
+    if (s.debt >= 120) return ["bedtime", "За неделю набралось <b>" + dur(s.debt) + "</b> недосыпа. " + (s.late > 10 ? "Чаще всего ночь укорачивает поздний отбой: вы ложитесь в среднем на <b>" + dur(s.late) + "</b> позже цели. Сегодня напомню вам о сне в 23:00, хорошо?" : "Отбой почти вовремя, а ночь всё равно короткая. Может, будильник поставить чуть позже?")];
+    if (s.debt > 0) return ["happy", "Почти по цели: за неделю не хватило всего <b>" + dur(s.debt) + "</b>. Ещё пара ранних вечеров, и долг уйдёт."];
+    return ["proud", "Неделя без долга сна! Вы ложитесь ровно, регулярность <b>" + s.reg + " %</b>. Я вами горжусь."];
+  }
+  function paintRina(s) {
+    var r = rinaSay(s);
+    $$(".rina").forEach(function (el) { var img = el.querySelector("img"); if (img.getAttribute("src") !== "maid/" + r[0] + ".webp") img.src = "maid/" + r[0] + ".webp"; el.querySelector("p").innerHTML = r[1]; });
+  }
+  var cu = 0;
+  function refresh() { cu++; var s = stats(); paintA(); paintB(); paintEds(); paintKpis(s); paintScatter(s); paintRina(s); }
+  function select(i) { if (i === sel) return; sel = i; refresh(); }
+
+  /* ——— изменения и отмена */
+  var U = { snap: null, key: "", t: 0 };
+  function begin(key) { if (U.key !== key || !U.snap) { U.snap = N.map(function (n) { return { bed: n.bed, wake: n.wake, q: n.q }; }); U.key = key; } }
+  function toast(msg, undo) {
+    $$(".ds-toast").forEach(function (t) { t.hidden = false; t.querySelector("span").textContent = msg; t.querySelector("button").hidden = !undo; });
+    clearTimeout(U.t); U.t = setTimeout(closeToast, 7000);
+  }
+  function closeToast() { U.snap = null; U.key = ""; $$(".ds-toast").forEach(function (t) { t.hidden = true; }); }
+  function doUndo() {
+    if (!U.snap) return;
+    U.snap.forEach(function (o, i) { N[i].bed = o.bed; N[i].wake = o.wake; N[i].q = o.q; });
+    closeToast(); refresh(); toast("Изменение отменено.", false);
+  }
+  function setEdge(i, f, v) {
+    var n = N[i]; if (!has(n)) return false;
+    v = Math.round(v / STEP) * STEP;
+    v = f === "bed" ? Math.max(0, Math.min(v, n.wake - MINLEN)) : Math.min(SPAN, Math.max(v, n.bed + MINLEN));
+    if (v === n[f]) return false; n[f] = v; refresh(); return true;
+  }
+  function edgeMsg(i, f) { return (f === "bed" ? "Отбой" : "Подъём") + " в ночь на " + sname(i) + ": " + clk(U.snap[i][f]) + " → " + clk(N[i][f]); }
+  function addAt(i) {
+    begin("add" + i); N[i].bed = GOAL.bed; N[i].wake = GOAL.wake; N[i].q = 3; sel = i;
+    var tr = rows[i].tr; tr.classList.remove("ds-new"); void tr.offsetWidth; tr.classList.add("ds-new");
+    setTimeout(function () { tr.classList.remove("ds-new"); }, 700);
+    refresh(); toast("Сон в ночь на " + sname(i) + " записан по цели: " + clk(GOAL.bed) + " → " + clk(GOAL.wake) + ". Поправьте края, если было иначе.", true);
+  }
+  function setVar(v) {
+    $$('[data-act="var"]').forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.v === v); });
+    A.hidden = v !== "a"; B.hidden = v !== "b"; play();
+  }
+  root.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]");
+    if (!b) { var tr = e.target.closest(".ds-tr"); if (tr && !tr.classList.contains("empty")) select(+tr.dataset.i); return; }
+    var a = b.dataset.act, i = b.dataset.i != null ? +b.dataset.i : sel, n = N[sel];
+    if (a === "sel") select(i);
+    else if (a === "prev") select(Math.max(0, sel - 1));
+    else if (a === "next") select(Math.min(N.length - 1, sel + 1));
+    else if (a === "step") { var f = b.dataset.f; begin(f + sel); if (setEdge(sel, f, n[f] + +b.dataset.d)) toast(edgeMsg(sel, f), true); }
+    else if (a === "star") { var q = +b.dataset.q; if (q !== n.q) { begin("q" + sel); n.q = q; refresh(); toast("Качество ночи на " + sname(sel) + ": " + QW[q] + ".", true); } }
+    else if (a === "add") addAt(i);
+    else if (a === "addsel") addAt(sel);
+    else if (a === "del") { begin("del" + sel); n.bed = n.wake = null; n.q = 0; refresh(); toast("Сон в ночь на " + sname(sel) + " удалён.", true); }
+    else if (a === "rec") {
+      var j = -1; for (var k2 = N.length - 1; k2 >= 0; k2--) if (!has(N[k2])) { j = k2; break; }
+      if (j >= 0) addAt(j); else { select(N.length - 1); toast("Все ночи уже записаны. Потяните край полосы, чтобы поправить время.", false); }
+    }
+    else if (a === "undo") doUndo();
+    else if (a === "goal") toast("Цель меняется в разделе «Рина → О вас». Здесь она только показана.", false);
+    else if (a === "var") setVar(b.dataset.v);
+  });
+
+  var drag = null;
+  lane.addEventListener("pointerdown", function (e) {
+    var hh = e.target.closest(".ds-h"); if (!hh || e.button > 0) return;
+    var i = +hh.dataset.i; e.preventDefault();
+    select(i); drag = { i: i, f: hh.dataset.f, h: hh }; begin(drag.f + i);
+    try { hh.setPointerCapture(e.pointerId); } catch (er) { /* нет захвата */ }
+    hh.classList.add("on"); tipEdge(i, drag.f);
+  });
+  lane.addEventListener("pointermove", function (e) {
+    if (drag) { var b = rows[drag.i].tr.getBoundingClientRect(); setEdge(drag.i, drag.f, (e.clientX - b.left) / b.width * SPAN); tipEdge(drag.i, drag.f); return; }
+    if (e.pointerType !== "mouse") return;
+    var bar = e.target.closest(".ds-bar"); if (bar) tipNight(+bar.parentNode.dataset.i); else hideTip();
+  });
+  function endDrag() {
+    if (!drag) return; var d = drag; drag = null; d.h.classList.remove("on"); hideTip();
+    if (U.snap && U.snap[d.i][d.f] !== N[d.i][d.f]) toast(edgeMsg(d.i, d.f), true);
+  }
+  lane.addEventListener("pointerup", endDrag); lane.addEventListener("pointercancel", endDrag);
+  lane.addEventListener("pointerleave", function () { if (!drag) hideTip(); });
+  lane.addEventListener("focusin", function (e) { var hh = e.target.closest(".ds-h"); if (hh) tipEdge(+hh.dataset.i, hh.dataset.f); });
+  lane.addEventListener("focusout", function () { if (!drag) hideTip(); });
+
+  var cdrag = null;
+  clock.addEventListener("pointerdown", function (e) {
+    var g = e.target.closest(".ds-hd"); if (!g || e.button > 0) return; e.preventDefault();
+    cdrag = { f: g.dataset.f }; begin(cdrag.f + sel);
+    try { g.setPointerCapture(e.pointerId); } catch (er) { /* нет захвата */ }
+  });
+  clock.addEventListener("pointermove", function (e) { if (cdrag) setEdge(sel, cdrag.f, relFromPt(e)); });
+  function endC() { if (!cdrag) return; var f = cdrag.f; cdrag = null; if (U.snap && U.snap[sel][f] !== N[sel][f]) toast(edgeMsg(sel, f), true); }
+  clock.addEventListener("pointerup", endC); clock.addEventListener("pointercancel", endC);
+
+  root.addEventListener("keydown", function (e) {
+    var hh = e.target.closest(".ds-h, .ds-hd"); if (!hh) return;
+    var d = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key]; if (!d) return;
+    e.preventDefault(); var i = +hh.dataset.i, f = hh.dataset.f;
+    begin(f + i); if (setEdge(i, f, N[i][f] + d * STEP)) toast(edgeMsg(i, f), true);
+    if (hh.classList.contains("ds-h")) tipEdge(i, f);
+  });
+
+  /* ——— анимации */
+  var pt0 = 0;
+  function countUp() {
+    var s = stats(), t0 = performance.now(), id = ++cu;
+    (function fr(now) {
+      if (id !== cu) return;
+      var t = Math.min(1, (now - t0) / 900), e = 1 - Math.pow(1 - t, 3);
+      paintKpis(s, e); if (t < 1) requestAnimationFrame(fr);
+    })(t0);
+  }
+  function play() {
+    refresh();
+    if (MM.reduce) { root.classList.remove("ds-play"); return; }
+    root.classList.remove("ds-play"); void root.offsetWidth; root.classList.add("ds-play");
+    countUp(); clearTimeout(pt0); pt0 = setTimeout(function () { root.classList.remove("ds-play"); }, 1900);
+  }
+  refresh();
+  window.addEventListener("resize", paintA);
+  window.addEventListener("load", paintA);
+  MM.onSeen(root, play);
+  root.addEventListener("replay", play);
+})();</script>
+</article>

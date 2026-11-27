@@ -1,0 +1,549 @@
+<article class="piece" id="p-w-trial">
+  <header>
+    <p class="eyebrow">Исправление · Конец пробы и тариф</p>
+    <h2>Рина сама предупреждает о конце пробы и показывает тарифы</h2>
+    <p>Сейчас проба заканчивается молча: письмо приходит уже после, а тариф лежит в глубине настроек. Здесь Рина пишет за 2 дня, показывает, что успела записать, и даёт два равных выхода. В виджете о пробе напоминает одна тихая строка, а выбор тарифа открывается в одно нажатие.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="wt-when" role="group" aria-label="Какой день показать">
+    <button type="button" data-left="2" aria-pressed="true">За 2 дня до конца</button>
+    <button type="button" data-left="1" aria-pressed="false">Последний день</button>
+  </div>
+
+  <div class="scene">
+    <figure>
+      <div class="tg">
+        <div class="tg-head"><img src="maid/hello.webp" alt=""><div>Рина<small>ваша горничная</small></div></div>
+        <div class="tg-body" aria-live="polite">
+          <div class="wt-date" data-k="date">27 ноября</div>
+          <div class="tg-in wt-letter">
+            <p data-k="lead">Добрый вечер. <b>Через 2 дня</b>, 29 ноября, закончится проба.</p>
+            <p><span data-k="span">За эти 5 дней</span> я записала для вас:</p>
+            <ul class="wt-sum">
+              <li style="--i:0"><b>23</b><div><span>плана</span><small>19 уже сделано</small></div></li>
+              <li style="--i:1"><b>31</b><div><span>отметка привычек</span><small>«Чтение» 5 дней подряд</small></div></li>
+              <li style="--i:2"><b>9</b><div><span>записей дневника</span><small>последняя вчера вечером</small></div></li>
+              <li style="--i:3"><b>14</b><div><span>напоминаний</span><small>ни одно не пропущено</small></div></li>
+            </ul>
+            <p>Всё это останется с вами при любом выборе. Скажите, как мне помогать дальше.</p>
+            <time data-k="time">20:30</time>
+          </div>
+          <div class="tg-btns">
+            <button type="button" data-act="pick">Выбрать тариф</button>
+            <button type="button" data-act="guest">Остаться гостьей</button>
+          </div>
+          <div class="wt-replies"></div>
+        </div>
+      </div>
+      <figcaption><b>Telegram.</b> Письмо приходит за 2 дня и ещё раз в последний день. Числа взяты из записей человека. Обе кнопки нажимаются.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="wgt">
+        <div class="wgt-top"><div class="wgt-bubble">В 15:00 врач. Напомню за полчаса.</div><img src="maid/idle.webp" alt="Рина"></div>
+        <div class="wgt-panel">
+          <h5>Сегодня</h5>
+          <button type="button" class="wgt-row wt-task" aria-pressed="true"><span class="wgt-ck"></span><span>Созвон с командой</span><small>10:00</small></button>
+          <button type="button" class="wgt-row wt-task" aria-pressed="false"><span class="wgt-ck"></span><span>Врач</span><small>15:00</small></button>
+          <button type="button" class="wgt-row wt-task" aria-pressed="false"><span class="wgt-ck"></span><span>Чтение, 20 минут</span><small>привычка</small></button>
+          <button type="button" class="wgt-row wt-task" aria-pressed="false"><span class="wgt-ck"></span><span>Зарядка</span><small>привычка</small></button>
+          <button type="button" class="wt-trial" data-act="pick" aria-label="Проба: ещё 2 дня. Открыть выбор тарифа">
+            <span class="wt-trial-l"><span data-k="wline">Проба: ещё 2 дня</span><span class="wt-trial-go" data-k="wgo">Тариф ›</span></span>
+            <span class="wt-days" aria-hidden="true"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i class="on" style="--i:5"></i><i class="on" style="--i:6"></i></span>
+          </button>
+        </div>
+      </div>
+      <figcaption><b>Виджет.</b> Одна строка внизу панели, без всплывающих окон. Семь делений: семь дней пробы, яркие ещё впереди. Нажатие открывает выбор тарифа.</figcaption>
+      <div class="wgt wt-states">
+        <div class="wgt-panel">
+          <h5>Та же строка в другие дни</h5>
+          <div class="wt-st"><span class="wt-trial-l"><span>Проба: ещё 6 дней</span><small>второй день</small></span><span class="wt-days" aria-hidden="true"><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div>
+          <div class="wt-st last"><span class="wt-trial-l"><span>Проба: последний день</span><small>тёплый цвет</small></span><span class="wt-days" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i></span></div>
+          <div class="wt-st paid"><span class="wt-trial-l"><span>«Забота» до 29 декабря</span><small>3 дня, потом уходит</small></span><span class="wt-days" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="wt-wide">
+      <div class="app plain" id="w-trial-app">
+        <div class="wt-head">
+          <div><p class="wt-kicker">Тариф</p><h3>Как мне помогать вам дальше</h3></div>
+          <span class="chip wt-chip" data-k="chip">Проба: ещё 2 дня</span>
+        </div>
+
+        <div class="rina"><img src="maid/letter.webp" alt="" data-k="rimg"><p data-k="rina">Вы пишете мне <b>около 14 раз в день</b> и трижды присылали голосовые. «Забота» покрывает это с запасом, и я продолжу писать вам утром и вечером.</p></div>
+
+        <div class="wt-period">
+          <div class="seg" role="group" aria-label="Срок оплаты">
+            <button type="button" data-per="m" aria-pressed="true">Месяц</button>
+            <button type="button" data-per="y" aria-pressed="false">Год</button>
+          </div>
+          <span class="wt-save" data-k="save">Год: 12 месяцев по цене 10</span>
+        </div>
+
+        <div class="wt-plans" role="radiogroup" aria-label="Тариф">
+          <span class="wt-slider" aria-hidden="true"></span>
+
+          <button type="button" class="wt-plan" role="radio" aria-checked="false" data-plan="guest" style="--i:0">
+            <span class="wt-radio"></span>
+            <span class="wt-pn">Гостья</span>
+            <span class="wt-pp"><b>0 <i class="wt-star">★</i></b><small>бесплатно навсегда</small></span>
+            <span class="wt-pf"><span><b>5</b> разборов в день</span><span><b>2</b> минуты аудиоразбора</span><span class="wt-x">все записи, отметки и напоминания навсегда</span></span>
+          </button>
+
+          <button type="button" class="wt-plan" role="radio" aria-checked="false" data-plan="tea" style="--i:1">
+            <span class="wt-radio"></span>
+            <span class="wt-pn">Чай</span>
+            <span class="wt-pp"><b><span data-price>100</span> <i class="wt-star">★</i></b><small data-sub>≈ 209 ₽ в месяц</small><small class="wt-avg" data-avg hidden></small></span>
+            <span class="wt-pf"><span class="wt-lab">В день</span><span><b>30</b> сообщений Рине</span><span><b>10</b> минут аудиоразбора</span></span>
+          </button>
+
+          <button type="button" class="wt-plan" role="radio" aria-checked="true" data-plan="care" style="--i:2">
+            <span class="wt-radio"></span>
+            <span class="wt-pn">Забота <span class="wt-tag">выбирают чаще</span></span>
+            <span class="wt-pp"><b><span data-price>150</span> <i class="wt-star">★</i></b><small data-sub>≈ 319 ₽ в месяц</small><small class="wt-avg" data-avg hidden></small></span>
+            <span class="wt-pf"><span class="wt-lab">В день</span><span><b>60</b> сообщений Рине</span><span><b>5</b> умных ответов</span><span><b>30</b> минут аудиоразбора</span><span class="wt-x">её письма утром и вечером</span></span>
+          </button>
+
+          <button type="button" class="wt-plan" role="radio" aria-checked="false" data-plan="manor" style="--i:3">
+            <span class="wt-radio"></span>
+            <span class="wt-pn">Особняк</span>
+            <span class="wt-pp"><b><span data-price>500</span> <i class="wt-star">★</i></b><small data-sub>≈ 1060 ₽ в месяц</small><small class="wt-avg" data-avg hidden></small></span>
+            <span class="wt-pf"><span class="wt-lab">В день</span><span><b>200</b> сообщений Рине</span><span><b>30</b> умных ответов</span><span><b>90</b> минут аудиоразбора</span><span class="wt-x">закономерности</span><span class="wt-x">ранний доступ к новому</span></span>
+          </button>
+        </div>
+
+        <div class="wt-bonus">
+          <p data-k="bonus"><b>Оставшиеся 2 дня пробы прибавятся к оплаченному сроку.</b> Оплата сегодня ничего не сжигает.</p>
+          <div class="wt-line" aria-hidden="true"><span class="wt-lt"></span><span class="wt-lp"></span></div>
+          <div class="wt-line-l"><span data-k="lt">2 дня пробы</span><span data-k="lp">+ 30 дней, до 29 декабря</span></div>
+        </div>
+
+        <div class="wt-cta">
+          <button type="button" class="btn primary wt-pay" data-act="pay"><span data-k="payl">Оплатить</span><span data-k="payv"><span class="num" data-k="payn">150</span> ★</span></button>
+          <button type="button" class="btn ghost wt-giftb" data-act="gift" aria-expanded="false" aria-controls="w-trial-gift"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M3 7h18v3H3zM12 7v13M12 7C10.5 4 7 3.5 7 5.5S10 7 12 7zM12 7c1.5-3 5-3.5 5-1.5S14 7 12 7z"/></svg>Подарить месяц другу</button>
+        </div>
+        <p class="wt-fine" data-k="fine">Оплата звёздами Telegram. Продление раз в месяц, отменить можно в любой день.</p>
+
+        <div class="wt-gift" id="w-trial-gift" hidden>
+          <p><b data-k="giftt">Подарок: месяц «Заботы»</b></p>
+          <p class="muted">Платите вы. Я дам ссылку, друг откроет её в Telegram, и месяц начнётся у него. Если друг со мной ещё не знаком, по ссылке мы познакомимся.</p>
+          <button type="button" class="btn primary" data-act="giftpay">Оплатить подарок <span class="num" data-k="giftn">150</span> ★</button>
+          <div class="wt-link" hidden>
+            <code>t.me/RinaMaidBot?start=gift_7Q2KD</code>
+            <button type="button" class="btn" data-act="copy">Скопировать</button>
+          </div>
+        </div>
+
+        <div class="wt-done" role="status" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          <div><p data-k="donet"></p><button type="button" class="btn ghost" data-act="change">Изменить выбор</button></div>
+        </div>
+
+        <p class="wt-foot"><b>Разбор:</b> я читаю сообщение и сама раскладываю его по планам, дневнику и тратам. <b>Умный ответ:</b> думаю дольше и отвечаю подробнее на сложный вопрос. <b>Закономерности:</b> сама замечаю связи, например как сон влияет на настроение.</p>
+      </div>
+      <figcaption><b>Программа.</b> Сюда ведут кнопка из письма, строка в виджете и пункт в настройках. Выберите тариф, переключите срок, нажмите «Оплатить»: изменятся все три кадра.</figcaption>
+    </figure>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Рина пишет за 2 дня до конца пробы и в последний день. Сейчас письмо уходит только после окончания.</li>
+      <li>В письме четыре числа из записей человека: видно, что уже накоплено и что останется в любом случае.</li>
+      <li>Два выхода одного веса. Бесплатный путь «Остаться гостьей» назван прямо, без мелкого шрифта.</li>
+      <li>В виджете одна тихая строка с семью делениями. Она же ведёт к тарифам.</li>
+      <li>Все тарифы в одном списке: цена в звёздах и в рублях, лимиты идут в одном порядке, их легко сравнить.</li>
+      <li>Рина советует тариф по тому, сколько человек ей пишет, и честно говорит, когда дорогой тариф лишний.</li>
+      <li>Оставшиеся дни пробы прибавляются к сроку. Платить заранее больше не обидно.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Числа в письме считаются от нуля: взгляд сразу идёт к итогу.</li>
+      <li>Деления в виджете загораются по одному слева направо, как идут дни пробы.</li>
+      <li>Рамка выбора переезжает к нажатому тарифу, точка в кружке появляется с лёгким щелчком, Рина меняет позу и совет.</li>
+      <li>При переключении «Месяц / Год» цены пересчитываются счётчиком, в том числе на кнопке оплаты.</li>
+      <li>Полоса срока дорисовывается: короткий отрезок пробы, за ним оплаченный срок.</li>
+      <li>После оплаты галочка рисуется одним штрихом, строка в виджете и чат обновляются.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Письмо: дата конца пробы уже хранится, нужно новое правило рассылки за 2 дня и в последний день. Четыре числа считаются простым подсчётом по готовым таблицам.</li>
+      <li>Виджет: остаток дней сервер уже отдаёт в настройки. Его надо передать и виджету.</li>
+      <li>Тарифы: сейчас код знает один платный тариф. Нужны три набора лимитов и отдельный счёт на каждый. «Умные ответы» требуют нового дневного счётчика.</li>
+      <li>«Гостья» с 5 разборами в день: включать после замера цены разбора на быстрой модели.</li>
+      <li>Год: подписка в звёздах бывает только на 30 дней, поэтому год продаётся разовым счётом на 10 месячных цен, без автопродления.</li>
+      <li>Остаток пробы сейчас сгорает при оплате. Прибавлять его к сроку: малая правка.</li>
+      <li>Подарок: счёт уже может оплатить любой человек. Нужно дописать выдачу ссылки и её активацию другом.</li>
+      <li>Рубли показаны по ценам пакетов звёзд в Telegram, точную сумму называет сам Telegram.</li>
+    </ul></div>
+  </div>
+
+  <style>
+    #p-w-trial [hidden] { display: none !important; }
+    #p-w-trial .wt-when { align-self: flex-start; display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+    #p-w-trial .wt-when button { background: none; border: 0; border-radius: 9px; min-height: 36px; padding: 6px 14px; font-size: 13px; font-weight: 600; color: var(--muted); }
+    #p-w-trial .wt-when button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--text); }
+    #p-w-trial figcaption b { color: var(--soft); font-weight: 650; }
+    #p-w-trial .wt-wide { flex: 1 1 380px; max-width: 620px; }
+    #p-w-trial .wt-wide figcaption { max-width: 60ch; }
+
+    /* Telegram */
+    #p-w-trial .wt-date { align-self: center; font-size: 11.5px; color: var(--t-muted); background: color-mix(in srgb, var(--t-text) 7%, transparent); border-radius: 99px; padding: 2px 10px; }
+    #p-w-trial .wt-letter { white-space: normal; max-width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 6px; }
+    #p-w-trial .wt-letter b { font-weight: 700; }
+    #p-w-trial .wt-sum { list-style: none; margin: 0; padding: 0; display: grid; }
+    #p-w-trial .wt-sum li { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 0; border-top: 1px solid color-mix(in srgb, var(--t-text) 10%, transparent); }
+    #p-w-trial .wt-sum li:last-child { border-bottom: 1px solid color-mix(in srgb, var(--t-text) 10%, transparent); }
+    #p-w-trial .wt-sum b { font: 800 22px/1 var(--fd); letter-spacing: -.02em; text-align: right; font-variant-numeric: tabular-nums; color: var(--t-text); }
+    #p-w-trial .wt-sum div { min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+    #p-w-trial .wt-sum small { font-size: 11.5px; color: var(--t-muted); }
+    #p-w-trial .wt-letter time { align-self: flex-end; font-size: 11px; color: var(--t-muted); }
+    #p-w-trial .tg-btns { max-width: 100%; }
+    #p-w-trial .tg-btns button { min-height: 38px; transition: background .2s var(--ease); }
+    #p-w-trial .tg-btns button:hover { background: color-mix(in srgb, var(--t-link) 22%, transparent); }
+    #p-w-trial .wt-replies { display: flex; flex-direction: column; gap: 8px; }
+    #p-w-trial .wt-replies .tg-in { white-space: normal; animation: w-trial-in .4s var(--ease) both; }
+
+    /* виджет */
+    #p-w-trial .wt-task { width: 100%; min-height: 36px; background: none; border: 0; text-align: left; color: var(--w-text); padding: 6px 4px; }
+    #p-w-trial .wt-task:hover { background: var(--w-2); }
+    #p-w-trial .wt-task span:nth-child(2) { flex: 1; min-width: 0; }
+    #p-w-trial .wt-task small { font-size: 11.5px; color: var(--w-muted); font-variant-numeric: tabular-nums; }
+    #p-w-trial .wt-task .wgt-ck { position: relative; transition: background .2s var(--ease), border-color .2s var(--ease); }
+    #p-w-trial .wt-task[aria-pressed="true"] .wgt-ck { background: var(--w-ok); border-color: var(--w-ok); }
+    #p-w-trial .wt-task[aria-pressed="true"] .wgt-ck::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--w-bg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    #p-w-trial .wt-task[aria-pressed="true"] span:nth-child(2) { color: var(--w-muted); text-decoration: line-through; }
+    #p-w-trial .wt-trial { width: 100%; min-height: 40px; margin-top: 2px; padding: 10px 4px 3px; background: none; border: 0; border-top: 1px solid var(--w-line); border-radius: 0 0 8px 8px; text-align: left; display: flex; flex-direction: column; gap: 7px; font-size: 12px; color: var(--w-muted); }
+    #p-w-trial .wt-trial-l { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+    #p-w-trial .wt-trial-go { white-space: nowrap; transition: color .2s var(--ease); }
+    #p-w-trial .wt-trial:hover .wt-trial-go { color: var(--w-accent); }
+    #p-w-trial .wt-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    #p-w-trial .wt-days i { height: 3px; border-radius: 2px; background: var(--w-3); transform-origin: left; transition: background .4s var(--ease); }
+    #p-w-trial .wt-days i.on { background: var(--w-accent); }
+    #p-w-trial .last .wt-days i.on { background: var(--w-warn); }
+    #p-w-trial .last .wt-trial-l > span:first-child { color: var(--w-warn); }
+    #p-w-trial .paid .wt-days i { background: var(--w-ok); }
+    #p-w-trial .paid .wt-trial-l > span:first-child { color: var(--w-text); }
+    #p-w-trial .paid .wt-trial-go { color: var(--w-ok); }
+    #p-w-trial .wt-states { margin-top: 6px; }
+    #p-w-trial .wt-states .wgt-panel { gap: 12px; background: none; border-style: dashed; }
+    #p-w-trial .wt-st { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--w-muted); }
+    #p-w-trial .wt-st small { font-size: 11px; color: var(--w-muted); white-space: nowrap; }
+
+    /* программа */
+    #p-w-trial .wt-wide .app { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+    #p-w-trial .wt-wide .app.wt-flash { animation: w-trial-flash .9s var(--ease); }
+    #p-w-trial .wt-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+    #p-w-trial .wt-head h3 { margin: 2px 0 0; font: 700 19px/1.2 var(--fd); letter-spacing: -.01em; text-wrap: balance; }
+    #p-w-trial .wt-kicker { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--a-muted); }
+    #p-w-trial .wt-chip { transition: color .3s var(--ease); }
+    #p-w-trial .wt-chip.ok { color: var(--a-ok); }
+    #p-w-trial .wt-chip.ok::before { content: "✓"; }
+    #p-w-trial .rina p.wt-swap { animation: w-trial-swap .35s var(--ease) both; }
+    #p-w-trial .wt-period { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+    #p-w-trial .wt-period .seg button { min-height: 36px; padding: 6px 18px; font-size: 13px; }
+    #p-w-trial .wt-save { font-size: 12.5px; color: var(--a-muted); transition: color .3s var(--ease); }
+    #p-w-trial .wt-save.on { color: var(--a-ok); font-weight: 650; }
+
+    #p-w-trial .wt-plans { position: relative; display: grid; gap: 8px; }
+    #p-w-trial .wt-slider { position: absolute; z-index: 2; left: 0; right: 0; top: 0; height: 0; display: none; pointer-events: none; border-radius: 14px; border: 1.5px solid var(--a-accent); background: var(--a-accent-soft); }
+    #p-w-trial .wt-plans.js .wt-slider { display: block; }
+    #p-w-trial .wt-plans.ready .wt-slider { transition: transform .45s var(--ease), height .45s var(--ease); }
+    #p-w-trial .wt-plan { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 7px 10px; align-items: start; text-align: left; padding: 13px 14px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 14px; color: var(--a-text); transition: border-color .25s var(--ease); }
+    #p-w-trial .wt-plan:hover { border-color: var(--a-muted); }
+    #p-w-trial .wt-plan[aria-checked="true"] { border-color: var(--a-accent); }
+    #p-w-trial .wt-plans.js .wt-plan[aria-checked="true"] { border-color: transparent; }
+    #p-w-trial .wt-radio { width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--a-muted); display: grid; place-items: center; transition: border-color .25s var(--ease); }
+    #p-w-trial .wt-radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--a-accent); transform: scale(0); transition: transform .4s var(--ease); }
+    #p-w-trial .wt-plan[aria-checked="true"] .wt-radio { border-color: var(--a-accent); }
+    #p-w-trial .wt-plan[aria-checked="true"] .wt-radio::after { transform: scale(1); }
+    #p-w-trial .wt-pn { min-width: 0; display: flex; align-items: center; gap: 5px 8px; flex-wrap: wrap; font: 700 16px/1.35 var(--fd); letter-spacing: -.01em; }
+    #p-w-trial .wt-tag { font: 700 10px/1 var(--f); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; padding: 4px 8px; border-radius: 99px; background: var(--a-accent-strong); color: var(--a-on-accent); }
+    #p-w-trial .wt-pp { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; }
+    #p-w-trial .wt-pp b { font: 800 19px/1.2 var(--fd); letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #p-w-trial .wt-star { font-style: normal; color: var(--a-gold); }
+    #p-w-trial .wt-pp small { font-size: 11.5px; color: var(--a-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #p-w-trial .wt-pp .wt-avg { color: var(--a-ok); font-weight: 600; }
+    #p-w-trial .wt-pf { grid-column: 2 / -1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 12px; font-size: 12.5px; color: var(--a-soft); }
+    #p-w-trial .wt-pf > span { min-width: 0; }
+    #p-w-trial .wt-pf b { font-size: 14.5px; font-weight: 750; color: var(--a-text); font-variant-numeric: tabular-nums; }
+    #p-w-trial .wt-lab { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); }
+    #p-w-trial .wt-x::before { content: "+ "; color: var(--a-accent); font-weight: 700; }
+
+    #p-w-trial .wt-bonus { display: grid; gap: 9px; padding: 13px 14px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 14px; }
+    #p-w-trial .wt-bonus p { font-size: 13px; color: var(--a-soft); }
+    #p-w-trial .wt-bonus p b { color: var(--a-text); font-weight: 650; }
+    #p-w-trial .wt-line { display: flex; gap: 3px; height: 6px; }
+    #p-w-trial .wt-lt { flex: 0 0 14%; border-radius: 3px; background: color-mix(in srgb, var(--a-accent) 45%, transparent); transform-origin: left; transition: flex-basis .4s var(--ease); }
+    #p-w-trial .wt-lp { flex: 1; border-radius: 3px; background: var(--a-accent); transform-origin: left; transition: background .3s var(--ease); }
+    #p-w-trial .wt-bonus.free .wt-lp { background: var(--a-surface-3); }
+    #p-w-trial .wt-line-l { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; color: var(--a-muted); }
+    #p-w-trial .wt-line-l span:last-child { color: var(--a-text); font-weight: 650; text-align: right; }
+
+    #p-w-trial .wt-cta { display: flex; gap: 8px; flex-wrap: wrap; }
+    #p-w-trial .wt-cta .btn { min-height: 44px; justify-content: center; padding: 10px 16px; font-size: 14px; }
+    #p-w-trial .wt-pay { flex: 1 1 170px; transition: transform .15s var(--ease); }
+    #p-w-trial .wt-pay:active { transform: scale(.98); }
+    #p-w-trial .wt-giftb svg { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    #p-w-trial .wt-giftb[aria-expanded="true"] { border-color: var(--a-accent); color: var(--a-accent); }
+    #p-w-trial .wt-fine { margin-top: -8px; font-size: 12px; color: var(--a-muted); }
+    #p-w-trial .wt-gift { display: grid; gap: 9px; justify-items: start; padding: 13px 14px; border: 1px dashed var(--a-accent); border-radius: 14px; font-size: 13px; animation: w-trial-in .35s var(--ease) both; }
+    #p-w-trial .wt-gift .btn { min-height: 40px; }
+    #p-w-trial .wt-link { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; animation: w-trial-in .35s var(--ease) both; }
+    #p-w-trial .wt-link code { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 9px 11px; border-radius: 10px; background: var(--a-surface-2); color: var(--a-text); font: 600 12.5px/1.4 ui-monospace, Consolas, monospace; }
+    #p-w-trial .wt-done { display: flex; align-items: flex-start; gap: 12px; padding: 13px 14px; border-radius: 14px; background: color-mix(in srgb, var(--a-ok) 12%, transparent); border: 1px solid color-mix(in srgb, var(--a-ok) 45%, transparent); font-size: 13.5px; animation: w-trial-in .4s var(--ease) both; }
+    #p-w-trial .wt-done svg { width: 24px; height: 24px; flex: none; fill: none; stroke: var(--a-ok); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    #p-w-trial .wt-done path { stroke-dasharray: 24; animation: w-trial-draw .55s var(--ease) .15s both; }
+    #p-w-trial .wt-done div { min-width: 0; display: grid; gap: 9px; justify-items: start; }
+    #p-w-trial .wt-done .btn { min-height: 36px; }
+    #p-w-trial .wt-foot { font-size: 12px; color: var(--a-muted); padding-top: 12px; border-top: 1px solid var(--a-line); }
+    #p-w-trial .wt-foot b { color: var(--a-soft); font-weight: 650; }
+
+    /* появление при показе: класс go ставит скрипт, без него всё стоит в конечном виде */
+    #p-w-trial.go .wt-letter { animation: w-trial-in .5s var(--ease) both; }
+    #p-w-trial.go .wt-sum li { animation: w-trial-in .45s var(--ease) both; animation-delay: calc(.25s + var(--i, 0) * .09s); }
+    #p-w-trial.go .tg-btns { animation: w-trial-in .45s var(--ease) .8s both; }
+    #p-w-trial.go .wt-trial .wt-days i { animation: w-trial-grow .35s var(--ease) both; animation-delay: calc(.35s + var(--i, 0) * .07s); }
+    #p-w-trial.go .wt-plan { animation: w-trial-in .5s var(--ease) both; animation-delay: calc(.15s + var(--i, 0) * .08s); }
+    #p-w-trial.go .wt-slider { animation: w-trial-fade .4s var(--ease) .6s both; }
+    #p-w-trial.go .wt-lt { animation: w-trial-grow .35s var(--ease) .6s both; }
+    #p-w-trial.go .wt-lp { animation: w-trial-grow .8s var(--ease) .9s both; }
+    #p-w-trial .wt-lp.wt-regrow { animation: w-trial-regrow .6s var(--ease) both; }
+    #p-w-trial.still * { animation: none !important; transition: none !important; }
+
+    @keyframes w-trial-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes w-trial-fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes w-trial-swap { from { opacity: .2; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+    @keyframes w-trial-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @keyframes w-trial-regrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @keyframes w-trial-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+    @keyframes w-trial-flash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-accent) 70%, transparent), var(--a-shadow); } 100% { box-shadow: 0 0 0 14px transparent, var(--a-shadow); } }
+
+    @media (max-width: 720px) {
+      #p-w-trial .wt-wide .app { padding: 14px; }
+      #p-w-trial .wt-giftb { flex: 1 1 100%; }
+      #p-w-trial .wt-plan { padding: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #p-w-trial * { animation: none !important; transition: none !important; }
+    }
+  </style>
+
+  <script>
+  (function () {
+    "use strict";
+    var root = document.getElementById("p-w-trial");
+    if (!root) return;
+    var M = window.MaidMock || { reduce: false, onSeen: function (el, fn) { fn(); } };
+    function $(s) { return root.querySelector(s); }
+    function $$(s) { return Array.prototype.slice.call(root.querySelectorAll(s)); }
+    function key(k) { return $('[data-k="' + k + '"]'); }
+
+    var PLANS = {
+      guest: { name: "Гостья", gen: "Заботы", price: 0, rub: 0, img: "bow",
+        say: "Останусь с вами и без оплаты. Сейчас вы пишете мне <b>около 14 раз в день</b>, разбирать я смогу 5. Остальное сохраню заметками." },
+      tea: { name: "Чай", gen: "Чая", price: 100, rub: 209, img: "tea",
+        say: "Вы пишете мне <b>около 14 раз в день</b>. 30 сообщений хватит с запасом, а голосовые я разберу до 10 минут в день." },
+      care: { name: "Забота", gen: "Заботы", price: 150, rub: 319, img: "letter",
+        say: "Вы пишете мне <b>около 14 раз в день</b> и трижды присылали голосовые. «Забота» покрывает это с запасом, и я продолжу писать вам утром и вечером." },
+      manor: { name: "Особняк", gen: "Особняка", price: 500, rub: 1060, img: "analysis",
+        say: "«Особняк» нужен тем, кто пишет мне весь день. При ваших <b>14 сообщениях в день</b> хватит «Заботы». Зато здесь я ищу закономерности в сне, тратах и настроении." }
+    };
+    var ORDER = ["guest", "tea", "care", "manor"];
+    var F = { plan: ["план", "плана", "планов"], habit: ["отметка привычек", "отметки привычек", "отметок привычек"], diary: ["запись дневника", "записи дневника", "записей дневника"], rem: ["напоминание", "напоминания", "напоминаний"] };
+    var DAYS = {
+      2: { date: "27 ноября", time: "20:30", lead: "Добрый вечер. <b>Через 2 дня</b>, 29 ноября, закончится проба.", span: "За эти 5 дней", line: "Проба: ещё 2 дня", left: "2 дня пробы",
+        bonus: "Оставшиеся 2 дня пробы прибавятся", added: "2 дня пробы уже прибавлены.",
+        sum: [[23, F.plan, "19 уже сделано"], [31, F.habit, "«Чтение» 5 дней подряд"], [9, F.diary, "последняя вчера вечером"], [14, F.rem, "ни одно не пропущено"]] },
+      1: { date: "29 ноября", time: "09:00", lead: "Доброе утро. <b>Сегодня последний день</b> пробы.", span: "За эту неделю", line: "Проба: последний день", left: "1 день пробы",
+        bonus: "Оставшийся день пробы прибавится", added: "День пробы уже прибавлен.",
+        sum: [[29, F.plan, "24 уже сделано"], [41, F.habit, "«Чтение» 7 дней подряд"], [12, F.diary, "последняя вчера вечером"], [19, F.rem, "ни одно не пропущено"]] }
+    };
+    var st = { plan: "care", year: false, done: false, left: 2, gift: 0 };
+
+    var app = $("#w-trial-app"), plans = $(".wt-plans"), slider = $(".wt-slider"), cards = $$(".wt-plan");
+    var sumRows = $$(".wt-sum li"), segs = Array.prototype.slice.call($(".wt-trial .wt-days").children);
+    var replies = $(".wt-replies"), wtrial = $(".wt-trial"), bonus = $(".wt-bonus"), lt = $(".wt-lt"), lp = $(".wt-lp");
+    var cta = $(".wt-cta"), done = $(".wt-done"), gift = $(".wt-gift"), giftB = $(".wt-giftb"), link = $(".wt-link"), rimg = key("rimg"), rsay = key("rina");
+    var timers = [], lastSay = "";
+
+    function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+    function fmt(n) { return n >= 10000 ? String(n).replace(/\B(?=(\d{3})+$)/g, " ") : String(n); }
+    function pl(n, f) { var a = n % 10, b = n % 100; return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2]; }
+    function cost(k) { return PLANS[k].price * (st.year ? 10 : 1); }
+    function until() { return st.year ? "29 ноября 2027 года" : "29 декабря"; }
+    function kick(el, cls) { if (M.reduce) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+    /* счётчик: от прежнего числа к новому */
+    function setNum(el, to, anim) {
+      var from = +el.getAttribute("data-v") || 0;
+      el.setAttribute("data-v", to);
+      cancelAnimationFrame(el._r || 0); clearTimeout(el._t);
+      if (!anim || M.reduce || from === to) { el.textContent = fmt(to); return; }
+      var dur = anim === true ? 450 : anim, t0 = performance.now();
+      el._t = setTimeout(function () { cancelAnimationFrame(el._r || 0); el.textContent = fmt(to); }, dur + 150);
+      (function step() {
+        var k = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+        el.textContent = fmt(Math.round(from + (to - from) * e));
+        if (k < 1) el._r = requestAnimationFrame(step);
+      })();
+    }
+
+    /* рамка выбора едет к отмеченному тарифу */
+    function place() {
+      var c = $('.wt-plan[aria-checked="true"]');
+      if (!c || !c.offsetHeight) return;
+      slider.style.height = c.offsetHeight + "px";
+      slider.style.transform = "translateY(" + c.offsetTop + "px)";
+      if (!plans.classList.contains("js")) {
+        plans.classList.add("js");
+        requestAnimationFrame(function () { requestAnimationFrame(function () { plans.classList.add("ready"); }); });
+      }
+    }
+
+    function renderDays(anim) {
+      var d = DAYS[st.left];
+      key("date").textContent = d.date; key("time").textContent = d.time;
+      key("lead").innerHTML = d.lead; key("span").textContent = d.span;
+      sumRows.forEach(function (li, i) {
+        var s = d.sum[i];
+        setNum(li.querySelector("b"), s[0], anim ? 600 : false);
+        li.querySelector("span").textContent = pl(s[0], s[1]);
+        li.querySelector("small").textContent = s[2];
+      });
+      segs.forEach(function (s, i) { s.classList.toggle("on", i >= 7 - st.left); });
+      $$(".wt-when button").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.getAttribute("data-left") === st.left)); });
+    }
+
+    function render(anim) {
+      var d = DAYS[st.left], p = PLANS[st.plan], guest = st.plan === "guest", paid = st.done && !guest;
+
+      $$("[data-per]").forEach(function (b) { b.setAttribute("aria-pressed", String((b.getAttribute("data-per") === "y") === st.year)); });
+      var save = key("save");
+      save.classList.toggle("on", st.year);
+      save.textContent = st.year ? "✓ 12 месяцев по цене 10: два месяца в подарок" : "Год: 12 месяцев по цене 10";
+
+      cards.forEach(function (c) {
+        var k = c.getAttribute("data-plan"), q = PLANS[k], on = k === st.plan;
+        c.setAttribute("aria-checked", String(on)); c.tabIndex = on ? 0 : -1;
+        if (!q.price) return;
+        setNum(c.querySelector("[data-price]"), cost(k), anim);
+        c.querySelector("[data-sub]").textContent = st.year ? "≈ " + fmt(q.rub * 10) + " ₽ за год" : "≈ " + fmt(q.rub) + " ₽ в месяц";
+        var avg = c.querySelector("[data-avg]");
+        avg.hidden = !st.year; avg.textContent = "по " + Math.round(q.price * 10 / 12) + " ★ в месяц";
+      });
+      place();
+
+      var img = st.done ? (guest ? "bow" : "happy") : p.img;
+      if (rimg.getAttribute("src") !== "maid/" + img + ".webp") rimg.setAttribute("src", "maid/" + img + ".webp");
+      var say = !st.done ? p.say : guest ? "Хорошо. Я остаюсь рядом, просто разбирать буду меньше. Тариф можно выбрать в любой день."
+        : "Спасибо. Остаюсь с вами до <b>" + until() + "</b>. Все записи на месте, продолжаем с того же места.";
+      if (say !== lastSay) { lastSay = say; rsay.innerHTML = say; if (anim) kick(rsay, "wt-swap"); }
+
+      bonus.classList.toggle("free", guest);
+      key("bonus").innerHTML = guest ? "<b>Платить не нужно.</b> Проба закончится 29 ноября. Записи, отметки и напоминания останутся с вами навсегда."
+        : "<b>" + d.bonus + " к оплаченному сроку.</b> Оплата сегодня ничего не сжигает.";
+      key("lt").textContent = d.left;
+      key("lp").textContent = guest ? "дальше бесплатно" : "+ " + (st.year ? "12 месяцев" : "30 дней") + ", до " + until();
+      lt.style.flexBasis = st.left === 2 ? "14%" : "8%";
+      if (anim) kick(lp, "wt-regrow");
+
+      key("payl").textContent = guest ? "Остаться гостьей" : "Оплатить";
+      key("payv").hidden = guest;
+      if (!guest) setNum(key("payn"), cost(st.plan), anim);
+      key("fine").textContent = guest ? "Передумаете, тариф можно выбрать в любой день."
+        : st.year ? "Оплата звёздами Telegram. Разовый платёж за год, без автопродления."
+        : "Оплата звёздами Telegram. Продление раз в месяц, отменить можно в любой день.";
+      cta.hidden = st.done; key("fine").hidden = st.done; done.hidden = !st.done;
+      if (st.done) key("donet").innerHTML = guest ? "<b>Вы остаётесь гостьей.</b> После 29 ноября разбираю 5 сообщений в день. Записи, отметки и напоминания работают как раньше."
+        : "<b>Оплачено. «" + p.name + "» с вами до " + until() + ".</b> " + d.added;
+
+      var line = !st.done ? d.line : guest ? "После пробы: гостья" : "«" + p.name + "» до " + until();
+      key("chip").textContent = line; key("wline").textContent = line;
+      key("chip").classList.toggle("ok", paid);
+      wtrial.classList.toggle("paid", paid);
+      wtrial.classList.toggle("last", !paid && st.left === 1);
+      key("wgo").textContent = paid ? "✓" : "Тариф ›";
+      wtrial.setAttribute("aria-label", line + ". Открыть выбор тарифа");
+
+      var g = PLANS[guest ? "care" : st.plan];
+      giftB.setAttribute("aria-expanded", String(st.gift > 0 && !st.done));
+      gift.hidden = st.gift === 0 || st.done;
+      key("giftt").textContent = "Подарок: месяц «" + g.gen + "»";
+      key("giftn").textContent = g.price;
+      $('[data-act="giftpay"]').hidden = st.gift === 2;
+      link.hidden = st.gift !== 2;
+    }
+
+    function tgSay(html) {
+      replies.innerHTML = "";
+      var m = document.createElement("div"); m.className = "tg-in"; m.innerHTML = html;
+      replies.appendChild(m);
+    }
+    function flash() {
+      var r = app.getBoundingClientRect();
+      if (r.top < 0 || r.top > window.innerHeight * .6) app.scrollIntoView({ behavior: M.reduce ? "auto" : "smooth", block: "start" });
+      kick(app, "wt-flash");
+    }
+    function select(k, focus) {
+      if (!PLANS[k]) return;
+      st.plan = k; st.done = false;
+      render(true);
+      if (focus) { var c = $('.wt-plan[data-plan="' + k + '"]'); if (c) c.focus(); }
+    }
+    function finish() {
+      var guest = st.plan === "guest";
+      st.done = true; st.gift = 0;
+      render(true);
+      tgSay(guest ? "Хорошо, остаюсь у вас гостьей. Все записи на месте. Передумаете, напишите мне слово «тариф»."
+        : "Спасибо. «" + PLANS[st.plan].name + "» с вами до " + until() + ". " + DAYS[st.left].added);
+    }
+
+    root.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (!b || !root.contains(b) || b.classList.contains("replay")) return;
+      var act = b.getAttribute("data-act");
+      if (b.hasAttribute("data-left")) { st.left = +b.getAttribute("data-left"); st.done = false; replies.innerHTML = ""; renderDays(true); render(true); }
+      else if (b.hasAttribute("data-per")) { st.year = b.getAttribute("data-per") === "y"; st.done = false; render(true); }
+      else if (b.classList.contains("wt-plan")) select(b.getAttribute("data-plan"));
+      else if (b.classList.contains("wt-task")) b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+      else if (act === "pick") flash();
+      else if (act === "guest") { st.plan = "guest"; finish(); flash(); }
+      else if (act === "pay") finish();
+      else if (act === "change") { st.done = false; render(true); }
+      else if (act === "gift") { st.gift = st.gift ? 0 : 1; render(false); }
+      else if (act === "giftpay") { st.gift = 2; render(false); }
+      else if (act === "copy") { b.textContent = "Скопировано ✓"; later(function () { b.textContent = "Скопировать"; }, 1600); }
+    });
+
+    plans.addEventListener("keydown", function (e) {
+      var step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
+      if (!step) return;
+      e.preventDefault();
+      select(ORDER[(ORDER.indexOf(st.plan) + step + ORDER.length) % ORDER.length], true);
+    });
+    if ("ResizeObserver" in window) new ResizeObserver(place).observe(plans);
+    else window.addEventListener("resize", place);
+
+    function play() {
+      timers.forEach(clearTimeout); timers = [];
+      st.plan = "care"; st.year = false; st.done = false; st.gift = 0;
+      replies.innerHTML = "";
+      $$(".wt-task").forEach(function (t, i) { t.setAttribute("aria-pressed", String(i === 0)); });
+      renderDays(false); render(false);
+      if (M.reduce) return;
+      root.classList.remove("go"); void root.offsetWidth; root.classList.add("go");
+      sumRows.forEach(function (li, i) {
+        var b = li.querySelector("b"), n = +b.getAttribute("data-v");
+        b.setAttribute("data-v", 0); b.textContent = "0";
+        later(function () { setNum(b, n, 800); }, 300 + i * 90);
+      });
+      later(function () { root.classList.remove("go"); }, 2800);
+    }
+
+    if (M.reduce) root.classList.add("still");
+    renderDays(false); render(false);
+    M.onSeen(root, play);
+    root.addEventListener("replay", play);
+  })();
+  </script>
+</article>

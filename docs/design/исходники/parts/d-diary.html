@@ -1,0 +1,743 @@
+<article class="piece" id="p-d-diary">
+  <header>
+    <p class="eyebrow">Экран · Дневник → Дни</p>
+    <h2>День как страница</h2>
+    <p>День читается как одна страница: оценка, настроение и записи по разделам. Всё правится прямо здесь. Месяц слева взят из нынешней программы: в клетке эмодзи того, чем был занят день, и кружок с оценкой.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="app" data-hub="diary" data-tab="Дни" data-title="Дневник">
+    <div class="dd-bar">
+      <label class="dd-search">
+        <svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg>
+        <input type="text" inputmode="search" id="d-diary-q" autocomplete="off" placeholder="Поиск по дневнику: голова, зарядка, кино" aria-label="Поиск по тексту дневника">
+        <button type="button" class="dd-x" data-act="clear" aria-label="Очистить поиск" hidden><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </label>
+      <span class="dd-count muted" aria-live="polite"></span>
+      <div class="dd-res" hidden></div>
+    </div>
+
+    <div class="dd-grid">
+      <div class="dd-left">
+        <aside class="dd-month card" aria-label="Календарь месяца">
+          <div class="dd-mh">
+            <button type="button" class="dd-nav" data-act="month" aria-label="Предыдущий месяц"><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+            <b>Ноябрь 2026</b>
+            <button type="button" class="dd-nav" data-act="month" aria-label="Следующий месяц"><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+          </div>
+          <p class="dd-mhint muted" hidden>В макете заполнен только ноябрь.</p>
+          <div class="dd-wk" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+          <div class="dd-cal"></div>
+          <div class="dd-top" role="group" aria-label="Эмодзи месяца и сколько дней с ними. Нажмите, чтобы подсветить эти дни"></div>
+          <p class="dd-ms muted" aria-live="polite"></p>
+          <div class="dd-tip" role="tooltip" hidden></div>
+        </aside>
+        <aside class="dd-facts card">
+          <p class="card-t">Что было в этот день</p>
+          <div class="dd-fl"></div>
+          <p class="dd-fn muted">Нажмите на факт, чтобы раскрыть подробности.</p>
+        </aside>
+      </div>
+
+      <div class="dd-mid">
+        <div class="dd-book"><section class="dd-page card" tabindex="-1" aria-label="Страница дня"></section></div>
+        <div class="dd-undo" role="status" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>День открывается одной страницей: дата, оценка, настроение, записи по разделам. Месяц и факты стоят рядом и никуда не уезжают.</li>
+      <li>Оценку можно поставить и поправить ползунком за любой день. Сейчас на сайте этого нет вовсе.</li>
+      <li>Запись правится щелчком по тексту, там же меняется раздел. Новая запись добавляется кнопкой под страницей.</li>
+      <li>Удаление без системного окна: запись исчезает, шесть секунд висит «Отменить».</li>
+      <li>Календарь с эмодзи и оценкой взят из текущей программы по выбору владельца. В клетке до шести эмодзи дня (главный крупнее) и кружок с оценкой: 9–10 и 7–8 зелёные, 5–6 жёлтый, 3–4 и 1–2 красные. Цифра в кружке всегда.</li>
+      <li>Наведение или касание дня показывает, что значит каждый эмодзи. Строка эмодзи под месяцем подсвечивает дни с выбранным.</li>
+      <li>Поиск по тексту дневника с подсветкой. Дни с находками выделены в месяце. Точки на будущих днях показывают, сколько планов впереди.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Перелистывание: при переходе вперёд страница поворачивается влево, как лист. При переходе назад новая страница ложится сверху.</li>
+      <li>Ползунок: деления закрашиваются, плитка с цифрой и клетка в месяце меняют цвет, Рина меняет лицо и реплику.</li>
+      <li>При открытии дни месяца появляются волной по диагонали, эмодзи впрыгивают в клетки, оценки в кружках досчитывают до своего числа.</li>
+      <li>Сохранённая запись на секунду подсвечивается. Полоска под «Отменить» убывает, пока есть время передумать.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Оценка: запрос <code>POST /api/rate</code> на сервере уже есть, сайт его не вызывает. Нужно только подключить.</li>
+      <li>Настроение чипами: сейчас это свободный текст. Нужен короткий список настроений и место, где его хранить.</li>
+      <li>Правка и добавление записи: на сервере есть только удаление. Нужны запросы «создать» и «изменить» (текст и раздел).</li>
+      <li>«Отменить»: общий механизм отмены уже работает в других экранах, дневник к нему надо подключить.</li>
+      <li>Поиск: общий поиск дневник не смотрит. Нужен поиск по тексту записей, похожий уже есть в «Здоровье».</li>
+      <li>Календарь с эмодзи и оценкой уже работает в программе (dayEmoji.ts, dayscore.ts). Переносим как есть, меняем только цвета кружка на общие токены. Факты дня приходят одним запросом дня.</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-diary [hidden]{display:none !important}
+#p-d-diary .notes code{font-size:12.5px;color:var(--text)}
+#p-d-diary .app{--t1: color-mix(in srgb, var(--a-bad) 55%, transparent);--t2: color-mix(in srgb, var(--a-bad) 24%, transparent);--t3: color-mix(in srgb, var(--a-warn) 28%, transparent);--t4: color-mix(in srgb, var(--a-ok) 24%, transparent);--t5: color-mix(in srgb, var(--a-ok) 55%, transparent)}
+#p-d-diary [data-tone="0"]{--tone:transparent}
+#p-d-diary [data-tone="1"]{--tone:var(--t1)}
+#p-d-diary [data-tone="2"]{--tone:var(--t2)}
+#p-d-diary [data-tone="3"]{--tone:var(--t3)}
+#p-d-diary [data-tone="4"]{--tone:var(--t4)}
+#p-d-diary [data-tone="5"]{--tone:var(--t5)}
+#p-d-diary .dd-i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#p-d-diary mark{background:color-mix(in srgb, var(--a-gold) 45%, transparent);color:inherit;border-radius:4px;padding:0 2px}
+#p-d-diary .dd-bar{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px}
+#p-d-diary .dd-search{flex:1 1 260px;max-width:470px;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 4px 0 13px;background:var(--a-surface);border:1px solid var(--a-line);border-radius:12px;color:var(--a-muted);transition:border-color .2s, box-shadow .2s}
+#p-d-diary .dd-search:focus-within{border-color:var(--a-accent);box-shadow:0 0 0 3px var(--a-accent-soft)}
+#p-d-diary .dd-search input{flex:1;min-width:0;height:42px;background:none;border:0;outline:0;color:var(--a-text);font-size:14px}
+#p-d-diary .dd-search input::placeholder{color:var(--a-muted)}
+#p-d-diary .dd-count{font-size:13px}
+#p-d-diary .dd-res{position:absolute;z-index:6;top:calc(100% + 6px);left:0;width:min(560px, 100%);max-height:320px;overflow:auto;display:grid;gap:2px;padding:6px;background:var(--a-surface);border:1px solid var(--a-line);border-radius:14px;box-shadow:var(--a-shadow);animation:d-diary-rise .25s var(--ease)}
+#p-d-diary .dd-r{display:grid;grid-template-columns:auto minmax(0, 1fr);gap:0 10px;align-items:center;text-align:left;background:none;border:0;border-radius:10px;padding:8px 10px;color:var(--a-text)}
+#p-d-diary .dd-r:hover{background:var(--a-surface-2)}
+#p-d-diary .dd-r i{grid-row:span 2;width:34px;height:34px;border-radius:10px;background:var(--tone);display:grid;place-items:center;font:800 14px var(--fd);font-style:normal}
+#p-d-diary .dd-r i[data-tone="0"]{border:1px dashed var(--a-line);color:var(--a-muted)}
+#p-d-diary .dd-r small{font-size:12px;color:var(--a-muted)}
+#p-d-diary .dd-r span{font-size:13.5px;overflow-wrap:anywhere}
+#p-d-diary .dd-res p{padding:12px;color:var(--a-muted)}
+#p-d-diary .dd-grid{display:grid;grid-template-columns:minmax(0, 1.05fr) minmax(0, 1fr);gap:14px;align-items:start}
+#p-d-diary .dd-left,#p-d-diary .dd-mid{min-width:0;display:flex;flex-direction:column;gap:14px}
+#p-d-diary .dd-month{position:relative;padding:14px;display:flex;flex-direction:column;gap:8px}
+#p-d-diary .dd-mh{display:flex;align-items:center;gap:6px}
+#p-d-diary .dd-mh b{flex:1;text-align:center;font:700 15px var(--fd);letter-spacing:-.01em}
+#p-d-diary .dd-nav{width:36px;height:36px;flex:none;display:grid;place-items:center;padding:0;border:1px solid var(--a-line);border-radius:11px;background:var(--a-surface-2);color:var(--a-text);transition:border-color .2s, transform .2s var(--ease)}
+#p-d-diary .dd-nav:hover:not(:disabled){border-color:var(--a-accent)}
+#p-d-diary .dd-nav:active:not(:disabled){transform:scale(.94)}
+#p-d-diary .dd-nav:disabled{opacity:.35;cursor:default}
+#p-d-diary .dd-mhint{font-size:12px;text-align:center}
+#p-d-diary .dd-wk,#p-d-diary .dd-cal{display:grid;grid-template-columns:repeat(7, minmax(0, 1fr));gap:5px}
+#p-d-diary .dd-wk span{text-align:center;font-size:11px;font-weight:600;color:var(--a-muted)}
+#p-d-diary .dd-c{position:relative;aspect-ratio:1 / 1.05;min-width:0;padding:0;display:grid;place-items:center;border:1px solid transparent;border-radius:12px;background:var(--a-surface-2);color:var(--a-text);transition:opacity .25s, transform .2s var(--ease), border-color .2s, box-shadow .2s}
+#p-d-diary .dd-c:hover:not(:disabled){transform:translateY(-1px);border-color:var(--a-line)}
+#p-d-diary .dd-c[aria-pressed="true"]{border-color:var(--a-accent);background:color-mix(in srgb, var(--a-accent) 12%, var(--a-surface-2));box-shadow:0 0 0 2px color-mix(in srgb, var(--a-accent) 25%, transparent)}
+#p-d-diary .dd-c:disabled{background:none;cursor:default}
+#p-d-diary .dd-c .n{font-size:14px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+#p-d-diary .dd-c.sm .n{position:absolute;z-index:4;top:5px;left:6px;font-size:11px;font-weight:500;color:var(--a-muted)}
+#p-d-diary .dd-c:disabled .n{color:var(--a-muted)}
+#p-d-diary .dd-c.now .n{color:var(--a-on-accent);background:var(--a-accent-strong);border-radius:99px;padding:4px 8px;font-weight:700}
+#p-d-diary .dd-c.now.sm .n{padding:2px 5px;top:3px;left:3px}
+#p-d-diary .sc{position:absolute;z-index:5;top:4px;right:4px;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;font:700 10.5px/1 var(--f)}
+#p-d-diary .sc[data-t="5"]{background:var(--a-ok);color:var(--a-bg)}
+#p-d-diary .sc[data-t="4"]{--k:var(--a-ok)}
+#p-d-diary .sc[data-t="3"]{--k:var(--a-warn)}
+#p-d-diary .sc[data-t="2"]{--k:var(--a-bad)}
+#p-d-diary .sc[data-t="1"]{background:var(--a-bad);color:var(--a-bg)}
+#p-d-diary .sc[data-t="2"],#p-d-diary .sc[data-t="3"],#p-d-diary .sc[data-t="4"]{background:color-mix(in srgb, var(--k) 30%, var(--a-surface));box-shadow:inset 0 0 0 1.5px var(--k);color:var(--a-text)}
+#p-d-diary .st{position:absolute;inset:0;container-type:size;pointer-events:none}
+#p-d-diary .st i{position:absolute;font-size:20px;font-style:normal;line-height:1;translate:-50% -50%;pointer-events:auto;filter:drop-shadow(0 2px 2px color-mix(in srgb, var(--a-bg) 35%, transparent));transition:transform .2s var(--ease)}
+#p-d-diary .dd-c:hover .st i{transform:scale(1.08) rotate(-4deg)}
+#p-d-diary .dd-c .pl{position:absolute;bottom:6px;left:50%;translate:-50% 0;display:flex;gap:3px}
+#p-d-diary .dd-c .pl u{width:5px;height:5px;border-radius:50%;background:var(--a-accent)}
+#p-d-diary .dd-month.is-find .dd-c:not(.hit):not(:disabled),#p-d-diary .dd-month.is-em .dd-c:not(.em):not(:disabled){opacity:.28}
+#p-d-diary .dd-c.hit,#p-d-diary .dd-c.em{border-color:var(--a-gold);box-shadow:0 0 0 2px color-mix(in srgb, var(--a-gold) 30%, transparent)}
+#p-d-diary .is-em .dd-c.em .st i:first-child{animation:d-diary-jump .45s var(--ease) both}
+#p-d-diary .dd-top{display:flex;flex-wrap:wrap;gap:2px;padding-top:6px}
+#p-d-diary .dd-top button{display:inline-flex;align-items:center;gap:1px;min-width:44px;min-height:38px;padding:3px 7px;border:1px solid transparent;border-radius:10px;background:none;font-size:19px;line-height:1}
+#p-d-diary .dd-top button:hover{background:var(--a-surface-2)}
+#p-d-diary .dd-top button[aria-pressed="true"]{border-color:var(--a-accent);background:var(--a-accent-soft)}
+#p-d-diary .dd-top small{font-size:11px;color:var(--a-muted);align-self:flex-end}
+#p-d-diary .dd-ms{font-size:12.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:36px}
+#p-d-diary .dd-ms b{color:var(--a-text)}
+#p-d-diary .dd-ms button{min-width:36px;min-height:36px;border:1px solid var(--a-line);border-radius:8px;background:none;color:var(--a-soft)}
+#p-d-diary .dd-tip{position:absolute;z-index:8;width:max-content;max-width:min(280px, calc(100% - 16px));padding:9px 12px;display:grid;gap:3px;background:var(--a-surface-3);border:1px solid var(--a-line);border-radius:12px;box-shadow:var(--a-shadow);font-size:12.5px;line-height:1.4;pointer-events:none;animation:d-diary-rise .18s var(--ease)}
+#p-d-diary .dd-tip b{font-size:13px}
+#p-d-diary .dd-tip span{color:var(--a-muted)}
+#p-d-diary .dd-fn{font-size:11.5px;line-height:1.4}
+#p-d-diary .dd-ems{display:flex;flex-direction:column;gap:8px}
+#p-d-diary .dd-er{display:flex;flex-wrap:wrap;gap:6px}
+#p-d-diary .dd-er .chip[aria-expanded="true"]{background:var(--a-accent-soft);border-color:var(--a-accent);color:var(--a-text)}
+#p-d-diary .dd-er .chip span{font-size:17px;line-height:1}
+#p-d-diary .dd-why{padding:9px 12px;border-radius:12px;background:var(--a-surface-2);font-size:13px;color:var(--a-soft);animation:d-diary-rise .25s var(--ease)}
+#p-d-diary .dd-why ul{margin:4px 0 0;padding-left:18px;color:var(--a-text)}
+#p-d-diary .dd-book{position:relative;perspective:1800px}
+#p-d-diary .dd-page{padding:18px 20px 20px;display:flex;flex-direction:column;gap:16px;outline:0}
+#p-d-diary .dd-ghost{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2;transform-origin:left center;box-shadow:var(--a-shadow)}
+#p-d-diary .dd-book[data-flip="next"] .dd-ghost{animation:d-diary-out .58s var(--ease) both}
+#p-d-diary .dd-book[data-flip="next"] .dd-page:not(.dd-ghost){animation:d-diary-under .58s var(--ease) both}
+#p-d-diary .dd-book[data-flip="prev"] .dd-ghost{z-index:0;box-shadow:none;animation:d-diary-fade .58s linear both}
+#p-d-diary .dd-book[data-flip="prev"] .dd-page:not(.dd-ghost){position:relative;z-index:2;transform-origin:left center;box-shadow:var(--a-shadow);animation:d-diary-in .58s var(--ease) both}
+#p-d-diary .dd-head{display:flex;align-items:center;gap:10px}
+#p-d-diary .dd-date{flex:1;min-width:0}
+#p-d-diary .dd-date h4{margin:0;font:700 22px/1.15 var(--fd);letter-spacing:-.015em}
+#p-d-diary .dd-date span{font-size:12.5px;color:var(--a-muted)}
+#p-d-diary .dd-head .btn{min-height:38px}
+#p-d-diary .dd-hero{display:grid;grid-template-columns:auto minmax(0, 1fr) minmax(0, 250px);gap:12px 14px;align-items:center;padding:14px;border-radius:14px;background:var(--a-surface-2)}
+#p-d-diary .dd-tile{width:76px;height:76px;border-radius:18px;border:1.5px solid transparent;background:var(--tone);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background .35s var(--ease)}
+#p-d-diary .dd-page[data-tone="0"] .dd-tile{border:1.5px dashed var(--a-muted)}
+#p-d-diary .dd-tile b{font:800 34px/1 var(--fd);letter-spacing:-.02em}
+#p-d-diary .dd-tile small{font-size:10.5px;font-weight:600;color:var(--a-soft)}
+#p-d-diary .dd-word{min-width:0}
+#p-d-diary .dd-word strong{display:block;font:700 17px/1.25 var(--fd);letter-spacing:-.01em}
+#p-d-diary .dd-word span{font-size:12.5px}
+#p-d-diary .dd-hero .rina p{background:var(--a-surface);font-size:13px}
+#p-d-diary .dd-pop{animation:d-diary-pop .4s var(--ease)}
+#p-d-diary .dd-slider{grid-column:1 / -1;position:relative;padding-top:12px}
+#p-d-diary .dd-segs{display:grid;grid-template-columns:repeat(10, minmax(0, 1fr));gap:4px;height:12px}
+#p-d-diary .dd-segs i{border-radius:4px;background:var(--a-surface);box-shadow:inset 0 0 0 1px var(--a-line);transition:background .25s var(--ease)}
+#p-d-diary .dd-segs i.on{background:var(--tone);box-shadow:none}
+#p-d-diary .dd-slider input{position:absolute;top:0;left:calc(5% - 15px);width:calc(90% + 30px);height:36px;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:grab}
+#p-d-diary .dd-slider input::-webkit-slider-runnable-track{height:36px;background:transparent}
+#p-d-diary .dd-slider input::-moz-range-track{height:36px;background:transparent}
+#p-d-diary .dd-slider input::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:3px;border-radius:50%;background:var(--a-surface);border:3px solid var(--a-accent);box-shadow:var(--a-shadow)}
+#p-d-diary .dd-slider input::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--a-surface);border:3px solid var(--a-accent)}
+#p-d-diary .dd-slider input.none::-webkit-slider-thumb{border-style:dashed;border-color:var(--a-muted)}
+#p-d-diary .dd-slider input.none::-moz-range-thumb{border-style:dashed;border-color:var(--a-muted)}
+#p-d-diary .dd-sc{display:flex;justify-content:space-between;margin-top:12px;font-size:11px;color:var(--a-muted)}
+#p-d-diary .dd-moods{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#p-d-diary .dd-lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--a-muted);margin-right:6px}
+#p-d-diary .app .chip{min-height:36px;padding:6px 13px}
+#p-d-diary .dd-moods .chip[aria-pressed="true"]{background:color-mix(in srgb, var(--c-mood) 18%, transparent);border-color:var(--c-mood);color:var(--a-text)}
+#p-d-diary .dd-moods .chip[aria-pressed="true"]::before{content:"✓";font-weight:700}
+#p-d-diary .dd-secs{display:flex;flex-direction:column}
+#p-d-diary .dd-sec{display:grid;grid-template-columns:116px minmax(0, 1fr);gap:10px;padding:9px 0;border-top:1px solid var(--a-line)}
+#p-d-diary .dd-sl{display:flex;align-items:center;gap:8px;height:38px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--a-muted)}
+#p-d-diary .dd-sl .dd-i{width:16px;height:16px}
+#p-d-diary [data-sec="sleep"] .dd-sl .dd-i{color:var(--c-sleep)}
+#p-d-diary .dd-el{display:flex;flex-direction:column;gap:2px;min-width:0}
+#p-d-diary .dd-ent{display:flex;align-items:flex-start;gap:2px;min-width:0;border-radius:10px}
+#p-d-diary .dd-txt{flex:1;min-width:0;min-height:38px;text-align:left;background:none;border:1px solid transparent;border-radius:10px;padding:7px 10px;font-size:14.5px;line-height:1.5;color:var(--a-text);cursor:text;overflow-wrap:anywhere;transition:background .2s, border-color .2s}
+#p-d-diary .dd-txt:hover{background:var(--a-surface-2);border-color:var(--a-line)}
+#p-d-diary .dd-x{width:38px;height:38px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:10px;background:none;color:var(--a-muted);opacity:.6;transition:opacity .2s, color .2s, background .2s}
+#p-d-diary .dd-x .dd-i{width:15px;height:15px}
+#p-d-diary .dd-x:hover{opacity:1;color:var(--a-bad);background:var(--a-surface-2)}
+#p-d-diary .dd-flash{animation:d-diary-flash 1s var(--ease)}
+#p-d-diary .dd-form{flex-direction:column;align-items:stretch;gap:8px;padding:10px;background:var(--a-surface-2);border:1px solid var(--a-accent);border-radius:12px;animation:d-diary-rise .25s var(--ease)}
+#p-d-diary .dd-form textarea{width:100%;min-height:68px;resize:vertical;background:var(--a-surface);border:1px solid var(--a-line);border-radius:10px;padding:8px 10px;font-size:14.5px;line-height:1.5;color:var(--a-text)}
+#p-d-diary .dd-pick{display:flex;flex-wrap:wrap;gap:4px}
+#p-d-diary .dd-pick .chip{background:var(--a-surface)}
+#p-d-diary .dd-pick .chip[aria-pressed="true"]{background:var(--a-accent-soft)}
+#p-d-diary .dd-fr{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#p-d-diary .dd-fr .sp{flex:1}
+#p-d-diary .dd-fr .btn{min-height:36px}
+#p-d-diary .dd-hint{font-size:11.5px;color:var(--a-muted)}
+#p-d-diary .dd-add{border-top:1px solid var(--a-line);padding-top:12px}
+#p-d-diary .dd-addbtn{width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--a-line);border-radius:12px;background:none;color:var(--a-accent);font-weight:650;font-size:13.5px;transition:border-color .2s, background .2s}
+#p-d-diary .dd-addbtn:hover{border-color:var(--a-accent);background:var(--a-accent-soft)}
+#p-d-diary .dd-empty{padding:20px 0 8px;text-align:center;color:var(--a-muted);border-top:1px solid var(--a-line)}
+#p-d-diary .dd-undo{position:sticky;bottom:12px;z-index:4;margin-top:10px;display:flex;align-items:center;gap:12px;padding:8px 8px 10px 14px;overflow:hidden;background:var(--a-surface-3);border:1px solid var(--a-line);border-radius:12px;box-shadow:var(--a-shadow);animation:d-diary-rise .3s var(--ease)}
+#p-d-diary .dd-undo span{flex:1;min-width:0}
+#p-d-diary .dd-undo .btn{min-height:36px}
+#p-d-diary .dd-undo i{position:absolute;left:0;bottom:0;width:100%;height:3px;background:var(--a-accent);transform-origin:left;animation:d-diary-bar 6s linear both}
+#p-d-diary .dd-facts{padding:14px}
+#p-d-diary .dd-fl{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+#p-d-diary .dd-fact{flex:1 1 190px}
+#p-d-diary .dd-fact{display:grid;grid-template-columns:auto minmax(0, 1fr) auto;align-items:center;gap:0 9px;min-height:44px;padding:8px 13px;text-align:left;background:var(--a-surface-2);border:1px solid transparent;border-radius:14px;color:var(--a-text);transition:border-color .2s}
+#p-d-diary .dd-fact:hover,#p-d-diary .dd-fact[aria-expanded="true"]{border-color:var(--a-line)}
+#p-d-diary .dd-fact .k{font-size:12.5px;color:var(--a-soft);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#p-d-diary .dd-fact b{font-size:14.5px;font-weight:700;white-space:nowrap}
+#p-d-diary .dd-fact .more{display:none;grid-column:1 / -1;padding-top:5px;font-size:12.5px;line-height:1.45;color:var(--a-soft)}
+#p-d-diary .dd-fact[aria-expanded="true"] .more{display:block;animation:d-diary-rise .25s var(--ease)}
+#p-d-diary [data-k="sleep"] .dot{background:var(--c-sleep)}
+#p-d-diary [data-k="pc"] .dot{background:var(--c-pc)}
+#p-d-diary [data-k="game"] .dot{background:var(--c-game)}
+#p-d-diary [data-k="money"] .dot{background:var(--c-money)}
+#p-d-diary [data-k="habit"] .dot{background:var(--c-habit)}
+#p-d-diary [data-k="plan"] .dot{background:var(--a-accent)}
+#p-d-diary.dd-play .dd-c{animation:d-diary-pop .45s var(--ease) both;animation-delay:calc(var(--i) * 40ms)}
+#p-d-diary.dd-play .st i{animation:d-diary-jump .5s var(--ease) both;animation-delay:calc(var(--i) * 40ms + var(--j) * 80ms + 220ms)}
+#p-d-diary.dd-play .dd-top button{animation:d-diary-rise .4s var(--ease) both;animation-delay:calc(var(--j) * 30ms + 500ms)}
+#p-d-diary.dd-play .dd-segs i.on{animation:d-diary-seg .4s var(--ease) both;animation-delay:calc(var(--i) * 45ms + 150ms)}
+#p-d-diary.dd-play .dd-sec,#p-d-diary.dd-play .dd-fact{animation:d-diary-rise .5s var(--ease) both;animation-delay:calc(var(--i) * 60ms + 120ms)}
+@keyframes d-diary-pop{from{opacity:0;transform:scale(.6)}}
+@keyframes d-diary-jump{0%{opacity:0;scale:.2} 60%{opacity:1;scale:1.25}}
+@keyframes d-diary-seg{from{opacity:.2;transform:scaleY(.2)}}
+@keyframes d-diary-rise{from{opacity:0;transform:translateY(10px)}}
+@keyframes d-diary-flash{from{background:color-mix(in srgb, var(--a-ok) 30%, transparent)}}
+@keyframes d-diary-bar{to{transform:scaleX(0)}}
+@keyframes d-diary-out{60%{opacity:1} 100%{opacity:0;transform:rotateY(-88deg)}}
+@keyframes d-diary-in{0%{opacity:0;transform:rotateY(-88deg)} 40%{opacity:1}}
+@keyframes d-diary-under{from{opacity:.4;transform:translateX(12px)}}
+@keyframes d-diary-fade{to{opacity:0}}
+#p-d-diary .dd-mid{container-type:inline-size}
+@container (max-width:560px){
+#p-d-diary .dd-hero{grid-template-columns:auto minmax(0, 1fr)}
+#p-d-diary .dd-hero .rina{grid-column:1 / -1;order:3}
+#p-d-diary .dd-sec{grid-template-columns:minmax(0, 1fr);gap:0}
+#p-d-diary .dd-sl{height:28px}
+}
+@media (max-width:980px){
+#p-d-diary .dd-grid{grid-template-columns:minmax(0, 1fr)}
+#p-d-diary .dd-left{display:contents}
+#p-d-diary .dd-facts{order:3}
+}
+@media (max-width:820px){
+#p-d-diary .dd-page{padding:14px}
+#p-d-diary .dd-date h4{font-size:18px}
+}
+@media (max-width:520px){
+#p-d-diary .dd-month{padding:10px}
+#p-d-diary .dd-wk,#p-d-diary .dd-cal{gap:4px}
+#p-d-diary .dd-c{border-radius:9px}
+#p-d-diary .dd-c.sm .n{top:3px;left:4px;font-size:10px}
+#p-d-diary .dd-c.now.sm .n{padding:1px 3px;left:2px}
+#p-d-diary .sc{top:2px;right:2px;width:15px;height:15px;font-size:9px}
+}
+</style>
+
+  <script>
+(function(){
+"use strict";
+var root=document.getElementById("p-d-diary");
+if(!root)return;
+var MM=window.MaidMock||{reduce:false,onSeen:function(el,fn){fn();}};
+function $(s,el){return(el||root).querySelector(s);}
+function $$(s,el){return Array.prototype.slice.call((el||root).querySelectorAll(s));}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+var IC={
+star:"M12 4l2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8z",
+moon:"M19 14a7.5 7.5 0 0 1-9-9 7.5 7.5 0 1 0 9 9z",
+food:"M4 11h16a8 8 0 0 1-16 0zM9 7c0-1 1-1 1-2M14 7c0-1 1-1 1-2",
+sport:"M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10",
+heart:"M12 19s-7-4.3-7-9.2A3.8 3.8 0 0 1 12 7.5a3.8 3.8 0 0 1 7 2.3C19 14.7 12 19 12 19z",
+music:"M9 18V6l10-2v12M9 18a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zM19 16a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z",
+pen:"M5 19l1-4L16 5l3 3L9 18z",
+x:"M6 6l12 12M18 6L6 18",l:"M15 5l-7 7 7 7",r:"M9 5l7 7-7 7",plus:"M12 5v14M5 12h14"
+};
+function ic(k){return'<svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="'+IC[k]+'"/></svg>';}
+var SECS=[
+["sum","Итог","star","Как прошёл день в двух словах?"],
+["sleep","Сон","moon","Во сколько легли и встали?"],
+["food","Еда","food","Что ели сегодня?"],
+["sport","Спорт","sport","Зарядка, зал, прогулка?"],
+["health","Здоровье","heart","Как самочувствие?"],
+["hobby","Хобби","music","Чем занимались для души?"],
+["note","Заметки","pen","Что стоит запомнить?"]
+];
+function secOf(k){for(var i=0;i<SECS.length;i++)if(SECS[i][0]===k)return SECS[i];return SECS[6];}
+var MOODS=["Спокойно","Бодро","Радостно","Устало","Тревожно","Грустно","Раздражение"];
+var HAB=["Чтение","Вода","Зарядка"];
+var WD=["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"];
+var WDS=["вс","пн","вт","ср","чт","пт","сб"];
+var WORD=["Без оценки","Тяжёлый день","Так себе","Обычный день","Хороший день","Отличный день"];
+var FACE=["listen","sad","worried","neutral","happy","excited"];
+/* оценка, настроения, сон, ПК, игры (мин), траты, планы сделано и всего, привычки (биты), записи */
+var RAW=[
+[7,"0",490,160,50,640,1,1,7,"sum|Тихое воскресенье. Гуляли в парке два часа, вечером готовил плов.","food|Плов удался, записал рецепт."],
+[6,"3",410,420,0,380,3,4,5,"sum|Понедельник, много созвонов. К вечеру устал, но отчёт сдал."],
+[5,"3",350,450,40,520,2,4,2,"sleep|Лёг в 1:10, встал в 7:00. Голова тяжёлая.","sum|Весь день клонило в сон, работа шла медленно."],
+[7,"1",440,390,0,900,3,3,7,"sport|Бассейн, 40 минут. Проплыл километр.","food|После бассейна съел двойную порцию пасты."],
+[8,"2",430,360,0,1650,2,2,6,"sum|Встретились с Димой и Олей, настольные игры до ночи."],
+[6,"0",400,400,30,450,2,3,3,"hobby|Посмотрел «Дюну». Вторая часть сильнее первой."],
+[9,"2,1",520,40,0,2100,1,1,7,"sum|Поездка за город. Лес, костёр, давно так не отдыхал.","sport|Прошли пешком 12 км."],
+[7,"0",500,120,60,300,0,0,7,"hobby|Дочитал «Пикник на обочине», 35 страниц за вечер."],
+[0,"",420,430,0,410,3,4,4,"note|Позвонить в стоматологию и записаться на чистку."],
+[4,"3,4",380,400,0,760,2,4,2,"health|С утра болит голова, давление 135 на 85. Выпил таблетку.","sum|Работал вполсилы, ушёл пораньше."],
+[3,"3,5",560,90,45,1180,0,2,2,"health|Простуда, температура 37,4. Остался дома.","food|Куриный бульон и чай с лимоном."],
+[5,"3",540,180,90,240,1,2,2,"health|Температуры нет, горло ещё болит."],
+[6,"0",390,470,170,330,3,3,4,"hobby|Весь вечер в «Цивилизации», очнулся в два часа ночи.","sleep|Лёг в 2:10, встал в 8:40."],
+[8,"2",470,60,0,1400,1,1,7,"sum|Обед у родителей. Мама испекла пирог с яблоками."],
+[7,"0,1",480,150,40,560,1,1,7,"sport|Прогулка 9 км вдоль реки.","hobby|Вечером разбирал старые фотографии."],
+[6,"0",425,440,0,470,2,3,6,"sum|Обычный рабочий день. Закрыл две задачи из трёх."],
+[5,"4",370,480,0,390,2,5,2,"sum|Сорвали сроки по проекту, весь день нервничал.","sleep|Лёг в 0:40, встал в 6:50."],
+[0,"",445,410,35,620,2,3,3],
+[7,"1",450,380,0,540,4,4,7,"sport|Зарядка 15 минут и турник во дворе.","food|Обед дома: гречка с курицей."],
+[8,"2",460,350,0,1900,3,3,6,"hobby|Кино с Олей, потом пицца.","sum|Пятница удалась, на работе закрыл все хвосты."],
+[9,"2,0",535,70,0,820,1,1,7,"sum|Лучший день месяца: выспался, гулял, читал.","sleep|Лёг в 23:10, встал в 8:05. Почти 9 часов.","hobby|Сел за гитару, вспомнил две песни."],
+[7,"0",495,140,55,350,1,1,7,"hobby|Начал «Солярис», прочитал 40 страниц.","food|Испёк шарлотку по маминому рецепту."],
+[6,"3",405,455,0,430,3,4,5,"sum|Планёрка затянулась на два часа. Остальное успел.","sport|Зарядка утром, 10 минут."],
+[4,"3,6",345,500,0,290,2,5,1,"sum|Тяжёлый вторник. Совещания до семи, обед пропустил.","health|К вечеру разболелась голова, выпил таблетку.","sleep|Лёг в 1:20, встал в 7:05."],
+[6,"0",465,400,25,980,3,3,7,"sport|В зале час, спина и ноги.","sum|После вчерашнего день показался лёгким."],
+[8,"2,1",450,370,0,1320,3,3,6,"sum|Сдал проект. Отметили с командой в кафе.","food|Ужин в грузинском кафе: хинкали и хачапури."],
+[7,"0,1",440,310,65,1240,3,4,6,"sum|Спокойная пятница. Закрыл отчёт до обеда, вечером прогулка.","sleep|Лёг в 23:40, встал в 7:00. Выспался.","food|Завтрак: овсянка и кофе. Обед: суп и гречка с курицей.","sport|Зарядка 15 минут утром.","note|Купить подарок маме до пятого декабря."]
+];
+var TODAY=27,LAST=30,FUT={28:2,29:1,30:3};
+var uid=0,DAYS={};
+RAW.forEach(function(r,i){
+DAYS[i+1]={s:r[0],m:r[1]?r[1].split(",").map(Number):[],f:r.slice(2,9),
+e:r.slice(9).map(function(x){var p=x.split("|");return{id:++uid,sec:p[0],t:p[1]};})};
+});
+var AV=[0,1,2].map(function(i){var s=0;for(var d=1;d<=TODAY;d++)s+=DAYS[d].f[i];return Math.round(s/TODAY/5)*5;});
+var cur=TODAY,q="",editing=null,adding=false,draftSec="sum",openFact="",undo=null,undoT=0,flipT=0,playT=0,hintT=0,raf=0;
+var appA=$(".app");
+var page=$(".dd-page"),book=$(".dd-book"),cal=$(".dd-cal"),month=$(".dd-month"),factBox=$(".dd-fl");
+var inp=$("#d-diary-q"),resBox=$(".dd-res"),countEl=$(".dd-count"),undoBar=$(".dd-undo");
+function wd(d){return(d-1)%7;}
+function tone(s){return s?Math.ceil(s/2):0;}
+function dur(m){var h=Math.floor(m/60),r=m%60;return(h?h+" ч":"")+(h&&r?" ":"")+(r||!h?r+" мин":"");}
+function rub(n){return n.toLocaleString("ru-RU")+" ₽";}
+function pl(n,f){var a=n%10,b=n%100;return n+" "+(a===1&&b!==11?f[0]:a>=2&&a<=4&&(b<12||b>14)?f[1]:f[2]);}
+function habN(D){var n=0;for(var i=0;i<3;i++)n+=D.f[6]>>i&1;return n;}
+function norm(s){return s.toLowerCase().replace(/ё/g,"е");}
+function hl(t){
+if(q.length<2)return esc(t);
+var re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/[её]/gi,"[её]"),"gi"),out="",last=0,m;
+while((m=re.exec(t))){if(!m[0].length){re.lastIndex++;continue;}out+=esc(t.slice(last,m.index))+"<mark>"+esc(m[0])+"</mark>";last=m.index+m[0].length;}
+return out+esc(t.slice(last));
+}
+function bump(el){if(MM.reduce||!el)return;el.classList.remove("dd-pop");void el.offsetWidth;el.classList.add("dd-pop");}
+/* месяц: эмодзи дня и оценка, как в программе (dayEmoji.ts, dayscore.ts) */
+var RULES=["🎂~день рождения~день рожд|днюх~5","🎉~праздник~праздн|вечеринк|корпоратив~3","✈️~поездка~поездк|самолет|отпуск|путешеств~3",
+"🤒~болел~температур|заболел|простуд|грипп~2","🤕~болела голова~голов\\S* бол|бол\\S* голов|мигрен","🤧~насморк~насморк|кашл|чиха","🦷~зубы~зуб|стоматолог",
+"🩺~врач~врач|доктор|поликлиник|анализ","💊~таблетки~таблетк|лекарств|витамин","🏋️~зал~в зале|штанг|гантел|тренажер","🏃~бег~бегал|пробежк",
+"🏊~плавание~плавал|бассейн","🚶~прогулка~гулял|прогулк","❤️~с девушкой~девушк|свидани~.9","👨‍👩‍👧~семья~мам[аеуы]|родител|бабушк|дедушк~.9",
+"👥~друзья~друз|встретил\\S* с~.9","🎬~фильм, сериал~сериал|фильм|кино|аниме|посмотрел","📚~книга~книг|читал","🎸~музыка~гитар|музык|концерт|песн",
+"💻~работа за ПК~код|программ|сайт|проект","💼~работа~работ|офис|созвон|совещани|дедлайн|клиент","🍕~пицца~пицц","🍔~фастфуд~бургер|шаурм",
+"🍽️~ресторан~ресторан|кафе|доставк","🍳~готовил~готовил|сварил|испек|пожарил","☕~кофе~кофе|капучино|латте","🍺~выпивка~пиво|вино|в баре",
+"🛒~покупки~купил|магазин|покупк|заказал","🧹~уборка~убирал|уборк|помыл|стирк","💰~деньги~зарплат|преми","😴~выспался~отсыпал|выспал",
+"😄~хорошее настроение~отличн|счастлив|радост|кайф|весел","😔~грустно~грустн|тоскл|печаль","😠~злился~злил|бесит|ссор","😩~устал~устал|вымотал|нет сил"
+].map(function(s){s=s.split("~");return[s[0],s[1],new RegExp(s[2]),+s[3]||1];});
+var WHAT={"🎮":"игры","🏃":"спорт"};
+RULES.forEach(function(r){if(!WHAT[r[0]])WHAT[r[0]]=r[1];});
+var SPOTS=[[[52,56,62]],[[34,64,46],[72,36,38]],[[32,68,42],[72,34,34],[74,76,30]],[[28,70,36],[70,30,32],[72,72,32],[42,42,26]],
+[[26,72,32],[66,26,28],[74,58,26],[52,78,26],[40,44,24]],[[24,74,28],[56,26,24],[82,30,22],[78,64,24],[52,80,22],[44,50,22]]];
+var EM={},only="",hits={},pick={d:0,e:""},tipD=0,tipT=0,touch=false;
+var topEl=$(".dd-top"),msEl=$(".dd-ms"),tipEl=$(".dd-tip");
+/* до шести эмодзи дня: слова записей, раздел «Спорт», игры от 45 минут; больше совпадений — выше */
+function emojis(d){
+var D=DAYS[d],m={},out=[],k;
+function add(e,w,s,o,y){
+var c=m[e]||(m[e]={e:e,w:w,s:0,o:o,y:[]});
+c.s+=s;if(!c.y.some(function(x){return x.t===y.t;}))c.y.push(y);
+}
+D.e.forEach(function(x){
+var t=norm(x.t);
+RULES.forEach(function(r,i){
+var g=r[2].exec(t),a,b;
+if(!g)return;
+for(a=g.index,b=a+g[0].length;a>0&&/[а-я\d-]/.test(t[a-1]);a--);
+for(;b<t.length&&/[а-я\d-]/.test(t[b]);b++);
+add(r[0],r[1],r[3],i,{t:x.t,h:x.t.slice(a,b)});
+});
+if(x.sec==="sport")add("🏃","спорт",.5,99,{t:x.t,n:"запись в разделе «Спорт»"});
+});
+if(D.f[2]>=45)add("🎮","играли "+String(Math.round(D.f[2]/6)/10).replace(".",",")+" ч",1+D.f[2]/120,100,{t:"Игры за ПК: "+dur(D.f[2]),n:"за компьютером"});
+for(k in m)out.push(m[k]);
+return out.sort(function(a,b){return b.s-a.s||a.o-b.o;});
+}
+/* наклейки вразброс: у каждого дня свой разброс (от даты), крупная то слева, то справа; с оценкой не заходят под кружок */
+function scatter(d,n,rated,grow){
+var h=2166136261,s="2026-11-"+(d<10?"0":"")+d,i,flip;
+for(i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);
+function rnd(){h=Math.imul(h^h>>>15,2246822507)^Math.imul(h^h>>>13,3266489909);return(h>>>0)/4294967296;}
+flip=n>1&&rnd()<.5;
+return n?SPOTS[n-1].map(function(p,j){
+var x=(flip?100-p[0]:p[0])+(rnd()-.5)*6,y=(flip&&p[1]<50?p[1]+4:p[1])+(rnd()-.5)*6,z=p[2]*(.94+rnd()*.1)*(grow&&!j?1.3:1),r=(rnd()-.5)*36;
+if(rated){z*=.88;if(x+z/2>52&&y-z/2<46){z=Math.min(z,53);y=Math.min(47+z/2,100-z/2);}}
+return[x,y,z,r];
+}):[];
+}
+function dayEm(d){
+var em=EM[d]||[];
+return only&&em.some(function(x){return x.e===only;})?em.filter(function(x){return x.e===only;}).concat(em.filter(function(x){return x.e!==only;})):em;
+}
+function cellLabel(d){
+var D=DAYS[d];
+return d+" ноября, "+WD[wd(d)]+(d>TODAY?", планов: "+(FUT[d]||0):(D.s?", оценка "+D.s+" из 10":", без оценки")+EM[d].map(function(x){return", "+x.e+" "+x.w;}).join(""));
+}
+function cellHTML(d){
+var fut=d>TODAY,s=fut?0:DAYS[d].s,em=fut?[]:dayEm(d).slice(0,6),match=only&&em.length&&em[0].e===only,k=d+5,h="";
+if(fut){h='<span class="pl">';for(var j=0;j<(FUT[d]||0);j++)h+="<u></u>";h+="</span>";}
+else if(em.length)h='<span class="st">'+scatter(d,em.length,s,match).map(function(p,j){
+return'<i data-e="'+em[j].e+'" style="left:'+p[0].toFixed(1)+"%;top:"+p[1].toFixed(1)+"%;font-size:"+(p[2]*1.12).toFixed(1)+"cqw;rotate:"+p[3].toFixed(0)+"deg;z-index:"+(6-j)+";--j:"+j+'">'+em[j].e+"</i>";
+}).join("")+"</span>";
+else if(DAYS[d].e.length)h='<span class="pl"><u></u></span>';
+return'<button type="button" class="dd-c'+(d===TODAY?" now":"")+(em.length||s?" sm":"")+(match?" em":"")+(hits[d]?" hit":"")+'" data-day="'+d+'" aria-pressed="'+(d===cur)+
+'" aria-label="'+cellLabel(d)+'" style="--i:'+(Math.floor(k/7)+k%7)+'"'+(fut?" disabled":"")+'><span class="n">'+d+"</span>"+
+(s?'<span class="sc" data-t="'+tone(s)+'" data-v="'+s+'" aria-hidden="true">'+s+"</span>":"")+h+"</button>";
+}
+function renderCal(){
+var h="",d;
+for(d=1;d<=TODAY;d++)EM[d]=emojis(d);
+for(d=0;d<6;d++)h+="<span></span>";
+for(d=1;d<=LAST;d++)h+=cellHTML(d);
+cal.innerHTML=h;
+renderTop();
+}
+/* строка эмодзи под месяцем: сколько дней с каждым, по убыванию; щелчок подсвечивает эти дни */
+function renderTop(){
+var c={},list=[],n=0,s=0,k=0,d,e,ae=document.activeElement,fo=ae&&ae.dataset?ae.dataset.top:"";
+for(d=1;d<=TODAY;d++){
+EM[d].forEach(function(x){c[x.e]=(c[x.e]||0)+1;});
+if(DAYS[d].e.length)n++;
+if(DAYS[d].s){s+=DAYS[d].s;k++;}
+}
+for(e in c)list.push([e,c[e]]);
+list.sort(function(a,b){return b[1]-a[1];});
+if(only&&!c[only]){only="";renderCal();return;}
+month.classList.toggle("is-em",!!only);
+topEl.innerHTML=list.map(function(x,j){
+return'<button type="button" data-top="'+x[0]+'" aria-pressed="'+(only===x[0])+'" aria-label="'+x[0]+" "+WHAT[x[0]]+": "+pl(x[1],["день","дня","дней"])+'" style="--j:'+Math.min(j,20)+'">'+x[0]+'<small class="num">'+x[1]+"</small></button>";
+}).join("");
+if(fo){var b=$('[data-top="'+fo+'"]',topEl);if(b)b.focus({preventScroll:true});}
+msEl.innerHTML=only?"Дней с "+only+" "+WHAT[only]+": <b>"+c[only]+'</b><button type="button" data-act="unonly" aria-label="Показать все дни">✕</button>'
+:"Дней с записями: <b>"+n+"</b>"+(k?", средняя оценка за месяц: <b>"+(s/k).toFixed(1).replace(".",",")+"</b>":"");
+}
+function setOnly(e){only=only===e?"":e;tip(null);renderCal();}
+function refresh(d,pop){
+EM[d]=emojis(d);
+var c=$('.dd-c[data-day="'+d+'"]',cal),w=document.createElement("div");
+w.innerHTML=cellHTML(d);c.replaceWith(w.firstChild);
+renderTop();
+if(pop)bump($('.dd-c[data-day="'+d+'"] '+pop,cal));
+}
+function markCal(){$$(".dd-c",cal).forEach(function(c){c.setAttribute("aria-pressed",+c.dataset.day===cur);});}
+/* подсказка дня: по наведению, фокусу с клавиатуры и касанию */
+function tip(c,auto){
+clearTimeout(tipT);
+if(!c||c.disabled){tipEl.hidden=true;tipD=0;return;}
+var d=+c.dataset.day,D=DAYS[d],em=EM[d],m,r,w,x,y;
+tipD=d;
+tipEl.innerHTML="<b>"+d+" ноября, "+WDS[wd(d)]+(D.s?" · оценка "+D.s+" из 10":"")+"</b>"+(em.length?em.map(function(e){
+var y0=e.y[0];
+return"<div>"+e.e+" "+esc(e.w)+" <span>— "+(y0.h?"из записи: «"+esc(y0.h)+"»":y0.n)+"</span></div>";
+}).join(""):"<span>"+(D.e.length?"Записей: "+D.e.length+". Эмодзи для них не нашлось.":"В этот день записей нет.")+"</span>");
+tipEl.hidden=false;
+m=month.getBoundingClientRect();r=c.getBoundingClientRect();w=tipEl.offsetWidth;
+x=Math.max(8,Math.min(m.width-w-8,r.left-m.left+r.width/2-w/2));
+y=r.top-m.top-tipEl.offsetHeight-6;
+if(y<4)y=r.bottom-m.top+6;
+tipEl.style.left=x+"px";tipEl.style.top=y+"px";
+if(auto)tipT=setTimeout(function(){tip(null);},3500);
+}
+cal.addEventListener("pointerdown",function(e){touch=e.pointerType==="touch";});
+cal.addEventListener("pointerover",function(e){if(e.pointerType==="touch")return;var c=e.target.closest(".dd-c");if(!c||+c.dataset.day!==tipD)tip(c);});
+cal.addEventListener("pointerleave",function(e){if(e.pointerType!=="touch")tip(null);});
+cal.addEventListener("focusin",function(e){var c=e.target.closest(".dd-c");if(c&&c.matches(":focus-visible"))tip(c);});
+cal.addEventListener("focusout",function(){if(!touch)tip(null);});
+/* страница дня */
+function rinaText(D){
+var f=D.f,s=D.s,sl="<b>"+dur(f[0])+"</b>";
+if(!s)return D.e.length?"Этот день остался без оценки. Потяните ползунок, и я запомню.":"За этот день записей нет. Если что-то вспомните, расскажите, я запишу.";
+if(s<=4)return f[0]<400?"Непростой день. Спали всего "+sl+", усталость могла быть от этого.":"Непростой день. Такие бывают, завтра станет легче.";
+if(s<=6)return"Ровный день. Сон "+sl+", привычки "+habN(D)+" из 3.";
+if(s<=8)return"Хороший день! Сон "+sl+(f[5]?", планы "+f[4]+" из "+f[5]+".":".");
+return f[1]<180?"Чудесный день! Запомню, что вам помогает: сон "+sl+" и мало компьютера.":"Чудесный день! Сон "+sl+", и всё успели.";
+}
+function say(t){var p=$(".rina p",page);if(p)p.innerHTML=t;}
+function chipHTML(S){return'<button type="button" class="chip" data-pick="'+S[0]+'" aria-pressed="'+(S[0]===draftSec)+'">'+S[1]+"</button>";}
+function formHTML(e){
+return'<div class="dd-ent dd-form"'+(e?' data-id="'+e.id+'"':"")+'><div class="dd-pick" role="group" aria-label="Раздел записи">'+SECS.map(chipHTML).join("")+
+'</div><textarea rows="2" aria-label="Текст записи" placeholder="'+secOf(draftSec)[3]+'">'+(e?esc(e.t):"")+
+'</textarea><div class="dd-fr"><span class="dd-hint">Enter сохранит, Esc отменит</span><span class="sp"></span><button type="button" class="btn ghost" data-act="cancel">Отмена</button><button type="button" class="btn primary" data-act="save">'+(e?"Сохранить":"Добавить")+"</button></div></div>";
+}
+function entHTML(e){
+if(editing===e.id)return formHTML(e);
+return'<div class="dd-ent" data-id="'+e.id+'"><button type="button" class="dd-txt" data-act="edit" title="Изменить запись">'+hl(e.t)+'</button><button type="button" class="dd-x" data-act="del" aria-label="Удалить запись">'+ic("x")+"</button></div>";
+}
+function whyHTML(o){
+return'<div class="dd-why">Почему '+o.e+" «"+esc(o.w)+"»:<ul>"+o.y.map(function(y){
+var i=y.h?y.t.indexOf(y.h):-1;
+return"<li>"+(i<0?esc(y.t):esc(y.t.slice(0,i))+"<mark>"+esc(y.h)+"</mark>"+esc(y.t.slice(i+y.h.length)))+"</li>";
+}).join("")+"</ul></div>";
+}
+function emsHTML(d){
+var em=EM[d],o=null;
+if(!em.length)return"";
+em.forEach(function(x){if(pick.d===d&&pick.e===x.e)o=x;});
+return'<div class="dd-ems"><div class="dd-er" role="group" aria-label="Эмодзи дня">'+em.map(function(x,i){
+return'<button type="button" class="chip" data-why="'+i+'" aria-expanded="'+(x===o)+'"><span>'+x.e+"</span>"+esc(x.w)+"</button>";
+}).join("")+"</div>"+(o?whyHTML(o):"")+"</div>";
+}
+function renderPage(){
+var d=cur,D=DAYS[d],s=D.s,t=tone(s),i,n=0,segs="",secs="";
+for(i=1;i<=10;i++)segs+="<i"+(i<=s?' class="on"':"")+' style="--i:'+i+'"></i>';
+SECS.forEach(function(S){
+var list=D.e.filter(function(e){return e.sec===S[0];});
+if(list.length)secs+='<div class="dd-sec" data-sec="'+S[0]+'" style="--i:'+(n++)+'"><div class="dd-sl">'+ic(S[2])+"<span>"+S[1]+'</span></div><div class="dd-el">'+list.map(entHTML).join("")+"</div></div>";
+});
+if(!secs&&!adding)secs='<p class="dd-empty">За этот день записей нет. Добавьте первую прямо здесь.</p>';
+page.dataset.tone=t;
+page.innerHTML=
+'<header class="dd-head"><button type="button" class="dd-nav" data-go="-1" aria-label="Предыдущий день"'+(d<=1?" disabled":"")+">"+ic("l")+'</button><div class="dd-date"><h4>'+d+" ноября</h4><span>"+WD[wd(d)]+(d===TODAY?" · сегодня":"")+"</span></div>"+
+(d!==TODAY?'<button type="button" class="btn ghost" data-act="today">Сегодня</button>':"")+'<button type="button" class="dd-nav" data-go="1" aria-label="Следующий день"'+(d>=TODAY?" disabled":"")+">"+ic("r")+"</button></header>"+emsHTML(d)+
+'<div class="dd-hero"><div class="dd-tile"><b class="num">'+(s||"?")+'</b><small>из 10</small></div><div class="dd-word"><strong>'+WORD[t]+'</strong><span class="muted">'+(s?"Оценка дня":"Потяните ползунок")+"</span></div>"+
+'<div class="rina"><img src="maid/'+FACE[t]+'.webp" alt="Рина" width="64" height="68"><p>'+rinaText(D)+"</p></div>"+
+'<div class="dd-slider"><div class="dd-segs" aria-hidden="true">'+segs+'</div><input type="range" min="1" max="10" step="1" value="'+(s||5)+'" aria-label="Оценка дня от 1 до 10"'+(s?"":' class="none"')+'><div class="dd-sc"><span>1 · тяжёлый</span><span>10 · отличный</span></div></div></div>'+
+'<div class="dd-moods" role="group" aria-label="Настроение"><span class="dd-lbl">Настроение</span>'+MOODS.map(function(m,k){return'<button type="button" class="chip" data-mood="'+k+'" aria-pressed="'+(D.m.indexOf(k)>=0)+'">'+m+"</button>";}).join("")+"</div>"+
+'<div class="dd-secs">'+secs+"</div>"+
+'<div class="dd-add">'+(adding?formHTML(null):'<button type="button" class="dd-addbtn" data-act="add">'+ic("plus")+"Добавить запись</button>")+"</div>";
+}
+function setScore(v){
+var D=DAYS[cur],old=tone(D.s),t=tone(v);
+cancelAnimationFrame(raf);$$(".sc",cal).forEach(function(x){x.textContent=x.dataset.v;});
+$(".dd-tile b",page).textContent=v;
+if(D.s===v)return;
+D.s=v;page.dataset.tone=t;
+$(".dd-word strong",page).textContent=WORD[t];
+$(".dd-word span",page).textContent="Оценка дня";
+$$(".dd-segs i",page).forEach(function(el,i){el.classList.toggle("on",i<v);});
+$(".dd-slider input",page).classList.remove("none");
+if(t!==old){var img=$(".rina img",page);img.src="maid/"+FACE[t]+".webp";bump(img);bump($(".dd-tile",page));}
+say("Записала: <b>"+v+" из 10</b>. "+rinaText(D));
+refresh(cur,".sc");
+}
+function focusForm(){var ta=$(".dd-form textarea",page);if(ta){ta.focus({preventScroll:true});ta.setSelectionRange(ta.value.length,ta.value.length);}}
+function flash(id){var el=$('.dd-ent[data-id="'+id+'"]',page);if(el&&!MM.reduce)el.classList.add("dd-flash");}
+function save(){
+var ta=$(".dd-form textarea",page),D=DAYS[cur],wasNew=!editing,v,e,i;
+if(!ta)return;
+v=ta.value.trim();
+if(!v){ta.focus();return;}
+if(editing){for(i=0;i<D.e.length;i++)if(D.e[i].id===editing)e=D.e[i];e.t=v;e.sec=draftSec;}
+else{e={id:++uid,sec:draftSec,t:v};D.e.push(e);}
+editing=null;adding=false;
+refresh(cur,".st");renderPage();flash(e.id);
+say(wasNew?"Записала в раздел «"+secOf(e.sec)[1]+"».":"Поправила запись.");
+if(q)search(true);
+}
+function cancel(){editing=null;adding=false;renderPage();}
+function del(id){
+var D=DAYS[cur],i;
+for(i=0;i<D.e.length;i++)if(D.e[i].id===id)break;
+if(i>=D.e.length)return;
+undo={day:cur,idx:i,e:D.e.splice(i,1)[0]};
+editing=null;refresh(cur);renderPage();
+undoBar.innerHTML='<span>Запись удалена</span><button type="button" class="btn" data-act="undo">Отменить</button><i></i>';
+undoBar.hidden=true;void undoBar.offsetWidth;undoBar.hidden=false;
+clearTimeout(undoT);undoT=setTimeout(function(){undo=null;undoBar.hidden=true;},6000);
+if(q)search(true);
+}
+function unDel(){
+if(!undo)return;
+var u=undo;undo=null;clearTimeout(undoT);undoBar.hidden=true;
+DAYS[u.day].e.splice(u.idx,0,u.e);refresh(u.day,".st");
+if(cur!==u.day)go(u.day);else renderPage();
+flash(u.e.id);say("Вернула запись на место.");
+if(q)search(true);
+}
+/* факты дня */
+function cmp(v,a){var df=v-a;return Math.abs(df)<15?"Как обычно. В среднем за месяц "+dur(a)+".":"На "+dur(Math.abs(df))+(df>0?" больше":" меньше")+" обычного. В среднем "+dur(a)+".";}
+function renderFacts(){
+var D=DAYS[cur],f=D.f,tr=Math.round(f[3]*.28/10)*10,rows=[
+["sleep","Сон",dur(f[0]),cmp(f[0],AV[0])],
+["pc","Компьютер",dur(f[1]),cmp(f[1],AV[1])],
+f[2]?["game","Игры",dur(f[2]),cmp(f[2],AV[2])]:null,
+["money","Траты",rub(f[3]),"Еда "+rub(f[3]-tr)+", транспорт "+rub(tr)+"."],
+["plan","Планы",f[5]?f[4]+" из "+f[5]:"нет",!f[5]?"На этот день планов не было.":f[4]===f[5]?"Всё, что было намечено, сделано.":"Не сделано: "+(f[5]-f[4])+". Можно перенести на другой день."],
+["habit","Привычки",habN(D)+" из 3",HAB.map(function(h,i){return h+(f[6]>>i&1?": сделано":": пропуск");}).join(" · ")]
+].filter(Boolean);
+factBox.innerHTML=rows.map(function(r,i){
+return'<button type="button" class="dd-fact" data-k="'+r[0]+'" aria-expanded="'+(openFact===r[0])+'" style="--i:'+i+'"><i class="dot"></i><span class="k">'+r[1]+'</span><b class="num">'+r[2]+'</b><span class="more">'+r[3]+"</span></button>";
+}).join("");
+}
+/* листание */
+function flipEnd(){clearTimeout(flipT);book.removeAttribute("data-flip");$$(".dd-ghost",book).forEach(function(g){g.remove();});}
+function go(d){
+if(d<1||d>TODAY||d===cur)return;
+var dir=d>cur?"next":"prev",ae=document.activeElement,back=ae&&page.contains(ae)?(ae.dataset.go||"0"):null,ghost=null;
+flipEnd();editing=null;adding=false;
+if(!MM.reduce){
+ghost=page.cloneNode(true);ghost.classList.add("dd-ghost");ghost.setAttribute("aria-hidden","true");ghost.setAttribute("inert","");ghost.removeAttribute("tabindex");
+book.appendChild(ghost);
+}
+cur=d;renderPage();renderFacts();markCal();
+if(back!==null){var b=$('[data-go="'+back+'"]:not(:disabled)',page)||page;b.focus({preventScroll:true});}
+if(ghost){book.setAttribute("data-flip",dir);flipT=setTimeout(flipEnd,640);}
+}
+/* поиск */
+function search(keep){
+q=inp.value.trim();
+var on=q.length>=2,res=[],hit={},days=0,n=norm(q),d;
+if(on)for(d=TODAY;d>=1;d--)DAYS[d].e.forEach(function(e){if(norm(e.t).indexOf(n)>=0){res.push([d,e]);if(!hit[d]){hit[d]=1;days++;}}});
+$(".dd-bar .dd-x").hidden=!inp.value;
+month.classList.toggle("is-find",on&&res.length>0);
+hits=hit;tip(null);
+$$(".dd-c",cal).forEach(function(c){c.classList.toggle("hit",!!hit[c.dataset.day]);});
+countEl.textContent=!on?"":res.length?"Найдено: "+pl(res.length,["запись","записи","записей"])+" в "+days+(days%10===1&&days%100!==11?" дне":" днях"):"Ничего не нашлось";
+resBox.innerHTML=res.length?res.map(function(r){
+var D=DAYS[r[0]];
+return'<button type="button" class="dd-r" data-res="'+r[0]+'"><i data-tone="'+tone(D.s)+'">'+(D.s||"?")+"</i><small>"+r[0]+" ноября, "+WDS[wd(r[0])]+" · "+secOf(r[1].sec)[1]+"</small><span>"+hl(r[1].t)+"</span></button>";
+}).join(""):"<p>Таких слов в дневнике нет. Попробуйте другое слово или его часть.</p>";
+if(!keep)resBox.hidden=!on;
+if(!keep&&!editing&&!adding)renderPage();
+}
+/* события */
+root.addEventListener("click",function(ev){
+var t=ev.target,b;
+if(!t.closest(".dd-bar"))resBox.hidden=true;
+if((b=t.closest("[data-top]")))return setOnly(b.dataset.top);
+if((b=t.closest(".dd-c"))){
+var pe=t.closest("[data-e]"),d=+b.dataset.day;
+pick={d:d,e:pe?pe.dataset.e:""};
+if(d===cur)renderPage();else go(d);
+if(touch)tip($('.dd-c[data-day="'+d+'"]',cal),true);
+return;
+}
+if((b=t.closest("[data-why]"))){
+var x=EM[cur][+b.dataset.why];
+pick={d:cur,e:pick.d===cur&&pick.e===x.e?"":x.e};
+renderPage();$('[data-why="'+b.dataset.why+'"]',page).focus({preventScroll:true});return;
+}
+if((b=t.closest("[data-go]")))return go(cur+ +b.dataset.go);
+if((b=t.closest("[data-res]"))){resBox.hidden=true;if(+b.dataset.res===cur)renderPage();else go(+b.dataset.res);return;}
+if((b=t.closest("[data-mood]"))){
+var D=DAYS[cur],k=+b.dataset.mood,i=D.m.indexOf(k);
+if(i>=0)D.m.splice(i,1);else D.m.push(k);
+b.setAttribute("aria-pressed",i<0);return;
+}
+if((b=t.closest("[data-pick]"))){
+draftSec=b.dataset.pick;
+$$("[data-pick]",page).forEach(function(c){c.setAttribute("aria-pressed",c===b);});
+var ta=$(".dd-form textarea",page);ta.placeholder=secOf(draftSec)[3];ta.focus({preventScroll:true});return;
+}
+if((b=t.closest(".dd-fact"))){
+openFact=openFact===b.dataset.k?"":b.dataset.k;
+$$(".dd-fact",factBox).forEach(function(c){c.setAttribute("aria-expanded",c.dataset.k===openFact);});return;
+}
+if(t.matches(".dd-slider input")&&!DAYS[cur].s)return setScore(+t.value);
+if(!(b=t.closest("[data-act]")))return;
+var act=b.dataset.act,ent=b.closest(".dd-ent"),id=ent?+ent.dataset.id:0;
+if(act==="today")go(TODAY);
+else if(act==="edit"){editing=id;adding=false;draftSec=DAYS[cur].e.filter(function(e){return e.id===id;})[0].sec;renderPage();focusForm();}
+else if(act==="del")del(id);
+else if(act==="save")save();
+else if(act==="cancel")cancel();
+else if(act==="undo")unDel();
+else if(act==="add"){
+var have={};DAYS[cur].e.forEach(function(e){have[e.sec]=1;});
+draftSec=(SECS.filter(function(S){return!have[S[0]];})[0]||SECS[6])[0];
+adding=true;editing=null;renderPage();focusForm();
+}
+else if(act==="clear"){inp.value="";search();inp.focus();}
+else if(act==="unonly"){setOnly(only);if(topEl.firstChild)topEl.firstChild.focus();}
+else if(act==="month"){var hint=$(".dd-mhint");hint.hidden=false;clearTimeout(hintT);hintT=setTimeout(function(){hint.hidden=true;},2600);}
+});
+root.addEventListener("input",function(ev){
+if(ev.target===inp)search();
+else if(ev.target.matches(".dd-slider input"))setScore(+ev.target.value);
+});
+inp.addEventListener("focus",function(){if(q.length>=2)resBox.hidden=false;});
+root.addEventListener("keydown",function(ev){
+var t=ev.target,tag=t.tagName;
+if(tag==="TEXTAREA"){
+if(ev.key==="Enter"&&!ev.shiftKey){ev.preventDefault();save();}
+else if(ev.key==="Escape"){cancel();page.focus({preventScroll:true});}
+return;
+}
+if(t===inp){
+if(ev.key==="Escape"){if(!resBox.hidden)resBox.hidden=true;else{inp.value="";search();}}
+else if(ev.key==="Enter"){var first=$("[data-res]",resBox);if(first)first.click();}
+return;
+}
+if(ev.key==="Escape")tip(null);
+if(tag==="INPUT"||!appA.contains(t)||t.closest(".dd-cal"))return;
+if(ev.key==="ArrowLeft"){ev.preventDefault();go(cur-1);}
+else if(ev.key==="ArrowRight"){ev.preventDefault();go(cur+1);}
+});
+/* появление */
+function play(){
+clearTimeout(playT);cancelAnimationFrame(raf);flipEnd();tip(null);
+root.classList.remove("dd-play");
+var b=$(".dd-tile b",page),s=DAYS[cur].s,sc=$$(".sc",cal),t0;
+function fin(){if(s)b.textContent=s;sc.forEach(function(x){x.textContent=x.dataset.v;});}
+fin();
+if(MM.reduce)return;
+void root.offsetWidth;root.classList.add("dd-play");
+playT=setTimeout(function(){root.classList.remove("dd-play");},1800);
+t0=performance.now();
+(function step(now){
+var e=now-t0;
+if(s)b.textContent=Math.max(1,Math.round(s*Math.min(1,e/650)));
+sc.forEach(function(x){var p=Math.min(1,Math.max(0,(e-x.parentNode.style.getPropertyValue("--i")*40-250)/600));x.textContent=Math.max(1,Math.round(x.dataset.v*p));});
+if(e<1500)raf=requestAnimationFrame(step);else fin();
+})(t0);
+}
+renderCal();renderPage();renderFacts();
+MM.onSeen(root,play);
+root.addEventListener("replay",play);
+})();
+</script>
+</article>

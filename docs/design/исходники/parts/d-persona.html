@@ -1,0 +1,633 @@
+<article class="piece" id="p-d-persona">
+  <header>
+    <p class="eyebrow">Экран · Рина → Характер и вид</p>
+    <h2>Гримёрка Рины и её день на одной шкале</h2>
+    <p>Всё, что делает Рину вашей, собрано в одном месте: характер, внешность, цвет программы и распорядок. Каждый выбор сразу видно на живой Рине. Пять отдельных полей времени заменены одной шкалой суток, где метки двигаются пальцем.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="seg dp-var" role="group" aria-label="Вариант экрана">
+    <button type="button" data-var="a" aria-pressed="true">Вариант А · Гримёрка</button>
+    <button type="button" data-var="b" aria-pressed="false">Вариант Б · Знакомство за 4 шага</button>
+  </div>
+  <p class="dp-advice">Советую оба сразу, у них разная работа. Гримёрка нужна каждый день, когда хочется что-то поправить. Знакомство показывается один раз, при первом запуске, и заполняет ту же гримёрку.</p>
+
+  <!-- ВАРИАНТ А -->
+  <div class="app" data-hub="rina" data-tab="Характер и вид" data-title="Рина" data-v="a">
+    <div class="dp-room">
+      <section class="dp-stage card" aria-label="Предпросмотр Рины">
+        <div class="dp-bubble" aria-live="polite"><span class="dp-say"></span><i class="dp-caret" aria-hidden="true"></i></div>
+        <div class="dp-pic">
+          <span class="dp-flash" aria-hidden="true"></span>
+          <img class="dp-img" src="maid/look/hello-red-green.webp" width="240" height="256" alt="Рина в выбранном образе">
+        </div>
+        <p class="dp-plate"><b>Рина</b> <span class="dp-sum muted"></span></p>
+      </section>
+
+      <div class="dp-side">
+        <section class="card" aria-labelledby="d-persona-h1">
+          <h4 class="card-t" id="d-persona-h1">Характер</h4>
+          <p class="dp-q muted">Как она ответит на «Ещё одну серию?»</p>
+          <div class="dp-cards" role="group" aria-label="Характер"></div>
+        </section>
+
+        <section class="card" aria-labelledby="d-persona-h2">
+          <h4 class="card-t" id="d-persona-h2">Внешность и цвет</h4>
+          <div class="dp-line"><span class="dp-lbl">Волосы</span><div class="dp-sw" data-k="hair" role="group" aria-label="Цвет волос"></div><span class="dp-val dp-hv"></span></div>
+          <div class="dp-line"><span class="dp-lbl">Глаза</span><div class="dp-sw" data-k="eye" role="group" aria-label="Цвет глаз"></div><span class="dp-val dp-ev"></span></div>
+          <div class="dp-line"><span class="dp-lbl">Акцент</span><div class="dp-sw" data-k="acc" role="group" aria-label="Цвет акцента программы"></div><span class="dp-val dp-av"></span></div>
+        </section>
+
+        <section class="card" aria-labelledby="d-persona-h3">
+          <h4 class="card-t" id="d-persona-h3">Как обращаться к вам</h4>
+          <div class="dp-addr">
+            <div class="seg" role="group" aria-label="Обращение">
+              <button type="button" data-addr="m" aria-pressed="true">Хозяин</button>
+              <button type="button" data-addr="f" aria-pressed="false">Хозяйка</button>
+              <button type="button" data-addr="n" aria-pressed="false">По имени</button>
+            </div>
+            <input class="dp-name" id="d-persona-name" type="text" value="Саша" maxlength="20" aria-label="Ваше имя" hidden>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <section class="card dp-day" aria-labelledby="d-persona-h4">
+      <div class="dp-dayhead">
+        <div>
+          <h4 class="card-t" id="d-persona-h4">День Рины</h4>
+          <p class="muted">Тяните метку или нажмите на неё и двигайте стрелками. Шаг 15 минут.</p>
+        </div>
+        <button type="button" class="dp-quiet" aria-pressed="true"><span class="dp-tg" aria-hidden="true"></span><span><b>Тихие часы</b><small class="dp-qt">с отбоя до подъёма</small></span></button>
+      </div>
+      <div class="dp-scroll">
+        <div class="dp-tl">
+          <div class="dp-track">
+            <span class="dp-night dp-n1"></span><span class="dp-night dp-n2"></span>
+            <span class="dp-nlab">тихие часы</span>
+          </div>
+          <div class="dp-ticks" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="dp-legend"></div>
+      <div class="rina">
+        <img src="maid/think.webp" alt="" width="64" height="68">
+        <p>Вы обычно садитесь за компьютер около <b>8:40</b>, а утренний список приходит в 8:00, пока вы ещё завтракаете. <span class="dp-tip">Перенести его на 8:45?</span> <button type="button" class="btn dp-fix">Перенести</button></p>
+      </div>
+    </section>
+
+    <div class="dp-toast" role="status" aria-live="polite">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      <span class="dp-tt">Сохранено</span>
+      <button type="button" class="dp-undo">Отменить</button>
+    </div>
+  </div>
+
+  <!-- ВАРИАНТ Б -->
+  <div class="app plain dp-wiz" data-v="b" hidden>
+    <div class="dp-wtop">
+      <p class="dp-wstep muted"></p>
+      <div class="dp-prog" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="dp-wbody">
+      <div class="dp-wrina">
+        <img class="dp-wimg" src="maid/look/hello-red-green.webp" width="150" height="160" alt="Рина">
+        <p class="dp-wsay" aria-live="polite"></p>
+      </div>
+      <div class="dp-wmain"></div>
+    </div>
+    <div class="dp-wnav">
+      <button type="button" class="btn ghost dp-back">Назад</button>
+      <button type="button" class="btn primary dp-next">Дальше</button>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Характер, волосы, глаза, цвет программы и обращение теперь на одном экране. Раньше они лежали в трёх местах, акцент был только в программе на ПК.</li>
+      <li>Каждый характер показан ответом на один и тот же вопрос: разницу видно сразу, без чтения описаний.</li>
+      <li>«День Рины»: подъём, утренний список, привычки, «что завтра», итог и отбой на одной шкале. Сразу видно, что подъём и утренний список стоят рядом и чем они отличаются. Метки не перескакивают друг через друга.</li>
+      <li>Тихие часы привязаны к отбою и подъёму и видны на шкале цветом сна.</li>
+      <li>Один способ сказать «Сохранено»: плашка внизу окна с кнопкой «Отменить». Смену характера теперь можно отменить.</li>
+      <li>Вариант Б: мастер на 4 шага для первого запуска, заполняет те же настройки.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>При появлении Рина мягко выходит, облачко печатает фразу, метки дня разъезжаются от 04:00 по своим местам: видно, что это одна шкала.</li>
+      <li>Смена цвета волос, глаз или акцента: мягкая вспышка нового цвета и Рина машет. Так понятно, что изменилось.</li>
+      <li>Смена характера или обращения: облачко стирается и печатает фразу заново новым голосом.</li>
+      <li>Плашка «Сохранено» въезжает снизу и уходит сама через 5 секунд.</li>
+      <li>В мастере шаги сменяются коротким сдвигом, полоса прогресса заполняется.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Есть: характер, волосы, глаза и все времена в /api/settings; подъём, отбой и обращение в /api/you; 24 картинки внешности.</li>
+      <li>Дописать: отдать акцент сайту (сейчас он хранится только в программе на ПК) и хранить его в учётной записи.</li>
+      <li>Дописать: тихие часы как настройку на сервере; сейчас отдельного поля нет.</li>
+      <li>Дописать: шкалу дня, проверку порядка меток и общую плашку сохранения с отменой (запомнить прежнее значение).</li>
+      <li>Совет Рины «перенести список» требует среднего времени первого включения ПК: данные о времени за ПК уже собираются.</li>
+      <li>Мастер: признак «знакомство пройдено» у пользователя.</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-persona [hidden] { display: none !important; }
+#p-d-persona .dp-var { display: inline-flex; align-self: flex-start; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+#p-d-persona .dp-var button { background: none; border: 0; border-radius: 9px; padding: 7px 14px; min-height: 36px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+#p-d-persona .dp-var button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+#p-d-persona .dp-advice { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
+
+#p-d-persona .dp-room { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 14px; align-items: start; }
+#p-d-persona .dp-stage { position: sticky; top: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 14px 14px; background: radial-gradient(120% 70% at 50% 100%, var(--a-accent-soft), transparent 70%), var(--a-surface); transition: background .5s var(--ease); }
+#p-d-persona .dp-bubble { align-self: stretch; position: relative; background: var(--a-surface-2); border-radius: 16px; padding: 11px 14px; min-height: 92px; font-size: 14.5px; line-height: 1.45; color: var(--a-text); }
+#p-d-persona .dp-bubble::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; background: var(--a-surface-2); transform: translateX(-50%) rotate(45deg); border-radius: 3px; }
+#p-d-persona .dp-caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--a-accent); opacity: 0; }
+#p-d-persona .dp-bubble.typing .dp-caret { opacity: 1; }
+#p-d-persona .dp-pic { position: relative; width: 240px; max-width: 100%; aspect-ratio: 360 / 384; }
+#p-d-persona .dp-img { position: relative; width: 100%; height: auto; display: block; transform-origin: 50% 95%; filter: drop-shadow(0 10px 14px color-mix(in srgb, var(--a-text) 12%, transparent)); }
+#p-d-persona .dp-img.wave, #p-d-persona .dp-wimg.wave { animation: d-persona-wave .8s var(--ease); }
+#p-d-persona .dp-img.pop { animation: d-persona-in .6s var(--ease); }
+#p-d-persona .dp-flash { position: absolute; inset: -8%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--a-accent) 55%, transparent), transparent 65%); opacity: 0; pointer-events: none; }
+#p-d-persona .dp-flash.go { animation: d-persona-flash .7s var(--ease); }
+#p-d-persona .dp-plate { font-size: 13px; text-align: center; }
+#p-d-persona .dp-plate b { font: 700 15px var(--fd); margin-right: 4px; }
+
+#p-d-persona .dp-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+#p-d-persona .dp-q { font-size: 13px; margin: -4px 0 10px; }
+#p-d-persona .dp-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+#p-d-persona .dp-card { text-align: left; background: var(--a-surface-2); border: 1.5px solid transparent; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; position: relative; transition: border-color .25s var(--ease), background .25s var(--ease); }
+#p-d-persona .dp-card:hover { border-color: var(--a-line); }
+#p-d-persona .dp-card[aria-pressed="true"] { border-color: var(--a-accent); background: var(--a-accent-soft); }
+#p-d-persona .dp-card b { font-size: 14px; padding-right: 22px; }
+#p-d-persona .dp-card small { color: var(--a-muted); font-size: 12px; }
+#p-d-persona .dp-card q { quotes: none; font-size: 13px; color: var(--a-soft); background: var(--a-surface); border-radius: 10px 10px 10px 3px; padding: 6px 9px; }
+#p-d-persona .dp-card[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: var(--a-accent-strong); color: var(--a-on-accent); font-size: 12px; display: grid; place-items: center; }
+
+#p-d-persona .dp-line { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 0; }
+#p-d-persona .dp-line + .dp-line { border-top: 1px solid var(--a-line); }
+#p-d-persona .dp-lbl { font-size: 13px; color: var(--a-soft); font-weight: 600; }
+#p-d-persona .dp-val { font-size: 12.5px; color: var(--a-muted); white-space: nowrap; }
+#p-d-persona .dp-sw { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+#p-d-persona .dp-dot { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--a-line); padding: 0; background-color: var(--a-surface-2); background-repeat: no-repeat; position: relative; transition: transform .2s var(--ease), border-color .2s var(--ease); }
+#p-d-persona .dp-dot:hover { transform: scale(1.06); }
+#p-d-persona .dp-dot[aria-pressed="true"] { border-color: var(--a-accent); box-shadow: 0 0 0 3px var(--a-accent-soft); }
+#p-d-persona .dp-dot[data-acc] span { position: absolute; inset: 5px; border-radius: 50%; }
+#p-d-persona .dp-dot[data-acc="violet"] span { background: var(--c-sleep); }
+#p-d-persona .dp-dot[data-acc="rose"] span { background: var(--c-mood); }
+#p-d-persona .dp-dot[data-acc="sky"] span { background: var(--c-pc); }
+#p-d-persona .dp-dot[data-acc="mint"] span { background: var(--c-habit); }
+#p-d-persona .dp-dot[data-acc="amber"] span { background: var(--c-money); }
+#p-d-persona .dp-addr { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+#p-d-persona .dp-addr .seg button { padding: 7px 14px; min-height: 36px; }
+#p-d-persona .dp-name { background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 10px; padding: 7px 12px; min-height: 38px; width: 150px; max-width: 100%; color: var(--a-text); }
+
+#p-d-persona .dp-day { display: flex; flex-direction: column; gap: 12px; }
+#p-d-persona .dp-dayhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+#p-d-persona .dp-dayhead .card-t { margin-bottom: 4px; }
+#p-d-persona .dp-dayhead p { font-size: 13px; }
+#p-d-persona .dp-quiet { display: flex; align-items: center; gap: 10px; background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 12px; padding: 7px 12px; text-align: left; min-height: 44px; }
+#p-d-persona .dp-quiet b { font-size: 13px; display: block; }
+#p-d-persona .dp-quiet small { color: var(--a-muted); font-size: 12px; }
+#p-d-persona .dp-tg { width: 36px; height: 20px; border-radius: 99px; background: var(--a-surface-3); position: relative; flex: none; transition: background .25s var(--ease); }
+#p-d-persona .dp-tg::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--a-surface); transition: transform .25s var(--ease); }
+#p-d-persona .dp-quiet[aria-pressed="true"] .dp-tg { background: var(--c-sleep); }
+#p-d-persona .dp-quiet[aria-pressed="true"] .dp-tg::after { transform: translateX(16px); }
+
+#p-d-persona .dp-scroll { overflow-x: auto; padding-bottom: 4px; margin: 0 -4px; }
+#p-d-persona .dp-tl { position: relative; min-width: 620px; padding: 132px 20px 0; }
+#p-d-persona .dp-track { position: relative; height: 14px; border-radius: 99px; background: var(--a-surface-3); touch-action: none; }
+#p-d-persona .dp-night { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--c-sleep) 45%, transparent); transition: opacity .3s var(--ease); }
+#p-d-persona .dp-n1 { left: 0; border-radius: 99px 0 0 99px; }
+#p-d-persona .dp-n2 { right: 0; border-radius: 0 99px 99px 0; }
+#p-d-persona .dp-off .dp-night { opacity: .25; }
+#p-d-persona .dp-nlab { position: absolute; right: 6px; top: 20px; font-size: 11px; color: var(--a-muted); }
+#p-d-persona .dp-ticks { position: relative; height: 34px; }
+#p-d-persona .dp-ticks span { position: absolute; top: 6px; transform: translateX(-50%); font-size: 11px; color: var(--a-muted); font-variant-numeric: tabular-nums; }
+#p-d-persona .dp-ticks span::before { content: ""; display: block; width: 1px; height: 5px; margin: 0 auto 2px; background: var(--a-line); }
+#p-d-persona .dp-h { position: absolute; bottom: 0; width: 0; height: 0; z-index: 1; outline: none; }
+#p-d-persona .dp-h.on { z-index: 3; }
+#p-d-persona .dp-anim .dp-h, #p-d-persona .dp-anim .dp-night { transition: left .8s var(--ease), right .8s var(--ease), width .8s var(--ease); }
+#p-d-persona .dp-knob { position: absolute; left: -15px; top: -22px; width: 30px; height: 30px; border-radius: 50%; background: var(--a-surface); border: 2.5px solid var(--a-accent); display: grid; place-items: center; font: 700 12px var(--f); color: var(--a-text); cursor: grab; touch-action: none; box-shadow: 0 3px 8px color-mix(in srgb, var(--a-text) 18%, transparent); transition: transform .15s var(--ease); }
+#p-d-persona .dp-knob::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+#p-d-persona .dp-h.sleep .dp-knob { border-color: var(--c-sleep); }
+#p-d-persona .dp-h.on .dp-knob { background: var(--a-accent-strong); color: var(--a-on-accent); transform: scale(1.12); }
+#p-d-persona .dp-h.sleep.on .dp-knob { background: var(--c-sleep); }
+#p-d-persona .dp-h:focus-visible .dp-knob { outline: 2px solid var(--a-accent); outline-offset: 3px; }
+#p-d-persona .dp-h.drag .dp-knob { cursor: grabbing; }
+#p-d-persona .dp-stem { position: absolute; left: -1px; width: 2px; bottom: 9px; background: var(--a-line); }
+#p-d-persona .dp-tag { position: absolute; transform: translateX(-50%); background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 9px; padding: 3px 8px; white-space: nowrap; font-size: 11.5px; color: var(--a-soft); line-height: 1.25; cursor: grab; }
+#p-d-persona .dp-tag b { display: block; font-size: 13.5px; color: var(--a-text); font-variant-numeric: tabular-nums; }
+#p-d-persona .dp-tag.l { transform: none; left: -12px; }
+#p-d-persona .dp-tag.r { transform: translateX(-100%); left: 12px; }
+#p-d-persona .dp-h.on .dp-tag { border-color: var(--a-accent); }
+#p-d-persona .dp-h.on .dp-stem { background: var(--a-accent); }
+
+#p-d-persona .dp-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 8px; }
+#p-d-persona .dp-li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; background: var(--a-surface-2); border: 1px solid transparent; border-radius: 12px; padding: 6px 6px 6px 10px; transition: border-color .2s var(--ease); }
+#p-d-persona .dp-li.on { border-color: var(--a-accent); }
+#p-d-persona .dp-li i { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--a-accent); display: grid; place-items: center; font: 700 11px var(--f); font-style: normal; }
+#p-d-persona .dp-li.sleep i { border-color: var(--c-sleep); }
+#p-d-persona .dp-li span { min-width: 0; font-size: 13px; font-weight: 600; }
+#p-d-persona .dp-li span small { display: block; font-weight: 400; color: var(--a-muted); font-size: 11.5px; }
+#p-d-persona .dp-li b { font: 700 15px var(--f); font-variant-numeric: tabular-nums; min-width: 46px; text-align: right; }
+#p-d-persona .dp-st { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface); font-size: 17px; line-height: 1; }
+#p-d-persona .dp-st:hover { border-color: var(--a-accent); }
+#p-d-persona .dp-st:disabled { opacity: .4; cursor: default; }
+#p-d-persona .dp-fix { margin-left: 4px; padding: 5px 11px; }
+#p-d-persona .dp-fix:disabled { opacity: .6; cursor: default; }
+
+#p-d-persona .dp-toast { position: absolute; left: 50%; bottom: 18px; z-index: 5; display: flex; align-items: center; gap: 10px; max-width: calc(100% - 32px); background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 7px 8px 7px 12px; font-size: 13px; box-shadow: var(--a-shadow); transform: translate(-50%, 140%); opacity: 0; pointer-events: none; transition: transform .35s var(--ease), opacity .35s var(--ease); }
+#p-d-persona .dp-toast.on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+#p-d-persona .dp-toast svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--a-ok); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+#p-d-persona .dp-tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#p-d-persona .dp-undo { background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; padding: 6px 8px; min-height: 36px; border-radius: 8px; white-space: nowrap; }
+
+#p-d-persona .dp-wiz { padding: 0; display: flex; flex-direction: column; min-height: 520px; }
+#p-d-persona .dp-wtop { padding: 18px 22px 0; display: flex; flex-direction: column; gap: 8px; }
+#p-d-persona .dp-wstep { font-size: 12.5px; font-weight: 600; }
+#p-d-persona .dp-prog { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+#p-d-persona .dp-prog i { height: 5px; border-radius: 99px; background: var(--a-surface-3); position: relative; overflow: hidden; }
+#p-d-persona .dp-prog i::after { content: ""; position: absolute; inset: 0; background: var(--a-accent); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease); }
+#p-d-persona .dp-prog i.on::after { transform: none; }
+#p-d-persona .dp-wbody { flex: 1; display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 22px; padding: 22px; align-items: start; }
+#p-d-persona .dp-wrina { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#p-d-persona .dp-wimg { width: 150px; height: auto; }
+#p-d-persona .dp-wsay { background: var(--a-surface-2); border-radius: 14px; padding: 9px 12px; font-size: 13.5px; min-height: 60px; align-self: stretch; }
+#p-d-persona .dp-wmain { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+#p-d-persona .dp-wmain.go { animation: d-persona-step .4s var(--ease); }
+#p-d-persona .dp-wmain h4 { margin: 0; font: 700 21px/1.25 var(--fd); letter-spacing: -.01em; }
+#p-d-persona .dp-wmain > p { color: var(--a-soft); }
+#p-d-persona .dp-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 10px; }
+#p-d-persona .dp-opt { text-align: left; background: var(--a-surface-2); border: 1.5px solid transparent; border-radius: 14px; padding: 12px 14px; min-height: 48px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+#p-d-persona .dp-opt b { font-size: 14.5px; }
+#p-d-persona .dp-opt small { color: var(--a-muted); font-size: 12.5px; }
+#p-d-persona .dp-opt[aria-pressed="true"] { border-color: var(--a-accent); background: var(--a-accent-soft); }
+#p-d-persona .dp-time { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+#p-d-persona .dp-tbox { background: var(--a-surface-2); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px; align-items: center; min-width: 0; }
+#p-d-persona .dp-tbox small { color: var(--a-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+#p-d-persona .dp-tbox .row { justify-content: center; }
+#p-d-persona .dp-mini { position: relative; height: 10px; border-radius: 99px; background: var(--a-surface-3); margin: 18px 6px 6px; }
+#p-d-persona .dp-mini span { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--a-accent); border: 2px solid var(--a-surface); transition: left .4s var(--ease); }
+#p-d-persona .dp-mini span.sleep { background: var(--c-sleep); }
+#p-d-persona .dp-mlist { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12.5px; }
+#p-d-persona .dp-done { align-items: flex-start; }
+#p-d-persona .dp-wnav { display: flex; justify-content: space-between; gap: 10px; padding: 0 22px 20px; }
+#p-d-persona .dp-wnav .btn { min-height: 40px; }
+#p-d-persona .dp-wnav .btn:disabled { visibility: hidden; }
+
+@keyframes d-persona-wave { 0% { transform: rotate(0); } 25% { transform: rotate(-5deg) translateY(-4px); } 50% { transform: rotate(4deg); } 75% { transform: rotate(-2deg); } 100% { transform: rotate(0); } }
+@keyframes d-persona-in { from { transform: translateY(14px) scale(.94); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes d-persona-flash { 0% { opacity: 0; transform: scale(.7); } 35% { opacity: 1; } 100% { opacity: 0; transform: scale(1.15); } }
+@keyframes d-persona-step { from { transform: translateX(18px); opacity: .3; } to { transform: none; opacity: 1; } }
+
+@media (max-width: 900px) {
+  #p-d-persona .dp-room { grid-template-columns: minmax(0, 1fr); }
+  #p-d-persona .dp-stage { position: static; display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; }
+  #p-d-persona .dp-pic { width: 130px; grid-column: 1; grid-row: 1 / span 2; }
+  #p-d-persona .dp-bubble, #p-d-persona .dp-plate { grid-column: 2; }
+  #p-d-persona .dp-bubble::after { left: -6px; top: 26px; bottom: auto; }
+  #p-d-persona .dp-plate { text-align: left; }
+}
+@media (max-width: 720px) {
+  #p-d-persona .dp-toast { bottom: 76px; }
+  #p-d-persona .dp-wbody { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  #p-d-persona .dp-wrina { flex-direction: row; align-items: flex-end; }
+  #p-d-persona .dp-wimg { width: 96px; flex: none; }
+  #p-d-persona .dp-wtop { padding: 14px 16px 0; }
+  #p-d-persona .dp-wnav { padding: 0 16px 16px; }
+}
+@media (max-width: 520px) {
+  #p-d-persona .dp-cards { grid-template-columns: minmax(0, 1fr); }
+  #p-d-persona .dp-line { grid-template-columns: minmax(0, 1fr) auto; }
+  #p-d-persona .dp-line .dp-sw { grid-column: 1 / -1; grid-row: 2; }
+  #p-d-persona .dp-stage { grid-template-columns: 96px minmax(0, 1fr); }
+  #p-d-persona .dp-pic { width: 96px; }
+  #p-d-persona .dp-time { grid-template-columns: minmax(0, 1fr); }
+}
+  </style>
+
+  <script>(function () {
+  "use strict";
+  var root = document.getElementById("p-d-persona");
+  if (!root) return;
+  var M = window.MaidMock || { reduce: true, onSeen: function (e, f) { f(); } };
+  function $(s, el) { return (el || root).querySelector(s); }
+  function $$(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+
+  var PERS = [
+    { k: "strict", t: "Строгая, но заботливая", d: "Держит режим, хвалит по делу", r: "Нет. Завтра встреча в 10, ноутбук закрываем, {a}.", g: "Доброе утро, {a}. Сегодня три дела, начнём с отчёта. И завтрак не пропускаем." },
+    { k: "kind", t: "Добрая", d: "Мягко напоминает, много хвалит", r: "Можно, {a}, только потом сразу спать, хорошо?", g: "Доброе утро, {a}! Вы вчера хорошо поспали, я так рада. Три дела на сегодня, справимся вместе." },
+    { k: "sassy", t: "Дерзкая", d: "Подкалывает, но всегда за вас", r: "Третью за вечер? Марш в кровать, {a}.", g: "Проснулись, {a}? Наконец-то. Три дела, и не делайте вид, что забыли про отчёт." },
+    { k: "chill", t: "Расслабленная", d: "Без давления, спокойный тон", r: "Как хотите, {a}. Только воды попейте.", g: "Утро, {a}. Три дела, торопиться некуда. Начнём, когда допьёте чай." }
+  ];
+  var HAIR = [["red", "рыжие"], ["brown", "каштановые"], ["gold", "золотые"], ["silver", "серебряные"], ["violet", "сиреневые"], ["black", "чёрные"]];
+  var EYE = [["violet", "сиреневые"], ["green", "зелёные"], ["blue", "голубые"], ["amber", "янтарные"]];
+  var ACC = [["violet", "Сирень", ""], ["rose", "Роза", "--c-mood"], ["sky", "Небо", "--c-pc"], ["mint", "Мята", "--c-habit"], ["amber", "Янтарь", "--c-money"]];
+  var ADDR = { m: "хозяин", f: "хозяйка" };
+  var MARK = [
+    { n: "Подъём", h: "из «О вас»", lo: 0, hi: 479, sleep: true },
+    { n: "Утренний список", h: "дела на день" },
+    { n: "Привычки", h: "первый вопрос" },
+    { n: "Что завтра", h: "план на завтра", lo: 480, hi: 1199 },
+    { n: "Итог дня", h: "оценка дня", lo: 480, hi: 1199 },
+    { n: "Отбой", h: "дальше тишина", lo: 840, hi: 1439, sleep: true }
+  ];
+  var START = { pers: "strict", hair: "red", eye: "green", acc: "violet", addr: "m", name: "Саша", t: [210, 240, 900, 990, 1050, 1170], quiet: true };
+  var S = clone(START);
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function hm(v) { var m = (v + 240) % 1440; return pad(Math.floor(m / 60)) + ":" + pad(m % 60); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function find(arr, k) { for (var i = 0; i < arr.length; i++) if ((arr[i].k || arr[i][0]) === k) return arr[i]; return arr[0]; }
+  function addrOf(st) { return st.addr === "n" ? (st.name.trim() || "Саша") : ADDR[st.addr]; }
+  function fill(s, st) { return s.replace("{a}", addrOf(st)); }
+  function look(h, e) { return "maid/look/hello-" + h + "-" + e + ".webp"; }
+
+  /* ---------- вариант А: разметка ---------- */
+  var app = $('.app[data-v="a"]');
+  $(".dp-cards").innerHTML = PERS.map(function (p) {
+    return '<button type="button" class="dp-card" data-pers="' + p.k + '" aria-pressed="false"><b>' + p.t + "</b><small>" + p.d + '</small><q></q></button>';
+  }).join("");
+  function swatches(box, k, list) {
+    box.innerHTML = list.map(function (x) {
+      return '<button type="button" class="dp-dot" data-' + k + '="' + x[0] + '" aria-pressed="false" aria-label="' + x[1] + '">' + (k === "acc" ? "<span></span>" : "") + "</button>";
+    }).join("");
+  }
+  swatches($('.dp-sw[data-k="hair"]'), "hair", HAIR);
+  swatches($('.dp-sw[data-k="eye"]'), "eye", EYE);
+  swatches($('.dp-sw[data-k="acc"]'), "acc", ACC);
+  var track = $(".dp-track");
+  track.insertAdjacentHTML("beforeend", MARK.map(function (m, i) {
+    return '<div class="dp-h' + (m.sleep ? " sleep" : "") + '" data-i="' + i + '" role="slider" tabindex="0" aria-label="' + m.n + '" aria-valuemin="0" aria-valuemax="1439">' +
+      '<span class="dp-stem"></span><span class="dp-tag"><span>' + m.n + '</span><b></b></span><span class="dp-knob">' + (i + 1) + "</span></div>";
+  }).join(""));
+  $(".dp-ticks").innerHTML = [0, 240, 480, 720, 960, 1200, 1440].map(function (v) { return '<span style="left:' + (v / 14.4) + '%">' + hm(v) + "</span>"; }).join("");
+  $(".dp-legend").innerHTML = MARK.map(function (m, i) {
+    return '<div class="dp-li' + (m.sleep ? " sleep" : "") + '" data-i="' + i + '"><i>' + (i + 1) + "</i><span>" + m.n + "<small>" + m.h + '</small></span><b></b>' +
+      '<button type="button" class="dp-st" data-d="-15" aria-label="' + m.n + ': на 15 минут раньше">−</button><button type="button" class="dp-st" data-d="15" aria-label="' + m.n + ': на 15 минут позже">+</button></div>';
+  }).join("");
+
+  function bounds(i, t) {
+    var m = MARK[i], lo = m.lo != null ? m.lo : 0, hi = m.hi != null ? m.hi : 1439;
+    if (i > 0) lo = Math.max(lo, t[i - 1] + 15);
+    if (i < t.length - 1) hi = Math.min(hi, t[i + 1] - 15);
+    return [lo, hi];
+  }
+  function setT(i, v) { var b = bounds(i, S.t); v = Math.round(v / 15) * 15; S.t[i] = Math.max(b[0], Math.min(b[1], v)); return S.t[i]; }
+
+  var typeTimer = 0, active = -1;
+  function type(el, text, box) {
+    clearInterval(typeTimer);
+    if (M.reduce) { el.textContent = text; return; }
+    var i = 0; el.textContent = ""; if (box) box.classList.add("typing");
+    typeTimer = setInterval(function () {
+      i += 1; el.textContent = text.slice(0, i);
+      if (i >= text.length) { clearInterval(typeTimer); if (box) box.classList.remove("typing"); }
+    }, 24);
+  }
+  function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+  function renderLook(fx) {
+    $(".dp-img").src = look(S.hair, S.eye);
+    $$(".dp-dot[data-hair]").forEach(function (b) {
+      var on = b.dataset.hair === S.hair; b.setAttribute("aria-pressed", on);
+      b.style.backgroundImage = "url(" + look(b.dataset.hair, S.eye) + ")"; b.style.backgroundSize = "260%"; b.style.backgroundPosition = "50% 8%";
+    });
+    $$(".dp-dot[data-eye]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.dataset.eye === S.eye);
+      b.style.backgroundImage = "url(" + look(S.hair, b.dataset.eye) + ")"; b.style.backgroundSize = "620%"; b.style.backgroundPosition = "56% 49%";
+    });
+    $$(".dp-dot[data-acc]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.acc === S.acc); });
+    var a = find(ACC, S.acc);
+    ["--a-accent", "--a-accent-strong"].forEach(function (p) { if (a[2]) app.style.setProperty(p, "var(" + a[2] + ")"); else app.style.removeProperty(p); });
+    if (a[2]) app.style.setProperty("--a-accent-soft", "color-mix(in srgb, var(" + a[2] + ") 15%, transparent)"); else app.style.removeProperty("--a-accent-soft");
+    $(".dp-hv").textContent = find(HAIR, S.hair)[1];
+    $(".dp-ev").textContent = find(EYE, S.eye)[1];
+    $(".dp-av").textContent = a[1];
+    if (fx && !M.reduce) { restart($(".dp-flash"), "go"); restart($(".dp-img"), "wave"); }
+  }
+  function renderVoice(retype) {
+    var p = find(PERS, S.pers);
+    $$(".dp-card").forEach(function (c) {
+      var q = find(PERS, c.dataset.pers);
+      c.setAttribute("aria-pressed", c.dataset.pers === S.pers);
+      $("q", c).textContent = fill(q.r, S);
+    });
+    $$(".dp-addr .seg button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.addr === S.addr); });
+    $(".dp-name").hidden = S.addr !== "n";
+    $(".dp-sum").textContent = "· " + p.t.toLowerCase();
+    if (retype) type($(".dp-say"), fill(p.g, S), $(".dp-bubble")); else { clearInterval(typeTimer); $(".dp-say").textContent = fill(p.g, S); }
+  }
+  function renderDay() {
+    var t = S.t;
+    $$(".dp-h").forEach(function (h) {
+      var i = +h.dataset.i, v = t[i], pc = v / 14.4, tier = [0, 1, 2, 0, 1, 2][i], tag = $(".dp-tag", h);
+      h.style.left = pc + "%";
+      h.setAttribute("aria-valuenow", v); h.setAttribute("aria-valuetext", MARK[i].n + ", " + hm(v));
+      h.classList.toggle("on", i === active);
+      $("b", tag).textContent = hm(v);
+      tag.style.bottom = (26 + tier * 38) + "px"; $(".dp-stem", h).style.height = (17 + tier * 38) + "px";
+      tag.classList.toggle("l", pc < 7); tag.classList.toggle("r", pc > 93);
+    });
+    $$(".dp-li").forEach(function (li) {
+      var i = +li.dataset.i, b = bounds(i, t);
+      $("b", li).textContent = hm(t[i]); li.classList.toggle("on", i === active);
+      $$(".dp-st", li)[0].disabled = t[i] <= b[0]; $$(".dp-st", li)[1].disabled = t[i] >= b[1];
+    });
+    $(".dp-n1").style.width = (t[0] / 14.4) + "%";
+    $(".dp-n2").style.width = ((1440 - t[5]) / 14.4) + "%";
+    $(".dp-tl").classList.toggle("dp-off", !S.quiet);
+    $(".dp-quiet").setAttribute("aria-pressed", S.quiet);
+    var len = 1440 - t[5] + t[0];
+    $(".dp-qt").textContent = S.quiet ? hm(t[5]) + "–" + hm(t[0]) + ", " + Math.floor(len / 60) + " ч" + (len % 60 ? " " + len % 60 + " мин" : "") + ", молчу" : "выключены";
+    var fixed = t[1] === 285;
+    $(".dp-fix").disabled = fixed; $(".dp-fix").textContent = fixed ? "Готово" : "Перенести";
+    $(".dp-tip").textContent = fixed ? "Перенесла на 8:45." : "Перенести его на 8:45?";
+  }
+  function renderAll(fx, retype) { renderLook(fx); renderVoice(retype); renderDay(); }
+
+  /* единое «Сохранено» с отменой */
+  var toast = $(".dp-toast"), toastTimer = 0, undoSnap = null;
+  function saved(label, snap) {
+    undoSnap = snap;
+    $(".dp-tt").textContent = "Сохранено · " + label;
+    toast.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { toast.classList.remove("on"); }, 5000);
+  }
+  $(".dp-undo").addEventListener("click", function () {
+    if (!undoSnap) return;
+    var prev = S; S = undoSnap; undoSnap = null;
+    var look2 = prev.hair !== S.hair || prev.eye !== S.eye || prev.acc !== S.acc;
+    var voice = prev.pers !== S.pers || prev.addr !== S.addr || prev.name !== S.name;
+    if (prev.t.join() !== S.t.join()) animDay();
+    renderLook(look2); renderVoice(voice); renderDay();
+    $(".dp-tt").textContent = "Вернула как было";
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { toast.classList.remove("on"); }, 2200);
+  });
+
+  root.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b || !app.contains(b)) return;
+    var snap = clone(S);
+    if (b.dataset.pers && b.dataset.pers !== S.pers) { S.pers = b.dataset.pers; renderVoice(true); saved("характер: " + find(PERS, S.pers).t.toLowerCase(), snap); }
+    else if (b.dataset.hair && b.dataset.hair !== S.hair) { S.hair = b.dataset.hair; renderLook(true); saved("волосы " + find(HAIR, S.hair)[1], snap); }
+    else if (b.dataset.eye && b.dataset.eye !== S.eye) { S.eye = b.dataset.eye; renderLook(true); saved("глаза " + find(EYE, S.eye)[1], snap); }
+    else if (b.dataset.acc && b.dataset.acc !== S.acc) { S.acc = b.dataset.acc; renderLook(true); saved("акцент «" + find(ACC, S.acc)[1] + "»", snap); }
+    else if (b.dataset.addr && b.dataset.addr !== S.addr) { S.addr = b.dataset.addr; renderVoice(true); saved("обращение «" + addrOf(S) + "»", snap); if (S.addr === "n") $(".dp-name").focus(); }
+    else if (b.classList.contains("dp-quiet")) { S.quiet = !S.quiet; renderDay(); saved(S.quiet ? "тихие часы включены" : "тихие часы выключены", snap); }
+    else if (b.classList.contains("dp-st")) {
+      var i = +b.closest(".dp-li").dataset.i; active = i;
+      setT(i, S.t[i] + +b.dataset.d); renderDay(); saved(MARK[i].n.toLowerCase() + " " + hm(S.t[i]), snap);
+    } else if (b.classList.contains("dp-fix")) {
+      active = 1; animDay(); setT(1, 285); renderDay(); saved("утренний список 08:45", snap);
+    }
+  });
+  var nameSnap = null;
+  $(".dp-name").addEventListener("focus", function () { nameSnap = clone(S); });
+  $(".dp-name").addEventListener("input", function (e) { S.name = e.target.value; renderVoice(false); });
+  $(".dp-name").addEventListener("change", function () { if (nameSnap && nameSnap.name !== S.name) { renderVoice(true); saved("обращение «" + addrOf(S) + "»", nameSnap); } });
+
+  /* перетаскивание меток */
+  var drag = null;
+  function valAt(x) { var r = track.getBoundingClientRect(); return (x - r.left) / r.width * 1440; }
+  $$(".dp-h").forEach(function (h) {
+    var i = +h.dataset.i;
+    h.addEventListener("pointerdown", function (e) {
+      if (!e.target.closest(".dp-knob, .dp-tag")) return;
+      e.preventDefault(); h.focus();
+      drag = { i: i, snap: clone(S), id: e.pointerId }; active = i;
+      h.classList.add("drag"); h.setPointerCapture(e.pointerId); renderDay();
+    });
+    h.addEventListener("pointermove", function (e) {
+      if (!drag || drag.i !== i) return;
+      setT(i, valAt(e.clientX)); renderDay();
+    });
+    function end() {
+      if (!drag || drag.i !== i) return;
+      h.classList.remove("drag");
+      if (drag.snap.t[i] !== S.t[i]) saved(MARK[i].n.toLowerCase() + " " + hm(S.t[i]), drag.snap);
+      drag = null;
+    }
+    h.addEventListener("pointerup", end); h.addEventListener("pointercancel", end);
+    h.addEventListener("focus", function () { active = i; renderDay(); });
+    h.addEventListener("keydown", function (e) {
+      var d = { ArrowLeft: -15, ArrowDown: -15, ArrowRight: 15, ArrowUp: 15, PageDown: -60, PageUp: 60 }[e.key];
+      if (!d) return; e.preventDefault();
+      var snap = clone(S); if (e.shiftKey) d *= 4;
+      setT(i, S.t[i] + d); renderDay();
+      if (snap.t[i] !== S.t[i]) saved(MARK[i].n.toLowerCase() + " " + hm(S.t[i]), snap);
+    });
+  });
+
+  var animTimer = 0;
+  function animDay() {
+    if (M.reduce) return;
+    var tl = $(".dp-tl"); tl.classList.add("dp-anim");
+    clearTimeout(animTimer); animTimer = setTimeout(function () { tl.classList.remove("dp-anim"); }, 1300);
+  }
+
+  /* ---------- вариант Б: знакомство ---------- */
+  var W = { step: 0, addr: "m", name: "Саша", pers: "kind", hair: "red", eye: "green", wake: 210, bed: 1170 };
+  var STEPS = ["Как обращаться", "Характер", "Внешность", "Распорядок"];
+  var wiz = $(".dp-wiz"), wmain = $(".dp-wmain");
+  function wPlan() {
+    var list = W.wake + 30, tom = W.bed - 150, itog = W.bed - 90;
+    var hab = Math.max(list + 15, Math.min(900, tom - 15));
+    return [W.wake, list, hab, tom, itog, W.bed];
+  }
+  function opt(attr, val, on, t, d) { return '<button type="button" class="dp-opt" data-' + attr + '="' + val + '" aria-pressed="' + on + '"><b>' + t + "</b>" + (d ? "<small>" + d + "</small>" : "") + "</button>"; }
+  function stepper(k, label, v) {
+    return '<div class="dp-tbox"><small>' + label + '</small><div class="row"><button type="button" class="dp-st" data-w="' + k + '" data-d="-15" aria-label="' + label + ': раньше">−</button><span class="big">' + hm(v) +
+      '</span><button type="button" class="dp-st" data-w="' + k + '" data-d="15" aria-label="' + label + ': позже">+</button></div></div>';
+  }
+  function wRender(anim) {
+    var s = W.step, h = "", say;
+    var who = W.addr === "n" ? (W.name.trim() || "Саша") : ADDR[W.addr];
+    if (s === 0) {
+      h = "<h4>Как мне к вам обращаться?</h4><p>Так я буду начинать письма и напоминания.</p><div class=\"dp-opts\">" +
+        opt("waddr", "m", W.addr === "m", "Хозяин") + opt("waddr", "f", W.addr === "f", "Хозяйка") + opt("waddr", "n", W.addr === "n", "По имени") + "</div>" +
+        (W.addr === "n" ? '<input class="dp-name dp-wname" id="d-persona-wname" type="text" maxlength="20" aria-label="Ваше имя" value="' + W.name + '">' : "");
+      say = "Приятно познакомиться! Я Рина. Как мне вас звать?";
+    } else if (s === 1) {
+      h = "<h4>Какой мне быть?</h4><p>Характер можно поменять когда угодно.</p><div class=\"dp-opts\">" +
+        PERS.map(function (p) { return opt("wpers", p.k, W.pers === p.k, p.t, p.d); }).join("") + "</div>";
+      say = fill(find(PERS, W.pers).g, { addr: W.addr, name: W.name });
+    } else if (s === 2) {
+      h = "<h4>Как я выгляжу?</h4><p>Цвет волос и глаз. Картинка слева сразу меняется.</p>" +
+        '<div class="dp-line"><span class="dp-lbl">Волосы</span><div class="dp-sw">' + HAIR.map(function (x) { return '<button type="button" class="dp-dot" data-whair="' + x[0] + '" aria-pressed="' + (W.hair === x[0]) + '" aria-label="' + x[1] + '" style="background-image:url(' + look(x[0], W.eye) + ');background-size:260%;background-position:50% 8%"></button>'; }).join("") +
+        '</div><span class="dp-val">' + find(HAIR, W.hair)[1] + "</span></div>" +
+        '<div class="dp-line"><span class="dp-lbl">Глаза</span><div class="dp-sw">' + EYE.map(function (x) { return '<button type="button" class="dp-dot" data-weye="' + x[0] + '" aria-pressed="' + (W.eye === x[0]) + '" aria-label="' + x[1] + '" style="background-image:url(' + look(W.hair, x[0]) + ');background-size:620%;background-position:56% 49%"></button>'; }).join("") +
+        '</div><span class="dp-val">' + find(EYE, W.eye)[1] + "</span></div>";
+      say = "Ну как, " + who + "? Мне идёт?";
+    } else if (s === 3) {
+      var p = wPlan();
+      h = "<h4>Когда вы встаёте и ложитесь?</h4><p>Остальное я расставлю сама. Поправить можно в «Рина → Характер и вид».</p><div class=\"dp-time\">" + stepper("wake", "Подъём", W.wake) + stepper("bed", "Отбой", W.bed) + "</div>" +
+        '<div class="dp-mini" aria-hidden="true">' + p.map(function (v, i) { return '<span class="' + (MARK[i].sleep ? "sleep" : "") + '" style="left:' + (v / 14.4) + '%"></span>'; }).join("") + "</div>" +
+        '<div class="dp-mlist">' + p.slice(1, 5).map(function (v, i) { return '<span class="chip">' + MARK[i + 1].n + " · " + hm(v) + "</span>"; }).join("") + "</div>";
+      say = "С " + hm(W.bed) + " до " + hm(W.wake) + " я молчу, кроме будильника.";
+    } else {
+      h = '<h4>Всё готово!</h4><p>Вот что я запомнила. Любой пункт меняется в «Рина → Характер и вид».</p><div class="dp-mlist">' +
+        ['Обращение: ' + who, find(PERS, W.pers).t, "Волосы " + find(HAIR, W.hair)[1], "Глаза " + find(EYE, W.eye)[1], "Подъём " + hm(W.wake), "Отбой " + hm(W.bed)].map(function (x) { return '<span class="chip">' + x + "</span>"; }).join("") +
+        '</div><div class="row"><button type="button" class="btn primary" data-wgo="start">Открыть «Сегодня»</button><button type="button" class="btn ghost" data-wgo="again">Пройти заново</button></div>';
+      say = "Рада служить вам, " + who + "! Начнём?";
+    }
+    wmain.innerHTML = h;
+    var wn = $(".dp-wname");
+    if (wn) wn.addEventListener("input", function (e) { W.name = e.target.value; $(".dp-wsay").textContent = "Буду звать вас " + (W.name.trim() || "…") + "."; });
+    $(".dp-wimg").src = s >= 4 ? "maid/bow.webp" : look(W.hair, W.eye);
+    $(".dp-wstep").textContent = s >= 4 ? "Знакомство пройдено" : "Шаг " + (s + 1) + " из 4 · " + STEPS[s];
+    $$(".dp-prog i").forEach(function (b, i) { b.classList.toggle("on", i < Math.min(s + 1, 4)); });
+    $(".dp-back").disabled = s === 0 || s >= 4;
+    $(".dp-next").hidden = s >= 4;
+    $(".dp-next").textContent = s === 3 ? "Готово" : "Дальше";
+    if (anim && !M.reduce) restart(wmain, "go");
+    $(".dp-wsay").textContent = say;
+  }
+  wiz.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var d = b.dataset;
+    if (b.classList.contains("dp-next")) { W.step += 1; wRender(true); }
+    else if (b.classList.contains("dp-back")) { W.step = Math.max(0, W.step - 1); wRender(true); }
+    else if (d.waddr) { W.addr = d.waddr; wRender(false); if (W.addr === "n") $(".dp-wname").focus(); }
+    else if (d.wpers) { W.pers = d.wpers; wRender(false); }
+    else if (d.whair || d.weye) {
+      if (d.whair) W.hair = d.whair; else W.eye = d.weye; wRender(false);
+      if (!M.reduce) restart($(".dp-wimg"), "wave");
+    } else if (d.w) {
+      if (d.w === "wake") W.wake = Math.max(0, Math.min(479, W.wake + +d.d));
+      else W.bed = Math.max(840, Math.min(1439, W.bed + +d.d));
+      wRender(false);
+    } else if (d.wgo === "again") { W.step = 0; wRender(true); }
+    else if (d.wgo === "start") { $(".dp-wsay").textContent = "В настоящей программе здесь откроется «Сегодня»."; }
+  });
+
+  /* переключатель вариантов */
+  $$(".dp-var button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var v = b.dataset.var;
+      $$(".dp-var button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+      $$('[data-v]', root).forEach(function (el) { if (el.classList.contains("app")) el.hidden = el.dataset.v !== v; });
+      play();
+    });
+  });
+
+  function play() {
+    var showB = $('.dp-var button[data-var="b"]').getAttribute("aria-pressed") === "true";
+    if (showB) { wRender(true); return; }
+    renderLook(false); renderVoice(false); renderDay();
+    if (M.reduce) return;
+    restart($(".dp-img"), "pop");
+    type($(".dp-say"), fill(find(PERS, S.pers).g, S), $(".dp-bubble"));
+    var real = S.t.slice(), tl = $(".dp-tl");
+    tl.classList.remove("dp-anim");
+    S.t = [0, 0, 0, 0, 0, 0]; renderDay();
+    void tl.offsetWidth;
+    tl.classList.add("dp-anim");
+    $$(".dp-h").forEach(function (h, i) { h.style.transitionDelay = (i * 70) + "ms"; });
+    S.t = real; renderDay();
+    clearTimeout(animTimer);
+    animTimer = setTimeout(function () { tl.classList.remove("dp-anim"); $$(".dp-h").forEach(function (h) { h.style.transitionDelay = ""; }); }, 1400);
+  }
+
+  renderAll(false, false);
+  wRender(false);
+  M.onSeen(root, play);
+  root.addEventListener("replay", play);
+})();</script>
+</article>

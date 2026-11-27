@@ -1,0 +1,56 @@
+<section class="chapter" id="ch-plan" hidden>
+  <div class="intro">
+    <p class="eyebrow">Глава 5</p>
+    <h2>С чего начать</h2>
+    <p>Порядок, в котором я бы это делал. Сначала то, что останавливает потерю денег и данных, потом то, что приводит и удерживает людей, потом большой новый дизайн.</p>
+  </div>
+  <div class="steps">
+    <div><b>Неделя 1. Остановить убыток</b><p>Замер быстрой модели на 200 сообщениях. Кэш запроса. Не писать письма молчащим. Внешний сторож сервера. Это часы работы, а экономят больше всего.</p></div>
+    <div><b>Неделя 2. Тарифы</b><p>Модель по назначению, счётчик умных ответов, три тарифа и бесплатный уровень в коде и в админке. Проба 14 дней. Письмо за 2 дня до конца пробы и строка в виджете.</p></div>
+    <div><b>Неделя 3. Вход и первая минута</b><p>Вход кодом. Экскурсия делом из трёх шагов. Экран согласия на счётчик времени и автозапуск. Свой домен.</p></div>
+    <div><b>Неделя 4. Доверие и надёжность</b><p>Экран «Ваши данные» с удалением аккаунта. Шифрованная копия базы во второе место. Выкладка с откатом. Политика и согласие вместе с юристом.</p></div>
+    <div><b>Недели 5–8. Новый дизайн по частям</b><p>Сначала навигация из пяти разделов и строка поиска. Потом «Планы» и «Сегодня», потому что в них больше всего действий. Потом «Сон», «Дневник», «Рина». «Компьютер» по часам и «Здоровье» требуют новых данных и идут последними.</p></div>
+    <div><b>Параллельно. Админка</b><p>Воронки и состояние связей первыми: данные для них уже есть. Затем фоновые задачи, журнал ошибок и сводка владельцу.</p></div>
+    <div><b>Перед Steam</b><p>Подпись установщика, словарь текстов для других языков, открытая продающая страница, приглашение друга.</p></div>
+  </div>
+  <h3 class="sub">Что проверено, а что нет</h3>
+  <div class="callout">
+    <ul>
+      <li><b>Проверено по коду и каталогу:</b> устройство экранов, что правится и что нет, тарифы и лимиты, состав админки, слабые места техники.</li>
+      <li><b>Не проверено:</b> живое поведение программы (ничего не запускалось), настройки боевого сервера, качество разбора на быстрой модели, настоящий средний расход на подписчика.</li>
+      <li><b>Найдено поиском и не перепроверено:</b> цены моделей, курс звёзд в долларах и рублях, цены аналогов.</li>
+      <li><b>Макеты</b> показывают поведение и вид. Числа в них выдуманы.</li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var btns = document.querySelectorAll(".chapters button[data-ch]");
+  function show(id, scroll) {
+    btns.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.ch === id)); });
+    document.querySelectorAll(".chapter").forEach(function (c) { c.hidden = c.id !== "ch-" + id; });
+    document.dispatchEvent(new CustomEvent("chapter", { detail: id }));
+    if (scroll) { var top = document.querySelector(".chapters").getBoundingClientRect().top + scrollY - 4; window.scrollTo({ top: top }); }
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+  }
+  btns.forEach(function (b) { b.addEventListener("click", function () { show(b.dataset.ch, true); }); });
+  var first = (location.hash || "").slice(1);
+  if (["design", "weak", "tariffs", "admin", "plan"].indexOf(first) >= 0) show(first, false);
+  // кожа макетов
+  var d = document.getElementById("skin-dark"), l = document.getElementById("skin-light");
+  function skin(v) { if (v === "light") document.body.dataset.skin = "light"; else delete document.body.dataset.skin; d.setAttribute("aria-pressed", String(v !== "light")); l.setAttribute("aria-pressed", String(v === "light")); }
+  d.addEventListener("click", function () { skin("dark"); }); l.addEventListener("click", function () { skin("light"); });
+  // оглавление экранов
+  var toc = document.getElementById("toc-design");
+  document.querySelectorAll("#ch-design .piece").forEach(function (p) {
+    var h = p.querySelector("header h2"), a = document.createElement("a");
+    a.href = "#"; a.textContent = (p.querySelector("[data-title]") || {}).dataset ? (p.querySelector(".app[data-title]") ? p.querySelector(".app[data-title]").dataset.title : h.textContent) : h.textContent;
+    if (p.id === "p-d-nav") a.textContent = "Навигация и поиск";
+    a.addEventListener("click", function (e) { e.preventDefault(); p.scrollIntoView({ block: "start", behavior: MaidMock.reduce ? "auto" : "smooth" }); });
+    toc.appendChild(a);
+  });
+})();
+</script>

@@ -1,0 +1,695 @@
+<article class="piece" id="p-a-insight">
+  <header>
+    <p class="eyebrow">Админка · Чего не хватает, часть 1</p>
+    <h2>Понимать людей и ИИ: четыре новых раздела</h2>
+    <p>Сейчас админка честно считает деньги и вызовы, но не отвечает на главные вопросы. Где люди уходят по дороге к оплате? Стала ли модель лучше после смены? Какая ссылка приводит тех, кто остаётся? Здесь на каждый вопрос свой раздел, только счётчики и номера аккаунтов.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="ai-tabs" role="group" aria-label="Какой раздел показать">
+    <button type="button" data-v="fun" aria-pressed="true"><small>Обзор</small>Воронки</button>
+    <button type="button" data-v="mod" aria-pressed="false"><small>ИИ</small>Модели и качество</button>
+    <button type="button" data-v="src" aria-pressed="false"><small>Люди и деньги</small>Источники</button>
+    <button type="button" data-v="box" aria-pressed="false"><small>ИИ</small>Песочница разбора</button>
+  </div>
+  <p class="ai-hint">Начать советую с «Воронок»: счётчики для них копятся с 24 ноября, нужен только отчёт.</p>
+
+  <div class="adm ai-view" data-v="fun" data-section="Воронки" data-group="Обзор">
+    <div class="ai-tool">
+      <div class="ai-seg" role="group" aria-label="Период">
+        <button type="button" data-p="7" aria-pressed="false">7 дней</button>
+        <button type="button" data-p="30" aria-pressed="true">30 дней</button>
+        <button type="button" data-p="90" aria-pressed="false">90 дней</button>
+      </div>
+      <span class="dmuted ai-note" data-k="span">28 окт – 27 ноя · люди, которые нажали /start за период</span>
+    </div>
+
+    <div class="ai-kpis">
+      <div class="panel"><div class="dk">Нажали /start</div><div class="ai-big" data-k="k0">5 180</div><div class="ai-d" data-k="k0d"></div></div>
+      <div class="panel"><div class="dk">Дошли до оплаты</div><div class="ai-big" data-k="k1">236</div><div class="ai-d" data-k="k1d"></div></div>
+      <div class="panel"><div class="dk">Из 100 пришедших платят</div><div class="ai-big" data-k="k2">4,6</div><div class="ai-d" data-k="k2d"></div></div>
+    </div>
+
+    <div class="panel">
+      <h4>Путь от /start до оплаты <span class="dmuted ai-small">нажмите на шаг, чтобы увидеть потерю</span></h4>
+      <div class="ai-fun" data-k="fun"></div>
+      <p class="ai-why" data-k="why" aria-live="polite"></p>
+    </div>
+
+    <div class="ai-two">
+      <div class="panel">
+        <h4>Возвращаются после первого дня</h4>
+        <div class="ai-rets" data-k="rets"></div>
+      </div>
+      <div class="panel">
+        <div class="ai-h4row">
+          <h4>Удержание по характеру Рины</h4>
+          <div class="ai-seg" role="group" aria-label="Через сколько дней">
+            <button type="button" data-h="0" aria-pressed="false">7 дней</button>
+            <button type="button" data-h="1" aria-pressed="true">30 дней</button>
+          </div>
+        </div>
+        <div class="ai-chars" data-k="chars"></div>
+        <p class="dmuted ai-small ai-gap">Характер считается по первому выбору после знакомства.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="adm ai-view" data-v="mod" data-section="Модели и качество" data-group="ИИ" hidden>
+    <div class="panel">
+      <h4>Какая модель что делает</h4>
+      <div class="scroll"><table class="ai-mt">
+        <thead><tr><th>Назначение</th><th>Модель</th><th>Цена за 1000 вызовов</th><th>Скорость</th><th>Ошибки</th><th>В месяц</th></tr></thead>
+        <tbody data-k="mrows"></tbody>
+      </table></div>
+      <p class="dmuted ai-small ai-gap">Скорость: 95 ответов из 100 приходят быстрее этого времени. Ошибки: доля вызовов, где модель не ответила или ответила не по форме. Всё за 7 дней.</p>
+      <div class="ai-change" data-k="chg" hidden>
+        <div class="ai-chg-head"><b data-k="chgT">Смена модели</b><span class="ai-small dsoft" data-k="chgM"></span></div>
+        <label class="ai-lab">Причина смены <span class="dmuted">(попадёт в журнал админки)</span>
+          <textarea rows="2" data-k="why2" placeholder="Например: много поправок в тратах после 20 ноября"></textarea>
+        </label>
+        <div class="ai-row">
+          <button type="button" class="dbtn primary ai-btn" data-k="save" disabled>Сменить модель</button>
+          <button type="button" class="dbtn ai-btn" data-k="cancel">Отменить</button>
+          <span class="dmuted ai-small" data-k="need">Напишите причину, хотя бы пару слов</span>
+        </div>
+      </div>
+      <p class="ai-log" data-k="log" aria-live="polite" hidden></p>
+    </div>
+
+    <div class="panel">
+      <div class="ai-h4row">
+        <h4>Доля поправок и отмен, 28 дней</h4>
+        <div class="ai-legend"><span><i class="ai-l1"></i>поправки</span><span><i class="ai-l2"></i>отмены</span></div>
+      </div>
+      <div class="ai-marks" role="group" aria-label="Какую отметку сравнить" data-k="marks"></div>
+      <div class="ai-chartwrap">
+        <svg class="ai-chart" viewBox="0 0 640 230" tabindex="0" role="img" aria-label="График доли поправок и отмен по дням. Стрелками можно двигаться по дням." data-k="chart"></svg>
+        <div class="ai-tip" data-k="tip" hidden></div>
+      </div>
+      <p class="dmuted ai-small">Поправка: человек исправил карточку после разбора. Отмена: удалил её сразу. Коснитесь графика, чтобы увидеть день.</p>
+      <div class="ai-cmp" data-k="cmp"></div>
+    </div>
+  </div>
+
+  <div class="adm ai-view" data-v="src" data-section="Источники" data-group="Люди и деньги" hidden>
+    <div class="ai-kpis" data-k="skpi"></div>
+    <div class="panel">
+      <h4>Откуда пришли люди <span class="dmuted ai-small">за 30 дней · нажмите на заголовок, чтобы отсортировать</span></h4>
+      <div class="scroll"><table class="ai-st">
+        <thead><tr data-k="shead"></tr></thead>
+        <tbody data-k="srows"></tbody>
+      </table></div>
+      <p class="dmuted ai-small ai-gap">Окупаемость: доход от людей с этой ссылки, делённый на их расход на ИИ. Больше 1 значит в плюсе.</p>
+    </div>
+    <div class="panel">
+      <h4>Новая ссылка-метка</h4>
+      <div class="ai-new">
+        <label class="ai-lab">Название <span class="dmuted">(латиница, цифры, _)</span>
+          <input type="text" data-k="nname" maxlength="24" placeholder="reels_dec" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="ai-lab">Где разместите <span class="dmuted">(для себя)</span>
+          <input type="text" data-k="nnote" maxlength="40" placeholder="Ролик про сон, декабрь" autocomplete="off">
+        </label>
+      </div>
+      <div class="ai-link"><code data-k="nprev">t.me/ваш_бот?start=src_reels_dec</code></div>
+      <div class="ai-row">
+        <button type="button" class="dbtn primary ai-btn" data-k="ncreate">Создать ссылку</button>
+        <button type="button" class="dbtn ai-btn" data-k="ncopy" hidden>Скопировать</button>
+        <span class="ai-small" data-k="nmsg" aria-live="polite"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="adm ai-view" data-v="box" data-section="Песочница разбора" data-group="ИИ" hidden>
+    <div class="panel ai-safe"><span class="st ok">в базу не пишется</span><span class="dsoft">Только ваша тестовая фраза. Карточки никому не создаются, записи людей сюда не попадают. До 50 разборов в день.</span></div>
+    <div class="panel">
+      <label class="ai-lab">Тестовая фраза
+        <textarea rows="2" data-k="phrase" maxlength="200"></textarea>
+      </label>
+      <div class="ai-presets" role="group" aria-label="Готовые фразы" data-k="pre"></div>
+      <div class="ai-row">
+        <button type="button" class="dbtn primary ai-btn" data-k="run">Разобрать</button>
+        <span class="dmuted ai-small" data-k="sess">За сегодня: 0 разборов · $0</span>
+      </div>
+    </div>
+    <div class="panel ai-res" data-k="res" aria-live="polite">
+      <p class="dmuted">Выберите фразу или напишите свою и нажмите «Разобрать».</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Четыре раздела вместо заглушки «Воронки» и команды бота для смены модели.</li>
+      <li>Воронка показывает потерю на каждом шаге и самый слабый шаг. Ниже возвраты на 1-й, 7-й и 30-й день и удержание по характеру Рины.</li>
+      <li>Модель меняется прямо в таблице и только с причиной. Каждая смена становится отметкой на графике качества, рядом сравнение 7 дней до и после.</li>
+      <li>Источники: у каждой ссылки-метки свой путь до оплаты и своя окупаемость. Новая ссылка создаётся тут же.</li>
+      <li>Песочница: своя фраза, карточки, число вызовов, цена и время. В базу ничего не пишется.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Воронка наполняется слева направо, числа досчитываются. При смене периода всё перестраивается заново.</li>
+      <li>Линии графика прорисовываются, итоги «до и после» выезжают по одному. Касание графика показывает день.</li>
+      <li>Новая ссылка встаёт первой строкой и коротко подсвечивается.</li>
+      <li>В песочнице три точки, пока идёт разбор, потом карточки выезжают по одной.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Воронки: шаги уже копятся в feature_events (onboarding.tour.*, onboarding.persona.first), payments и billing_events. Нужен отчёт вместо заглушки в ANALYTICS_REPORTS.</li>
+      <li>Модели: цена, время и ошибки уже есть в llm_calls. Нужна таблица «назначение → модель» вместо kv model:lite, запись в журнал админки и столбец версии указаний в llm_calls.</li>
+      <li>Источники: сейчас параметр start нигде не сохраняется. Надо писать его при регистрации и завести таблицу ссылок-меток.</li>
+      <li>Песочница: нужен режим разбора без записи в базу, свой дневной лимит и учёт цены отдельно от людей.</li>
+    </ul></div>
+  </div>
+
+  <style>
+    #p-a-insight .ai-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    #p-a-insight .ai-tabs button { text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 9px 13px; font-weight: 650; color: var(--soft); min-height: 52px; min-width: 0; transition: border-color .25s var(--ease), color .25s var(--ease), background .25s var(--ease); }
+    #p-a-insight .ai-tabs small { display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    #p-a-insight .ai-tabs button:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+    #p-a-insight .ai-tabs button[aria-pressed="true"] { border-color: var(--accent); color: var(--text); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+    #p-a-insight .ai-hint { color: var(--muted); font-size: 13.5px; margin-top: -6px; }
+    #p-a-insight .adm[hidden] { display: none; }
+    #p-a-insight .ai-small { font-size: 12px; font-weight: 400; }
+    #p-a-insight .ai-gap { margin-top: 8px; }
+    #p-a-insight .ai-tool, #p-a-insight .ai-row, #p-a-insight .ai-h4row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+    #p-a-insight .ai-h4row { justify-content: space-between; margin-bottom: 8px; }
+    #p-a-insight .ai-h4row h4 { margin: 0; }
+    #p-a-insight .ai-note { font-size: 12.5px; min-width: 0; }
+    #p-a-insight .ai-seg { display: inline-flex; background: var(--d-panel-2); border: 1px solid var(--d-line); border-radius: 9px; padding: 3px; gap: 2px; }
+    #p-a-insight .ai-seg button { background: none; border: 0; border-radius: 7px; padding: 6px 12px; min-height: 34px; font-size: 12.5px; font-weight: 600; color: var(--d-muted); }
+    #p-a-insight .ai-seg button[aria-pressed="true"] { background: var(--d-panel-3); color: var(--d-text); }
+    #p-a-insight .ai-btn { min-height: 36px; padding: 6px 14px; }
+    #p-a-insight .dbtn:disabled { opacity: .5; cursor: not-allowed; }
+    #p-a-insight .ai-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    #p-a-insight .ai-big { font-size: 30px; font-weight: 750; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+    #p-a-insight .ai-d { font-size: 12px; color: var(--d-muted); min-height: 18px; }
+    #p-a-insight .ai-up { color: var(--d-ok); }
+    #p-a-insight .ai-down, #p-a-insight .ai-bad { color: var(--d-bad); }
+    #p-a-insight .ai-ok { color: var(--d-ok); }
+
+    #p-a-insight .ai-fun { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 4px; }
+    #p-a-insight .ai-step { --k: 1; display: flex; flex-direction: column; gap: 2px; text-align: left; background: none; border: 1px solid transparent; border-radius: 10px; padding: 8px; min-width: 0; color: var(--d-text); transition: background .2s var(--ease), border-color .2s var(--ease); }
+    #p-a-insight .ai-step:hover { background: var(--d-panel-2); }
+    #p-a-insight .ai-step[aria-pressed="true"] { border-color: var(--d-line-2); background: var(--d-panel-2); }
+    #p-a-insight .ai-sl { font-size: 12px; color: var(--d-soft); min-height: 36px; line-height: 1.35; }
+    #p-a-insight .ai-sv { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    #p-a-insight .ai-sp { font-size: 12px; color: var(--d-muted); }
+    #p-a-insight .ai-bar { position: relative; height: 120px; margin-top: 6px; border-radius: 8px; background: var(--d-panel-2); overflow: hidden; }
+    #p-a-insight .ai-bar i { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--p) * 1%); background: linear-gradient(to top, var(--d-accent), color-mix(in srgb, var(--d-accent) 55%, transparent)); border-radius: 8px 8px 0 0; transform-origin: bottom; transform: scaleY(var(--k)); transition: transform .8s var(--ease) calc(var(--i) * 110ms); }
+    #p-a-insight .ai-loss { font-size: 11.5px; color: var(--d-muted); margin-top: 6px; min-height: 18px; font-variant-numeric: tabular-nums; }
+    #p-a-insight .ai-step.ai-worst .ai-loss { color: var(--d-warn); font-weight: 650; }
+    #p-a-insight .ai-step.ai-worst .ai-bar { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--d-warn) 60%, transparent); }
+    #p-a-insight .ai-why { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--d-panel-2); color: var(--d-soft); font-size: 13px; }
+    #p-a-insight .ai-why b { color: var(--d-text); }
+
+    #p-a-insight .ai-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 12px; }
+    #p-a-insight .ai-rets { display: grid; gap: 14px; }
+    #p-a-insight .ai-ret { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; font-size: 12.5px; }
+    #p-a-insight .ai-ret b { font-size: 20px; font-variant-numeric: tabular-nums; text-align: right; min-width: 52px; }
+    #p-a-insight .ai-ret small { grid-column: 2 / 4; font-size: 11.5px; color: var(--d-muted); }
+    #p-a-insight .ai-track { --k: 1; height: 10px; border-radius: 99px; background: var(--d-panel-2); overflow: hidden; }
+    #p-a-insight .ai-track i { display: block; height: 100%; width: calc(var(--p) * 1%); border-radius: 99px; background: var(--d-accent); transform-origin: left; transform: scaleX(var(--k)); transition: transform .7s var(--ease) calc(var(--i) * 90ms); }
+    #p-a-insight .ai-chars { display: grid; gap: 9px; }
+    #p-a-insight .ai-char { display: grid; grid-template-columns: minmax(0, 130px) minmax(0, 1fr) 48px; align-items: center; gap: 10px; font-size: 12.5px; }
+    #p-a-insight .ai-char span small { display: block; color: var(--d-muted); font-size: 11px; }
+    #p-a-insight .ai-char b { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; }
+    #p-a-insight .ai-char .ai-track { height: 14px; }
+    #p-a-insight .ai-char.ai-best .ai-track i { background: var(--d-ok); }
+
+    #p-a-insight .ai-mt, #p-a-insight .ai-st { min-width: 640px; }
+    #p-a-insight .ai-mt td b, #p-a-insight .ai-st td b { font-weight: 600; }
+    #p-a-insight .ai-mt td small, #p-a-insight .ai-st td small { color: var(--d-muted); font-size: 11px; display: block; }
+    #p-a-insight select { background: var(--d-panel-2); color: var(--d-text); border: 1px solid var(--d-line-2); border-radius: 8px; padding: 6px 8px; min-height: 36px; font-size: 12.5px; max-width: 180px; }
+    #p-a-insight tr.ai-pend td { background: color-mix(in srgb, var(--d-accent) 9%, transparent); }
+    #p-a-insight .ai-tag { font-size: 11px; color: var(--d-accent); display: block; }
+    #p-a-insight .ai-change { margin-top: 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--d-accent) 45%, transparent); border-radius: 10px; display: grid; gap: 10px; animation: a-insight-up .35s var(--ease); }
+    #p-a-insight .ai-change[hidden], #p-a-insight .ai-log[hidden] { display: none; }
+    #p-a-insight .ai-chg-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+    #p-a-insight .ai-lab { display: grid; gap: 5px; font-size: 12.5px; color: var(--d-soft); min-width: 0; }
+    #p-a-insight textarea, #p-a-insight input[type="text"] { width: 100%; background: var(--d-panel-2); border: 1px solid var(--d-line-2); border-radius: 8px; padding: 8px 10px; color: var(--d-text); resize: vertical; min-height: 38px; font-size: 13px; }
+    #p-a-insight .ai-log { margin-top: 10px; font-size: 12.5px; color: var(--d-soft); padding: 8px 12px; border-left: 3px solid var(--d-ok); background: var(--d-panel-2); border-radius: 0 8px 8px 0; animation: a-insight-up .4s var(--ease); }
+
+    #p-a-insight .ai-legend { display: flex; gap: 14px; font-size: 12px; color: var(--d-soft); }
+    #p-a-insight .ai-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+    #p-a-insight .ai-l1 { background: var(--s1); }
+    #p-a-insight .ai-l2 { background: var(--s2); }
+    #p-a-insight .ai-marks { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+    #p-a-insight .ai-mark { background: var(--d-panel-2); border: 1px solid var(--d-line-2); border-radius: 99px; padding: 6px 12px; min-height: 36px; font-size: 12px; color: var(--d-soft); text-align: left; max-width: 100%; }
+    #p-a-insight .ai-mark[aria-pressed="true"] { border-color: var(--d-accent); color: var(--d-text); background: color-mix(in srgb, var(--d-accent) 12%, transparent); }
+    #p-a-insight .ai-chartwrap { position: relative; }
+    #p-a-insight .ai-chart { width: 100%; height: auto; display: block; touch-action: pan-y; }
+    #p-a-insight .ai-chart text { fill: var(--d-muted); font-size: 11px; font-family: var(--f); }
+    #p-a-insight .ai-chart .ai-mtxt { fill: var(--d-soft); font-weight: 600; }
+    #p-a-insight .ai-chart .ai-ln { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .9s var(--ease); }
+    #p-a-insight .ai-chart.ai-zero .ai-ln { stroke-dashoffset: 1; }
+    #p-a-insight .ai-tip { position: absolute; top: 2px; transform: translateX(-50%); background: var(--d-panel-3); border: 1px solid var(--d-line-2); border-radius: 8px; padding: 5px 10px; font-size: 12px; white-space: nowrap; pointer-events: none; color: var(--d-text); }
+    #p-a-insight .ai-tip[hidden] { display: none; }
+    #p-a-insight .ai-tip span { color: var(--d-muted); }
+    #p-a-insight .ai-cmp { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+    #p-a-insight .ai-cm { background: var(--d-panel-2); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+    #p-a-insight .ai-cm .ai-v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+    #p-a-insight .ai-cm .ai-v s { text-decoration: none; color: var(--d-muted); font-size: 13px; font-weight: 500; }
+    #p-a-insight .ai-cm .ai-w { font-size: 11.5px; font-weight: 650; }
+    #p-a-insight .ai-flash { animation: a-insight-flash .7s var(--ease); }
+
+    #p-a-insight .ai-st th button { background: none; border: 0; padding: 0; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; min-height: 30px; text-align: left; }
+    #p-a-insight .ai-st th button[aria-pressed="true"] { color: var(--d-text); }
+    #p-a-insight .ai-st code, #p-a-insight .ai-link code, #p-a-insight .ai-d code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    #p-a-insight .ai-pay { display: flex; align-items: center; gap: 8px; }
+    #p-a-insight .ai-pay .ai-track { width: 56px; height: 6px; flex: none; }
+    #p-a-insight .ai-pay b { min-width: 36px; }
+    #p-a-insight .ai-st tr.ai-newrow td { animation: a-insight-new 1.4s var(--ease); }
+    #p-a-insight .ai-new { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+    #p-a-insight .ai-link { margin: 10px 0; padding: 8px 12px; background: var(--d-panel-2); border-radius: 8px; color: var(--d-soft); overflow-wrap: anywhere; }
+
+    #p-a-insight .ai-safe { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+    #p-a-insight .ai-presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+    #p-a-insight .ai-presets button { background: var(--d-panel-2); border: 1px solid var(--d-line-2); border-radius: 99px; padding: 6px 12px; min-height: 36px; font-size: 12px; color: var(--d-soft); text-align: left; max-width: 100%; }
+    #p-a-insight .ai-presets button:hover { border-color: var(--d-accent); color: var(--d-text); }
+    #p-a-insight .ai-res { min-height: 150px; }
+    #p-a-insight .ai-meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+    #p-a-insight .ai-meta div { min-width: 0; }
+    #p-a-insight .ai-meta .dv { font-size: 20px; }
+    #p-a-insight .ai-path { font-size: 12px; color: var(--d-soft); margin-bottom: 10px; }
+    #p-a-insight .ai-path span { display: inline-block; padding: 2px 8px; border-radius: 6px; background: var(--d-panel-2); margin: 2px 2px 2px 0; }
+    #p-a-insight .ai-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 10px; }
+    #p-a-insight .ai-card { background: var(--d-panel-2); border: 1px solid var(--d-line); border-left: 4px solid var(--cc); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+    #p-a-insight .ai-card small { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--d-muted); font-weight: 700; }
+    #p-a-insight .ai-card b { display: block; font-size: 14px; margin: 2px 0; overflow-wrap: anywhere; }
+    #p-a-insight .ai-card p { font-size: 12.5px; color: var(--d-soft); }
+    #p-a-insight .ai-ask { margin-top: 10px; font-size: 12.5px; color: var(--d-warn); }
+    #p-a-insight .ai-dots { display: flex; gap: 6px; align-items: center; color: var(--d-muted); font-size: 13px; }
+    #p-a-insight .ai-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--d-accent); animation: a-insight-dot .7s var(--ease) both; }
+    #p-a-insight .ai-dots i:nth-child(2) { animation-delay: .12s; }
+    #p-a-insight .ai-dots i:nth-child(3) { animation-delay: .24s; }
+    #p-a-insight .ai-in { animation: a-insight-up .5s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 110ms); }
+
+    @keyframes a-insight-up { from { opacity: 0; transform: translateY(10px); } }
+    @keyframes a-insight-flash { from { background: color-mix(in srgb, var(--d-accent) 22%, transparent); } }
+    @keyframes a-insight-new { from { background: color-mix(in srgb, var(--d-ok) 24%, transparent); } }
+    @keyframes a-insight-dot { 0%, 100% { transform: translateY(0); opacity: .5; } 50% { transform: translateY(-5px); opacity: 1; } }
+
+    @media (max-width: 860px) {
+      #p-a-insight .ai-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #p-a-insight .ai-two { grid-template-columns: minmax(0, 1fr); }
+      #p-a-insight .ai-cmp, #p-a-insight .ai-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      #p-a-insight .ai-kpis { gap: 6px; }
+      #p-a-insight .ai-kpis .panel { padding: 10px; }
+      #p-a-insight .ai-big { font-size: 21px; }
+      #p-a-insight .ai-fun { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+      #p-a-insight .ai-step { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 2px 10px; padding: 7px 8px; }
+      #p-a-insight .ai-sl { min-height: 0; }
+      #p-a-insight .ai-sv { font-size: 17px; text-align: right; }
+      #p-a-insight .ai-sp { min-width: 40px; text-align: right; }
+      #p-a-insight .ai-bar { grid-column: 1 / 4; height: 10px; margin-top: 4px; border-radius: 99px; }
+      #p-a-insight .ai-bar i { right: auto; top: 0; height: 100%; width: calc(var(--p) * 1%); border-radius: 99px; transform-origin: left; transform: scaleX(var(--k)); }
+      #p-a-insight .ai-loss { grid-column: 1 / 4; margin-top: 2px; min-height: 0; }
+      #p-a-insight .ai-new { grid-template-columns: minmax(0, 1fr); }
+      #p-a-insight .ai-char { grid-template-columns: minmax(0, 100px) minmax(0, 1fr) 42px; }
+    }
+    @media (max-width: 440px) {
+      #p-a-insight .ai-kpis { grid-template-columns: minmax(0, 1fr); }
+      #p-a-insight .ai-kpis .panel { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0 10px; }
+      #p-a-insight .ai-kpis .ai-d { width: 100%; }
+      #p-a-insight .ai-tabs button { padding: 8px 10px; font-size: 13.5px; }
+      #p-a-insight .ai-ret { grid-template-columns: 78px minmax(0, 1fr) auto; }
+    }
+    #p-a-insight .ai-zero, #p-a-insight .ai-zero * { --k: 0 !important; transition: none !important; }
+  </style>
+
+  <script>(function () {
+    "use strict";
+    var root = document.getElementById("p-a-insight");
+    var R = !!(window.MaidMock && MaidMock.reduce);
+    function $$(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+    function k(v, name) { return root.querySelector('.ai-view[data-v="' + v + '"] [data-k="' + name + '"]'); }
+    function n0(x) { return Math.round(x).toLocaleString("ru-RU"); }
+    function n1(x) { return (Math.round(x * 10) / 10).toFixed(1).replace(".", ","); }
+    function usd(x) { return "$" + (x < 0.01 ? x.toFixed(4) : x < 100 ? x.toFixed(2) : String(Math.round(x))).replace(".", ","); }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+    function count(el, to, fmt, dur) {
+      if (!el) return;
+      if (R) { el.textContent = fmt(to); return; }
+      var t0 = performance.now(); dur = dur || 800;
+      (function step(t) {
+        var p = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = fmt(to * e);
+        if (p < 1) requestAnimationFrame(step);
+      })(t0);
+    }
+    function regrow(el) {
+      if (!el || R) return;
+      el.classList.add("ai-zero"); void el.getBoundingClientRect();
+      requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.remove("ai-zero"); }); });
+    }
+    function delta(now, was, unit) {
+      var d = now - was, good = d >= 0;
+      return '<span class="' + (good ? "ai-up" : "ai-down") + '">' + (good ? "▲ +" : "▼ −") + unit(Math.abs(d)) + " " + (good ? "лучше" : "хуже") + "</span> прошлого периода";
+    }
+
+    var STEPS = ["/start", "Вход в программу", "Первая запись", "3 дня подряд", "Оплата"];
+    var WHY = ["", "Чаще всего теряются на коде входа: окно открыли многие, код ввели не все.", "Уходят те, кто пропустил знакомство с Риной: у них первая запись вдвое реже.", "Самый тихий день второй: на него приходится больше всего ушедших.", "Решают в последний день пробы: туда приходится 6 оплат из 10."];
+    var FUN = {
+      7: { s: [1240, 868, 612, 287, 64], prev: [1180, 800, 571, 262, 55], span: "21–27 ноя", ret: [58, 31, null], rp: [55, 30, null] },
+      30: { s: [5180, 3470, 2390, 1090, 236], prev: [4620, 3050, 2070, 920, 189], span: "28 окт – 27 ноя", ret: [56, 29, 17], rp: [54, 28, 16] },
+      90: { s: [14920, 9700, 6510, 2870, 598], prev: [11300, 7230, 4740, 2030, 398], span: "29 авг – 27 ноя", ret: [54, 27, 15], rp: [51, 25, 14] }
+    };
+    var CH = [["Нежная", 41, 34, 20], ["Озорная", 26, 31, 17], ["Строгая", 18, 27, 14], ["Деловая", 15, 22, 11]];
+    var per = 30, sel = 0, hz = 1;
+    function renderFun(anim) {
+      var d = FUN[per], s = d.s, box = k("fun", "fun"), worst = 1, wl = 0, i;
+      for (i = 1; i < 5; i++) { var l = 1 - s[i] / s[i - 1]; if (l > wl) { wl = l; worst = i; } }
+      if (!sel) sel = worst;
+      box.innerHTML = s.map(function (v, i) {
+        var loss = i ? "уходят " + n0(s[i - 1] - v) + " · " + Math.round((1 - v / s[i - 1]) * 100) + "%" + (i === worst ? " · больше всего" : "") : "все, кто нажал";
+        return '<button type="button" class="ai-step' + (i === worst ? " ai-worst" : "") + '" data-i="' + i + '" aria-pressed="' + (i === sel) + '" style="--i:' + i + '">' +
+          '<span class="ai-sl">' + (i + 1) + ". " + STEPS[i] + '</span><b class="ai-sv" data-to="' + v + '">' + n0(v) + '</b><span class="ai-sp">' + n1(v / s[0] * 100) + "%</span>" +
+          '<span class="ai-bar"><i style="--p:' + Math.max(3, v / s[0] * 100) + '"></i></span><span class="ai-loss">' + loss + "</span></button>";
+      }).join("");
+      k("fun", "span").textContent = d.span + " · люди, которые нажали /start за период";
+      var conv = s[4] / s[0] * 100, pc = d.prev[4] / d.prev[0] * 100;
+      k("fun", "k0d").innerHTML = delta(s[0], d.prev[0], n0);
+      k("fun", "k1d").innerHTML = delta(s[4], d.prev[4], n0);
+      k("fun", "k2d").innerHTML = delta(conv, pc, n1);
+      if (anim) {
+        regrow(box);
+        count(k("fun", "k0"), s[0], n0); count(k("fun", "k1"), s[4], n0); count(k("fun", "k2"), conv, n1);
+        $$(".ai-sv", box).forEach(function (el) { count(el, +el.dataset.to, n0, 900); });
+      } else {
+        k("fun", "k0").textContent = n0(s[0]); k("fun", "k1").textContent = n0(s[4]); k("fun", "k2").textContent = n1(conv);
+      }
+      renderWhy(); renderRet(anim); renderChars(anim);
+    }
+    function renderWhy() {
+      var s = FUN[per].s, el = k("fun", "why");
+      if (!sel) { el.innerHTML = "<b>" + n0(s[0]) + "</b> человек нажали /start. Дальше видно, сколько осталось на каждом шаге."; return; }
+      el.innerHTML = "Шаг " + sel + " → " + (sel + 1) + ": из <b>" + n0(s[sel - 1]) + "</b> дошли <b>" + n0(s[sel]) + "</b> (" + Math.round(s[sel] / s[sel - 1] * 100) + "%), ушли <b>" + n0(s[sel - 1] - s[sel]) + "</b>. " + WHY[sel];
+    }
+    function renderRet(anim) {
+      var d = FUN[per], box = k("fun", "rets"), L = ["На 1-й день", "На 7-й день", "На 30-й день"];
+      box.innerHTML = d.ret.map(function (v, i) {
+        if (v === null) return '<div class="ai-ret"><span class="dsoft">' + L[i] + '</span><span class="ai-track"><i style="--p:0;--i:' + i + '"></i></span><b class="dmuted">рано</b><small>Люди этого периода пришли меньше 30 дней назад. Посчитаю к 27 декабря.</small></div>';
+        return '<div class="ai-ret"><span class="dsoft">' + L[i] + '</span><span class="ai-track"><i style="--p:' + v + ";--i:" + i + '"></i></span><b>' + v + "%</b><small>" + delta(v, d.rp[i], function (x) { return Math.round(x) + " п."; }) + "</small></div>";
+      }).join("");
+      if (anim) regrow(box);
+    }
+    function renderChars(anim) {
+      var box = k("fun", "chars"), sh = per === 7 ? [-2, 1, 0, 1] : per === 90 ? [1, -1, 0, 0] : [0, 0, 0, 0];
+      var rows = CH.map(function (c, i) { return [c[0], c[1], c[2 + hz] + sh[i]]; });
+      var best = rows.reduce(function (a, r, i) { return r[2] > rows[a][2] ? i : a; }, 0);
+      box.innerHTML = rows.map(function (r, i) {
+        return '<div class="ai-char' + (i === best ? " ai-best" : "") + '"><span>' + r[0] + "<small>" + r[1] + "% людей" + (i === best ? " · ✓ держит лучше" : "") + '</small></span><span class="ai-track"><i style="--p:' + (r[2] / 40 * 100) + ";--i:" + i + '"></i></span><b>' + r[2] + "%</b></div>";
+      }).join("");
+      if (anim) regrow(box);
+    }
+    $$('.ai-view[data-v="fun"] [data-p]').forEach(function (b) {
+      b.addEventListener("click", function () {
+        per = +b.dataset.p; sel = 0;
+        $$('.ai-view[data-v="fun"] [data-p]').forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        renderFun(true);
+      });
+    });
+    $$('.ai-view[data-v="fun"] [data-h]').forEach(function (b) {
+      b.addEventListener("click", function () {
+        hz = +b.dataset.h;
+        $$('.ai-view[data-v="fun"] [data-h]').forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        renderChars(true);
+      });
+    });
+    k("fun", "fun").addEventListener("click", function (e) {
+      var b = e.target.closest(".ai-step"); if (!b) return;
+      sel = +b.dataset.i;
+      $$(".ai-step", k("fun", "fun")).forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      renderWhy();
+      var w = k("fun", "why"); w.classList.remove("ai-flash"); void w.offsetWidth; w.classList.add("ai-flash");
+    });
+
+    var MODELS = {
+      txt: { "deepseek-v3": [0.42, 2.1, 0.6], "gpt-4.1-mini": [0.95, 1.6, 0.4], "gemini-2.5-flash": [0.61, 1.2, 0.8], "claude-haiku-4.5": [2.1, 1.4, 0.3] },
+      img: { "flux-schnell": [3, 4.8, 1.9], "flux-dev": [25, 11.5, 1.1] },
+      voice: { "whisper-turbo": [3.5, 1.1, 0.7], "whisper-large-v3": [6, 2.4, 0.4] }
+    };
+    var PURP = [
+      { n: "Разбор записей", d: "сообщение → карточки", g: "txt", m: "gpt-4.1-mini", f: 1, day: 4200 },
+      { n: "Ответы Рины", d: "разговор и советы", g: "txt", m: "deepseek-v3", f: 1.8, day: 2600 },
+      { n: "Письма", d: "утро, вечер, неделя", g: "txt", m: "deepseek-v3", f: 3.2, day: 380 },
+      { n: "Картинки", d: "рисунки Рины", g: "img", m: "flux-schnell", f: 1, day: 140 },
+      { n: "Голос", d: "голосовые в текст", g: "voice", m: "whisper-turbo", f: 1, day: 310 }
+    ];
+    var pend = null;
+    function mv(p, m) { var v = MODELS[p.g][m]; return { price: v[0] * p.f, sp: v[1] * (p.g === "txt" ? 0.8 + p.f * 0.2 : 1), err: v[2] }; }
+    function month(p, m) { return mv(p, m).price * p.day * 30 / 1000; }
+    function renderModels() {
+      k("mod", "mrows").innerHTML = PURP.map(function (p, i) {
+        var on = pend && pend.i === i, m = on ? pend.to : p.m, v = mv(p, m);
+        var opts = Object.keys(MODELS[p.g]).map(function (x) { return "<option" + (x === m ? " selected" : "") + ">" + x + "</option>"; }).join("");
+        var e = v.err >= 1 ? '<span class="st warn">' + n1(v.err) + "% много</span>" : '<span class="st ok">' + n1(v.err) + "%</span>";
+        return '<tr data-i="' + i + '"' + (on ? ' class="ai-pend"' : "") + "><td><b>" + p.n + "</b><small>" + p.d + '</small></td><td><select aria-label="Модель: ' + p.n + '">' + opts + "</select>" + (on ? '<span class="ai-tag">не сохранено</span>' : "") + "</td><td>" + usd(v.price) + "</td><td>" + n1(v.sp) + " с</td><td>" + e + "</td><td>" + usd(month(p, m)) + "</td></tr>";
+      }).join("");
+      var box = k("mod", "chg");
+      if (!pend) { box.hidden = true; return; }
+      var p = PURP[pend.i], a = month(p, p.m), b = month(p, pend.to), d = (b - a) / a * 100;
+      box.hidden = false;
+      k("mod", "chgT").textContent = p.n + ": " + p.m + " → " + pend.to;
+      k("mod", "chgM").innerHTML = "В месяц " + usd(a) + " → " + usd(b) + ' <b class="' + (d > 0 ? "ai-bad" : "ai-ok") + '">(' + (d > 0 ? "дороже на " : "дешевле на ") + Math.abs(Math.round(d)) + "%)</b>";
+    }
+    function checkWhy() {
+      var ok = k("mod", "why2").value.trim().length >= 6;
+      k("mod", "save").disabled = !ok;
+      k("mod", "need").textContent = ok ? "Смена попадёт в журнал и станет отметкой на графике" : "Напишите причину, хотя бы пару слов";
+    }
+    k("mod", "mrows").addEventListener("change", function (e) {
+      var tr = e.target.closest("tr"), i = +tr.dataset.i, to = e.target.value;
+      pend = to === PURP[i].m ? null : { i: i, to: to };
+      k("mod", "why2").value = ""; checkWhy(); renderModels();
+      if (pend) k("mod", "why2").focus();
+    });
+    k("mod", "why2").addEventListener("input", checkWhy);
+    k("mod", "cancel").addEventListener("click", function () { pend = null; renderModels(); });
+    k("mod", "save").addEventListener("click", function () {
+      if (!pend) return;
+      var p = PURP[pend.i], from = p.m, why = k("mod", "why2").value.trim();
+      p.m = pend.to; pend = null;
+      MARKS.push({ i: 27, t: "сегодня", d: "сегодня · " + p.n.toLowerCase() + ": " + from + " → " + p.m });
+      mk = MARKS.length - 1;
+      var log = k("mod", "log"); log.hidden = false;
+      log.innerHTML = "✓ Записано в журнал: 27 ноя, 14:02 · " + esc(p.n) + " → " + esc(p.m) + " · причина «" + esc(why) + "». Сравнение «после» начнёт копиться завтра.";
+      renderModels(); renderMarks(); drawChart(true);
+    });
+
+    var DAYS = [], SER = { corr: [], canc: [], clar: [], err: [] };
+    function nz(i, a) { return Math.sin(i * 1.7 + a) * 0.32 + Math.cos(i * 0.9 + a * 2) * 0.18; }
+    for (var j = 0; j < 28; j++) {
+      DAYS.push(j === 0 ? "31 окт" : j + " ноя");
+      SER.corr.push((j < 13 ? 6.8 : j < 21 ? 4.4 : 4.0) + nz(j, 0));
+      SER.canc.push((j < 13 ? 2.7 : j < 21 ? 2.4 : 3.0) + nz(j, 1) * 0.6);
+      SER.clar.push((j < 13 ? 5.2 : j < 21 ? 5.0 : 4.6) + nz(j, 2) * 0.5);
+      SER.err.push((j < 13 ? 0.9 : 0.5) + nz(j, 3) * 0.15);
+    }
+    var MARKS = [
+      { i: 13, t: "сменили модель", d: "13 ноя · разбор: deepseek-v3 → gpt-4.1-mini" },
+      { i: 21, t: "новые указания", d: "21 ноя · ответы Рины: новый текст указаний модели" }
+    ];
+    var mk = 0, hov = -1;
+    var W = 640, H = 230, PL = 34, PR = 12, PT = 30, PB = 26, YM = 8;
+    function X(i) { return PL + i * (W - PL - PR) / 27; }
+    function Y(v) { return PT + (1 - v / YM) * (H - PT - PB); }
+    function renderMarks() {
+      k("mod", "marks").innerHTML = MARKS.map(function (m, i) { return '<button type="button" class="ai-mark" data-m="' + i + '" aria-pressed="' + (i === mk) + '">' + esc(m.d) + "</button>"; }).join("");
+    }
+    k("mod", "marks").addEventListener("click", function (e) {
+      var b = e.target.closest(".ai-mark"); if (!b) return;
+      mk = +b.dataset.m; renderMarks(); drawChart(false); renderCmp(true);
+    });
+    function path(a) { return a.map(function (v, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); }).join(""); }
+    function drawChart(anim) {
+      var svg = k("mod", "chart"), m = MARKS[mk], g = "", bw = 7 * (W - PL - PR) / 27, v;
+      for (v = 0; v <= YM; v += 2) g += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" style="stroke:var(--d-line)"/><text x="' + (PL - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end">' + v + "%</text>";
+      [0, 7, 14, 21, 27].forEach(function (i) { g += '<text x="' + X(i) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? "start" : i === 27 ? "end" : "middle") + '">' + DAYS[i] + "</text>"; });
+      g += '<rect x="' + (X(m.i) - bw) + '" y="' + PT + '" width="' + bw + '" height="' + (H - PT - PB) + '" style="fill:color-mix(in srgb, var(--d-muted) 10%, transparent)"/>';
+      g += '<rect x="' + X(m.i) + '" y="' + PT + '" width="' + Math.min(bw, X(27) - X(m.i)) + '" height="' + (H - PT - PB) + '" style="fill:color-mix(in srgb, var(--d-accent) 14%, transparent)"/>';
+      MARKS.forEach(function (q, i) {
+        var on = i === mk, x = X(q.i);
+        g += '<line x1="' + x + '" x2="' + x + '" y1="' + (PT - 6) + '" y2="' + (H - PB) + '" style="stroke:' + (on ? "var(--d-text)" : "var(--d-line-2)") + ';stroke-width:1.5;stroke-dasharray:4 3"/>';
+        g += '<text class="ai-mtxt" x="' + x + '" y="' + (PT - 12) + '" text-anchor="' + (q.i > 22 ? "end" : "middle") + '" opacity="' + (on ? 1 : 0.55) + '">' + esc(q.t) + "</text>";
+      });
+      g += '<path class="ai-ln" pathLength="1" d="' + path(SER.corr) + '" style="stroke:var(--s1)"/><path class="ai-ln" pathLength="1" d="' + path(SER.canc) + '" style="stroke:var(--s2)"/>';
+      if (hov >= 0) {
+        g += '<line x1="' + X(hov) + '" x2="' + X(hov) + '" y1="' + PT + '" y2="' + (H - PB) + '" style="stroke:var(--d-soft)"/>';
+        g += '<circle cx="' + X(hov) + '" cy="' + Y(SER.corr[hov]) + '" r="4.5" style="fill:var(--s1);stroke:var(--d-panel);stroke-width:2"/><circle cx="' + X(hov) + '" cy="' + Y(SER.canc[hov]) + '" r="4.5" style="fill:var(--s2);stroke:var(--d-panel);stroke-width:2"/>';
+      }
+      svg.innerHTML = g;
+      if (anim) { regrow(svg); renderCmp(true); } else if (!k("mod", "cmp").firstChild) renderCmp(false);
+    }
+    function avg(a, s, e) { var t = 0, c = 0; for (var i = Math.max(0, s); i <= Math.min(27, e); i++) { t += a[i]; c++; } return c ? t / c : null; }
+    function renderCmp(anim) {
+      var m = MARKS[mk], left = m.t === "сегодня" ? 0 : Math.min(7, 28 - m.i);
+      var L = [["Поправки", "corr"], ["Отмены", "canc"], ["Уточнения", "clar"], ["Ошибки модели", "err"]], a1 = anim && !R ? " ai-in" : "";
+      k("mod", "cmp").innerHTML = L.map(function (l, i) {
+        var b = avg(SER[l[1]], m.i - 7, m.i - 1), a = left > 0 ? avg(SER[l[1]], m.i, m.i + 6) : null, head = '<div class="ai-cm' + a1 + '" style="--i:' + i + '"><div class="dk">' + l[0] + "</div>";
+        if (a === null) return head + '<div class="ai-v">' + n1(b) + '%</div><div class="ai-w dmuted">после: копим, 0 из 7 дней</div></div>';
+        var d = a - b, good = d <= 0, same = Math.abs(d) < 0.15;
+        return head + '<div class="ai-v"><s>' + n1(b) + "% →</s>" + n1(a) + '%</div><div class="ai-w ' + (same ? "dmuted" : good ? "ai-up" : "ai-down") + '">' + (same ? "■ без изменений" : (good ? "▼ лучше на " : "▲ хуже на ") + n1(Math.abs(d)) + " п.") + "</div></div>";
+      }).join("");
+    }
+    (function () {
+      var svg = k("mod", "chart"), tip = k("mod", "tip");
+      function show(i) {
+        hov = i; drawChart(false);
+        var r = svg.getBoundingClientRect(), px = X(i) / W * r.width;
+        tip.hidden = false;
+        tip.style.left = Math.max(95, Math.min(r.width - 95, px)) + "px";
+        tip.innerHTML = "<b>" + DAYS[i] + "</b> · <span>поправки</span> " + n1(SER.corr[i]) + "% · <span>отмены</span> " + n1(SER.canc[i]) + "%";
+      }
+      function hide() { hov = -1; tip.hidden = true; drawChart(false); }
+      function at(e) { var r = svg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W; return Math.max(0, Math.min(27, Math.round((x - PL) / ((W - PL - PR) / 27)))); }
+      svg.addEventListener("pointermove", function (e) { show(at(e)); });
+      svg.addEventListener("pointerdown", function (e) { show(at(e)); });
+      svg.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") hide(); });
+      svg.addEventListener("keydown", function (e) {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault(); show(Math.max(0, Math.min(27, (hov < 0 ? 27 : hov) + (e.key === "ArrowLeft" ? -1 : 1))));
+      });
+      svg.addEventListener("blur", hide);
+    })();
+
+    var SRC = [
+      { t: "reels_nov", note: "ролики, ноябрь", reg: 1840, pay: 61, ret: 12, ai: 9200, inc: 14300 },
+      { t: "tg_cozy", note: "канал про уют", reg: 960, pay: 58, ret: 21, ai: 6100, inc: 13600 },
+      { t: "friends", note: "приглашение друга", reg: 410, pay: 39, ret: 27, ai: 2900, inc: 9100 },
+      { t: "vk_post", note: "пост в группе", reg: 620, pay: 9, ret: 8, ai: 3400, inc: 2100 },
+      { t: "", note: "ссылка без метки", reg: 1350, pay: 69, ret: 18, ai: 8800, inc: 16200 }
+    ];
+    var COLS = [["t", "Метка"], ["reg", "Пришли"], ["pay", "Оплатили"], ["ret", "Остались через 30 дней"], ["ai", "Расход на ИИ"], ["roi", "Окупаемость"]];
+    var sk = "roi", fresh = null;
+    function roi(s) { return s.ai ? s.inc / s.ai : 0; }
+    function rub(x) { return n0(x) + " ₽"; }
+    function renderSrc(anim) {
+      k("src", "shead").innerHTML = COLS.map(function (c) { return '<th><button type="button" data-s="' + c[0] + '" aria-pressed="' + (c[0] === sk) + '">' + c[1] + (c[0] === sk ? " ▼" : "") + "</button></th>"; }).join("");
+      var rows = SRC.slice().sort(function (a, b) {
+        if (a === fresh) return -1; if (b === fresh) return 1;
+        if (sk === "t") return (a.t || "я").localeCompare(b.t || "я");
+        return (sk === "roi" ? roi(b) - roi(a) : b[sk] - a[sk]);
+      });
+      k("src", "srows").innerHTML = rows.map(function (s, i) {
+        var r = roi(s), cls = [], st = !s.reg ? '<span class="st mute">пока пусто</span>' : r >= 1 ? '<span class="st ok">в плюсе</span>' : '<span class="st bad">в минусе</span>';
+        if (s === fresh) cls.push("ai-newrow");
+        if (anim && !R) cls.push("ai-in");
+        return '<tr class="' + cls.join(" ") + '" style="--i:' + i + '"><td>' + (s.t ? "<code>" + esc(s.t) + "</code>" : '<span class="dsoft">без метки</span>') + "<small>" + esc(s.note) + "</small></td><td>" + n0(s.reg) + "</td><td>" + n0(s.pay) + "<small>" + (s.reg ? n1(s.pay / s.reg * 100) + "%" : "–") + "</small></td><td>" + (s.reg ? s.ret + "%" : "–") + "</td><td>" + rub(s.ai) + "<small>доход " + rub(s.inc) + '</small></td><td><div class="ai-pay"><span class="ai-track"><i style="--p:' + Math.min(100, r / 3.5 * 100) + ';--i:' + i + '"></i></span><b>' + (s.reg ? "×" + n1(r) : "–") + "</b>" + st + "</div></td></tr>";
+      }).join("");
+      if (anim) regrow(k("src", "srows"));
+      var tot = SRC.reduce(function (a, s) { return a + s.reg; }, 0), tagged = SRC.filter(function (s) { return s.t && s.reg; });
+      var best = tagged.reduce(function (a, s) { return roi(s) > roi(a) ? s : a; }, tagged[0]);
+      var worst = tagged.reduce(function (a, s) { return roi(s) < roi(a) ? s : a; }, tagged[0]);
+      var none = SRC.filter(function (s) { return !s.t; })[0];
+      k("src", "skpi").innerHTML = '<div class="panel"><div class="dk">Лучше всех окупается</div><div class="ai-big ai-ok">×' + n1(roi(best)) + '</div><div class="ai-d"><code>' + best.t + "</code> · остаются " + best.ret + "%</div></div>" +
+        '<div class="panel"><div class="dk">В минусе</div><div class="ai-big ai-bad">×' + n1(roi(worst)) + '</div><div class="ai-d"><code>' + worst.t + "</code> · ИИ дороже дохода</div></div>" +
+        '<div class="panel"><div class="dk">Пришли без метки</div><div class="ai-big">' + Math.round(none.reg / tot * 100) + '%</div><div class="ai-d">из ' + n0(tot) + " человек за 30 дней</div></div>";
+    }
+    k("src", "shead").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-s]"); if (!b) return;
+      sk = b.dataset.s; fresh = null; renderSrc(true);
+    });
+    function slug() { return k("src", "nname").value.trim().toLowerCase(); }
+    function taken(s) { return SRC.some(function (x) { return x.t === s; }); }
+    function preview() {
+      var s = slug(), msg = k("src", "nmsg");
+      k("src", "nprev").textContent = "t.me/ваш_бот?start=src_" + (s || "reels_dec");
+      k("src", "ncopy").hidden = true;
+      if (s && !/^[a-z0-9_]{2,24}$/.test(s)) { msg.className = "ai-small ai-bad"; msg.textContent = "Только латиница, цифры и _, от 2 знаков"; }
+      else if (s && taken(s)) { msg.className = "ai-small ai-bad"; msg.textContent = "Такая метка уже есть"; }
+      else { msg.className = "ai-small"; msg.textContent = ""; }
+    }
+    k("src", "nname").addEventListener("input", preview);
+    k("src", "ncreate").addEventListener("click", function () {
+      var s = slug() || "reels_dec", msg = k("src", "nmsg");
+      if (!/^[a-z0-9_]{2,24}$/.test(s) || taken(s)) {
+        preview();
+        if (!slug()) { msg.className = "ai-small ai-bad"; msg.textContent = "Метка reels_dec уже создана, придумайте другую"; }
+        return;
+      }
+      fresh = { t: s, note: k("src", "nnote").value.trim() || "новая ссылка", reg: 0, pay: 0, ret: 0, ai: 0, inc: 0 };
+      SRC.push(fresh); renderSrc(false);
+      msg.className = "ai-small ai-ok"; msg.textContent = "✓ Ссылка создана. Люди появятся в таблице, когда по ней придут.";
+      k("src", "ncopy").hidden = false; k("src", "ncopy").textContent = "Скопировать";
+      k("src", "nname").value = ""; k("src", "nnote").value = "";
+      k("src", "nprev").textContent = "t.me/ваш_бот?start=src_" + s;
+    });
+    k("src", "ncopy").addEventListener("click", function () {
+      var t = k("src", "nprev").textContent;
+      try { navigator.clipboard.writeText(t).catch(function () {}); } catch (e) {}
+      k("src", "ncopy").textContent = "✓ Скопировано";
+    });
+
+    var PRE = [
+      { q: "Завтра в 9 к врачу, напомни за час", calls: 1, cost: 0.00031, ms: "1,2 с", path: ["правила времени", "модель: что за дело"],
+        cards: [["План", "var(--d-accent)", "К врачу", "Завтра, 28 ноября, 9:00"], ["Напоминание", "var(--d-accent)", "За час до врача", "Завтра в 8:00, в Telegram и виджете"]] },
+      { q: "Обед 450 и метро 120", calls: 1, cost: 0.00024, ms: "0,9 с", path: ["правила денег", "модель: категории"],
+        cards: [["Трата", "var(--s4)", "450 ₽ · Еда", "Обед, сегодня"], ["Трата", "var(--s4)", "120 ₽ · Транспорт", "Метро, сегодня"]] },
+      { q: "Лёг в 1:30, встал в 8, выспался плохо", calls: 0, cost: 0, ms: "0,04 с", path: ["правила сна", "модель не понадобилась"],
+        cards: [["Сон", "var(--s6)", "6 ч 30 мин", "С 1:30 до 8:00, ночь на 27 ноября"], ["Оценка сна", "var(--s5)", "Плохо", "2 из 5"]] },
+      { q: "Хочу каждый день читать по 20 минут и пить воду", calls: 2, cost: 0.00068, ms: "2,3 с", path: ["модель: разбор", "модель: уточнение"],
+        cards: [["Привычка", "var(--s3)", "Чтение", "Каждый день, 20 минут"], ["Привычка", "var(--s3)", "Вода", "Каждый день, сколько: ждёт ответа"]],
+        ask: "Рина переспросит, сколько воды в день отмечать. Такой разбор считается уточнением." }
+    ];
+    var runs = 0, spent = 0, busy = false, timer = 0;
+    k("box", "pre").innerHTML = PRE.map(function (p, i) { return '<button type="button" data-q="' + i + '">' + esc(p.q) + "</button>"; }).join("");
+    k("box", "phrase").value = PRE[0].q;
+    k("box", "pre").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-q]"); if (!b) return;
+      k("box", "phrase").value = PRE[+b.dataset.q].q; parse();
+    });
+    function pick(t) {
+      t = t.trim();
+      for (var i = 0; i < PRE.length; i++) if (PRE[i].q.toLowerCase() === t.toLowerCase()) return PRE[i];
+      return { calls: 1, cost: 0.00027, ms: "1,1 с", path: ["правила не подошли", "модель: разбор"], own: true,
+        cards: [["Заметка", "var(--d-muted)", t.length > 40 ? t.slice(0, 40) + "…" : t, "В дневник, сегодня"]] };
+    }
+    function word(n) { var a = n % 10, b = n % 100; return a === 1 && b !== 11 ? "разбор" : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? "разбора" : "разборов"; }
+    function parse() {
+      if (busy) return;
+      var t = k("box", "phrase").value, res = k("box", "res");
+      if (!t.trim()) { res.innerHTML = '<p class="ai-bad">Напишите фразу, чтобы разобрать.</p>'; return; }
+      if (runs >= 50) { res.innerHTML = '<p class="ai-bad">На сегодня 50 разборов уже сделано. Завтра лимит обновится.</p>'; return; }
+      var r = pick(t);
+      if (R) { showRes(r, false); return; }
+      busy = true; k("box", "run").disabled = true;
+      res.innerHTML = '<div class="ai-dots"><i></i><i></i><i></i><span>Разбираю…</span></div>';
+      clearTimeout(timer);
+      timer = setTimeout(function () { busy = false; k("box", "run").disabled = false; showRes(r, true); }, 750);
+    }
+    function showRes(r, anim) {
+      runs++; spent += r.cost;
+      k("box", "sess").textContent = "За сегодня: " + runs + " " + word(runs) + " · " + usd(spent) + " · осталось " + (50 - runs);
+      var a = anim ? " ai-in" : "";
+      k("box", "res").innerHTML = '<div class="ai-meta"><div><div class="dk">Карточек</div><div class="dv">' + r.cards.length + '</div></div><div><div class="dk">Вызовов модели</div><div class="dv">' + r.calls + '</div></div><div><div class="dk">Цена</div><div class="dv">' + (r.cost ? usd(r.cost) : "$0") + '</div></div><div><div class="dk">Время</div><div class="dv">' + r.ms + "</div></div></div>" +
+        '<div class="ai-path">Путь разбора: ' + r.path.map(function (p) { return "<span>" + p + "</span>"; }).join(" → ") + "</div>" +
+        '<div class="ai-cards">' + r.cards.map(function (c, i) { return '<div class="ai-card' + a + '" style="--cc:' + c[1] + ";--i:" + i + '"><small>' + c[0] + "</small><b>" + esc(c[2]) + "</b><p>" + esc(c[3]) + "</p></div>"; }).join("") + "</div>" +
+        (r.ask ? '<p class="ai-ask' + a + '" style="--i:' + r.cards.length + '">⚠ ' + r.ask + "</p>" : "") +
+        (r.own ? '<p class="dmuted ai-small ai-gap">В макете своя фраза разбирается как заметка. В программе здесь будет настоящий разбор.</p>' : "");
+    }
+    k("box", "run").addEventListener("click", parse);
+    k("box", "phrase").addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); parse(); } });
+
+    var cur = "fun";
+    function play() {
+      if (cur === "fun") renderFun(!R);
+      else if (cur === "mod") { renderModels(); renderMarks(); drawChart(!R); }
+      else if (cur === "src") renderSrc(!R);
+      else if (cur === "box") parse();
+    }
+    $$(".ai-tabs button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (cur === b.dataset.v) return;
+        cur = b.dataset.v;
+        $$(".ai-tabs button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        $$(".ai-view").forEach(function (v) { v.hidden = v.dataset.v !== cur; });
+        play();
+      });
+    });
+    renderFun(false); renderModels(); renderMarks(); drawChart(false); renderSrc(false);
+    MaidMock.onSeen(root, play);
+    root.addEventListener("replay", play);
+  })();</script>
+</article>

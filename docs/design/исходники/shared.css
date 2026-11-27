@@ -1,0 +1,178 @@
+/* ===== ОБЩИЙ СТИЛЬ РЕВЬЮ =====
+   Страница ревью — всегда тёмная (мир виджета). Внутри рамок .app живёт НОВЫЙ дизайн полной версии:
+   у него две кожи (тёмная и светлая), переключаются кнопкой на странице: body[data-skin="light"].
+   Макеты используют ТОЛЬКО токены --a-* и --c-*; литеральных цветов в макетах нет. */
+:root {
+  color-scheme: dark;
+  --bg: #0f0c19; --card: #171228; --card-2: #1e1833; --line: #2f2747; --text: #f1eef8; --soft: #cbc4de; --muted: #9d95b5;
+  --accent: #b79cff; --ok: #4fd09a; --warn: #ffb36b; --bad: #ff8a9a; --gold: #f2c14e;
+  --f: "Onest", "Segoe UI", system-ui, sans-serif;
+  --fd: "Unbounded", "Onest", "Segoe UI", system-ui, sans-serif;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 15px/1.55 var(--f); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+p { margin: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.page { max-width: 1180px; margin: 0 auto; padding-block: 28px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ——— текст страницы ревью */
+.eyebrow { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+h1 { font: 800 clamp(26px, 4.2vw, 42px)/1.12 var(--fd); letter-spacing: -.02em; margin: 8px 0 0; text-wrap: balance; }
+h2 { font: 700 clamp(20px, 2.6vw, 27px)/1.2 var(--fd); letter-spacing: -.015em; margin: 6px 0 0; text-wrap: balance; }
+.lead { color: var(--soft); font-size: 17px; max-width: 70ch; margin-top: 12px; }
+.piece { display: flex; flex-direction: column; gap: 18px; padding-block: 34px; border-top: 1px solid var(--line); min-width: 0; }
+.piece > header > p:not(.eyebrow) { color: var(--soft); max-width: 72ch; margin-top: 8px; }
+.notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.notes > div { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+.notes h4 { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--accent); }
+.notes ul { margin: 0; padding-left: 18px; color: var(--soft); font-size: 14px; display: grid; gap: 5px; }
+.replay { align-self: flex-start; background: none; border: 1px solid var(--line); border-radius: 99px; padding: 5px 13px; font-size: 13px; color: var(--soft); }
+.replay:hover { border-color: var(--accent); color: var(--text); }
+.replay::before { content: "▶ "; color: var(--accent); }
+@media (max-width: 860px) { .notes { grid-template-columns: 1fr; } }
+
+/* ===== НОВЫЙ ДИЗАЙН ПОЛНОЙ ВЕРСИИ: токены ===== */
+.app {
+  --a-bg: #14101f; --a-surface: #1c1730; --a-surface-2: #251f3b; --a-surface-3: #2e2748; --a-line: #342c4d;
+  --a-text: #f1eef8; --a-soft: #cbc4de; --a-muted: #9d95b5;
+  --a-accent: #b79cff; --a-accent-strong: #7d52e6; --a-on-accent: #ffffff; --a-accent-soft: rgba(183, 156, 255, .14);
+  --a-ok: #4fd09a; --a-warn: #ffb36b; --a-bad: #ff8a9a; --a-gold: #f2c14e;
+  /* цвета данных: у каждой сущности свой, всегда один и тот же */
+  --c-pc: #3987e5; --c-game: #d95926; --c-habit: #199e70; --c-money: #c98500; --c-mood: #d55181; --c-sleep: #9085e9;
+  --a-grid: #2c2640; --a-shadow: 0 16px 40px rgba(0, 0, 0, .45);
+  --a-r: 16px; --a-r-sm: 10px;
+}
+body[data-skin="light"] .app {
+  --a-bg: #f3f0fa; --a-surface: #ffffff; --a-surface-2: #f1edf9; --a-surface-3: #e6e0f3; --a-line: #ddd6ee;
+  --a-text: #1d1830; --a-soft: #4b4463; --a-muted: #736b8c;
+  --a-accent: #6b3fd4; --a-accent-strong: #6b3fd4; --a-on-accent: #ffffff; --a-accent-soft: rgba(107, 63, 212, .1);
+  --a-ok: #12805a; --a-warn: #a96200; --a-bad: #c93a52; --a-gold: #a87a00;
+  --c-pc: #2a78d6; --c-game: #eb6834; --c-habit: #1baf7a; --c-money: #c98500; --c-mood: #d55181; --c-sleep: #6250d6;
+  --a-grid: #e6e1f1; --a-shadow: 0 16px 40px rgba(60, 40, 120, .14);
+}
+
+/* ——— рамка окна программы (строится скриптом shared.js из <div class="app" data-hub=… data-tab=… data-title=…>) */
+.app { background: var(--a-bg); color: var(--a-text); border: 1px solid var(--a-line); border-radius: 18px; overflow: hidden; box-shadow: var(--a-shadow); font: 14px/1.5 var(--f); display: grid; grid-template-columns: 76px minmax(0, 1fr); min-height: 560px; position: relative; }
+.app-rail { background: var(--a-surface); border-right: 1px solid var(--a-line); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; }
+.app-rail .me { width: 44px; height: 44px; border-radius: 14px; background: var(--a-surface-2); overflow: hidden; margin-bottom: 10px; }
+.app-rail .me img { width: 58px; height: 62px; margin: -4px 0 0 -7px; display: block; }
+.app-rail a { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 64px; padding: 8px 2px 6px; border-radius: 12px; color: var(--a-muted); font-size: 10.5px; font-weight: 600; text-decoration: none; }
+.app-rail a svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.app-rail a.on { background: var(--a-accent-soft); color: var(--a-accent); }
+.app-rail .sp { flex: 1; }
+.app-body { min-width: 0; display: flex; flex-direction: column; }
+.app-top { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--a-line); flex-wrap: wrap; }
+.app-top h3 { margin: 0; font: 700 17px/1.2 var(--fd); letter-spacing: -.01em; }
+.app-tabs { display: flex; gap: 2px; background: var(--a-surface-2); border-radius: 10px; padding: 3px; flex-wrap: wrap; }
+.app-tabs span { padding: 4px 11px; border-radius: 8px; font-size: 12.5px; color: var(--a-muted); font-weight: 600; white-space: nowrap; }
+.app-tabs span.on { background: var(--a-surface); color: var(--a-text); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
+.app-find { margin-left: auto; display: flex; align-items: center; gap: 8px; background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 10px; padding: 5px 10px; color: var(--a-muted); font-size: 12.5px; white-space: nowrap; }
+.app-find kbd { font: 600 10.5px var(--f); border: 1px solid var(--a-line); border-radius: 5px; padding: 0 5px; }
+.app-content { padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; flex: 1; }
+@media (max-width: 720px) {
+  .app { grid-template-columns: 1fr; }
+  .app-rail { order: 2; flex-direction: row; justify-content: space-around; border-right: 0; border-top: 1px solid var(--a-line); padding: 4px; }
+  .app-rail .me, .app-rail .sp { display: none; }
+  .app-rail a { width: auto; flex: 1; }
+  .app-content { padding: 12px; } .app-top { padding: 10px 12px; } .app-find span { display: none; }
+}
+
+/* ——— детали нового дизайна (общие для всех экранов) */
+.app .card { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 16px; min-width: 0; }
+.app .card-t { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--a-muted); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.app .g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.app .g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.app .row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.app .muted { color: var(--a-muted); } .app .soft { color: var(--a-soft); }
+.app .num { font-variant-numeric: tabular-nums; }
+.app .big { font: 800 30px/1 var(--fd); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.app .kpi { display: flex; flex-direction: column; gap: 4px; }
+.app .kpi small { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; }
+.app .delta { font-size: 12px; font-weight: 600; } .app .delta.up { color: var(--a-ok); } .app .delta.down { color: var(--a-bad); }
+.app .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--a-surface-2); border: 1px solid transparent; border-radius: 99px; padding: 4px 11px; font-size: 12.5px; color: var(--a-soft); white-space: nowrap; }
+.app button.chip:hover { border-color: var(--a-accent); }
+.app .chip.on, .app .chip[aria-pressed="true"] { background: var(--a-accent-soft); color: var(--a-accent); border-color: var(--a-accent); }
+.app .btn { display: inline-flex; align-items: center; gap: 7px; border-radius: 10px; padding: 8px 14px; font-weight: 650; font-size: 13px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-text); white-space: nowrap; }
+.app .btn:hover { border-color: var(--a-accent); }
+.app .btn.primary { background: var(--a-accent-strong); border-color: var(--a-accent-strong); color: var(--a-on-accent); }
+.app .btn.ghost { background: none; }
+.app .seg { display: inline-flex; background: var(--a-surface-2); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.app .seg button { background: none; border: 0; border-radius: 8px; padding: 4px 11px; font-size: 12.5px; color: var(--a-muted); font-weight: 600; }
+.app .seg button[aria-pressed="true"] { background: var(--a-surface); color: var(--a-text); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
+.app .dot { width: 9px; height: 9px; border-radius: 3px; flex: none; display: inline-block; }
+/* Рина говорит: её наблюдение по экрану. Картинка: maid/<имя>.webp */
+.app .rina { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
+.app .rina img { width: 64px; height: 68px; flex: none; }
+.app .rina p { background: var(--a-surface-2); border-radius: 14px 14px 14px 4px; padding: 9px 13px; color: var(--a-text); font-size: 13.5px; min-width: 0; }
+.app .rina p b { color: var(--a-accent); font-weight: 650; }
+@media (max-width: 720px) { .app .g2, .app .g3 { grid-template-columns: 1fr; } .app .big { font-size: 24px; } }
+@media (prefers-reduced-motion: reduce) { .app *, .app *::before, .app *::after { animation-duration: .01s !important; animation-iteration-count: 1 !important; transition-duration: .01s !important; } }
+
+/* ===== ДОПОЛНИТЕЛЬНЫЕ РАМКИ для макетов исправлений и админки ===== */
+/* окно без меню (вход, первый запуск, диалог): <div class="app plain"> */
+.app.plain { display: block; min-height: 0; padding: 22px; }
+/* телефон: <div class="phone"><div class="app plain">…</div></div> или с Telegram внутри */
+.phone { width: min(320px, 100%); border-radius: 34px; padding: 10px; background: #05040a; border: 1px solid var(--line); box-shadow: 0 18px 44px rgba(0,0,0,.5); flex: none; }
+.phone > * { border-radius: 26px; overflow: hidden; }
+.phone .app { min-height: 560px; border: 0; box-shadow: none; }
+/* виджет на ПК (цвета продукта, одинаковы в обеих кожах): .wgt > .wgt-top(img + .wgt-bubble) + .wgt-panel */
+.wgt { --w-bg: #1d1830; --w-2: #262038; --w-3: #302944; --w-line: #3d3553; --w-text: #f1eef8; --w-muted: #a8a1bd; --w-accent: #b79cff; --w-btn: #6b3fd4; --w-ok: #4fd09a; --w-warn: #ffb36b; --w-gold: #f2c14e;
+  width: min(324px, 100%); display: flex; flex-direction: column; gap: 6px; font: 13px/1.4 var(--f); color: var(--w-text); flex: none; }
+.wgt-top { display: flex; align-items: flex-end; justify-content: flex-end; gap: 6px; min-height: 100px; }
+.wgt-top img { width: 104px; height: 111px; margin-bottom: -20px; position: relative; z-index: 2; filter: drop-shadow(0 5px 8px rgba(0,0,0,.4)); }
+.wgt-bubble { background: rgba(255,255,255,.97); color: #1d1830; border-radius: 14px 14px 4px 14px; padding: 8px 12px; font-size: 13px; box-shadow: 0 8px 20px rgba(0,0,0,.35); margin-bottom: 26px; min-width: 0; }
+.wgt-panel { background: rgba(29,24,48,.95); border: 1px solid var(--w-line); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.wgt-panel h5 { margin: 0; font: 600 10.5px var(--f); letter-spacing: .1em; text-transform: uppercase; color: var(--w-muted); }
+.wgt-row { display: flex; align-items: center; gap: 8px; padding: 4px; border-radius: 8px; }
+.wgt-ck { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid #7a7197; flex: none; }
+/* чат Telegram: .tg > .tg-head + .tg-body(.tg-in / .tg-out / .tg-btns > button) */
+.tg { --t-bg: #0e1621; --t-in: #182533; --t-out: #2b5278; --t-text: #e9edf1; --t-muted: #7f8b97; --t-link: #6ab3f3;
+  width: min(340px, 100%); background: var(--t-bg); color: var(--t-text); border-radius: 16px; border: 1px solid #1f2b38; overflow: hidden; font: 13.5px/1.45 var(--f); flex: none; }
+.tg-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #17212b; font-weight: 650; }
+.tg-head img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; background: #2b2440; }
+.tg-head small { display: block; font-weight: 400; color: var(--t-muted); font-size: 11.5px; }
+.tg-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 180px; }
+.tg-in, .tg-out { max-width: 86%; padding: 7px 11px; border-radius: 14px; white-space: pre-line; }
+.tg-in { background: var(--t-in); border-bottom-left-radius: 4px; align-self: flex-start; }
+.tg-out { background: var(--t-out); border-bottom-right-radius: 4px; align-self: flex-end; }
+.tg-btns { display: grid; gap: 4px; max-width: 86%; }
+.tg-btns button { background: rgba(255,255,255,.08); border: 0; border-radius: 8px; padding: 7px 10px; color: var(--t-link); font-weight: 600; font-size: 13px; }
+/* сцена: несколько рамок рядом с подписями */
+.scene { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+.scene figure { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; max-width: 100%; }
+.scene figcaption { font-size: 13px; color: var(--muted); max-width: 340px; }
+
+/* ——— админка (всегда тёмная, цвета настоящей админки): <div class="adm" data-section="Название" data-group="ИИ"> */
+.adm { --d-bg: #0e1013; --d-panel: #15181d; --d-panel-2: #1b1f25; --d-panel-3: #22272e; --d-line: #262b33; --d-line-2: #313741; --d-text: #e4e7eb; --d-soft: #b9bfc8; --d-muted: #8a93a0;
+  --d-accent: #9b8cff; --d-ok: #5fc59a; --d-warn: #d9a45b; --d-bad: #e0727f; --d-star: #f2c14e;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+  background: var(--d-bg); color: var(--d-text); border: 1px solid var(--d-line); border-radius: 16px; overflow: hidden; font: 13.5px/1.5 var(--f); display: grid; grid-template-columns: 170px minmax(0, 1fr); min-height: 420px; box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+.adm-side { background: #0b0d10; border-right: 1px solid var(--d-line); padding: 14px 8px; display: flex; flex-direction: column; gap: 1px; font-size: 12.5px; }
+.adm-side b { font-weight: 800; font-size: 13.5px; padding: 0 8px 10px; }
+.adm-side small { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--d-muted); padding: 9px 8px 3px; }
+.adm-side span { color: var(--d-soft); padding: 4px 8px; border-radius: 7px; }
+.adm-side span.on { background: var(--d-panel-2); color: var(--d-text); font-weight: 600; }
+.adm-side span.new::after { content: "новое"; margin-left: 6px; font-size: 9.5px; color: var(--d-accent); border: 1px solid color-mix(in srgb, var(--d-accent) 40%, transparent); border-radius: 99px; padding: 0 5px; }
+.adm-main { padding: 18px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.adm-main > h3 { margin: 0; font: 750 19px/1.2 var(--f); }
+.adm .panel { background: var(--d-panel); border: 1px solid var(--d-line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.adm .panel h4 { margin: 0 0 8px; font-size: 13px; font-weight: 650; }
+.adm .dg2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.adm .dg3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.adm .dk { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--d-muted); }
+.adm .dv { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.adm .dmuted { color: var(--d-muted); } .adm .dsoft { color: var(--d-soft); }
+.adm .st { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--d-line-2); white-space: nowrap; }
+.adm .st::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.adm .st.ok { color: var(--d-ok); } .adm .st.warn { color: var(--d-warn); } .adm .st.bad { color: var(--d-bad); } .adm .st.mute { color: var(--d-muted); }
+.adm .dbtn { background: var(--d-panel-2); border: 1px solid var(--d-line-2); border-radius: 8px; padding: 5px 11px; font-size: 12.5px; color: var(--d-text); }
+.adm .dbtn.primary { background: var(--d-accent); border-color: var(--d-accent); color: #14121f; font-weight: 650; }
+.adm table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.adm th { text-align: left; font-weight: 600; color: var(--d-muted); font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--d-line); white-space: nowrap; }
+.adm td { padding: 6px 8px; border-bottom: 1px solid var(--d-line); }
+.adm tr:last-child td { border-bottom: 0; }
+.adm .scroll { overflow-x: auto; }
+@media (max-width: 720px) { .adm { grid-template-columns: 1fr; } .adm-side { display: none; } .adm .dg2, .adm .dg3 { grid-template-columns: 1fr; } .adm-main { padding: 12px; } }

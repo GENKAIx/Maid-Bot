@@ -1,0 +1,214 @@
+<section class="chapter" id="ch-tariffs" hidden>
+  <div class="intro">
+    <p class="eyebrow">Глава 3</p>
+    <h2>Бесплатный уровень и три тарифа</h2>
+    <p>Сначала о том, на чём держится весь расчёт. Сейчас каждое сообщение разбирает сильная модель, и один разбор стоит около 2,1 цента. При такой цене ни один разумный тариф не окупается. Поэтому сетка ниже построена на одном решении: <b>разбор сообщений переводится на быструю модель</b> (примерно в 20 раз дешевле), а сильная остаётся для ответов на вопросы и для писем в старших тарифах.</p>
+    <p>Качество разбора на быстрой модели пока не проверено. Это первый шаг до любых изменений цен: прогнать 200 настоящих сообщений и сравнить. Если быстрая модель не справится, действует запасной план в конце главы.</p>
+  </div>
+
+  <div class="tiers" id="tiers"></div>
+  <p class="src" style="margin-top:12px">★ — звёзды Telegram. Рубли указаны по цене звёзд в приложении Telegram в России (100 ★ ≈ 209 ₽, данные из статей продавцов, официальной таблицы нет). Проба для новых людей: 14 дней на условиях «Заботы».</p>
+  <p class="src" id="audio-note">Аудиоразбор: Рина слушает голосовые сообщения и разбирает их. Минута стоит меньше 0,05 цента, поэтому минут дано с запасом.</p>
+
+  <h3 class="sub">Сколько приносит и сколько стоит каждый тариф</h3>
+  <p>Зелёная полоса показывает, сколько получает разработчик с одного человека в месяц. Синяя — сколько стоит обычный человек на этом тарифе. Оранжевая — худший случай: человек каждый день выбирает все лимиты до конца.</p>
+  <div class="econ" id="econ">
+    <div class="segp" role="group" aria-label="Модель разбора">
+      <button type="button" data-plan="a" aria-pressed="true">План А: разбор на быстрой модели</button>
+      <button type="button" data-plan="now" aria-pressed="false">Как сейчас: всё на сильной</button>
+    </div>
+    <div class="bars" id="econ-bars"></div>
+    <div class="legend"><span><i style="background:#199e70"></i>приносит в месяц</span><span><i style="background:#3987e5"></i>стоит обычный человек</span><span><i style="background:#d95926"></i>худший случай без предохранителя</span></div>
+    <p class="src" id="econ-note"></p>
+  </div>
+
+  <h3 class="sub">Откуда числа</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Действие</th><th class="n">Быстрая модель</th><th class="n">Сильная модель</th><th>Где используется в сетке</th></tr></thead>
+    <tbody>
+      <tr><td>Разбор одного сообщения</td><td class="n">$0,00105</td><td class="n">$0,021</td><td>Всегда быстрая. Это самое частое действие.</td></tr>
+      <tr><td>Ответ на вопрос или разговор</td><td class="n">$0,0004</td><td class="n">$0,0075</td><td>Сильная в пределах «умных ответов» тарифа, дальше быстрая.</td></tr>
+      <tr><td>Письма утром и вечером, за месяц</td><td class="n">$0,02</td><td class="n">$0,40</td><td>Сильная только в «Особняке».</td></tr>
+      <tr><td>Минута аудиоразбора</td><td class="n" colspan="2">$0,0005</td><td>Расшифровка голосового сообщения. Почти бесплатно, лимит нужен только от злоупотреблений. Разбор текста после расшифровки считается обычным сообщением.</td></tr>
+      <tr><td>Одна звезда разработчику</td><td class="n" colspan="2">$0,013</td><td>Человек платит за звезду примерно 2,1 ₽.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src" style="margin-top:10px">Цена разбора на сильной модели измерена 13 ноября. Цена на быстрой пересчитана из размера того же запроса по ценам моделей, найденным поиском 27 ноября. Размеры остальных запросов оценены по тексту запросов в коде.</p>
+
+  <h3 class="sub">Посчитайте сами</h3>
+  <p>Подвиньте число людей и то, как они делятся по тарифам. Расход считается по обычному использованию.</p>
+  <div class="calc" id="calc">
+    <div class="ctl">
+      <label>Платящих людей: <b id="calc-n-v">300</b><input type="range" id="calc-n" min="20" max="3000" step="10" value="300"></label>
+      <label>Из них на «Чае»: <b id="calc-a-v">30%</b><input type="range" id="calc-a" min="0" max="100" step="5" value="30"></label>
+      <label>На «Особняке»: <b id="calc-c-v">10%</b><input type="range" id="calc-c" min="0" max="50" step="5" value="10"></label>
+      <label>Гостей на одного платящего: <b id="calc-g-v">8</b><input type="range" id="calc-g" min="0" max="30" step="1" value="8"></label>
+      <label>Насколько активнее обычного пишут: <b id="calc-x-v">×1,0</b><input type="range" id="calc-x" min="50" max="300" step="10" value="100"></label>
+      <div class="mix" id="calc-mix" aria-hidden="true"><i style="background:#c98500"></i><i style="background:#9085e9"></i><i style="background:#d55181"></i></div>
+      <p class="src">Жёлтый — «Чай», фиолетовый — «Забота», розовый — «Особняк».</p>
+    </div>
+    <div class="out">
+      <div><div class="k">Приходит в месяц</div><div class="v" id="calc-rev">$0</div></div>
+      <div><div class="k">Уходит на ИИ и сервер</div><div class="v" id="calc-cost">$0</div></div>
+      <div><div class="k">Остаётся</div><div class="v" id="calc-left">$0</div></div>
+      <p class="src" id="calc-note"></p>
+    </div>
+  </div>
+
+  <h3 class="sub">Что ещё продавать и как</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Идея</th><th>Суть</th><th>Почему</th></tr></thead>
+    <tbody>
+      <tr><td>Год разовым счётом</td><td>12 месяцев по цене 10: «Забота» 1500 ★, «Чай» 1000 ★. Без автопродления.</td><td>Подписку в звёздах Telegram продлевает только раз в 30 дней, годовой подписки у него нет. У аналогов скидка за год 15–29%.</td></tr>
+      <tr><td>Оплата картой на сайте</td><td>199 / 299 / 899 ₽ через СБП и карту МИР.</td><td>Человеку дешевле, чем звёзды в приложении, а разработчику остаётся больше. Нужны самозанятость или ИП и оферта. Внутри бота Telegram разрешает только звёзды.</td></tr>
+      <tr><td>Подарить месяц</td><td>Кнопка «Подарить» создаёт ссылку на оплату для друга.</td><td>Счёт не привязан к чату, оплатить его может кто угодно. Работы мало.</td></tr>
+      <tr><td>+7 дней обоим</td><td>Личная ссылка. Дни начисляются после первой оплаты друга, не больше 4 раз в год.</td><td>Давать за оплату, а не за регистрацию, иначе будут накручивать пробы.</td></tr>
+      <tr><td>Наборы внешности</td><td>Разовая покупка 150–250 ★ навсегда. Начать с перекрасок, они уже работают.</td><td>Finch и Habitica зарабатывают на украшениях и не закрывают пользу. Дороже $5 за набор бьёт по отзывам.</td></tr>
+      <tr><td>Пожизненный доступ</td><td>Не давать.</td><td>Расход на ИИ вечный. Replika свой пожизненный тариф убрала.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">Что обязательно остаётся бесплатным</h3>
+  <div class="callout">
+    <ul>
+      <li><b>Все записи и вся ручная работа:</b> дневник, планы, привычки, сон, время за компьютером, напоминания, отметки.</li>
+      <li><b>Рина целиком:</b> все 41 анимация, характеры, цвета волос и глаз, альбом. Украшения продаются отдельно и только новые.</li>
+      <li><b>5 разборов в день</b> на быстрой модели и 2 минуты аудиоразбора. Это около 4–5 центов в месяц на человека, а продукт не умирает после пробы.</li>
+      <li><b>Скачать свои данные.</b> Это доверие, за него нельзя брать деньги.</li>
+    </ul>
+  </div>
+
+  <h3 class="sub">Предохранитель и честность лимитов</h3>
+  <p>Лимиты в штуках рассчитаны на обычного человека с запасом в 4–5 раз. Тот, кто каждый день выбирает всё до конца, стоит дороже, чем платит. Таких единицы, и от них защищает денежный предохранитель. Он уже есть в коде, нужно только задать числа по тарифам.</p><p>Проверка расчёта нашла ошибку в первой версии: дневной предохранитель в 1/30 оплаты срабатывал раньше лимитов. На «Заботе» он отключал Рину уже на 55-м сообщении из 60, а в «Особняке» из 30 умных ответов реально доставались около 21. Человек видел бы лимит, до которого нельзя дойти. Поэтому предохранитель теперь <b>месячный</b> (90% оплаты на человека), а в день стоит только мягкий потолок: втрое больше обычного дня. Он ловит всплески и не мешает выбрать дневные лимиты.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Тариф</th><th class="n">Приносит</th><th class="n">Обычный</th><th class="n">Остаётся</th><th class="n">Худший случай</th><th class="n">Бюджет в месяц</th><th class="n">Потолок в день</th><th>Когда сработает</th></tr></thead>
+    <tbody id="fuse-table"></tbody>
+  </table></div>
+  <p class="src" style="margin-top:10px" id="fuse-note"></p>
+
+  <h3 class="sub">Запасной план</h3>
+  <div class="callout warn" id="planb"></div>
+
+  <h3 class="sub">Что придётся дописать в коде</h3>
+  <div class="steps">
+    <div><b>Замер быстрой модели</b><p>200 настоящих сообщений разобрать обеими моделями и сравнить. Без этого шага цены менять нельзя.</p></div>
+    <div><b>Модель по назначению</b><p>Сейчас модель одна на всё и переключается командой сразу для всех. Нужно: разбор на быстрой, ответы и письма по тарифу. И счётчик «умных ответов», которого пока нет.</p></div>
+    <div><b>Несколько платных тарифов</b><p>Код знает одну цену. Нужны тариф в счёте, своя цена и свои лимиты у каждого. В админке уже есть раздел «Тарифы», он расширяется.</p></div>
+    <div><b>Кэш запроса и молчащие</b><p>Перенести дату в конец запроса и включить кэш. Не писать письма моделью тем, кто неделю не заходил.</p></div>
+    <div><b>Тем, кто уже платит</b><p>Оставить их нынешние условия. Telegram продлевает подписку по старой цене, а урезать лимиты у заплативших нельзя: это удар по доверию.</p></div>
+  </div>
+
+  <h3 class="sub">Где я могу ошибаться</h3>
+  <div class="callout">
+    <ul>
+      <li>Цены моделей и курс звёзд найдены поиском и не перепроверены по счетам. Точный расход покажет калькулятор в админке после недели работы на быстрой модели.</li>
+      <li>«Обычный человек» — моё допущение: 15 сообщений в день, 25 дней в месяц. Настоящих средних по подписчикам я не видел.</li>
+      <li><b>Главный риск:</b> цены быстрой модели ($0,10 / $0,50 за миллион) подозрительно низкие, прошлое поколение стоило в 10 раз дороже. Если они на деле $1 / $5, разбор стоит около 1 цента, «Чай» уходит в минус, а тысяча гостей стоит около $420. Перепроверить на openrouter.ai до запуска.</li>
+      <li>Размер разбора (около 9000 знаков запроса) взят из одного замера. У активных людей списки задач и памяти растут, и в «Особняке» разбор может стоить в 1,5–2 раза дороже.</li>
+      <li>В «Чае» 0 умных ответов, но код сам делает второй вызов модели на 20–40% сообщений. Его нужно явно перевести на быструю модель, иначе тариф уйдёт в минус.</li>
+      <li>Пробу на условиях «Заботы» сама подписка не окупает при обычной доле перехода 3–10%: это расход на привлечение. Дешевле вариант: 7–10 дней или проба с лимитами «Чая» (около $0,15 на человека).</li>
+      <li>Рублёвые цены звёзд взяты из статей продавцов и меняются.</li>
+      <li>Цены аналогов для сравнения: Todoist $7, TickTick около $4, Habitica и Daylio $5, Finch и Character.AI около $10 в месяц. Подписочный бюджет в России ниже: реалистично 150–300 ₽.</li>
+    </ul>
+  </div>
+</section>
+
+<script>
+(function () {
+  "use strict";
+  var STAR = 0.013, RUB = 2.1;
+  var U = { parseFast: 0.00105, parseStrong: 0.021, parseCached: 0.008, smart: 0.0075, fastAns: 0.0004, audio: 0.00048, lettersFast: 0.02, lettersStrong: 0.40 };
+  // лимиты в день; typ — обычное использование в месяц
+  var T = [
+    { id: "guest", name: "Гостья", role: "бесплатно навсегда", stars: 0, msg: 5, smart: 0, audio: 2, letters: 0, typ: { msg: 40, smart: 0, audio: 6 },
+      feats: ["Все записи, отметки и напоминания", "5 сообщений Рине в день", "2 минуты аудиоразбора в день", "Все анимации, характеры и цвета", "Скачать свои данные"], no: ["Письма утром и вечером по шаблону"] },
+    { id: "tea", name: "Чай", role: "чтобы попробовать платное", stars: 100, msg: 30, smart: 0, audio: 10, letters: U.lettersFast, typ: { msg: 250, smart: 0, audio: 30 },
+      feats: ["30 сообщений Рине в день", "10 минут аудиоразбора в день", "Её письма утром и вечером"], no: ["Ответы быстрой модели"] },
+    { id: "care", name: "Забота", role: "основной", main: true, stars: 150, msg: 60, smart: 5, audio: 30, letters: U.lettersFast, typ: { msg: 375, smart: 60, audio: 60 },
+      feats: ["60 сообщений Рине в день", "5 умных ответов в день", "30 минут аудиоразбора в день", "Письма утром и вечером", "Статистика за год, отчёт за месяц"], no: [] },
+    { id: "manor", name: "Особняк", role: "для тех, кто живёт с Риной весь день", stars: 500, msg: 200, smart: 30, audio: 90, letters: U.lettersStrong, typ: { msg: 750, smart: 300, audio: 150 },
+      feats: ["200 сообщений Рине в день", "30 умных ответов в день", "90 минут аудиоразбора в день", "Письма пишет сильная модель", "Закономерности в дневнике", "Новые наряды и анимации раньше всех"], no: [] }
+  ];
+  function usd(v) { var a = Math.abs(v); return (v < 0 ? "−$" : "$") + a.toLocaleString("ru-RU", { minimumFractionDigits: a < 100 ? 2 : 0, maximumFractionDigits: a < 100 ? 2 : 0 }); }
+  function rev(t) { return t.stars * STAR; }
+  function cost(t, use, plan) {
+    var p = plan === "now" ? U.parseStrong : plan === "b" ? U.parseCached : U.parseFast;
+    var smart = plan === "now" ? U.smart : U.smart, letters = plan === "now" && t.stars ? U.lettersStrong : t.letters;
+    var sm = plan === "now" ? Math.round(use.msg * .3) : use.smart; // сейчас сильная отвечает на всё
+    return use.msg * p + sm * smart + use.audio * U.audio + letters;
+  }
+  function worstUse(t) { return { msg: t.msg * 30, smart: t.smart * 30, audio: t.audio * 30 }; }
+
+  // карточки тарифов
+  document.getElementById("tiers").innerHTML = T.map(function (t) {
+    return '<div class="tier' + (t.main ? " main" : "") + '">' + (t.main ? '<span class="tag">выбирают чаще</span>' : "") + "<h3>" + t.name + '</h3><div class="role">' + t.role + '</div><div class="cost">' +
+      (t.stars ? t.stars + " <span>★</span> <small>в месяц</small>" : "0 <small>всегда</small>") + '</div><div class="rub">' + (t.stars ? "≈ " + Math.round(t.stars * RUB / 10) * 10 + " ₽ · разработчику " + usd(rev(t)) : "ничего не стоит человеку") + "</div><ul>" +
+      t.feats.map(function (f) { return "<li>" + f + "</li>"; }).join("") + t.no.map(function (f) { return '<li class="no">' + f + "</li>"; }).join("") + "</ul></div>";
+  }).join("");
+
+  var mx = T[T.length - 1], aw = mx.audio * 30 * U.audio;
+  document.getElementById("audio-note").textContent = "Аудиоразбор: Рина слушает голосовые сообщения и разбирает их. Минута стоит меньше 0,05 цента, поэтому минут дано с запасом: даже " + mx.audio + " минут каждый день на тарифе «" + mx.name + "» стоят " + usd(aw) + " в месяц, это " + Math.round(aw / rev(mx) * 100) + "% оплаты.";
+
+  // полосы экономики
+  var plan = "a", bars = document.getElementById("econ-bars");
+  function drawBars(animate) {
+    var rows = T.map(function (t) { return { t: t, r: rev(t), c: cost(t, t.typ, plan), w: cost(t, worstUse(t), plan) }; });
+    var max = Math.max.apply(null, rows.map(function (x) { return Math.max(x.r, x.c, Math.min(x.w, plan === "now" ? 60 : 25)); }));
+    bars.innerHTML = rows.map(function (x) {
+      function b(cls, v, label) { var w = Math.min(100, v / max * 100) * .78; return '<div class="bar ' + cls + '" data-w="' + w.toFixed(1) + '"><span>' + label + "</span></div>"; }
+      var left = x.r - x.c;
+      return '<div class="brow"><b>' + x.t.name + '</b><div class="track">' + (x.t.stars ? b("rev", x.r, usd(x.r)) : "") + b("cost", x.c, usd(x.c) + (x.t.stars ? " · остаётся " + usd(left) : " на гостя")) + b("worst", x.w, usd(x.w) + (x.w / max > 1 ? " (полоса обрезана)" : "")) + "</div></div>";
+    }).join("");
+    var els = bars.querySelectorAll(".bar");
+    function set() { els.forEach(function (e) { e.style.width = e.dataset.w + "%"; }); }
+    if (animate && !MaidMock.reduce) requestAnimationFrame(function () { requestAnimationFrame(set); }); else set();
+    document.getElementById("econ-note").textContent = plan === "now"
+      ? "Так выглядит та же сетка, если ничего не менять в моделях: обычный человек на «Заботе» стоит в несколько раз больше, чем платит."
+      : "На быстрой модели все три тарифа в плюсе на обычном человеке. Худший случай перекрывает предохранитель (таблица ниже).";
+  }
+  document.querySelectorAll("#econ .segp button").forEach(function (b) { b.addEventListener("click", function () { plan = b.dataset.plan; document.querySelectorAll("#econ .segp button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); drawBars(true); }); });
+  drawBars(false);
+  MaidMock.onSeen(document.getElementById("econ"), function () { drawBars(true); });
+  document.addEventListener("chapter", function (e) { if (e.detail === "tariffs") drawBars(true); });
+
+  // таблица предохранителя
+  var paid = T.filter(function (t) { return t.stars; });
+  document.getElementById("fuse-table").innerHTML = paid.map(function (t) {
+    var r = rev(t), c = cost(t, t.typ, "a"), w = cost(t, worstUse(t), "a"), fuse = r * .9, day = Math.max(c / 30 * 3, w / 30), days = Math.floor(fuse / (w / 30));
+    return "<tr><td>" + t.name + '</td><td class="n">' + usd(r) + '</td><td class="n">' + usd(c) + '</td><td class="n">' + usd(r - c) + " · " + Math.round((r - c) / r * 100) + '%</td><td class="n">' + usd(w) + '</td><td class="n">' + (w <= r ? "не нужен" : usd(fuse)) + '</td><td class="n">' + usd(day) + "</td><td>" + (w <= r ? "Даже худший случай дешевле оплаты" : "Только если выбирать все лимиты до конца " + days + " дней из 30. Обычный человек тратит " + Math.round(c / fuse * 100) + "% бюджета") + "</td></tr>";
+  }).join("");
+  var g = T[0], careT = T[2];
+  var trial = cost(careT, careT.typ, "a") * 14 / 30, marg = rev(careT) - cost(careT, careT.typ, "a"), gcost = cost(g, g.typ, "a");
+  document.getElementById("fuse-note").textContent = "Проба 14 дней стоит около " + usd(trial) + " на человека. Она окупается за три месяца, если подписку оформляет хотя бы каждый " + Math.round(1 / (trial / (marg * 3))) + "-й. Тысяча гостей стоит около " + usd(gcost * 1000) + " в месяц и окупается, если платить начинают " + (gcost * 1000 / marg / 10).toFixed(1).replace(".", ",") + "% из них.";
+
+  // запасной план
+  var bRows = paid.map(function (t) { var c = cost(t, t.typ, "b"), need = Math.ceil(c / .6 / STAR / 50) * 50; return "<li><b>" + t.name + ":</b> обычный человек стоит " + usd(c) + ", для запаса в 40% нужна цена около " + need + " ★ (≈ " + Math.round(need * RUB / 10) * 10 + " ₽).</li>"; }).join("");
+  document.getElementById("planb").innerHTML = "<b>Если быстрая модель разбирает плохо</b><p>Тогда разбор остаётся на сильной модели с включённым кэшем: около 0,8 цента вместо 2,1. При тех же лимитах цены пришлось бы поднять примерно втрое:</p><ul>" + bRows +
+    "</ul><p>Такие цены для России высоки. Поэтому в этом случае лучше не поднимать цену, а урезать лимиты: «Чай» 10 сообщений в день, «Забота» 25, и оставить бесплатный уровень без модели. Вывод один: замер быстрой модели решает всё.</p>";
+
+  // калькулятор
+  var ids = ["n", "a", "c", "g", "x"], el = {};
+  ids.forEach(function (k) { el[k] = document.getElementById("calc-" + k); el[k].addEventListener("input", calc); });
+  function calc() {
+    var n = +el.n.value, a = +el.a.value, c = +el.c.value, gk = +el.g.value, x = +el.x.value / 100;
+    if (a + c > 100) { a = 100 - c; el.a.value = a; }
+    var b = 100 - a - c, parts = [a, b, c];
+    document.getElementById("calc-n-v").textContent = n; document.getElementById("calc-a-v").textContent = a + "%"; document.getElementById("calc-c-v").textContent = c + "%";
+    document.getElementById("calc-g-v").textContent = gk; document.getElementById("calc-x-v").textContent = "×" + x.toFixed(1).replace(".", ",");
+    document.querySelectorAll("#calc-mix i").forEach(function (i, k) { i.style.flex = "0 0 " + parts[k] + "%"; });
+    var r = 0, cs = 0;
+    [T[1], T[2], T[3]].forEach(function (t, k) {
+      var people = n * parts[k] / 100, lim = worstUse(t);
+      var use = { msg: Math.min(lim.msg, t.typ.msg * x), smart: Math.min(lim.smart, t.typ.smart * x), audio: Math.min(lim.audio, t.typ.audio * x) };
+      r += people * rev(t); cs += people * Math.min(cost(t, use, "a"), Math.max(rev(t) * .9, cost(t, t.typ, "a")));
+    });
+    var guests = n * gk, server = 12 + Math.floor((n + guests) / 2000) * 12;
+    cs += guests * cost(T[0], T[0].typ, "a") + server;
+    var left = r - cs, lv = document.getElementById("calc-left");
+    document.getElementById("calc-rev").textContent = usd(r); document.getElementById("calc-cost").textContent = usd(cs);
+    lv.textContent = usd(left); lv.className = "v " + (left >= 0 ? "good" : "badc");
+    document.getElementById("calc-note").textContent = "В расходе: ИИ платящих, " + guests.toLocaleString("ru-RU") + " гостей по " + usd(cost(T[0], T[0].typ, "a")) + " и сервер " + usd(server) + ". Комиссии на вывод звёзд и налоги не учтены.";
+  }
+  calc();
+})();
+</script>

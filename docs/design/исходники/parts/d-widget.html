@@ -1,0 +1,593 @@
+<article class="piece" id="p-d-widget">
+  <header>
+    <p class="eyebrow">Виджет на рабочем столе</p>
+    <h2>Один виджет, три размера</h2>
+    <p>Виджет стал главным входом в продукт. Свёрнутый он занимает угол экрана и говорит только одно: что дальше и через сколько. Раскрытый даёт записать дело словами, отметить задачу и увидеть день. Утром и вечером он превращается в письмо, из которого можно сразу что-то сделать.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="dw-ctl">
+    <div class="dw-seg" role="group" aria-label="Состояние виджета">
+      <button type="button" data-go="mini" aria-pressed="false">Свёрнут</button>
+      <button type="button" data-go="normal" aria-pressed="true">Обычный</button>
+      <button type="button" data-go="letter" aria-pressed="false">Письмо</button>
+    </div>
+    <button type="button" class="dw-test" data-remind>Показать напоминание</button>
+  </div>
+  <p class="dw-advice">Попробуйте: напишите в строку «завтра в 15 врач», отметьте задачу, потащите виджет за ручку ⠿ в другой угол.</p>
+
+  <div class="dw-desk" data-desk>
+    <div class="dw-icons" aria-hidden="true">
+      <span><i></i>Документы</span><span><i></i>Браузер</span><span><i></i>Таблицы</span><span><i></i>Корзина</span>
+    </div>
+    <div class="dw-snaps" aria-hidden="true"><b data-c="tl"></b><b data-c="tr"></b><b data-c="bl"></b><b data-c="br"></b></div>
+
+    <div class="dw-full" data-full hidden role="status">
+      <div class="dw-full-rail" aria-hidden="true"><i></i><i class="on"></i><i></i><i></i><i></i></div>
+      <div class="dw-full-main">
+        <small>Полная версия открылась</small>
+        <b data-fullname>Сегодня</b>
+        <span class="dw-full-sk" aria-hidden="true"><i></i><i></i><i></i></span>
+      </div>
+      <button type="button" class="dw-x" data-fullx aria-label="Закрыть окно">×</button>
+    </div>
+
+    <div class="dw-pos" data-pos data-corner="br">
+      <div class="dw-toast" data-toast hidden role="status"></div>
+      <div class="wgt dw-w" data-w data-state="normal">
+        <div class="wgt-top">
+          <button type="button" class="dw-grip" data-grip aria-label="Перетащить виджет. Отпустите у края, он прилипнет к углу">⠿</button>
+          <div class="wgt-bubble dw-bub" data-bub aria-live="polite"></div>
+          <button type="button" class="dw-me" data-me aria-label="Рина. Нажмите, она помашет"><img src="maid/idle.webp" alt="Рина" data-img></button>
+        </div>
+        <div class="dw-body" data-body>
+
+          <section class="dw-s dw-mini" data-s="mini" hidden>
+            <button type="button" class="dw-pill" data-go="normal" aria-label="Раскрыть виджет">
+              <i class="dw-live" aria-hidden="true"></i>
+              <span class="dw-pill-t">Созвон с командой</span>
+              <b>через 20 мин</b>
+            </button>
+          </section>
+
+          <section class="wgt-panel dw-s" data-s="normal">
+            <form class="dw-say" data-form>
+              <label class="dw-sr" for="d-widget-say">Сказать Рине</label>
+              <input id="d-widget-say" data-say type="text" autocomplete="off" placeholder="Сказать Рине…">
+              <button type="submit" aria-label="Отправить">↑</button>
+            </form>
+            <div class="dw-made" data-made hidden></div>
+            <div class="dw-h">
+              <h5>Сейчас и дальше</h5>
+              <button type="button" class="dw-link" data-open="Планы · Неделя">Все планы</button>
+            </div>
+            <ul class="dw-list" data-list></ul>
+            <div class="dw-h">
+              <h5>Привычки</h5>
+              <button type="button" class="dw-link" data-open="Планы · Привычки">Серии</button>
+            </div>
+            <div class="dw-habits" data-habits></div>
+            <button type="button" class="dw-pc" data-open="Обзор · Компьютер" aria-label="За ПК сегодня 3 часа 10 минут из 6. Открыть подробности">
+              <span class="dw-pc-l"><span>За ПК сегодня</span><b>3 ч 10 мин <small>из 6 ч</small></b></span>
+              <span class="dw-bar" aria-hidden="true"><i data-pcbar></i></span>
+            </button>
+            <button type="button" class="dw-open" data-open="Сегодня">Открыть полную версию</button>
+          </section>
+
+          <section class="wgt-panel dw-s dw-letter" data-s="letter" hidden>
+            <div class="dw-lhead"><h5>Утреннее письмо · 8:05</h5><span class="dw-wx">+3° · облачно</span></div>
+            <p class="dw-ltext" data-ltext aria-live="off"></p>
+            <div class="dw-lact" data-lact>
+              <button type="button" class="dw-primary" data-move>Перенести зарядку на 19:00</button>
+              <button type="button" data-go="normal">Ок, всё по плану</button>
+              <button type="button" class="dw-link" data-open="Сегодня">Открыть весь день</button>
+            </div>
+            <div class="dw-made" data-lmade hidden></div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div class="dw-bar-os" aria-hidden="true">
+      <span class="dw-start"></span><span class="dw-app"></span><span class="dw-app"></span>
+      <span class="dw-sp"></span><img src="maid/idle.webp" alt=""><span class="dw-clock">13:40</span>
+    </div>
+  </div>
+  <p class="dw-route" data-route aria-live="polite">Сейчас 13:40, пятница. Виджет живёт в правом нижнем углу.</p>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Три размера одного виджета вместо одной длинной панели: «Свёрнут» (Рина и одно дело), «Обычный», «Письмо».</li>
+      <li>В свёрнутом виде видно время до дела словами: «через 20 мин», без подсчёта в уме.</li>
+      <li>Строка «Сказать Рине» сверху. Записанное дело сразу встаёт в список с кнопкой «Отменить», без окон подтверждения.</li>
+      <li>Утреннее письмо стало коротким и с кнопками: перенос дела делается прямо из письма. Вечером так же приходит оценка дня.</li>
+      <li>Ручка ⠿ для перетаскивания, у краёв виджет прилипает к ближайшему углу.</li>
+      <li>Каждая часть ведёт в свой узел полной версии: «Все планы» в Планы · Неделя, «Серии» в Привычки, полоска ПК в Обзор · Компьютер, «Открыть полную версию» в Сегодня.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Смена размера: панель плавно меняет высоту, содержимое въезжает снизу, Рина чуть подпрыгивает. Так видно, что это тот же виджет.</li>
+      <li>Письмо печатается по буквам, кнопки появляются, когда текст дописан.</li>
+      <li>Ввод: Рина задумывается, затем карточка «План: …» выезжает, а строка в списке вспыхивает на своём месте по времени.</li>
+      <li>Галочка: квадрат пружинит, всплывает +5 ✦. Кольцо привычки дорисовывается.</li>
+      <li>Напоминание выезжает рядом с виджетом со стороны свободного места. Отпущенный виджет доезжает до угла.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Есть: планы, задачи, привычки, время за ПК, погода, письма, напоминания, разбор фразы «завтра в 15 врач» и отмена через корзину.</li>
+      <li>Дописать: три размера окна виджета с запоминанием, прилипание к углам и сторону всплытия тоста.</li>
+      <li>Дописать: кнопки-действия в письме (сервер должен присылать к письму список действий).</li>
+      <li>Дописать: открытие полной версии сразу на нужном узле и вкладке.</li>
+      <li>Цвета данных в виджете (ПК, привычки) взять из той же палитры, что в полной версии.</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-widget [hidden] { display: none !important; }
+#p-d-widget .dw-ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+#p-d-widget .dw-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+#p-d-widget .dw-seg button { background: none; border: 0; border-radius: 9px; padding: 7px 16px; min-height: 38px; font-size: 13.5px; font-weight: 600; color: var(--muted); transition: background .2s, color .2s; }
+#p-d-widget .dw-seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+#p-d-widget .dw-test { min-height: 40px; padding: 0 16px; border-radius: 99px; border: 1px dashed var(--line); background: none; color: var(--soft); font-size: 13.5px; font-weight: 600; }
+#p-d-widget .dw-test:hover { border-color: var(--accent); color: var(--text); }
+#p-d-widget .dw-advice { color: var(--soft); font-size: 14px; margin-top: -8px; }
+#p-d-widget .dw-route { color: var(--muted); font-size: 13px; margin-top: -8px; min-height: 20px; }
+
+#p-d-widget .dw-desk { position: relative; min-height: 760px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); touch-action: pan-y;
+  background: radial-gradient(120% 80% at 85% 10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%), radial-gradient(90% 70% at 10% 100%, color-mix(in srgb, var(--ok) 12%, transparent), transparent 60%), var(--card); }
+#p-d-widget .dw-icons { position: absolute; left: 18px; top: 18px; display: grid; gap: 14px; }
+#p-d-widget .dw-icons span { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 74px; font-size: 11.5px; color: var(--soft); }
+#p-d-widget .dw-icons i { width: 42px; height: 42px; border-radius: 11px; background: var(--card-2); border: 1px solid var(--line); }
+#p-d-widget .dw-icons span:nth-child(2) i { border-radius: 50%; }
+#p-d-widget .dw-icons span:nth-child(4) i { border-radius: 6px 6px 12px 12px; }
+#p-d-widget .dw-bar-os { position: absolute; left: 0; right: 0; bottom: 0; height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: color-mix(in srgb, var(--bg) 82%, transparent); border-top: 1px solid var(--line); }
+#p-d-widget .dw-start { width: 24px; height: 24px; border-radius: 6px; background: var(--accent); opacity: .8; }
+#p-d-widget .dw-app { width: 26px; height: 26px; border-radius: 7px; background: var(--card-2); border: 1px solid var(--line); }
+#p-d-widget .dw-sp { flex: 1; }
+#p-d-widget .dw-bar-os img { width: 28px; height: 30px; object-fit: cover; object-position: 50% 10%; border-radius: 7px; background: var(--card-2); }
+#p-d-widget .dw-clock { font-size: 12.5px; color: var(--soft); font-variant-numeric: tabular-nums; }
+
+#p-d-widget .dw-snaps b { position: absolute; width: 150px; height: 90px; border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 16px; opacity: 0; transition: opacity .2s, background .2s; pointer-events: none; }
+#p-d-widget .dw-snaps b[data-c="tl"] { left: 14px; top: 14px; } #p-d-widget .dw-snaps b[data-c="tr"] { right: 14px; top: 14px; }
+#p-d-widget .dw-snaps b[data-c="bl"] { left: 14px; bottom: 54px; } #p-d-widget .dw-snaps b[data-c="br"] { right: 14px; bottom: 54px; }
+#p-d-widget .dw-desk.drag .dw-snaps b { opacity: 1; }
+#p-d-widget .dw-snaps b.near { background: color-mix(in srgb, var(--accent) 16%, transparent); border-style: solid; }
+
+#p-d-widget .dw-pos { position: absolute; z-index: 3; width: 324px; max-width: calc(100% - 32px); }
+#p-d-widget .dw-pos[data-corner="br"] { right: 18px; bottom: 56px; } #p-d-widget .dw-pos[data-corner="bl"] { left: 18px; bottom: 56px; }
+#p-d-widget .dw-pos[data-corner="tr"] { right: 18px; top: 10px; } #p-d-widget .dw-pos[data-corner="tl"] { left: 18px; top: 10px; }
+#p-d-widget .dw-pos.drag { transition: none; }
+#p-d-widget .dw-pos.drag .dw-w { transform: scale(1.02); filter: drop-shadow(0 18px 26px color-mix(in srgb, var(--bg) 80%, transparent)); }
+#p-d-widget .dw-w { width: 100%; transition: transform .2s var(--ease); }
+
+#p-d-widget .wgt-top { position: relative; }
+#p-d-widget .dw-grip { position: absolute; left: 0; top: 4px; width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--w-line); background: var(--w-2); color: var(--w-muted); font-size: 18px; line-height: 1; cursor: grab; touch-action: none; }
+#p-d-widget .dw-grip:active { cursor: grabbing; }
+#p-d-widget .dw-me { background: none; border: 0; padding: 0; position: relative; z-index: 2; border-radius: 16px; }
+#p-d-widget .dw-me img { display: block; }
+#p-d-widget .dw-bub { max-width: 168px; }
+#p-d-widget .dw-bub b { color: var(--w-btn); }
+#p-d-widget .dw-w[data-state="mini"] .dw-bub { display: none; }
+#p-d-widget .dw-body { position: relative; }
+
+#p-d-widget .dw-pill { width: 100%; display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--w-line); background: var(--w-bg); color: var(--w-text); text-align: left; font-size: 13.5px; }
+#p-d-widget .dw-pill:hover { border-color: var(--w-accent); }
+#p-d-widget .dw-pill-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+#p-d-widget .dw-pill b { color: var(--w-accent); font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#p-d-widget .dw-live { width: 8px; height: 8px; border-radius: 50%; background: var(--w-warn); flex: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--w-warn) 22%, transparent); }
+
+#p-d-widget .wgt-panel { gap: 10px; }
+#p-d-widget .dw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+#p-d-widget .dw-say { display: flex; gap: 6px; background: var(--w-2); border: 1px solid var(--w-line); border-radius: 12px; padding: 4px 4px 4px 12px; }
+#p-d-widget .dw-say:focus-within { border-color: var(--w-accent); }
+#p-d-widget .dw-say input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--w-text); font-size: 13.5px; min-height: 36px; }
+#p-d-widget .dw-say input::placeholder { color: var(--w-muted); }
+#p-d-widget .dw-say button { width: 36px; height: 36px; flex: none; border-radius: 9px; border: 0; background: var(--w-btn); color: var(--w-text); font-weight: 800; font-size: 16px; }
+#p-d-widget .dw-made { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--w-ok) 14%, transparent); border: 1px solid color-mix(in srgb, var(--w-ok) 40%, transparent); font-size: 12.5px; }
+#p-d-widget .dw-made span { flex: 1; min-width: 0; }
+#p-d-widget .dw-made span::before { content: "✓ "; color: var(--w-ok); font-weight: 800; }
+#p-d-widget .dw-made button, #p-d-widget .dw-toast button { border: 0; background: none; color: var(--w-accent); font-weight: 700; font-size: 12.5px; min-height: 32px; padding: 0 6px; border-radius: 8px; }
+#p-d-widget .dw-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+#p-d-widget .dw-link { background: none; border: 0; color: var(--w-accent); font-size: 12px; font-weight: 600; min-height: 30px; padding: 0 4px; border-radius: 8px; }
+#p-d-widget .dw-link::after { content: " →"; }
+
+#p-d-widget .dw-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+#p-d-widget .dw-list li { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 2px 6px; border-radius: 9px; position: relative; }
+#p-d-widget .dw-list li.now { background: var(--w-2); }
+#p-d-widget .dw-list li.day { min-height: 22px; font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--w-muted); padding-top: 6px; }
+#p-d-widget .dw-tm { width: 44px; flex: none; font: 700 13px/1 var(--fd); font-variant-numeric: tabular-nums; color: var(--w-text); }
+#p-d-widget .dw-tx { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#p-d-widget .dw-in { font-size: 11.5px; color: var(--w-warn); font-weight: 600; white-space: nowrap; }
+#p-d-widget .dw-ck { width: 44px; flex: none; display: flex; justify-content: center; }
+#p-d-widget .dw-ck button { width: 36px; height: 36px; margin: -2px 0; border: 0; background: none; display: grid; place-items: center; border-radius: 9px; }
+#p-d-widget .dw-ck .wgt-ck { position: relative; transition: background .2s, border-color .2s; }
+#p-d-widget .dw-ck button[aria-pressed="true"] .wgt-ck { background: var(--w-ok); border-color: var(--w-ok); }
+#p-d-widget .dw-ck button[aria-pressed="true"] .wgt-ck::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--w-bg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+#p-d-widget .dw-list li.done .dw-tx { text-decoration: line-through; color: var(--w-muted); }
+#p-d-widget .dw-list li.fresh { animation: d-widget-flash 1.2s var(--ease); }
+#p-d-widget .dw-star { position: absolute; left: 40px; top: 4px; color: var(--w-gold); font: 800 13px/1 var(--fd); pointer-events: none; animation: d-widget-star .8s var(--ease) forwards; }
+
+#p-d-widget .dw-habits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+#p-d-widget .dw-hab { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 44px; padding: 4px 6px; border-radius: 10px; border: 1px solid var(--w-line); background: var(--w-2); color: var(--w-text); text-align: left; }
+#p-d-widget .dw-hab:hover { border-color: var(--w-ok); }
+#p-d-widget .dw-hab svg { width: 30px; height: 30px; flex: none; transform: rotate(-90deg); }
+#p-d-widget .dw-hab circle { fill: none; stroke-width: 3.4; }
+#p-d-widget .dw-hab .tr { stroke: var(--w-3); }
+#p-d-widget .dw-hab .pr { stroke: var(--w-ok); stroke-linecap: round; transition: stroke-dashoffset .6s var(--ease); }
+#p-d-widget .dw-hab span { min-width: 0; display: grid; line-height: 1.15; }
+#p-d-widget .dw-hab small { font-size: 11px; color: var(--w-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#p-d-widget .dw-hab b { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+#p-d-widget .dw-pc { display: grid; gap: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--w-line); background: none; color: var(--w-text); text-align: left; min-height: 44px; }
+#p-d-widget .dw-pc:hover { border-color: var(--w-accent); }
+#p-d-widget .dw-pc-l { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--w-muted); }
+#p-d-widget .dw-pc-l b { color: var(--w-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#p-d-widget .dw-pc-l small { color: var(--w-muted); font-weight: 500; }
+#p-d-widget .dw-bar { height: 6px; border-radius: 99px; background: var(--w-3); overflow: hidden; }
+#p-d-widget .dw-bar i { display: block; height: 100%; width: 53%; border-radius: inherit; background: var(--w-accent); transform-origin: left; }
+#p-d-widget .dw-open { min-height: 40px; border-radius: 11px; border: 1px solid var(--w-line); background: var(--w-2); color: var(--w-text); font-weight: 650; font-size: 13px; }
+#p-d-widget .dw-open:hover { border-color: var(--w-accent); }
+
+#p-d-widget .dw-lhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#p-d-widget .dw-wx { font-size: 12px; color: var(--w-muted); white-space: nowrap; }
+#p-d-widget .dw-ltext { font-size: 14px; line-height: 1.55; min-height: 132px; white-space: pre-line; }
+#p-d-widget .dw-ltext.typing::after { content: "▍"; color: var(--w-accent); margin-left: 1px; }
+#p-d-widget .dw-lact { display: grid; gap: 6px; }
+#p-d-widget .dw-lact button:not(.dw-link) { min-height: 40px; border-radius: 11px; border: 1px solid var(--w-line); background: var(--w-2); color: var(--w-text); font-weight: 650; font-size: 13px; padding: 0 12px; }
+#p-d-widget .dw-lact .dw-primary { background: var(--w-btn); border-color: var(--w-btn); }
+#p-d-widget .dw-lact .dw-link { justify-self: start; }
+#p-d-widget .dw-lact.show > * { animation: d-widget-up .4s var(--ease) both; }
+#p-d-widget .dw-lact.show > *:nth-child(2) { animation-delay: .08s; } #p-d-widget .dw-lact.show > *:nth-child(3) { animation-delay: .16s; }
+
+#p-d-widget .dw-toast { position: absolute; top: 56px; right: calc(100% + 12px); width: 260px; z-index: 4; background: var(--w-bg); border: 1px solid var(--w-accent); border-radius: 14px; padding: 10px 12px; color: var(--w-text); display: grid; gap: 6px; box-shadow: 0 14px 30px color-mix(in srgb, var(--bg) 70%, transparent); animation: d-widget-toast .4s var(--ease); }
+#p-d-widget .dw-pos[data-corner$="l"] .dw-toast { right: auto; left: calc(100% + 12px); }
+#p-d-widget .dw-toast small { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--w-warn); }
+#p-d-widget .dw-toast b { font-size: 15px; }
+#p-d-widget .dw-toast div { display: flex; gap: 4px; flex-wrap: wrap; }
+#p-d-widget .dw-toast .go { background: var(--w-btn); color: var(--w-text); padding: 0 12px; min-height: 34px; }
+
+#p-d-widget .dw-full { position: absolute; left: 110px; top: 40px; z-index: 2; width: min(380px, calc(100% - 480px)); min-width: 260px; display: flex; gap: 10px; padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 34px color-mix(in srgb, var(--bg) 70%, transparent); animation: d-widget-win .45s var(--ease); }
+#p-d-widget .dw-full-rail { display: grid; gap: 6px; align-content: start; }
+#p-d-widget .dw-full-rail i { width: 22px; height: 22px; border-radius: 7px; background: var(--card-2); }
+#p-d-widget .dw-full-rail i.on { background: var(--accent); }
+#p-d-widget .dw-full-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+#p-d-widget .dw-full-main small { font-size: 11px; color: var(--muted); }
+#p-d-widget .dw-full-main b { font: 700 16px/1.2 var(--fd); }
+#p-d-widget .dw-full-sk { display: grid; gap: 6px; margin-top: 6px; }
+#p-d-widget .dw-full-sk i { height: 10px; border-radius: 5px; background: var(--card-2); }
+#p-d-widget .dw-full-sk i:nth-child(2) { width: 70%; } #p-d-widget .dw-full-sk i:nth-child(3) { width: 45%; }
+#p-d-widget .dw-x { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: none; color: var(--soft); font-size: 18px; flex: none; }
+
+@keyframes d-widget-flash { 0% { background: color-mix(in srgb, var(--w-accent) 34%, transparent); } 100% { background: transparent; } }
+@keyframes d-widget-star { 0% { opacity: 0; transform: translateY(6px) scale(.7); } 25% { opacity: 1; transform: translateY(-4px) scale(1.1); } 100% { opacity: 0; transform: translateY(-22px); } }
+@keyframes d-widget-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes d-widget-toast { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes d-widget-win { from { opacity: 0; transform: scale(.92) translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 860px) {
+  #p-d-widget .dw-full { left: 16px; right: 16px; width: auto; min-width: 0; }
+}
+@media (max-width: 640px) {
+  #p-d-widget .dw-desk { min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 16px 58px; }
+  #p-d-widget .dw-icons, #p-d-widget .dw-snaps, #p-d-widget .dw-grip { display: none; }
+  #p-d-widget .dw-pos, #p-d-widget .dw-pos[data-corner] { position: relative; inset: auto; width: min(324px, 100%); max-width: 100%; }
+  #p-d-widget .dw-pos .dw-toast, #p-d-widget .dw-pos[data-corner] .dw-toast { position: relative; inset: auto; width: auto; margin-bottom: 8px; }
+  #p-d-widget .dw-pos { display: flex; flex-direction: column; }
+  #p-d-widget .dw-full { position: relative; left: auto; top: auto; right: auto; width: 100%; order: 2; }
+  #p-d-widget .dw-bub { max-width: none; flex: 1; }
+}
+  </style>
+
+  <script>(function () {
+    "use strict";
+    var root = document.getElementById("p-d-widget");
+    if (!root) return;
+    var M = window.MaidMock || { reduce: false, onSeen: function (e, f) { f(); } };
+    var Q = function (s) { return root.querySelector(s); };
+    var desk = Q("[data-desk]"), pos = Q("[data-pos]"), w = Q("[data-w]"), body = Q("[data-body]");
+    var img = Q("[data-img]"), bub = Q("[data-bub]"), list = Q("[data-list]"), made = Q("[data-made]");
+    var ltext = Q("[data-ltext]"), lact = Q("[data-lact]"), lmade = Q("[data-lmade]");
+    var toast = Q("[data-toast]"), route = Q("[data-route]"), full = Q("[data-full]");
+    var EASE = "cubic-bezier(.2,.8,.2,1)";
+    var state = "normal", face = "idle", faceT = 0, typeT = 0, toastT = 0, fullT = 0, madeT = 0, seq = 0;
+
+    var items, habits, stars;
+    function reset() {
+      items = [
+        { id: 1, day: 0, t: "14:00", title: "Созвон с командой", plan: true },
+        { id: 2, day: 0, title: "Оплатить интернет", task: true, done: false },
+        { id: 3, day: 0, t: "16:30", title: "Забрать посылку", plan: true },
+        { id: 4, day: 0, title: "Ответить Олегу про отпуск", task: true, done: false },
+        { id: 5, day: 0, t: "20:00", title: "Ужин с родителями", plan: true }
+      ];
+      habits = [
+        { k: "Вода", v: 5, max: 8, step: 1, u: "" },
+        { k: "Чтение", v: 0, max: 20, step: 10, u: " мин" },
+        { k: "Шаги", v: 4.2, max: 8, step: 0, u: " т" }
+      ];
+      stars = 0;
+    }
+    var nid = 10;
+
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
+    function mins(t) { var p = t.split(":"); return +p[0] * 60 + +p[1]; }
+    var NOW = 13 * 60 + 40;
+    function inText(t) {
+      var d = mins(t) - NOW;
+      if (d <= 0) return "";
+      if (d < 60) return "через " + d + " мин";
+      var h = Math.floor(d / 60), m = d % 60;
+      return "через " + h + " ч" + (m ? " " + m + " мин" : "");
+    }
+
+    function setFace(n, back) {
+      clearTimeout(faceT);
+      img.src = "maid/" + n + ".webp";
+      if (back) faceT = setTimeout(function () { setFace(face); }, back);
+    }
+    function baseFace() { return state === "letter" ? "letter" : state === "mini" ? "idle" : "happy"; }
+
+    function sayBubble() {
+      var water = habits[0];
+      var open = items.filter(function (x) { return x.task && !x.done; }).length;
+      if (!open) bub.innerHTML = "Все задачи закрыты. <b>Можно выдохнуть</b> до созвона.";
+      else bub.innerHTML = "Созвон <b>через 20 минут</b>. Воды " + water.v + " из " + water.max + ", налить стакан?";
+    }
+
+    function render(freshId) {
+      var html = "", curDay = 0;
+      var sorted = items.slice().sort(function (a, b) {
+        if (a.day !== b.day) return a.day - b.day;
+        var ta = a.t ? mins(a.t) : null, tb = b.t ? mins(b.t) : null;
+        if (ta === null && tb === null) return a.id - b.id;
+        if (ta === null) return 1; if (tb === null) return -1;
+        return ta - tb;
+      });
+      var firstPlan = null;
+      sorted.forEach(function (x) { if (!firstPlan && x.plan && x.day === 0 && mins(x.t) > NOW) firstPlan = x; });
+      sorted.forEach(function (x) {
+        if (x.day !== curDay) { curDay = x.day; html += '<li class="day">Завтра, суббота</li>'; }
+        var cls = (x === firstPlan ? "now " : "") + (x.done ? "done " : "") + (x.id === freshId ? "fresh" : "");
+        if (x.plan) {
+          var tag = x.day === 0 ? inText(x.t) : "";
+          html += '<li class="' + cls + '" data-id="' + x.id + '"><span class="dw-tm">' + x.t + '</span><span class="dw-tx">' + esc(x.title) + '</span>' + (x === firstPlan && tag ? '<span class="dw-in">' + tag + '</span>' : "") + '</li>';
+        } else {
+          html += '<li class="' + cls + '" data-id="' + x.id + '"><span class="dw-ck"><button type="button" aria-pressed="' + !!x.done + '" aria-label="Отметить: ' + esc(x.title) + '"><i class="wgt-ck"></i></button></span><span class="dw-tx">' + esc(x.title) + '</span></li>';
+        }
+      });
+      list.innerHTML = html;
+      sayBubble();
+    }
+
+    var C = 2 * Math.PI * 12;
+    function renderHabits(animate) {
+      Q("[data-habits]").innerHTML = habits.map(function (h, i) {
+        var p = Math.min(1, h.v / h.max), val = (h.u === " т" ? String(h.v).replace(".", ",") : h.v) + "/" + h.max + h.u;
+        return '<button type="button" class="dw-hab" data-h="' + i + '" aria-label="' + h.k + ": " + val + (h.step ? ". Нажмите, чтобы прибавить" : "") + '"><svg viewBox="0 0 30 30" aria-hidden="true"><circle class="tr" cx="15" cy="15" r="12"/><circle class="pr" cx="15" cy="15" r="12" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + (animate ? C : C * (1 - p)).toFixed(1) + '" data-p="' + p + '"/></svg><span><small>' + h.k + "</small><b>" + val + "</b></span></button>";
+      }).join("");
+      if (animate) requestAnimationFrame(function () { requestAnimationFrame(function () {
+        root.querySelectorAll(".dw-hab .pr").forEach(function (c) { c.style.strokeDashoffset = (C * (1 - +c.dataset.p)).toFixed(1); });
+      }); });
+    }
+
+    function showMade(box, text, undo, ms) {
+      clearTimeout(madeT);
+      box.hidden = false;
+      box.innerHTML = "<span>" + text + '</span><button type="button">Отменить</button>';
+      box.querySelector("button").onclick = function () { box.hidden = true; undo(); };
+      if (!M.reduce && box.animate) box.animate([{ opacity: 0, transform: "translateY(-6px)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: EASE });
+      madeT = setTimeout(function () { box.hidden = true; }, ms || 9000);
+    }
+
+    function setState(n, animate) {
+      seq++;
+      clearTimeout(typeT);
+      var from = body.offsetHeight;
+      state = n; w.dataset.state = n;
+      root.querySelectorAll("[data-s]").forEach(function (s) { s.hidden = s.dataset.s !== n; });
+      root.querySelectorAll(".dw-seg [data-go]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.go === n)); });
+      face = baseFace(); setFace(face);
+      if (n === "letter") typeLetter(animate);
+      if (n === "normal") { render(); renderHabits(animate); growPc(animate); }
+      if (!animate || M.reduce || !body.animate) return;
+      var to = body.offsetHeight;
+      body.animate([{ height: from + "px", overflow: "hidden" }, { height: to + "px", overflow: "hidden" }], { duration: 460, easing: EASE });
+      var sec = root.querySelector('[data-s="' + n + '"]');
+      sec.animate([{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 80, easing: EASE, fill: "backwards" });
+      Q("[data-me]").animate([{ transform: "none" }, { transform: "translateY(-8px) scale(1.04)" }, { transform: "none" }], { duration: 480, easing: EASE });
+      if (n === "normal") stagger();
+    }
+    function stagger() {
+      list.querySelectorAll("li").forEach(function (li, i) {
+        li.animate([{ opacity: 0, transform: "translateX(10px)" }, { opacity: 1, transform: "none" }], { duration: 340, delay: 140 + i * 50, easing: EASE, fill: "backwards" });
+      });
+    }
+    function growPc(animate) {
+      var bar = Q("[data-pcbar]");
+      if (animate && !M.reduce && bar.animate) bar.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: 800, delay: 200, easing: EASE, fill: "backwards" });
+    }
+
+    var LETTER = "Доброе утро! Спали вы 6 ч 20 мин, на час меньше обычного.\nСегодня три дела: в 8:30 зарядка, в 14:00 созвон, в 16:30 посылка.\nНа улице сыро. Может, перенести зарядку на вечер?";
+    function typeLetter(animate) {
+      var my = seq;
+      lmade.hidden = true;
+      lact.classList.remove("show");
+      if (!animate || M.reduce) { ltext.textContent = LETTER; ltext.classList.remove("typing"); lact.hidden = false; return; }
+      lact.hidden = true; ltext.textContent = ""; ltext.classList.add("typing");
+      var i = 0;
+      (function step() {
+        if (my !== seq) return;
+        i += 2; ltext.textContent = LETTER.slice(0, i);
+        if (i < LETTER.length) { typeT = setTimeout(step, LETTER.charAt(i - 1) === "\n" ? 260 : 24); return; }
+        ltext.classList.remove("typing"); lact.hidden = false; lact.classList.add("show");
+      })();
+    }
+
+    function parse(s) {
+      s = s.trim(); if (!s) return null;
+      var day = /завтра/i.test(s) ? 1 : 0, t = null;
+      var m = s.match(/(^|\s)в\s*(\d{1,2})(?:[:.](\d{2}))?(?=\s|$)/i) || s.match(/(^|\s)(\d{1,2})[:.](\d{2})(?=\s|$)/);
+      if (m && +m[2] < 24) t = ("0" + m[2]).slice(-2) + ":" + (m[3] || "00");
+      var title = s.replace(/(^|\s)(завтра|сегодня)(?=\s|$)/ig, " ");
+      if (m) title = title.replace(m[0].trim(), " ");
+      title = title.replace(/\s+/g, " ").trim() || "Дело";
+      return { day: day, t: t, title: title };
+    }
+
+    Q("[data-form]").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var inp = Q("[data-say]"), r = parse(inp.value);
+      if (!r) { inp.focus(); return; }
+      inp.value = ""; inp.disabled = true;
+      setFace("think");
+      bub.innerHTML = "Так, записываю…";
+      setTimeout(function () {
+        inp.disabled = false;
+        var it = { id: ++nid, day: r.day, title: r.title.charAt(0).toUpperCase() + r.title.slice(1) };
+        if (r.t) { it.t = r.t; it.plan = true; } else { it.task = true; it.done = false; }
+        items.push(it);
+        render(it.id);
+        setFace("thumbsup", 1600);
+        var when = (r.day ? "завтра" : "сегодня") + (r.t ? " " + r.t : "");
+        var label = (it.plan ? "План: " : "Задача: ") + esc(r.title) + ", " + when;
+        showMade(made, label, function () { items = items.filter(function (x) { return x !== it; }); render(); say("Убрала: " + r.title + "."); });
+        say("Записано. " + label.replace(/<[^>]+>/g, "") + ".");
+      }, M.reduce ? 60 : 900);
+    });
+
+    list.addEventListener("click", function (e) {
+      var b = e.target.closest(".dw-ck button"); if (!b) return;
+      var li = b.closest("li"), id = +li.dataset.id, it = items.filter(function (x) { return x.id === id; })[0];
+      it.done = !it.done;
+      render();
+      var nb = list.querySelector('li[data-id="' + id + '"]');
+      var nbtn = nb.querySelector("button"); nbtn.focus();
+      if (it.done) {
+        stars += 5;
+        var s = document.createElement("span"); s.className = "dw-star"; s.textContent = "+5 ✦"; s.setAttribute("aria-hidden", "true");
+        nb.appendChild(s);
+        if (!M.reduce) nbtn.querySelector(".wgt-ck").animate([{ transform: "scale(.6)" }, { transform: "scale(1.25)" }, { transform: "none" }], { duration: 380, easing: EASE });
+        setFace(items.some(function (x) { return x.task && !x.done; }) ? "happy" : "done", 1800);
+        say("Отмечено: " + it.title + ". +5 ✦, всего за день " + (40 + stars) + " ✦.");
+      } else say("Снова открыто: " + it.title + ".");
+    });
+
+    Q("[data-habits]").addEventListener("click", function (e) {
+      var b = e.target.closest(".dw-hab"); if (!b) return;
+      var h = habits[+b.dataset.h];
+      if (!h.step) { say("Шаги считает телефон, их не нужно вводить."); return; }
+      var old = h.v; h.v = Math.min(h.max, h.v + h.step);
+      renderHabits(false);
+      var c = root.querySelector('[data-h="' + b.dataset.h + '"] .pr');
+      if (!M.reduce && c.animate) c.animate([{ strokeDashoffset: (C * (1 - old / h.max)).toFixed(1) }, { strokeDashoffset: (C * (1 - h.v / h.max)).toFixed(1) }], { duration: 600, easing: EASE });
+      root.querySelector('[data-h="' + b.dataset.h + '"]').focus();
+      sayBubble();
+      if (h.v >= h.max) setFace("streak", 1800);
+      say(h.k + ": " + h.v + " из " + h.max + h.u + ".");
+    });
+
+    Q("[data-move]").addEventListener("click", function () {
+      var it = { id: ++nid, day: 0, t: "19:00", title: "Зарядка", plan: true };
+      items.push(it);
+      lact.hidden = true;
+      setFace("bow", 1500);
+      showMade(lmade, "Зарядка теперь в 19:00", function () { items = items.filter(function (x) { return x !== it; }); lact.hidden = false; say("Зарядка снова в 8:30."); });
+      say("Зарядка перенесена на 19:00. В обычном виде она уже стоит в списке.");
+    });
+
+    root.addEventListener("click", function (e) {
+      var g = e.target.closest("[data-go]");
+      if (g) { if (g.dataset.go !== state) setState(g.dataset.go, true); return; }
+      var o = e.target.closest("[data-open]");
+      if (o) openFull(o.dataset.open);
+    });
+
+    function openFull(name) {
+      clearTimeout(fullT);
+      Q("[data-fullname]").textContent = name;
+      full.hidden = false;
+      if (!M.reduce && full.animate) full.animate([{ opacity: 0, transform: "scale(.92) translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: EASE });
+      say("Кнопка открывает полную версию сразу в узле «" + name + "».");
+      fullT = setTimeout(function () { full.hidden = true; }, 5000);
+    }
+    Q("[data-fullx]").addEventListener("click", function () { full.hidden = true; });
+
+    function say(t) { route.textContent = t; }
+
+    var me = Q("[data-me]");
+    function wave() { setFace("hello", 1800); if (!M.reduce) me.animate([{ transform: "none" }, { transform: "rotate(-4deg) translateY(-3px)" }, { transform: "rotate(3deg)" }, { transform: "none" }], { duration: 600, easing: EASE }); }
+    me.addEventListener("mouseenter", function () { if (state === "mini") wave(); });
+    me.addEventListener("click", function () { wave(); if (state === "mini") say("Рина помахала. Нажмите на строку с делом, чтобы раскрыть виджет."); });
+
+    Q("[data-remind]").addEventListener("click", function () {
+      clearTimeout(toastT);
+      toast.hidden = false;
+      toast.innerHTML = '<small>Через 5 минут · 14:00</small><b>Созвон с командой</b><div><button type="button" class="go" data-tok>Иду</button><button type="button" data-snooze>Напомнить в 14:05</button></div>';
+      setFace("salute", 2200);
+      if (!M.reduce) toast.animate([{ opacity: 0, transform: "translateY(10px) scale(.97)" }, { opacity: 1, transform: "none" }], { duration: 380, easing: EASE });
+      toast.querySelector("[data-tok]").onclick = function () { toast.hidden = true; say("Хорошо, удачного созвона."); };
+      toast.querySelector("[data-snooze]").onclick = function () {
+        toast.innerHTML = '<small>Отложено</small><b>Напомню в 14:05</b><div><button type="button" data-undo>Отменить</button></div>';
+        toast.querySelector("[data-undo]").onclick = function () { toast.hidden = true; say("Напоминание вернула на 13:55."); };
+        clearTimeout(toastT); toastT = setTimeout(function () { toast.hidden = true; }, 5000);
+      };
+      say("Напоминание за 5 минут выезжает рядом с виджетом, в той стороне, где есть место.");
+      toastT = setTimeout(function () { toast.hidden = true; }, 8000);
+    });
+
+    var grip = Q("[data-grip]"), drag = null;
+    var snaps = root.querySelectorAll(".dw-snaps b");
+    function nearest(cx, cy, r) { return (cy < r.height / 2 ? "t" : "b") + (cx < r.width / 2 ? "l" : "r"); }
+    grip.addEventListener("pointerdown", function (e) {
+      if (matchMedia("(max-width: 640px)").matches) return;
+      e.preventDefault();
+      grip.setPointerCapture(e.pointerId);
+      drag = { x: e.clientX, y: e.clientY, r: pos.getBoundingClientRect(), d: desk.getBoundingClientRect() };
+      desk.classList.add("drag"); pos.classList.add("drag");
+    });
+    grip.addEventListener("pointermove", function (e) {
+      if (!drag) return;
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      pos.style.transform = "translate(" + dx + "px," + dy + "px)";
+      var c = nearest(drag.r.left + drag.r.width / 2 + dx - drag.d.left, drag.r.top + drag.r.height / 2 + dy - drag.d.top, drag.d);
+      snaps.forEach(function (s) { s.classList.toggle("near", s.dataset.c === c); });
+      drag.c = c;
+    });
+    function drop() {
+      if (!drag) return;
+      var before = pos.getBoundingClientRect(), c = drag.c || pos.dataset.corner;
+      drag = null;
+      desk.classList.remove("drag"); pos.classList.remove("drag");
+      snaps.forEach(function (s) { s.classList.remove("near"); });
+      pos.style.transform = "";
+      pos.dataset.corner = c;
+      var after = pos.getBoundingClientRect();
+      if (!M.reduce && pos.animate) pos.animate([{ transform: "translate(" + (before.left - after.left) + "px," + (before.top - after.top) + "px)" }, { transform: "none" }], { duration: 380, easing: EASE });
+      var names = { tl: "левый верхний", tr: "правый верхний", bl: "левый нижний", br: "правый нижний" };
+      say("Виджет прилип в " + names[c] + " угол.");
+    }
+    grip.addEventListener("pointerup", drop);
+    grip.addEventListener("pointercancel", drop);
+    grip.addEventListener("keydown", function (e) {
+      var map = { ArrowLeft: "l", ArrowRight: "r", ArrowUp: "t", ArrowDown: "b" }, k = map[e.key];
+      if (!k) return;
+      e.preventDefault();
+      var c = pos.dataset.corner;
+      c = (k === "t" || k === "b") ? k + c[1] : c[0] + k;
+      drag = { c: c }; drop();
+    });
+
+    function play() {
+      seq++;
+      clearTimeout(toastT); toast.hidden = true; full.hidden = true; made.hidden = true;
+      reset(); render(); renderHabits(false);
+      pos.dataset.corner = "br";
+      say("Сейчас 13:40, пятница. Виджет живёт в правом нижнем углу.");
+      if (M.reduce) { setState("normal", false); return; }
+      setState("mini", false);
+      var my = seq;
+      setTimeout(function () { if (my === seq) setState("normal", true); }, 900);
+    }
+    reset(); setState("normal", false);
+    M.onSeen(root, play);
+    root.addEventListener("replay", play);
+  })();</script>
+</article>

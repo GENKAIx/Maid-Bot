@@ -1,0 +1,669 @@
+<article class="piece" id="p-d-nav">
+  <header>
+    <p class="eyebrow">Навигация · Все экраны</p>
+    <h2>Пять узлов и одна строка Ctrl K</h2>
+    <p>Сейчас в меню 16 пунктов одной колонкой без заголовков, и нужный экран приходится искать глазами. Станет пять узлов с вкладками внутри и строка, которая находит любую запись или передаёт вашу фразу Рине. На телефоне пропадает шторка «Ещё».</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <section class="dn-blk">
+    <h3 class="dn-bh">1. Куда переехали старые экраны</h3>
+    <p class="dn-bs">Нажмите на старый пункт или на вкладку справа, чтобы увидеть связь.</p>
+    <div class="app plain dn-map" id="d-nav-map"></div>
+  </section>
+
+  <section class="dn-blk">
+    <h3 class="dn-bh">2. Строка «Найти или сказать Рине»</h3>
+    <p class="dn-bs">Открывается по Ctrl K или щелчком по строке в шапке. Попробуйте набрать «мама», «такси» или целую фразу. Стрелки выбирают, Enter открывает, Esc закрывает.</p>
+    <div class="app" id="d-nav-app" data-hub="today" data-title="Сегодня">
+      <div class="g2">
+        <div class="card dn-now">
+          <p class="card-t">Сейчас</p>
+          <p class="muted">Через 40 минут</p>
+          <p class="dn-nowt">Созвон с командой</p>
+          <p class="soft num">10:00 до 10:30 · потом свободно до 13:00</p>
+        </div>
+        <div class="card">
+          <p class="card-t">Задачи · 3</p>
+          <ul class="dn-tasks">
+            <li><span class="dn-box" aria-hidden="true"></span>Отправить отчёт за ноябрь <span class="chip">важная</span></li>
+            <li><span class="dn-box" aria-hidden="true"></span>Оплатить интернет <span class="muted">до пт</span></li>
+            <li><span class="dn-box" aria-hidden="true"></span>Купить корм коту</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rina">
+        <img src="maid/list.webp" alt="Рина">
+        <p>До созвона 40 минут, а <b>отчёт за ноябрь</b> всё ещё ждёт. Начнём с него? Если что-то потеряете, нажмите Ctrl K, я найду.</p>
+      </div>
+      <div><button type="button" class="btn" data-open="1">Открыть строку · Ctrl K</button></div>
+
+      <div class="dn-wrap" id="d-nav-pal" role="dialog" aria-modal="false" aria-label="Найти или сказать Рине">
+        <div class="dn-pal">
+          <div class="dn-in">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+            <input id="d-nav-q" type="text" autocomplete="off" spellcheck="false" placeholder="Найти или сказать Рине…" role="combobox" aria-expanded="true" aria-controls="d-nav-list" aria-autocomplete="list" aria-label="Найти или сказать Рине">
+            <button type="button" class="dn-esc" data-close="1" aria-label="Закрыть строку">Esc</button>
+          </div>
+          <div class="dn-chips" aria-label="Примеры запросов">
+            <button type="button" class="chip" data-q="сон">сон</button>
+            <button type="button" class="chip" data-q="кофе">кофе</button>
+            <button type="button" class="chip" data-q="мама">мама</button>
+            <button type="button" class="chip" data-q="перенеси стоматолога на пятницу">перенеси стоматолога на пятницу</button>
+          </div>
+          <div class="dn-reply" hidden aria-live="polite">
+            <img src="maid/write.webp" alt="">
+            <p></p>
+          </div>
+          <div class="dn-list" id="d-nav-list" role="listbox" aria-label="Результаты"></div>
+          <div class="dn-foot" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span><span><kbd>Enter</kbd> открыть</span><span><kbd>Esc</kbd> закрыть</span><span class="dn-cnt"></span></div>
+        </div>
+      </div>
+      <div class="dn-toast" role="status" aria-live="polite" hidden></div>
+    </div>
+  </section>
+
+  <section class="dn-blk">
+    <h3 class="dn-bh">3. На телефоне</h3>
+    <div class="scene">
+      <figure>
+        <div class="phone"><div class="app plain dn-ph" id="d-nav-ph"></div></div>
+        <figcaption>Нажимайте узлы внизу и строку поиска сверху: это тот же поиск, что на ПК.</figcaption>
+      </figure>
+      <figure class="dn-rules">
+        <div class="dn-rcard">
+          <p class="dn-rk">Как устроено</p>
+          <ul>
+            <li><b>Пять узлов всегда внизу.</b> Шторки «Ещё» нет, любой экран в одном или двух нажатиях.</li>
+            <li><b>Вкладки узла</b> идут лентой под заголовком и листаются пальцем.</li>
+            <li><b>Строка поиска</b> сверху на каждом экране. Можно сразу написать Рине.</li>
+            <li><b>Настройки</b> за шестерёнкой в шапке. Корзина живёт там же.</li>
+            <li><b>Кнопки узлов</b> высотой 52 точки, по ним легко попасть большим пальцем.</li>
+          </ul>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>16 пунктов меню собраны в 5 узлов: Сегодня, Планы, Дневник, Обзор, Рина. Настройки отдельно, внизу.</li>
+      <li>Задачи и Даты раньше прятались внутри «Планов», Сон и Компьютер внутри «Статистики». Теперь это видимые вкладки.</li>
+      <li>Профиль и «О вас» стали одной вкладкой у Рины. Возможности переехали в строку: «Что умеет Рина».</li>
+      <li>Строка ищет по всем данным сразу и выполняет действия. Фраза, похожая на просьбу, уходит Рине.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Вкладки вылетают из старых пунктов в порядке прежнего меню, а счётчик идёт от 16 к 5: видно, что ничего не пропало.</li>
+      <li>Строка выезжает сверху и сама набирает «сон», показывая, что находится всё сразу: действие, экран, запись дневника.</li>
+      <li>На телефоне подложка узла переезжает к нажатому, содержимое сдвигается в его сторону.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>nav.ts: 15 пунктов заменить на 5 узлов и вкладки. Сами экраны остаются, меняются пути и шапка.</li>
+      <li>Сейчас Ctrl K только переходит на страницу /search, а поиск знает задачи, планы и заметки. Нужен общий поиск на сервере по дневнику, привычкам, датам и деньгам и переход к записи с подсветкой.</li>
+      <li>«Сказать Рине» отправляет текст тем же путём, что строка ввода внизу экрана. Это уже есть.</li>
+      <li>Телефон: нижняя полоса из 5 узлов вместо 4 и «Ещё», шестерёнка в шапке.</li>
+    </ul></div>
+  </div>
+
+  <style>
+    #p-d-nav .dn-blk { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    #p-d-nav .dn-bh { margin: 6px 0 0; font: 700 16px/1.3 var(--fd); color: var(--text); }
+    #p-d-nav .dn-bs { color: var(--muted); font-size: 14px; max-width: 70ch; }
+
+    #p-d-nav .dn-map { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    #p-d-nav .dn-mhead { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    #p-d-nav .dn-kp { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+    #p-d-nav .dn-kp .big { font-size: 40px; }
+    #p-d-nav .dn-kp span:last-child { color: var(--a-soft); font-size: 13.5px; max-width: 16ch; line-height: 1.3; }
+    #p-d-nav .dn-kp.new .big { color: var(--a-accent); }
+    #p-d-nav .dn-arw { width: 40px; height: 20px; fill: none; stroke: var(--a-muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    #p-d-nav .dn-mgrid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 22px; align-items: start; }
+    #p-d-nav .dn-cap { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; margin-bottom: 8px; }
+    #p-d-nav .dn-old { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 8px; display: flex; flex-direction: column; gap: 1px; }
+    #p-d-nav .dn-old button { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 4px 10px; border: 0; border-radius: 9px; background: none; text-align: left; font-size: 13.5px; color: var(--a-text); transition: background .25s var(--ease), color .35s var(--ease); }
+    #p-d-nav .dn-old button:hover { background: var(--a-surface-2); }
+    #p-d-nav .dn-old .to { font-size: 11.5px; color: var(--a-muted); white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity .35s var(--ease), transform .35s var(--ease); }
+    #p-d-nav .dn-old button.moved .nm { color: var(--a-muted); }
+    #p-d-nav .dn-old button.moved .to { opacity: 1; transform: none; }
+    #p-d-nav .dn-old button.sel { background: var(--a-accent-soft); }
+    #p-d-nav .dn-old button.sel .nm, #p-d-nav .dn-old button.sel .to { color: var(--a-accent); }
+    #p-d-nav .dn-old .sep { height: 1px; background: var(--a-line); margin: 4px 8px; }
+    #p-d-nav .dn-nodes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    #p-d-nav .dn-node { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 13px 14px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+    #p-d-nav .dn-node.side { background: var(--a-surface-2); border-style: dashed; }
+    #p-d-nav .dn-nh { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    #p-d-nav .dn-nh svg { width: 22px; height: 22px; fill: none; stroke: var(--a-accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    #p-d-nav .dn-nh b { font: 700 15px/1.2 var(--fd); }
+    #p-d-nav .dn-nh small { color: var(--a-muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+    #p-d-nav .dn-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    #p-d-nav .dn-tab { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 11px; border-radius: 99px; border: 1px solid var(--a-line); background: var(--a-bg); font-size: 12.5px; color: var(--a-soft); transition: border-color .25s var(--ease), background .25s var(--ease), color .25s var(--ease); }
+    #p-d-nav .dn-tab:hover { border-color: var(--a-accent); }
+    #p-d-nav .dn-tab.hit { border-color: var(--a-accent); background: var(--a-accent-soft); color: var(--a-accent); animation: d-nav-hit .5s var(--ease); }
+    #p-d-nav .dn-why { font-size: 13.5px; color: var(--a-soft); min-height: 21px; }
+    #p-d-nav .dn-why b { color: var(--a-accent); font-weight: 650; }
+    @keyframes d-nav-hit { 40% { transform: scale(1.08); } }
+
+    #p-d-nav #d-nav-app .app-find { cursor: pointer; transition: border-color .2s var(--ease); }
+    #p-d-nav #d-nav-app .app-find:hover { border-color: var(--a-accent); color: var(--a-text); }
+    #p-d-nav .dn-nowt { font: 700 20px/1.25 var(--fd); margin: 2px 0 4px; }
+    #p-d-nav .dn-tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    #p-d-nav .dn-tasks li { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; min-width: 0; }
+    #p-d-nav .dn-box { width: 18px; height: 18px; border-radius: 6px; border: 1.6px solid var(--a-muted); flex: none; }
+
+    #p-d-nav .dn-wrap { position: absolute; inset: 0; z-index: 5; display: flex; justify-content: center; align-items: flex-start; padding: 70px 16px 16px; background: color-mix(in srgb, var(--a-bg) 62%, transparent); backdrop-filter: blur(3px); }
+    #p-d-nav .dn-wrap[hidden] { display: none; }
+    #p-d-nav .dn-pal { width: min(600px, 100%); max-height: 100%; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 16px; box-shadow: var(--a-shadow); display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    #p-d-nav .dn-pal.pop { animation: d-nav-pop .34s var(--ease); }
+    @keyframes d-nav-pop { from { opacity: 0; transform: translateY(-10px) scale(.985); } }
+    #p-d-nav .dn-in { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--a-line); }
+    #p-d-nav .dn-in:focus-within { box-shadow: inset 0 -2px 0 var(--a-accent); }
+    #p-d-nav .dn-in svg { width: 20px; height: 20px; fill: none; stroke: var(--a-muted); stroke-width: 1.9; stroke-linecap: round; flex: none; }
+    #p-d-nav .dn-in input { flex: 1; min-width: 0; background: none; border: 0; outline: none; font-size: 16px; color: var(--a-text); padding: 4px 0; }
+    #p-d-nav .dn-in input::placeholder { color: var(--a-muted); }
+    #p-d-nav .dn-esc { min-height: 30px; padding: 0 9px; border: 1px solid var(--a-line); border-radius: 7px; background: var(--a-surface-2); font-size: 11.5px; font-weight: 600; color: var(--a-muted); }
+    #p-d-nav .dn-chips { display: flex; gap: 6px; padding: 10px 14px 4px; overflow-x: auto; }
+    #p-d-nav .dn-chips .chip { min-height: 30px; }
+    #p-d-nav .dn-reply { display: flex; align-items: flex-end; gap: 10px; padding: 10px 14px 4px; animation: d-nav-pop .4s var(--ease); }
+    #p-d-nav .dn-reply[hidden] { display: none; }
+    #p-d-nav .dn-reply img { width: 48px; height: 51px; flex: none; }
+    #p-d-nav .dn-reply p { background: var(--a-surface-2); border-radius: 14px 14px 14px 4px; padding: 9px 13px; font-size: 13.5px; min-width: 0; }
+    #p-d-nav .dn-list { overflow-y: auto; max-height: 330px; padding: 4px 8px 8px; }
+    #p-d-nav .dn-gl { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; padding: 10px 8px 4px; }
+    #p-d-nav .dn-opt { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+    #p-d-nav .dn-opt[aria-selected="true"] { background: var(--a-accent-soft); }
+    #p-d-nav .dn-opt.in { animation: d-nav-in .3s var(--ease) backwards; }
+    @keyframes d-nav-in { from { opacity: 0; transform: translateY(4px); } }
+    #p-d-nav .dn-ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; font-weight: 750; font-size: 14px; color: var(--k); background: color-mix(in srgb, var(--k) 16%, transparent); overflow: hidden; }
+    #p-d-nav .dn-ic img { width: 40px; height: 43px; margin-top: 8px; }
+    #p-d-nav .dn-tx { min-width: 0; }
+    #p-d-nav .dn-t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    #p-d-nav .dn-m { display: block; font-size: 12px; color: var(--a-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #p-d-nav .dn-r { font-size: 12.5px; color: var(--a-soft); white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 650; }
+    #p-d-nav .dn-opt[aria-selected="true"] .dn-r::after { content: "  ↵"; color: var(--a-accent); }
+    #p-d-nav .dn-list mark { background: color-mix(in srgb, var(--a-accent) 26%, transparent); color: inherit; border-radius: 4px; padding: 0 1px; }
+    #p-d-nav .dn-empty { padding: 10px 8px; color: var(--a-muted); font-size: 13px; }
+    #p-d-nav .dn-foot { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 14px; border-top: 1px solid var(--a-line); font-size: 12px; color: var(--a-muted); }
+    #p-d-nav .dn-foot kbd { font: 600 10.5px var(--f); border: 1px solid var(--a-line); border-radius: 5px; padding: 0 5px; margin-right: 3px; }
+    #p-d-nav .dn-cnt { margin-left: auto; }
+    #p-d-nav .dn-toast { position: absolute; z-index: 6; left: 50%; bottom: 18px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 9px 14px; font-size: 13px; font-weight: 600; box-shadow: var(--a-shadow); animation: d-nav-up .35s var(--ease); }
+    #p-d-nav .dn-toast[hidden] { display: none; }
+    @keyframes d-nav-up { from { opacity: 0; transform: translate(-50%, 8px); } }
+    #p-d-nav #d-nav-app .app-rail a.flash { animation: d-nav-hit .6s var(--ease); }
+
+    #p-d-nav .dn-ph { padding: 0; display: flex; flex-direction: column; min-height: 600px; height: 600px; position: relative; overflow: hidden; }
+    #p-d-nav .dn-phh { display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px; }
+    #p-d-nav .dn-phh b { font: 800 22px/1.1 var(--fd); letter-spacing: -.02em; flex: 1; min-width: 0; }
+    #p-d-nav .dn-ibtn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--a-line); background: var(--a-surface); display: grid; place-items: center; color: var(--a-soft); }
+    #p-d-nav .dn-ibtn[aria-pressed="true"] { color: var(--a-accent); border-color: var(--a-accent); }
+    #p-d-nav .dn-ph svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    #p-d-nav .dn-phs { margin: 0 16px; display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 0 13px; border-radius: 13px; border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-muted); font-size: 14px; text-align: left; }
+    #p-d-nav .dn-pht { display: flex; gap: 6px; padding: 10px 16px 2px; overflow-x: auto; }
+    #p-d-nav .dn-pht:empty { display: none; }
+    #p-d-nav .dn-pht .chip { min-height: 34px; }
+    #p-d-nav .dn-phc { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+    #p-d-nav .dn-pc { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 14px; padding: 12px 13px; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+    #p-d-nav .dn-pc small { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; }
+    #p-d-nav .dn-pc .dn-pb { font: 700 17px/1.25 var(--fd); }
+    #p-d-nav .dn-prow { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    #p-d-nav .dn-prow > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #p-d-nav .dn-prow .num { color: var(--a-muted); font-size: 12.5px; }
+    #p-d-nav .dn-pk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    #p-d-nav .dn-pk div { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 12px; padding: 10px; min-width: 0; }
+    #p-d-nav .dn-pk b { display: block; font: 800 17px/1.1 var(--fd); font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+    #p-d-nav .dn-pk span { font-size: 11px; color: var(--a-muted); }
+    #p-d-nav .dn-bar { height: 4px; border-radius: 3px; background: var(--k); }
+    #p-d-nav .dn-pr { display: flex; align-items: flex-end; gap: 8px; }
+    #p-d-nav .dn-pr img { width: 64px; height: 68px; flex: none; }
+    #p-d-nav .dn-nav { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 6px 6px 10px; border-top: 1px solid var(--a-line); background: var(--a-surface); }
+    #p-d-nav .dn-ind { position: absolute; top: 6px; left: 6px; width: calc((100% - 12px) / 5); height: 52px; border-radius: 14px; background: var(--a-accent-soft); transition: transform .38s var(--ease), opacity .25s var(--ease); }
+    #p-d-nav .dn-nav button { position: relative; z-index: 1; min-height: 52px; border: 0; background: none; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10.5px; font-weight: 600; color: var(--a-muted); padding: 0; }
+    #p-d-nav .dn-nav button[aria-current="page"] { color: var(--a-accent); }
+    #p-d-nav .dn-sheet { position: absolute; inset: 0; z-index: 4; background: var(--a-bg); display: flex; flex-direction: column; animation: d-nav-sheet .32s var(--ease); }
+    #p-d-nav .dn-sheet[hidden] { display: none; }
+    @keyframes d-nav-sheet { from { opacity: 0; transform: translateY(18px); } }
+    #p-d-nav .dn-sheet .dn-in { padding: 14px 12px 10px 16px; }
+    #p-d-nav .dn-sheet .dn-list { max-height: none; flex: 1; min-height: 0; }
+    #p-d-nav .dn-cancel { min-height: 36px; border: 0; background: none; color: var(--a-accent); font-weight: 650; font-size: 14px; padding: 0 6px; }
+    #p-d-nav .dn-phtoast { bottom: 84px; }
+
+    #p-d-nav .dn-rules { flex: 1 1 280px; }
+    #p-d-nav .dn-rcard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; max-width: 440px; }
+    #p-d-nav .dn-rk { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+    #p-d-nav .dn-rcard ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: var(--soft); font-size: 14px; }
+    #p-d-nav .dn-rcard b { color: var(--text); font-weight: 650; }
+
+    @media (max-width: 860px) {
+      #p-d-nav .dn-mgrid { grid-template-columns: minmax(0, 1fr); }
+      #p-d-nav .dn-old { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #p-d-nav .dn-old .sep { display: none; }
+    }
+    @media (max-width: 720px) {
+      #p-d-nav .dn-map { padding: 14px; }
+      #p-d-nav .dn-nodes { grid-template-columns: minmax(0, 1fr); }
+      #p-d-nav .dn-kp .big { font-size: 32px; }
+      #p-d-nav .dn-wrap { padding: 10px 8px; }
+      #p-d-nav .dn-list { max-height: 300px; }
+      #p-d-nav .dn-toast { bottom: 76px; }
+      #p-d-nav .dn-foot { display: none; }
+    }
+    @media (max-width: 420px) {
+      #p-d-nav .dn-old { grid-template-columns: minmax(0, 1fr); }
+      #p-d-nav .dn-old .to { opacity: 1; }
+    }
+  </style>
+
+  <script>
+  (function () {
+    "use strict";
+    var root = document.getElementById("p-d-nav");
+    var M = window.MaidMock || { onSeen: function (e, f) { f(); }, reduce: false };
+    var EASE = "cubic-bezier(.2, .8, .2, 1)";
+    var ICON = {
+      today: '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+      plans: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+      diary: '<path d="M6 4h11a1 1 0 0 1 1 1v15H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M9 9h6M9 13h4"/>',
+      stats: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
+      rina: '<path d="M12 20s-7-4.4-7-9.5A4 4 0 0 1 12 8a4 4 0 0 1 7 2.5C19 15.6 12 20 12 20z"/>',
+      gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M5.6 18.4l2-2M16.4 7.6l2-2"/>',
+      find: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>'
+    };
+    function svg(k) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICON[k] + "</svg>"; }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+    var HUBN = { today: "Сегодня", plans: "Планы", diary: "Дневник", stats: "Обзор", rina: "Рина", gear: "Настройки" };
+
+    /* ---------- 1. схема переезда ---------- */
+    var OLD = [["Поиск", "Ctrl K"], ["Профиль", "Рина"], ["Персонализация", "Рина"], 0,
+      ["Сегодня", "Сегодня"], ["Планы", "Планы"], ["Привычки", "Планы"], ["Дневник", "Дневник"], ["Заметки", "Дневник"], 0,
+      ["Здоровье", "Обзор"], ["Деньги", "Обзор"], ["Статистика", "Обзор"], 0,
+      ["Корзина", "Настройки"], ["История", "Дневник"], ["Альбом", "Рина"], ["Возможности", "Ctrl K"], ["Настройки", "Настройки"]];
+    var NODES = [
+      { k: "today", n: "Сегодня", s: "главный экран", t: [["Всё на одном экране", "Сегодня"]] },
+      { k: "plans", n: "Планы", t: [["Неделя", "Планы"], ["Привычки", "Привычки", "habit"], ["Задачи", "Планы"], ["Даты", "Планы"]] },
+      { k: "diary", n: "Дневник", t: [["Дни", "Дневник"], ["Заметки", "Заметки"], ["История", "История"]] },
+      { k: "stats", n: "Обзор", t: [["Итоги", "Статистика"], ["Сон", "Статистика", "sleep"], ["Компьютер", "Статистика", "pc"], ["Деньги", "Деньги", "money"], ["Здоровье", "Здоровье"]] },
+      { k: "rina", n: "Рина", t: [["Характер и вид", "Персонализация"], ["О вас", "Профиль|Персонализация"], ["Альбом", "Альбом"]] },
+      { k: "gear", n: "Настройки", s: "шестерёнка", side: 1, t: [["Программа", "Настройки"], ["Виджет", "Настройки"], ["Корзина", "Корзина"]] },
+      { k: "find", n: "Ctrl K", s: "на любом экране", side: 1, t: [["Поиск по всему", "Поиск"], ["Что умеет Рина", "Возможности"]] }
+    ];
+    var map = root.querySelector("#d-nav-map");
+    map.innerHTML =
+      '<div class="dn-mhead"><div class="dn-kp"><span class="big num">16</span><span>пунктов одной колонкой</span></div>' +
+      '<svg class="dn-arw" viewBox="0 0 40 20" aria-hidden="true"><path d="M2 10h34M28 3l8 7-8 7"/></svg>' +
+      '<div class="dn-kp new"><span class="big num dn-c">5</span><span>узлов с вкладками и Настройки</span></div></div>' +
+      '<div class="dn-mgrid"><div><p class="dn-cap">Сейчас</p><div class="dn-old" role="group" aria-label="Старое меню">' +
+      OLD.map(function (o) {
+        return o ? '<button type="button" class="moved" data-k="' + o[0] + '"><span class="nm">' + o[0] + '</span><span class="to">→ ' + o[1] + "</span></button>" : '<div class="sep"></div>';
+      }).join("") + '</div></div><div><p class="dn-cap">Стало</p><div class="dn-nodes">' +
+      NODES.map(function (n) {
+        return '<div class="dn-node' + (n.side ? " side" : "") + '"><div class="dn-nh">' + svg(n.k) + "<b>" + n.n + "</b><small>" + (n.s || n.t.length + " вкладки") + '</small></div><div class="dn-tabs">' +
+          n.t.map(function (t) {
+            return '<button type="button" class="dn-tab" data-src="' + t[1] + '" data-node="' + n.n + '">' + (t[2] ? '<span class="dot" style="background:var(--c-' + t[2] + ')"></span>' : "") + t[0] + "</button>";
+          }).join("") + "</div></div>";
+      }).join("") + '</div></div></div><p class="dn-why" aria-live="polite">Каждый старый экран остался, он просто живёт внутри узла.</p>';
+
+    var oldBtns = [].slice.call(map.querySelectorAll(".dn-old button"));
+    var tabs = [].slice.call(map.querySelectorAll(".dn-tab"));
+    var why = map.querySelector(".dn-why");
+    var cnt = map.querySelector(".dn-c");
+    var oldBy = {};
+    oldBtns.forEach(function (b, i) { oldBy[b.dataset.k] = { el: b, i: i }; });
+
+    function pick(name) {
+      oldBtns.forEach(function (b) { b.classList.toggle("sel", b.dataset.k === name); });
+      var where = [];
+      tabs.forEach(function (t) {
+        var on = t.dataset.src.split("|").indexOf(name) >= 0;
+        t.classList.remove("hit");
+        if (on) { void t.offsetWidth; t.classList.add("hit"); where.push(t.dataset.node + " → " + t.textContent); }
+      });
+      why.innerHTML = "«" + esc(name) + "» теперь: <b>" + esc(where.join(", ")) + "</b>";
+    }
+    map.addEventListener("click", function (e) {
+      var o = e.target.closest(".dn-old button"); if (o) { pick(o.dataset.k); return; }
+      var t = e.target.closest(".dn-tab"); if (t) pick(t.dataset.src.split("|")[0]);
+    });
+
+    var mapTimers = [];
+    function playMap() {
+      mapTimers.forEach(clearTimeout); mapTimers = [];
+      oldBtns.forEach(function (b) { b.classList.remove("sel"); });
+      tabs.forEach(function (t) { t.classList.remove("hit"); t.getAnimations && t.getAnimations().forEach(function (a) { a.cancel(); }); });
+      if (M.reduce || !tabs[0].animate) { oldBtns.forEach(function (b) { b.classList.add("moved"); }); cnt.textContent = "5"; return; }
+      oldBtns.forEach(function (b) { b.classList.remove("moved"); });
+      var last = 0;
+      tabs.forEach(function (t) {
+        var src = oldBy[t.dataset.src.split("|")[0]];
+        var a = src.el.getBoundingClientRect(), b = t.getBoundingClientRect();
+        var dx = a.left + 10 - b.left, dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        var delay = 300 + src.i * 75; last = Math.max(last, delay);
+        t.style.zIndex = "2";
+        var an = t.animate([{ transform: "translate(" + dx + "px," + dy + "px) scale(.92)", opacity: .4 }, { transform: "none", opacity: 1 }],
+          { duration: 720, delay: delay, easing: EASE, fill: "backwards" });
+        an.onfinish = function () { t.style.zIndex = ""; };
+        mapTimers.push(setTimeout(function () { src.el.classList.add("moved"); }, delay));
+      });
+      var t0 = performance.now() + 300, dur = last + 420;
+      cnt.textContent = "16";
+      (function step(now) {
+        var k = Math.min(1, Math.max(0, (now - t0) / dur));
+        cnt.textContent = String(Math.round(16 - 11 * k));
+        if (k < 1) requestAnimationFrame(step);
+      })(performance.now());
+    }
+
+    /* ---------- 2. строка поиска ---------- */
+    var TYPE = {
+      act: { g: "Действия", ic: "+", k: "--a-accent" },
+      open: { g: "Действия", ic: "→", k: "--a-accent" },
+      plan: { g: "Планы и задачи", ic: "◷", k: "--a-accent", hub: "plans", tab: "Неделя" },
+      task: { g: "Планы и задачи", ic: "✓", k: "--a-accent", hub: "plans", tab: "Задачи" },
+      diary: { g: "Дневник и заметки", ic: "✎", k: "--c-mood", hub: "diary", tab: "Дни" },
+      note: { g: "Дневник и заметки", ic: "≡", k: "--c-mood", hub: "diary", tab: "Заметки" },
+      money: { g: "Деньги", ic: "₽", k: "--c-money", hub: "stats", tab: "Деньги" },
+      date: { g: "Даты", ic: "★", k: "--a-gold", hub: "plans", tab: "Даты" },
+      habit: { g: "Привычки", ic: "●", k: "--c-habit", hub: "plans", tab: "Привычки" }
+    };
+    var GORDER = ["Действия", "Планы и задачи", "Дневник и заметки", "Деньги", "Даты", "Привычки"];
+    var REC = [
+      { y: "plan", t: "Созвон с командой", m: "План · пн 1 дек", r: "10:00", w: "встреча работа звонок" },
+      { y: "plan", t: "Стоматолог", m: "План · чт 4 дек", r: "17:30", w: "зубы врач клиника" },
+      { y: "plan", t: "Тренировка в зале", m: "План · ср 3 дек", r: "19:00", w: "спорт зарядка" },
+      { y: "task", t: "Отправить отчёт за ноябрь", m: "Задача · важная", r: "сегодня", w: "работа" },
+      { y: "task", t: "Оплатить интернет", m: "Задача · срок пт 28 ноя", r: "", w: "счёт деньги связь" },
+      { y: "task", t: "Купить корм коту", m: "Задача", r: "", w: "магазин покупки кот" },
+      { y: "diary", t: "Сон: легла в 1:40, встала разбитой", m: "Дневник · 24 ноя", r: "", w: "спала поздно усталость" },
+      { y: "diary", t: "Итог: гуляли в парке, хороший день", m: "Дневник · 22 ноя · оценка 8", r: "", w: "прогулка настроение" },
+      { y: "diary", t: "Читала вечером, на душе спокойно", m: "Дневник · 20 ноя", r: "", w: "чтение книга настроение" },
+      { y: "note", t: "Посмотреть «Интерстеллар»", m: "Заметка · полка «Фильмы»", r: "", w: "фильм кино" },
+      { y: "money", t: "Кофе с собой", m: "Трата · сегодня · еда", r: "220 ₽", w: "кафе еда" },
+      { y: "money", t: "Такси до дома", m: "Трата · 25 ноя · транспорт", r: "480 ₽", w: "поездка транспорт" },
+      { y: "money", t: "Продукты на неделю", m: "Трата · 23 ноя · еда", r: "1 860 ₽", w: "магазин еда" },
+      { y: "date", t: "День рождения мамы", m: "Дата · 14 декабря", r: "через 17 дн", w: "мама праздник подарок" },
+      { y: "date", t: "Годовщина свадьбы", m: "Дата · 3 февраля", r: "через 68 дн", w: "праздник" },
+      { y: "habit", t: "Чтение", m: "Привычка · серия 6 дней", r: "", w: "книга" },
+      { y: "habit", t: "Вода", m: "Привычка · сегодня 5 из 8 стаканов", r: "", w: "пить стакан" }
+    ];
+    var ACT = [
+      { y: "act", t: "Записать сон", m: "Во сколько легли и встали", hub: "stats", w: "сон спал легла", go: "Открыла запись сна: осталось указать, во сколько легли и встали" },
+      { y: "act", t: "Новая задача", m: "Название, срок, важность", hub: "plans", w: "задача дело сделать добавить", go: "Новая задача: поле названия уже ждёт в «Планы → Задачи»" },
+      { y: "act", t: "Новый план", m: "День, время, повтор", hub: "plans", w: "план встреча событие", go: "Новый план: выберите время на неделе" },
+      { y: "act", t: "Записать трату", m: "Сумма и на что", hub: "stats", w: "трата деньги купил потратил расход", go: "Новая трата: введите сумму" },
+      { y: "open", t: "Открыть Сон", m: "Обзор → Сон", hub: "stats", w: "сон обзор", go: "Открыто: Обзор → Сон" },
+      { y: "open", t: "Открыть Деньги", m: "Обзор → Деньги", hub: "stats", w: "деньги траты расходы", go: "Открыто: Обзор → Деньги" },
+      { y: "open", t: "Открыть Привычки", m: "Планы → Привычки", hub: "plans", w: "привычки", go: "Открыто: Планы → Привычки" },
+      { y: "open", t: "Открыть Корзину", m: "Настройки → Корзина", hub: "gear", w: "корзина удаленное вернуть", go: "Открыто: Настройки → Корзина" },
+      { y: "open", t: "Что умеет Рина", m: "Список возможностей", hub: "rina", w: "возможности помощь умеет", go: "Открыла список: что умеет Рина" },
+      { y: "open", t: "Сменить характер Рины", m: "Рина → Характер и вид", hub: "rina", w: "характер вид рина", go: "Открыто: Рина → Характер и вид" },
+      { y: "open", t: "Тема: светлая или тёмная", m: "Настройки → Программа", hub: "gear", w: "тема темная светлая", go: "Открыто: Настройки → Программа" }
+    ];
+    function norm(s) { return s.toLowerCase().replace(/ё/g, "е"); }
+    function stem(w) { return w.length >= 7 ? w.slice(0, -2) : w.length >= 4 ? w.slice(0, -1) : w; }
+    function words(q) {
+      var ws = norm(q).split(/[^a-zа-я0-9]+/).filter(function (w) { return w.length >= 3; });
+      return ws.map(stem);
+    }
+    function hay(it) { return it._h || (it._h = norm(it.t + " " + it.m + " " + (it.w || ""))); }
+    var VERB = /^(напомни|запиши|перенеси|отметь|добавь|удали|поставь|сделай|покажи|как|почему|сколько|когда|что|хочу|давай|я|мне|вчера|завтра|сегодня|можешь)(\s|$)/;
+    function phrase(q) { var n = norm(q.trim()); return /\?$/.test(n) || n.split(/\s+/).length >= 4 || VERB.test(n); }
+    function hl(text, ws) {
+      var n = norm(text), best = -1, len = 0;
+      ws.forEach(function (w) { var i = n.indexOf(w); if (i >= 0 && (best < 0 || i < best)) { best = i; len = w.length; } });
+      if (best < 0) return esc(text);
+      return esc(text.slice(0, best)) + "<mark>" + esc(text.slice(best, best + len)) + "</mark>" + esc(text.slice(best + len));
+    }
+    function search(q) {
+      q = q.trim();
+      if (!q) return { ws: [], groups: [{ t: "Часто", items: [ACT[1], ACT[0], ACT[3]] }, { t: "Недавние", items: [REC[1], REC[10], REC[6]] }] };
+      var ws = words(q); if (!ws.length) ws = [norm(q)];
+      function all(it) { var h = hay(it); return ws.every(function (w) { return h.indexOf(w) >= 0; }); }
+      function some(it) { var h = hay(it); return ws.some(function (w) { return w.length >= 4 && h.indexOf(w) >= 0; }); }
+      var acts = ACT.filter(all), recs = REC.filter(all), loose = false;
+      if (!acts.length && !recs.length) { recs = REC.filter(some); acts = ACT.filter(some); loose = true; }
+      var say = { y: "say", t: "Сказать Рине: «" + q + "»", m: "Она поймёт и сделает сама", q: q };
+      var isP = phrase(q) || loose, groups = [];
+      if (isP) groups.push({ t: "Рина", items: [say] });
+      if (acts.length) groups.push({ t: loose ? "Похоже на это" : "Действия", items: acts.slice(0, 3) });
+      var by = {};
+      recs.forEach(function (r) { var g = TYPE[r.y].g; (by[g] = by[g] || []).push(r); });
+      var left = 7;
+      GORDER.forEach(function (g) { if (by[g] && left > 0) { var it = by[g].slice(0, Math.min(3, left)); left -= it.length; groups.push({ t: g, items: it }); } });
+      if (!isP) groups.push({ t: "Не нашли нужное?", items: [say] });
+      return { ws: ws, groups: groups };
+    }
+    function icon(it) {
+      if (it.y === "say") return '<span class="dn-ic" style="--k:var(--a-accent)"><img src="maid/listen.webp" alt=""></span>';
+      var ty = TYPE[it.y];
+      return '<span class="dn-ic" style="--k:var(' + ty.k + ')" aria-hidden="true">' + ty.ic + "</span>";
+    }
+    function optHtml(it, i, ws, pre, anim) {
+      return '<div class="dn-opt' + (anim ? " in" : "") + '" role="option" id="d-nav-' + pre + i + '" data-i="' + i + '" aria-selected="false"' + (anim ? ' style="animation-delay:' + Math.min(i, 8) * 28 + 'ms"' : "") + ">" + icon(it) +
+        '<span class="dn-tx"><span class="dn-t">' + hl(it.t, ws) + '</span><span class="dn-m">' + esc(it.m) + '</span></span><span class="dn-r">' + esc(it.r || "") + "</span></div>";
+    }
+    function reply(q) {
+      var n = norm(q);
+      if (/перенес/.test(n) && /стомат/.test(n)) return "Перенесла «Стоматолог» на пятницу, 5 декабря, 17:30. Отменить можно в «Планы → Неделя».";
+      if (/напомн|завтра|в \d/.test(n)) return "Поняла, поставила в планы и напомню вовремя. Всё видно во вкладке «Неделя».";
+      if (/потрат|купил|руб|₽/.test(n)) return "Записала трату. Сегодня всего 700 ₽, это меньше обычного.";
+      if (/спал|сон|легл|лег /.test(n)) return "Записала сон. Третий раз за неделю после полуночи, давайте сегодня раньше?";
+      return "Услышала вас. Отвечу здесь и продублирую в Telegram.";
+    }
+    function goText(it) {
+      if (it.go) return it.go;
+      var ty = TYPE[it.y];
+      return "Открыто: " + HUBN[ty.hub] + " → " + ty.tab + ". «" + it.t + "» подсвечено";
+    }
+    function hubOf(it) { return it.hub || (TYPE[it.y] && TYPE[it.y].hub) || "today"; }
+
+    var app = root.querySelector("#d-nav-app");
+    var wrap = root.querySelector("#d-nav-pal");
+    var pal = wrap.querySelector(".dn-pal");
+    var inp = root.querySelector("#d-nav-q");
+    var list = root.querySelector("#d-nav-list");
+    var rep = wrap.querySelector(".dn-reply");
+    var cntEl = wrap.querySelector(".dn-cnt");
+    var toastEl = app.querySelector(".dn-toast");
+    var flat = [], act = 0, typeTok = 0, opener = null, toastT = 0, railT = 0;
+
+    function render(anim) {
+      var r = search(inp.value);
+      flat = []; var html = "";
+      r.groups.forEach(function (g) {
+        html += '<div role="presentation"><div class="dn-gl" aria-hidden="true">' + g.t + "</div>";
+        g.items.forEach(function (it) { html += optHtml(it, flat.length, r.ws, "o", anim); flat.push(it); });
+        html += "</div>";
+      });
+      list.innerHTML = html;
+      var found = flat.filter(function (x) { return x.y !== "say"; }).length;
+      cntEl.textContent = inp.value.trim() ? "найдено: " + found : "";
+      setAct(0);
+    }
+    function setAct(i) {
+      if (!flat.length) return;
+      act = (i + flat.length) % flat.length;
+      var opts = list.querySelectorAll(".dn-opt");
+      opts.forEach(function (o, k) { o.setAttribute("aria-selected", k === act ? "true" : "false"); });
+      inp.setAttribute("aria-activedescendant", "d-nav-o" + act);
+      var el = opts[act];
+      if (el) {
+        var lt = list.getBoundingClientRect(), et = el.getBoundingClientRect();
+        if (et.top < lt.top) list.scrollTop -= lt.top - et.top + 4;
+        else if (et.bottom > lt.bottom) list.scrollTop += et.bottom - lt.bottom + 4;
+      }
+    }
+    function choose(it) {
+      if (!it) return;
+      if (it.y === "say") {
+        rep.querySelector("p").textContent = reply(it.q);
+        rep.hidden = false; rep.style.animation = "none"; void rep.offsetWidth; rep.style.animation = "";
+        inp.value = ""; render(true); inp.focus({ preventScroll: true });
+        return;
+      }
+      close();
+      toast(toastEl, goText(it));
+      flashRail(hubOf(it));
+    }
+    function toast(el, text) {
+      clearTimeout(toastT);
+      el.hidden = true; void el.offsetWidth;
+      el.textContent = text; el.hidden = false;
+      toastT = setTimeout(function () { el.hidden = true; }, 2800);
+    }
+    function flashRail(hub) {
+      var as = app.querySelectorAll(".app-rail a"); if (!as.length) return;
+      var idx = ["today", "plans", "diary", "stats", "rina", "gear"].indexOf(hub);
+      clearTimeout(railT);
+      as.forEach(function (a, k) { a.classList.toggle("on", k === idx); a.classList.remove("flash"); });
+      if (as[idx]) { void as[idx].offsetWidth; as[idx].classList.add("flash"); }
+      railT = setTimeout(function () { as.forEach(function (a, k) { a.classList.toggle("on", k === 0); a.classList.remove("flash"); }); }, 2800);
+    }
+    function open(focus) {
+      enhance();
+      var was = !wrap.hidden;
+      wrap.hidden = false; inp.setAttribute("aria-expanded", "true");
+      if (!was && !M.reduce) { pal.classList.remove("pop"); void pal.offsetWidth; pal.classList.add("pop"); }
+      if (!was) { rep.hidden = true; inp.value = ""; render(!M.reduce); }
+      if (focus) { opener = document.activeElement; inp.focus({ preventScroll: true }); }
+    }
+    function close() {
+      typeTok++;
+      wrap.hidden = true; inp.setAttribute("aria-expanded", "false");
+      if (opener && opener.focus && root.contains(opener)) opener.focus({ preventScroll: true });
+      opener = null;
+    }
+    function enhance() {
+      var f = app.querySelector(".app-find");
+      if (!f || f.dataset.dn) return;
+      f.dataset.dn = "1"; f.tabIndex = 0; f.setAttribute("role", "button"); f.setAttribute("aria-label", "Найти или сказать Рине, Ctrl K");
+      f.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(true); } });
+    }
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { setTimeout(enhance, 0); }); else setTimeout(enhance, 0);
+
+    inp.addEventListener("input", function () { typeTok++; rep.hidden = true; render(false); });
+    inp.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setAct(act + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setAct(act - 1); }
+      else if (e.key === "Enter") { e.preventDefault(); choose(flat[act]); }
+      else if (e.key === "Escape") { e.preventDefault(); close(); }
+    });
+    list.addEventListener("mousemove", function (e) { var o = e.target.closest(".dn-opt"); if (o && +o.dataset.i !== act) setAct(+o.dataset.i); });
+    app.addEventListener("click", function (e) {
+      if (e.target.closest(".app-find") || e.target.closest("[data-open]")) { open(true); return; }
+      if (e.target === wrap || e.target.closest("[data-close]")) { close(); return; }
+      var c = e.target.closest("[data-q]"); if (c && wrap.contains(c)) { typeTok++; rep.hidden = true; inp.value = c.dataset.q; render(true); inp.focus({ preventScroll: true }); return; }
+      var o = e.target.closest(".dn-opt"); if (o && list.contains(o)) choose(flat[+o.dataset.i]);
+    });
+    wrap.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); close(); } });
+
+    var visible = false;
+    if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { visible = es[0].isIntersecting; }, { threshold: .3 }).observe(app);
+    document.addEventListener("keydown", function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyK" && visible) { e.preventDefault(); open(true); }
+    });
+
+    function playPal() {
+      var tok = ++typeTok;
+      wrap.hidden = true; open(false);
+      if (M.reduce) { inp.value = "сон"; render(false); return; }
+      var word = "сон", i = 0;
+      function tick() {
+        if (tok !== typeTok) return;
+        if (i >= word.length) return;
+        inp.value = word.slice(0, ++i); render(true);
+        setTimeout(tick, 190);
+      }
+      setTimeout(tick, 550);
+    }
+
+    /* ---------- 3. телефон ---------- */
+    var PHN = ["today", "plans", "diary", "stats", "rina"];
+    var PH = {
+      today: { t: "Сегодня", tabs: [], h:
+        '<div class="dn-pc"><small>Через 40 минут</small><span class="dn-pb">Созвон с командой</span><span class="muted num">10:00 до 10:30</span></div>' +
+        '<div class="dn-pc"><small>Задачи · 3</small><div class="dn-prow"><span class="dn-box"></span><span>Отправить отчёт за ноябрь</span></div><div class="dn-prow"><span class="dn-box"></span><span>Оплатить интернет</span><span class="num">до пт</span></div><div class="dn-prow"><span class="dn-box"></span><span>Купить корм коту</span></div></div>' +
+        '<div class="dn-pc"><small>Привычки</small><div class="dn-prow"><span class="dot" style="background:var(--c-habit)"></span><span>Чтение</span><span class="num">6 дней подряд</span></div><div class="dn-prow"><span class="dot" style="background:var(--c-habit)"></span><span>Вода</span><span class="num">5 из 8</span></div></div>' },
+      plans: { t: "Планы", tabs: ["Неделя", "Привычки", "Задачи", "Даты"], h:
+        '<div class="dn-pc"><small>Пн, 1 декабря</small><div class="dn-prow"><span class="num">10:00</span><span>Созвон с командой</span></div></div>' +
+        '<div class="dn-pc"><small>Ср, 3 декабря</small><div class="dn-prow"><span class="num">19:00</span><span>Тренировка в зале</span></div></div>' +
+        '<div class="dn-pc"><small>Чт, 4 декабря</small><div class="dn-prow"><span class="num">17:30</span><span>Стоматолог</span></div></div>' },
+      diary: { t: "Дневник", tabs: ["Дни", "Заметки", "История"], h:
+        '<div class="dn-pc"><small>24 ноября</small><span>Сон: легла в 1:40, встала разбитой</span></div>' +
+        '<div class="dn-pc"><small>22 ноября · оценка 8</small><span>Итог: гуляли в парке, хороший день</span></div>' +
+        '<div class="dn-pc"><small>20 ноября</small><span>Читала вечером, на душе спокойно</span></div>' },
+      stats: { t: "Обзор", tabs: ["Сон", "Компьютер", "Деньги", "Здоровье"], h:
+        '<div class="dn-pk"><div style="--k:var(--c-sleep)"><span>Сон</span><b>6:40</b><div class="dn-bar" style="width:72%"></div></div><div style="--k:var(--c-pc)"><span>За ПК</span><b>7:10</b><div class="dn-bar" style="width:88%"></div></div><div style="--k:var(--c-money)"><span>Траты</span><b>2 560 ₽</b><div class="dn-bar" style="width:46%"></div></div></div>' +
+        '<div class="dn-pc"><small>За неделю</small><span>Сон в среднем 6 ч 40 мин, на 25 минут меньше прошлой недели.</span></div>' },
+      rina: { t: "Рина", tabs: ["Характер и вид", "О вас", "Альбом"], h:
+        '<div class="dn-pc dn-pr"><img src="maid/happy.webp" alt="Рина"><span>Характер: добрая. Волосы каштановые, глаза зелёные.</span></div>' +
+        '<div class="dn-pc"><small>О вас</small><span>Заполнено 6 из 7. Осталось: рост.</span></div>' },
+      gear: { t: "Настройки", tabs: ["Программа", "Виджет", "Корзина"], h:
+        '<div class="dn-pc"><small>Программа</small><span>Тема, вход, обновления, тариф</span></div>' +
+        '<div class="dn-pc"><small>Корзина · 4</small><span>Удалённое хранится 30 дней, можно вернуть</span></div>' }
+    };
+    var ph = root.querySelector("#d-nav-ph");
+    ph.innerHTML =
+      '<div class="dn-phh"><b>Сегодня</b><button type="button" class="dn-ibtn" data-gear="1" aria-pressed="false" aria-label="Настройки">' + svg("gear") + "</button></div>" +
+      '<button type="button" class="dn-phs">' + svg("find") + "<span>Найти или сказать Рине…</span></button>" +
+      '<div class="dn-pht" role="group" aria-label="Вкладки"></div><div class="dn-phc"></div>' +
+      '<nav class="dn-nav" aria-label="Узлы"><span class="dn-ind" aria-hidden="true"></span>' +
+      PHN.map(function (k) { return '<button type="button" data-n="' + k + '">' + svg(k) + HUBN[k] + "</button>"; }).join("") + "</nav>" +
+      '<div class="dn-sheet" hidden><div class="dn-in">' + svg("find") + '<input type="text" autocomplete="off" placeholder="Найти или сказать Рине…" aria-label="Поиск на телефоне"><button type="button" class="dn-cancel">Отмена</button></div>' +
+      '<div class="dn-reply" hidden><img src="maid/write.webp" alt=""><p></p></div><div class="dn-list" role="listbox" aria-label="Результаты"></div></div>' +
+      '<div class="dn-toast dn-phtoast" role="status" hidden></div>';
+    var phTitle = ph.querySelector(".dn-phh b"), phTabs = ph.querySelector(".dn-pht"), phC = ph.querySelector(".dn-phc");
+    var ind = ph.querySelector(".dn-ind"), gearB = ph.querySelector("[data-gear]"), sheet = ph.querySelector(".dn-sheet");
+    var sIn = sheet.querySelector("input"), sList = sheet.querySelector(".dn-list"), sRep = sheet.querySelector(".dn-reply"), phToast = ph.querySelector(".dn-phtoast");
+    var cur = "today", sFlat = [];
+    function phGo(k, anim) {
+      var from = cur === "gear" ? 5 : PHN.indexOf(cur), to = k === "gear" ? 5 : PHN.indexOf(k);
+      cur = k; var d = PH[k];
+      phTitle.textContent = d.t;
+      phTabs.innerHTML = d.tabs.map(function (t, i) { return '<button type="button" class="chip" aria-pressed="' + (i === 0) + '">' + t + "</button>"; }).join("");
+      phC.innerHTML = d.h; phC.scrollTop = 0;
+      gearB.setAttribute("aria-pressed", k === "gear" ? "true" : "false");
+      ph.querySelectorAll(".dn-nav button").forEach(function (b) { if (b.dataset.n === k) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+      if (k === "gear") ind.style.opacity = "0"; else { ind.style.opacity = "1"; ind.style.transform = "translateX(" + (to * 100) + "%)"; }
+      if (anim && !M.reduce && phC.animate && from !== to) {
+        var dx = to > from ? 22 : -22;
+        phC.animate([{ transform: "translateX(" + dx + "px)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 320, easing: EASE });
+      }
+    }
+    function sRender() {
+      var r = search(sIn.value), html = "";
+      sFlat = [];
+      r.groups.forEach(function (g) { g.items.forEach(function (it) { if (sFlat.length < 7) { html += optHtml(it, sFlat.length, r.ws, "p", true); sFlat.push(it); } }); });
+      sList.innerHTML = html;
+    }
+    function sChoose(it) {
+      if (!it) return;
+      if (it.y === "say") { sRep.querySelector("p").textContent = reply(it.q); sRep.hidden = false; sIn.value = ""; sRender(); return; }
+      sheet.hidden = true;
+      var h = hubOf(it); phGo(h === "gear" || PHN.indexOf(h) >= 0 ? h : "today", true);
+      toast(phToast, goText(it));
+    }
+    ph.addEventListener("click", function (e) {
+      var b = e.target.closest(".dn-nav button"); if (b) { phGo(b.dataset.n, true); return; }
+      if (e.target.closest("[data-gear]")) { phGo(cur === "gear" ? "today" : "gear", true); return; }
+      if (e.target.closest(".dn-phs")) { sheet.hidden = false; sRep.hidden = true; sIn.value = ""; sRender(); sIn.focus({ preventScroll: true }); return; }
+      if (e.target.closest(".dn-cancel")) { sheet.hidden = true; ph.querySelector(".dn-phs").focus({ preventScroll: true }); return; }
+      var t = e.target.closest(".dn-pht .chip"); if (t) { phTabs.querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", c === t ? "true" : "false"); }); return; }
+      var o = e.target.closest(".dn-opt"); if (o && sList.contains(o)) sChoose(sFlat[+o.dataset.i]);
+    });
+    sIn.addEventListener("input", function () { sRep.hidden = true; sRender(); });
+    sIn.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); sChoose(sFlat[0]); }
+      else if (e.key === "Escape") { e.preventDefault(); sheet.hidden = true; }
+    });
+    phGo("today", false);
+
+    function play() {
+      playMap();
+      playPal();
+      sheet.hidden = true;
+      phGo("today", false);
+    }
+    M.onSeen(root, play);
+    root.addEventListener("replay", play);
+    render(false);
+  })();
+  </script>
+</article>

@@ -1,0 +1,661 @@
+<article class="piece" id="p-d-notes">
+  <header>
+    <p class="eyebrow">Экран · Дневник → Заметки</p>
+    <h2>Полки на потом: всё правится на месте, вечер выбирается сам</h2>
+    <p>Сейчас заметки лежат строками, а в каждой строке постоянно висят список полок и крестик. Название не поправить, оценку готового не изменить. Новый экран показывает полки карточками: щёлкнули по названию и поправили, перетащили на другую полку, отметили «Готово» со звёздами. Кнопка «Случайное» выбирает, что посмотреть сегодня.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="notes-var" role="group" aria-label="Вариант экрана">
+    <button type="button" data-var="a" aria-pressed="true">Вариант А · Полки карточками</button>
+    <button type="button" data-var="b" aria-pressed="false">Вариант Б · Доска</button>
+  </div>
+  <p class="notes-advice">Советую А: крупные карточки, поиск и выбор на вечер в одном месте. Доску оставить как второй вид для тех, кто любит раскладывать всё по колонкам.</p>
+
+  <div class="app notes-va" data-hub="diary" data-tab="Заметки" data-title="Заметки">
+    <div class="notes-top">
+      <label class="notes-field notes-fq">
+        <svg class="notes-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+        <input type="search" class="notes-q" placeholder="Найти в заметках" aria-label="Найти в заметках" autocomplete="off">
+      </label>
+      <form class="notes-field notes-addf">
+        <svg class="notes-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <input type="text" class="notes-ain" maxlength="200" autocomplete="off" aria-label="Новая заметка">
+        <button type="submit" class="btn primary notes-asub">Записать</button>
+      </form>
+    </div>
+
+    <div class="notes-kpis">
+      <div class="card kpi"><small>Ждут на полках</small><span class="big num" data-cnt="open">32</span><span class="notes-ks" data-ks="open"></span></div>
+      <div class="card kpi"><small>Готово в ноябре</small><span class="big num" data-cnt="mon">5</span><span class="notes-ks" data-ks="mon"></span></div>
+      <div class="card kpi"><small>Средняя оценка</small><span class="big num notes-avg"><span data-cnt="avg">7,7</span><small>/10</small></span><span class="notes-ks" data-ks="avg"></span></div>
+    </div>
+
+    <div class="rina notes-rina">
+      <img src="maid/present.webp" alt="Рина" width="64" height="68">
+      <div class="notes-rtx"></div>
+    </div>
+
+    <div class="notes-main">
+      <aside class="notes-shelves" aria-label="Полки"></aside>
+      <section class="notes-area">
+        <div class="notes-head"></div>
+        <div class="notes-luckbox"></div>
+        <div class="notes-grid"></div>
+      </section>
+    </div>
+    <div class="notes-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-a="undo">Отменить</button></div>
+  </div>
+
+  <div class="app notes-vb" data-hub="diary" data-tab="Заметки" data-title="Заметки" hidden>
+    <div class="rina notes-rina">
+      <img src="maid/think.webp" alt="Рина" width="64" height="68">
+      <div class="notes-rtx"></div>
+    </div>
+    <div class="notes-jump" role="group" aria-label="Перейти к колонке"></div>
+    <div class="notes-board"></div>
+    <p class="muted notes-bhint">Карточки перетаскиваются между колонками. На телефоне колонки листаются пальцем, а переложить можно через «⋯».</p>
+    <div class="notes-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-a="undo">Отменить</button></div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Полки слева со счётчиками, справа карточки: крупное название, пометка, «добавлено 3 нед. назад · 6 ноября».</li>
+      <li>Название и пометка правятся щелчком. Список полок и «Удалить» спрятаны в «⋯», строка больше не шумит.</li>
+      <li>«Готово» открывает звёзды 1–10 ползунком, оценку готового можно поменять в любой момент.</li>
+      <li>Карточку можно перетащить на полку. Если записать «книга Дюна», Рина сама положит её на «Почитать».</li>
+      <li>«Случайное» перебирает карточки и выбирает одну. Удаление, перенос, оценка и правка отменяются кнопкой «Отменить».</li>
+      <li>Цвет полки: «Поиграть» цветом игр, «Купить» цветом денег, «Почитать» цветом привычек, оценки цветом настроения.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Карточки поднимаются по очереди, цифры наверху досчитывают до значения.</li>
+      <li>После оценки карточка уменьшается и улетает в «Готово», счётчик полки вздрагивает.</li>
+      <li>«Случайное»: подсветка бежит по карточкам и замедляется, выбранная загорается с меткой «Выпало».</li>
+      <li>Перетаскиваемая карточка бледнеет, полка под ней подсвечивается рамкой своего цвета.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Всё уже есть в данных: полка, название, пометка, статус, оценка, дата. Сервер принимает правку заметки через <code>POST /api/notes/:id</code>.</li>
+      <li>Дописать на сервере правку <code>title</code> и <code>note</code> (сейчас меняются только полка, статус и оценка) и смену оценки у готового.</li>
+      <li>Разбор «книга Дюна» на полку взять у бота: он уже так делает со словами «фильм Дюна 2».</li>
+      <li>Перетаскивание и звёзды: только сайт, без новых запросов. Отмена шлёт прежние значения тем же запросом.</li>
+    </ul></div>
+  </div>
+
+<style>
+#p-d-notes .app[hidden] { display: none; }
+#p-d-notes .notes-var { display: inline-flex; align-self: flex-start; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+#p-d-notes .notes-var button { background: none; border: 0; border-radius: 9px; padding: 7px 14px; min-height: 36px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+#p-d-notes .notes-var button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+#p-d-notes .notes-advice { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
+#p-d-notes .notes code { font-size: 12.5px; color: var(--text); }
+
+#p-d-notes [data-sh="watch"] { --sh: var(--a-accent); }
+#p-d-notes [data-sh="read"] { --sh: var(--c-habit); }
+#p-d-notes [data-sh="play"] { --sh: var(--c-game); }
+#p-d-notes [data-sh="buy"] { --sh: var(--c-money); }
+#p-d-notes [data-sh="idea"] { --sh: var(--a-gold); }
+#p-d-notes [data-sh="all"] { --sh: var(--a-soft); }
+#p-d-notes [data-sh="done"] { --sh: var(--a-ok); }
+#p-d-notes .notes-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+#p-d-notes .notes-top { display: flex; flex-wrap: wrap; gap: 10px; }
+#p-d-notes .notes-field { display: flex; align-items: center; gap: 8px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 12px; padding: 0 5px 0 12px; min-height: 44px; color: var(--a-muted); min-width: 0; margin: 0; }
+#p-d-notes .notes-field:focus-within { border-color: var(--a-accent); box-shadow: 0 0 0 3px var(--a-accent-soft); }
+#p-d-notes .notes-field input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--a-text); padding: 8px 0; }
+#p-d-notes .notes-field input::placeholder { color: var(--a-muted); }
+#p-d-notes .notes-fq { flex: 1 1 220px; }
+#p-d-notes .notes-addf { flex: 2 1 320px; }
+#p-d-notes .notes-asub { min-height: 34px; }
+
+#p-d-notes .notes-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#p-d-notes .notes-kpis .card { padding: 14px 16px; }
+#p-d-notes .notes-avg { color: var(--c-mood); display: inline-flex; align-items: baseline; gap: 2px; }
+#p-d-notes .notes-avg small { font: 700 14px var(--f); color: var(--a-muted); letter-spacing: 0; text-transform: none; }
+#p-d-notes .notes-ks { font-size: 12.5px; color: var(--a-muted); min-width: 0; overflow-wrap: anywhere; }
+
+#p-d-notes .notes-rtx { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+#p-d-notes .notes-rtx .btn { min-height: 36px; }
+#p-d-notes.notes-go .notes-rina p { animation: d-notes-rise .5s var(--ease) .35s both; }
+
+#p-d-notes .notes-main { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 18px; align-items: start; }
+#p-d-notes .notes-shelves { display: flex; flex-direction: column; gap: 3px; position: sticky; top: 8px; }
+#p-d-notes .notes-sh { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 8px 10px; border: 1px dashed transparent; border-radius: 12px; background: none; color: var(--a-soft); font-weight: 600; text-align: left; transition: background .2s, transform .2s var(--ease), border-color .2s; }
+#p-d-notes .notes-sh .notes-i { color: var(--sh); }
+#p-d-notes .notes-sh:hover { background: var(--a-surface-2); }
+#p-d-notes .notes-sh[aria-pressed="true"] { background: var(--a-surface); color: var(--a-text); border: 1px solid var(--a-line); box-shadow: inset 3px 0 0 var(--sh); }
+#p-d-notes .notes-shn { margin-left: auto; font-size: 12.5px; color: var(--a-muted); background: var(--a-surface-2); border-radius: 99px; padding: 1px 8px; font-variant-numeric: tabular-nums; }
+#p-d-notes .notes-sep { height: 1px; background: var(--a-line); margin: 6px 4px; }
+#p-d-notes .notes-dh { font-size: 12px; color: var(--a-muted); padding: 6px 10px 0; display: none; }
+#p-d-notes.notes-dragging .notes-dh { display: block; }
+#p-d-notes.notes-dragging [data-drop] { border-color: color-mix(in srgb, var(--sh) 40%, transparent); }
+#p-d-notes [data-drop].notes-over { border: 1px dashed var(--sh); background: color-mix(in srgb, var(--sh) 14%, transparent); transform: scale(1.03); }
+#p-d-notes .notes-bump .notes-shn, #p-d-notes .notes-bump .notes-cn, #p-d-notes b.notes-bump { animation: d-notes-bump .5s var(--ease); }
+
+#p-d-notes .notes-area { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+#p-d-notes .notes-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+#p-d-notes .notes-head h4 { margin: 0; font: 700 21px/1.2 var(--fd); letter-spacing: -.01em; min-width: 0; }
+#p-d-notes .notes-head .notes-hc { color: var(--a-muted); font-size: 13.5px; }
+#p-d-notes .notes-head .btn { margin-left: auto; min-height: 38px; }
+#p-d-notes .notes-head .btn[disabled] { opacity: .7; cursor: default; }
+
+#p-d-notes .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 12px; align-items: start; }
+#p-d-notes .notes-c { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 16px; padding: 15px 14px 12px; transition: transform .16s var(--ease), box-shadow .16s, border-color .16s, opacity .2s; }
+#p-d-notes .notes-c::before { content: ""; position: absolute; left: 14px; right: 14px; top: -1px; height: 3px; border-radius: 0 0 3px 3px; background: var(--sh); }
+#p-d-notes .notes-c[draggable="true"] { cursor: grab; }
+#p-d-notes .notes-c:hover { box-shadow: 0 6px 18px color-mix(in srgb, var(--sh) 14%, transparent); }
+#p-d-notes .notes-c.notes-drag { opacity: .45; }
+#p-d-notes.notes-go .notes-grid .notes-c, #p-d-notes.notes-go .notes-col { animation: d-notes-rise .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 35ms); }
+#p-d-notes .notes-c.notes-new { animation: d-notes-pop .6s var(--ease); }
+#p-d-notes .notes-ctop { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
+#p-d-notes .notes-ctop:empty { display: none; }
+#p-d-notes .notes-tag, #p-d-notes .notes-old { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 650; border-radius: 99px; padding: 2px 8px 2px 6px; }
+#p-d-notes .notes-tag { color: var(--a-soft); background: color-mix(in srgb, var(--sh) 14%, transparent); }
+#p-d-notes .notes-tag .notes-i { color: var(--sh); width: 14px; height: 14px; }
+#p-d-notes .notes-old { color: var(--a-warn); background: color-mix(in srgb, var(--a-warn) 12%, transparent); }
+#p-d-notes .notes-old .notes-i { width: 14px; height: 14px; }
+#p-d-notes .notes-t, #p-d-notes .notes-n { background: none; border: 0; text-align: left; padding: 2px 5px; margin: 0 -5px; border-radius: 8px; cursor: text; min-width: 0; overflow-wrap: anywhere; }
+#p-d-notes .notes-t { font: 700 17px/1.28 var(--fd); letter-spacing: -.01em; color: var(--a-text); }
+#p-d-notes .notes-n { font-size: 13.5px; color: var(--a-soft); }
+#p-d-notes .notes-n0 { color: var(--a-muted); font-size: 12.5px; opacity: .8; }
+#p-d-notes .notes-t:hover, #p-d-notes .notes-n:hover { background: var(--a-surface-2); }
+#p-d-notes .notes-ed { width: 100%; min-width: 0; background: var(--a-surface-2); border: 1px solid var(--a-accent); border-radius: 8px; padding: 5px 7px; color: var(--a-text); outline: none; box-shadow: 0 0 0 3px var(--a-accent-soft); }
+#p-d-notes .notes-edt { font: 700 16px/1.28 var(--fd); }
+#p-d-notes .notes-age { font-size: 12px; color: var(--a-muted); margin-top: 2px; }
+#p-d-notes mark { background: color-mix(in srgb, var(--a-accent) 30%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+#p-d-notes .notes-acts { display: flex; gap: 8px; margin-top: 4px; }
+#p-d-notes .notes-ok, #p-d-notes .notes-more { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border: 1px solid var(--a-line); background: var(--a-surface-2); border-radius: 10px; font-weight: 650; font-size: 13px; color: var(--a-text); }
+#p-d-notes .notes-ok { flex: 1; padding: 0 10px; }
+#p-d-notes .notes-ok:hover { border-color: var(--a-ok); color: var(--a-ok); }
+#p-d-notes .notes-more { width: 38px; flex: none; color: var(--a-muted); }
+#p-d-notes .notes-more:hover, #p-d-notes .notes-more[aria-expanded="true"] { border-color: var(--a-accent); color: var(--a-accent); }
+#p-d-notes .notes-menu { display: grid; gap: 8px; border-top: 1px solid var(--a-line); padding-top: 10px; margin-top: 2px; animation: d-notes-rise .25s var(--ease); }
+#p-d-notes .notes-menu p { font-size: 12px; color: var(--a-muted); font-weight: 600; }
+#p-d-notes .notes-mv { display: flex; flex-wrap: wrap; gap: 6px; }
+#p-d-notes .notes-mv button { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 11px; border-radius: 99px; border: 1px solid var(--a-line); background: none; font-size: 12.5px; color: var(--a-soft); }
+#p-d-notes .notes-mv button .notes-i { color: var(--sh); width: 15px; height: 15px; }
+#p-d-notes .notes-mv button:hover { border-color: var(--sh); color: var(--a-text); }
+#p-d-notes .notes-del { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--a-bad) 40%, transparent); background: none; color: var(--a-bad); font-weight: 650; font-size: 13px; }
+
+#p-d-notes .notes-hot { border-color: var(--a-accent); transform: translateY(-4px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-accent) 30%, transparent); }
+#p-d-notes .notes-lucky { border-color: var(--a-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-accent) 35%, transparent), var(--a-shadow); animation: d-notes-pop .6s var(--ease); }
+#p-d-notes .notes-lucky::after { content: "Выпало"; position: absolute; top: -11px; right: 12px; background: var(--a-accent-strong); color: var(--a-on-accent); font-size: 11px; font-weight: 700; border-radius: 99px; padding: 2px 9px; }
+#p-d-notes .notes-luck { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; background: var(--a-accent-soft); border: 1px solid color-mix(in srgb, var(--a-accent) 40%, transparent); border-radius: 14px; padding: 12px 14px; animation: d-notes-rise .4s var(--ease); }
+#p-d-notes .notes-luck > .notes-i { width: 30px; height: 30px; color: var(--a-accent); }
+#p-d-notes .notes-luck div { flex: 1 1 180px; min-width: 0; }
+#p-d-notes .notes-luck small { display: block; font-size: 12px; color: var(--a-muted); font-weight: 600; }
+#p-d-notes .notes-luck b { font: 700 17px/1.25 var(--fd); overflow-wrap: anywhere; }
+#p-d-notes .notes-luck .btn { min-height: 36px; }
+
+#p-d-notes .notes-cd .notes-t { color: var(--a-soft); }
+#p-d-notes .notes-score { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; background: none; border: 1px solid transparent; border-radius: 10px; padding: 0 6px; margin: 0 -6px; align-self: flex-start; color: var(--a-muted); font-size: 12.5px; }
+#p-d-notes .notes-score:hover { border-color: var(--a-line); background: var(--a-surface-2); }
+#p-d-notes .notes-score b { font: 800 19px/1 var(--fd); color: var(--c-mood); }
+#p-d-notes .notes-mini { display: inline-grid; grid-template-columns: repeat(10, 11px); gap: 1px; }
+#p-d-notes .notes-star { width: 100%; display: block; fill: color-mix(in srgb, var(--a-muted) 32%, transparent); transition: fill .15s, transform .15s var(--ease); }
+#p-d-notes .notes-star.on { fill: var(--c-mood); }
+
+#p-d-notes .notes-rate { display: grid; gap: 8px; background: var(--a-surface-2); border-radius: 12px; padding: 10px 10px 12px; margin-top: 4px; animation: d-notes-rise .3s var(--ease); }
+#p-d-notes .notes-rq { font-size: 13px; color: var(--a-soft); font-weight: 600; overflow-wrap: anywhere; }
+#p-d-notes .notes-sw { position: relative; height: 40px; border-radius: 8px; }
+#p-d-notes .notes-sw:focus-within { outline: 2px solid var(--a-accent); outline-offset: 3px; }
+#p-d-notes .notes-st { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; height: 100%; align-items: center; pointer-events: none; }
+#p-d-notes .notes-st .notes-star { max-height: 28px; }
+#p-d-notes .notes-st .notes-star.on { transform: scale(1.06); }
+#p-d-notes .notes-rr { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+#p-d-notes .notes-rv { font-size: 13px; color: var(--a-muted); }
+#p-d-notes .notes-rv b { font: 800 26px/1 var(--fd); color: var(--c-mood); margin-right: 2px; }
+#p-d-notes .notes-rv span { color: var(--a-text); font-weight: 650; }
+#p-d-notes .notes-ra { display: flex; flex-wrap: wrap; gap: 6px; }
+#p-d-notes .notes-ra .btn { min-height: 36px; padding: 6px 11px; }
+#p-d-notes .notes-empty { color: var(--a-muted); font-size: 13.5px; padding: 26px 16px; text-align: center; border: 1px dashed var(--a-line); border-radius: 14px; grid-column: 1 / -1; }
+
+#p-d-notes .notes-fly { position: fixed; z-index: 40; margin: 0; pointer-events: none; box-shadow: var(--a-shadow); }
+
+#p-d-notes .notes-toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px); background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 8px 8px 8px 14px; font-size: 13px; box-shadow: var(--a-shadow); animation: d-notes-toast .3s var(--ease); }
+#p-d-notes .notes-toast span { min-width: 0; overflow-wrap: anywhere; }
+#p-d-notes .notes-toast button { border: 0; background: color-mix(in srgb, var(--a-bg) 14%, transparent); color: inherit; border-radius: 8px; padding: 6px 10px; min-height: 36px; font-weight: 700; flex: none; }
+#p-d-notes .notes-toast[hidden], #p-d-notes .notes-toast button[hidden] { display: none; }
+
+#p-d-notes .notes-board { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 2px 10px; overscroll-behavior-x: contain; }
+#p-d-notes .notes-col { flex: 0 0 236px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 8px; background: var(--a-surface-2); border: 1px dashed transparent; border-radius: 16px; padding: 10px; min-height: 420px; min-width: 0; transition: background .2s, border-color .2s, transform .2s var(--ease); }
+#p-d-notes .notes-ch { display: flex; align-items: center; gap: 8px; padding: 0 0 8px 2px; border-bottom: 2px solid var(--sh); }
+#p-d-notes .notes-ch > .notes-i { color: var(--sh); }
+#p-d-notes .notes-ch b { font-weight: 700; min-width: 0; }
+#p-d-notes .notes-cn { color: var(--a-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+#p-d-notes .notes-cadd { margin-left: auto; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: none; color: var(--a-muted); }
+#p-d-notes .notes-cadd:hover { background: var(--a-surface); color: var(--a-text); }
+#p-d-notes .notes-cl { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+#p-d-notes .notes-cb { padding: 13px 12px 10px; border-radius: 13px; }
+#p-d-notes .notes-cb .notes-t { font-size: 14.5px; }
+#p-d-notes .notes-cb .notes-n { font-size: 12.5px; }
+#p-d-notes .notes-bf input { width: 100%; min-height: 40px; background: var(--a-surface); border: 1px solid var(--a-accent); border-radius: 10px; padding: 6px 10px; color: var(--a-text); outline: none; }
+#p-d-notes .notes-cz { flex: 0 0 66px; padding: 6px; }
+#p-d-notes .notes-czb { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 0; border: 0; background: none; border-radius: 12px; color: var(--a-soft); font-weight: 650; }
+#p-d-notes .notes-czb:hover { background: var(--a-surface); }
+#p-d-notes .notes-czb .notes-i { color: var(--a-ok); }
+#p-d-notes .notes-czb span { writing-mode: vertical-rl; }
+#p-d-notes .notes-bhint { font-size: 12.5px; }
+#p-d-notes .notes-jump { display: none; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+#p-d-notes .notes-jump button { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-soft); font-size: 12.5px; font-weight: 600; }
+#p-d-notes .notes-jump .notes-i { color: var(--sh); width: 15px; height: 15px; }
+
+@keyframes d-notes-rise { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes d-notes-pop { 0% { transform: scale(.94); } 55% { transform: scale(1.03); } 100% { transform: none; } }
+@keyframes d-notes-bump { 0% { transform: none; } 35% { transform: scale(1.45); background: var(--a-accent-soft); color: var(--a-accent); } 100% { transform: none; } }
+@keyframes d-notes-toast { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+
+@media (max-width: 900px) { #p-d-notes .notes-main { grid-template-columns: 180px minmax(0, 1fr); } }
+@media (max-width: 720px) {
+  #p-d-notes .notes-main { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  #p-d-notes .notes-shelves { position: static; flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+  #p-d-notes .notes-sh { width: auto; flex: none; padding: 6px 10px; }
+  #p-d-notes .notes-sep, #p-d-notes .notes-dh { display: none !important; }
+  #p-d-notes .notes-kpis { gap: 8px; }
+  #p-d-notes .notes-kpis .card { padding: 10px 11px; }
+  #p-d-notes .notes-kpis .big { font-size: 22px; }
+  #p-d-notes .notes-kpis small { font-size: 10px; letter-spacing: .04em; }
+  #p-d-notes .notes-ks { display: none; }
+  #p-d-notes .notes-head h4 { font-size: 18px; }
+  #p-d-notes .notes-jump { display: flex; }
+  #p-d-notes .notes-col { flex-basis: 84%; scroll-snap-align: center; }
+  #p-d-notes .notes-board { scroll-snap-type: x mandatory; }
+  #p-d-notes .notes-cz { flex-basis: 66px; }
+}
+</style>
+
+<script>(function () {
+"use strict";
+var root = document.getElementById("p-d-notes");
+var MM = window.MaidMock || { reduce: false, onSeen: function (e, f) { f(); } };
+function q(s, el) { return (el || root).querySelector(s); }
+function qa(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+var A = q(".notes-va"), B = q(".notes-vb");
+var SH = [["watch", "Посмотреть"], ["read", "Почитать"], ["play", "Поиграть"], ["buy", "Купить"], ["idea", "Идеи"]];
+var NAME = { all: "Все", done: "Готово" }; SH.forEach(function (s) { NAME[s[0]] = s[1]; });
+var RATED = { watch: 1, read: 1, play: 1 };
+var ASK = { all: "Что выбрать сегодня?", watch: "Что посмотреть сегодня?", read: "Что почитать сегодня?", play: "Во что поиграть сегодня?", buy: "Что купить первым?", idea: "За какую идею взяться?" };
+var WORD = { watch: ["фильм", "фильма", "фильмов"], read: ["книга", "книги", "книг"], play: ["игра", "игры", "игр"], buy: ["покупка", "покупки", "покупок"], idea: ["идея", "идеи", "идей"] };
+var OLDW = { watch: "самый старый ждёт", read: "самая старая ждёт", play: "самая старая ждёт", buy: "самая старая ждёт", idea: "самая старая ждёт" };
+var EVE = { watch: "Выбрать вам на вечер?", read: "Выбрать, с чего начать?", play: "Выбрать на выходные?", buy: "Выбрать, что купить первым?", idea: "Выбрать одну на эту неделю?" };
+var MON = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+var P = {
+  watch: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 8.5l5 2.5-5 2.5zM8 21h8"/>',
+  read: '<path d="M4 5c3-1 6-1 8 1v14c-2-2-5-2-8-1zM20 5c-3-1-6-1-8 1v14c2-2 5-2 8-1z"/>',
+  play: '<rect x="3" y="8" width="18" height="10" rx="4"/><path d="M7 13h4M9 11v4M15.5 12h.01M17.5 14h.01"/>',
+  buy: '<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/>',
+  idea: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',
+  all: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  done: '<circle cx="12" cy="12" r="8.5"/><path d="M8 12.2l2.8 2.8L16 9.5"/>',
+  check: '<path d="M5 12l5 5 9-10"/>',
+  more: '<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3"/>',
+  clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  dice: '<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8.5 8.5h.01M15.5 15.5h.01M12 12h.01M15.5 8.5h.01M8.5 15.5h.01" stroke-width="2.6"/>',
+  trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  back: '<path d="M9 6L4 11l5 5M4 11h10a6 6 0 0 1 0 12"/>'
+};
+var STAR = "M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z";
+function ic(k) { return '<svg class="notes-i" viewBox="0 0 24 24" aria-hidden="true">' + P[k] + "</svg>"; }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function pl(n, w) { var a = n % 10, b = n % 100; return w[a === 1 && b !== 11 ? 0 : a >= 2 && a <= 4 && (b < 12 || b > 14) ? 1 : 2]; }
+
+var uid = 0, data = [];
+[
+  ["watch", "Дюна: часть вторая", "фильм · 2 ч 46 мин", 21], ["watch", "Сёгун", "сериал · 10 серий", 9], ["watch", "Прибытие", "фильм · 1 ч 56 мин", 96],
+  ["watch", "Паразиты", "посоветовали на работе", 152], ["watch", "Ход королевы", "сериал · 7 серий", 64], ["watch", "Унесённые призраками", "пересмотреть", 40],
+  ["watch", "Остров проклятых", "фильм · 2 ч 18 мин", 118], ["watch", "Шерлок", "сериал · 4 сезона", 75], ["watch", "Начало", "фильм · 2 ч 28 мин", 33],
+  ["watch", "Атака титанов", "аниме · 4 сезона", 130], ["watch", "Отель «Гранд Будапешт»", "фильм · 1 ч 40 мин", 50], ["watch", "Твин Пикс", "сериал · 3 сезона", 140],
+  ["watch", "Достать ножи", "фильм · 2 ч 10 мин", 12], ["watch", "Брат", "", 3],
+  ["read", "Три товарища", "Ремарк", 45], ["read", "Атомные привычки", "Рина советовала", 20], ["read", "Пикник на обочине", "Стругацкие", 110],
+  ["read", "Норвежский лес", "Мураками", 70], ["read", "Цветы для Элджернона", "короткая, на выходные", 8], ["read", "Думай медленно, решай быстро", "Канеман", 160],
+  ["play", "Hades II", "ранний доступ", 30], ["play", "Baldur's Gate 3", "пройти вдвоём с другом", 88], ["play", "Stardew Valley", "уютная, на вечер", 15],
+  ["play", "Disco Elysium", "много текста, не спеша", 140], ["play", "Hollow Knight: Silksong", "", 5],
+  ["buy", "Наушники с шумоподавлением", "до 8 000 ₽", 60], ["buy", "Картридж для фильтра воды", "старый кончается", 4], ["buy", "Коврик для зарядки", "толстый, 6 мм", 26],
+  ["buy", "Подарок маме на Новый год", "до 3 000 ₽", 10],
+  ["idea", "Поход на выходных", "если не будет дождя", 35], ["idea", "Полка для книг над столом", "", 80], ["idea", "Выучить 10 аккордов", "по 15 минут вечером", 18],
+  ["watch", "Интерстеллар", "в кино на повторе", 70, 9, 3], ["watch", "Оппенгеймер", "", 90, 7, 12], ["read", "Марсианин", "Энди Вейер", 120, 8, 20],
+  ["play", "It Takes Two", "вдвоём", 60, 9, 25], ["buy", "Лампа на стол", "", 30, null, 8], ["watch", "Мастер и Маргарита", "фильм 2024", 100, 6, 40], ["read", "Метро 2033", "", 150, 7, 60]
+].forEach(function (r) { data.push({ id: ++uid, shelf: r[0], title: r[1], note: r[2], days: r[3], status: r.length > 4 ? "done" : "open", rating: r.length > 4 ? r[4] : null, fin: r.length > 4 ? r[5] : null }); });
+
+var st = { shelf: "watch", q: "", menu: null, rate: null, rv: 8, edit: null, lucky: null, last: null, fresh: null, spin: false, badd: null, bdone: false };
+var spinTok = 0;
+function byId(id) { for (var i = 0; i < data.length; i++) if (data[i].id === id) return data[i]; return null; }
+function openOf(k) { return data.filter(function (n) { return n.status === "open" && (k === "all" || n.shelf === k); }).sort(function (a, b) { return a.days - b.days; }); }
+function doneAll() { return data.filter(function (n) { return n.status === "done"; }).sort(function (a, b) { return a.fin - b.fin; }); }
+function dateOf(d) { var x = new Date(2026, 10, 27 - d); return x.getDate() + " " + MON[x.getMonth()]; }
+function ago(d) { return d <= 0 ? "сегодня" : d === 1 ? "вчера" : d < 7 ? d + " дн. назад" : d < 30 ? Math.round(d / 7) + " нед. назад" : Math.round(d / 30.4) + " мес. назад"; }
+function wait(d) { return d < 14 ? d + " " + pl(d, ["день", "дня", "дней"]) : d < 60 ? Math.round(d / 7) + " " + pl(Math.round(d / 7), ["неделю", "недели", "недель"]) : Math.round(d / 30.4) + " " + pl(Math.round(d / 30.4), ["месяц", "месяца", "месяцев"]); }
+function word(v) { return v <= 3 ? "не понравилось" : v <= 5 ? "так себе" : v <= 7 ? "неплохо" : v <= 9 ? "отлично" : "шедевр"; }
+function snap(n) { var o = {}; for (var k in n) o[k] = n[k]; return o; }
+function restore(n, o) { for (var k in o) n[k] = o[k]; }
+function hl(s) {
+  var t = esc(s), qq = st.q.trim(); if (!qq) return t;
+  var re = new RegExp("(" + esc(qq).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig");
+  return t.replace(re, "<mark>$1</mark>");
+}
+function stars(v, cls) { var h = '<span class="' + cls + '" aria-hidden="true">'; for (var i = 0; i < 10; i++) h += '<svg class="notes-star' + (i < v ? " on" : "") + '" viewBox="0 0 24 24"><path d="' + STAR + '"/></svg>'; return h + "</span>"; }
+
+function card(n, i, inB, tag) {
+  var done = n.status === "done", ed = st.edit && st.edit.id === n.id ? st.edit.f : "";
+  var h = '<div class="notes-c' + (inB ? " notes-cb" : "") + (done ? " notes-cd" : "") + (!inB && n.id === st.lucky ? " notes-lucky" : "") + (n.id === st.fresh ? " notes-new" : "") +
+    '" data-id="' + n.id + '" data-sh="' + n.shelf + '" style="--i:' + Math.min(i, 14) + '"' + (done ? "" : ' draggable="true"') + ">";
+  h += '<div class="notes-ctop">' + (tag ? '<span class="notes-tag">' + ic(n.shelf) + NAME[n.shelf] + "</span>" : "") +
+    (!done && n.days >= 90 ? '<span class="notes-old">' + ic("clock") + "давно ждёт</span>" : "") + "</div>";
+  h += ed === "t" ? '<input class="notes-ed notes-edt" data-f="t" maxlength="200" value="' + esc(n.title) + '" aria-label="Название">'
+    : '<button type="button" class="notes-t" data-a="edit" data-f="t" aria-label="Поправить название: ' + esc(n.title) + '">' + hl(n.title) + "</button>";
+  h += ed === "n" ? '<input class="notes-ed" data-f="n" maxlength="200" value="' + esc(n.note) + '" placeholder="Пометка" aria-label="Пометка">'
+    : n.note ? '<button type="button" class="notes-n" data-a="edit" data-f="n" aria-label="Поправить пометку">' + hl(n.note) + "</button>"
+    : '<button type="button" class="notes-n notes-n0" data-a="edit" data-f="n">+ пометка</button>';
+  if (done) {
+    h += '<p class="notes-age">готово ' + ago(n.fin) + "</p>";
+    if (RATED[n.shelf] && st.rate !== n.id) h += n.rating ? '<button type="button" class="notes-score" data-a="rate" aria-label="Оценка ' + n.rating + ' из 10. Изменить">' + stars(n.rating, "notes-mini") + "<b>" + n.rating + "</b>/10</button>"
+      : '<button type="button" class="notes-score" data-a="rate">' + stars(0, "notes-mini") + "Поставить оценку</button>";
+  } else h += '<p class="notes-age">добавлено ' + ago(n.days) + " · " + dateOf(n.days) + "</p>";
+  if (st.rate === n.id) h += ratePanel(n);
+  else {
+    h += '<div class="notes-acts">' + (done ? '<button type="button" class="notes-ok" data-a="back">' + ic("back") + "На полку</button>"
+      : '<button type="button" class="notes-ok" data-a="done">' + ic("check") + (n.shelf === "buy" ? "Куплено" : "Готово") + "</button>") +
+      '<button type="button" class="notes-more" data-a="more" aria-expanded="' + (st.menu === n.id) + '" aria-label="Ещё действия: ' + esc(n.title) + '">' + ic("more") + "</button></div>";
+    if (st.menu === n.id) {
+      h += '<div class="notes-menu">';
+      if (!done) h += "<p>Переложить на полку</p><div class=\"notes-mv\">" + SH.filter(function (s) { return s[0] !== n.shelf; }).map(function (s) {
+        return '<button type="button" data-a="move" data-to="' + s[0] + '" data-sh="' + s[0] + '">' + ic(s[0]) + s[1] + "</button>"; }).join("") + "</div>";
+      h += '<button type="button" class="notes-del" data-a="del">' + ic("trash") + "Удалить</button></div>";
+    }
+  }
+  return h + "</div>";
+}
+function ratePanel(n) {
+  var v = st.rv;
+  return '<div class="notes-rate" role="group" aria-label="Оценка"><p class="notes-rq">Как вам «' + esc(n.title) + '»?</p>' +
+    '<div class="notes-sw">' + stars(v, "notes-st") + '<input type="range" class="notes-rr" min="1" max="10" step="1" value="' + v + '" aria-label="Оценка от 1 до 10" aria-valuetext="' + v + " из 10, " + word(v) + '"></div>' +
+    '<p class="notes-rv"><b class="num">' + v + "</b> из 10 · <span>" + word(v) + "</span></p>" +
+    '<div class="notes-ra"><button type="button" class="btn primary" data-a="rsave">' + (n.status === "done" ? "Сохранить" : "Готово с оценкой") + "</button>" +
+    (n.status === "open" ? '<button type="button" class="btn ghost" data-a="rnone">Без оценки</button>' : "") +
+    '<button type="button" class="btn ghost" data-a="rcancel">Отмена</button></div></div>';
+}
+
+function listA() {
+  var qq = st.q.trim().toLowerCase();
+  if (qq) return data.filter(function (n) { return n.status !== "deleted" && (n.title + " " + n.note).toLowerCase().indexOf(qq) >= 0; });
+  if (st.shelf === "done") return doneAll();
+  return openOf(st.shelf);
+}
+function rinaA() {
+  var qq = st.q.trim(), s = st.shelf, t, btn = "";
+  if (qq) { var n = listA().length; t = n ? "Нашла <b>" + n + "</b> по «" + esc(qq) + "». Щёлкните название, чтобы поправить." : "По «" + esc(qq) + "» ничего нет. Записать это как новую заметку?"; }
+  else if (s === "done") {
+    var d = doneAll(), r = d.filter(function (x) { return x.rating; }), best = r.slice().sort(function (a, b) { return b.rating - a.rating; })[0];
+    t = "В ноябре готово <b>" + d.filter(function (x) { return x.fin < 27; }).length + "</b>." + (best ? " Выше всех вы оценили «" + esc(best.title) + "»: <b>" + best.rating + " из 10</b>." : "");
+  } else {
+    var k = s === "all" ? "watch" : s, o = openOf(k);
+    if (!o.length) t = "Полка «" + NAME[k] + "» пуста. Скажите мне «фильм Дюна 2», и я положу сама.";
+    else {
+      var old = o[o.length - 1];
+      t = "На полке «" + NAME[k] + "» <b>" + o.length + " " + pl(o.length, WORD[k]) + "</b>" + (o.length > 1 ? ", " + OLDW[k] + " <b>" + wait(old.days) + "</b>. " + EVE[k] : ".");
+      if (o.length > 1) btn = '<button type="button" class="btn primary" data-a="rpick" data-k="' + k + '">' + ic("dice") + "Выбрать</button>";
+    }
+  }
+  q(".notes-rtx", A).innerHTML = "<p>" + t + "</p>" + btn;
+}
+function renderA() {
+  var counts = {}; SH.forEach(function (s) { counts[s[0]] = openOf(s[0]).length; });
+  var shs = [["all", "Все"]].concat(SH);
+  var h = shs.map(function (s) {
+    var k = s[0], c = k === "all" ? openOf("all").length : counts[k];
+    return '<button type="button" class="notes-sh" data-a="shelf" data-k="' + k + '" data-sh="' + k + '"' + (k !== "all" ? ' data-drop="' + k + '"' : "") + ' aria-pressed="' + (k === st.shelf && !st.q.trim()) + '">' + ic(k) + "<span>" + s[1] + '</span><span class="notes-shn">' + c + "</span></button>";
+  }).join("");
+  h += '<div class="notes-sep"></div><button type="button" class="notes-sh" data-a="shelf" data-k="done" data-sh="done" aria-pressed="' + (st.shelf === "done" && !st.q.trim()) + '">' + ic("done") + '<span>Готово</span><span class="notes-shn">' + doneAll().length + "</span></button>";
+  h += '<p class="notes-dh">Отпустите карточку на нужную полку</p>';
+  q(".notes-shelves", A).innerHTML = h;
+
+  var qq = st.q.trim(), list = listA(), s = st.shelf, rnd = !qq && s !== "done";
+  q(".notes-head", A).innerHTML = "<h4>" + (qq ? "Поиск" : NAME[s]) + '</h4><span class="notes-hc">' + (qq ? "найдено " + list.length : list.length + " " + (s === "done" ? "готово" : "ждут")) + "</span>" +
+    (rnd ? '<button type="button" class="btn primary" data-a="rand"' + (st.spin ? " disabled" : "") + ">" + ic("dice") + (st.spin ? "Выбираю…" : "Случайное") + "</button>" : "");
+  var ln = st.lucky && byId(st.lucky);
+  q(".notes-luckbox", A).innerHTML = ln && ln.status === "open" && list.indexOf(ln) >= 0 ? '<div class="notes-luck">' + ic("dice") + "<div><small>" + ASK[s === "done" ? "all" : s] + "</small><b>«" + esc(ln.title) + "»</b>" +
+    (ln.note ? ' <span class="muted">' + esc(ln.note) + "</span>" : "") + '</div><button type="button" class="btn" data-a="rand">Ещё раз</button><button type="button" class="btn primary" data-a="lok">Беру</button></div>' : "";
+  var tag = !!qq || s === "all" || s === "done";
+  q(".notes-grid", A).innerHTML = list.length ? list.map(function (n, i) { return card(n, i, false, tag); }).join("")
+    : '<p class="notes-empty">' + (qq ? "Ничего не нашлось по «" + esc(qq) + "»." : s === "done" ? "Готового пока нет." : "Полка «" + NAME[s] + "» пуста. Запишите первую строкой сверху.") + "</p>";
+
+  var tgt = SH.some(function (x) { return x[0] === s; }) ? s : "idea";
+  var ain = q(".notes-ain", A); ain.placeholder = "Записать на «" + NAME[tgt] + "». Можно: «книга Дюна»"; ain.dataset.k = tgt;
+  kpis(); rinaA();
+}
+function kpis() {
+  var open = openOf("all"), d = doneAll(), mon = d.filter(function (n) { return n.fin < 27; }), oct = d.filter(function (n) { return n.fin >= 27 && n.fin < 58; }).length;
+  var r = d.filter(function (n) { return n.rating; }), avg = r.length ? r.reduce(function (a, n) { return a + n.rating; }, 0) / r.length : 0;
+  setK("open", open.length, 0); setK("mon", mon.length, 0); setK("avg", avg, 1);
+  var old = open.slice().sort(function (a, b) { return b.days - a.days; })[0];
+  q('[data-ks="open"]', A).textContent = old ? "дольше всех «" + old.title + "», " + ago(old.days).replace(" назад", "") : "";
+  q('[data-ks="mon"]', A).textContent = "в октябре " + oct;
+  q('[data-ks="avg"]', A).textContent = "по " + r.length + " " + pl(r.length, ["оценке", "оценкам", "оценкам"]);
+}
+function fmt(v, dec) { return dec ? v.toFixed(1).replace(".", ",") : String(Math.round(v)); }
+function setK(k, v, dec) { var el = q('[data-cnt="' + k + '"]', A); el.dataset.v = v; el.dataset.dec = dec; if (!el._run) el.textContent = fmt(v, dec); }
+
+function renderB() {
+  var h = "";
+  SH.forEach(function (s, ci) {
+    var k = s[0], items = openOf(k);
+    h += '<section class="notes-col" data-k="' + k + '" data-sh="' + k + '" data-drop="' + k + '" style="--i:' + ci + '" aria-label="Полка ' + s[1] + '">' +
+      '<header class="notes-ch">' + ic(k) + "<b>" + s[1] + '</b><span class="notes-cn">' + items.length + '</span><button type="button" class="notes-cadd" data-a="badd" data-k="' + k + '" aria-label="Добавить на полку ' + s[1] + '">' + ic("plus") + "</button></header>" +
+      (st.badd === k ? '<form class="notes-bf" data-k="' + k + '"><input type="text" maxlength="200" placeholder="Название и Enter" aria-label="Новая заметка на полку ' + s[1] + '"></form>' : "") +
+      '<div class="notes-cl">' + (items.length ? items.map(function (n, i) { return card(n, i, true, false); }).join("") : '<p class="notes-empty">Пусто. Перетащите сюда карточку.</p>') + "</div></section>";
+  });
+  var d = doneAll();
+  h += st.bdone ? '<section class="notes-col" data-k="done" data-sh="done" aria-label="Готово"><header class="notes-ch">' + ic("done") + '<b>Готово</b><span class="notes-cn">' + d.length + '</span><button type="button" class="notes-cadd" data-a="bdone" aria-label="Свернуть колонку Готово">' + ic("back") + '</button></header><div class="notes-cl">' + d.map(function (n, i) { return card(n, i, true, true); }).join("") + "</div></section>"
+    : '<section class="notes-col notes-cz" data-k="done" data-sh="done"><button type="button" class="notes-czb" data-a="bdone" aria-label="Показать готовое: ' + d.length + '">' + ic("done") + '<b class="notes-cn">' + d.length + "</b><span>Готово</span></button></section>";
+  q(".notes-board", B).innerHTML = h;
+  q(".notes-jump", B).innerHTML = SH.map(function (s) { return '<button type="button" data-a="jump" data-k="' + s[0] + '" data-sh="' + s[0] + '">' + ic(s[0]) + s[1] + " " + openOf(s[0]).length + "</button>"; }).join("") +
+    '<button type="button" data-a="jump" data-k="done" data-sh="done">' + ic("done") + "Готово " + d.length + "</button>";
+  var all = openOf("all"), old = all[all.length - 1];
+  q(".notes-rtx", B).innerHTML = old ? "<p>Всего ждут <b>" + all.length + " " + pl(all.length, ["заметка", "заметки", "заметок"]) + "</b>. Дольше всех лежит «" + esc(old.title) + "»: <b>" + wait(old.days) + "</b>. Займёмся на этой неделе или убрать?</p>" +
+    '<button type="button" class="btn ghost" data-a="del" data-id="' + old.id + '">' + ic("trash") + "Убрать «" + esc(old.title) + "»</button>" : "<p>Все полки пусты. Скажите мне «фильм Дюна 2», и я положу сама.</p>";
+}
+function render() { renderA(); renderB(); }
+
+var tt = {};
+function toast(app, msg, undo) {
+  var t = q(".notes-toast", app), k = app === A ? "a" : "b";
+  q("span", t).textContent = msg; t._u = undo; q("button", t).hidden = !undo;
+  t.hidden = true; void t.offsetWidth; t.hidden = false;
+  clearTimeout(tt[k]); tt[k] = setTimeout(function () { t.hidden = true; }, 6000);
+}
+function cardEl(app, id) { return q('.notes-c[data-id="' + id + '"]', app); }
+function bump(app, sel) { var el = q(sel, app); if (!el || MM.reduce) return; el.classList.remove("notes-bump"); void el.offsetWidth; el.classList.add("notes-bump"); }
+function fly(app, el, sel, after) {
+  var tg = q(sel, app);
+  if (!el || !tg || MM.reduce || !el.animate) { after(); bump(app, sel); return; }
+  var r = el.getBoundingClientRect(), c = el.cloneNode(true);
+  c.removeAttribute("data-id"); c.removeAttribute("draggable"); c.classList.add("notes-fly"); c.classList.remove("notes-lucky", "notes-new");
+  c.style.left = r.left + "px"; c.style.top = r.top + "px"; c.style.width = r.width + "px"; c.style.height = r.height + "px";
+  app.appendChild(c); after();
+  var t = q(sel, app).getBoundingClientRect(), dx = t.left + t.width / 2 - (r.left + r.width / 2), dy = t.top + t.height / 2 - (r.top + r.height / 2);
+  c.animate([{ transform: "none", opacity: 1 }, { transform: "translate(" + dx * .35 + "px," + (dy * .35 - 30) + "px) scale(.7)", opacity: .9, offset: .4 }, { transform: "translate(" + dx + "px," + dy + "px) scale(.12)", opacity: .15 }],
+    { duration: 700, easing: "cubic-bezier(.45,0,.2,1)" }).onfinish = function () { c.remove(); bump(app, sel); };
+}
+function doneSel(app) { return app === A ? '.notes-sh[data-k="done"]' : '.notes-col[data-k="done"]'; }
+function shelfSel(app, k) { return app === A ? '.notes-sh[data-k="' + k + '"]' : '.notes-col[data-k="' + k + '"] .notes-ch'; }
+
+function finish(n, r, app) {
+  var o = snap(n), el = cardEl(app, n.id);
+  fly(app, el, doneSel(app), function () { n.status = "done"; n.rating = r; n.fin = 0; st.rate = null; st.menu = null; if (st.lucky === n.id) st.lucky = null; render(); });
+  toast(app, (n.shelf === "buy" ? "Куплено: «" : "Готово: «") + n.title + "»" + (r ? " · " + r + " из 10" : ""), function () { restore(n, o); render(); });
+}
+function moveTo(n, k, app, dragged) {
+  if (!n || n.shelf === k || n.status !== "open") return;
+  var o = snap(n), el = cardEl(app, n.id), stays = app === A && (st.shelf === "all" || st.q.trim());
+  var go = function () { n.shelf = k; st.menu = null; st.fresh = app === B || stays ? n.id : null; render(); st.fresh = null; };
+  if (dragged || stays) { go(); bump(app, shelfSel(app, k)); } else fly(app, el, shelfSel(app, k), go);
+  toast(app, "«" + n.title + "» теперь на полке «" + NAME[k] + "»", function () { restore(n, o); render(); });
+}
+function remove(n, app) {
+  if (!n) return;
+  var o = snap(n), el = cardEl(app, n.id);
+  var go = function () { n.status = "deleted"; st.menu = null; st.rate = null; if (st.lucky === n.id) st.lucky = null; render(); };
+  if (el && el.animate && !MM.reduce) el.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.92)" }], { duration: 220, easing: "ease-in" }).onfinish = go; else go();
+  toast(app, "Удалено: «" + n.title + "». Полежит в корзине 30 дней", function () { restore(n, o); render(); });
+}
+var GUESS = [[/^(фильм|сериал|аниме|мультик)\s+/i, "watch"], [/^(книга|книгу|почитать)\s+/i, "read"], [/^(поиграть в|игра|игру)\s+/i, "play"], [/^купить\s+/i, "buy"], [/^идея:?\s+/i, "idea"]];
+function addNote(text, k, app) {
+  text = text.trim(); if (!text) return false;
+  var kk = k, note = "", sorted = false;
+  for (var i = 0; i < GUESS.length; i++) { var m = text.match(GUESS[i][0]); if (m) { kk = GUESS[i][1]; sorted = kk !== k; if (kk === "watch") note = m[1].toLowerCase(); text = text.slice(m[0].length).trim(); break; } }
+  if (!text) return false;
+  text = text.charAt(0).toUpperCase() + text.slice(1);
+  var dup = data.filter(function (n) { return n.status !== "deleted" && n.title.toLowerCase() === text.toLowerCase(); })[0];
+  if (dup) { toast(app, "«" + dup.title + "» уже лежит на полке «" + NAME[dup.shelf] + (dup.status === "done" ? "», и вы её закончили" : "»")); return true; }
+  var n = { id: ++uid, shelf: kk, title: text, note: note, days: 0, status: "open", rating: null, fin: null };
+  data.push(n);
+  if (app === A && st.shelf !== "all" && st.shelf !== kk) st.shelf = kk;
+  st.q = ""; q(".notes-q", A).value = ""; st.fresh = n.id; render(); st.fresh = null;
+  toast(app, (sorted ? "Рина положила на полку «" + NAME[kk] + "»: «" : "Записано: «") + text + "»", function () { n.status = "deleted"; render(); });
+  return true;
+}
+
+function spin() {
+  var cards = qa(".notes-grid .notes-c:not(.notes-cd)", A), nn = cards.length;
+  if (nn < 2) { toast(A, "Тут пока не из чего выбирать"); return; }
+  var tok = ++spinTok, f;
+  do { f = Math.floor(Math.random() * nn); } while (+cards[f].dataset.id === st.last);
+  st.lucky = null; st.spin = true; st.menu = null; st.rate = null; renderA();
+  cards = qa(".notes-grid .notes-c:not(.notes-cd)", A);
+  var steps = (nn < 5 ? nn * 3 : nn < 10 ? nn * 2 : nn) + f, k = 0;
+  function land() {
+    if (tok !== spinTok) return;
+    st.spin = false; st.lucky = st.last = +cards[f].dataset.id; renderA();
+    var el = cardEl(A, st.lucky); if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", behavior: MM.reduce ? "auto" : "smooth" });
+  }
+  if (MM.reduce) { land(); return; }
+  (function step() {
+    if (tok !== spinTok) return;
+    cards.forEach(function (c) { c.classList.remove("notes-hot"); });
+    cards[k % nn].classList.add("notes-hot");
+    if (k >= steps) { setTimeout(land, 260); return; }
+    k++; var t = k / steps; setTimeout(step, 40 + 230 * t * t * t);
+  })();
+}
+
+function focusIn(app, id, sel) { var el = q('.notes-c[data-id="' + id + '"] ' + sel, app); if (el) { el.focus({ preventScroll: true }); if (el.classList.contains("notes-ed")) el.select(); } }
+function commit(inp) {
+  if (!st.edit) return;
+  var app = inp.closest(".app"), n = byId(st.edit.id), f = st.edit.f, v = inp.value.trim(); st.edit = null;
+  if (!n) { render(); return; }
+  var key = f === "t" ? "title" : "note";
+  if ((f === "t" && !v) || v === n[key]) { render(); focusIn(app, n.id, f === "t" ? ".notes-t" : ".notes-n"); return; }
+  var o = snap(n); n[key] = v; render(); focusIn(app, n.id, f === "t" ? ".notes-t" : ".notes-n");
+  toast(app, f === "t" ? "Название: «" + v + "»" : v ? "Пометка сохранена" : "Пометка убрана", function () { restore(n, o); render(); });
+}
+
+root.addEventListener("click", function (e) {
+  var v = e.target.closest("[data-var]");
+  if (v) {
+    qa("[data-var]").forEach(function (x) { x.setAttribute("aria-pressed", x === v); });
+    A.hidden = v.dataset.var !== "a"; B.hidden = v.dataset.var !== "b";
+    st.menu = st.rate = st.edit = null; play(); return;
+  }
+  var b = e.target.closest("[data-a]"); if (!b) return;
+  var app = b.closest(".app"), c = b.closest(".notes-c"), id = c ? +c.dataset.id : +(b.dataset.id || 0), n = byId(id), a = b.dataset.a;
+  if (a === "undo") { var t = b.closest(".notes-toast"); t.hidden = true; if (t._u) t._u(); return; }
+  if (a !== "rand" && a !== "rpick" && st.spin) { spinTok++; st.spin = false; }
+  if (a === "shelf") { st.shelf = b.dataset.k; st.q = ""; q(".notes-q", A).value = ""; st.lucky = st.menu = st.rate = null; render(); }
+  else if (a === "done") {
+    if (RATED[n.shelf]) { st.rate = id; st.rv = 8; st.menu = null; render(); focusIn(app, id, ".notes-rr"); } else finish(n, null, app);
+  }
+  else if (a === "rate") { st.rate = id; st.rv = n.rating || 8; st.menu = null; render(); focusIn(app, id, ".notes-rr"); }
+  else if (a === "rsave") {
+    if (n.status === "open") finish(n, st.rv, app);
+    else { var o = snap(n); n.rating = st.rv; st.rate = null; render(); bump(app, '.notes-c[data-id="' + id + '"] .notes-score b');
+      toast(app, "Оценка «" + n.title + "»: " + n.rating + " из 10", function () { restore(n, o); render(); }); }
+  }
+  else if (a === "rnone") finish(n, null, app);
+  else if (a === "rcancel") { st.rate = null; render(); focusIn(app, id, n.status === "done" ? ".notes-score" : ".notes-ok"); }
+  else if (a === "more") { st.menu = st.menu === id ? null : id; st.rate = null; render(); focusIn(app, id, ".notes-more"); }
+  else if (a === "move") moveTo(n, b.dataset.to, app, false);
+  else if (a === "del") remove(n, app);
+  else if (a === "back") { var o2 = snap(n); n.status = "open"; n.rating = null; n.fin = null; st.fresh = id; render(); st.fresh = null;
+    toast(app, "«" + n.title + "» снова на полке «" + NAME[n.shelf] + "»", function () { restore(n, o2); render(); }); }
+  else if (a === "edit") { st.edit = { id: id, f: b.dataset.f }; st.menu = null; render(); focusIn(app, id, ".notes-ed"); }
+  else if (a === "rand") { if (!st.spin) spin(); }
+  else if (a === "rpick") { if (st.spin) return; st.shelf = b.dataset.k; st.q = ""; q(".notes-q", A).value = ""; render(); spin(); }
+  else if (a === "lok") { var ln = byId(st.lucky); st.lucky = null; renderA(); if (ln) toast(A, "Хорошего вечера! Когда закончите, нажмите «Готово» у «" + ln.title + "»"); }
+  else if (a === "badd") { st.badd = st.badd === b.dataset.k ? null : b.dataset.k; renderB(); var bi = q(".notes-bf input", B); if (bi) bi.focus(); }
+  else if (a === "bdone") { st.bdone = !st.bdone; renderB(); }
+  else if (a === "jump") { var col = q('.notes-col[data-k="' + b.dataset.k + '"]', B), bd = q(".notes-board", B); if (col) bd.scrollTo({ left: col.offsetLeft - bd.offsetLeft - 2, behavior: MM.reduce ? "auto" : "smooth" }); }
+});
+root.addEventListener("submit", function (e) {
+  e.preventDefault();
+  var f = e.target;
+  if (f.classList.contains("notes-addf")) { var i = q(".notes-ain", A); if (addNote(i.value, i.dataset.k, A)) i.value = ""; i.focus(); }
+  else if (f.classList.contains("notes-bf")) { var k = f.dataset.k, v = q("input", f).value; addNote(v, k, B); var bi = q('.notes-bf[data-k="' + k + '"] input', B); if (bi) bi.focus(); }
+});
+root.addEventListener("input", function (e) {
+  var t = e.target;
+  if (t.classList.contains("notes-q")) { st.q = t.value; st.lucky = st.menu = st.rate = null; renderA(); }
+  else if (t.classList.contains("notes-rr")) {
+    var v = +t.value, p = t.closest(".notes-rate"); st.rv = v;
+    qa(".notes-star", p).forEach(function (s, i) { s.classList.toggle("on", i < v); });
+    q(".notes-rv b", p).textContent = v; q(".notes-rv span", p).textContent = word(v);
+    t.setAttribute("aria-valuetext", v + " из 10, " + word(v));
+  }
+});
+root.addEventListener("keydown", function (e) {
+  var t = e.target;
+  if (t.classList && t.classList.contains("notes-ed")) {
+    if (e.key === "Enter") { e.preventDefault(); commit(t); }
+    else if (e.key === "Escape") { var app = t.closest(".app"), id = st.edit && st.edit.id; st.edit = null; render(); if (id) focusIn(app, id, ".notes-t"); }
+    return;
+  }
+  if (e.key === "Escape" && (st.menu || st.rate || st.badd)) { st.menu = st.rate = st.badd = null; render(); }
+  else if (e.key === "Enter" && t.classList && t.classList.contains("notes-rr")) { var s = q('[data-a="rsave"]', t.closest(".notes-rate")); if (s) s.click(); }
+});
+root.addEventListener("focusout", function (e) { if (e.target.classList && e.target.classList.contains("notes-ed")) commit(e.target); });
+
+var dragId = null;
+function clearOver() { qa(".notes-over").forEach(function (x) { x.classList.remove("notes-over"); }); }
+root.addEventListener("dragstart", function (e) {
+  var c = e.target.closest && e.target.closest('.notes-c[draggable="true"]'); if (!c) return;
+  dragId = +c.dataset.id; e.dataTransfer.effectAllowed = "move";
+  try { e.dataTransfer.setData("text/plain", String(dragId)); } catch (x) { /* старые браузеры */ }
+  c.classList.add("notes-drag"); root.classList.add("notes-dragging");
+});
+root.addEventListener("dragend", function () { dragId = null; root.classList.remove("notes-dragging"); clearOver(); qa(".notes-drag").forEach(function (x) { x.classList.remove("notes-drag"); }); });
+root.addEventListener("dragover", function (e) {
+  var d = e.target.closest && e.target.closest("[data-drop]"); if (!d || dragId == null) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = "move";
+  if (!d.classList.contains("notes-over")) { clearOver(); d.classList.add("notes-over"); }
+});
+root.addEventListener("dragleave", function (e) { var d = e.target.closest && e.target.closest("[data-drop]"); if (d && !d.contains(e.relatedTarget)) d.classList.remove("notes-over"); });
+root.addEventListener("drop", function (e) {
+  var d = e.target.closest && e.target.closest("[data-drop]"); if (!d || dragId == null) return;
+  e.preventDefault(); var id = dragId; dragId = null; root.classList.remove("notes-dragging"); clearOver();
+  moveTo(byId(id), d.dataset.drop, d.closest(".app"), true);
+});
+
+function countUp() {
+  qa("[data-cnt]", A).forEach(function (el) {
+    var to = +el.dataset.v, dec = +el.dataset.dec, t0 = performance.now(); el._run = true;
+    (function fr(now) {
+      var p = Math.min(1, (now - t0) / 800), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(to * e, dec);
+      if (p < 1) requestAnimationFrame(fr); else { el._run = false; el.textContent = fmt(+el.dataset.v, dec); }
+    })(t0);
+  });
+}
+var goT;
+function play() {
+  spinTok++; st.spin = false;
+  root.classList.remove("notes-go"); clearTimeout(goT);
+  render();
+  if (MM.reduce) return;
+  void root.offsetWidth; root.classList.add("notes-go"); countUp();
+  goT = setTimeout(function () { root.classList.remove("notes-go"); }, 1500);
+}
+render();
+MM.onSeen(root, play);
+root.addEventListener("replay", play);
+})();</script>
+</article>

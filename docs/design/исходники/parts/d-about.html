@@ -1,0 +1,625 @@
+<article class="piece" id="p-d-about">
+  <header>
+    <p class="eyebrow">Экран · Рина → О вас</p>
+    <h2>Один экран про вас: сутки на шкале и всё, что Рина помнит</h2>
+    <p>Профиль и «О вас» сливаются в одну страницу. Подъём, отбой и письма Рины стоят на одной шкале суток, их тянут мышью или пальцем. Ниже факты, которые Рина запомнила из разговоров: каждый видно, можно поправить или забыть, и всё отменяется одной кнопкой.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="app" data-hub="rina" data-tab="О вас" data-title="О вас">
+    <section class="card ab-hero" aria-label="Карточка человека">
+      <div class="ab-ava" aria-hidden="true">А</div>
+      <div class="ab-who">
+        <p class="ab-name">Алексей</p>
+        <div class="ab-meta">
+          <span class="chip">📍 Екатеринбург · UTC+5</span>
+          <span class="chip ab-together">♥ Вместе <b class="num" data-days>214</b> дней</span>
+        </div>
+        <p class="ab-lbl">Как Рина к вам обращается</p>
+        <div class="ab-addr" role="group" aria-label="Обращение">
+          <button type="button" data-addr="master" aria-pressed="true">Хозяин</button>
+          <button type="button" data-addr="mistress" aria-pressed="false">Хозяйка</button>
+          <button type="button" data-addr="name" aria-pressed="false">По имени</button>
+        </div>
+        <label class="ab-nameedit" data-namebox hidden>Имя <input type="text" value="Алексей" maxlength="24" data-nameinp aria-label="Ваше имя"></label>
+        <p class="ab-sample" aria-live="polite"><span data-sample></span><i aria-hidden="true"></i></p>
+      </div>
+      <div class="ab-fill">
+        <div class="ab-ring" role="img" data-ringlbl aria-label="Заполнено 5 из 7">
+          <svg viewBox="0 0 80 80" aria-hidden="true">
+            <circle cx="40" cy="40" r="33" class="ab-rbg"/>
+            <circle cx="40" cy="40" r="33" class="ab-rfg" data-ring/>
+          </svg>
+          <div class="ab-rtxt"><b class="num" data-filled>5</b><span>из 7</span></div>
+        </div>
+        <div class="ab-miss" data-miss></div>
+      </div>
+    </section>
+
+    <div class="rina"><img src="maid/think.webp" alt="Рина"><p data-rina></p></div>
+
+    <section class="card ab-day" aria-labelledby="d-about-h-day">
+      <div class="ab-dayhead">
+        <h4 class="card-t" id="d-about-h-day">Распорядок</h4>
+        <span class="muted ab-hint">Тяните точки. Шаг 15 минут</span>
+      </div>
+      <div class="ab-kpis">
+        <div class="ab-k"><small>☀ Подъём</small><b class="num" data-kv="wake">7:00</b></div>
+        <div class="ab-k"><small>☾ Отбой</small><b class="num" data-kv="bed">23:30</b></div>
+        <div class="ab-k ab-ksleep"><small>Сон по плану</small><b class="num" data-kv="sleep">7 ч 30 мин</b><span class="ab-norm" data-norm></span></div>
+      </div>
+      <div class="ab-track" data-track>
+        <div class="ab-lanes" data-lanes></div>
+        <div class="ab-bar" data-bar>
+          <i class="ab-sl" data-s1></i><i class="ab-sl" data-s2></i>
+          <button type="button" class="ab-knob ab-wake" data-k="wake" role="slider" aria-label="Подъём" aria-valuemin="240" aria-valuemax="720"><span aria-hidden="true">☀</span><em data-tip="wake"></em></button>
+          <button type="button" class="ab-knob ab-bed" data-k="bed" role="slider" aria-label="Отбой" aria-valuemin="0" aria-valuemax="1440"><span aria-hidden="true">☾</span><em data-tip="bed"></em></button>
+        </div>
+        <div class="ab-hours" data-hours aria-hidden="true"></div>
+      </div>
+      <ul class="ab-rows" data-rows></ul>
+    </section>
+
+    <div class="ab-cols">
+      <section class="card ab-mem" aria-labelledby="d-about-h-mem">
+        <h4 class="card-t" id="d-about-h-mem">Рина помнит <span class="ab-cnt num" data-fcnt></span></h4>
+        <div data-guess></div>
+        <ul class="ab-facts" data-facts></ul>
+        <form class="ab-add" data-addfact>
+          <input type="text" maxlength="80" placeholder="Расскажите сами: например, «не ем острое»" aria-label="Новый факт о вас" data-addinp>
+          <button type="submit" class="btn">Запомнить</button>
+        </form>
+      </section>
+
+      <section class="card ab-states" aria-labelledby="d-about-h-st">
+        <h4 class="card-t" id="d-about-h-st">Состояния</h4>
+        <p class="ab-g ab-gok">✓ Хорошее</p>
+        <div class="ab-chips" data-st="good"></div>
+        <p class="ab-g ab-gwarn">! Требует внимания</p>
+        <div class="ab-chips" data-st="warn"></div>
+        <div class="ab-stinfo" data-stinfo hidden></div>
+        <form class="ab-stadd" data-addst>
+          <input type="text" maxlength="40" placeholder="Новое: «Пью больше воды»" aria-label="Новое состояние" data-stinp>
+          <div class="ab-kind" role="group" aria-label="Вид состояния">
+            <button type="button" data-kind="good" aria-pressed="true">✓ Хорошее</button>
+            <button type="button" data-kind="warn" aria-pressed="false">! Внимание</button>
+          </div>
+          <button type="submit" class="btn">Добавить</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="ab-toast" data-toast role="status" aria-live="polite" hidden><span data-ttext></span><button type="button" data-undo>Отменить</button></div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Профиль и «О вас» стали одним экраном. Плашки веса, шагов, воды и ИМТ переехали в «Обзор → Здоровье», здесь только то, что Рина знает о человеке.</li>
+      <li>Обращение выбирается с живым примером фразы. Кольцо «5 из 7» показывает, чего не хватает, и пустое поле заполняется прямо там.</li>
+      <li>Подъём, отбой, утреннее письмо, вечерний итог и «что завтра» стоят на одной шкале суток. Сразу видно, что письмо придёт через 15 минут после подъёма, а сон по плану 7 ч 30 мин.</li>
+      <li>«Рина помнит»: у каждого факта видно, откуда он, его можно поправить или забыть. Догадки Рины спрашиваются по одной: «Да» или «Нет».</li>
+      <li>Бафы и дебафы стали состояниями: чипы со счётчиком дней, ✓ хорошее и ! внимание.</li>
+      <li>Любое действие показывает строку «Отменить» внизу. Окон «Вы уверены?» нет.</li>
+      <li>Такая же шкала есть в «Характер и вид». В коде это должна быть одна шкала: правка в одном месте сразу видна в другом.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Вход: кольцо заполненности дорисовывается до 5 из 7, точки подъёма и отбоя доезжают от полудня до своих мест, полоса сна растёт вместе с ними.</li>
+      <li>Смена обращения: пример фразы печатается заново с новым словом.</li>
+      <li>«Забыть»: карточка растворяется и схлопывается. «Отменить» возвращает её на то же место с коротким появлением.</li>
+      <li>«Да» на догадку: догадка становится обычным фактом и встаёт первой в списке.</li>
+      <li>Заполнили поле: кольцо прибавляет деление, цифра считает.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Есть: 7 полей в /api/you (обращение, имя, день рождения, город, пояс, подъём, отбой, рост), времена писем в /api/settings, бафы и дебафы с днями и подсказки «Горничная заметила» в профиле.</li>
+      <li>Есть частично: факты «из разговора» уже хранятся как бафы и дебафы с источником chat. Отдельного списка «Рина помнит» (вкусы, работа, люди) нет, его надо завести: текст, вид, источник, дата, «забыто».</li>
+      <li>Дописать: чтобы забытый факт не попадал в разговор с Риной; проверку, что письмо не придёт раньше подъёма; общую строку «Отменить» (хранить прежнее значение 10 секунд).</li>
+      <li>Нужно решить: «вместе N дней» считать от регистрации.</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-about [hidden] { display: none !important; }
+#p-d-about .app-content { gap: 16px; position: relative; }
+#p-d-about .ab-hero { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: 18px 22px; align-items: start; padding: 20px; }
+#p-d-about .ab-ava { width: 84px; height: 84px; border-radius: 26px; display: grid; place-items: center; font: 800 34px/1 var(--fd); color: var(--a-on-accent); background: linear-gradient(140deg, var(--a-accent-strong), var(--c-mood)); box-shadow: 0 8px 22px color-mix(in srgb, var(--a-accent-strong) 35%, transparent); }
+#p-d-about .ab-who { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+#p-d-about .ab-name { font: 800 26px/1.1 var(--fd); letter-spacing: -.02em; }
+#p-d-about .ab-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+#p-d-about .ab-together b { color: var(--a-text); }
+#p-d-about .ab-lbl { margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--a-muted); letter-spacing: .05em; text-transform: uppercase; }
+#p-d-about .ab-addr, #p-d-about .ab-kind { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--a-surface-2); border-radius: 11px; align-self: flex-start; }
+#p-d-about .ab-addr button, #p-d-about .ab-kind button { background: none; border: 0; border-radius: 8px; padding: 6px 14px; min-height: 36px; font-weight: 650; font-size: 13px; color: var(--a-muted); transition: background .2s, color .2s; }
+#p-d-about .ab-addr button[aria-pressed="true"], #p-d-about .ab-kind button[aria-pressed="true"] { background: var(--a-surface); color: var(--a-text); box-shadow: 0 1px 4px color-mix(in srgb, var(--a-text) 14%, transparent); }
+#p-d-about .ab-nameedit { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--a-muted); }
+#p-d-about input[type="text"], #p-d-about input[type="date"], #p-d-about input[type="number"] { background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 10px; padding: 7px 11px; min-height: 38px; color: var(--a-text); min-width: 0; }
+#p-d-about input:focus { border-color: var(--a-accent); outline: none; }
+#p-d-about .ab-sample { position: relative; background: var(--a-accent-soft); border-radius: 14px 14px 14px 4px; padding: 10px 14px; font-size: 14px; color: var(--a-text); min-height: 44px; max-width: 52ch; }
+#p-d-about .ab-sample b { color: var(--a-accent); }
+#p-d-about .ab-sample i { display: inline-block; width: 2px; height: 1em; vertical-align: -2px; margin-left: 2px; background: var(--a-accent); opacity: 0; }
+#p-d-about .ab-sample.typing i { opacity: 1; }
+#p-d-about .ab-fill { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 150px; }
+#p-d-about .ab-ring { position: relative; width: 112px; height: 112px; }
+#p-d-about .ab-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+#p-d-about .ab-rbg { fill: none; stroke: var(--a-surface-3); stroke-width: 8; }
+#p-d-about .ab-rfg { fill: none; stroke: var(--a-accent); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 207.35; transition: stroke-dashoffset .8s var(--ease); }
+#p-d-about .ab-rtxt { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
+#p-d-about .ab-rtxt b { font: 800 32px/1 var(--fd); letter-spacing: -.02em; }
+#p-d-about .ab-rtxt span { font-size: 12px; color: var(--a-muted); margin-top: 3px; }
+#p-d-about .ab-miss { display: flex; flex-direction: column; gap: 6px; width: 100%; align-items: stretch; }
+#p-d-about .ab-miss p { font-size: 12px; color: var(--a-muted); text-align: center; }
+#p-d-about .ab-plus { background: none; border: 1px dashed var(--a-line); border-radius: 10px; padding: 6px 10px; min-height: 36px; font-size: 13px; font-weight: 600; color: var(--a-accent); }
+#p-d-about .ab-plus:hover { border-color: var(--a-accent); }
+#p-d-about .ab-fform { display: flex; gap: 6px; }
+#p-d-about .ab-fform input { width: 100%; flex: 1; }
+#p-d-about .ab-mini { border: 0; background: var(--a-accent-strong); color: var(--a-on-accent); border-radius: 10px; padding: 0 12px; min-height: 38px; font-weight: 650; font-size: 13px; }
+
+#p-d-about .ab-day { padding: 18px 20px 14px; }
+#p-d-about .ab-dayhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+#p-d-about .ab-dayhead .card-t { margin: 0; }
+#p-d-about .ab-hint { font-size: 12.5px; }
+#p-d-about .ab-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 12px 0 6px; }
+#p-d-about .ab-k { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+#p-d-about .ab-k small { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); }
+#p-d-about .ab-k b { font: 800 34px/1 var(--fd); letter-spacing: -.025em; white-space: nowrap; }
+#p-d-about .ab-ksleep b { color: var(--c-sleep); }
+#p-d-about .ab-norm { font-size: 12.5px; font-weight: 650; }
+#p-d-about .ab-norm.ok { color: var(--a-ok); } #p-d-about .ab-norm.warn { color: var(--a-warn); }
+
+#p-d-about .ab-track { position: relative; user-select: none; -webkit-user-select: none; }
+#p-d-about .ab-lanes { position: relative; height: 78px; }
+#p-d-about .ab-pin { position: absolute; bottom: calc(var(--lane, 0) * 34px + 10px); display: inline-flex; align-items: center; gap: 6px; padding: 0 11px 0 9px; min-height: 30px; border-radius: 99px; background: var(--a-surface-2); border: 1px solid var(--a-line); color: var(--a-text); font-size: 12.5px; font-weight: 600; white-space: nowrap; touch-action: none; cursor: grab; transition: border-color .15s, background .15s; }
+#p-d-about .ab-pin::after { content: ""; position: absolute; left: -1px; top: 100%; width: 2px; height: calc(var(--lane, 0) * 34px + 10px); background: color-mix(in srgb, var(--a-accent) 70%, transparent); }
+#p-d-about .ab-pin.r { transform: translateX(-100%); }
+#p-d-about .ab-pin.r::after { left: auto; right: -1px; }
+#p-d-about .ab-pin:not(.r) { border-bottom-left-radius: 4px; }
+#p-d-about .ab-pin.r { border-bottom-right-radius: 4px; }
+#p-d-about .ab-pin b { font-variant-numeric: tabular-nums; color: var(--a-accent); }
+#p-d-about .ab-pin:hover, #p-d-about .ab-pin.drag, #p-d-about .ab-pin:focus-visible { border-color: var(--a-accent); background: var(--a-accent-soft); }
+#p-d-about .ab-pin.drag { cursor: grabbing; z-index: 3; }
+#p-d-about .ab-pin.bad { border-color: var(--a-warn); }
+#p-d-about .ab-bar { position: relative; height: 46px; border-radius: 14px; background-color: var(--a-surface-2); background-image: repeating-linear-gradient(90deg, var(--a-line) 0, var(--a-line) 1px, transparent 1px, transparent calc(100% / 24)); background-size: calc(100% - 38px) 100%; background-position: 19px 0; background-repeat: no-repeat; }
+#p-d-about .ab-sl { position: absolute; top: 6px; bottom: 6px; background: linear-gradient(180deg, color-mix(in srgb, var(--c-sleep) 85%, transparent), color-mix(in srgb, var(--c-sleep) 60%, transparent)); border-radius: 9px; pointer-events: none; }
+#p-d-about .ab-knob { position: absolute; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 3px solid var(--a-surface); display: grid; place-items: center; font-size: 17px; line-height: 1; touch-action: none; cursor: grab; z-index: 2; box-shadow: 0 4px 12px color-mix(in srgb, var(--a-text) 22%, transparent); transition: transform .15s var(--ease); }
+#p-d-about .ab-wake { background: var(--a-gold); color: var(--a-surface); }
+#p-d-about .ab-bed { background: var(--c-sleep); color: var(--a-on-accent); }
+#p-d-about .ab-knob:hover, #p-d-about .ab-knob.drag { transform: scale(1.12); }
+#p-d-about .ab-knob.drag { cursor: grabbing; }
+#p-d-about .ab-knob em { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); font: 700 12px var(--f); font-style: normal; background: var(--a-text); color: var(--a-bg); border-radius: 7px; padding: 2px 7px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+#p-d-about .ab-knob.drag em, #p-d-about .ab-knob:focus-visible em { opacity: 1; }
+#p-d-about .ab-hours { position: relative; height: 22px; margin-top: 4px; font-size: 11px; color: var(--a-muted); font-variant-numeric: tabular-nums; }
+#p-d-about .ab-hours span { position: absolute; top: 2px; transform: translateX(-50%); }
+
+#p-d-about .ab-rows { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+#p-d-about .ab-row { background: var(--a-surface-2); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; min-width: 0; border: 1px solid transparent; transition: border-color .2s; }
+#p-d-about .ab-row.bad { border-color: var(--a-warn); }
+#p-d-about .ab-row p { font-size: 12.5px; color: var(--a-soft); font-weight: 600; min-width: 0; }
+#p-d-about .ab-row b { font: 800 20px/1.1 var(--fd); font-variant-numeric: tabular-nums; }
+#p-d-about .ab-row small { grid-column: 1 / -1; font-size: 12px; color: var(--a-muted); }
+#p-d-about .ab-row small.warn { color: var(--a-warn); font-weight: 600; }
+#p-d-about .ab-step { grid-row: 1 / 3; grid-column: 2; display: flex; gap: 4px; }
+#p-d-about .ab-step button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface); font-weight: 700; color: var(--a-text); }
+#p-d-about .ab-step button:hover { border-color: var(--a-accent); }
+
+#p-d-about .ab-cols { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+#p-d-about .ab-cnt { color: var(--a-accent); letter-spacing: 0; }
+#p-d-about .ab-guess { border: 1.5px dashed color-mix(in srgb, var(--a-accent) 55%, transparent); background: var(--a-accent-soft); border-radius: 14px; padding: 12px 14px; display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; animation: d-about-in .5s var(--ease); }
+#p-d-about .ab-guess p { flex: 1 1 220px; min-width: 0; font-size: 14px; }
+#p-d-about .ab-guess p small { display: block; color: var(--a-muted); font-size: 12px; margin-top: 2px; }
+#p-d-about .ab-guess .row { gap: 6px; }
+#p-d-about .ab-facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 10px; }
+#p-d-about .ab-fact { background: var(--a-surface-2); border-radius: 14px; padding: 12px 13px 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; border: 1px solid transparent; transition: border-color .2s; }
+#p-d-about .ab-fact:hover, #p-d-about .ab-fact:focus-within { border-color: var(--a-line); }
+#p-d-about .ab-ftop { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--a-muted); }
+#p-d-about .ab-ftop span:first-child { font-size: 16px; letter-spacing: 0; }
+#p-d-about .ab-ftxt { font-size: 15px; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+#p-d-about .ab-fsrc { font-size: 12px; color: var(--a-muted); }
+#p-d-about .ab-facts form { display: flex; gap: 6px; }
+#p-d-about .ab-facts form input { flex: 1; width: 100%; }
+#p-d-about .ab-fact .row { gap: 2px; margin: 0 -6px; }
+#p-d-about .ab-lnk { background: none; border: 0; border-radius: 8px; padding: 0 8px; min-height: 36px; font-size: 13px; font-weight: 600; color: var(--a-soft); }
+#p-d-about .ab-lnk:hover { color: var(--a-accent); background: var(--a-accent-soft); }
+#p-d-about .ab-lnk.forget:hover { color: var(--a-bad); background: color-mix(in srgb, var(--a-bad) 12%, transparent); }
+#p-d-about .ab-fact.gone, #p-d-about .ab-guess.gone { animation: d-about-gone .62s var(--ease) forwards; pointer-events: none; }
+#p-d-about .ab-fact.back { animation: d-about-back .55s var(--ease); }
+#p-d-about .ab-add { display: flex; gap: 8px; margin-top: 12px; }
+#p-d-about .ab-add input { flex: 1; width: 100%; }
+
+#p-d-about .ab-states { display: flex; flex-direction: column; gap: 8px; }
+#p-d-about .ab-g { font-size: 12.5px; font-weight: 700; }
+#p-d-about .ab-gok { color: var(--a-ok); } #p-d-about .ab-gwarn { color: var(--a-warn); margin-top: 6px; }
+#p-d-about .ab-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+#p-d-about .ab-st { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 6px 0 12px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--a-text); border: 1px solid; max-width: 100%; }
+#p-d-about .ab-st > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#p-d-about .ab-st.good { border-color: color-mix(in srgb, var(--a-ok) 45%, transparent); background: color-mix(in srgb, var(--a-ok) 12%, transparent); }
+#p-d-about .ab-st.warn { border-color: color-mix(in srgb, var(--a-warn) 50%, transparent); background: color-mix(in srgb, var(--a-warn) 12%, transparent); }
+#p-d-about .ab-st i { font-style: normal; font-weight: 800; }
+#p-d-about .ab-st.good i { color: var(--a-ok); } #p-d-about .ab-st.warn i { color: var(--a-warn); }
+#p-d-about .ab-st b { font-variant-numeric: tabular-nums; background: var(--a-surface); border-radius: 99px; padding: 2px 8px; font-size: 12px; white-space: nowrap; }
+#p-d-about .ab-st[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--a-accent); }
+#p-d-about .ab-st.back { animation: d-about-back .5s var(--ease); }
+#p-d-about .ab-st.gone { animation: d-about-gone .5s var(--ease) forwards; }
+#p-d-about .ab-stinfo { background: var(--a-surface-2); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; animation: d-about-in .3s var(--ease); }
+#p-d-about .ab-stinfo h5 { margin: 0; font-size: 14px; }
+#p-d-about .ab-stinfo p { font-size: 13px; color: var(--a-soft); }
+#p-d-about .ab-stinfo .row { flex-wrap: wrap; gap: 6px; }
+#p-d-about .ab-stadd { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--a-line); }
+#p-d-about .ab-stadd input { flex: 1 1 100%; width: 100%; }
+#p-d-about .ab-stadd .btn { min-height: 38px; margin-left: auto; }
+#p-d-about .ab-add .btn { min-height: 38px; }
+
+#p-d-about .ab-toast { position: sticky; bottom: 8px; align-self: center; z-index: 5; display: flex; align-items: center; gap: 14px; background: var(--a-text); color: var(--a-bg); border-radius: 14px; padding: 6px 6px 6px 16px; font-size: 13.5px; box-shadow: var(--a-shadow); max-width: 100%; animation: d-about-up .35s var(--ease); }
+#p-d-about .ab-toast span { min-width: 0; }
+#p-d-about .ab-toast button { border: 0; border-radius: 10px; min-height: 36px; padding: 0 14px; font-weight: 700; background: color-mix(in srgb, var(--a-bg) 14%, transparent); color: var(--a-bg); white-space: nowrap; }
+#p-d-about .ab-toast button:hover { background: color-mix(in srgb, var(--a-bg) 24%, transparent); }
+
+#p-d-about .ab-enter { animation: d-about-in .55s var(--ease) both; }
+@keyframes d-about-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes d-about-up { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes d-about-gone { 0% { opacity: 1; filter: blur(0); transform: none; } 70% { opacity: 0; filter: blur(5px); transform: scale(.94) translateY(-4px); } 100% { opacity: 0; filter: blur(6px); transform: scale(.9); } }
+@keyframes d-about-back { from { opacity: 0; transform: scale(.94); box-shadow: 0 0 0 2px var(--a-accent); } to { opacity: 1; transform: none; box-shadow: 0 0 0 0 transparent; } }
+
+@media (max-width: 900px) { #p-d-about .ab-cols { grid-template-columns: minmax(0, 1fr); } #p-d-about .ab-rows { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) {
+  #p-d-about .ab-hero { grid-template-columns: 60px minmax(0, 1fr); padding: 14px; gap: 14px; }
+  #p-d-about .ab-ava { width: 60px; height: 60px; border-radius: 19px; font-size: 26px; }
+  #p-d-about .ab-name { font-size: 21px; }
+  #p-d-about .ab-fill { grid-column: 1 / -1; flex-direction: row; align-items: center; min-width: 0; }
+  #p-d-about .ab-ring { width: 88px; height: 88px; flex: none; }
+  #p-d-about .ab-rtxt b { font-size: 26px; }
+  #p-d-about .ab-miss { flex: 1; min-width: 0; }
+  #p-d-about .ab-miss p { text-align: left; }
+  #p-d-about .ab-day { padding: 14px; }
+  #p-d-about .ab-k b { font-size: 23px; }
+  #p-d-about .ab-kpis { gap: 8px; }
+  #p-d-about .ab-pin .ab-pl { display: none; }
+  #p-d-about .ab-pin { padding: 0 9px 0 7px; }
+  #p-d-about .ab-hours span.odd { display: none; }
+  #p-d-about .ab-hint { display: none; }
+}
+@media (max-width: 420px) { #p-d-about .ab-k small { font-size: 10px; letter-spacing: .04em; } #p-d-about .ab-k b { font-size: 20px; } }
+  </style>
+
+  <script>(function () {
+  "use strict";
+  var root = document.getElementById("p-d-about");
+  if (!root) return;
+  var M = window.MaidMock || { reduce: false, onSeen: function (el, fn) { fn(); } };
+  var CIRC = 207.35, STEP = 15;
+  function $(s, el) { return (el || root).querySelector(s); }
+  function $$(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function hm(m) { m = ((Math.round(m) % 1440) + 1440) % 1440; return Math.floor(m / 60) + ":" + ("0" + (m % 60)).slice(-2); }
+  function dur(m) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; return (h ? h + " ч" : "") + (h && r ? " " : "") + (r || !h ? r + " мин" : ""); }
+  function pl(n, a, b, c) { var d = n % 10, e = n % 100; return d === 1 && e !== 11 ? a : d >= 2 && d <= 4 && (e < 12 || e > 14) ? b : c; }
+  function snap(m) { return Math.round(m / STEP) * STEP; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  var S = {
+    addr: "master", name: "Алексей",
+    fields: { address: 1, city: 1, tz: 1, wake: 1, bed: 1, birthday: 0, height: 0 },
+    t: { wake: 420, bed: 1410, letter: 435, evening: 1260, tomorrow: 1290 },
+    facts: [
+      { id: 1, ic: "🍵", cat: "Вкусы", t: "Любит зелёный чай без сахара", src: "из разговора 12 ноября" },
+      { id: 2, ic: "🩺", cat: "Здоровье", t: "Аллергия на кошек", src: "из разговора 3 октября" },
+      { id: 3, ic: "💼", cat: "Работа", t: "Работает дизайнером, созвоны по вторникам", src: "из дневника 28 октября" },
+      { id: 4, ic: "👥", cat: "Люди", t: "Сестра Маша, день рождения 14 декабря", src: "вы сказали сами 20 сентября" },
+      { id: 5, ic: "✉", cat: "Письма", t: "По утрам не любит длинные письма", src: "из разговора 19 ноября" },
+      { id: 6, ic: "🐶", cat: "Дом", t: "Живёт с собакой Бусей", src: "из разговора 2 ноября" }
+    ],
+    guesses: [
+      { ic: "🌙", cat: "Распорядок", t: "По пятницам ложится позже, около 1:00", q: "вы ложитесь позже по пятницам, около 1:00", why: "четыре пятницы подряд в дневнике" },
+      { ic: "☕", cat: "Вкусы", t: "Не пьёт кофе после 16:00", q: "после 16:00 вы не пьёте кофе", why: "по разговорам за ноябрь" }
+    ],
+    states: [
+      { id: "s1", k: "good", t: "Бросил курить", d: 41, note: "Рина не предлагает перекуры и хвалит каждые 10 дней.", src: "из разговора 17 октября" },
+      { id: "s2", k: "good", t: "Бегаю по утрам", d: 12, note: "Утреннее письмо начинается с погоды для пробежки.", src: "добавили сами" },
+      { id: "s3", k: "warn", t: "Болит спина", d: 6, note: "Рина напоминает размяться каждые 2 часа за ПК.", src: "из разговора 21 ноября" },
+      { id: "s4", k: "warn", t: "Мало сна", d: 3, note: "Рина заметила в дневнике: три ночи меньше 6 часов.", src: "Рина заметила" }
+    ],
+    newKind: "good", open: null, editing: null
+  };
+  var D = {};
+  var KEYS = ["wake", "bed", "letter", "evening", "tomorrow"];
+  KEYS.forEach(function (k) { D[k] = S.t[k]; });
+  var MARKS = [
+    { k: "letter", ic: "✉", n: "Утреннее письмо", lo: 300, hi: 720 },
+    { k: "evening", ic: "☾", n: "Вечерний итог", lo: 720, hi: 1425 },
+    { k: "tomorrow", ic: "📋", n: "Что завтра", lo: 720, hi: 1425 }
+  ];
+  var MISS = { birthday: { n: "день рождения", ph: "дата" }, height: { n: "рост", ph: "см" } };
+
+  /* ===== шапка ===== */
+  var WORD = { master: "хозяин", mistress: "хозяйка" };
+  function who() { return S.addr === "name" ? (S.name.trim() || "Алексей") : WORD[S.addr]; }
+  function sampleText() { var w = who(); return "Доброе утро, " + w.charAt(0).toUpperCase() + w.slice(1) + "! В Екатеринбурге −4°, шарф не забудьте."; }
+  var typeTimer = null;
+  function typeSample(instant) {
+    var el = $("[data-sample]"), box = $(".ab-sample"), full = sampleText(), w = who(), wc = w.charAt(0).toUpperCase() + w.slice(1);
+    function paint(n) {
+      var s = full.slice(0, n), i = s.indexOf(wc);
+      el.innerHTML = i < 0 ? esc(s) : esc(s.slice(0, i)) + "<b>" + esc(s.slice(i, i + wc.length)) + "</b>" + esc(s.slice(i + wc.length));
+    }
+    clearInterval(typeTimer);
+    if (instant || M.reduce) { paint(full.length); box.classList.remove("typing"); return; }
+    var n = 0; box.classList.add("typing");
+    typeTimer = setInterval(function () { n += 2; paint(n); if (n >= full.length) { clearInterval(typeTimer); box.classList.remove("typing"); } }, 22);
+  }
+  function setAddr(a, silent) {
+    var prev = S.addr; if (prev === a) return;
+    S.addr = a;
+    $$("[data-addr]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.addr === a)); });
+    $("[data-namebox]").hidden = a !== "name";
+    typeSample();
+    if (!silent) toast("Теперь Рина говорит «" + who() + "».", function () { setAddr(prev, true); });
+  }
+  $$("[data-addr]").forEach(function (b) { b.addEventListener("click", function () { setAddr(b.dataset.addr); }); });
+  $("[data-nameinp]").addEventListener("input", function (e) { S.name = e.target.value; typeSample(true); });
+
+  function filled() { var n = 0; for (var k in S.fields) if (S.fields[k]) n++; return n; }
+  var shownFill = 0, fillRaf = 0;
+  function ring(from) {
+    var to = filled(), ringEl = $("[data-ring]"), num = $("[data-filled]");
+    $("[data-ringlbl]").setAttribute("aria-label", "Заполнено " + to + " из 7");
+    cancelAnimationFrame(fillRaf);
+    if (M.reduce || from === to) { ringEl.style.transition = "none"; ringEl.style.strokeDashoffset = CIRC * (1 - to / 7); num.textContent = to; shownFill = to; return; }
+    ringEl.style.transition = "none"; ringEl.style.strokeDashoffset = CIRC * (1 - from / 7);
+    ringEl.getBoundingClientRect();
+    ringEl.style.transition = ""; ringEl.style.strokeDashoffset = CIRC * (1 - to / 7);
+    var t0 = performance.now();
+    (function tick(t) { var p = Math.min(1, (t - t0) / 800); num.textContent = Math.round(from + (to - from) * p); if (p < 1) fillRaf = requestAnimationFrame(tick); })(t0);
+    shownFill = to;
+  }
+  function renderMiss() {
+    var box = $("[data-miss]"), left = Object.keys(MISS).filter(function (k) { return !S.fields[k]; });
+    if (!left.length) { box.innerHTML = "<p>Всё заполнено. Спасибо!</p>"; return; }
+    box.innerHTML = "<p>Не хватает:</p>" + left.map(function (k) {
+      if (S.editing === "f-" + k) {
+        var inp = k === "birthday" ? '<input type="date" aria-label="День рождения" value="1993-03-14">' : '<input type="number" inputmode="numeric" min="100" max="230" aria-label="Рост, см" placeholder="см" value="178">';
+        return '<form class="ab-fform" data-ff="' + k + '">' + inp + '<button type="submit" class="ab-mini">Ок</button></form>';
+      }
+      return '<button type="button" class="ab-plus" data-fk="' + k + '">+ ' + MISS[k].n + "</button>";
+    }).join("");
+    var f = $("form", box); if (f) { var i = $("input", f); i.focus(); }
+  }
+  $("[data-miss]").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-fk]"); if (!b) return;
+    S.editing = "f-" + b.dataset.fk; renderMiss();
+  });
+  $("[data-miss]").addEventListener("submit", function (e) {
+    e.preventDefault(); var f = e.target, k = f.dataset.ff, v = $("input", f).value;
+    if (!v) return;
+    S.fields[k] = 1; S.editing = null; renderMiss(); ring(filled() - 1);
+    var txt = k === "birthday" ? "День рождения сохранён." : "Рост " + v + " см сохранён.";
+    toast(txt, function () { S.fields[k] = 0; renderMiss(); ring(filled() + 1); });
+  });
+  $("[data-miss]").addEventListener("keydown", function (e) { if (e.key === "Escape" && S.editing) { S.editing = null; renderMiss(); } });
+
+  /* ===== шкала суток ===== */
+  var track = $("[data-track]"), bar = $("[data-bar]"), lanes = $("[data-lanes]");
+  $("[data-hours]").innerHTML = [0, 3, 6, 9, 12, 15, 18, 21, 24].map(function (h, i) {
+    return '<span class="' + (i % 2 ? "odd" : "") + '" style="left:calc(19px + (100% - 38px) * ' + (h / 24) + ')">' + h + ":00</span>";
+  }).join("");
+  lanes.innerHTML = MARKS.map(function (m) {
+    return '<button type="button" class="ab-pin" data-k="' + m.k + '" role="slider" aria-label="' + m.n + '" aria-valuemin="' + m.lo + '" aria-valuemax="' + m.hi + '"><span aria-hidden="true">' + m.ic + '</span><span class="ab-pl">' + m.n + "</span><b></b></button>";
+  }).join("");
+  $("[data-rows]").innerHTML = MARKS.map(function (m) {
+    return '<li class="ab-row" data-row="' + m.k + '"><p>' + m.ic + " " + m.n + "</p><b></b><small></small>" +
+      '<div class="ab-step"><button type="button" data-st-k="' + m.k + '" data-d="-15" aria-label="' + m.n + ': на 15 минут раньше">−</button><button type="button" data-st-k="' + m.k + '" data-d="15" aria-label="' + m.n + ': на 15 минут позже">+</button></div></li>';
+  }).join("");
+  function bedAbs(b) { return b < 240 ? b + 1440 : b; }
+  function sleepLen(t) { return ((t.wake - t.bed) % 1440 + 1440) % 1440; }
+  function limit(k, m) {
+    if (k === "wake") return clamp(m, 240, 720);
+    if (k === "bed") { m = ((m % 1440) + 1440) % 1440; if (m >= 1080 || m <= 225) return m; return m < 660 ? 225 : 1080; }
+    var mk = MARKS.filter(function (x) { return x.k === k; })[0];
+    return clamp(m, mk.lo, mk.hi);
+  }
+  function leftPct(m) { return "calc(19px + (100% - 38px) * " + (m / 1440).toFixed(5) + ")"; }
+  function hint(k, t) {
+    if (k === "letter") { var d = t.letter - t.wake; return d < 0 ? { w: 1, s: "Придёт, пока вы спите: на " + dur(-d) + " раньше подъёма" } : d === 0 ? { s: "В минуту подъёма" } : { s: "Через " + dur(d) + " после подъёма" }; }
+    var g = bedAbs(t.bed) - t[k];
+    if (g < 0) return { w: 1, s: "После отбоя, Рина будет будить" };
+    if (g < 30) return { w: 1, s: "Впритык к отбою: за " + dur(g) };
+    return { s: "За " + dur(g) + " до отбоя" };
+  }
+  function layout() {
+    var t = D, w = bar.clientWidth - 38;
+    bar.querySelector('[data-k="wake"]').style.left = leftPct(t.wake);
+    bar.querySelector('[data-k="bed"]').style.left = leftPct(t.bed);
+    var s1 = $("[data-s1]"), s2 = $("[data-s2]");
+    if (t.bed > t.wake) { s1.style.left = leftPct(t.bed); s1.style.width = "calc((100% - 38px) * " + ((1440 - t.bed) / 1440).toFixed(5) + " + 19px)"; s2.hidden = false; s2.style.left = "0px"; s2.style.width = "calc(19px + (100% - 38px) * " + (t.wake / 1440).toFixed(5) + ")"; }
+    else { s1.style.left = leftPct(t.bed); s1.style.width = "calc((100% - 38px) * " + ((t.wake - t.bed) / 1440).toFixed(5) + ")"; s2.hidden = true; }
+    ["wake", "bed"].forEach(function (k) {
+      var kb = bar.querySelector('[data-k="' + k + '"]'); kb.setAttribute("aria-valuenow", t[k]); kb.setAttribute("aria-valuetext", hm(t[k]));
+      $('[data-tip="' + k + '"]').textContent = hm(t[k]);
+      $('[data-kv="' + k + '"]').textContent = hm(t[k]);
+    });
+    var sl = sleepLen(t); $('[data-kv="sleep"]').textContent = dur(sl);
+    var nm = $("[data-norm]"), ok = sl >= 420 && sl <= 540;
+    nm.className = "ab-norm " + (ok ? "ok" : "warn"); nm.textContent = ok ? "✓ в норме, 7–9 ч" : sl < 420 ? "! меньше 7 ч" : "! больше 9 ч";
+    var order = MARKS.slice().sort(function (a, b) { return t[a.k] - t[b.k]; }), laneEnd = [-1e9, -1e9];
+    order.forEach(function (m) {
+      var pin = lanes.querySelector('[data-k="' + m.k + '"]'), x = 19 + w * t[m.k] / 1440, r = t[m.k] > 1080;
+      pin.classList.toggle("r", r); pin.style.left = leftPct(t[m.k]);
+      var pw = pin.offsetWidth || 120, a = r ? x - pw : x, b = r ? x : x + pw, lane = a > laneEnd[0] + 6 ? 0 : 1;
+      laneEnd[lane] = Math.max(laneEnd[lane], b);
+      pin.style.setProperty("--lane", lane);
+      $("b", pin).textContent = hm(t[m.k]);
+      pin.setAttribute("aria-valuenow", t[m.k]); pin.setAttribute("aria-valuetext", hm(t[m.k]));
+      var h = hint(m.k, t), row = $('[data-row="' + m.k + '"]');
+      pin.classList.toggle("bad", !!h.w); row.classList.toggle("bad", !!h.w);
+      $("b", row).textContent = hm(t[m.k]);
+      var sm = $("small", row); sm.textContent = (h.w ? "! " : "") + h.s; sm.className = h.w ? "warn" : "";
+    });
+    rina();
+  }
+  function rina() {
+    var t = S.t, sl = sleepLen(t), h = hint("letter", t), p = $("[data-rina]");
+    var a = "Если ложиться в <b>" + hm(t.bed) + "</b> и вставать в <b>" + hm(t.wake) + "</b>, сна выйдет <b>" + dur(sl) + "</b>.";
+    var b2 = sl < 420 ? " Это меньше семи часов, может, отбой на полчаса раньше?" : h.w ? " Только письмо сейчас придёт раньше подъёма, я подвину его, если скажете." : " Утреннее письмо пришлю в " + hm(t.letter) + ", когда вы уже встанете.";
+    p.innerHTML = a + b2;
+  }
+  var drag = null;
+  function xToMin(cx) { var r = bar.getBoundingClientRect(), w = r.width - 38; return snap(clamp((cx - r.left - 19) / w, 0, 1) * 1440); }
+  function setT(k, m) { m = limit(k, m); if (S.t[k] === m) return; S.t[k] = m; D[k] = m; layout(); }
+  function label(k) { if (k === "wake") return "Подъём"; if (k === "bed") return "Отбой"; return MARKS.filter(function (x) { return x.k === k; })[0].n; }
+  function changed(k, from) {
+    if (from === S.t[k]) return;
+    toast(label(k) + ": " + hm(from) + " → " + hm(S.t[k]) + ".", function () { S.t[k] = from; D[k] = from; layout(); });
+  }
+  track.addEventListener("pointerdown", function (e) {
+    var el = e.target.closest("[data-k]"); if (!el || !track.contains(el)) return;
+    stopAnim(); e.preventDefault();
+    drag = { k: el.dataset.k, el: el, from: S.t[el.dataset.k], id: e.pointerId };
+    el.setPointerCapture(e.pointerId); el.classList.add("drag"); el.focus({ preventScroll: true });
+  });
+  track.addEventListener("pointermove", function (e) { if (drag && e.pointerId === drag.id) setT(drag.k, xToMin(e.clientX)); });
+  function endDrag(e) { if (!drag || e.pointerId !== drag.id) return; drag.el.classList.remove("drag"); var d = drag; drag = null; changed(d.k, d.from); }
+  track.addEventListener("pointerup", endDrag); track.addEventListener("pointercancel", endDrag);
+  var keyFrom = {}, keyTimer = {};
+  function nudge(k, d) {
+    if (!(k in keyFrom)) keyFrom[k] = S.t[k];
+    var m = S.t[k] + d; if (k === "bed") m = (m + 1440) % 1440;
+    setT(k, m);
+    clearTimeout(keyTimer[k]);
+    keyTimer[k] = setTimeout(function () { var f = keyFrom[k]; delete keyFrom[k]; changed(k, f); }, 900);
+  }
+  track.addEventListener("keydown", function (e) {
+    var el = e.target.closest("[data-k]"); if (!el) return;
+    var d = { ArrowLeft: -15, ArrowDown: -15, ArrowRight: 15, ArrowUp: 15, PageDown: -60, PageUp: 60 }[e.key];
+    if (!d) return; e.preventDefault(); stopAnim(); nudge(el.dataset.k, d);
+  });
+  $("[data-rows]").addEventListener("click", function (e) { var b = e.target.closest("[data-st-k]"); if (b) { stopAnim(); nudge(b.dataset.stK, +b.dataset.d); } });
+  window.addEventListener("resize", function () { layout(); });
+
+  var animRaf = 0;
+  function stopAnim() { if (animRaf) { cancelAnimationFrame(animRaf); animRaf = 0; KEYS.forEach(function (k) { D[k] = S.t[k]; }); layout(); } }
+  function slideIn() {
+    cancelAnimationFrame(animRaf);
+    if (M.reduce) { KEYS.forEach(function (k) { D[k] = S.t[k]; }); layout(); return; }
+    var start = { wake: 720, bed: 720, letter: 720, evening: 720, tomorrow: 720 }, t0 = performance.now();
+    function lerpBed(p) { var a = 720, b = bedAbs(S.t.bed); return (a + (b - a) * p) % 1440; }
+    (function tick(now) {
+      var p = Math.min(1, (now - t0) / 900), q = 1 - Math.pow(1 - p, 3);
+      KEYS.forEach(function (k) { D[k] = k === "bed" ? lerpBed(q) : start[k] + (S.t[k] - start[k]) * q; });
+      layout();
+      if (p < 1) animRaf = requestAnimationFrame(tick); else { animRaf = 0; KEYS.forEach(function (k) { D[k] = S.t[k]; }); layout(); }
+    })(t0);
+  }
+
+  /* ===== Рина помнит ===== */
+  function factHTML(f) {
+    if (S.editing === f.id) {
+      return '<li class="ab-fact" data-id="' + f.id + '"><div class="ab-ftop"><span aria-hidden="true">' + f.ic + "</span><span>" + esc(f.cat) + '</span></div><form data-ef="' + f.id + '"><input type="text" maxlength="80" aria-label="Текст факта" value="' + esc(f.t) + '"><button type="submit" class="ab-mini">Ок</button></form><p class="ab-fsrc">Enter сохранит, Esc вернёт как было</p></li>';
+    }
+    return '<li class="ab-fact' + (f.back ? " back" : "") + '" data-id="' + f.id + '"><div class="ab-ftop"><span aria-hidden="true">' + f.ic + "</span><span>" + esc(f.cat) + '</span></div><p class="ab-ftxt">' + esc(f.t) + '</p><p class="ab-fsrc">' + esc(f.src) + '</p><div class="row"><button type="button" class="ab-lnk" data-edit="' + f.id + '">Изменить</button><button type="button" class="ab-lnk forget" data-forget="' + f.id + '">Забыть</button></div></li>';
+  }
+  function renderFacts() {
+    $("[data-facts]").innerHTML = S.facts.map(factHTML).join("");
+    S.facts.forEach(function (f) { f.back = false; });
+    var n = S.facts.length; $("[data-fcnt]").textContent = "· " + n + " " + pl(n, "факт", "факта", "фактов");
+    var g = S.guesses[0];
+    $("[data-guess]").innerHTML = g ? '<div class="ab-guess"><p><b>✨ Рина заметила:</b> ' + esc(g.q) + ". Запомнить?<small>" + esc(g.why) + '</small></p><div class="row"><button type="button" class="btn primary" data-gy>Да, запомнить</button><button type="button" class="btn ghost" data-gn>Нет</button></div></div>' : "";
+    var ed = $("[data-ef] input"); if (ed) { ed.focus(); ed.select(); }
+  }
+  function findFact(id) { for (var i = 0; i < S.facts.length; i++) if (S.facts[i].id === id) return i; return -1; }
+  var nextId = 100;
+  var memBox = $(".ab-mem");
+  memBox.addEventListener("click", function (e) {
+    var b;
+    if ((b = e.target.closest("[data-edit]"))) { S.editing = +b.dataset.edit; renderFacts(); return; }
+    if ((b = e.target.closest("[data-forget]"))) {
+      var id = +b.dataset.forget, i = findFact(id), f = S.facts[i], li = b.closest(".ab-fact");
+      var done = function () { var j = findFact(id); if (j >= 0) S.facts.splice(j, 1); renderFacts(); };
+      if (M.reduce) done(); else { li.classList.add("gone"); setTimeout(done, 600); }
+      toast("Рина забыла: «" + f.t + "».", function () { if (findFact(id) < 0) { f.back = true; S.facts.splice(Math.min(i, S.facts.length), 0, f); renderFacts(); } });
+      return;
+    }
+    if (e.target.closest("[data-gy]")) {
+      var g = S.guesses.shift(), nf = { id: nextId++, ic: g.ic, cat: g.cat, t: g.t, src: "Рина заметила 26 ноября, " + g.why, back: true };
+      S.facts.unshift(nf); renderFacts();
+      toast("Запомнила: «" + g.t + "».", function () { var j = findFact(nf.id); if (j >= 0) S.facts.splice(j, 1); S.guesses.unshift(g); renderFacts(); });
+      return;
+    }
+    if (e.target.closest("[data-gn]")) {
+      var box = $(".ab-guess"), g2 = S.guesses[0];
+      var fin = function () { if (S.guesses[0] === g2) S.guesses.shift(); renderFacts(); };
+      if (M.reduce) fin(); else { box.classList.add("gone"); setTimeout(fin, 550); }
+      toast("Не буду запоминать.", function () { if (S.guesses[0] !== g2) S.guesses.unshift(g2); renderFacts(); });
+    }
+  });
+  memBox.addEventListener("submit", function (e) {
+    e.preventDefault(); var f = e.target;
+    if (f.dataset.ef) {
+      var i = findFact(+f.dataset.ef), fact = S.facts[i], v = $("input", f).value.trim(), old = fact.t;
+      S.editing = null;
+      var oldSrc = fact.src;
+      if (v && v !== old) { fact.t = v; fact.src = "вы поправили сегодня"; toast("Поправила.", function () { fact.t = old; fact.src = oldSrc; renderFacts(); }); }
+      renderFacts(); return;
+    }
+    if (f.hasAttribute("data-addfact")) {
+      var inp = $("[data-addinp]"), t = inp.value.trim(); if (!t) { inp.focus(); return; }
+      var nf2 = { id: nextId++, ic: "💬", cat: "Вы сказали", t: t, src: "вы сказали сами сегодня", back: true };
+      S.facts.unshift(nf2); inp.value = ""; renderFacts();
+      toast("Запомнила.", function () { var j = findFact(nf2.id); if (j >= 0) S.facts.splice(j, 1); renderFacts(); });
+    }
+  });
+  memBox.addEventListener("keydown", function (e) { if (e.key === "Escape" && S.editing !== null && typeof S.editing === "number") { S.editing = null; renderFacts(); } });
+
+  /* ===== состояния ===== */
+  function stHTML(s) {
+    return '<button type="button" class="ab-st ' + s.k + (s.back ? " back" : "") + '" data-sid="' + s.id + '" aria-expanded="' + (S.open === s.id) + '"><i aria-hidden="true">' + (s.k === "good" ? "✓" : "!") + "</i><span>" + esc(s.t) + "</span><b>" + s.d + " " + pl(s.d, "день", "дня", "дней") + "</b></button>";
+  }
+  function renderStates() {
+    ["good", "warn"].forEach(function (k) { $('[data-st="' + k + '"]').innerHTML = S.states.filter(function (s) { return s.k === k; }).map(stHTML).join("") || '<span class="muted">Пока ничего</span>'; });
+    S.states.forEach(function (s) { s.back = false; });
+    var info = $("[data-stinfo]"), s = S.states.filter(function (x) { return x.id === S.open; })[0];
+    info.hidden = !s;
+    if (s) info.innerHTML = "<h5>" + (s.k === "good" ? "✓ " : "! ") + esc(s.t) + " · " + s.d + " " + pl(s.d, "день", "дня", "дней") + "</h5><p>" + esc(s.note) + '</p><p class="muted">' + esc(s.src) + '</p><div class="row">' +
+      (s.k === "warn" ? '<button type="button" class="btn" data-sdone="' + s.id + '">✓ Прошло</button>' : "") + '<button type="button" class="btn ghost" data-sdel="' + s.id + '">Убрать</button></div>';
+  }
+  function stIdx(id) { for (var i = 0; i < S.states.length; i++) if (S.states[i].id === id) return i; return -1; }
+  var stBox = $(".ab-states");
+  stBox.addEventListener("click", function (e) {
+    var b;
+    if ((b = e.target.closest("[data-sid]"))) { S.open = S.open === b.dataset.sid ? null : b.dataset.sid; renderStates(); return; }
+    if ((b = e.target.closest("[data-kind]"))) { S.newKind = b.dataset.kind; $$("[data-kind]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); return; }
+    var del = e.target.closest("[data-sdel]"), dn = e.target.closest("[data-sdone]"), hit = del || dn;
+    if (hit) {
+      var id = hit.dataset.sdel || hit.dataset.sdone, i = stIdx(id), s = S.states[i], chip = $('[data-sid="' + id + '"]');
+      var fin = function () { var j = stIdx(id); if (j >= 0) S.states.splice(j, 1); S.open = null; renderStates(); };
+      if (M.reduce || !chip) fin(); else { chip.classList.add("gone"); $("[data-stinfo]").hidden = true; setTimeout(fin, 480); }
+      toast((dn ? "Рада, что «" + s.t + "» прошло." : "Убрано: «" + s.t + "».") + "", function () { if (stIdx(id) < 0) { s.back = true; S.states.splice(i, 0, s); renderStates(); } });
+    }
+  });
+  $("[data-addst]").addEventListener("submit", function (e) {
+    e.preventDefault(); var inp = $("[data-stinp]"), t = inp.value.trim(); if (!t) { inp.focus(); return; }
+    var s = { id: "n" + (nextId++), k: S.newKind, t: t, d: 1, note: "Рина будет учитывать это в письмах и советах.", src: "добавили сами сегодня", back: true };
+    S.states.push(s); inp.value = ""; renderStates();
+    toast("Добавлено: «" + t + "».", function () { var j = stIdx(s.id); if (j >= 0) S.states.splice(j, 1); if (S.open === s.id) S.open = null; renderStates(); });
+  });
+
+  /* ===== строка «Отменить» ===== */
+  var tEl = $("[data-toast]"), undoFn = null, tTimer = 0;
+  function toast(text, undo) {
+    $("[data-ttext]").textContent = text; undoFn = undo;
+    tEl.hidden = false; tEl.style.animation = "none"; tEl.getBoundingClientRect(); tEl.style.animation = "";
+    clearTimeout(tTimer); tTimer = setTimeout(function () { tEl.hidden = true; undoFn = null; }, 8000);
+  }
+  $("[data-undo]").addEventListener("click", function () { var f = undoFn; undoFn = null; tEl.hidden = true; clearTimeout(tTimer); if (f) f(); });
+
+  /* ===== запуск ===== */
+  renderMiss(); renderFacts(); renderStates(); typeSample(true); ring(filled()); layout();
+  function play() {
+    ring(0); typeSample(); slideIn();
+    if (M.reduce) return;
+    $$(".ab-fact, .ab-st, .ab-row").forEach(function (el, i) {
+      el.classList.remove("ab-enter"); el.style.animationDelay = "";
+      void el.offsetWidth; el.style.animationDelay = (200 + i * 45) + "ms"; el.classList.add("ab-enter");
+      setTimeout(function () { el.classList.remove("ab-enter"); el.style.animationDelay = ""; }, 1400 + i * 45);
+    });
+  }
+  M.onSeen(root, play);
+  root.addEventListener("replay", play);
+})();</script>
+</article>

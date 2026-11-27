@@ -1,0 +1,740 @@
+<article class="piece" id="p-w-trust">
+  <header>
+    <p class="eyebrow">Исправление · Доверие и приватность</p>
+    <h2>Ваши данные: видно, что хранится, можно скачать и стереть самому</h2>
+    <p>Сейчас человек не видит, что о нём хранится. Удалить аккаунт может только администратор, а список «что я помню» открывается лишь командой в Telegram. Новый экран «Ваши данные» собирает всё на одной странице и даёт три действия: выключить сбор, скачать, удалить. Рядом «Блокнот Рины», где каждый факт о себе можно поправить или стереть.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <p class="cap"><b>1</b><span>Настройки → Ваши данные. Тот же экран открывается из раздела «Рина», вкладка «О вас».</span></p>
+  <div class="app" id="w-trust-a1" data-hub="rina" data-tab="О вас" data-title="Ваши данные">
+    <div class="ban" id="w-trust-ban" role="status" hidden>
+      <i data-ic="clock"></i><span id="w-trust-bant">Удаление аккаунта запланировано на 4 декабря.</span>
+      <button type="button" class="btn sm" data-act="keep">Передумать</button>
+    </div>
+
+    <section class="hero card">
+      <div class="tot">
+        <small>Рина хранит</small>
+        <p class="big"><span class="num" id="w-trust-total">1 753</span><i id="w-trust-totalu">записи</i></p>
+        <p class="since">с 27 апреля 2026 года, 214 дней вместе</p>
+        <ul class="prom">
+          <li><i data-ic="ok"></i>всё видно</li>
+          <li><i data-ic="ok"></i>можно скачать</li>
+          <li><i data-ic="ok"></i>можно стереть</li>
+        </ul>
+      </div>
+      <div class="rina"><img src="maid/bow.webp" alt="" width="64" height="68" id="w-trust-r1i" data-f="bow"><p id="w-trust-r1" aria-live="polite">Я храню <b>1 753 записи</b> о вас. Они ваши: всё можно посмотреть, скачать или стереть, и никому писать для этого не нужно.</p></div>
+    </section>
+
+    <div class="sec"><h4>Что Рина хранит</h4><span>Шесть видов записей. Там, где сбор идёт сам, есть выключатель.</span></div>
+    <div class="map" id="w-trust-map"></div>
+
+    <div class="sec"><h4>Скачать всё</h4><span>Файл собирается за пару секунд и сохраняется на это устройство.</span></div>
+    <div class="dls">
+      <button type="button" class="dl" data-kind="json" style="--i:3">
+        <span class="dl-t">Всё одним файлом</span><span class="dl-f">JSON</span>
+        <span class="dl-d">Полная копия всех записей. Подойдёт для переноса и на хранение.</span>
+        <span class="dl-s"><i data-ic="down"></i><span>Скачать · 2,4 МБ</span></span>
+        <span class="dl-b"></span>
+      </button>
+      <button type="button" class="dl" data-kind="csv" style="--i:4">
+        <span class="dl-t">Таблицы</span><span class="dl-f">CSV</span>
+        <span class="dl-d">Дневник, планы, привычки, траты и время за ПК. Открываются в Excel.</span>
+        <span class="dl-s"><i data-ic="down"></i><span>Скачать · 5 таблиц</span></span>
+        <span class="dl-b"></span>
+      </button>
+      <button type="button" class="dl" data-kind="ics" style="--i:5">
+        <span class="dl-t">Календарь</span><span class="dl-f">.ICS</span>
+        <span class="dl-d">Планы и важные даты. Добавляются в календарь телефона или почты.</span>
+        <span class="dl-s"><i data-ic="down"></i><span>Скачать · 386 событий</span></span>
+        <span class="dl-b"></span>
+      </button>
+    </div>
+
+    <section class="del" id="w-trust-del" data-state="idle">
+      <div class="del-idle">
+        <div>
+          <h5>Удалить аккаунт</h5>
+          <p>Рина покажет, что именно сотрётся, и подождёт 7 дней. За это время можно передумать.</p>
+          <p class="okline" id="w-trust-kept" hidden><i data-ic="ok"></i>Удаление отменено. Ничего не стёрто.</p>
+        </div>
+        <button type="button" class="btn danger" data-act="open"><i data-ic="trash"></i>Удалить аккаунт</button>
+      </div>
+
+      <div class="del-form" hidden>
+        <h5>Удалить аккаунт</h5>
+        <div class="del-cols">
+          <div>
+            <h6>Что сотрётся</h6>
+            <ul class="wipe" id="w-trust-wipe"></ul>
+          </div>
+          <div>
+            <h6>Что будет дальше</h6>
+            <ol class="steps">
+              <li><b>Сегодня</b>Рина запишет вашу просьбу. Ничего не стирается.</li>
+              <li><b>7 дней</b>Всё работает как обычно. Передумать можно одной кнопкой.</li>
+              <li><b>4 декабря</b>Записи стираются насовсем. Из запасных копий они уходят за 30 дней.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="save">
+          <p id="w-trust-copyst">Сначала сохраните копию. После удаления взять её будет негде.</p>
+          <button type="button" class="btn sm" data-act="copy"><i data-ic="down"></i>Скачать всё одним файлом</button>
+        </div>
+        <div class="cf">
+          <label for="w-trust-word">Чтобы подтвердить, напишите слово <b>УДАЛИТЬ</b></label>
+          <div class="slots" id="w-trust-slots" aria-hidden="true"><i>У</i><i>Д</i><i>А</i><i>Л</i><i>И</i><i>Т</i><i>Ь</i></div>
+          <div class="cf-row">
+            <input class="inp" id="w-trust-word" type="text" autocomplete="off" spellcheck="false" maxlength="14" placeholder="Введите слово" aria-describedby="w-trust-hint">
+            <button type="button" class="btn kill" data-act="kill" disabled><i data-ic="trash"></i>Запланировать удаление</button>
+            <button type="button" class="btn ghost" data-act="back">Оставить всё как есть</button>
+          </div>
+          <p class="hint" id="w-trust-hint" aria-live="polite">Удаление начнётся только через 7 дней, и его можно отменить.</p>
+        </div>
+      </div>
+
+      <div class="del-wait" hidden>
+        <div class="wt">
+          <div class="wt-n"><span class="big" id="w-trust-left">7</span><span id="w-trust-leftu">дней</span></div>
+          <div class="wt-x">
+            <h5>Удаление запланировано на 4 декабря, 14:20</h5>
+            <p>До этого дня всё работает как обычно и ничего не стёрто. За день до срока Рина напомнит ещё раз.</p>
+            <div class="pips" id="w-trust-pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="pipl"><span>27 ноября</span><span>4 декабря</span></div>
+          </div>
+        </div>
+        <div class="acts">
+          <button type="button" class="btn primary" data-act="keep">Передумать и оставить аккаунт</button>
+          <button type="button" class="btn mock" data-act="tick">Только в макете: прошёл день</button>
+        </div>
+      </div>
+
+      <div class="del-gone" hidden>
+        <h5>Аккаунт удалён 4 декабря</h5>
+        <p>Все записи стёрты. Вход в программу, на сайт и в Telegram-бота закрыт.</p>
+        <div class="acts"><button type="button" class="btn mock" data-act="reset">Только в макете: вернуть всё в начало</button></div>
+      </div>
+    </section>
+
+    <footer class="law">
+      <p><i data-ic="shield"></i><span>Согласие на хранение и обработку записей вы дали <b>27 апреля 2026 года</b>, при регистрации.</span></p>
+      <div class="law-a">
+        <button type="button" class="lnk" data-act="short" aria-expanded="false" aria-controls="w-trust-short">Правила коротко</button>
+        <a href="#" class="lnk" data-act="rules">Правила хранения данных</a>
+      </div>
+      <ul id="w-trust-short" hidden>
+        <li>Рина хранит только то, что вы записали сами или разрешили собирать.</li>
+        <li>Чтобы понять вашу фразу, её текст отправляется модели ИИ. Больше никому записи не передаются. Рекламы и продажи данных нет.</li>
+        <li>Скачать или стереть всё можно на этой странице в любой момент.</li>
+        <li class="muted">Полный текст правил открывается отдельной страницей. В макете её нет.</li>
+      </ul>
+    </footer>
+  </div>
+
+  <p class="cap"><b>2</b><span>Рина → О вас → Блокнот Рины. Сейчас этот список есть только в Telegram, по команде.</span></p>
+  <div class="app" id="w-trust-a2" data-hub="rina" data-tab="О вас" data-title="Блокнот Рины">
+    <section class="nbh card">
+      <div class="rina"><img src="maid/write.webp" alt="" width="64" height="68" id="w-trust-r2i" data-f="write"><p id="w-trust-r2" aria-live="polite">Здесь всё, что я о вас запомнила: <b>12 фактов</b>. Ошиблась? Поправьте. Лишнее? Сотрите, и я забуду насовсем.</p></div>
+      <div class="kpi"><p class="big"><span class="num" id="w-trust-nbn">12</span></p><small id="w-trust-nbu">фактов в блокноте</small></div>
+    </section>
+    <p class="leg"><span><i data-ic="pen"></i>поправить</span><span><i data-ic="zap"></i>стереть из памяти</span><span>Стёртое можно вернуть, пока не истекли 6 секунд.</span></p>
+    <div class="nb" id="w-trust-nb"></div>
+    <p class="foot">Стёртый факт Рина больше не использует в ответах. Если он снова станет важен, просто скажите ей об этом.</p>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Одна страница отвечает на вопрос «что обо мне хранится»: шесть видов записей, у каждого число и простое описание.</li>
+      <li>Сбор времени за ПК выключается прямо здесь. Рина сразу говорит, что будет со старыми записями.</li>
+      <li>Скачивание в трёх видах: полная копия, таблицы для Excel, календарь.</li>
+      <li>Аккаунт человек удаляет сам. Видно, что сотрётся, нужно написать слово, и есть 7 дней, чтобы передумать. Системных окон нет.</li>
+      <li>Блокнот Рины переехал из команды бота на экран: 12 фактов по группам, каждый можно поправить или стереть.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Числа досчитываются с нуля, плитки и строки блокнота появляются по очереди.</li>
+      <li>Кнопка скачивания заполняется полоской, пока файл собирается, потом показывает галочку и имя файла.</li>
+      <li>Буквы слова УДАЛИТЬ загораются по мере ввода. Кнопка включается только на полном слове.</li>
+      <li>Счётчик дней до удаления: полоски гаснут по одной, число слегка подпрыгивает.</li>
+      <li>Стирание факта: короткая вспышка от кнопки по всей строке, текст расплывается. На его месте строка «Стёрто» с кнопкой «Отменить» и убывающей полоской на 6 секунд.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Числа по видам: записи уже лежат в базе, нужен один запрос-сводка.</li>
+      <li>Выключатель сбора сейчас только в программе на ПК. Вынести на сайт и спрашивать согласие при первом запуске.</li>
+      <li>Копия в JSON уже скачивается. Таблицы CSV и календарь .ics надо дописать, работа небольшая.</li>
+      <li>Удаление на сервере готово, но вызывается только из админки. Дописать: просьбу с датой, отмену, напоминание за день, выход со всех устройств. Решить, как записи уходят из ночных копий базы.</li>
+      <li>Текста правил и отметки о согласии в коде нет. Нужен текст от юриста и дата согласия у каждого человека.</li>
+      <li>Блокнот: список фактов есть (команда /memory в боте). Дописать правку и стирание одного факта, а ещё дату и источник, если их нет в записи.</li>
+    </ul></div>
+  </div>
+
+  <style>
+  #p-w-trust [hidden] { display: none !important; }
+  #p-w-trust .cap { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); margin-top: 4px; }
+  #p-w-trust .cap b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  #p-w-trust .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #p-w-trust h5, #p-w-trust h6 { margin: 0; }
+  #p-w-trust .sec { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; margin-top: 10px; }
+  #p-w-trust .sec h4 { margin: 0; font: 700 15.5px/1.3 var(--fd); letter-spacing: -.01em; }
+  #p-w-trust .sec span { font-size: 12.5px; color: var(--a-muted); }
+  #p-w-trust .btn.sm { padding: 6px 11px; font-size: 12.5px; min-height: 36px; }
+  #p-w-trust .btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+  #p-w-trust .ban { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 8px 10px 8px 14px; border-radius: 12px; font-size: 13px; background: color-mix(in srgb, var(--a-warn) 13%, transparent); border: 1px solid color-mix(in srgb, var(--a-warn) 45%, transparent); animation: w-trust-in .35s var(--ease); }
+  #p-w-trust .ban .ic { color: var(--a-warn); }
+  #p-w-trust .ban span { flex: 1 1 200px; min-width: 0; }
+
+  #p-w-trust .hero { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 18px 32px; align-items: center; padding: 20px 22px; background: linear-gradient(120deg, var(--a-accent-soft), transparent 55%), var(--a-surface); }
+  #p-w-trust .tot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  #p-w-trust .tot small { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; }
+  #p-w-trust .tot .big { font-size: 48px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  #p-w-trust .tot .big i { font: 600 15px/1 var(--f); letter-spacing: 0; font-style: normal; color: var(--a-soft); }
+  #p-w-trust .since { font-size: 12.5px; color: var(--a-muted); }
+  #p-w-trust .prom { list-style: none; margin: 6px 0 0; padding: 0; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--a-soft); }
+  #p-w-trust .prom li { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  #p-w-trust .prom .ic { width: 14px; height: 14px; color: var(--a-ok); stroke-width: 2.6; }
+  #p-w-trust .hero .rina { justify-self: end; max-width: 470px; }
+  #p-w-trust .rina p.pop { animation: w-trust-pop .38s var(--ease); }
+
+  #p-w-trust .map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  #p-w-trust .tile { --k: var(--a-soft); display: grid; grid-template-columns: 36px minmax(0, 1fr); grid-template-areas: "ico nm" "ct ct" "ds ds" "ft ft"; gap: 8px 10px; align-items: center; padding: 14px 16px 10px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); min-width: 0; }
+  #p-w-trust .tile[data-k="habit"] { --k: var(--c-habit); }
+  #p-w-trust .tile[data-k="money"] { --k: var(--c-money); }
+  #p-w-trust .tile[data-k="pc"] { --k: var(--c-pc); }
+  #p-w-trust .tile[data-k="mem"] { --k: var(--a-accent); }
+  #p-w-trust .ico { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--k, var(--a-accent)) 16%, transparent); color: var(--k, var(--a-accent)); transition: color .3s var(--ease), background .3s var(--ease); }
+  #p-w-trust .tile .ico { grid-area: ico; }
+  #p-w-trust .tile .nm { grid-area: nm; font-weight: 650; font-size: 14px; min-width: 0; }
+  #p-w-trust .tile .ct { grid-area: ct; display: flex; align-items: baseline; gap: 6px; transition: opacity .3s var(--ease); }
+  #p-w-trust .tile .ct b { font: 800 30px/1 var(--fd); letter-spacing: -.02em; }
+  #p-w-trust .tile .ct span { color: var(--a-muted); font-size: 13px; }
+  #p-w-trust .tile .ds { grid-area: ds; align-self: start; min-height: 38px; font-size: 12.5px; line-height: 1.5; color: var(--a-soft); }
+  #p-w-trust .tile .ft { grid-area: ft; display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; flex-wrap: wrap; min-height: 45px; padding-top: 8px; border-top: 1px dashed var(--a-line); font-size: 12px; color: var(--a-muted); }
+  #p-w-trust .tile.off { --k: var(--a-muted); }
+  #p-w-trust .tile.off .ct { opacity: .5; }
+  #p-w-trust .sw { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 0 0 4px; background: none; border: 0; font-size: 12.5px; font-weight: 600; color: var(--a-text); }
+  #p-w-trust .sw-t { position: relative; flex: none; width: 40px; height: 24px; border-radius: 99px; background: var(--a-surface-3); border: 1px solid var(--a-line); transition: background .25s var(--ease), border-color .25s var(--ease); }
+  #p-w-trust .sw-t i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--a-muted); transition: transform .25s var(--ease), background .25s var(--ease); }
+  #p-w-trust .sw[aria-pressed="true"] .sw-t { background: var(--a-accent-strong); border-color: var(--a-accent-strong); }
+  #p-w-trust .sw[aria-pressed="true"] .sw-t i { transform: translateX(16px); background: var(--a-on-accent); }
+
+  #p-w-trust .dls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  #p-w-trust .dl { position: relative; overflow: hidden; text-align: left; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "t f" "d d" "s s"; gap: 4px 10px; align-content: start; padding: 14px 16px 16px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); color: var(--a-text); min-width: 0; transition: border-color .2s var(--ease), transform .2s var(--ease); }
+  #p-w-trust .dl:hover { border-color: var(--a-accent); }
+  #p-w-trust .dl:active { transform: scale(.985); }
+  #p-w-trust .dl-t { grid-area: t; font-weight: 650; font-size: 14px; }
+  #p-w-trust .dl-f { grid-area: f; align-self: start; font: 700 10.5px/1 var(--f); letter-spacing: .06em; padding: 4px 7px; border-radius: 6px; background: var(--a-surface-2); color: var(--a-soft); }
+  #p-w-trust .dl-d { grid-area: d; font-size: 12.5px; color: var(--a-soft); }
+  #p-w-trust .dl-s { grid-area: s; display: flex; align-items: center; gap: 7px; margin-top: 10px; min-height: 22px; font-size: 13px; font-weight: 650; color: var(--a-accent); font-variant-numeric: tabular-nums; }
+  #p-w-trust .dl-s span { min-width: 0; overflow-wrap: anywhere; }
+  #p-w-trust .dl-b { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--a-accent); transform: scaleX(0); transform-origin: left; }
+  #p-w-trust .dl.busy .dl-s { color: var(--a-soft); }
+  #p-w-trust .dl.done { border-color: color-mix(in srgb, var(--a-ok) 55%, transparent); }
+  #p-w-trust .dl.done .dl-s { color: var(--a-ok); }
+  #p-w-trust .dl.done .dl-b { background: var(--a-ok); }
+  #p-w-trust .dl.done .dl-s .ic { animation: w-trust-bump .4s var(--ease); }
+
+  #p-w-trust .del { display: flex; flex-direction: column; margin-top: 10px; padding: 16px 18px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); transition: border-color .3s var(--ease); min-width: 0; }
+  #p-w-trust .del[data-state="form"] { border-color: color-mix(in srgb, var(--a-bad) 55%, transparent); }
+  #p-w-trust .del[data-state="wait"] { border-color: color-mix(in srgb, var(--a-warn) 55%, transparent); }
+  #p-w-trust .del h5 { font: 700 15.5px/1.3 var(--fd); letter-spacing: -.01em; }
+  #p-w-trust .del h6 { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; margin-bottom: 8px; }
+  #p-w-trust .del p { font-size: 13px; color: var(--a-soft); }
+  #p-w-trust .del-idle { display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; }
+  #p-w-trust .del-idle > div { flex: 1 1 260px; min-width: 0; display: grid; gap: 4px; }
+  #p-w-trust .del .okline { display: flex; align-items: center; gap: 6px; color: var(--a-ok); font-weight: 600; }
+  #p-w-trust .btn.danger { background: none; color: var(--a-bad); border-color: color-mix(in srgb, var(--a-bad) 45%, transparent); }
+  #p-w-trust .btn.danger:hover { border-color: var(--a-bad); }
+  #p-w-trust .btn.kill { background: var(--a-bad); border-color: var(--a-bad); color: var(--a-bg); }
+  #p-w-trust .btn.mock { background: none; border-style: dashed; color: var(--a-muted); font-weight: 500; }
+  #p-w-trust .del-form, #p-w-trust .del-wait, #p-w-trust .del-gone { display: grid; gap: 16px; min-width: 0; }
+  #p-w-trust .show { animation: w-trust-in .35s var(--ease); }
+  #p-w-trust .del-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; }
+  #p-w-trust .wipe { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; color: var(--a-soft); }
+  #p-w-trust .wipe li { display: flex; gap: 8px; align-items: baseline; }
+  #p-w-trust .wipe b { flex: none; min-width: 34px; text-align: right; color: var(--a-text); font-variant-numeric: tabular-nums; }
+  #p-w-trust .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  #p-w-trust .steps li { position: relative; padding-left: 24px; font-size: 13px; color: var(--a-soft); }
+  #p-w-trust .steps li::before { content: ""; position: absolute; left: 3px; top: 5px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--a-muted); background: var(--a-surface); z-index: 1; }
+  #p-w-trust .steps li::after { content: ""; position: absolute; left: 8px; top: 16px; bottom: -15px; width: 1px; background: var(--a-line); }
+  #p-w-trust .steps li:last-child::after { display: none; }
+  #p-w-trust .steps li:last-child::before { border-color: var(--a-bad); background: var(--a-bad); }
+  #p-w-trust .steps b { display: block; color: var(--a-text); font-weight: 650; }
+  #p-w-trust .save { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; padding: 10px 12px 10px 14px; border-radius: 12px; background: var(--a-surface-2); }
+  #p-w-trust .save p { flex: 1 1 220px; min-width: 0; color: var(--a-text); overflow-wrap: anywhere; }
+  #p-w-trust .save p.ok { color: var(--a-ok); font-weight: 600; }
+  #p-w-trust .save p .ic { vertical-align: -4px; margin-right: 4px; }
+  #p-w-trust .cf { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--a-line); min-width: 0; }
+  #p-w-trust .cf label { font-size: 14px; font-weight: 600; }
+  #p-w-trust .cf label b { color: var(--a-bad); letter-spacing: .06em; }
+  #p-w-trust .slots { display: flex; gap: 5px; }
+  #p-w-trust .slots i { width: 30px; height: 36px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--a-line); background: var(--a-surface-2); font: 700 15px/1 var(--fd); font-style: normal; color: var(--a-muted); transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease), transform .2s var(--ease); }
+  #p-w-trust .slots i.hit { background: var(--a-bad); border-color: var(--a-bad); color: var(--a-bg); transform: translateY(-2px); }
+  #p-w-trust .slots i.miss { border-color: var(--a-warn); color: var(--a-warn); }
+  #p-w-trust .cf-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  #p-w-trust .inp { min-height: 38px; min-width: 0; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-bg); color: var(--a-text); font-size: 14px; }
+  #p-w-trust .inp::placeholder { color: var(--a-muted); text-transform: none; letter-spacing: 0; }
+  #p-w-trust .cf-row .inp { flex: 1 1 170px; max-width: 230px; text-transform: uppercase; letter-spacing: .08em; }
+  #p-w-trust .del .hint { font-size: 12.5px; color: var(--a-muted); }
+  #p-w-trust .del .hint.ok { color: var(--a-ok); }
+  #p-w-trust .del .hint.bad { color: var(--a-warn); }
+
+  #p-w-trust .wt { display: flex; gap: 14px 22px; align-items: center; flex-wrap: wrap; }
+  #p-w-trust .wt-n { flex: none; width: 104px; height: 104px; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: color-mix(in srgb, var(--a-warn) 13%, transparent); border: 1px solid color-mix(in srgb, var(--a-warn) 40%, transparent); }
+  #p-w-trust .wt-n .big { font-size: 44px; }
+  #p-w-trust .wt-n .big.bump { animation: w-trust-bump .4s var(--ease); }
+  #p-w-trust .wt-n span:last-child { font-size: 12.5px; color: var(--a-soft); }
+  #p-w-trust .wt-x { flex: 1 1 260px; min-width: 0; display: grid; gap: 8px; }
+  #p-w-trust .pips { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; max-width: 380px; margin-top: 4px; }
+  #p-w-trust .pips i { height: 8px; border-radius: 99px; background: var(--a-warn); transition: background .4s var(--ease), transform .4s var(--ease); }
+  #p-w-trust .pips i.past { background: var(--a-surface-3); transform: scaleY(.55); }
+  #p-w-trust .pipl { display: flex; justify-content: space-between; gap: 8px; max-width: 380px; font-size: 11.5px; color: var(--a-muted); }
+  #p-w-trust .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  #p-w-trust .law { display: grid; gap: 4px; padding: 6px 4px 2px; font-size: 12.5px; color: var(--a-muted); }
+  #p-w-trust .law > p { display: flex; gap: 8px; align-items: flex-start; }
+  #p-w-trust .law > p .ic { margin-top: 1px; }
+  #p-w-trust .law b { color: var(--a-soft); font-weight: 600; }
+  #p-w-trust .law-a { display: flex; gap: 0 18px; flex-wrap: wrap; padding-left: 26px; }
+  #p-w-trust .lnk { display: inline-flex; align-items: center; min-height: 36px; padding: 0; background: none; border: 0; color: var(--a-accent); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  #p-w-trust .law ul { margin: 2px 0 0 26px; padding: 12px 14px 12px 30px; border-radius: 12px; background: var(--a-surface); border: 1px solid var(--a-line); display: grid; gap: 6px; font-size: 13px; color: var(--a-soft); animation: w-trust-in .3s var(--ease); }
+  #p-w-trust .law ul .muted { list-style: none; margin-left: -16px; font-size: 12px; }
+
+  #p-w-trust .nbh { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 28px; align-items: center; padding: 18px 22px; }
+  #p-w-trust .nbh .kpi { align-items: flex-end; text-align: right; }
+  #p-w-trust .nbh .big { font-size: 40px; }
+  #p-w-trust .leg { display: flex; gap: 6px 16px; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--a-muted); padding: 0 4px; }
+  #p-w-trust .leg span { display: inline-flex; align-items: center; gap: 6px; }
+  #p-w-trust .leg .ic { width: 16px; height: 16px; color: var(--a-soft); }
+  #p-w-trust .nb { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  #p-w-trust .grp { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); overflow: hidden; min-width: 0; }
+  #p-w-trust .grp[data-k="habit"] { --k: var(--c-habit); }
+  #p-w-trust .grp-h { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+  #p-w-trust .grp-h .ico { width: 30px; height: 30px; border-radius: 9px; }
+  #p-w-trust .grp-h .ico .ic { width: 16px; height: 16px; }
+  #p-w-trust .grp-h b { flex: 1; min-width: 0; font-weight: 700; font-size: 14px; }
+  #p-w-trust .grp-h .num { font-size: 12px; color: var(--a-muted); }
+  #p-w-trust .grp ul { list-style: none; margin: 0; padding: 0; }
+  #p-w-trust .fact { position: relative; overflow: hidden; display: flex; align-items: center; gap: 8px; min-height: 60px; padding: 9px 8px 9px 16px; border-top: 1px solid var(--a-line); }
+  #p-w-trust .go .hero, #p-w-trust .go .tile, #p-w-trust .go .dl, #p-w-trust .go .nbh, #p-w-trust .go .grp { animation: w-trust-in .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 60ms); }
+  #p-w-trust .go .fact { animation: w-trust-in .4s var(--ease) both; animation-delay: calc(140ms + var(--i, 0) * 40ms); }
+  #p-w-trust .fx { flex: 1; min-width: 0; }
+  #p-w-trust .fx p { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  #p-w-trust .fx small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--a-muted); }
+  #p-w-trust .fa { display: flex; gap: 2px; flex: none; }
+  #p-w-trust .ib { flex: none; width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--a-muted); transition: background .2s var(--ease), color .2s var(--ease); }
+  #p-w-trust .ib:hover { background: var(--a-surface-2); color: var(--a-text); }
+  #p-w-trust .ib.z:hover { color: var(--a-bad); }
+  #p-w-trust .fact.ed { flex-wrap: wrap; padding-right: 12px; background: var(--a-surface-2); animation: none; }
+  #p-w-trust .fact.ed .inp { flex: 1 1 170px; }
+  #p-w-trust .fact.saved, #p-w-trust .fact.back { animation: w-trust-mark .9s var(--ease); }
+  #p-w-trust .fact.gone { padding-right: 12px; background: var(--a-surface-2); color: var(--a-muted); animation: none; }
+  #p-w-trust .fact.gone > * { animation: w-trust-fade .3s var(--ease); }
+  #p-w-trust .gm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  #p-w-trust .tm { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--a-accent); transform-origin: left; transition: transform 6s linear; }
+  #p-w-trust .tm.run { transform: scaleX(0); }
+  #p-w-trust .fact.out { min-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transition: height .3s var(--ease), padding .3s var(--ease), opacity .25s var(--ease); }
+  #p-w-trust .none { padding: 14px 16px; border-top: 1px solid var(--a-line); font-size: 13px; color: var(--a-muted); }
+  #p-w-trust .nb > .none { grid-column: 1 / -1; border: 1px dashed var(--a-line); border-radius: var(--a-r); text-align: center; padding: 28px 16px; }
+  #p-w-trust .foot { font-size: 12.5px; color: var(--a-muted); padding: 0 4px; }
+
+  #p-w-trust .fact.zap { animation: none; }
+  #p-w-trust .fact.zap::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, color-mix(in srgb, var(--a-accent) 30%, transparent), color-mix(in srgb, var(--a-accent) 45%, var(--a-on-accent)) 82%); animation: w-trust-wash .52s ease-out both; }
+  #p-w-trust .fact.zap::after { content: ""; position: absolute; right: 18px; top: 50%; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%; pointer-events: none; background: var(--a-on-accent); box-shadow: 0 0 18px 8px color-mix(in srgb, var(--a-accent) 80%, transparent); animation: w-trust-zap .52s ease-out both; }
+  #p-w-trust .fact.zap .fx { animation: w-trust-forget .52s var(--ease) both; }
+  #p-w-trust .fact.zap .fa { opacity: .3; }
+
+  @keyframes w-trust-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes w-trust-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes w-trust-pop { from { opacity: .3; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: none; } }
+  @keyframes w-trust-bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  @keyframes w-trust-mark { 0% { background: var(--a-accent-soft); } 100% { background: transparent; } }
+  @keyframes w-trust-wash { 0% { opacity: 0; } 14% { opacity: .95; } 100% { opacity: 0; } }
+  @keyframes w-trust-zap { 0% { transform: scale(.2); opacity: 0; } 14% { transform: scale(2.6); opacity: 1; } 100% { transform: scale(10); opacity: 0; } }
+  @keyframes w-trust-forget { 0% { opacity: 1; filter: blur(0); } 22% { opacity: 1; filter: blur(0); } 100% { opacity: 0; filter: blur(5px); } }
+
+  @media (max-width: 900px) {
+    #p-w-trust .map { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #p-w-trust .hero { grid-template-columns: minmax(0, 1fr); }
+    #p-w-trust .hero .rina { justify-self: start; }
+  }
+  @media (max-width: 720px) {
+    #p-w-trust .map, #p-w-trust .dls, #p-w-trust .nb, #p-w-trust .del-cols, #p-w-trust .nbh { grid-template-columns: minmax(0, 1fr); }
+    #p-w-trust .tile { grid-template-columns: 36px minmax(0, 1fr) auto; grid-template-areas: "ico nm ct" "ds ds ds" "ft ft ft"; padding: 12px 14px 8px; }
+    #p-w-trust .tile .ct b { font-size: 22px; }
+    #p-w-trust .tile .ds { min-height: 0; }
+    #p-w-trust .hero, #p-w-trust .nbh { padding: 16px; }
+    #p-w-trust .tot .big { font-size: 40px; }
+    #p-w-trust .nbh .kpi { flex-direction: row; align-items: baseline; gap: 8px; text-align: left; }
+    #p-w-trust .nbh .big { font-size: 30px; }
+    #p-w-trust .del { padding: 14px; }
+    #p-w-trust .btn { white-space: normal; text-align: left; }
+    #p-w-trust .cf-row .inp { flex-basis: 100%; max-width: none; }
+    #p-w-trust .law-a { padding-left: 0; }
+    #p-w-trust .law ul { margin-left: 0; padding: 12px 12px 12px 28px; }
+  }
+  </style>
+
+  <script>
+  (function () {
+    "use strict";
+    var root = document.getElementById("p-w-trust"); if (!root) return;
+    var MM = window.MaidMock || { reduce: false, onSeen: function (el, fn) { fn(); } };
+    var reduce = !!MM.reduce;
+    function $(s) { return root.querySelector(s); }
+    function $$(s) { return Array.prototype.slice.call(root.querySelectorAll(s)); }
+
+    var IC = {
+      diary: '<path d="M6 4h11a1 1 0 0 1 1 1v15H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M9 9h6M9 13h4"/>',
+      plans: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+      habit: '<circle cx="12" cy="12" r="8.5"/><path d="M8.3 12.3l2.5 2.5 4.9-5.3"/>',
+      money: '<path d="M4 8h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 8V6.5a2 2 0 0 1 2-2h10M16 13.5h.5"/>',
+      pc: '<rect x="3.5" y="5" width="17" height="11.5" rx="2"/><path d="M9 20h6M12 16.5V20"/>',
+      mem: '<path d="M7 4h10a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 17 20H7zM4.5 8H7M4.5 12H7M4.5 16H7M10.5 9H15M10.5 12.5h3"/>',
+      ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+      down: '<path d="M12 4v11M7.5 11l4.5 4.5 4.5-4.5M5 19.5h14"/>',
+      trash: '<path d="M5 7h14M10 7V5h4v2M7 7l.8 12h8.4L17 7M10.5 10.5v5M13.5 10.5v5"/>',
+      clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+      shield: '<path d="M12 3.5l7 2.5v5.5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z"/><path d="M9 12l2.2 2.2L15 10.3"/>',
+      pen: '<path d="M5 19l.8-3.6L15.9 5.3a1.6 1.6 0 0 1 2.3 0l.5.5a1.6 1.6 0 0 1 0 2.3L8.6 18.2zM14.3 6.9l2.8 2.8"/>',
+      zap: '<path d="M10 11h4v8a2 2 0 0 1-4 0zM12 3v3.5M5.5 5.5l2.3 2.3M18.5 5.5l-2.3 2.3"/>',
+      x: '<path d="M6 6l12 12M18 6L6 18"/>',
+      heart: '<path d="M12 20s-7-4.4-7-9.5A4 4 0 0 1 12 8a4 4 0 0 1 7 2.5c0 5.1-7 9.5-7 9.500z"/>',
+      cup: '<path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10.5h1.500a2.5 2.5 0 0 1 0 5H16M8.500 3.500V6M12.500 3.500V6"/>',
+      people: '<circle cx="9" cy="9" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="10" r="2.300"/><path d="M16.500 14.600a4.500 4.500 0 0 1 4 4.400"/>'
+    };
+    function ic(k) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + IC[k] + "</svg>"; }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+    function plural(n, f) { var a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? f[2] : b === 1 ? f[0] : b >= 2 && b <= 4 ? f[1] : f[2]; }
+    function fmt(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
+
+    var REC = ["запись", "записи", "записей"], DAY = ["день", "дня", "дней"], FACT = ["факт", "факта", "фактов"];
+    var KINDS = [
+      { k: "diary", n: "Дневник", c: 214, u: DAY, w: ["день дневника", "дня дневника", "дней дневника"], d: "Оценка дня, сон, настроение и ваши заметки.", o: "Пишете вы сами" },
+      { k: "plans", n: "Планы и задачи", c: 386, u: REC, w: ["план или задача", "плана и задачи", "планов и задач"], d: "Дела, встречи, важные даты и напоминания.", o: "Пишете вы сами" },
+      { k: "habit", n: "Привычки", c: 512, u: ["отметка", "отметки", "отметок"], w: ["отметка привычек", "отметки привычек", "отметок привычек"], d: "Чтение, Вода, Зарядка: в какие дни выполнено.", o: "Отмечаете вы сами" },
+      { k: "money", n: "Траты", c: 431, u: REC, w: ["запись о тратах", "записи о тратах", "записей о тратах"], d: "Суммы и на что они ушли: еда, транспорт, прочее.", o: "Пишете вы сами" },
+      { k: "pc", n: "Время за ПК", c: 198, u: DAY, w: ["день учёта времени за ПК", "дня учёта времени за ПК", "дней учёта времени за ПК"], d: "Названия открытых программ и минуты в них. Что вы печатаете, Рина не видит.", o: "Собирается само" },
+      { k: "mem", n: "Память о вас", c: 12, u: FACT, w: ["факт из блокнота Рины", "факта из блокнота Рины", "фактов из блокнота Рины"], d: "Что Рина заметила в разговорах: здоровье, привычки, вкусы, близкие.", o: "Рина замечает сама" }
+    ];
+    var GROUPS = [["Здоровье", "heart"], ["Привычки", "habit"], ["Вкусы", "cup"], ["Люди", "people"]];
+    var FACTS = [
+      [0, "Аллергия на цитрусовые", "3 мая · из разговора в Telegram"],
+      [0, "Спина болит, если сидеть дольше двух часов подряд", "12 июня · из дневника"],
+      [0, "Для работы за экраном носите очки", "20 августа · из разговора в виджете"],
+      [1, "Ложитесь около половины первого, встаёте в 7:40", "9 сентября · из записей о сне"],
+      [1, "Зарядку делаете утром, до завтрака", "2 июля · из разговора в Telegram"],
+      [1, "Перед сном читаете минут двадцать", "18 мая · из дневника"],
+      [2, "Кофе пьёте без сахара и не позже четырёх часов дня", "30 апреля · из разговора в Telegram"],
+      [2, "Любите фантастику, сейчас читаете «Пикник на обочине»", "14 ноября · из заметки"],
+      [2, "Не любите, когда напоминают чаще раза в час", "6 мая · из разговора в виджете"],
+      [3, "Маму зовут Ирина, день рождения 14 февраля", "1 мая · из разговора в Telegram"],
+      [3, "По субботам играете в настольные игры с Димой и Олей", "27 сентября · из планов"],
+      [3, "Начальница Светлана Андреевна, созвон по понедельникам в 10:00", "8 июня · из планов"]
+    ];
+    var FILES = { json: "rina-vse-2026-11-27.json", csv: "rina-tablicy-2026-11-27.zip", ics: "rina-kalendar-2026-11-27.ics" };
+    var NONE = '<li class="none">Здесь пусто. Расскажите Рине что-нибудь, и она запишет.</li>';
+    var WORD = "УДАЛИТЬ", COPY0 = "Сначала сохраните копию. После удаления взять её будет негде.";
+
+    $$("[data-ic]").forEach(function (el) { el.outerHTML = ic(el.getAttribute("data-ic")); });
+
+    var a1 = $("#w-trust-a1"), a2 = $("#w-trust-a2"), map = $("#w-trust-map"), nb = $("#w-trust-nb"), del = $("#w-trust-del"), ban = $("#w-trust-ban");
+    var totalEl = $("#w-trust-total"), totalU = $("#w-trust-totalu"), nbN = $("#w-trust-nbn"), nbU = $("#w-trust-nbu"), wipe = $("#w-trust-wipe");
+    var r1 = $("#w-trust-r1"), r1i = $("#w-trust-r1i"), r2 = $("#w-trust-r2"), r2i = $("#w-trust-r2i");
+    var word = $("#w-trust-word"), hint = $("#w-trust-hint"), killBtn = $('[data-act="kill"]'), kept = $("#w-trust-kept"), copySt = $("#w-trust-copyst");
+    var slots = $$("#w-trust-slots i"), pips = $$("#w-trust-pips i"), leftEl = $("#w-trust-left"), leftU = $("#w-trust-leftu"), banT = $("#w-trust-bant");
+    var facts = [], pcOn = true, delState = "idle", left = 7, r1def = true, r2def = true, tk = { 1: 0, 2: 0 };
+
+    function newFacts() { return FACTS.map(function (a, i) { return { id: i + 1, g: a[0], t: a[1], m: a[2], pend: false }; }); }
+    function stopTimers() { facts.forEach(function (f) { clearTimeout(f._t); }); }
+    function memCount() { return facts.filter(function (f) { return !f.pend; }).length; }
+    function countOf(o) { return delState === "gone" ? 0 : o.k === "mem" ? memCount() : o.c; }
+    function total() { return KINDS.reduce(function (s, o) { return s + countOf(o); }, 0); }
+
+    function setNum(el, to, anim, from) {
+      if (!el) return;
+      if (el._raf) { cancelAnimationFrame(el._raf); el._raf = 0; }
+      var a = from != null ? from : (el._v != null ? el._v : to);
+      el._to = to;
+      if (!anim || reduce || a === to) { el._v = to; el.textContent = fmt(to); return; }
+      var t0 = performance.now();
+      function step() {
+        var p = Math.min(1, Math.max(0, (performance.now() - t0) / 700)), e = 1 - Math.pow(1 - p, 3);
+        el._v = a + (to - a) * e; el.textContent = fmt(el._v);
+        if (p < 1) el._raf = requestAnimationFrame(step); else { el._v = to; el._raf = 0; }
+      }
+      el._v = a; el.textContent = fmt(a); el._raf = requestAnimationFrame(step);
+    }
+
+    function face(im, f) { if (im.getAttribute("data-f") !== f) { im.setAttribute("data-f", f); im.src = "maid/" + f + ".webp"; } }
+    function say(n, html, f) {
+      var p = n === 1 ? r1 : r2;
+      p.innerHTML = html; face(n === 1 ? r1i : r2i, f);
+      if (n === 1) r1def = false; else r2def = false;
+      p.classList.remove("pop");
+      if (!reduce) { void p.offsetWidth; p.classList.add("pop"); }
+    }
+    function def1() {
+      var t = total(); r1def = true; face(r1i, "bow");
+      r1.innerHTML = "Я храню <b>" + fmt(t) + " " + plural(t, REC) + "</b> о вас. Они ваши: всё можно посмотреть, скачать или стереть, и никому писать для этого не нужно.";
+    }
+    function def2() {
+      var m = memCount(); r2def = true; face(r2i, "write");
+      r2.innerHTML = "Здесь всё, что я о вас запомнила: <b>" + m + " " + plural(m, FACT) + "</b>. Ошиблась? Поправьте. Лишнее? Сотрите, и я забуду насовсем.";
+    }
+
+    function refresh(anim) {
+      KINDS.forEach(function (o) {
+        var n = countOf(o);
+        setNum(map.querySelector('[data-n="' + o.k + '"]'), n, anim);
+        map.querySelector('[data-u="' + o.k + '"]').textContent = plural(n, o.u);
+      });
+      var t = total(), m = delState === "gone" ? 0 : memCount();
+      setNum(totalEl, t, anim); totalU.textContent = plural(t, REC);
+      setNum(nbN, m, anim); nbU.textContent = plural(m, ["факт в блокноте", "факта в блокноте", "фактов в блокноте"]);
+      $$("[data-g]").forEach(function (el) {
+        var g = +el.getAttribute("data-g");
+        el.textContent = facts.filter(function (f) { return f.g === g && !f.pend; }).length;
+      });
+      wipe.innerHTML = KINDS.map(function (o) { var n = countOf(o); return "<li><b>" + fmt(n) + "</b><span>" + plural(n, o.w) + "</span></li>"; }).join("") +
+        "<li><b>+</b><span>вход в программу, на сайт и в Telegram-бота</span></li>";
+      if (r1def) def1();
+      if (r2def) def2();
+    }
+
+    map.innerHTML = KINDS.map(function (o, i) {
+      var x = o.k === "pc" ? '<button type="button" class="sw" data-act="pc" aria-pressed="true"><span>Сбор включён</span><span class="sw-t"><i></i></span></button>'
+        : o.k === "mem" ? '<button type="button" class="btn sm" data-act="nb">Открыть блокнот</button>' : "";
+      return '<div class="tile" data-k="' + o.k + '" style="--i:' + i + '"><span class="ico">' + ic(o.k) + '</span><span class="nm">' + o.n +
+        '</span><span class="ct"><b class="num" data-n="' + o.k + '"></b><span data-u="' + o.k + '"></span></span><p class="ds">' + o.d +
+        '</p><div class="ft"><span>' + o.o + "</span>" + x + "</div></div>";
+    }).join("");
+
+    function setPc(on, quiet) {
+      pcOn = on;
+      var tile = map.querySelector('[data-k="pc"]'), sw = tile.querySelector(".sw");
+      sw.setAttribute("aria-pressed", on ? "true" : "false");
+      sw.firstChild.textContent = on ? "Сбор включён" : "Сбор выключен";
+      tile.classList.toggle("off", !on);
+      tile.querySelector(".ds").textContent = on ? KINDS[4].d : "Новое не записывается. Собранное раньше остаётся у вас, пока вы его не сотрёте.";
+      tile.querySelector(".ft span").textContent = on ? KINDS[4].o : "Сбор остановлен вами";
+      if (quiet) return;
+      if (on) say(1, "Снова считаю время за компьютером. Спасибо за доверие.", "happy");
+      else say(1, "Хорошо, больше не смотрю, какие программы у вас открыты. Собранное за <b>198 дней</b> остаётся у вас.", "salute");
+    }
+
+    function download(btn, cb) {
+      if (btn._busy) return;
+      btn._busy = true; clearTimeout(btn._t);
+      var st = btn.querySelector(".dl-s"), bar = btn.querySelector(".dl-b"), file = FILES[btn.getAttribute("data-kind")];
+      btn.classList.remove("done"); btn.classList.add("busy");
+      function done() {
+        btn._busy = false; btn.classList.remove("busy"); btn.classList.add("done");
+        bar.style.transform = "scaleX(1)";
+        st.innerHTML = ic("ok") + "<span>Готово: " + file + "</span>";
+        say(1, "Готово, файл у вас. Храните его там, где не увидят чужие.", "present");
+        if (cb) cb(file);
+        btn._t = setTimeout(function () {
+          btn.classList.remove("done"); bar.style.transform = "";
+          st.innerHTML = ic("down") + "<span>Скачать ещё раз</span>";
+        }, 5000);
+      }
+      if (reduce) { done(); return; }
+      st.innerHTML = "<span>Собираю файл… 0%</span>";
+      var lbl = st.firstChild, t0 = performance.now();
+      (function step() {
+        var p = Math.min(1, (performance.now() - t0) / 900);
+        bar.style.transform = "scaleX(" + p + ")"; lbl.textContent = "Собираю файл… " + Math.round(p * 100) + "%";
+        if (p < 1) requestAnimationFrame(step); else done();
+      })();
+    }
+
+    function showDel(s) {
+      delState = s; del.setAttribute("data-state", s);
+      ["idle", "form", "wait", "gone"].forEach(function (k) {
+        var el = del.querySelector(".del-" + k);
+        el.hidden = k !== s; el.classList.remove("show");
+        if (k === s && !reduce) { void el.offsetWidth; el.classList.add("show"); }
+      });
+      ban.hidden = s !== "wait";
+    }
+    function checkWord() {
+      var v = word.value.trim().toUpperCase(), ok = v === WORD, bad = v.length > WORD.length;
+      slots.forEach(function (el, i) {
+        var c = v.charAt(i), hit = !!c && !bad && c === WORD.charAt(i);
+        if (c && !hit) bad = true;
+        el.className = hit ? "hit" : c ? "miss" : "";
+      });
+      killBtn.disabled = !ok;
+      var rest = WORD.length - v.length;
+      hint.textContent = ok ? "Слово совпало. Удаление начнётся только через 7 дней." :
+        bad ? "Буквы не совпадают. Нужно слово УДАЛИТЬ." :
+        v ? (rest === 1 ? "Осталась " : "Осталось ") + rest + " " + plural(rest, ["буква", "буквы", "букв"]) + "." :
+        "Удаление начнётся только через 7 дней, и его можно отменить.";
+      hint.className = "hint" + (ok ? " ok" : bad ? " bad" : "");
+    }
+    function renderWait(bump) {
+      leftEl.textContent = left; leftU.textContent = plural(left, DAY);
+      pips.forEach(function (el, i) { el.className = i < 7 - left ? "past" : ""; });
+      banT.innerHTML = "Удаление аккаунта запланировано на <b>4 декабря</b>. " + (left === 1 ? "Остался" : "Осталось") + " " + left + " " + plural(left, DAY) + ".";
+      leftEl.classList.remove("bump");
+      if (bump && !reduce) { void leftEl.offsetWidth; leftEl.classList.add("bump"); }
+    }
+    function openForm() {
+      word.value = ""; checkWord(); kept.hidden = true;
+      copySt.className = ""; copySt.textContent = COPY0;
+      showDel("form");
+      say(1, "Если дело во мне, скажите, я исправлюсь. Но решать только вам.", "worried");
+      word.focus({ preventScroll: true });
+    }
+    function planDel() {
+      if (killBtn.disabled) return;
+      left = 7; renderWait(false); showDel("wait");
+      say(1, "Я ничего не трону до <b>4 декабря</b>. Передумаете, нажмите одну кнопку, и всё останется как было.", "sad");
+    }
+    function keepAll() {
+      showDel("idle"); kept.hidden = false;
+      say(1, "Как хорошо, что вы остаётесь. Ничего не стёрто.", "happy");
+    }
+    function wipeAll() {
+      stopTimers(); showDel("gone"); renderNb(); refresh(true);
+      say(1, "Всё стёрто, как вы просили. Спасибо, что были со мной.", "bow");
+      say(2, "Здесь больше ничего нет. Я всё забыла, как вы и просили.", "bow");
+    }
+    function tick() {
+      left -= 1;
+      if (left <= 0) { wipeAll(); return; }
+      renderWait(true);
+      if (left === 1) say(1, "Остался один день. Напоминаю, как и обещала: завтра всё сотрётся.", "letter");
+    }
+    function reset() {
+      stopTimers(); facts = newFacts(); left = 7; word.value = ""; kept.hidden = true;
+      showDel("idle"); setPc(true, true); renderNb(); r1def = r2def = true; refresh(true);
+    }
+    function toggleShort(open) {
+      var b = $('[data-act="short"]'), ul = $("#w-trust-short"), on = open != null ? open : ul.hidden;
+      ul.hidden = !on; b.setAttribute("aria-expanded", on ? "true" : "false");
+      b.textContent = on ? "Скрыть краткие правила" : "Правила коротко";
+    }
+
+    a1.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-act], .dl"); if (!b || !a1.contains(b)) return;
+      if (b.tagName === "A") e.preventDefault();
+      if (b.classList.contains("dl")) { download(b); return; }
+      var act = b.getAttribute("data-act");
+      if (act === "pc") setPc(!pcOn);
+      else if (act === "nb") a2.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      else if (act === "open") openForm();
+      else if (act === "copy") download($('.dl[data-kind="json"]'), function (file) { copySt.className = "ok"; copySt.innerHTML = ic("ok") + "Копия сохранена: " + file; });
+      else if (act === "back") { showDel("idle"); def1(); }
+      else if (act === "kill") planDel();
+      else if (act === "keep") keepAll();
+      else if (act === "tick") tick();
+      else if (act === "reset") reset();
+      else if (act === "short") toggleShort();
+      else if (act === "rules") toggleShort(true);
+    });
+    word.addEventListener("input", checkWord);
+    word.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); planDel(); }
+      else if (e.key === "Escape") { showDel("idle"); def1(); }
+    });
+
+    function rowInner(f) {
+      if (f.pend) return '<span class="gm">' + ic("zap") + 'Стёрто из памяти</span><button type="button" class="btn sm" data-a="undo">Отменить</button><i class="tm"></i>';
+      var t = esc(f.t);
+      return '<div class="fx"><p>' + t + "</p><small>" + esc(f.m) + '</small></div><div class="fa">' +
+        '<button type="button" class="ib" data-a="edit" aria-label="Поправить: ' + t + '">' + ic("pen") + "</button>" +
+        '<button type="button" class="ib z" data-a="zap" aria-label="Стереть из памяти: ' + t + '">' + ic("zap") + "</button></div>";
+    }
+    function renderNb() {
+      if (delState === "gone") { nb.innerHTML = '<p class="none">Блокнот пуст. Аккаунт удалён, и Рина ничего о вас не помнит.</p>'; return; }
+      var n = 0;
+      nb.innerHTML = GROUPS.map(function (g, gi) {
+        var rows = facts.filter(function (f) { return f.g === gi; }).map(function (f) {
+          return '<li class="fact' + (f.pend ? " gone" : "") + '" data-id="' + f.id + '" style="--i:' + (n++) + '">' + rowInner(f) + "</li>";
+        }).join("");
+        return '<section class="grp" data-k="' + g[1] + '" style="--i:' + gi + '"><div class="grp-h"><span class="ico">' + ic(g[1]) + "</span><b>" + g[0] +
+          '</b><span class="num" data-g="' + gi + '"></span></div><ul>' + (rows || NONE) + "</ul></section>";
+      }).join("");
+    }
+    function paint(li, f, cls) { li.className = "fact" + (f.pend ? " gone" : "") + (cls ? " " + cls : ""); li.innerHTML = rowInner(f); }
+    function focusIn(li, sel) { var b = li.querySelector(sel); if (b) b.focus({ preventScroll: true }); }
+    function byId(id) { for (var i = 0; i < facts.length; i++) if (facts[i].id === id) return facts[i]; return null; }
+
+    function editFact(li, f) {
+      li.className = "fact ed";
+      li.innerHTML = '<input class="inp fe" type="text" maxlength="90" aria-label="Текст факта">' +
+        '<button type="button" class="btn primary sm" data-a="save">Сохранить</button>' +
+        '<button type="button" class="ib" data-a="cancel" aria-label="Не менять">' + ic("x") + "</button>";
+      var inp = li.querySelector(".fe"); inp.value = f.t; inp.focus({ preventScroll: true }); inp.select();
+    }
+    function saveFact(li, f) {
+      var inp = li.querySelector(".fe"), v = inp.value.replace(/\s+/g, " ").trim();
+      if (!v) { inp.focus(); return; }
+      var ch = v !== f.t;
+      if (ch) { f.t = v; f.m = "поправлено вами сегодня"; }
+      paint(li, f, ch && !reduce ? "saved" : ""); focusIn(li, '[data-a="edit"]');
+      if (ch) say(2, "Исправила. Теперь буду знать точно.", "thumbsup");
+    }
+    function finalize(li, f) {
+      facts = facts.filter(function (x) { return x !== f; });
+      var ul = li.parentNode; if (!ul) return;
+      function rm() { if (li.parentNode === ul) ul.removeChild(li); if (ul.isConnected && !ul.querySelector(".fact")) ul.innerHTML = NONE; }
+      if (reduce) { rm(); return; }
+      li.style.height = li.offsetHeight + "px"; void li.offsetWidth;
+      li.classList.add("out"); li.style.height = "0px";
+      setTimeout(rm, 340);
+    }
+    function zapFact(li, f) {
+      if (li._z) return;
+      li._z = true; li.classList.add("zap");
+      setTimeout(function () {
+        li._z = false;
+        if (!li.isConnected || delState === "gone") return;
+        f.pend = true; paint(li, f); refresh(true);
+        var tm = li.querySelector(".tm");
+        requestAnimationFrame(function () { requestAnimationFrame(function () { if (tm) tm.classList.add("run"); }); });
+        f._t = setTimeout(function () { finalize(li, f); }, 6000);
+        focusIn(li, '[data-a="undo"]');
+        say(2, "Вспышка, и я этого уже не помню. Поторопились? Нажмите «Отменить».", "surprised");
+      }, reduce ? 0 : 520);
+    }
+    function undoFact(li, f) {
+      clearTimeout(f._t); f.pend = false;
+      paint(li, f, reduce ? "" : "back"); refresh(true); focusIn(li, '[data-a="zap"]');
+      say(2, "Вернула на место. Буду помнить.", "happy");
+    }
+
+    nb.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-a]"); if (!b) return;
+      var li = b.closest(".fact"), f = li && byId(+li.getAttribute("data-id")); if (!f) return;
+      var a = b.getAttribute("data-a");
+      if (a === "edit") editFact(li, f);
+      else if (a === "zap") zapFact(li, f);
+      else if (a === "undo") undoFact(li, f);
+      else if (a === "save") saveFact(li, f);
+      else if (a === "cancel") { paint(li, f); focusIn(li, '[data-a="edit"]'); }
+    });
+    nb.addEventListener("keydown", function (e) {
+      if (!e.target.classList || !e.target.classList.contains("fe")) return;
+      var li = e.target.closest(".fact"), f = li && byId(+li.getAttribute("data-id")); if (!f) return;
+      if (e.key === "Enter") { e.preventDefault(); saveFact(li, f); }
+      else if (e.key === "Escape") { paint(li, f); focusIn(li, '[data-a="edit"]'); }
+    });
+
+    function play(n) {
+      var app = n === 1 ? a1 : a2, my = ++tk[n];
+      Array.prototype.forEach.call(app.querySelectorAll(".num"), function (el) { if (el._to != null) setNum(el, el._to, true, 0); });
+      if (reduce) return;
+      app.classList.remove("go"); void app.offsetWidth; app.classList.add("go");
+      setTimeout(function () { if (my === tk[n]) app.classList.remove("go"); }, 1700);
+    }
+
+    facts = newFacts(); renderNb(); checkWord(); renderWait(false); refresh(false);
+    MM.onSeen(a1.querySelector(".hero"), function () { play(1); });
+    MM.onSeen(a2.querySelector(".nbh"), function () { play(2); });
+    root.addEventListener("replay", function () { play(1); play(2); });
+  })();
+  </script>
+</article>

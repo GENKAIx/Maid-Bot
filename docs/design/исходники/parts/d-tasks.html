@@ -1,0 +1,694 @@
+<article class="piece" id="p-d-tasks">
+  <header>
+    <p class="eyebrow">Экран · Планы → Задачи</p>
+    <h2>Задачи, разложенные по сроку</h2>
+    <p>Сейчас задачи идут одним списком: их нельзя поправить, срок не виден, важность заметна только по жирному шрифту. Новый экран делит задачи по сроку, понимает обычную фразу «купить корм завтра !» и раскрывает любую строку для правки прямо на месте. Срок меняется перетаскиванием, а Рина замечает задачу, которую всё время откладывают.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="tk-var" role="group" aria-label="Вариант экрана">
+    <button type="button" data-var="a" aria-pressed="true">Вариант А · Список по сроку</button>
+    <button type="button" data-var="b" aria-pressed="false">Вариант Б · Важно и срочно</button>
+  </div>
+  <p class="tk-advice">Советую А как основной: он отвечает на главный вопрос «что делать сегодня». Матрицу Б можно дать вторым видом для тех, у кого много задач.</p>
+
+  <div class="app tk-a" data-hub="plans" data-tab="Задачи" data-title="Задачи">
+    <div class="tk-top">
+      <div class="card tk-add">
+        <p class="card-t">Новая задача</p>
+        <form class="tk-form" autocomplete="off">
+          <svg class="tk-i tk-plus" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <input class="tk-qi" type="text" aria-label="Новая задача" placeholder="Например: купить корм завтра !">
+          <button type="submit" class="btn primary tk-go">Добавить</button>
+        </form>
+        <div class="tk-parsed" aria-live="polite"></div>
+        <p class="tk-hint muted">Пишите как удобно: «завтра», «в пятницу», «#дом». Знак «!» делает задачу важной. Enter добавляет.</p>
+      </div>
+      <div class="card tk-wk">
+        <p class="card-t">Сделано за неделю</p>
+        <div class="tk-wkn"><span class="big num" data-k="wk">0</span><span class="delta up" data-k="wkd"></span></div>
+        <div class="tk-bars" role="group" aria-label="Сделано по дням недели"></div>
+        <p class="tk-bl muted" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div class="rina tk-rina">
+      <img src="maid/think.webp" alt="Рина" width="64" height="68">
+      <div class="tk-rtx"><p></p><div class="tk-racts"></div></div>
+    </div>
+
+    <div class="tk-fbar">
+      <div class="tk-filt" role="group" aria-label="Категория"></div>
+      <p class="muted tk-dragh">Перетащите строку в другую группу, чтобы сменить срок.</p>
+    </div>
+
+    <div class="tk-groups"></div>
+    <div class="tk-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
+  </div>
+
+  <div class="app tk-b" data-hub="plans" data-tab="Задачи" data-title="Задачи" hidden>
+    <div class="rina tk-rina">
+      <img src="maid/list.webp" alt="Рина" width="64" height="68">
+      <div class="tk-rtx"><p></p><div class="tk-racts"></div></div>
+    </div>
+    <p class="muted tk-mhint">Срочно значит срок сегодня, завтра или уже прошёл. Перетащите карточку в другой квадрат: Рина сама поменяет срок и важность. С клавиатуры: стрелки.</p>
+    <div class="tk-mx">
+      <span class="tk-ax tk-axc" style="grid-area:c1">Срочно</span>
+      <span class="tk-ax tk-axc" style="grid-area:c2">Не срочно</span>
+      <span class="tk-ax tk-axr" style="grid-area:r1">Важно</span>
+      <span class="tk-ax tk-axr" style="grid-area:r2">Не важно</span>
+      <section class="tk-q" data-drop="11" style="grid-area:q11"></section>
+      <section class="tk-q" data-drop="10" style="grid-area:q10"></section>
+      <section class="tk-q" data-drop="01" style="grid-area:q01"></section>
+      <section class="tk-q" data-drop="00" style="grid-area:q00"></section>
+    </div>
+    <div class="tk-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Группы по сроку: просрочено, сегодня, завтра, на неделе, без срока. Внизу «Сделано сегодня».</li>
+      <li>Строка ввода понимает день, важность и категорию и показывает их метками до Enter. Лишнюю метку можно убрать крестиком.</li>
+      <li>Щелчок раскрывает задачу: срок выбором дня, важность, категория, заметка, «В план» на ближайшее свободное время, «Отложить», «Не буду делать», «Удалить».</li>
+      <li>Любое действие отменяется кнопкой внизу, окон «Вы уверены?» нет.</li>
+      <li>У каждой категории свой цвет метки, рядом всегда её название.</li>
+      <li>Рина видит задачу, которую перенесли 3 раза, и разбивает её на 3 шага одной кнопкой.</li>
+      <li>Вариант Б: матрица «важно и срочно», карточки переносятся между квадратами.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Сделанная задача перелетает в «Сделано сегодня», над галочкой всплывает «+1 ✦», счётчик недели подрастает.</li>
+      <li>При смене срока строки плавно переезжают в новую группу, остальные сдвигаются.</li>
+      <li>Строка ввода сама печатает пример, метки появляются по мере распознавания.</li>
+      <li>Столбики недели растут, большое число досчитывает до итога.</li>
+      <li>«Отменить» поднимается снизу и прячется через 6 секунд.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Уже есть: название, важность, категория, срок, заметка, статус и запросы сервера на правку, «в план» и отмену.</li>
+      <li>Дописать на сайте: правку строки на месте, перетаскивание, разбор фразы (как в виджете), фильтр.</li>
+      <li>Нужно новое поле: сколько раз переносили срок. Без него Рина не заметит застрявшую задачу.</li>
+      <li>Подзадачи: хватит связи «шаг N из 3» с общим названием, отдельная таблица не нужна.</li>
+      <li>Счётчик «сделано за неделю» считается из закрытых задач, данные есть.</li>
+    </ul></div>
+  </div>
+
+<style>
+#p-d-tasks .tk-var { display: inline-flex; align-self: flex-start; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+#p-d-tasks .tk-var button { background: none; border: 0; border-radius: 9px; padding: 7px 14px; min-height: 36px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+#p-d-tasks .tk-var button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+#p-d-tasks .tk-advice { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
+#p-d-tasks .tk-i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+#p-d-tasks .tk-top { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; }
+#p-d-tasks .tk-form { display: flex; align-items: center; gap: 10px; background: var(--a-surface-2); border: 1.5px solid var(--a-line); border-radius: 14px; padding: 6px 6px 6px 14px; transition: border-color .2s; }
+#p-d-tasks .tk-form:focus-within { border-color: var(--a-accent); }
+#p-d-tasks .tk-plus { width: 20px; height: 20px; color: var(--a-accent); }
+#p-d-tasks .tk-qi { flex: 1; min-width: 0; background: none; border: 0; outline: 0; font-size: 16px; padding: 8px 0; color: var(--a-text); }
+#p-d-tasks .tk-qi::placeholder { color: var(--a-muted); }
+#p-d-tasks .tk-go { min-height: 40px; }
+#p-d-tasks .tk-parsed { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; margin-top: 10px; }
+#p-d-tasks .tk-pc { display: inline-flex; align-items: center; gap: 6px; border-radius: 99px; padding: 2px 4px 2px 10px; font-size: 12.5px; font-weight: 600; background: color-mix(in srgb, var(--tk-c, var(--a-accent)) 16%, transparent); color: var(--a-text); border: 1px solid color-mix(in srgb, var(--tk-c, var(--a-accent)) 45%, transparent); animation: d-tasks-pop .32s var(--ease); }
+#p-d-tasks .tk-pc .tk-i { color: var(--tk-c, var(--a-accent)); width: 14px; height: 14px; }
+#p-d-tasks .tk-pc button { background: none; border: 0; border-radius: 99px; width: 26px; height: 26px; display: grid; place-items: center; color: var(--a-muted); padding: 0; }
+#p-d-tasks .tk-pc button:hover { color: var(--a-text); background: var(--a-surface-3); }
+#p-d-tasks .tk-pt { color: var(--a-soft); font-size: 12.5px; align-self: center; }
+#p-d-tasks .tk-hint { font-size: 12.5px; margin-top: 6px; }
+#p-d-tasks .tk-wkn { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#p-d-tasks .tk-wkn .big { font-size: 40px; }
+#p-d-tasks .tk-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 12px; height: 78px; align-items: end; }
+#p-d-tasks .tk-bar { background: none; border: 0; padding: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; border-radius: 8px; min-width: 0; }
+#p-d-tasks .tk-bf { width: 100%; max-width: 26px; border-radius: 6px 6px 3px 3px; background: color-mix(in srgb, var(--a-accent) 45%, transparent); transform-origin: bottom; min-height: 4px; transition: height .5s var(--ease); }
+#p-d-tasks .tk-bar.now .tk-bf { background: var(--a-accent); }
+#p-d-tasks .tk-bar[aria-pressed="true"] .tk-bf { box-shadow: 0 0 0 2px var(--a-text); }
+#p-d-tasks .tk-bar.fut .tk-bf { background: none; border: 1.5px dashed var(--a-line); height: 10px; }
+#p-d-tasks .tk-bd { font-size: 11px; color: var(--a-muted); font-weight: 600; }
+#p-d-tasks .tk-bar.now .tk-bd { color: var(--a-text); }
+#p-d-tasks .tk-bl { font-size: 12.5px; margin-top: 8px; }
+#p-d-tasks .tk-bump { animation: d-tasks-bump .5s var(--ease); display: inline-block; }
+#p-d-tasks .tk-rtx { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+#p-d-tasks .tk-racts { display: flex; gap: 8px; flex-wrap: wrap; }
+#p-d-tasks .tk-racts:empty { display: none; }
+#p-d-tasks .tk-racts .btn { min-height: 36px; }
+#p-d-tasks .tk-fbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+#p-d-tasks .tk-filt { display: flex; gap: 6px; flex-wrap: wrap; }
+#p-d-tasks .tk-filt .chip { min-height: 34px; }
+#p-d-tasks .tk-filt .chip small { color: var(--a-muted); font-weight: 700; }
+#p-d-tasks .tk-dragh { font-size: 12.5px; }
+#p-d-tasks .tk-groups { display: flex; flex-direction: column; gap: 12px; }
+#p-d-tasks .tk-grp { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 6px 8px 8px; transition: border-color .15s, background .15s; }
+#p-d-tasks .tk-grp.tk-over { border-color: var(--a-accent); background: color-mix(in srgb, var(--a-accent) 7%, var(--a-surface)); }
+#p-d-tasks .tk-grp.tk-no { border-color: var(--a-bad); }
+#p-d-tasks .tk-gh { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 8px 8px 6px; font: 700 14.5px/1.2 var(--fd); flex-wrap: wrap; }
+#p-d-tasks .tk-gh small { font: 700 12px var(--f); color: var(--a-muted); background: var(--a-surface-2); border-radius: 99px; padding: 1px 8px; }
+#p-d-tasks .tk-gh em { font: 500 12.5px var(--f); font-style: normal; color: var(--a-muted); }
+#p-d-tasks .tk-grp[data-drop="over"] .tk-gh { color: var(--a-bad); }
+#p-d-tasks .tk-grp[data-drop="closed"] .tk-gh { color: var(--a-ok); }
+#p-d-tasks .tk-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+#p-d-tasks .tk-empty { font-size: 12.5px; color: var(--a-muted); padding: 8px 10px; border: 1.5px dashed var(--a-line); border-radius: 10px; margin: 2px 0; }
+#p-d-tasks .tk-row { border-radius: 12px; transition: background .15s; position: relative; }
+#p-d-tasks .tk-row:hover, #p-d-tasks .tk-row.open { background: var(--a-surface-2); }
+#p-d-tasks .tk-row.tk-drag { opacity: .35; }
+#p-d-tasks .tk-line { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto 28px; align-items: center; gap: 4px; min-height: 48px; padding-right: 4px; user-select: none; }
+#p-d-tasks .tk-ck { width: 36px; height: 36px; border: 0; background: none; display: grid; place-items: center; padding: 0; border-radius: 10px; }
+#p-d-tasks .tk-ck i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--a-muted); display: grid; place-items: center; transition: background .2s, border-color .2s; }
+#p-d-tasks .tk-row.imp .tk-ck i { border-color: var(--a-warn); }
+#p-d-tasks .tk-ck .tk-i { width: 12px; height: 12px; stroke-width: 3; color: var(--a-on-accent); opacity: 0; transition: opacity .2s; }
+#p-d-tasks .tk-ck:hover i { border-color: var(--a-ok); }
+#p-d-tasks .tk-ck[aria-pressed="true"] i { background: var(--a-ok); border-color: var(--a-ok); }
+#p-d-tasks .tk-ck[aria-pressed="true"] .tk-i { opacity: 1; }
+#p-d-tasks .tk-main { background: none; border: 0; padding: 6px 4px; text-align: left; display: flex; flex-direction: column; gap: 3px; min-width: 0; border-radius: 8px; color: var(--a-text); }
+#p-d-tasks .tk-t { font-size: 14.5px; font-weight: 550; overflow-wrap: anywhere; }
+#p-d-tasks .tk-row.imp .tk-t { font-weight: 700; }
+#p-d-tasks .tk-row.done .tk-t { text-decoration: line-through; color: var(--a-muted); font-weight: 500; }
+#p-d-tasks .tk-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+#p-d-tasks .tk-meta:empty { display: none; }
+#p-d-tasks .tk-cat { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--a-soft); }
+#p-d-tasks .tk-cat i { width: 8px; height: 8px; border-radius: 3px; background: var(--tk-c); }
+#p-d-tasks .tk-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--a-muted); background: var(--a-surface-2); border-radius: 6px; padding: 0 6px; }
+#p-d-tasks .tk-row:hover .tk-tag, #p-d-tasks .tk-row.open .tk-tag { background: var(--a-surface-3); }
+#p-d-tasks .tk-tag .tk-i { width: 12px; height: 12px; }
+#p-d-tasks .tk-tag.w { color: var(--a-warn); } #p-d-tasks .tk-tag.b { color: var(--a-bad); } #p-d-tasks .tk-tag.o { color: var(--a-ok); } #p-d-tasks .tk-tag.p { color: var(--a-accent); }
+#p-d-tasks .tk-due { font-size: 12.5px; color: var(--a-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+#p-d-tasks .tk-due.b { color: var(--a-bad); }
+#p-d-tasks .tk-grip { width: 28px; height: 36px; display: grid; place-items: center; color: var(--a-muted); cursor: grab; touch-action: none; border-radius: 8px; opacity: .55; }
+#p-d-tasks .tk-row:hover .tk-grip { opacity: 1; }
+#p-d-tasks .tk-grip .tk-i { stroke-width: 2.6; }
+#p-d-tasks .tk-ed { padding: 4px 12px 14px 44px; display: grid; gap: 12px; animation: d-tasks-open .3s var(--ease); }
+#p-d-tasks .tk-lb { display: grid; gap: 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--a-muted); }
+#p-d-tasks .tk-in { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 10px; padding: 8px 11px; font-size: 14px; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--a-text); width: 100%; min-width: 0; resize: vertical; }
+#p-d-tasks .tk-in:focus { border-color: var(--a-accent); outline: 0; }
+#p-d-tasks .tk-ef { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 10px; }
+#p-d-tasks .tk-chs { display: flex; flex-wrap: wrap; gap: 5px; }
+#p-d-tasks .tk-op { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 9px; padding: 5px 10px; min-height: 34px; font-size: 12.5px; font-weight: 600; color: var(--a-soft); display: inline-flex; align-items: center; gap: 6px; }
+#p-d-tasks .tk-op:hover { border-color: var(--a-accent); }
+#p-d-tasks .tk-op[aria-pressed="true"] { background: var(--a-accent-soft); border-color: var(--a-accent); color: var(--a-accent); }
+#p-d-tasks .tk-op i { width: 8px; height: 8px; border-radius: 3px; background: var(--tk-c); }
+#p-d-tasks .tk-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#p-d-tasks .tk-acts .btn { min-height: 36px; }
+#p-d-tasks .tk-acts .tk-sp { flex: 1; }
+#p-d-tasks .tk-del:hover { border-color: var(--a-bad); color: var(--a-bad); }
+#p-d-tasks .tk-ghost { position: absolute; z-index: 30; pointer-events: none; background: var(--a-surface); border: 1px solid var(--a-accent); border-radius: 12px; padding: 9px 14px; font-weight: 600; font-size: 14px; box-shadow: var(--a-shadow); max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: rotate(-1.5deg); }
+#p-d-tasks .tk-spark { position: absolute; z-index: 31; pointer-events: none; font: 800 14px var(--fd); color: var(--a-gold); white-space: nowrap; }
+#p-d-tasks .tk-new { animation: d-tasks-ring .9s var(--ease); }
+#p-d-tasks .tk-toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px); background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 8px 8px 8px 14px; font-size: 13px; box-shadow: var(--a-shadow); animation: d-tasks-toast .3s var(--ease); }
+#p-d-tasks .tk-toast span { min-width: 0; }
+#p-d-tasks .tk-toast button { border: 0; background: color-mix(in srgb, var(--a-bg) 14%, transparent); color: inherit; border-radius: 8px; padding: 6px 10px; min-height: 36px; font-weight: 700; flex: none; }
+#p-d-tasks .tk-toast[hidden] { display: none; }
+#p-d-tasks .tk-mhint { font-size: 12.5px; }
+#p-d-tasks .tk-mx { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(220px, auto) minmax(220px, auto); grid-template-areas: ". c1 c2" "r1 q11 q10" "r2 q01 q00"; gap: 10px; }
+#p-d-tasks .tk-ax { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--a-muted); text-align: center; }
+#p-d-tasks .tk-axr { writing-mode: vertical-rl; transform: rotate(180deg); align-self: center; }
+#p-d-tasks .tk-q { --tk-q: var(--a-muted); border-radius: var(--a-r); border: 1px solid var(--a-line); background: color-mix(in srgb, var(--tk-q) 7%, var(--a-surface)); padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; transition: box-shadow .15s, border-color .15s; }
+#p-d-tasks .tk-q[data-drop="11"] { --tk-q: var(--a-bad); } #p-d-tasks .tk-q[data-drop="10"] { --tk-q: var(--a-accent); } #p-d-tasks .tk-q[data-drop="01"] { --tk-q: var(--a-warn); }
+#p-d-tasks .tk-q.tk-over { border-color: var(--tk-q); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tk-q) 25%, transparent); }
+#p-d-tasks .tk-qh { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+#p-d-tasks .tk-qh b { font: 700 15px/1.2 var(--fd); color: var(--tk-q); }
+#p-d-tasks .tk-q[data-drop="00"] .tk-qh b { color: var(--a-soft); }
+#p-d-tasks .tk-qh span { font-size: 12px; color: var(--a-muted); }
+#p-d-tasks .tk-qh .tk-qn { margin-left: auto; font: 800 22px/1 var(--fd); color: var(--a-text); font-variant-numeric: tabular-nums; }
+#p-d-tasks .tk-mc { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 2px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 12px; padding: 4px 10px 4px 2px; cursor: grab; touch-action: none; user-select: none; }
+#p-d-tasks .tk-mc:hover { border-color: var(--a-accent); }
+#p-d-tasks .tk-mc.tk-drag { opacity: .35; }
+#p-d-tasks .tk-mc.imp .tk-ck i { border-color: var(--a-warn); }
+#p-d-tasks .tk-mc .tk-t { font-size: 13.5px; display: block; }
+#p-d-tasks .tk-mc .tk-meta { margin-top: 2px; }
+#p-d-tasks .tk-qe { font-size: 12.5px; color: var(--a-muted); padding: 10px; border: 1.5px dashed var(--a-line); border-radius: 10px; }
+@keyframes d-tasks-pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes d-tasks-bump { 40% { transform: scale(1.18); } 100% { transform: none; } }
+@keyframes d-tasks-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes d-tasks-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-accent) 60%, transparent); background: var(--a-accent-soft); } 100% { box-shadow: 0 0 0 12px transparent; } }
+@keyframes d-tasks-toast { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+@media (max-width: 900px) { #p-d-tasks .tk-top { grid-template-columns: 1fr; } }
+@media (max-width: 720px) {
+  #p-d-tasks .tk-line { grid-template-columns: 38px minmax(0, 1fr) 28px; }
+  #p-d-tasks .tk-due { grid-column: 2; grid-row: 2; padding: 0 4px 6px; }
+  #p-d-tasks .tk-due:empty { display: none; }
+  #p-d-tasks .tk-grip { grid-column: 3; grid-row: 1; opacity: 1; }
+  #p-d-tasks .tk-ed { padding: 4px 8px 12px; }
+  #p-d-tasks .tk-ef { grid-template-columns: 1fr; gap: 4px; }
+  #p-d-tasks .tk-dragh { display: none; }
+  #p-d-tasks .tk-go { padding-inline: 12px; }
+  #p-d-tasks .tk-mx { grid-template-columns: 18px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; grid-template-rows: auto minmax(180px, auto) minmax(180px, auto); }
+  #p-d-tasks .tk-q { padding: 8px; gap: 6px; }
+  #p-d-tasks .tk-qh span { display: none; }
+  #p-d-tasks .tk-qh b { font-size: 13px; }
+  #p-d-tasks .tk-qh .tk-qn { font-size: 18px; }
+  #p-d-tasks .tk-mc { grid-template-columns: 30px minmax(0, 1fr); padding: 3px 6px 3px 0; }
+  #p-d-tasks .tk-mc .tk-ck { width: 30px; }
+  #p-d-tasks .tk-mc .tk-t { font-size: 12.5px; }
+  #p-d-tasks .tk-mc .tk-cat { display: none; }
+}
+</style>
+<script>(function () {
+"use strict";
+var root = document.getElementById("p-d-tasks");
+var MM = window.MaidMock || { reduce: false, onSeen: function (e, f) { f(); } };
+var EASE = "cubic-bezier(.2,.8,.2,1)";
+var A = root.querySelector(".tk-a"), B = root.querySelector(".tk-b");
+var DN = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
+var MG = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+var MS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+var CATS = [["Работа", "--c-pc"], ["Дом", "--c-habit"], ["Покупки", "--c-money"], ["Здоровье", "--c-mood"], ["Личное", "--c-sleep"]];
+var IC = {
+ck: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
+flag: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4M6 4h11l-2 4 2 4H6"/></svg>',
+rep: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a7 7 0 0 1 12.5-4.3L19 9M19 4v5h-5M20 13a7 7 0 0 1-12.5 4.3L5 15M5 20v-5h5"/></svg>',
+clock: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
+note: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l4 4v12H6zM9 12h6M9 16h4"/></svg>',
+cal: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>',
+grip: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></svg>',
+x: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+trash: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',
+tag: '<svg class="tk-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7l9 9-7 7-9-9z"/><path d="M8 8h.01"/></svg>'
+};
+var uid = 0;
+var S = {
+tasks: [
+["Оплатить интернет", -1, 1, "Дом", "Лицевой счёт в письме от провайдера"], ["Записаться к стоматологу", -2, 0, "Здоровье", "", 3],
+["Отправить отчёт за ноябрь", 0, 1, "Работа"], ["Купить лампочки в прихожую", 0, 0, "Покупки"], ["Позвонить бабушке", 0, 0, "Личное", "", 0, "plan", "19:00"],
+["Вернуть книгу в библиотеку", 1, 0, "Личное"], ["Забрать посылку", 1, 0, "Покупки"], ["Продлить полис на машину", 3, 1, "Дом", "Старый заканчивается 5 декабря"],
+["Подготовить слайды к встрече", 4, 1, "Работа"], ["Подарок маме на день рождения", 6, 1, "Покупки", "Шарф или книга про сад"],
+["Разобрать фото с поездки", null, 0, "Личное", "", 1, "later"], ["Почистить клавиатуру", null, 0, "Дом"], ["Пройти курс по таблицам", null, 0, "Работа"],
+["Вынести мусор", 0, 0, "Дом", "", 0, "done", "08:40"], ["Ответить бухгалтеру", 0, 1, "Работа", "", 0, "done", "11:15"]
+].map(function (r) { return { id: ++uid, t: r[0], d: r[1], imp: !!r[2], c: r[3] || "", n: r[4] || "", mv: r[5] || 0, st: r[6] || "open", at: r[7] || "" }; }),
+slots: {}, split: false, dism: false, uid: 0
+};
+var WEEK = [3, 2, 4, 3], LASTWEEK = 11;
+var cat = "", open = null, ov = {}, selBar = 4, typer = null, lastDrag = 0, drag = null;
+
+function q(s, el) { return (el || root).querySelector(s); }
+function qa(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function pl(n, a, b, c) { var m = n % 10, h = n % 100; return n + " " + (m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c); }
+function dt(d) { return new Date(2026, 10, 27 + d); }
+function wd(d) { return (dt(d).getDay() + 6) % 7; }
+function dS(d) { var x = dt(d); return DN[wd(d)] + ", " + x.getDate() + " " + MS[x.getMonth()]; }
+function dL(d) { var x = dt(d); return DN[wd(d)] + ", " + x.getDate() + " " + MG[x.getMonth()]; }
+function cVar(c) { for (var i = 0; i < CATS.length; i++) if (CATS[i][0] === c) return "var(" + CATS[i][1] + ")"; return "var(--a-muted)"; }
+function byId(id) { for (var i = 0; i < S.tasks.length; i++) if (S.tasks[i].id === id) return S.tasks[i]; return null; }
+function closed(t) { return t.st === "done" || t.st === "cancel"; }
+function urg(t) { return t.d !== null && t.d <= 1; }
+function addm(hm, m) { var a = hm.split(":"), x = +a[0] * 60 + +a[1] + m; return Math.floor(x / 60) + ":" + ("0" + x % 60).slice(-2); }
+function slotsFor(day) { if (!S.slots[day]) S.slots[day] = day === 0 ? ["14:00", "16:30", "17:00", "17:30"] : day === 1 ? ["12:30", "14:00", "16:00"] : ["10:30", "14:00", "18:00"]; return S.slots[day]; }
+function grpOf(t) { if (closed(t)) return "closed"; if (t.d === null) return "none"; if (t.d < 0) return "over"; if (t.d === 0) return "today"; if (t.d === 1) return "tom"; if (t.d <= 7) return "week"; return "later"; }
+var GR = [["over", "Просрочено", "не сделаны вовремя"], ["today", "Сегодня", dL(0)], ["tom", "Завтра", dL(1)], ["week", "На неделе", "29 ноября – 4 декабря"], ["later", "Позже", "после 4 декабря"], ["none", "Без срока", "когда будет время"], ["closed", "Сделано сегодня", ""]];
+var GD = { today: 0, tom: 1, week: 3, none: null };
+
+var undoSnap = null;
+function snap() { S.uid = uid; undoSnap = JSON.stringify(S); }
+function restore() { if (!undoSnap) return; S = JSON.parse(undoSnap); uid = S.uid; undoSnap = null; renderAll(true); }
+function toast(app, msg, canUndo) {
+  var t = q(".tk-toast", app); q("span", t).textContent = msg; q("button", t).hidden = !canUndo;
+  t.hidden = true; void t.offsetWidth; t.hidden = false;
+  clearTimeout(t._tm); t._tm = setTimeout(function () { t.hidden = true; }, 6000);
+}
+function vis() { return A.hidden ? B : A; }
+
+function flip(app, fn) {
+  var before = {}, an = !MM.reduce && !app.hidden;
+  if (an) qa("[data-id]", app).forEach(function (el) { before[el.dataset.id] = el.getBoundingClientRect(); });
+  fn();
+  if (!an) return;
+  qa("[data-id]", app).forEach(function (el) {
+    var b = before[el.dataset.id];
+    if (!b) { el.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: EASE }); return; }
+    var a = el.getBoundingClientRect(), dx = b.left - a.left, dy = b.top - a.top;
+    if (Math.abs(dx) + Math.abs(dy) > 2) el.animate([{ transform: "translate(" + dx + "px," + dy + "px)" }, { transform: "none" }], { duration: Math.min(800, 380 + Math.abs(dy) * .4), easing: EASE });
+  });
+}
+function keepFocus(app, fn) {
+  var ae = document.activeElement, k = null;
+  if (ae && app.contains(ae) && ae.dataset) { var host = ae.closest("[data-id]"); k = { id: host ? host.dataset.id : null, act: ae.dataset.act, v: ae.dataset.v }; }
+  fn();
+  if (!k || !k.act) return;
+  var s = (k.id ? '[data-id="' + k.id + '"] ' : "") + '[data-act="' + k.act + '"]' + (k.v !== undefined ? '[data-v="' + k.v + '"]' : "");
+  var el = q(s, app) || (k.id ? q('[data-id="' + k.id + '"] [data-act="open"]', app) : null);
+  if (!el && k.id) el = q('[data-id="' + k.id + '"]', app);
+  if (el) el.focus({ preventScroll: true });
+}
+function renderAll(anim) {
+  [A, B].forEach(function (app) {
+    var fn = app === A ? renderA : renderB;
+    keepFocus(app, function () { if (anim) flip(app, fn); else fn(); });
+  });
+  renderWeek(); renderRina();
+}
+
+/* ——— вариант А */
+function meta(t, small) {
+  var h = "";
+  if (t.c) h += '<span class="tk-cat" style="--tk-c:' + cVar(t.c) + '"><i></i>' + esc(t.c) + "</span>";
+  if (t.imp && !closed(t)) h += '<span class="tk-tag w">' + IC.flag + "Важно</span>";
+  if (t.step) h += '<span class="tk-tag p">шаг ' + t.step + " из 3</span>";
+  if (t.st === "plan") h += '<span class="tk-tag p">' + IC.clock + "в плане " + t.at + "–" + addm(t.at, 30) + "</span>";
+  if (t.st === "later") h += '<span class="tk-tag">отложена</span>';
+  if (t.st === "cancel") h += '<span class="tk-tag">не буду делать</span>';
+  if (t.st === "done") h += '<span class="tk-tag o">' + IC.ck + "в " + t.at + "</span>";
+  if (!closed(t) && t.d !== null && t.d < 0) h += '<span class="tk-tag b">не сделана</span>';
+  if (t.mv >= 2 && !closed(t)) h += '<span class="tk-tag w">' + IC.rep + "переносили " + pl(t.mv, "раз", "раза", "раз") + "</span>";
+  if (t.n && !small) h += '<span class="tk-tag">' + IC.note + "заметка</span>";
+  return h;
+}
+function dueTxt(t) {
+  if (closed(t) || t.d === null || t.d === 0 || t.d === 1) return "";
+  return dS(t.d);
+}
+function editor(t) {
+  var days = [[0, "Сегодня"], [1, "Завтра"]];
+  for (var i = 2; i <= 7; i++) days.push([i, DN[wd(i)] + " " + dt(i).getDate()]);
+  days.push(["n", "Без срока"]);
+  var cur = t.d === null ? "n" : t.d;
+  var dueH = days.map(function (o) { return '<button type="button" class="tk-op" data-act="due" data-v="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '">' + o[1] + "</button>"; }).join("");
+  if (t.d !== null && t.d < 0) dueH = '<span class="tk-tag b">был ' + dS(t.d) + "</span>" + dueH;
+  var catH = CATS.map(function (c) { return '<button type="button" class="tk-op" data-act="cat" data-v="' + c[0] + '" aria-pressed="' + (t.c === c[0]) + '" style="--tk-c:var(' + c[1] + ')"><i></i>' + c[0] + "</button>"; }).join("");
+  var day = t.d === null || t.d < 0 ? 0 : t.d, sl = slotsFor(day);
+  var planB = t.st === "plan" ? '<button type="button" class="btn" data-act="unplan">' + IC.clock + "Убрать из плана</button>"
+    : sl.length ? '<button type="button" class="btn primary" data-act="plan">' + IC.cal + "В план на " + (day === 0 ? "сегодня" : dS(day)) + " " + sl[0] + "</button>" : '<span class="muted">Свободных окон нет</span>';
+  return '<div class="tk-ed">' +
+    '<label class="tk-lb">Название<input class="tk-in" data-f="t" type="text" value="' + esc(t.t) + '"></label>' +
+    '<div class="tk-ef"><span class="tk-lb">Срок</span><div class="tk-chs">' + dueH + "</div></div>" +
+    '<div class="tk-ef"><span class="tk-lb">Важность</span><div class="tk-chs"><button type="button" class="tk-op" data-act="imp" data-v="0" aria-pressed="' + !t.imp + '">Обычная</button><button type="button" class="tk-op" data-act="imp" data-v="1" aria-pressed="' + t.imp + '">' + IC.flag + "Важная</button></div></div>" +
+    '<div class="tk-ef"><span class="tk-lb">Категория</span><div class="tk-chs">' + catH + "</div></div>" +
+    '<label class="tk-lb">Заметка<textarea class="tk-in" data-f="n" rows="2" placeholder="Подробности, ссылка, номер телефона">' + esc(t.n) + "</textarea></label>" +
+    '<div class="tk-acts">' + planB +
+    (t.st === "later" ? "" : '<button type="button" class="btn" data-act="later">Отложить</button>') +
+    '<button type="button" class="btn ghost" data-act="cancel">Не буду делать</button>' +
+    '<button type="button" class="btn ghost tk-del" data-act="del">' + IC.trash + "Удалить</button>" +
+    '<span class="tk-sp"></span><button type="button" class="btn ghost" data-act="open">Свернуть</button></div></div>';
+}
+function rowA(t) {
+  var cl = closed(t), d = dueTxt(t);
+  return '<li class="tk-row' + (t.imp && !cl ? " imp" : "") + (cl ? " done" : "") + (open === t.id ? " open" : "") + '" data-id="' + t.id + '">' +
+    '<div class="tk-line"><button type="button" class="tk-ck" data-act="ck" aria-pressed="' + cl + '" aria-label="' + (cl ? "Вернуть в работу: " : "Отметить сделанной: ") + esc(t.t) + '"><i>' + IC.ck + "</i></button>" +
+    '<button type="button" class="tk-main" data-act="open" aria-expanded="' + (open === t.id) + '"><span class="tk-t">' + esc(t.t) + '</span><span class="tk-meta">' + meta(t) + "</span></button>" +
+    '<span class="tk-due' + (t.d !== null && t.d < 0 && !cl ? " b" : "") + '">' + d + "</span>" +
+    (cl ? "<span></span>" : '<span class="tk-grip" data-grip="1" title="Перетащить в другую группу">' + IC.grip + "</span>") + "</div>" +
+    (open === t.id && !cl ? editor(t) : "") + "</li>";
+}
+function sortT(a, b) { return (b.imp - a.imp) || ((a.d === null ? 99 : a.d) - (b.d === null ? 99 : b.d)) || (a.id - b.id); }
+function renderA() {
+  var list = S.tasks.filter(function (t) { return !cat || t.c === cat; });
+  var h = "";
+  GR.forEach(function (g) {
+    var items = list.filter(function (t) { return grpOf(t) === g[0]; });
+    if (g[0] === "closed") items.sort(function (a, b) { return a.at < b.at ? 1 : -1; }); else items.sort(sortT);
+    if (!items.length && (g[0] === "over" || g[0] === "later")) return;
+    h += '<section class="tk-grp" data-drop="' + g[0] + '"><h4 class="tk-gh"><span>' + g[1] + "</span><small>" + items.length + "</small>" + (g[2] ? "<em>" + g[2] + "</em>" : "") + '</h4><ul class="tk-list">' +
+      (items.length ? items.map(rowA).join("") : '<li class="tk-empty">' + (g[0] === "closed" ? "Отметьте задачу галочкой, и она появится здесь" : "Пусто. Сюда можно перетащить задачу") + "</li>") + "</ul></section>";
+  });
+  q(".tk-groups", A).innerHTML = h;
+  var counts = { "": 0 };
+  S.tasks.forEach(function (t) { if (closed(t)) return; counts[""]++; counts[t.c] = (counts[t.c] || 0) + 1; });
+  q(".tk-filt", A).innerHTML = [["", "Все"]].concat(CATS).map(function (c) {
+    return '<button type="button" class="chip" data-act="filt" data-v="' + c[0] + '" aria-pressed="' + (cat === c[0]) + '">' + (c[1] && c[0] ? '<span class="dot" style="background:var(' + c[1] + ')"></span>' : "") + (c[0] || "Все") + " <small>" + (counts[c[0]] || 0) + "</small></button>";
+  }).join("");
+}
+function doneToday() { return S.tasks.filter(function (t) { return t.st === "done"; }).length; }
+function renderWeek(animate) {
+  var vals = WEEK.concat([doneToday(), 0, 0]), total = vals.reduce(function (a, b) { return a + b; }, 0), mx = Math.max.apply(null, vals.concat([5]));
+  var wb = q(".tk-bars", A);
+  if (!wb.children.length) wb.innerHTML = vals.map(function (v, i) { return '<button type="button" class="tk-bar' + (i === 4 ? " now" : "") + (i > 4 ? " fut" : "") + '" data-act="bar" data-v="' + i + '"><span class="tk-bf"></span><span class="tk-bd">' + DN[i] + "</span></button>"; }).join("");
+  qa(".tk-bar", wb).forEach(function (b, i) {
+    if (i <= 4) q(".tk-bf", b).style.height = Math.max(6, vals[i] / mx * 56) + "px";
+    b.setAttribute("aria-pressed", i === selBar);
+    b.setAttribute("aria-label", dL(i - 4) + ": " + (i > 4 ? "ещё впереди" : pl(vals[i], "задача", "задачи", "задач")));
+  });
+  var n = q('[data-k="wk"]', A), prev = +n.textContent;
+  if (!animate) n.textContent = total;
+  if (!animate && prev && total > prev && !MM.reduce) { n.classList.remove("tk-bump"); void n.offsetWidth; n.classList.add("tk-bump"); }
+  var df = total - LASTWEEK, dEl = q('[data-k="wkd"]', A);
+  dEl.className = "delta " + (df >= 0 ? "up" : "down");
+  dEl.textContent = df > 0 ? "↑ на " + df + " больше прошлой недели" : df < 0 ? "↓ на " + (-df) + " меньше прошлой недели" : "как на прошлой неделе";
+  q(".tk-bl", A).textContent = selBar > 4 ? dL(selBar - 4) + ": день ещё впереди" : dL(selBar - 4) + ": сделано " + pl(vals[selBar], "задача", "задачи", "задач");
+  return total;
+}
+function stuck() { for (var i = 0; i < S.tasks.length; i++) { var t = S.tasks[i]; if (!closed(t) && t.mv >= 3 && !t.step) return t; } return null; }
+function renderRina() {
+  var ra = q(".tk-rina", A), img = q("img", ra), p = q("p", ra), acts = q(".tk-racts", ra), st = stuck();
+  var today = S.tasks.filter(function (t) { return !closed(t) && t.d !== null && t.d <= 0; }), impT = today.filter(function (t) { return t.imp; });
+  if (st && !S.dism) {
+    img.src = "maid/think.webp";
+    p.innerHTML = "Задачу <b>«" + esc(st.t) + "»</b> переносили уже " + pl(st.mv, "раз", "раза", "раз") + ". Давайте разобьём её на три маленьких шага: первый займёт минут десять.";
+    acts.innerHTML = '<button type="button" class="btn primary" data-act="split" data-v="' + st.id + '">Разбить на 3 шага</button><button type="button" class="btn ghost" data-act="dism">Не сейчас</button>';
+  } else if (S.split && S.tasks.some(function (t) { return t.step === 1 && !closed(t); })) {
+    var f = S.tasks.filter(function (t) { return t.step === 1; })[0];
+    img.src = "maid/happy.webp"; acts.innerHTML = "";
+    p.innerHTML = "Готово: три шага вместо одной тяжёлой задачи. Первый, <b>«" + esc(f.t) + "»</b>, стоит на сегодня.";
+  } else if (!today.length) {
+    img.src = "maid/proud.webp"; acts.innerHTML = "";
+    p.innerHTML = "На сегодня всё закрыто, сделано <b>" + pl(doneToday(), "задача", "задачи", "задач") + "</b>. Можно отдыхать со спокойной совестью.";
+  } else {
+    img.src = "maid/list.webp"; acts.innerHTML = "";
+    p.innerHTML = "На сегодня <b>" + pl(today.length, "задача", "задачи", "задач") + "</b>" + (impT.length ? ", важная: «" + esc(impT[0].t) + "». Начнём с неё?" : ". Важных нет, можно идти по порядку.");
+  }
+  var rb = q(".tk-rina", B), bi = q("img", rb), bp = q("p", rb), ba = q(".tk-racts", rb);
+  var q11 = S.tasks.filter(function (t) { return !closed(t) && t.imp && urg(t); });
+  ba.innerHTML = "";
+  if (q11.length >= 4) { bi.src = "maid/worried.webp"; bp.innerHTML = "В «Сделать сейчас» уже <b>" + q11.length + "</b>. Для одного дня это много: перетащите одну в «Запланировать»."; }
+  else if (!q11.length) { bi.src = "maid/happy.webp"; bp.innerHTML = "В «Сделать сейчас» пусто. Можно спокойно взяться за то, что стоит в «Запланировать»."; }
+  else { bi.src = "maid/list.webp"; bp.innerHTML = "В «Сделать сейчас» " + pl(q11.length, "задача", "задачи", "задач") + ". Начните с <b>«" + esc(q11.sort(sortT)[0].t) + "»</b>, остальное подождёт."; }
+}
+
+/* ——— вариант Б */
+var QD = { "11": ["Сделать сейчас", "важно и срочно"], "10": ["Запланировать", "важно, время есть"], "01": ["Сделать быстро", "срочно, но не важно"], "00": ["Может подождать", "не срочно и не важно"] };
+function cardB(t) {
+  var due = t.d === null ? "без срока" : t.d === 0 ? "сегодня" : t.d === 1 ? "завтра" : dS(t.d);
+  return '<div class="tk-mc' + (t.imp ? " imp" : "") + '" data-id="' + t.id + '" tabindex="0" aria-label="' + esc(t.t) + ", срок " + due + '. Стрелки переносят в другой квадрат">' +
+    '<button type="button" class="tk-ck" data-act="ck" aria-pressed="false" aria-label="Отметить сделанной: ' + esc(t.t) + '"><i>' + IC.ck + "</i></button>" +
+    '<div style="min-width:0"><span class="tk-t">' + esc(t.t) + '</span><span class="tk-meta">' + (t.c ? '<span class="tk-cat" style="--tk-c:' + cVar(t.c) + '"><i></i>' + esc(t.c) + "</span>" : "") +
+    '<span class="tk-tag' + (t.d !== null && t.d < 0 ? " b" : "") + '">' + (t.d !== null && t.d < 0 ? "просрочена" : due) + "</span>" + (t.mv >= 2 ? '<span class="tk-tag w">' + IC.rep + t.mv + "</span>" : "") + "</span></div></div>";
+}
+function renderB() {
+  var openT = S.tasks.filter(function (t) { return !closed(t); });
+  qa(".tk-q", B).forEach(function (qs) {
+    var k = qs.dataset.drop, items = openT.filter(function (t) { return (t.imp ? "1" : "0") + (urg(t) ? "1" : "0") === k; }).sort(sortT);
+    qs.innerHTML = '<div class="tk-qh"><b>' + QD[k][0] + "</b><span>" + QD[k][1] + '</span><span class="tk-qn">' + items.length + "</span></div>" +
+      (items.length ? items.map(cardB).join("") : '<div class="tk-qe">Пусто. Перетащите сюда карточку</div>');
+  });
+}
+
+/* ——— действия */
+function setDue(t, d) { if (t.d !== null && d !== null && d > t.d && t.d >= -7) t.mv++; else if (t.d !== null && d === null) t.mv++; t.d = d; if (t.st === "later" && d !== null) t.st = "open"; if (t.st === "plan") { t.st = "open"; t.at = ""; } }
+function nowHM() { return "13:4" + (doneToday() % 10); }
+function complete(app, t, el) {
+  snap(); var was = t.st;
+  if (closed(t)) { t.st = "open"; t.at = ""; }
+  else { t.st = "done"; t.at = nowHM(); if (el && !MM.reduce) spark(app, el); }
+  if (open === t.id) open = null;
+  renderAll(true);
+  if (t.st === "done") {
+    var row = q('[data-id="' + t.id + '"]', app); if (row && !MM.reduce) { row.classList.add("tk-new"); }
+    toast(app, "Сделано: «" + t.t + "». +1 ✦", true);
+  } else toast(app, was === "cancel" ? "Задача снова в работе" : "Вернула в работу: «" + t.t + "»", true);
+}
+function spark(app, el) {
+  var r = el.getBoundingClientRect(), ar = app.getBoundingClientRect(), s = document.createElement("span");
+  s.className = "tk-spark"; s.textContent = "+1 ✦"; s.style.left = (r.left - ar.left + r.width / 2 - 14) + "px"; s.style.top = (r.top - ar.top - 4) + "px";
+  app.appendChild(s);
+  s.animate([{ transform: "translateY(0) scale(.7)", opacity: 0 }, { transform: "translateY(-14px) scale(1.1)", opacity: 1, offset: .3 }, { transform: "translateY(-40px) scale(1)", opacity: 0 }], { duration: 900, easing: EASE }).onfinish = function () { s.remove(); };
+}
+var STEPS = { "Записаться к стоматологу": [["Найти клинику рядом и почитать отзывы", 0], ["Позвонить и выбрать время", 1], ["Внести визит в планы", 1]] };
+function split(id) {
+  var t = byId(id); if (!t) return; snap();
+  var st = STEPS[t.t] || [["Понять первый шаг: " + t.t.toLowerCase(), 0], ["Сделать основную часть", 1], ["Проверить и закрыть", 2]];
+  var i = S.tasks.indexOf(t);
+  var kids = st.map(function (s, k) { return { id: ++uid, t: s[0], d: s[1], imp: k === 0, c: t.c, n: k === 0 ? "Шаг задачи «" + t.t + "»" : "", mv: 0, st: "open", at: "", step: k + 1 }; });
+  S.tasks.splice.apply(S.tasks, [i, 1].concat(kids)); S.split = true; open = null;
+  renderAll(true); toast(vis(), "«" + t.t + "» разбита на 3 шага", true);
+}
+function act(app, b, e) {
+  var a = b.dataset.act, host = b.closest("[data-id]"), t = host ? byId(+host.dataset.id) : null, v = b.dataset.v;
+  if (a === "undo") { b.closest(".tk-toast").hidden = true; restore(); return; }
+  if (a === "filt") { cat = v; flip(A, renderA); return; }
+  if (a === "bar") { selBar = +v; renderWeek(); return; }
+  if (a === "split") { split(+v); return; }
+  if (a === "dism") { S.dism = true; renderRina(); return; }
+  if (a === "rmp") { ov[v] = true; parseShow(); return; }
+  if (!t) return;
+  if (a === "ck") { complete(app, t, b); return; }
+  if (a === "open") { if (Date.now() - lastDrag < 300) return; open = open === t.id ? null : t.id; keepFocus(A, function () { flip(A, renderA); }); return; }
+  snap();
+  var msg = "";
+  if (a === "due") { var d = v === "n" ? null : +v; setDue(t, d); msg = d === null ? "Срок убран" : "Новый срок: " + dL(d); }
+  else if (a === "imp") { t.imp = v === "1"; msg = t.imp ? "Задача стала важной" : "Задача стала обычной"; }
+  else if (a === "cat") { t.c = t.c === v ? "" : v; msg = t.c ? "Категория: " + t.c : "Категория убрана"; }
+  else if (a === "plan") { var day = t.d === null || t.d < 0 ? 0 : t.d, sl = slotsFor(day), at = sl.shift(); t.d = day; t.st = "plan"; t.at = at; msg = "Поставила в план: " + dL(day) + ", " + at + "–" + addm(at, 30); }
+  else if (a === "unplan") { slotsFor(t.d).unshift(t.at); t.st = "open"; t.at = ""; msg = "Убрала из плана"; }
+  else if (a === "later") { t.st = "later"; if (t.d !== null) t.mv++; t.d = null; open = null; msg = "Отложено: «" + t.t + "» лежит в «Без срока»"; }
+  else if (a === "cancel") { t.st = "cancel"; t.at = nowHM(); open = null; msg = "Не буду делать: «" + t.t + "»"; }
+  else if (a === "del") { S.tasks.splice(S.tasks.indexOf(t), 1); open = null; msg = "Задача удалена"; }
+  renderAll(true); toast(app, msg, true);
+}
+root.addEventListener("click", function (e) {
+  var b = e.target.closest("[data-act]"); if (!b || !root.contains(b)) return;
+  var app = b.closest(".app"); if (!app) return;
+  act(app, b, e);
+});
+root.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && open !== null && A.contains(e.target)) { var id = open; open = null; renderA(); var m = q('[data-id="' + id + '"] .tk-main', A); if (m) m.focus(); return; }
+  var c = e.target.closest && e.target.closest(".tk-mc");
+  if (!c || e.target !== c) return;
+  var t = byId(+c.dataset.id), k = (t.imp ? "1" : "0") + (urg(t) ? "1" : "0"), n = null;
+  if (e.key === "ArrowLeft") n = k[0] + "1"; else if (e.key === "ArrowRight") n = k[0] + "0"; else if (e.key === "ArrowUp") n = "1" + k[1]; else if (e.key === "ArrowDown") n = "0" + k[1];
+  if (n && n !== k) { e.preventDefault(); moveQ(t, n); var nc = q('[data-id="' + t.id + '"]', B); if (nc) nc.focus(); }
+});
+root.addEventListener("input", function (e) {
+  var f = e.target.dataset && e.target.dataset.f; if (!f) return;
+  var host = e.target.closest("[data-id]"), t = host && byId(+host.dataset.id); if (!t) return;
+  t[f] = e.target.value;
+  if (f === "t") q(".tk-t", host).textContent = e.target.value || "Без названия";
+});
+root.addEventListener("focusout", function (e) { if (e.target.dataset && e.target.dataset.f) { renderB(); } });
+
+function moveQ(t, k) {
+  snap();
+  var imp = k[0] === "1", u = k[1] === "1", parts = [];
+  if (imp !== t.imp) { t.imp = imp; parts.push(imp ? "важная" : "обычная"); }
+  if (u && !urg(t)) { setDue(t, 0); parts.push("срок сегодня"); }
+  else if (!u && urg(t)) { setDue(t, 3); parts.push("срок " + dL(3)); }
+  renderAll(true); toast(B, "«" + t.t + "»: " + parts.join(", "), true);
+}
+function dropA(t, g) {
+  if (g === grpOf(t)) return;
+  if (g === "over") { toast(A, "В прошлое срок не поставить", false); return; }
+  if (g === "closed") { complete(A, t, null); return; }
+  if (closed(t)) { snap(); t.st = "open"; t.at = ""; setDue(t, GD[g]); }
+  else { snap(); setDue(t, GD[g]); }
+  renderAll(true);
+  toast(A, GD[g] === null ? "«" + t.t + "» теперь без срока" : "Новый срок: " + dL(GD[g]) + (g === "week" ? ". День можно уточнить в строке" : ""), true);
+}
+
+/* ——— перетаскивание */
+root.addEventListener("pointerdown", function (e) {
+  if (e.button !== 0) return;
+  var app = e.target.closest(".app"); if (!app) return;
+  var el, isA = app === A;
+  if (isA) {
+    el = e.target.closest(".tk-row"); if (!el || el.classList.contains("open")) return;
+    var grip = e.target.closest("[data-grip]"), main = e.target.closest(".tk-main");
+    if (!grip && !(main && e.pointerType === "mouse")) return;
+  } else {
+    el = e.target.closest(".tk-mc"); if (!el || e.target.closest(".tk-ck")) return;
+  }
+  drag = { app: app, el: el, id: +el.dataset.id, x: e.clientX, y: e.clientY, on: false, zone: null, pid: e.pointerId };
+});
+root.addEventListener("pointermove", function (e) {
+  if (!drag || e.pointerId !== drag.pid) return;
+  if (!drag.on) {
+    if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) < 6) return;
+    drag.on = true; drag.el.classList.add("tk-drag");
+    try { drag.el.setPointerCapture(e.pointerId); } catch (er) { /* нет захвата */ }
+    var g = document.createElement("div"); g.className = "tk-ghost"; g.textContent = byId(drag.id).t; drag.app.appendChild(g); drag.g = g;
+  }
+  e.preventDefault();
+  var ar = drag.app.getBoundingClientRect();
+  drag.g.style.left = (e.clientX - ar.left + 10) + "px"; drag.g.style.top = (e.clientY - ar.top - 18) + "px";
+  var hit = document.elementFromPoint(e.clientX, e.clientY), z = hit && hit.closest("[data-drop]");
+  if (z && !drag.app.contains(z)) z = null;
+  if (z !== drag.zone) {
+    if (drag.zone) drag.zone.classList.remove("tk-over", "tk-no");
+    drag.zone = z;
+    if (z) z.classList.add(z.dataset.drop === "over" ? "tk-no" : "tk-over");
+  }
+});
+function endDrag(e, cancel) {
+  if (!drag || e.pointerId !== drag.pid) return;
+  var d = drag; drag = null;
+  if (!d.on) return;
+  lastDrag = Date.now();
+  d.el.classList.remove("tk-drag"); if (d.g) d.g.remove();
+  if (d.zone) d.zone.classList.remove("tk-over", "tk-no");
+  if (cancel || !d.zone) return;
+  var t = byId(d.id); if (!t) return;
+  if (d.app === A) dropA(t, d.zone.dataset.drop);
+  else { var k = (t.imp ? "1" : "0") + (urg(t) ? "1" : "0"); if (d.zone.dataset.drop !== k) moveQ(t, d.zone.dataset.drop); }
+}
+root.addEventListener("pointerup", function (e) { endDrag(e, false); });
+root.addEventListener("pointercancel", function (e) { endDrag(e, true); });
+
+/* ——— быстрый ввод */
+var WDM = { "понедельник": 0, "пн": 0, "вторник": 1, "вт": 1, "среду": 2, "среда": 2, "ср": 2, "четверг": 3, "чт": 3, "пятницу": 4, "пятница": 4, "пт": 4, "субботу": 5, "суббота": 5, "сб": 5, "воскресенье": 6, "вс": 6 };
+var KW = [[/купить|заказать|забрать|посылк|корм/, "Покупки"], [/врач|аптек|стомат|анализ|таблет/, "Здоровье"], [/отч[её]т|созвон|письм|слайд|презентац|встреч/, "Работа"], [/оплатить|убрать|почистить|починить|помыть|постирать|полить/, "Дом"]];
+function nextWd(w) { var df = (w - 4 + 7) % 7; return df === 0 ? 7 : df; }
+function parse(s) {
+  var r = { d: undefined, imp: false, c: "", t: "" }, keep = [], tk = s.trim().split(/\s+/);
+  for (var i = 0; i < tk.length; i++) {
+    var raw = tk[i], w = raw.toLowerCase().replace(/[.,]$/, "");
+    if (!w) continue;
+    if (w === "!" || w === "!!" || w === "важно") { r.imp = true; continue; }
+    if (w.length > 1 && w.slice(-1) === "!") { r.imp = true; w = w.slice(0, -1); raw = raw.slice(0, -1); }
+    if (w === "сегодня") r.d = 0; else if (w === "завтра") r.d = 1; else if (w === "послезавтра") r.d = 2;
+    else if ((w === "в" || w === "во") && WDM[(tk[i + 1] || "").toLowerCase()] !== undefined) { r.d = nextWd(WDM[tk[i + 1].toLowerCase()]); i++; }
+    else if (WDM[w] !== undefined) r.d = nextWd(WDM[w]);
+    else if (w[0] === "#" && w.length > 1) { var f = CATS.filter(function (c) { return c[0].toLowerCase().indexOf(w.slice(1)) === 0; })[0]; if (f) r.c = f[0]; else keep.push(raw); }
+    else keep.push(raw);
+  }
+  r.t = keep.join(" ");
+  if (!r.c) { var lw = r.t.toLowerCase(); for (var k = 0; k < KW.length; k++) if (KW[k][0].test(lw)) { r.c = KW[k][1]; break; } }
+  if (ov.d) r.d = undefined; if (ov.imp) r.imp = false; if (ov.c) r.c = "";
+  r.t = r.t ? r.t.charAt(0).toUpperCase() + r.t.slice(1) : "";
+  return r;
+}
+var QI = q(".tk-qi", A), lastSig = "";
+function parseShow() {
+  var v = QI.value; if (!v.trim()) ov = {};
+  var r = parse(v), box = q(".tk-parsed", A), h = "", sig = [r.d, r.imp, r.c].join("|");
+  if (!v.trim()) { box.innerHTML = '<span class="tk-pt">Срок, важность и категорию Рина поймёт из текста.</span>'; lastSig = ""; return r; }
+  if (sig === lastSig && box.children.length) { var tt = q(".tk-pt", box); if (tt) tt.textContent = r.t ? "«" + r.t + "»" : ""; return r; }
+  lastSig = sig;
+  h += '<span class="tk-pt">' + (r.t ? "«" + esc(r.t) + "»" : "") + "</span>";
+  if (r.d !== undefined) h += '<span class="tk-pc">' + IC.cal + (r.d === 0 ? "Сегодня, " : r.d === 1 ? "Завтра, " : "") + dL(r.d) + '<button type="button" data-act="rmp" data-v="d" aria-label="Убрать срок">' + IC.x + "</button></span>";
+  else h += '<span class="tk-pc" style="--tk-c:var(--a-muted)">' + IC.cal + "Без срока</span>";
+  if (r.imp) h += '<span class="tk-pc" style="--tk-c:var(--a-warn)">' + IC.flag + 'Важная<button type="button" data-act="rmp" data-v="imp" aria-label="Сделать обычной">' + IC.x + "</button></span>";
+  if (r.c) h += '<span class="tk-pc" style="--tk-c:' + cVar(r.c) + '">' + IC.tag + r.c + '<button type="button" data-act="rmp" data-v="c" aria-label="Убрать категорию">' + IC.x + "</button></span>";
+  box.innerHTML = h;
+  return r;
+}
+QI.addEventListener("input", function () { clearInterval(typer); parseShow(); });
+q(".tk-form", A).addEventListener("submit", function (e) {
+  e.preventDefault(); clearInterval(typer);
+  var r = parse(QI.value); if (!r.t) { QI.focus(); return; }
+  snap();
+  var t = { id: ++uid, t: r.t, d: r.d === undefined ? null : r.d, imp: r.imp, c: r.c, n: "", mv: 0, st: "open", at: "" };
+  S.tasks.push(t); QI.value = ""; ov = {}; parseShow();
+  if (cat && cat !== t.c) cat = "";
+  renderAll(true);
+  var row = q('[data-id="' + t.id + '"]', A);
+  if (row) { if (!MM.reduce) row.classList.add("tk-new"); row.scrollIntoView({ block: "nearest", behavior: MM.reduce ? "auto" : "smooth" }); }
+  var g = GR.filter(function (x) { return x[0] === grpOf(t); })[0];
+  toast(A, "Добавлено в «" + g[1] + "»: " + t.t, true);
+});
+
+/* ——— переключатель вариантов */
+qa(".tk-var button").forEach(function (b) {
+  b.addEventListener("click", function () {
+    qa(".tk-var button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+    A.hidden = b.dataset.var !== "a"; B.hidden = b.dataset.var !== "b";
+    open = null; renderAll(false); play(true);
+  });
+});
+
+/* ——— анимация входа */
+var DEMO = "купить корм завтра !";
+function play(lite) {
+  var app = vis(), red = MM.reduce;
+  var total = renderWeek(true), n = q('[data-k="wk"]', A);
+  if (app === A) {
+    qa(".tk-grp", A).forEach(function (g, i) { if (!red) g.animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: i * 70, easing: EASE, fill: "backwards" }); });
+    if (!red) qa(".tk-bf", A).forEach(function (b, i) { b.animate([{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }], { duration: 600, delay: 120 + i * 60, easing: EASE, fill: "backwards" }); });
+    if (red) n.textContent = total;
+    else { var t0 = performance.now(); (function step(ts) { var k = Math.min(1, (ts - t0) / 750); n.textContent = Math.round(total * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); })(t0); }
+    if (!lite && (QI.value === "" || DEMO.indexOf(QI.value) === 0)) {
+      clearInterval(typer); ov = {};
+      if (red) { QI.value = DEMO; parseShow(); }
+      else { QI.value = ""; parseShow(); var i = 0; setTimeout(function () { clearInterval(typer); typer = setInterval(function () { i++; QI.value = DEMO.slice(0, i); parseShow(); if (i >= DEMO.length) clearInterval(typer); }, 45); }, 500); }
+    }
+  } else {
+    n.textContent = total;
+    if (!red) qa(".tk-q", B).forEach(function (qs, i) { qa(".tk-mc", qs).forEach(function (c, j) { c.animate([{ opacity: 0, transform: "scale(.94) translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 380, delay: i * 90 + j * 50, easing: EASE, fill: "backwards" }); }); });
+  }
+  if (!red) qa(".tk-rina", app).forEach(function (r) { r.animate([{ opacity: 0, transform: "translateX(-10px)" }, { opacity: 1, transform: "none" }], { duration: 450, delay: 250, easing: EASE, fill: "backwards" }); });
+}
+renderAll(false); parseShow(); renderWeek();
+MM.onSeen(root, function () { play(false); });
+root.addEventListener("replay", function () { play(false); });
+})();</script>
+</article>
