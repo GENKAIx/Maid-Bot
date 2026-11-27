@@ -14,29 +14,30 @@
 
   <section class="dn-blk">
     <h3 class="dn-bh">2. Строка «Найти или сказать Рине»</h3>
-    <p class="dn-bs">Открывается по Ctrl K или щелчком по строке в шапке. Попробуйте набрать «мама», «такси» или целую фразу. Стрелки выбирают, Enter открывает, Esc закрывает.</p>
+    <p class="dn-bs">Открывается по Ctrl K или щелчком по строке в шапке. Попробуйте «мама», «такси» или целую фразу.</p>
     <div class="app" id="d-nav-app" data-hub="today" data-title="Сегодня">
       <div class="g2">
         <div class="card dn-now">
-          <p class="card-t">Сейчас</p>
-          <p class="muted">Через 40 минут</p>
+          <p class="label">Сейчас</p>
           <p class="dn-nowt">Созвон с командой</p>
-          <p class="soft num">10:00 до 10:30 · потом свободно до 13:00</p>
+          <p class="small num">через 40 минут, 10:00 до 10:30</p>
         </div>
         <div class="card">
-          <p class="card-t">Задачи · 3</p>
-          <ul class="dn-tasks">
-            <li><span class="dn-box" aria-hidden="true"></span>Отправить отчёт за ноябрь <span class="chip">важная</span></li>
-            <li><span class="dn-box" aria-hidden="true"></span>Оплатить интернет <span class="muted">до пт</span></li>
-            <li><span class="dn-box" aria-hidden="true"></span>Купить корм коту</li>
-          </ul>
+          <p class="label">Задачи</p>
+          <div class="list dn-tasks">
+            <div class="li"><span class="dn-box" aria-hidden="true"></span><span class="grow"><span class="t">Отправить отчёт за ноябрь</span></span><span class="tag">Работа</span></div>
+            <div class="li"><span class="dn-box" aria-hidden="true"></span><span class="grow"><span class="t">Оплатить интернет</span></span><span class="small">до пт</span></div>
+            <div class="li"><span class="dn-box" aria-hidden="true"></span><span class="grow"><span class="t">Купить корм коту</span></span></div>
+          </div>
         </div>
       </div>
       <div class="rina">
         <img src="maid/list.webp" alt="Рина">
-        <p>До созвона 40 минут, а <b>отчёт за ноябрь</b> всё ещё ждёт. Начнём с него? Если что-то потеряете, нажмите Ctrl K, я найду.</p>
+        <div class="dn-rb">
+          <p>До созвона 40 минут, как раз хватит на <b>отчёт за ноябрь</b>. Что-то потеряете, я найду.</p>
+          <button type="button" class="btn" data-open="1">Открыть поиск</button>
+        </div>
       </div>
-      <div><button type="button" class="btn" data-open="1">Открыть строку · Ctrl K</button></div>
 
       <div class="dn-wrap" id="d-nav-pal" role="dialog" aria-modal="false" aria-label="Найти или сказать Рине">
         <div class="dn-pal">
@@ -51,12 +52,12 @@
             <button type="button" class="chip" data-q="мама">мама</button>
             <button type="button" class="chip" data-q="перенеси стоматолога на пятницу">перенеси стоматолога на пятницу</button>
           </div>
-          <div class="dn-reply" hidden aria-live="polite">
+          <div class="dn-reply rina" hidden aria-live="polite">
             <img src="maid/write.webp" alt="">
             <p></p>
           </div>
           <div class="dn-list" id="d-nav-list" role="listbox" aria-label="Результаты"></div>
-          <div class="dn-foot" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span><span><kbd>Enter</kbd> открыть</span><span><kbd>Esc</kbd> закрыть</span><span class="dn-cnt"></span></div>
+          <div class="dn-foot" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span><span><kbd>Enter</kbd> открыть</span><span><kbd>Esc</kbd> закрыть</span></div>
         </div>
       </div>
       <div class="dn-toast" role="status" aria-live="polite" hidden></div>
@@ -74,11 +75,10 @@
         <div class="dn-rcard">
           <p class="dn-rk">Как устроено</p>
           <ul>
-            <li><b>Пять узлов всегда внизу.</b> Шторки «Ещё» нет, любой экран в одном или двух нажатиях.</li>
+            <li><b>Пять узлов всегда внизу.</b> Шторки «Ещё» нет, любой экран в одном или двух нажатиях. Высота кнопок 52 точки.</li>
             <li><b>Вкладки узла</b> идут лентой под заголовком и листаются пальцем.</li>
             <li><b>Строка поиска</b> сверху на каждом экране. Можно сразу написать Рине.</li>
             <li><b>Настройки</b> за шестерёнкой в шапке. Корзина живёт там же.</li>
-            <li><b>Кнопки узлов</b> высотой 52 точки, по ним легко попасть большим пальцем.</li>
           </ul>
         </div>
       </figure>
@@ -87,10 +87,10 @@
 
   <div class="notes">
     <div><h4>Что изменилось</h4><ul>
-      <li>16 пунктов меню собраны в 5 узлов: Сегодня, Планы, Дневник, Обзор, Рина. Настройки отдельно, внизу.</li>
-      <li>Задачи и Даты раньше прятались внутри «Планов», Сон и Компьютер внутри «Статистики». Теперь это видимые вкладки.</li>
-      <li>Профиль и «О вас» стали одной вкладкой у Рины. Возможности переехали в строку: «Что умеет Рина».</li>
-      <li>Строка ищет по всем данным сразу и выполняет действия. Фраза, похожая на просьбу, уходит Рине.</li>
+      <li>Карта переезда стала одним списком узлов. Убраны отдельные карточки, пунктирные рамки, цветные точки на вкладках и счётчики «4 вкладки».</li>
+      <li>Значки узлов и цифры серые. Фиолетовым подсвечивается только выбранная связь.</li>
+      <li>В строке поиска значки результатов нейтральные, подписи групп без капслока, счётчик «найдено» убран. Ответ Рины в круге 48 px.</li>
+      <li>На «Сегодня» одна главная карточка и одна кнопка у Рины. На телефоне три плитки цифр заменены строками с тонкими полосами.</li>
     </ul></div>
     <div><h4>Анимации</h4><ul>
       <li>Вкладки вылетают из старых пунктов в порядке прежнего меню, а счётчик идёт от 16 к 5: видно, что ничего не пропало.</li>
@@ -107,48 +107,49 @@
 
   <style>
     #p-d-nav .dn-blk { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-    #p-d-nav .dn-bh { margin: 6px 0 0; font: 700 16px/1.3 var(--fd); color: var(--text); }
+    #p-d-nav .dn-bh { margin: 6px 0 0; font: 650 16px/1.3 var(--f); color: var(--text); }
     #p-d-nav .dn-bs { color: var(--muted); font-size: 14px; max-width: 70ch; }
 
-    #p-d-nav .dn-map { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-    #p-d-nav .dn-mhead { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-    #p-d-nav .dn-kp { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-    #p-d-nav .dn-kp .big { font-size: 40px; }
-    #p-d-nav .dn-kp span:last-child { color: var(--a-soft); font-size: 13.5px; max-width: 16ch; line-height: 1.3; }
-    #p-d-nav .dn-kp.new .big { color: var(--a-accent); }
+    #p-d-nav .dn-map { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    #p-d-nav .dn-mhead { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    #p-d-nav .dn-kp { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+    #p-d-nav .dn-kp .num-l { color: var(--a-muted); }
+    #p-d-nav .dn-kp span:last-child { color: var(--a-muted); font-size: 13px; max-width: 16ch; line-height: 1.3; }
     #p-d-nav .dn-arw { width: 40px; height: 20px; fill: none; stroke: var(--a-muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-    #p-d-nav .dn-mgrid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 22px; align-items: start; }
-    #p-d-nav .dn-cap { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; margin-bottom: 8px; }
+    #p-d-nav .dn-mgrid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
+    #p-d-nav .dn-cap { margin-bottom: 8px; }
     #p-d-nav .dn-old { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 8px; display: flex; flex-direction: column; gap: 1px; }
-    #p-d-nav .dn-old button { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 4px 10px; border: 0; border-radius: 9px; background: none; text-align: left; font-size: 13.5px; color: var(--a-text); transition: background .25s var(--ease), color .35s var(--ease); }
+    #p-d-nav .dn-old button { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 4px 10px; border: 0; border-radius: 8px; background: none; text-align: left; font-size: 13.5px; color: var(--a-text); transition: background .25s var(--ease), color .35s var(--ease); }
     #p-d-nav .dn-old button:hover { background: var(--a-surface-2); }
-    #p-d-nav .dn-old .to { font-size: 11.5px; color: var(--a-muted); white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity .35s var(--ease), transform .35s var(--ease); }
+    #p-d-nav .dn-old .to { font-size: 12px; color: var(--a-muted); white-space: nowrap; opacity: 0; transform: translateX(-6px); transition: opacity .35s var(--ease), transform .35s var(--ease); }
     #p-d-nav .dn-old button.moved .nm { color: var(--a-muted); }
     #p-d-nav .dn-old button.moved .to { opacity: 1; transform: none; }
     #p-d-nav .dn-old button.sel { background: var(--a-accent-soft); }
-    #p-d-nav .dn-old button.sel .nm, #p-d-nav .dn-old button.sel .to { color: var(--a-accent); }
+    #p-d-nav .dn-old button.sel .nm, #p-d-nav .dn-old button.sel .to { color: var(--a-text); }
     #p-d-nav .dn-old .sep { height: 1px; background: var(--a-line); margin: 4px 8px; }
-    #p-d-nav .dn-nodes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    #p-d-nav .dn-node { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 13px 14px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-    #p-d-nav .dn-node.side { background: var(--a-surface-2); border-style: dashed; }
-    #p-d-nav .dn-nh { display: flex; align-items: center; gap: 9px; min-width: 0; }
-    #p-d-nav .dn-nh svg { width: 22px; height: 22px; fill: none; stroke: var(--a-accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-    #p-d-nav .dn-nh b { font: 700 15px/1.2 var(--fd); }
-    #p-d-nav .dn-nh small { color: var(--a-muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
-    #p-d-nav .dn-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-    #p-d-nav .dn-tab { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 11px; border-radius: 99px; border: 1px solid var(--a-line); background: var(--a-bg); font-size: 12.5px; color: var(--a-soft); transition: border-color .25s var(--ease), background .25s var(--ease), color .25s var(--ease); }
-    #p-d-nav .dn-tab:hover { border-color: var(--a-accent); }
-    #p-d-nav .dn-tab.hit { border-color: var(--a-accent); background: var(--a-accent-soft); color: var(--a-accent); animation: d-nav-hit .5s var(--ease); }
-    #p-d-nav .dn-why { font-size: 13.5px; color: var(--a-soft); min-height: 21px; }
-    #p-d-nav .dn-why b { color: var(--a-accent); font-weight: 650; }
-    @keyframes d-nav-hit { 40% { transform: scale(1.08); } }
+    #p-d-nav .dn-nodes { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 4px 16px; display: flex; flex-direction: column; }
+    #p-d-nav .dn-node { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 8px 16px; align-items: center; padding-block: 12px; min-width: 0; }
+    #p-d-nav .dn-node + .dn-node { border-top: 1px solid var(--a-line); }
+    #p-d-nav .dn-node.first { border-top: 4px solid var(--a-surface-2); }
+    #p-d-nav .dn-nh { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; column-gap: 8px; min-width: 0; }
+    #p-d-nav .dn-nh svg { width: 20px; height: 20px; fill: none; stroke: var(--a-muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    #p-d-nav .dn-nh b { font-size: 14px; font-weight: 650; }
+    #p-d-nav .dn-nh small { grid-column: 2; color: var(--a-muted); font-size: 12px; }
+    #p-d-nav .dn-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    #p-d-nav .dn-tab { position: relative; display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border-radius: 99px; border: 1px solid transparent; background: var(--a-surface-2); font-size: 12.5px; color: var(--a-soft); transition: border-color .25s var(--ease), background .25s var(--ease), color .25s var(--ease); }
+    #p-d-nav .dn-tab:hover { border-color: var(--a-line-strong); }
+    #p-d-nav .dn-tab.hit { border-color: var(--a-accent); background: var(--a-accent-soft); color: var(--a-text); animation: d-nav-hit .5s var(--ease); }
+    #p-d-nav .dn-why { font-size: 13px; color: var(--a-muted); min-height: 20px; }
+    #p-d-nav .dn-why b { color: var(--a-text); font-weight: 600; }
+    @keyframes d-nav-hit { 40% { transform: scale(1.05); } }
 
     #p-d-nav #d-nav-app .app-find { cursor: pointer; transition: border-color .2s var(--ease); }
     #p-d-nav #d-nav-app .app-find:hover { border-color: var(--a-accent); color: var(--a-text); }
-    #p-d-nav .dn-nowt { font: 700 20px/1.25 var(--fd); margin: 2px 0 4px; }
-    #p-d-nav .dn-tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-    #p-d-nav .dn-tasks li { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; min-width: 0; }
-    #p-d-nav .dn-box { width: 18px; height: 18px; border-radius: 6px; border: 1.6px solid var(--a-muted); flex: none; }
+    #p-d-nav .dn-now { display: flex; flex-direction: column; gap: 4px; }
+    #p-d-nav .dn-nowt { font: 700 18px/1.3 var(--f); margin-top: 4px; }
+    #p-d-nav .dn-tasks { margin: 4px -10px -8px; }
+    #p-d-nav .dn-box { width: 18px; height: 18px; border-radius: 6px; border: 1.6px solid var(--a-line-strong); flex: none; }
+    #p-d-nav .dn-rb { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 
     #p-d-nav .dn-wrap { position: absolute; inset: 0; z-index: 5; display: flex; justify-content: center; align-items: flex-start; padding: 70px 16px 16px; background: color-mix(in srgb, var(--a-bg) 62%, transparent); backdrop-filter: blur(3px); }
     #p-d-nav .dn-wrap[hidden] { display: none; }
@@ -163,28 +164,25 @@
     #p-d-nav .dn-esc { min-height: 30px; padding: 0 9px; border: 1px solid var(--a-line); border-radius: 7px; background: var(--a-surface-2); font-size: 11.5px; font-weight: 600; color: var(--a-muted); }
     #p-d-nav .dn-chips { display: flex; gap: 6px; padding: 10px 14px 4px; overflow-x: auto; }
     #p-d-nav .dn-chips .chip { min-height: 30px; }
-    #p-d-nav .dn-reply { display: flex; align-items: flex-end; gap: 10px; padding: 10px 14px 4px; animation: d-nav-pop .4s var(--ease); }
+    #p-d-nav .dn-reply { padding: 12px 16px 4px; animation: d-nav-pop .4s var(--ease); }
     #p-d-nav .dn-reply[hidden] { display: none; }
-    #p-d-nav .dn-reply img { width: 48px; height: 51px; flex: none; }
-    #p-d-nav .dn-reply p { background: var(--a-surface-2); border-radius: 14px 14px 14px 4px; padding: 9px 13px; font-size: 13.5px; min-width: 0; }
     #p-d-nav .dn-list { overflow-y: auto; max-height: 330px; padding: 4px 8px 8px; }
-    #p-d-nav .dn-gl { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; padding: 10px 8px 4px; }
+    #p-d-nav .dn-gl { font-size: 12px; color: var(--a-muted); font-weight: 600; padding: 12px 8px 4px; }
     #p-d-nav .dn-opt { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
     #p-d-nav .dn-opt[aria-selected="true"] { background: var(--a-accent-soft); }
     #p-d-nav .dn-opt.in { animation: d-nav-in .3s var(--ease) backwards; }
     @keyframes d-nav-in { from { opacity: 0; transform: translateY(4px); } }
-    #p-d-nav .dn-ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; font-weight: 750; font-size: 14px; color: var(--k); background: color-mix(in srgb, var(--k) 16%, transparent); overflow: hidden; }
-    #p-d-nav .dn-ic img { width: 40px; height: 43px; margin-top: 8px; }
+    #p-d-nav .dn-ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-weight: 600; font-size: 14px; color: var(--a-muted); background: var(--a-surface-2); }
+    #p-d-nav .dn-ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
     #p-d-nav .dn-tx { min-width: 0; }
     #p-d-nav .dn-t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
     #p-d-nav .dn-m { display: block; font-size: 12px; color: var(--a-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #p-d-nav .dn-r { font-size: 12.5px; color: var(--a-soft); white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 650; }
+    #p-d-nav .dn-r { font-size: 13px; color: var(--a-soft); white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
     #p-d-nav .dn-opt[aria-selected="true"] .dn-r::after { content: "  ↵"; color: var(--a-accent); }
     #p-d-nav .dn-list mark { background: color-mix(in srgb, var(--a-accent) 26%, transparent); color: inherit; border-radius: 4px; padding: 0 1px; }
     #p-d-nav .dn-empty { padding: 10px 8px; color: var(--a-muted); font-size: 13px; }
     #p-d-nav .dn-foot { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 14px; border-top: 1px solid var(--a-line); font-size: 12px; color: var(--a-muted); }
     #p-d-nav .dn-foot kbd { font: 600 10.5px var(--f); border: 1px solid var(--a-line); border-radius: 5px; padding: 0 5px; margin-right: 3px; }
-    #p-d-nav .dn-cnt { margin-left: auto; }
     #p-d-nav .dn-toast { position: absolute; z-index: 6; left: 50%; bottom: 18px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 9px 14px; font-size: 13px; font-weight: 600; box-shadow: var(--a-shadow); animation: d-nav-up .35s var(--ease); }
     #p-d-nav .dn-toast[hidden] { display: none; }
     @keyframes d-nav-up { from { opacity: 0; transform: translate(-50%, 8px); } }
@@ -192,28 +190,23 @@
 
     #p-d-nav .dn-ph { padding: 0; display: flex; flex-direction: column; min-height: 600px; height: 600px; position: relative; overflow: hidden; }
     #p-d-nav .dn-phh { display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px; }
-    #p-d-nav .dn-phh b { font: 800 22px/1.1 var(--fd); letter-spacing: -.02em; flex: 1; min-width: 0; }
-    #p-d-nav .dn-ibtn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--a-line); background: var(--a-surface); display: grid; place-items: center; color: var(--a-soft); }
-    #p-d-nav .dn-ibtn[aria-pressed="true"] { color: var(--a-accent); border-color: var(--a-accent); }
+    #p-d-nav .dn-phh b { font: 700 18px/1.2 var(--f); letter-spacing: -.01em; flex: 1; min-width: 0; }
+    #p-d-nav .dn-ibtn { width: 40px; height: 40px; border-radius: 8px; border: 0; background: none; display: grid; place-items: center; color: var(--a-muted); }
+    #p-d-nav .dn-ibtn[aria-pressed="true"] { color: var(--a-accent); background: var(--a-accent-soft); }
     #p-d-nav .dn-ph svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    #p-d-nav .dn-phs { margin: 0 16px; display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 0 13px; border-radius: 13px; border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-muted); font-size: 14px; text-align: left; }
-    #p-d-nav .dn-pht { display: flex; gap: 6px; padding: 10px 16px 2px; overflow-x: auto; }
+    #p-d-nav .dn-phs { margin: 0 16px; display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-muted); font-size: 14px; text-align: left; }
+    #p-d-nav .dn-pht { display: flex; gap: 8px; padding: 12px 16px 0; overflow-x: auto; }
     #p-d-nav .dn-pht:empty { display: none; }
     #p-d-nav .dn-pht .chip { min-height: 34px; }
     #p-d-nav .dn-phc { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-    #p-d-nav .dn-pc { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 14px; padding: 12px 13px; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
-    #p-d-nav .dn-pc small { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; }
-    #p-d-nav .dn-pc .dn-pb { font: 700 17px/1.25 var(--fd); }
-    #p-d-nav .dn-prow { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    #p-d-nav .dn-pc { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 16px; padding: 12px; min-width: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+    #p-d-nav .dn-pc small { font-size: 12px; color: var(--a-muted); font-weight: 600; }
+    #p-d-nav .dn-pc .dn-pb { font: 650 15px/1.3 var(--f); }
+    #p-d-nav .dn-prow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    #p-d-nav .dn-st { display: flex; flex-direction: column; gap: 6px; }
+    #p-d-nav .dn-st .num { color: var(--a-text); font-weight: 600; }
     #p-d-nav .dn-prow > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #p-d-nav .dn-prow .num { color: var(--a-muted); font-size: 12.5px; }
-    #p-d-nav .dn-pk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-    #p-d-nav .dn-pk div { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 12px; padding: 10px; min-width: 0; }
-    #p-d-nav .dn-pk b { display: block; font: 800 17px/1.1 var(--fd); font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
-    #p-d-nav .dn-pk span { font-size: 11px; color: var(--a-muted); }
-    #p-d-nav .dn-bar { height: 4px; border-radius: 3px; background: var(--k); }
-    #p-d-nav .dn-pr { display: flex; align-items: flex-end; gap: 8px; }
-    #p-d-nav .dn-pr img { width: 64px; height: 68px; flex: none; }
+    #p-d-nav .dn-prow .num { color: var(--a-muted); font-size: 13px; }
     #p-d-nav .dn-nav { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 6px 6px 10px; border-top: 1px solid var(--a-line); background: var(--a-surface); }
     #p-d-nav .dn-ind { position: absolute; top: 6px; left: 6px; width: calc((100% - 12px) / 5); height: 52px; border-radius: 14px; background: var(--a-accent-soft); transition: transform .38s var(--ease), opacity .25s var(--ease); }
     #p-d-nav .dn-nav button { position: relative; z-index: 1; min-height: 52px; border: 0; background: none; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10.5px; font-weight: 600; color: var(--a-muted); padding: 0; }
@@ -228,7 +221,7 @@
 
     #p-d-nav .dn-rules { flex: 1 1 280px; }
     #p-d-nav .dn-rcard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; max-width: 440px; }
-    #p-d-nav .dn-rk { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+    #p-d-nav .dn-rk { font-size: 15px; color: var(--text); font-weight: 650; margin-bottom: 8px; }
     #p-d-nav .dn-rcard ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: var(--soft); font-size: 14px; }
     #p-d-nav .dn-rcard b { color: var(--text); font-weight: 650; }
 
@@ -238,9 +231,9 @@
       #p-d-nav .dn-old .sep { display: none; }
     }
     @media (max-width: 720px) {
-      #p-d-nav .dn-map { padding: 14px; }
-      #p-d-nav .dn-nodes { grid-template-columns: minmax(0, 1fr); }
-      #p-d-nav .dn-kp .big { font-size: 32px; }
+      #p-d-nav .dn-map { padding: 12px; }
+      #p-d-nav .dn-nodes { padding: 0 12px; }
+      #p-d-nav .dn-node { grid-template-columns: minmax(0, 1fr); }
       #p-d-nav .dn-wrap { padding: 10px 8px; }
       #p-d-nav .dn-list { max-height: 300px; }
       #p-d-nav .dn-toast { bottom: 76px; }
@@ -278,26 +271,26 @@
       ["Корзина", "Настройки"], ["История", "Дневник"], ["Альбом", "Рина"], ["Возможности", "Ctrl K"], ["Настройки", "Настройки"]];
     var NODES = [
       { k: "today", n: "Сегодня", s: "главный экран", t: [["Всё на одном экране", "Сегодня"]] },
-      { k: "plans", n: "Планы", t: [["Неделя", "Планы"], ["Привычки", "Привычки", "habit"], ["Задачи", "Планы"], ["Даты", "Планы"]] },
+      { k: "plans", n: "Планы", t: [["Неделя", "Планы"], ["Привычки", "Привычки"], ["Задачи", "Планы"], ["Даты", "Планы"]] },
       { k: "diary", n: "Дневник", t: [["Дни", "Дневник"], ["Заметки", "Заметки"], ["История", "История"]] },
-      { k: "stats", n: "Обзор", t: [["Итоги", "Статистика"], ["Сон", "Статистика", "sleep"], ["Компьютер", "Статистика", "pc"], ["Деньги", "Деньги", "money"], ["Здоровье", "Здоровье"]] },
+      { k: "stats", n: "Обзор", t: [["Итоги", "Статистика"], ["Сон", "Статистика"], ["Компьютер", "Статистика"], ["Деньги", "Деньги"], ["Здоровье", "Здоровье"]] },
       { k: "rina", n: "Рина", t: [["Характер и вид", "Персонализация"], ["О вас", "Профиль|Персонализация"], ["Альбом", "Альбом"]] },
       { k: "gear", n: "Настройки", s: "шестерёнка", side: 1, t: [["Программа", "Настройки"], ["Виджет", "Настройки"], ["Корзина", "Корзина"]] },
       { k: "find", n: "Ctrl K", s: "на любом экране", side: 1, t: [["Поиск по всему", "Поиск"], ["Что умеет Рина", "Возможности"]] }
     ];
     var map = root.querySelector("#d-nav-map");
     map.innerHTML =
-      '<div class="dn-mhead"><div class="dn-kp"><span class="big num">16</span><span>пунктов одной колонкой</span></div>' +
+      '<div class="dn-mhead"><div class="dn-kp"><span class="num-l">16</span><span>пунктов одной колонкой</span></div>' +
       '<svg class="dn-arw" viewBox="0 0 40 20" aria-hidden="true"><path d="M2 10h34M28 3l8 7-8 7"/></svg>' +
-      '<div class="dn-kp new"><span class="big num dn-c">5</span><span>узлов с вкладками и Настройки</span></div></div>' +
-      '<div class="dn-mgrid"><div><p class="dn-cap">Сейчас</p><div class="dn-old" role="group" aria-label="Старое меню">' +
+      '<div class="dn-kp"><span class="num-xl dn-c">5</span><span>узлов с вкладками и Настройки</span></div></div>' +
+      '<div class="dn-mgrid"><div><p class="label dn-cap">Сейчас</p><div class="dn-old" role="group" aria-label="Старое меню">' +
       OLD.map(function (o) {
         return o ? '<button type="button" class="moved" data-k="' + o[0] + '"><span class="nm">' + o[0] + '</span><span class="to">→ ' + o[1] + "</span></button>" : '<div class="sep"></div>';
-      }).join("") + '</div></div><div><p class="dn-cap">Стало</p><div class="dn-nodes">' +
-      NODES.map(function (n) {
-        return '<div class="dn-node' + (n.side ? " side" : "") + '"><div class="dn-nh">' + svg(n.k) + "<b>" + n.n + "</b><small>" + (n.s || n.t.length + " вкладки") + '</small></div><div class="dn-tabs">' +
+      }).join("") + '</div></div><div><p class="label dn-cap">Стало</p><div class="dn-nodes">' +
+      NODES.map(function (n, i) {
+        return '<div class="dn-node' + (n.side && !NODES[i - 1].side ? " first" : "") + '"><div class="dn-nh">' + svg(n.k) + "<b>" + n.n + "</b>" + (n.s ? "<small>" + n.s + "</small>" : "") + '</div><div class="dn-tabs">' +
           n.t.map(function (t) {
-            return '<button type="button" class="dn-tab" data-src="' + t[1] + '" data-node="' + n.n + '">' + (t[2] ? '<span class="dot" style="background:var(--c-' + t[2] + ')"></span>' : "") + t[0] + "</button>";
+            return '<button type="button" class="dn-tab" data-src="' + t[1] + '" data-node="' + n.n + '">' + t[0] + "</button>";
           }).join("") + "</div></div>";
       }).join("") + '</div></div></div><p class="dn-why" aria-live="polite">Каждый старый экран остался, он просто живёт внутри узла.</p>';
 
@@ -353,15 +346,15 @@
 
     /* ---------- 2. строка поиска ---------- */
     var TYPE = {
-      act: { g: "Действия", ic: "+", k: "--a-accent" },
-      open: { g: "Действия", ic: "→", k: "--a-accent" },
-      plan: { g: "Планы и задачи", ic: "◷", k: "--a-accent", hub: "plans", tab: "Неделя" },
-      task: { g: "Планы и задачи", ic: "✓", k: "--a-accent", hub: "plans", tab: "Задачи" },
-      diary: { g: "Дневник и заметки", ic: "✎", k: "--c-mood", hub: "diary", tab: "Дни" },
-      note: { g: "Дневник и заметки", ic: "≡", k: "--c-mood", hub: "diary", tab: "Заметки" },
-      money: { g: "Деньги", ic: "₽", k: "--c-money", hub: "stats", tab: "Деньги" },
-      date: { g: "Даты", ic: "★", k: "--a-gold", hub: "plans", tab: "Даты" },
-      habit: { g: "Привычки", ic: "●", k: "--c-habit", hub: "plans", tab: "Привычки" }
+      act: { g: "Действия", ic: "+" },
+      open: { g: "Действия", ic: "→" },
+      plan: { g: "Планы и задачи", ic: "◷", hub: "plans", tab: "Неделя" },
+      task: { g: "Планы и задачи", ic: "✓", hub: "plans", tab: "Задачи" },
+      diary: { g: "Дневник и заметки", ic: "✎", hub: "diary", tab: "Дни" },
+      note: { g: "Дневник и заметки", ic: "≡", hub: "diary", tab: "Заметки" },
+      money: { g: "Деньги", ic: "₽", hub: "stats", tab: "Деньги" },
+      date: { g: "Даты", ic: "◇", hub: "plans", tab: "Даты" },
+      habit: { g: "Привычки", ic: "○", hub: "plans", tab: "Привычки" }
     };
     var GORDER = ["Действия", "Планы и задачи", "Дневник и заметки", "Деньги", "Даты", "Привычки"];
     var REC = [
@@ -431,9 +424,8 @@
       return { ws: ws, groups: groups };
     }
     function icon(it) {
-      if (it.y === "say") return '<span class="dn-ic" style="--k:var(--a-accent)"><img src="maid/listen.webp" alt=""></span>';
-      var ty = TYPE[it.y];
-      return '<span class="dn-ic" style="--k:var(' + ty.k + ')" aria-hidden="true">' + ty.ic + "</span>";
+      if (it.y === "say") return '<span class="dn-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10h-8l-4 4v-4H5z"/></svg></span>';
+      return '<span class="dn-ic" aria-hidden="true">' + TYPE[it.y].ic + "</span>";
     }
     function optHtml(it, i, ws, pre, anim) {
       return '<div class="dn-opt' + (anim ? " in" : "") + '" role="option" id="d-nav-' + pre + i + '" data-i="' + i + '" aria-selected="false"' + (anim ? ' style="animation-delay:' + Math.min(i, 8) * 28 + 'ms"' : "") + ">" + icon(it) +
@@ -460,7 +452,6 @@
     var inp = root.querySelector("#d-nav-q");
     var list = root.querySelector("#d-nav-list");
     var rep = wrap.querySelector(".dn-reply");
-    var cntEl = wrap.querySelector(".dn-cnt");
     var toastEl = app.querySelector(".dn-toast");
     var flat = [], act = 0, typeTok = 0, opener = null, toastT = 0, railT = 0;
 
@@ -473,8 +464,6 @@
         html += "</div>";
       });
       list.innerHTML = html;
-      var found = flat.filter(function (x) { return x.y !== "say"; }).length;
-      cntEl.textContent = inp.value.trim() ? "найдено: " + found : "";
       setAct(0);
     }
     function setAct(i) {
@@ -579,7 +568,7 @@
     var PH = {
       today: { t: "Сегодня", tabs: [], h:
         '<div class="dn-pc"><small>Через 40 минут</small><span class="dn-pb">Созвон с командой</span><span class="muted num">10:00 до 10:30</span></div>' +
-        '<div class="dn-pc"><small>Задачи · 3</small><div class="dn-prow"><span class="dn-box"></span><span>Отправить отчёт за ноябрь</span></div><div class="dn-prow"><span class="dn-box"></span><span>Оплатить интернет</span><span class="num">до пт</span></div><div class="dn-prow"><span class="dn-box"></span><span>Купить корм коту</span></div></div>' +
+        '<div class="dn-pc"><small>Задачи</small><div class="dn-prow"><span class="dn-box"></span><span>Отправить отчёт за ноябрь</span></div><div class="dn-prow"><span class="dn-box"></span><span>Оплатить интернет</span><span class="num">до пт</span></div><div class="dn-prow"><span class="dn-box"></span><span>Купить корм коту</span></div></div>' +
         '<div class="dn-pc"><small>Привычки</small><div class="dn-prow"><span class="dot" style="background:var(--c-habit)"></span><span>Чтение</span><span class="num">6 дней подряд</span></div><div class="dn-prow"><span class="dot" style="background:var(--c-habit)"></span><span>Вода</span><span class="num">5 из 8</span></div></div>' },
       plans: { t: "Планы", tabs: ["Неделя", "Привычки", "Задачи", "Даты"], h:
         '<div class="dn-pc"><small>Пн, 1 декабря</small><div class="dn-prow"><span class="num">10:00</span><span>Созвон с командой</span></div></div>' +
@@ -590,14 +579,17 @@
         '<div class="dn-pc"><small>22 ноября · оценка 8</small><span>Итог: гуляли в парке, хороший день</span></div>' +
         '<div class="dn-pc"><small>20 ноября</small><span>Читала вечером, на душе спокойно</span></div>' },
       stats: { t: "Обзор", tabs: ["Сон", "Компьютер", "Деньги", "Здоровье"], h:
-        '<div class="dn-pk"><div style="--k:var(--c-sleep)"><span>Сон</span><b>6:40</b><div class="dn-bar" style="width:72%"></div></div><div style="--k:var(--c-pc)"><span>За ПК</span><b>7:10</b><div class="dn-bar" style="width:88%"></div></div><div style="--k:var(--c-money)"><span>Траты</span><b>2 560 ₽</b><div class="dn-bar" style="width:46%"></div></div></div>' +
+        '<div class="dn-pc"><small>Вчера</small>' +
+        '<div class="dn-st"><div class="dn-prow"><span class="dot s" style="background:var(--c-sleep)"></span><span>Сон</span><span class="num">6 ч 40 мин</span></div><div class="bar"><i style="width:72%;background:var(--c-sleep)"></i></div></div>' +
+        '<div class="dn-st"><div class="dn-prow"><span class="dot s" style="background:var(--c-pc)"></span><span>За ПК</span><span class="num">7 ч 10 мин</span></div><div class="bar"><i style="width:88%;background:var(--c-pc)"></i></div></div>' +
+        '<div class="dn-st"><div class="dn-prow"><span class="dot s" style="background:var(--c-money)"></span><span>Траты</span><span class="num">2 560 ₽</span></div><div class="bar"><i style="width:46%;background:var(--c-money)"></i></div></div></div>' +
         '<div class="dn-pc"><small>За неделю</small><span>Сон в среднем 6 ч 40 мин, на 25 минут меньше прошлой недели.</span></div>' },
       rina: { t: "Рина", tabs: ["Характер и вид", "О вас", "Альбом"], h:
-        '<div class="dn-pc dn-pr"><img src="maid/happy.webp" alt="Рина"><span>Характер: добрая. Волосы каштановые, глаза зелёные.</span></div>' +
+        '<div class="rina"><img src="maid/happy.webp" alt="Рина"><p>Сейчас я добрая и спокойная. Характер и вид меняются здесь же.</p></div>' +
         '<div class="dn-pc"><small>О вас</small><span>Заполнено 6 из 7. Осталось: рост.</span></div>' },
       gear: { t: "Настройки", tabs: ["Программа", "Виджет", "Корзина"], h:
         '<div class="dn-pc"><small>Программа</small><span>Тема, вход, обновления, тариф</span></div>' +
-        '<div class="dn-pc"><small>Корзина · 4</small><span>Удалённое хранится 30 дней, можно вернуть</span></div>' }
+        '<div class="dn-pc"><small>Корзина</small><span>4 записи. Удалённое хранится 30 дней, можно вернуть</span></div>' }
     };
     var ph = root.querySelector("#d-nav-ph");
     ph.innerHTML =
@@ -607,7 +599,7 @@
       '<nav class="dn-nav" aria-label="Узлы"><span class="dn-ind" aria-hidden="true"></span>' +
       PHN.map(function (k) { return '<button type="button" data-n="' + k + '">' + svg(k) + HUBN[k] + "</button>"; }).join("") + "</nav>" +
       '<div class="dn-sheet" hidden><div class="dn-in">' + svg("find") + '<input type="text" autocomplete="off" placeholder="Найти или сказать Рине…" aria-label="Поиск на телефоне"><button type="button" class="dn-cancel">Отмена</button></div>' +
-      '<div class="dn-reply" hidden><img src="maid/write.webp" alt=""><p></p></div><div class="dn-list" role="listbox" aria-label="Результаты"></div></div>' +
+      '<div class="dn-reply rina" hidden><img src="maid/write.webp" alt=""><p></p></div><div class="dn-list" role="listbox" aria-label="Результаты"></div></div>' +
       '<div class="dn-toast dn-phtoast" role="status" hidden></div>';
     var phTitle = ph.querySelector(".dn-phh b"), phTabs = ph.querySelector(".dn-pht"), phC = ph.querySelector(".dn-phc");
     var ind = ph.querySelector(".dn-ind"), gearB = ph.querySelector("[data-gear]"), sheet = ph.querySelector(".dn-sheet");

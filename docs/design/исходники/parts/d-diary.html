@@ -11,9 +11,9 @@
       <label class="dd-search">
         <svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg>
         <input type="text" inputmode="search" id="d-diary-q" autocomplete="off" placeholder="Поиск по дневнику: голова, зарядка, кино" aria-label="Поиск по тексту дневника">
-        <button type="button" class="dd-x" data-act="clear" aria-label="Очистить поиск" hidden><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button type="button" class="icon-btn dd-x" data-act="clear" aria-label="Очистить поиск" hidden><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </label>
-      <span class="dd-count muted" aria-live="polite"></span>
+      <span class="dd-count small" aria-live="polite"></span>
       <div class="dd-res" hidden></div>
     </div>
 
@@ -21,9 +21,9 @@
       <div class="dd-left">
         <aside class="dd-month card" aria-label="Календарь месяца">
           <div class="dd-mh">
-            <button type="button" class="dd-nav" data-act="month" aria-label="Предыдущий месяц"><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-            <b>Ноябрь 2026</b>
-            <button type="button" class="dd-nav" data-act="month" aria-label="Следующий месяц"><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+            <button type="button" class="icon-btn dd-nav" data-act="month" aria-label="Предыдущий месяц"><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+            <p class="h">Ноябрь 2026</p>
+            <button type="button" class="icon-btn dd-nav" data-act="month" aria-label="Следующий месяц"><svg class="dd-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
           </div>
           <p class="dd-mhint muted" hidden>В макете заполнен только ноябрь.</p>
           <div class="dd-wk" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
@@ -33,32 +33,31 @@
           <div class="dd-tip" role="tooltip" hidden></div>
         </aside>
         <aside class="dd-facts card">
-          <p class="card-t">Что было в этот день</p>
+          <p class="h">Что было в этот день</p>
           <div class="dd-fl"></div>
-          <p class="dd-fn muted">Нажмите на факт, чтобы раскрыть подробности.</p>
         </aside>
       </div>
 
       <div class="dd-mid">
         <div class="dd-book"><section class="dd-page card" tabindex="-1" aria-label="Страница дня"></section></div>
-        <div class="dd-undo" role="status" hidden></div>
       </div>
     </div>
+    <div class="undo dd-undo" role="status" hidden></div>
   </div>
 
   <div class="notes">
     <div><h4>Что изменилось</h4><ul>
-      <li>День открывается одной страницей: дата, оценка, настроение, записи по разделам. Месяц и факты стоят рядом и никуда не уезжают.</li>
-      <li>Оценку можно поставить и поправить ползунком за любой день. Сейчас на сайте этого нет вовсе.</li>
-      <li>Запись правится щелчком по тексту, там же меняется раздел. Новая запись добавляется кнопкой под страницей.</li>
-      <li>Удаление без системного окна: запись исчезает, шесть секунд висит «Отменить».</li>
-      <li>Календарь с эмодзи и оценкой взят из текущей программы по выбору владельца. В клетке до шести эмодзи дня (главный крупнее) и кружок с оценкой: 9–10 и 7–8 зелёные, 5–6 жёлтый, 3–4 и 1–2 красные. Цифра в кружке всегда.</li>
-      <li>Наведение или касание дня показывает, что значит каждый эмодзи. Строка эмодзи под месяцем подсвечивает дни с выбранным.</li>
-      <li>Поиск по тексту дневника с подсветкой. Дни с находками выделены в месяце. Точки на будущих днях показывают, сколько планов впереди.</li>
+      <li>Календарь с эмодзи и кружком оценки остался как есть: та же идея, тот же размер эмодзи. Подсветка найденных дней стала акцентной рамкой вместо золотой.</li>
+      <li>Оценка дня: цветная плитка заменена одним крупным числом. Цвет остался только в полоске ползунка (цвет настроения).</li>
+      <li>Эмодзи дня на странице без подписей: подпись и «почему» открываются по нажатию.</li>
+      <li>Настроение: в покое видны только выбранные метки и кнопка «Изменить». Семь кнопок появляются, только когда их правят.</li>
+      <li>Крестик у записи виден при наведении. На телефоне запись удаляется из окна правки. Подсказка «Enter сохранит» убрана.</li>
+      <li>«Что было в этот день» стал простым списком: точка цвета, название, значение. Подсказка под ним убрана, подписи разделов без капса.</li>
+      <li>Одна заливная кнопка: «Сохранить» в окне записи. «Добавить запись» и «Сегодня» стали тихими.</li>
     </ul></div>
     <div><h4>Анимации</h4><ul>
       <li>Перелистывание: при переходе вперёд страница поворачивается влево, как лист. При переходе назад новая страница ложится сверху.</li>
-      <li>Ползунок: деления закрашиваются, плитка с цифрой и клетка в месяце меняют цвет, Рина меняет лицо и реплику.</li>
+      <li>Ползунок: деления закрашиваются, число и кружок в клетке месяца меняются, Рина меняет лицо и реплику.</li>
       <li>При открытии дни месяца появляются волной по диагонали, эмодзи впрыгивают в клетки, оценки в кружках досчитывают до своего числа.</li>
       <li>Сохранённая запись на секунду подсвечивается. Полоска под «Отменить» убывает, пока есть время передумать.</li>
     </ul></div>
@@ -75,50 +74,40 @@
   <style>
 #p-d-diary [hidden]{display:none !important}
 #p-d-diary .notes code{font-size:12.5px;color:var(--text)}
-#p-d-diary .app{--t1: color-mix(in srgb, var(--a-bad) 55%, transparent);--t2: color-mix(in srgb, var(--a-bad) 24%, transparent);--t3: color-mix(in srgb, var(--a-warn) 28%, transparent);--t4: color-mix(in srgb, var(--a-ok) 24%, transparent);--t5: color-mix(in srgb, var(--a-ok) 55%, transparent)}
-#p-d-diary [data-tone="0"]{--tone:transparent}
-#p-d-diary [data-tone="1"]{--tone:var(--t1)}
-#p-d-diary [data-tone="2"]{--tone:var(--t2)}
-#p-d-diary [data-tone="3"]{--tone:var(--t3)}
-#p-d-diary [data-tone="4"]{--tone:var(--t4)}
-#p-d-diary [data-tone="5"]{--tone:var(--t5)}
 #p-d-diary .dd-i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-#p-d-diary mark{background:color-mix(in srgb, var(--a-gold) 45%, transparent);color:inherit;border-radius:4px;padding:0 2px}
-#p-d-diary .dd-bar{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px}
-#p-d-diary .dd-search{flex:1 1 260px;max-width:470px;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 4px 0 13px;background:var(--a-surface);border:1px solid var(--a-line);border-radius:12px;color:var(--a-muted);transition:border-color .2s, box-shadow .2s}
-#p-d-diary .dd-search:focus-within{border-color:var(--a-accent);box-shadow:0 0 0 3px var(--a-accent-soft)}
+#p-d-diary mark{background:color-mix(in srgb, var(--a-accent) 26%, transparent);color:inherit;border-radius:4px;padding:0 2px}
+#p-d-diary .dd-bar{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px}
+#p-d-diary .dd-search{flex:1 1 260px;max-width:470px;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 4px 0 12px;background:var(--a-surface);border:1px solid var(--a-line);border-radius:12px;color:var(--a-muted);transition:border-color .2s}
+#p-d-diary .dd-search:focus-within{border-color:var(--a-accent)}
 #p-d-diary .dd-search input{flex:1;min-width:0;height:42px;background:none;border:0;outline:0;color:var(--a-text);font-size:14px}
 #p-d-diary .dd-search input::placeholder{color:var(--a-muted)}
-#p-d-diary .dd-count{font-size:13px}
-#p-d-diary .dd-res{position:absolute;z-index:6;top:calc(100% + 6px);left:0;width:min(560px, 100%);max-height:320px;overflow:auto;display:grid;gap:2px;padding:6px;background:var(--a-surface);border:1px solid var(--a-line);border-radius:14px;box-shadow:var(--a-shadow);animation:d-diary-rise .25s var(--ease)}
-#p-d-diary .dd-r{display:grid;grid-template-columns:auto minmax(0, 1fr);gap:0 10px;align-items:center;text-align:left;background:none;border:0;border-radius:10px;padding:8px 10px;color:var(--a-text)}
+#p-d-diary .dd-search .icon-btn{width:36px;height:36px}
+#p-d-diary .dd-res{position:absolute;z-index:6;top:calc(100% + 8px);left:0;width:min(560px, 100%);max-height:320px;overflow:auto;display:grid;gap:4px;padding:8px;background:var(--a-surface);border:1px solid var(--a-line-strong);border-radius:12px;animation:d-diary-rise .25s var(--ease)}
+#p-d-diary .dd-r{display:grid;grid-template-columns:auto minmax(0, 1fr);gap:0 12px;align-items:center;text-align:left;background:none;border:0;border-radius:8px;padding:8px;color:var(--a-text)}
 #p-d-diary .dd-r:hover{background:var(--a-surface-2)}
-#p-d-diary .dd-r i{grid-row:span 2;width:34px;height:34px;border-radius:10px;background:var(--tone);display:grid;place-items:center;font:800 14px var(--fd);font-style:normal}
-#p-d-diary .dd-r i[data-tone="0"]{border:1px dashed var(--a-line);color:var(--a-muted)}
+#p-d-diary .dd-r i{grid-row:span 2;width:32px;height:32px;border-radius:8px;background:var(--a-surface-2);display:grid;place-items:center;font-weight:650;font-size:14px;font-style:normal}
 #p-d-diary .dd-r small{font-size:12px;color:var(--a-muted)}
-#p-d-diary .dd-r span{font-size:13.5px;overflow-wrap:anywhere}
-#p-d-diary .dd-res p{padding:12px;color:var(--a-muted)}
-#p-d-diary .dd-grid{display:grid;grid-template-columns:minmax(0, 1.05fr) minmax(0, 1fr);gap:14px;align-items:start}
-#p-d-diary .dd-left,#p-d-diary .dd-mid{min-width:0;display:flex;flex-direction:column;gap:14px}
-#p-d-diary .dd-month{position:relative;padding:14px;display:flex;flex-direction:column;gap:8px}
-#p-d-diary .dd-mh{display:flex;align-items:center;gap:6px}
-#p-d-diary .dd-mh b{flex:1;text-align:center;font:700 15px var(--fd);letter-spacing:-.01em}
-#p-d-diary .dd-nav{width:36px;height:36px;flex:none;display:grid;place-items:center;padding:0;border:1px solid var(--a-line);border-radius:11px;background:var(--a-surface-2);color:var(--a-text);transition:border-color .2s, transform .2s var(--ease)}
-#p-d-diary .dd-nav:hover:not(:disabled){border-color:var(--a-accent)}
-#p-d-diary .dd-nav:active:not(:disabled){transform:scale(.94)}
-#p-d-diary .dd-nav:disabled{opacity:.35;cursor:default}
+#p-d-diary .dd-r span{font-size:13px;overflow-wrap:anywhere}
+#p-d-diary .dd-res p{padding:12px;color:var(--a-muted);font-size:13px}
+#p-d-diary .dd-grid{display:grid;grid-template-columns:minmax(0, 1.05fr) minmax(0, 1fr);gap:16px;align-items:start}
+#p-d-diary .dd-left,#p-d-diary .dd-mid{min-width:0;display:flex;flex-direction:column;gap:16px}
+#p-d-diary .dd-month{position:relative;padding:16px;display:flex;flex-direction:column;gap:8px}
+#p-d-diary .dd-mh{display:flex;align-items:center;gap:8px}
+#p-d-diary .dd-mh .h{flex:1;text-align:center}
+#p-d-diary .dd-nav{width:36px;height:36px}
+#p-d-diary .dd-nav:disabled{opacity:.35;cursor:default;background:none}
 #p-d-diary .dd-mhint{font-size:12px;text-align:center}
-#p-d-diary .dd-wk,#p-d-diary .dd-cal{display:grid;grid-template-columns:repeat(7, minmax(0, 1fr));gap:5px}
-#p-d-diary .dd-wk span{text-align:center;font-size:11px;font-weight:600;color:var(--a-muted)}
-#p-d-diary .dd-c{position:relative;aspect-ratio:1 / 1.05;min-width:0;padding:0;display:grid;place-items:center;border:1px solid transparent;border-radius:12px;background:var(--a-surface-2);color:var(--a-text);transition:opacity .25s, transform .2s var(--ease), border-color .2s, box-shadow .2s}
-#p-d-diary .dd-c:hover:not(:disabled){transform:translateY(-1px);border-color:var(--a-line)}
-#p-d-diary .dd-c[aria-pressed="true"]{border-color:var(--a-accent);background:color-mix(in srgb, var(--a-accent) 12%, var(--a-surface-2));box-shadow:0 0 0 2px color-mix(in srgb, var(--a-accent) 25%, transparent)}
+#p-d-diary .dd-wk,#p-d-diary .dd-cal{display:grid;grid-template-columns:repeat(7, minmax(0, 1fr));gap:4px}
+#p-d-diary .dd-wk span{text-align:center;font-size:12px;color:var(--a-muted)}
+#p-d-diary .dd-c{position:relative;aspect-ratio:1 / 1.05;min-width:0;padding:0;display:grid;place-items:center;border:1px solid transparent;border-radius:12px;background:var(--a-surface-2);color:var(--a-text);transition:opacity .25s, transform .2s var(--ease), border-color .2s}
+#p-d-diary .dd-c:hover:not(:disabled){transform:translateY(-1px);border-color:var(--a-line-strong)}
+#p-d-diary .dd-c[aria-pressed="true"]{border-color:var(--a-accent);background:var(--a-accent-soft)}
 #p-d-diary .dd-c:disabled{background:none;cursor:default}
 #p-d-diary .dd-c .n{font-size:14px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
-#p-d-diary .dd-c.sm .n{position:absolute;z-index:4;top:5px;left:6px;font-size:11px;font-weight:500;color:var(--a-muted)}
+#p-d-diary .dd-c.sm .n{position:absolute;z-index:4;top:4px;left:6px;font-size:12px;font-weight:500;color:var(--a-muted)}
 #p-d-diary .dd-c:disabled .n{color:var(--a-muted)}
 #p-d-diary .dd-c.now .n{color:var(--a-on-accent);background:var(--a-accent-strong);border-radius:99px;padding:4px 8px;font-weight:700}
-#p-d-diary .dd-c.now.sm .n{padding:2px 5px;top:3px;left:3px}
+#p-d-diary .dd-c.now.sm .n{padding:2px 4px;top:4px;left:4px}
 #p-d-diary .sc{position:absolute;z-index:5;top:4px;right:4px;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;font:700 10.5px/1 var(--f)}
 #p-d-diary .sc[data-t="5"]{background:var(--a-ok);color:var(--a-bg)}
 #p-d-diary .sc[data-t="4"]{--k:var(--a-ok)}
@@ -129,113 +118,106 @@
 #p-d-diary .st{position:absolute;inset:0;container-type:size;pointer-events:none}
 #p-d-diary .st i{position:absolute;font-size:20px;font-style:normal;line-height:1;translate:-50% -50%;pointer-events:auto;filter:drop-shadow(0 2px 2px color-mix(in srgb, var(--a-bg) 35%, transparent));transition:transform .2s var(--ease)}
 #p-d-diary .dd-c:hover .st i{transform:scale(1.08) rotate(-4deg)}
-#p-d-diary .dd-c .pl{position:absolute;bottom:6px;left:50%;translate:-50% 0;display:flex;gap:3px}
-#p-d-diary .dd-c .pl u{width:5px;height:5px;border-radius:50%;background:var(--a-accent)}
+#p-d-diary .dd-c .pl{position:absolute;bottom:6px;left:50%;translate:-50% 0;display:flex;gap:4px}
+#p-d-diary .dd-c .pl u{width:4px;height:4px;border-radius:50%;background:var(--a-faint)}
 #p-d-diary .dd-month.is-find .dd-c:not(.hit):not(:disabled),#p-d-diary .dd-month.is-em .dd-c:not(.em):not(:disabled){opacity:.28}
-#p-d-diary .dd-c.hit,#p-d-diary .dd-c.em{border-color:var(--a-gold);box-shadow:0 0 0 2px color-mix(in srgb, var(--a-gold) 30%, transparent)}
+#p-d-diary .dd-c.hit,#p-d-diary .dd-c.em{border-color:var(--a-accent)}
 #p-d-diary .is-em .dd-c.em .st i:first-child{animation:d-diary-jump .45s var(--ease) both}
-#p-d-diary .dd-top{display:flex;flex-wrap:wrap;gap:2px;padding-top:6px}
-#p-d-diary .dd-top button{display:inline-flex;align-items:center;gap:1px;min-width:44px;min-height:38px;padding:3px 7px;border:1px solid transparent;border-radius:10px;background:none;font-size:19px;line-height:1}
+#p-d-diary .dd-top{display:flex;flex-wrap:wrap;gap:4px;padding-top:8px;border-top:1px solid var(--a-line);margin-top:4px}
+#p-d-diary .dd-top button{display:inline-flex;align-items:center;gap:2px;min-width:44px;min-height:36px;padding:4px 8px;border:1px solid transparent;border-radius:8px;background:none;font-size:19px;line-height:1}
 #p-d-diary .dd-top button:hover{background:var(--a-surface-2)}
 #p-d-diary .dd-top button[aria-pressed="true"]{border-color:var(--a-accent);background:var(--a-accent-soft)}
-#p-d-diary .dd-top small{font-size:11px;color:var(--a-muted);align-self:flex-end}
-#p-d-diary .dd-ms{font-size:12.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:36px}
-#p-d-diary .dd-ms b{color:var(--a-text)}
-#p-d-diary .dd-ms button{min-width:36px;min-height:36px;border:1px solid var(--a-line);border-radius:8px;background:none;color:var(--a-soft)}
-#p-d-diary .dd-tip{position:absolute;z-index:8;width:max-content;max-width:min(280px, calc(100% - 16px));padding:9px 12px;display:grid;gap:3px;background:var(--a-surface-3);border:1px solid var(--a-line);border-radius:12px;box-shadow:var(--a-shadow);font-size:12.5px;line-height:1.4;pointer-events:none;animation:d-diary-rise .18s var(--ease)}
-#p-d-diary .dd-tip b{font-size:13px}
+#p-d-diary .dd-top small{font-size:12px;color:var(--a-muted);align-self:flex-end}
+#p-d-diary .dd-ms{font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:36px}
+#p-d-diary .dd-ms b{color:var(--a-text);font-weight:650}
+#p-d-diary .dd-ms .icon-btn{width:36px;height:36px}
+#p-d-diary .dd-tip{position:absolute;z-index:8;width:max-content;max-width:min(280px, calc(100% - 16px));padding:8px 12px;display:grid;gap:4px;background:var(--a-surface-3);border:1px solid var(--a-line-strong);border-radius:12px;font-size:13px;line-height:1.4;pointer-events:none;animation:d-diary-rise .18s var(--ease)}
+#p-d-diary .dd-tip b{font-weight:650}
 #p-d-diary .dd-tip span{color:var(--a-muted)}
-#p-d-diary .dd-fn{font-size:11.5px;line-height:1.4}
-#p-d-diary .dd-ems{display:flex;flex-direction:column;gap:8px}
-#p-d-diary .dd-er{display:flex;flex-wrap:wrap;gap:6px}
-#p-d-diary .dd-er .chip[aria-expanded="true"]{background:var(--a-accent-soft);border-color:var(--a-accent);color:var(--a-text)}
-#p-d-diary .dd-er .chip span{font-size:17px;line-height:1}
-#p-d-diary .dd-why{padding:9px 12px;border-radius:12px;background:var(--a-surface-2);font-size:13px;color:var(--a-soft);animation:d-diary-rise .25s var(--ease)}
-#p-d-diary .dd-why ul{margin:4px 0 0;padding-left:18px;color:var(--a-text)}
+#p-d-diary .dd-ems{display:flex;flex-direction:column;gap:8px;margin-top:-8px}
+#p-d-diary .dd-er{display:flex;flex-wrap:wrap;gap:4px;padding-left:40px}
+#p-d-diary .dd-emb{min-width:36px;min-height:36px;padding:0 4px;border:1px solid transparent;border-radius:8px;background:none;font-size:18px;line-height:1}
+#p-d-diary .dd-emb:hover{background:var(--a-surface-2)}
+#p-d-diary .dd-emb[aria-expanded="true"]{background:var(--a-accent-soft);border-color:var(--a-accent)}
+#p-d-diary .dd-why{padding:8px 12px;border-radius:12px;background:var(--a-surface-2);font-size:13px;color:var(--a-soft);animation:d-diary-rise .25s var(--ease)}
+#p-d-diary .dd-why ul{margin:4px 0 0;padding-left:16px;color:var(--a-text)}
 #p-d-diary .dd-book{position:relative;perspective:1800px}
-#p-d-diary .dd-page{padding:18px 20px 20px;display:flex;flex-direction:column;gap:16px;outline:0}
-#p-d-diary .dd-ghost{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2;transform-origin:left center;box-shadow:var(--a-shadow)}
+#p-d-diary .dd-page{padding:16px;display:flex;flex-direction:column;gap:16px;outline:0}
+#p-d-diary .dd-ghost{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2;transform-origin:left center}
 #p-d-diary .dd-book[data-flip="next"] .dd-ghost{animation:d-diary-out .58s var(--ease) both}
 #p-d-diary .dd-book[data-flip="next"] .dd-page:not(.dd-ghost){animation:d-diary-under .58s var(--ease) both}
-#p-d-diary .dd-book[data-flip="prev"] .dd-ghost{z-index:0;box-shadow:none;animation:d-diary-fade .58s linear both}
-#p-d-diary .dd-book[data-flip="prev"] .dd-page:not(.dd-ghost){position:relative;z-index:2;transform-origin:left center;box-shadow:var(--a-shadow);animation:d-diary-in .58s var(--ease) both}
-#p-d-diary .dd-head{display:flex;align-items:center;gap:10px}
-#p-d-diary .dd-date{flex:1;min-width:0}
-#p-d-diary .dd-date h4{margin:0;font:700 22px/1.15 var(--fd);letter-spacing:-.015em}
-#p-d-diary .dd-date span{font-size:12.5px;color:var(--a-muted)}
-#p-d-diary .dd-head .btn{min-height:38px}
-#p-d-diary .dd-hero{display:grid;grid-template-columns:auto minmax(0, 1fr) minmax(0, 250px);gap:12px 14px;align-items:center;padding:14px;border-radius:14px;background:var(--a-surface-2)}
-#p-d-diary .dd-tile{width:76px;height:76px;border-radius:18px;border:1.5px solid transparent;background:var(--tone);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background .35s var(--ease)}
-#p-d-diary .dd-page[data-tone="0"] .dd-tile{border:1.5px dashed var(--a-muted)}
-#p-d-diary .dd-tile b{font:800 34px/1 var(--fd);letter-spacing:-.02em}
-#p-d-diary .dd-tile small{font-size:10.5px;font-weight:600;color:var(--a-soft)}
+#p-d-diary .dd-book[data-flip="prev"] .dd-ghost{z-index:0;animation:d-diary-fade .58s linear both}
+#p-d-diary .dd-book[data-flip="prev"] .dd-page:not(.dd-ghost){position:relative;z-index:2;transform-origin:left center;animation:d-diary-in .58s var(--ease) both}
+#p-d-diary .dd-head{display:flex;align-items:center;gap:4px}
+#p-d-diary .dd-date{flex:1;min-width:0;padding-left:4px}
+#p-d-diary .dd-date h4{margin:0;font:700 18px/1.2 var(--f);letter-spacing:-.01em}
+#p-d-diary .dd-date span{font-size:13px;color:var(--a-muted)}
+#p-d-diary .dd-hero{display:grid;grid-template-columns:auto minmax(0, 1fr) minmax(0, 250px);gap:12px 16px;align-items:center;padding:16px;border-radius:12px;background:var(--a-surface-2)}
+#p-d-diary .dd-tile{display:flex;align-items:baseline;gap:4px;min-width:56px}
+#p-d-diary .dd-tile small{font-size:13px;color:var(--a-muted)}
+#p-d-diary .dd-page[data-tone="0"] .dd-tile b{color:var(--a-muted)}
 #p-d-diary .dd-word{min-width:0}
-#p-d-diary .dd-word strong{display:block;font:700 17px/1.25 var(--fd);letter-spacing:-.01em}
-#p-d-diary .dd-word span{font-size:12.5px}
+#p-d-diary .dd-word strong{display:block;font-size:15px;font-weight:650}
 #p-d-diary .dd-hero .rina p{background:var(--a-surface);font-size:13px}
 #p-d-diary .dd-pop{animation:d-diary-pop .4s var(--ease)}
 #p-d-diary .dd-slider{grid-column:1 / -1;position:relative;padding-top:12px}
-#p-d-diary .dd-segs{display:grid;grid-template-columns:repeat(10, minmax(0, 1fr));gap:4px;height:12px}
-#p-d-diary .dd-segs i{border-radius:4px;background:var(--a-surface);box-shadow:inset 0 0 0 1px var(--a-line);transition:background .25s var(--ease)}
-#p-d-diary .dd-segs i.on{background:var(--tone);box-shadow:none}
-#p-d-diary .dd-slider input{position:absolute;top:0;left:calc(5% - 15px);width:calc(90% + 30px);height:36px;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:grab}
+#p-d-diary .dd-segs{display:grid;grid-template-columns:repeat(10, minmax(0, 1fr));gap:4px;height:8px}
+#p-d-diary .dd-segs i{border-radius:4px;background:var(--a-surface-3);transition:background .25s var(--ease)}
+#p-d-diary .dd-segs i.on{background:var(--c-mood)}
+#p-d-diary .dd-slider input{position:absolute;top:-2px;left:calc(5% - 15px);width:calc(90% + 30px);height:36px;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:grab}
 #p-d-diary .dd-slider input::-webkit-slider-runnable-track{height:36px;background:transparent}
 #p-d-diary .dd-slider input::-moz-range-track{height:36px;background:transparent}
-#p-d-diary .dd-slider input::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:3px;border-radius:50%;background:var(--a-surface);border:3px solid var(--a-accent);box-shadow:var(--a-shadow)}
-#p-d-diary .dd-slider input::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--a-surface);border:3px solid var(--a-accent)}
+#p-d-diary .dd-slider input::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:6px;border-radius:50%;background:var(--a-surface);border:2px solid var(--a-accent)}
+#p-d-diary .dd-slider input::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--a-surface);border:2px solid var(--a-accent)}
 #p-d-diary .dd-slider input.none::-webkit-slider-thumb{border-style:dashed;border-color:var(--a-muted)}
 #p-d-diary .dd-slider input.none::-moz-range-thumb{border-style:dashed;border-color:var(--a-muted)}
-#p-d-diary .dd-sc{display:flex;justify-content:space-between;margin-top:12px;font-size:11px;color:var(--a-muted)}
-#p-d-diary .dd-moods{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-#p-d-diary .dd-lbl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--a-muted);margin-right:6px}
-#p-d-diary .app .chip{min-height:36px;padding:6px 13px}
-#p-d-diary .dd-moods .chip[aria-pressed="true"]{background:color-mix(in srgb, var(--c-mood) 18%, transparent);border-color:var(--c-mood);color:var(--a-text)}
-#p-d-diary .dd-moods .chip[aria-pressed="true"]::before{content:"✓";font-weight:700}
+#p-d-diary .dd-sc{display:flex;justify-content:space-between;margin-top:12px;font-size:12px;color:var(--a-muted)}
+#p-d-diary .dd-moods{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#p-d-diary .dd-moods .label{min-width:104px}
+#p-d-diary .dd-moods .chip{min-height:36px;padding:4px 12px}
+#p-d-diary .dd-moods .btn{min-height:36px}
 #p-d-diary .dd-secs{display:flex;flex-direction:column}
-#p-d-diary .dd-sec{display:grid;grid-template-columns:116px minmax(0, 1fr);gap:10px;padding:9px 0;border-top:1px solid var(--a-line)}
-#p-d-diary .dd-sl{display:flex;align-items:center;gap:8px;height:38px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--a-muted)}
+#p-d-diary .dd-sec{display:grid;grid-template-columns:104px minmax(0, 1fr);gap:8px;padding:8px 0;border-top:1px solid var(--a-line)}
+#p-d-diary .dd-sl{display:flex;align-items:center;gap:8px;height:38px;font-size:12px;font-weight:600;color:var(--a-muted)}
 #p-d-diary .dd-sl .dd-i{width:16px;height:16px}
-#p-d-diary [data-sec="sleep"] .dd-sl .dd-i{color:var(--c-sleep)}
-#p-d-diary .dd-el{display:flex;flex-direction:column;gap:2px;min-width:0}
-#p-d-diary .dd-ent{display:flex;align-items:flex-start;gap:2px;min-width:0;border-radius:10px}
-#p-d-diary .dd-txt{flex:1;min-width:0;min-height:38px;text-align:left;background:none;border:1px solid transparent;border-radius:10px;padding:7px 10px;font-size:14.5px;line-height:1.5;color:var(--a-text);cursor:text;overflow-wrap:anywhere;transition:background .2s, border-color .2s}
-#p-d-diary .dd-txt:hover{background:var(--a-surface-2);border-color:var(--a-line)}
-#p-d-diary .dd-x{width:38px;height:38px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:10px;background:none;color:var(--a-muted);opacity:.6;transition:opacity .2s, color .2s, background .2s}
-#p-d-diary .dd-x .dd-i{width:15px;height:15px}
-#p-d-diary .dd-x:hover{opacity:1;color:var(--a-bad);background:var(--a-surface-2)}
+#p-d-diary .dd-el{display:flex;flex-direction:column;gap:4px;min-width:0}
+#p-d-diary .dd-ent{display:flex;align-items:flex-start;gap:4px;min-width:0;border-radius:12px}
+#p-d-diary .dd-txt{flex:1;min-width:0;min-height:38px;text-align:left;background:none;border:0;border-radius:8px;padding:8px;font-size:14px;line-height:1.5;color:var(--a-text);cursor:text;overflow-wrap:anywhere;transition:background .2s}
+#p-d-diary .dd-ent:hover .dd-txt{background:var(--a-surface-2)}
+#p-d-diary .dd-ent .dd-del{width:36px;height:36px;opacity:0;transition:opacity .15s}
+#p-d-diary .dd-ent:hover .dd-del,#p-d-diary .dd-ent:focus-within .dd-del{opacity:1}
+#p-d-diary .dd-ent .dd-del:hover{color:var(--a-bad)}
 #p-d-diary .dd-flash{animation:d-diary-flash 1s var(--ease)}
-#p-d-diary .dd-form{flex-direction:column;align-items:stretch;gap:8px;padding:10px;background:var(--a-surface-2);border:1px solid var(--a-accent);border-radius:12px;animation:d-diary-rise .25s var(--ease)}
-#p-d-diary .dd-form textarea{width:100%;min-height:68px;resize:vertical;background:var(--a-surface);border:1px solid var(--a-line);border-radius:10px;padding:8px 10px;font-size:14.5px;line-height:1.5;color:var(--a-text)}
+#p-d-diary .dd-form{flex-direction:column;align-items:stretch;gap:8px;padding:12px;background:var(--a-surface-2);border:1px solid var(--a-accent);border-radius:12px;animation:d-diary-rise .25s var(--ease)}
+#p-d-diary .dd-form textarea{width:100%;min-height:68px;resize:vertical;background:var(--a-surface);border:1px solid var(--a-line);border-radius:8px;padding:8px;font-size:14px;line-height:1.5;color:var(--a-text)}
 #p-d-diary .dd-pick{display:flex;flex-wrap:wrap;gap:4px}
-#p-d-diary .dd-pick .chip{background:var(--a-surface)}
-#p-d-diary .dd-pick .chip[aria-pressed="true"]{background:var(--a-accent-soft)}
-#p-d-diary .dd-fr{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#p-d-diary .dd-pick .chip{background:var(--a-surface);min-height:32px}
+#p-d-diary .dd-fr{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 #p-d-diary .dd-fr .sp{flex:1}
 #p-d-diary .dd-fr .btn{min-height:36px}
-#p-d-diary .dd-hint{font-size:11.5px;color:var(--a-muted)}
+#p-d-diary .dd-fr .dd-rm{color:var(--a-bad)}
 #p-d-diary .dd-add{border-top:1px solid var(--a-line);padding-top:12px}
-#p-d-diary .dd-addbtn{width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--a-line);border-radius:12px;background:none;color:var(--a-accent);font-weight:650;font-size:13.5px;transition:border-color .2s, background .2s}
-#p-d-diary .dd-addbtn:hover{border-color:var(--a-accent);background:var(--a-accent-soft)}
-#p-d-diary .dd-empty{padding:20px 0 8px;text-align:center;color:var(--a-muted);border-top:1px solid var(--a-line)}
-#p-d-diary .dd-undo{position:sticky;bottom:12px;z-index:4;margin-top:10px;display:flex;align-items:center;gap:12px;padding:8px 8px 10px 14px;overflow:hidden;background:var(--a-surface-3);border:1px solid var(--a-line);border-radius:12px;box-shadow:var(--a-shadow);animation:d-diary-rise .3s var(--ease)}
-#p-d-diary .dd-undo span{flex:1;min-width:0}
-#p-d-diary .dd-undo .btn{min-height:36px}
-#p-d-diary .dd-undo i{position:absolute;left:0;bottom:0;width:100%;height:3px;background:var(--a-accent);transform-origin:left;animation:d-diary-bar 6s linear both}
-#p-d-diary .dd-facts{padding:14px}
-#p-d-diary .dd-fl{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-#p-d-diary .dd-fact{flex:1 1 190px}
-#p-d-diary .dd-fact{display:grid;grid-template-columns:auto minmax(0, 1fr) auto;align-items:center;gap:0 9px;min-height:44px;padding:8px 13px;text-align:left;background:var(--a-surface-2);border:1px solid transparent;border-radius:14px;color:var(--a-text);transition:border-color .2s}
-#p-d-diary .dd-fact:hover,#p-d-diary .dd-fact[aria-expanded="true"]{border-color:var(--a-line)}
-#p-d-diary .dd-fact .k{font-size:12.5px;color:var(--a-soft);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#p-d-diary .dd-fact b{font-size:14.5px;font-weight:700;white-space:nowrap}
-#p-d-diary .dd-fact .more{display:none;grid-column:1 / -1;padding-top:5px;font-size:12.5px;line-height:1.45;color:var(--a-soft)}
+#p-d-diary .dd-addbtn{min-height:36px}
+#p-d-diary .dd-empty{padding:16px 0 8px;text-align:center;color:var(--a-muted);font-size:13px;border-top:1px solid var(--a-line)}
+#p-d-diary .dd-undo{overflow:hidden;max-width:calc(100% - 24px);animation:d-diary-rise .3s var(--ease)}
+#p-d-diary .dd-undo i{position:absolute;left:0;bottom:0;width:100%;height:3px;background:color-mix(in srgb, var(--a-bg) 45%, transparent);transform-origin:left;animation:d-diary-bar 6s linear both}
+#p-d-diary .dd-facts{padding:16px}
+#p-d-diary .dd-facts .h{margin-bottom:8px}
+#p-d-diary .dd-fl{display:flex;flex-direction:column}
+#p-d-diary .dd-fact{display:grid;grid-template-columns:auto minmax(0, 1fr) auto;align-items:center;gap:0 12px;min-height:44px;padding:8px;text-align:left;background:none;border:0;border-radius:12px;color:var(--a-text);transition:background .2s}
+#p-d-diary .dd-fact + .dd-fact{border-top:1px solid var(--a-line);border-radius:0}
+#p-d-diary .dd-fact:hover,#p-d-diary .dd-fact[aria-expanded="true"]{background:var(--a-surface-2);border-radius:12px}
+#p-d-diary .dd-fact .k{font-size:14px;color:var(--a-soft);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#p-d-diary .dd-fact b{font-size:14px;font-weight:650;white-space:nowrap}
+#p-d-diary .dd-fact .more{display:none;grid-column:2 / -1;padding-top:4px;font-size:13px;line-height:1.45;color:var(--a-muted)}
 #p-d-diary .dd-fact[aria-expanded="true"] .more{display:block;animation:d-diary-rise .25s var(--ease)}
+#p-d-diary .dd-fact .dot{width:8px;height:8px;border-radius:50%}
 #p-d-diary [data-k="sleep"] .dot{background:var(--c-sleep)}
 #p-d-diary [data-k="pc"] .dot{background:var(--c-pc)}
 #p-d-diary [data-k="game"] .dot{background:var(--c-game)}
 #p-d-diary [data-k="money"] .dot{background:var(--c-money)}
 #p-d-diary [data-k="habit"] .dot{background:var(--c-habit)}
-#p-d-diary [data-k="plan"] .dot{background:var(--a-accent)}
+#p-d-diary [data-k="plan"] .dot{background:var(--a-faint)}
 #p-d-diary.dd-play .dd-c{animation:d-diary-pop .45s var(--ease) both;animation-delay:calc(var(--i) * 40ms)}
 #p-d-diary.dd-play .st i{animation:d-diary-jump .5s var(--ease) both;animation-delay:calc(var(--i) * 40ms + var(--j) * 80ms + 220ms)}
 #p-d-diary.dd-play .dd-top button{animation:d-diary-rise .4s var(--ease) both;animation-delay:calc(var(--j) * 30ms + 500ms)}
@@ -244,8 +226,8 @@
 @keyframes d-diary-pop{from{opacity:0;transform:scale(.6)}}
 @keyframes d-diary-jump{0%{opacity:0;scale:.2} 60%{opacity:1;scale:1.25}}
 @keyframes d-diary-seg{from{opacity:.2;transform:scaleY(.2)}}
-@keyframes d-diary-rise{from{opacity:0;transform:translateY(10px)}}
-@keyframes d-diary-flash{from{background:color-mix(in srgb, var(--a-ok) 30%, transparent)}}
+@keyframes d-diary-rise{from{opacity:0;transform:translateY(8px)}}
+@keyframes d-diary-flash{from{background:var(--a-accent-soft)}}
 @keyframes d-diary-bar{to{transform:scaleX(0)}}
 @keyframes d-diary-out{60%{opacity:1} 100%{opacity:0;transform:rotateY(-88deg)}}
 @keyframes d-diary-in{0%{opacity:0;transform:rotateY(-88deg)} 40%{opacity:1}}
@@ -257,6 +239,11 @@
 #p-d-diary .dd-hero .rina{grid-column:1 / -1;order:3}
 #p-d-diary .dd-sec{grid-template-columns:minmax(0, 1fr);gap:0}
 #p-d-diary .dd-sl{height:28px}
+#p-d-diary .dd-er{padding-left:0}
+#p-d-diary .dd-moods .label{min-width:0}
+}
+@media (hover:none){
+#p-d-diary .dd-ent .dd-del{display:none}
 }
 @media (max-width:980px){
 #p-d-diary .dd-grid{grid-template-columns:minmax(0, 1fr)}
@@ -264,16 +251,15 @@
 #p-d-diary .dd-facts{order:3}
 }
 @media (max-width:820px){
-#p-d-diary .dd-page{padding:14px}
-#p-d-diary .dd-date h4{font-size:18px}
+#p-d-diary .dd-page{padding:12px}
 }
 @media (max-width:520px){
-#p-d-diary .dd-month{padding:10px}
-#p-d-diary .dd-wk,#p-d-diary .dd-cal{gap:4px}
-#p-d-diary .dd-c{border-radius:9px}
-#p-d-diary .dd-c.sm .n{top:3px;left:4px;font-size:10px}
-#p-d-diary .dd-c.now.sm .n{padding:1px 3px;left:2px}
+#p-d-diary .dd-month{padding:12px}
+#p-d-diary .dd-c{border-radius:8px}
+#p-d-diary .dd-c.sm .n{top:4px;left:4px;font-size:10px}
+#p-d-diary .dd-c.now.sm .n{padding:1px 4px;left:2px}
 #p-d-diary .sc{top:2px;right:2px;width:15px;height:15px;font-size:9px}
+#p-d-diary .dd-hero{padding:12px}
 }
 </style>
 
@@ -350,7 +336,7 @@ DAYS[i+1]={s:r[0],m:r[1]?r[1].split(",").map(Number):[],f:r.slice(2,9),
 e:r.slice(9).map(function(x){var p=x.split("|");return{id:++uid,sec:p[0],t:p[1]};})};
 });
 var AV=[0,1,2].map(function(i){var s=0;for(var d=1;d<=TODAY;d++)s+=DAYS[d].f[i];return Math.round(s/TODAY/5)*5;});
-var cur=TODAY,q="",editing=null,adding=false,draftSec="sum",openFact="",undo=null,undoT=0,flipT=0,playT=0,hintT=0,raf=0;
+var cur=TODAY,q="",editing=null,adding=false,moodOpen=false,draftSec="sum",openFact="",undo=null,undoT=0,flipT=0,playT=0,hintT=0,raf=0;
 var appA=$(".app");
 var page=$(".dd-page"),book=$(".dd-book"),cal=$(".dd-cal"),month=$(".dd-month"),factBox=$(".dd-fl");
 var inp=$("#d-diary-q"),resBox=$(".dd-res"),countEl=$(".dd-count"),undoBar=$(".dd-undo");
@@ -462,7 +448,7 @@ topEl.innerHTML=list.map(function(x,j){
 return'<button type="button" data-top="'+x[0]+'" aria-pressed="'+(only===x[0])+'" aria-label="'+x[0]+" "+WHAT[x[0]]+": "+pl(x[1],["день","дня","дней"])+'" style="--j:'+Math.min(j,20)+'">'+x[0]+'<small class="num">'+x[1]+"</small></button>";
 }).join("");
 if(fo){var b=$('[data-top="'+fo+'"]',topEl);if(b)b.focus({preventScroll:true});}
-msEl.innerHTML=only?"Дней с "+only+" "+WHAT[only]+": <b>"+c[only]+'</b><button type="button" data-act="unonly" aria-label="Показать все дни">✕</button>'
+msEl.innerHTML=only?"Дней с "+only+" "+WHAT[only]+": <b>"+c[only]+'</b><button type="button" class="icon-btn" data-act="unonly" aria-label="Показать все дни">'+ic("x")+'</button>'
 :"Дней с записями: <b>"+n+"</b>"+(k?", средняя оценка за месяц: <b>"+(s/k).toFixed(1).replace(".",",")+"</b>":"");
 }
 function setOnly(e){only=only===e?"":e;tip(null);renderCal();}
@@ -511,11 +497,11 @@ function chipHTML(S){return'<button type="button" class="chip" data-pick="'+S[0]
 function formHTML(e){
 return'<div class="dd-ent dd-form"'+(e?' data-id="'+e.id+'"':"")+'><div class="dd-pick" role="group" aria-label="Раздел записи">'+SECS.map(chipHTML).join("")+
 '</div><textarea rows="2" aria-label="Текст записи" placeholder="'+secOf(draftSec)[3]+'">'+(e?esc(e.t):"")+
-'</textarea><div class="dd-fr"><span class="dd-hint">Enter сохранит, Esc отменит</span><span class="sp"></span><button type="button" class="btn ghost" data-act="cancel">Отмена</button><button type="button" class="btn primary" data-act="save">'+(e?"Сохранить":"Добавить")+"</button></div></div>";
+'</textarea><div class="dd-fr">'+(e?'<button type="button" class="btn quiet dd-rm" data-act="del">Удалить</button>':"")+'<span class="sp"></span><button type="button" class="btn quiet" data-act="cancel">Отмена</button><button type="button" class="btn primary" data-act="save">'+(e?"Сохранить":"Добавить")+"</button></div></div>";
 }
 function entHTML(e){
 if(editing===e.id)return formHTML(e);
-return'<div class="dd-ent" data-id="'+e.id+'"><button type="button" class="dd-txt" data-act="edit" title="Изменить запись">'+hl(e.t)+'</button><button type="button" class="dd-x" data-act="del" aria-label="Удалить запись">'+ic("x")+"</button></div>";
+return'<div class="dd-ent" data-id="'+e.id+'"><button type="button" class="dd-txt" data-act="edit" title="Изменить запись">'+hl(e.t)+'</button><button type="button" class="icon-btn dd-del" data-act="del" aria-label="Удалить запись">'+ic("x")+"</button></div>";
 }
 function whyHTML(o){
 return'<div class="dd-why">Почему '+o.e+" «"+esc(o.w)+"»:<ul>"+o.y.map(function(y){
@@ -527,8 +513,8 @@ function emsHTML(d){
 var em=EM[d],o=null;
 if(!em.length)return"";
 em.forEach(function(x){if(pick.d===d&&pick.e===x.e)o=x;});
-return'<div class="dd-ems"><div class="dd-er" role="group" aria-label="Эмодзи дня">'+em.map(function(x,i){
-return'<button type="button" class="chip" data-why="'+i+'" aria-expanded="'+(x===o)+'"><span>'+x.e+"</span>"+esc(x.w)+"</button>";
+return'<div class="dd-ems"><div class="dd-er" role="group" aria-label="Эмодзи дня: нажмите, чтобы узнать почему">'+em.map(function(x,i){
+return'<button type="button" class="dd-emb" data-why="'+i+'" aria-expanded="'+(x===o)+'" aria-label="'+x.e+" "+esc(x.w)+'" title="'+esc(x.w)+'">'+x.e+"</button>";
 }).join("")+"</div>"+(o?whyHTML(o):"")+"</div>";
 }
 function renderPage(){
@@ -541,14 +527,21 @@ if(list.length)secs+='<div class="dd-sec" data-sec="'+S[0]+'" style="--i:'+(n++)
 if(!secs&&!adding)secs='<p class="dd-empty">За этот день записей нет. Добавьте первую прямо здесь.</p>';
 page.dataset.tone=t;
 page.innerHTML=
-'<header class="dd-head"><button type="button" class="dd-nav" data-go="-1" aria-label="Предыдущий день"'+(d<=1?" disabled":"")+">"+ic("l")+'</button><div class="dd-date"><h4>'+d+" ноября</h4><span>"+WD[wd(d)]+(d===TODAY?" · сегодня":"")+"</span></div>"+
-(d!==TODAY?'<button type="button" class="btn ghost" data-act="today">Сегодня</button>':"")+'<button type="button" class="dd-nav" data-go="1" aria-label="Следующий день"'+(d>=TODAY?" disabled":"")+">"+ic("r")+"</button></header>"+emsHTML(d)+
-'<div class="dd-hero"><div class="dd-tile"><b class="num">'+(s||"?")+'</b><small>из 10</small></div><div class="dd-word"><strong>'+WORD[t]+'</strong><span class="muted">'+(s?"Оценка дня":"Потяните ползунок")+"</span></div>"+
-'<div class="rina"><img src="maid/'+FACE[t]+'.webp" alt="Рина" width="64" height="68"><p>'+rinaText(D)+"</p></div>"+
+'<header class="dd-head"><button type="button" class="icon-btn dd-nav" data-go="-1" aria-label="Предыдущий день"'+(d<=1?" disabled":"")+">"+ic("l")+'</button><div class="dd-date"><h4>'+d+" ноября</h4><span>"+WD[wd(d)]+(d===TODAY?" · сегодня":"")+"</span></div>"+
+(d!==TODAY?'<button type="button" class="btn quiet" data-act="today">Сегодня</button>':"")+'<button type="button" class="icon-btn dd-nav" data-go="1" aria-label="Следующий день"'+(d>=TODAY?" disabled":"")+">"+ic("r")+"</button></header>"+emsHTML(d)+
+'<div class="dd-hero"><div class="dd-tile"><b class="num-xl">'+(s||"?")+'</b><small>из 10</small></div><div class="dd-word"><strong>'+WORD[t]+'</strong><span class="small">'+(s?"Оценка дня":"Потяните ползунок")+"</span></div>"+
+'<div class="rina"><img src="maid/'+FACE[t]+'.webp" alt="Рина" width="48" height="48"><p>'+rinaText(D)+"</p></div>"+
 '<div class="dd-slider"><div class="dd-segs" aria-hidden="true">'+segs+'</div><input type="range" min="1" max="10" step="1" value="'+(s||5)+'" aria-label="Оценка дня от 1 до 10"'+(s?"":' class="none"')+'><div class="dd-sc"><span>1 · тяжёлый</span><span>10 · отличный</span></div></div></div>'+
-'<div class="dd-moods" role="group" aria-label="Настроение"><span class="dd-lbl">Настроение</span>'+MOODS.map(function(m,k){return'<button type="button" class="chip" data-mood="'+k+'" aria-pressed="'+(D.m.indexOf(k)>=0)+'">'+m+"</button>";}).join("")+"</div>"+
+moodsHTML(D)+
 '<div class="dd-secs">'+secs+"</div>"+
-'<div class="dd-add">'+(adding?formHTML(null):'<button type="button" class="dd-addbtn" data-act="add">'+ic("plus")+"Добавить запись</button>")+"</div>";
+'<div class="dd-add">'+(adding?formHTML(null):'<button type="button" class="btn quiet dd-addbtn" data-act="add">'+ic("plus")+"Добавить запись</button>")+"</div>";
+}
+/* настроение: в покое видны только выбранные, весь список по кнопке */
+function moodsHTML(D){
+var h='<div class="dd-moods" role="group" aria-label="Настроение"><span class="label">Настроение</span>';
+if(moodOpen)h+=MOODS.map(function(m,k){return'<button type="button" class="chip" data-mood="'+k+'" aria-pressed="'+(D.m.indexOf(k)>=0)+'">'+m+"</button>";}).join("")+'<button type="button" class="btn quiet" data-act="moods">Готово</button>';
+else h+=D.m.map(function(k){return'<span class="tag">'+MOODS[k]+"</span>";}).join("")+'<button type="button" class="btn quiet" data-act="moods">'+(D.m.length?"Изменить":"Отметить")+"</button>";
+return h+"</div>";
 }
 function setScore(v){
 var D=DAYS[cur],old=tone(D.s),t=tone(v);
@@ -585,7 +578,7 @@ for(i=0;i<D.e.length;i++)if(D.e[i].id===id)break;
 if(i>=D.e.length)return;
 undo={day:cur,idx:i,e:D.e.splice(i,1)[0]};
 editing=null;refresh(cur);renderPage();
-undoBar.innerHTML='<span>Запись удалена</span><button type="button" class="btn" data-act="undo">Отменить</button><i></i>';
+undoBar.innerHTML='<span>Запись удалена</span><button type="button" data-act="undo">Отменить</button><i></i>';
 undoBar.hidden=true;void undoBar.offsetWidth;undoBar.hidden=false;
 clearTimeout(undoT);undoT=setTimeout(function(){undo=null;undoBar.hidden=true;},6000);
 if(q)search(true);
@@ -618,7 +611,7 @@ function flipEnd(){clearTimeout(flipT);book.removeAttribute("data-flip");$$(".dd
 function go(d){
 if(d<1||d>TODAY||d===cur)return;
 var dir=d>cur?"next":"prev",ae=document.activeElement,back=ae&&page.contains(ae)?(ae.dataset.go||"0"):null,ghost=null;
-flipEnd();editing=null;adding=false;
+flipEnd();editing=null;adding=false;moodOpen=false;
 if(!MM.reduce){
 ghost=page.cloneNode(true);ghost.classList.add("dd-ghost");ghost.setAttribute("aria-hidden","true");ghost.setAttribute("inert","");ghost.removeAttribute("tabindex");
 book.appendChild(ghost);
@@ -685,6 +678,7 @@ else if(act==="edit"){editing=id;adding=false;draftSec=DAYS[cur].e.filter(functi
 else if(act==="del")del(id);
 else if(act==="save")save();
 else if(act==="cancel")cancel();
+else if(act==="moods"){moodOpen=!moodOpen;renderPage();var mb=$('[data-act="moods"]',page);if(mb)mb.focus({preventScroll:true});}
 else if(act==="undo")unDel();
 else if(act==="add"){
 var have={};DAYS[cur].e.forEach(function(e){have[e.sec]=1;});

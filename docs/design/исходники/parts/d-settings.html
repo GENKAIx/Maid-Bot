@@ -2,7 +2,7 @@
 <header>
 <p class="eyebrow">Экран · Настройки</p>
 <h2>Настройки, в которых всё видно сразу</h2>
-<p>Сейчас тариф, тема, уведомления и вход идут одной лентой карточек, а внешний вид разнесён по трём экранам. Теперь всё разложено по группам, каждое изменение видно сразу и отменяется одной кнопкой.</p>
+<p>Тариф, вид, уведомления, входы и ваши данные разложены по спокойным группам: слева название, справа значение или переключатель. Любое изменение видно сразу и отменяется одной кнопкой.</p>
 </header>
 <button class="replay" type="button">Повторить анимацию</button>
 
@@ -11,7 +11,7 @@
 <button type="button" data-tab="wgt" aria-pressed="false">Виджет</button>
 <button type="button" data-tab="trash" aria-pressed="false">Корзина</button>
 </div>
-<p class="ds-advice">Три вкладки одного экрана. Попробуйте сменить тему и цвет: меняется только эта рамка, как будто это ваш компьютер.</p>
+<p class="ds-advice">Три вкладки одного экрана. Смена темы и цвета перекрашивает только эту рамку, как будто это ваш компьютер.</p>
 
 <div class="app ds-app ds-prog" data-hub="gear" data-tab="Программа" data-title="Настройки">
 <div class="ds-wrap">
@@ -24,121 +24,120 @@
 </nav>
 <div class="ds-col">
 <div class="rina ds-rina">
-<img src="maid/present.webp" alt="Рина" width="64" height="68">
+<img src="maid/present.webp" alt="Рина" width="48" height="48">
 <p></p>
 </div>
 
 <section class="ds-grp" data-sec="plan" aria-label="Тариф">
-<h4 class="ds-h">Тариф</h4>
-<div class="ds-box ds-plan">
-<div class="ds-plan-top">
-<svg class="ds-ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27"/><circle class="ds-ring-v" cx="32" cy="32" r="27"/></svg>
-<div class="ds-plan-name">
-<small>Сейчас у вас</small>
-<b class="ds-pname">«Забота»</b>
-<span class="soft"><b class="num ds-days">12</b> <span class="ds-dw">дней</span> осталось · продлится сам <b class="ds-till">9 декабря</b></span>
-<span class="ds-next" hidden></span>
+<div class="ds-gh"><h4 class="h">Тариф</h4></div>
+<div class="card ds-card">
+<div class="ds-plan">
+<svg class="ds-ring" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20"/><circle class="ds-ring-v" cx="24" cy="24" r="20"/></svg>
+<div class="ds-pinfo">
+<span class="num-l ds-pname">«Забота»</span>
+<span class="small"><span class="num ds-days">12</span> <span class="ds-dw">дней</span> осталось · продлится сам <span class="ds-till">9 декабря</span></span>
+<span class="small ds-next" hidden></span>
 </div>
 <button type="button" class="btn primary ds-plan-btn" data-act="plans" aria-expanded="false">Сменить тариф</button>
 </div>
 <div class="ds-plans" hidden>
 <div class="ds-opts"></div>
-<p class="ds-opt-say soft"></p>
+<div class="ds-opt-say"></div>
 </div>
-<p class="ds-sub">Остатки на сегодня <span class="muted">· обновятся в 00:00, через 10 ч 20 мин</span></p>
+<div class="ds-ms">
+<p class="label">Остатки на сегодня · обновятся в полночь</p>
 <div class="ds-meters"></div>
-<div class="ds-promo">
-<label class="ds-lbl" for="d-settings-promo">Промокод</label>
-<div class="ds-promo-row">
-<input id="d-settings-promo" class="ds-in" type="text" placeholder="Например, ЗИМА7" autocomplete="off">
-<button type="button" class="btn" data-act="promo">Применить</button>
 </div>
+<div class="ds-promo">
+<div class="ds-r"><span class="ds-lt"><b>Промокод</b></span><button type="button" class="btn quiet" data-act="promoopen" aria-expanded="false">Ввести</button></div>
+<div class="ds-promo-in" hidden>
+<input id="d-settings-promo" class="ds-in" type="text" placeholder="Например, ЗИМА7" autocomplete="off" aria-label="Промокод">
+<button type="button" class="btn" data-act="promo">Применить</button>
 <p class="ds-promo-msg" role="status" aria-live="polite"></p>
+</div>
 </div>
 </div>
 </section>
 
 <section class="ds-grp" data-sec="look" aria-label="Вид">
-<h4 class="ds-h">Вид</h4>
-<div class="ds-box">
-<p class="ds-lbl">Тема</p>
-<div class="ds-themes" role="group" aria-label="Тема">
-<button type="button" data-th="dark" aria-pressed="false"><i class="ds-sw ds-sw-d" aria-hidden="true"></i>Тёмная</button>
-<button type="button" data-th="light" aria-pressed="false"><i class="ds-sw ds-sw-l" aria-hidden="true"></i>Светлая</button>
-<button type="button" data-th="sys" aria-pressed="true"><i class="ds-sw ds-sw-s" aria-hidden="true"></i>Как в системе</button>
+<div class="ds-gh"><h4 class="h">Вид</h4></div>
+<div class="card ds-card">
+<div class="ds-r"><span class="ds-lt"><b>Тема</b></span>
+<div class="seg ds-themes" role="group" aria-label="Тема">
+<button type="button" data-th="dark" aria-pressed="false">Тёмная</button>
+<button type="button" data-th="light" aria-pressed="false">Светлая</button>
+<button type="button" data-th="sys" aria-pressed="true">Как в системе</button>
 </div>
-<p class="ds-lbl">Цвет акцента <span class="muted ds-acname">· Сиреневый</span></p>
+</div>
+<div class="ds-r"><span class="ds-lt"><b>Цвет акцента</b><small class="ds-acname">Сиреневый · виджет возьмёт тот же</small></span>
 <div class="ds-acc" role="group" aria-label="Цвет акцента"></div>
-<p class="muted ds-hint">Тот же цвет берёт виджет на рабочем столе. Цветам сна, денег и привычек он не мешает: у них всегда свои.</p>
+</div>
 </div>
 </section>
 
 <section class="ds-grp" data-sec="notif" aria-label="Уведомления">
-<h4 class="ds-h">Уведомления <button type="button" class="btn ds-test" data-act="test">Проверить</button></h4>
-<div class="ds-box">
+<div class="ds-gh"><h4 class="h">Уведомления</h4><button type="button" class="btn quiet" data-act="test">Проверить</button></div>
+<div class="card ds-card">
+<div class="ds-tl">
 <div class="ds-day" aria-hidden="true"><div class="ds-quiet"></div><div class="ds-quiet ds-q2"></div></div>
-<div class="ds-axis muted" aria-hidden="true"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
-<p class="ds-daycap muted"></p>
+<div class="ds-axis" aria-hidden="true"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+<p class="small ds-daycap"></p>
+</div>
 <div class="ds-tgs"></div>
-<p class="ds-lbl">Куда присылать</p>
-<div class="ds-ch" role="group" aria-label="Куда присылать"></div>
+<div class="ds-r"><span class="ds-lt"><b>Куда присылать</b></span><div class="ds-ch" role="group" aria-label="Куда присылать"></div></div>
 </div>
 </section>
 
 <section class="ds-grp" data-sec="login" aria-label="Вход и устройства">
-<h4 class="ds-h">Вход и устройства</h4>
-<div class="ds-box">
-<div class="ds-devs"></div>
+<div class="ds-gh"><h4 class="h">Вход и устройства</h4></div>
+<div class="card ds-card ds-lc">
+<div class="list ds-devs"></div>
 </div>
 </section>
 
 <section class="ds-grp" data-sec="data" aria-label="Ваши данные">
-<h4 class="ds-h">Ваши данные</h4>
-<div class="ds-box">
-<div class="ds-line"><span class="ds-lt"><b>Копия всех записей</b><small class="muted ds-cpy">Дневник, планы, задачи, привычки, сон и деньги одним файлом</small></span><button type="button" class="btn" data-act="copy">Скачать копию</button></div>
-<div class="ds-line ds-danger"><span class="ds-lt"><b>Удалить аккаунт</b><small class="muted">Все записи и переписка с Риной сотрутся</small></span><button type="button" class="btn ds-bad" data-act="del" aria-expanded="false">Удалить</button></div>
-<div class="ds-delbox" hidden>
-<p class="soft">Через 7 дней сотрём всё: 214 дней дневника, 38 планов, 5 привычек. До этого можно передумать. Чтобы продолжить, напишите слово <b>УДАЛИТЬ</b>.</p>
-<div class="ds-promo-row"><input class="ds-in ds-delin" type="text" aria-label="Слово подтверждения" autocomplete="off"><button type="button" class="btn ds-bad-fill" data-act="delgo" disabled>Удалить аккаунт</button><button type="button" class="btn ghost" data-act="delno">Не надо</button></div>
+<div class="ds-gh"><h4 class="h">Ваши данные</h4></div>
+<div class="card ds-card">
+<div class="ds-r"><span class="ds-lt"><b>Копия всех записей</b><small class="ds-cpy">Дневник, планы, задачи, привычки, сон и деньги одним файлом</small></span><button type="button" class="btn" data-act="copy">Скачать копию</button></div>
 </div>
-<div class="ds-delst" hidden role="status"><span>Аккаунт сотрётся <b>4 декабря</b>. До этого всё на месте.</span><button type="button" class="btn" data-act="delundo">Отменить удаление</button></div>
+<div class="ds-delw">
+<button type="button" class="btn quiet ds-badt" data-act="del" aria-expanded="false">Удалить аккаунт</button>
+<div class="ds-delbox" hidden><span>Сотрём всё через 7 дней: 214 дней дневника, 38 планов, 5 привычек. До этого можно передумать.</span><button type="button" class="btn ds-badt" data-act="delgo">Удалить через 7 дней</button><button type="button" class="btn quiet" data-act="delno">Не надо</button></div>
+<div class="ds-delst" hidden role="status"><span><span class="status bad">Удаление 4 декабря.</span> До этого всё на месте.</span><button type="button" class="btn" data-act="delundo">Отменить удаление</button></div>
 </div>
 </section>
 </div>
 </div>
-<div class="ds-push" role="status" aria-live="polite" hidden><img src="maid/hello.webp" alt="" width="44" height="47"><span><b>Рина · Горничная</b><span class="ds-push-t"></span></span></div>
+<div class="ds-push" role="status" aria-live="polite" hidden><b>Рина · Горничная</b><span class="ds-push-t"></span></div>
 </div>
 
 <div class="app ds-app ds-wg" data-hub="gear" data-tab="Виджет" data-title="Настройки" hidden>
 <div class="ds-wgrid">
-<div class="ds-wset">
-<p class="ds-saved muted" role="status" aria-live="polite">Всё сохраняется само</p>
-<div class="ds-box">
-<p class="ds-lbl">Размер текста <b class="num ds-fsv">14 px · обычный</b></p>
+<div class="card ds-card ds-wset">
+<div class="ds-r ds-stack">
+<div class="ds-rt"><span class="ds-lt"><b>Размер текста</b></span><span class="small num ds-fsv">14 px · обычный</span></div>
 <input type="range" class="ds-range" min="12" max="17" step="1" value="14" aria-label="Размер текста виджета">
-<div class="ds-ends muted" aria-hidden="true"><span>Мельче</span><span>Крупнее</span></div>
 </div>
-<div class="ds-box">
-<button type="button" class="ds-tg" data-w="snd" aria-pressed="true"><span class="ds-lt"><b>Звуки</b><small class="muted">Тихий звук, когда появляется облачко</small></span><i aria-hidden="true"></i></button>
-</div>
-<div class="ds-box">
-<p class="ds-lbl">Как Рина пишет</p>
+<button type="button" class="ds-tg" data-w="snd" aria-pressed="true"><span class="ds-lt"><b>Звуки</b><small>Тихий звук, когда появляется облачко</small></span><i aria-hidden="true"></i></button>
+<div class="ds-r ds-stack">
+<span class="ds-lt"><b>Как Рина пишет</b></span>
 <div class="seg ds-wseg" role="group" aria-label="Скорость печати" data-w="speed">
 <button type="button" data-v="slow" aria-pressed="false">Медленно</button>
 <button type="button" data-v="norm" aria-pressed="true">Обычно</button>
 <button type="button" data-v="fast" aria-pressed="false">Быстро</button>
 <button type="button" data-v="now" aria-pressed="false">Сразу целиком</button>
 </div>
-<p class="ds-lbl">Эффекты</p>
+</div>
+<div class="ds-r ds-stack">
+<span class="ds-lt"><b>Эффекты</b><small class="ds-fxhint">Искорки не чаще одной реплики из трёх</small></span>
 <div class="seg ds-wseg" role="group" aria-label="Эффекты" data-w="fx">
 <button type="button" data-v="off" aria-pressed="false">Тихо</button>
 <button type="button" data-v="norm" aria-pressed="true">Обычно</button>
 <button type="button" data-v="party" aria-pressed="false">Празднично</button>
 </div>
-<p class="muted ds-hint ds-fxhint">Искорки не чаще одной реплики из трёх</p>
 </div>
-<div class="ds-box">
-<p class="ds-lbl">Где стоит на экране <span class="muted ds-posn">· справа внизу</span></p>
+<div class="ds-r ds-stack">
+<span class="ds-lt"><b>Где стоит на экране</b><small class="ds-posn">Справа внизу</small></span>
 <div class="ds-mon" role="group" aria-label="Угол экрана">
 <button type="button" data-pos="tl" aria-pressed="false" aria-label="Слева вверху"></button>
 <button type="button" data-pos="tr" aria-pressed="false" aria-label="Справа вверху"></button>
@@ -149,7 +148,7 @@
 </div>
 </div>
 <div class="ds-wprev">
-<p class="ds-lbl">Так это выглядит <button type="button" class="btn ghost ds-again" data-act="again">Ещё реплику</button></p>
+<div class="ds-wph"><span class="label">Так это выглядит</span><span class="small ds-saved" role="status" aria-live="polite">Всё сохраняется само</span><button type="button" class="btn quiet" data-act="again">Ещё реплику</button></div>
 <div class="ds-stage">
 <div class="wgt ds-wgt">
 <div class="wgt-top">
@@ -162,7 +161,7 @@
 <div class="wgt-row"><span class="ds-wt">10:00</span>Созвон по проекту</div>
 <div class="wgt-row"><i class="wgt-ck"></i>Купить хлеб</div>
 <div class="wgt-row"><i class="wgt-ck"></i>Оплатить свет</div>
-<div class="wgt-row"><i class="wgt-ck ds-hb"></i>Зарядка · 6 дней подряд</div>
+<div class="wgt-row"><i class="wgt-ck"></i>Зарядка · 6 дней подряд</div>
 </div>
 </div>
 </div>
@@ -172,33 +171,33 @@
 
 <div class="app ds-app ds-tr" data-hub="gear" data-tab="Корзина" data-title="Настройки" hidden>
 <div class="ds-trtop">
-<div class="ds-trhead">
-<p class="ds-trn"><b class="big num ds-cnt">9</b> <span class="soft">записей лежат в корзине</span></p>
-<p class="muted">Удалённое хранится 30 дней, потом стирается само.</p>
+<div class="grow"><p class="h"><span class="num ds-cnt">9</span> <span class="ds-cw">записей</span> в корзине</p><p class="small">Удалённое хранится 30 дней, потом стирается само</p></div>
+<button type="button" class="btn quiet ds-badt" data-act="clear">Очистить всё</button>
 </div>
-<button type="button" class="btn ds-bad" data-act="clear">Очистить всё</button>
-</div>
-<div class="ds-ask" hidden role="alert"><span class="ds-ask-t"></span><span class="ds-ask-b"><button type="button" class="btn ds-bad-fill" data-act="wipe">Стереть навсегда</button><button type="button" class="btn ghost" data-act="keep">Не надо</button></span></div>
 <div class="rina ds-trina">
-<img src="maid/think.webp" alt="Рина" width="64" height="68">
+<img src="maid/think.webp" alt="Рина" width="48" height="48">
 <p></p>
 </div>
-<div class="ds-list"></div>
+<div class="card ds-card ds-lc ds-trcard">
+<div class="list ds-list"></div>
+<button type="button" class="btn quiet ds-more" data-act="more" hidden>Показать ещё</button>
+</div>
 </div>
 
 <div class="notes">
 <div><h4>Что изменилось</h4><ul>
-<li>«Программа» разбита на группы с оглавлением: Тариф, Вид, Уведомления, Вход и устройства, Ваши данные.</li>
-<li>Тариф: дни кольцом, остатки на сегодня полосками, смена тарифа и промокод прямо в карточке.</li>
-<li>Уведомления стоят на шкале суток рядом с тихими часами. «Проверить» показывает пример.</li>
-<li>Тема, цвет, тариф, выход с устройства отменяются кнопкой. Удаление аккаунта просит слово и ждёт 7 дней.</li>
-<li>Виджет: все настройки на одном экране, живой предпросмотр, 4 угла монитора. В корзине видно, сколько дней осталось.</li>
+<li>Каждая группа стала списком строк: слева название, справа значение или переключатель. Тема выбирается тремя кнопками вместо картинок.</li>
+<li>Одна заливная кнопка на экран: «Сменить тариф». Промокод спрятан за «Ввести», «Проверить» и «Ещё реплику» стали тихими.</li>
+<li>Убраны крупные цифры остатков, капслок в подписях и шрифт Unbounded. Кольцо и полосы тарифа нейтральные, у блоков удаления нет красной заливки, в превью виджета нет сетки.</li>
+<li>«Выйти там» и «Вернуть» появляются при наведении на строку, на телефоне по нажатию.</li>
+<li>Удаление аккаунта в самом низу тихой красной кнопкой, без ввода слова: отсрочка 7 дней и «Отменить». Корзина очищается сразу с «Отменить» вместо вопроса.</li>
+<li>Корзина одним списком по сроку: 7 строк и «Показать ещё». Рина одна на вкладку и маленькая.</li>
 </ul></div>
 <div><h4>Анимации</h4><ul>
-<li>Кольцо и полоски дорисовываются, числа досчитывают.</li>
-<li>Смена темы плавно перекрашивает рамку.</li>
+<li>Кольцо дней и полосы остатков дорисовываются, числа досчитывают.</li>
+<li>Смена темы и цвета плавно перекрашивает рамку.</li>
 <li>В предпросмотре Рина печатает с выбранной скоростью, мини-виджет переезжает в угол.</li>
-<li>Возвращённая запись улетает влево, строка схлопывается.</li>
+<li>Возвращённая запись и устройство, где вы вышли, уезжают влево.</li>
 </ul></div>
 <div><h4>Что нужно в коде</h4><ul>
 <li>Есть: тема (в браузере), акцент и настройки виджета (только на ПК), входы с «Выйти там», копия данных, корзина с днями.</li>
@@ -212,143 +211,126 @@
 #p-d-settings [hidden]{display:none!important}
 #p-d-settings .ds-switch{display:inline-flex;align-self:flex-start;flex-wrap:wrap;gap:2px;padding:3px;background:var(--card);border:1px solid var(--line);border-radius:12px}
 #p-d-settings .ds-switch button{background:none;border:0;border-radius:9px;padding:7px 16px;min-height:36px;font-size:13.5px;font-weight:600;color:var(--muted)}
-#p-d-settings .ds-switch button[aria-pressed="true"]{background:var(--accent);color:var(--bg)}
+#p-d-settings .ds-switch button[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--text)}
 #p-d-settings .ds-advice{color:var(--soft);font-size:14px;max-width:72ch;margin-top:-8px}
 #p-d-settings .app .btn,#p-d-settings .app .seg button{min-height:36px}
-#p-d-settings .app .btn:disabled,#p-d-settings .app .seg button:disabled,#p-d-settings .app .chip:disabled{opacity:.45;cursor:default;border-color:var(--a-line)}
+#p-d-settings .app .btn:disabled{opacity:.45;cursor:default}
 #p-d-settings .ds-prog,#p-d-settings .ds-prog *{transition:background-color .35s var(--ease),border-color .35s var(--ease),color .35s var(--ease)}
-#p-d-settings .app.ds-dark{--a-bg:color-mix(in srgb,var(--bg) 80%,var(--card));--a-surface:var(--card);--a-surface-2:var(--card-2);--a-surface-3:color-mix(in srgb,var(--card-2) 60%,var(--line));--a-line:var(--line);--a-grid:color-mix(in srgb,var(--line) 60%,var(--card));--a-text:var(--text);--a-soft:var(--soft);--a-muted:var(--muted);--a-accent:var(--accent);--a-accent-strong:color-mix(in srgb,var(--accent) 70%,var(--bg));--a-accent-soft:color-mix(in srgb,var(--accent) 14%,transparent);--a-ok:var(--ok);--a-warn:var(--warn);--a-bad:var(--bad);--a-gold:var(--gold)}
-#p-d-settings .app.ds-light{--a-bg:color-mix(in srgb,var(--text) 88%,var(--accent));--a-surface:var(--a-on-accent);--a-surface-2:color-mix(in srgb,var(--accent) 9%,var(--a-on-accent));--a-surface-3:color-mix(in srgb,var(--accent) 18%,var(--a-on-accent));--a-line:color-mix(in srgb,var(--accent) 24%,var(--a-on-accent));--a-grid:color-mix(in srgb,var(--accent) 12%,var(--a-on-accent));--a-text:color-mix(in srgb,var(--bg) 92%,var(--accent));--a-soft:color-mix(in srgb,var(--bg) 70%,var(--muted));--a-muted:color-mix(in srgb,var(--muted) 62%,var(--bg));--a-accent:color-mix(in srgb,var(--accent) 52%,var(--bg));--a-accent-strong:color-mix(in srgb,var(--accent) 55%,var(--bg));--a-accent-soft:color-mix(in srgb,var(--accent) 16%,transparent);--a-ok:color-mix(in srgb,var(--ok) 58%,var(--bg));--a-warn:color-mix(in srgb,var(--warn) 60%,var(--bg));--a-bad:color-mix(in srgb,var(--bad) 62%,var(--bg));--a-gold:color-mix(in srgb,var(--gold) 60%,var(--bg));--a-shadow:0 16px 40px color-mix(in srgb,var(--accent) 22%,transparent)}
+#p-d-settings .app.ds-dark{--a-bg:color-mix(in srgb,var(--bg) 80%,var(--card));--a-surface:var(--card);--a-surface-2:var(--card-2);--a-surface-3:color-mix(in srgb,var(--card-2) 60%,var(--line));--a-line:var(--line);--a-line-strong:color-mix(in srgb,var(--line) 70%,var(--muted));--a-grid:color-mix(in srgb,var(--line) 60%,var(--card));--a-text:var(--text);--a-soft:var(--soft);--a-muted:var(--muted);--a-accent:var(--accent);--a-accent-strong:color-mix(in srgb,var(--accent) 70%,var(--bg));--a-accent-soft:color-mix(in srgb,var(--accent) 14%,transparent);--a-ok:var(--ok);--a-warn:var(--warn);--a-bad:var(--bad);--a-gold:var(--gold)}
+#p-d-settings .app.ds-light{--a-bg:color-mix(in srgb,var(--text) 88%,var(--accent));--a-surface:var(--a-on-accent);--a-surface-2:color-mix(in srgb,var(--accent) 9%,var(--a-on-accent));--a-surface-3:color-mix(in srgb,var(--accent) 18%,var(--a-on-accent));--a-line:color-mix(in srgb,var(--accent) 24%,var(--a-on-accent));--a-line-strong:color-mix(in srgb,var(--accent) 40%,var(--a-on-accent));--a-grid:color-mix(in srgb,var(--accent) 12%,var(--a-on-accent));--a-text:color-mix(in srgb,var(--bg) 92%,var(--accent));--a-soft:color-mix(in srgb,var(--bg) 70%,var(--muted));--a-muted:color-mix(in srgb,var(--muted) 62%,var(--bg));--a-accent:color-mix(in srgb,var(--accent) 52%,var(--bg));--a-accent-strong:color-mix(in srgb,var(--accent) 55%,var(--bg));--a-accent-soft:color-mix(in srgb,var(--accent) 16%,transparent);--a-ok:color-mix(in srgb,var(--ok) 58%,var(--bg));--a-warn:color-mix(in srgb,var(--warn) 60%,var(--bg));--a-bad:color-mix(in srgb,var(--bad) 62%,var(--bg));--a-gold:color-mix(in srgb,var(--gold) 60%,var(--bg))}
 #p-d-settings .ds-ac-1{--ds-x:color-mix(in srgb,var(--c-pc) 70%,var(--c-sleep))}
 #p-d-settings .ds-ac-2{--ds-x:color-mix(in srgb,var(--c-habit) 65%,var(--c-pc))}
 #p-d-settings .ds-ac-3{--ds-x:color-mix(in srgb,var(--c-mood) 70%,var(--accent))}
 #p-d-settings .ds-ac-4{--ds-x:color-mix(in srgb,var(--gold) 70%,var(--c-game))}
 #p-d-settings .app[class*="ds-ac-"]{--a-accent:color-mix(in srgb,var(--ds-x) 78%,var(--a-text));--a-accent-strong:color-mix(in srgb,var(--ds-x) 80%,var(--bg));--a-accent-soft:color-mix(in srgb,var(--ds-x) 15%,transparent)}
 #p-d-settings .wgt[class*="ds-ac-"]{--w-accent:var(--ds-x);--w-btn:color-mix(in srgb,var(--ds-x) 80%,var(--bg))}
-#p-d-settings .ds-wrap{display:grid;grid-template-columns:168px minmax(0,1fr);gap:20px;align-items:start}
-#p-d-settings .ds-toc{position:sticky;top:14px;display:flex;flex-direction:column;gap:2px}
-#p-d-settings .ds-toc button{text-align:left;background:none;border:0;border-radius:10px;padding:8px 12px;min-height:36px;color:var(--a-muted);font-weight:600;font-size:13.5px}
+#p-d-settings .ds-wrap{display:grid;grid-template-columns:160px minmax(0,1fr);gap:24px;align-items:start}
+#p-d-settings .ds-toc{position:sticky;top:16px;display:flex;flex-direction:column;gap:2px}
+#p-d-settings .ds-toc button{text-align:left;background:none;border:0;border-radius:8px;padding:8px 12px;min-height:36px;color:var(--a-muted);font-weight:600;font-size:13px}
 #p-d-settings .ds-toc button:hover{color:var(--a-text)}
 #p-d-settings .ds-toc button[aria-pressed="true"]{background:var(--a-accent-soft);color:var(--a-accent)}
-#p-d-settings .ds-col{display:flex;flex-direction:column;gap:22px;min-width:0}
-#p-d-settings .ds-grp{display:flex;flex-direction:column;gap:10px;min-width:0;scroll-margin-top:14px}
-#p-d-settings .ds-h{margin:0;font:700 16px/1.2 var(--fd);letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
-#p-d-settings .ds-test{margin-left:auto;font-family:var(--f)}
-#p-d-settings .ds-box{background:var(--a-surface);border:1px solid var(--a-line);border-radius:var(--a-r);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
-#p-d-settings .ds-lbl{margin:0;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--a-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-#p-d-settings .ds-lbl b{margin-left:auto;text-transform:none;letter-spacing:0;color:var(--a-text);font-size:13px}
-#p-d-settings .ds-hint{font-size:12.5px}
-#p-d-settings .ds-rina p,#p-d-settings .ds-trina p{animation:d-settings-rise .45s var(--ease) both}
-#p-d-settings .ds-plan-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-#p-d-settings .ds-ring{width:72px;height:72px;flex:none;transform:rotate(-90deg)}
-#p-d-settings .ds-ring circle{fill:none;stroke:var(--a-surface-3);stroke-width:7}
-#p-d-settings .ds-ring .ds-ring-v{stroke:var(--a-accent);stroke-linecap:round;stroke-dasharray:169.6;transition:stroke-dashoffset .9s var(--ease),stroke .35s}
-#p-d-settings .ds-plan-name{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 220px}
-#p-d-settings .ds-plan-name small{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--a-muted);font-weight:700}
-#p-d-settings .ds-pname{font:800 28px/1.05 var(--fd);letter-spacing:-.02em}
-#p-d-settings .ds-next{align-self:flex-start;font-size:12.5px;color:var(--a-accent);background:var(--a-accent-soft);border-radius:99px;padding:2px 10px;animation:d-settings-rise .4s var(--ease)}
-#p-d-settings .ds-plans{display:flex;flex-direction:column;gap:10px}
-#p-d-settings .ds-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-#p-d-settings .ds-opt{text-align:left;background:var(--a-surface-2);border:1.5px solid transparent;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0;color:var(--a-text);animation:d-settings-rise .35s var(--ease) both}
-#p-d-settings .ds-opt b{font-size:15px}
-#p-d-settings .ds-opt strong{font:800 20px/1.1 var(--fd)}
-#p-d-settings .ds-opt small{color:var(--a-soft);font-size:12px}
-#p-d-settings .ds-opt em{font-style:normal;font-size:11px;font-weight:700;color:var(--a-muted);text-transform:uppercase;letter-spacing:.06em}
+#p-d-settings .ds-col{display:flex;flex-direction:column;gap:24px;min-width:0;max-width:680px}
+#p-d-settings .ds-grp{display:flex;flex-direction:column;gap:8px;min-width:0;scroll-margin-top:16px}
+#p-d-settings .ds-gh{display:flex;align-items:center;gap:8px;min-height:36px}
+#p-d-settings .ds-gh .btn{margin-left:auto}
+#p-d-settings .ds-card{padding:0 16px;display:flex;flex-direction:column}
+#p-d-settings .ds-card>*+*{border-top:1px solid var(--a-line)}
+#p-d-settings .ds-card.ds-lc{padding:4px 6px}
+#p-d-settings .ds-r{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 0;min-width:0;flex-wrap:wrap}
+#p-d-settings .ds-stack{flex-direction:column;align-items:stretch;gap:8px;padding:12px 0}
+#p-d-settings .ds-rt{display:flex;align-items:baseline;gap:12px;min-width:0}
+#p-d-settings .ds-lt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 160px}
+#p-d-settings .ds-lt b{font-weight:600;font-size:14px}
+#p-d-settings .ds-lt small{font-size:13px;color:var(--a-muted)}
+#p-d-settings .ds-rina p,#p-d-settings .ds-trina p{animation:d-settings-rise .4s var(--ease) both}
+#p-d-settings .ds-plan{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 0}
+#p-d-settings .ds-ring{width:44px;height:44px;flex:none;transform:rotate(-90deg)}
+#p-d-settings .ds-ring circle{fill:none;stroke:var(--a-surface-3);stroke-width:5}
+#p-d-settings .ds-ring .ds-ring-v{stroke:var(--a-soft);stroke-linecap:round;stroke-dasharray:125.7;transition:stroke-dashoffset .9s var(--ease)}
+#p-d-settings .ds-pinfo{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 200px}
+#p-d-settings .ds-next{color:var(--a-text)}
+#p-d-settings .ds-plans{display:flex;flex-direction:column;gap:12px;padding:16px 0}
+#p-d-settings .ds-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));gap:8px}
+#p-d-settings .ds-opt{text-align:left;background:var(--a-surface-2);border:1px solid transparent;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0;color:var(--a-text);animation:d-settings-rise .35s var(--ease) both}
+#p-d-settings .ds-opt b{font-size:14px;font-weight:650}
+#p-d-settings .ds-opt b small{font-weight:400}
+#p-d-settings .ds-opt span{font-size:13px;color:var(--a-soft)}
+#p-d-settings .ds-opt small{font-size:12px;color:var(--a-muted)}
 #p-d-settings .ds-opt[aria-pressed="true"]{border-color:var(--a-accent);background:var(--a-accent-soft)}
-#p-d-settings .ds-opt-say{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13.5px}
-#p-d-settings .ds-opt-say span{flex:1 1 240px;min-width:0}
+#p-d-settings .ds-opt-say{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--a-soft)}
+#p-d-settings .ds-opt-say span{flex:1 1 220px;min-width:0}
 #p-d-settings .ds-opt-say:empty{display:none}
-#p-d-settings .ds-sub{font-weight:650;font-size:13.5px;border-top:1px solid var(--a-line);padding-top:12px}
-#p-d-settings .ds-meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+#p-d-settings .ds-ms{padding:12px 0 16px;display:flex;flex-direction:column;gap:12px}
+#p-d-settings .ds-meters{display:flex;flex-direction:column;gap:12px}
 #p-d-settings .ds-m{display:flex;flex-direction:column;gap:6px;min-width:0}
-#p-d-settings .ds-m-top{display:flex;align-items:baseline;gap:6px}
-#p-d-settings .ds-m-top b{font:800 26px/1 var(--fd);font-variant-numeric:tabular-nums}
-#p-d-settings .ds-m-top span{color:var(--a-muted);font-size:13px}
-#p-d-settings .ds-bar{display:block;height:8px;border-radius:99px;background:var(--a-surface-3);overflow:hidden}
-#p-d-settings .ds-bar i{display:block;height:100%;border-radius:inherit;background:var(--a-accent);transition:width .8s var(--ease),background-color .35s}
-#p-d-settings .ds-m small{font-size:12px;color:var(--a-soft)}
-#p-d-settings .ds-m.ds-low small{color:var(--a-warn)}
-#p-d-settings .ds-m.ds-low .ds-bar i{background:var(--a-warn)}
-#p-d-settings .ds-promo{border-top:1px solid var(--a-line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
-#p-d-settings .ds-promo-row{display:flex;gap:8px;flex-wrap:wrap}
-#p-d-settings .ds-in{flex:1 1 160px;min-width:0;min-height:38px;background:var(--a-surface-2);border:1px solid var(--a-line);border-radius:10px;padding:6px 12px;color:var(--a-text)}
+#p-d-settings .ds-m-top{display:flex;align-items:baseline;gap:8px;font-size:13px;min-width:0}
+#p-d-settings .ds-m-top .grow{flex:1;min-width:0;color:var(--a-soft)}
+#p-d-settings .ds-m-top b{font-weight:650;color:var(--a-text)}
+#p-d-settings .ds-m-top .num{color:var(--a-muted)}
+#p-d-settings .ds-m .bar i{background:var(--a-soft);transition:width .8s var(--ease)}
+#p-d-settings .ds-promo-in{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-bottom:12px}
+#p-d-settings .ds-in{flex:1 1 160px;min-width:0;min-height:36px;background:var(--a-surface-2);border:1px solid var(--a-line);border-radius:8px;padding:6px 12px;color:var(--a-text)}
 #p-d-settings .ds-in:focus-visible{border-color:var(--a-accent)}
-#p-d-settings .ds-promo-msg{font-size:13px}
-#p-d-settings .ds-promo-msg.ds-ok{color:var(--a-ok)}
-#p-d-settings .ds-promo-msg.ds-no{color:var(--a-bad)}
-#p-d-settings .ds-themes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-#p-d-settings .ds-themes button{display:flex;flex-direction:column;align-items:flex-start;gap:8px;background:var(--a-surface-2);border:1.5px solid transparent;border-radius:14px;padding:10px;font-weight:600;font-size:13px;min-width:0;color:var(--a-text)}
-#p-d-settings .ds-themes button[aria-pressed="true"]{border-color:var(--a-accent);color:var(--a-accent)}
-#p-d-settings .ds-sw{width:100%;height:44px;border-radius:9px;border:1px solid var(--a-line);display:block}
-#p-d-settings .ds-sw-d{background:linear-gradient(var(--card) 0 30%,var(--bg) 30%)}
-#p-d-settings .ds-sw-l{background:linear-gradient(var(--a-on-accent) 0 30%,color-mix(in srgb,var(--text) 88%,var(--accent)) 30%)}
-#p-d-settings .ds-sw-s{background:linear-gradient(110deg,var(--bg) 0 50%,color-mix(in srgb,var(--text) 88%,var(--accent)) 50%)}
-#p-d-settings .ds-acc{display:flex;gap:12px;flex-wrap:wrap}
-#p-d-settings .ds-acc button{width:40px;height:40px;border-radius:50%;border:0;background:var(--ds-x);box-shadow:0 0 0 2px var(--a-surface);transition:transform .2s var(--ease),box-shadow .2s;display:grid;place-items:center;color:var(--a-on-accent)}
+#p-d-settings .ds-promo-msg{flex-basis:100%}
+#p-d-settings .ds-promo-msg:empty{display:none}
+#p-d-settings .ds-acc{display:flex;gap:4px;flex-wrap:wrap}
+#p-d-settings .ds-acc button{width:36px;height:36px;padding:0;border-radius:50%;border:0;background:none;display:grid;place-items:center;color:var(--a-on-accent)}
+#p-d-settings .ds-acc button::before{content:"";grid-area:1/1;width:24px;height:24px;border-radius:50%;background:var(--ds-x)}
 #p-d-settings .ds-acc button[data-ac="0"]{--ds-x:var(--accent)}
-#p-d-settings .ds-acc button[aria-pressed="true"]{box-shadow:0 0 0 3px var(--a-surface),0 0 0 5px var(--a-text);transform:scale(1.06)}
-#p-d-settings .ds-acc svg,#p-d-settings .ds-i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#p-d-settings .ds-acc button[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--a-text)}
+#p-d-settings .ds-acc svg{grid-area:1/1;width:14px;height:14px}
 #p-d-settings .ds-acc button[aria-pressed="false"] svg{display:none}
-#p-d-settings .ds-day{position:relative;height:34px;border-radius:10px;background:var(--a-surface-2);overflow:hidden}
+#p-d-settings .ds-i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#p-d-settings .ds-tl{padding:16px 0 12px;display:flex;flex-direction:column;gap:6px}
+#p-d-settings .ds-day{position:relative;height:24px;border-radius:8px;background:var(--a-surface-2);overflow:hidden}
 #p-d-settings .ds-quiet{position:absolute;top:0;bottom:0;left:0;width:33.33%;background:color-mix(in srgb,var(--c-sleep) 24%,transparent);transition:opacity .3s}
 #p-d-settings .ds-q2{left:97.92%;width:2.08%}
 #p-d-settings .ds-day.ds-noq .ds-quiet{opacity:0}
-#p-d-settings .ds-pin{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--a-accent);box-shadow:0 0 0 3px var(--a-surface-2);animation:d-settings-pin .35s var(--ease) both}
-#p-d-settings .ds-axis{display:flex;justify-content:space-between;font-size:11px;margin-top:-6px}
-#p-d-settings .ds-daycap{font-size:12.5px;margin-top:-4px}
-#p-d-settings .ds-daycap i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:5px;background:color-mix(in srgb,var(--c-sleep) 50%,transparent)}
+#p-d-settings .ds-pin{position:absolute;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--a-text);animation:d-settings-pin .35s var(--ease) both}
+#p-d-settings .ds-axis{display:flex;justify-content:space-between;font-size:12px;color:var(--a-muted)}
+#p-d-settings .ds-daycap i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:color-mix(in srgb,var(--c-sleep) 60%,transparent)}
 #p-d-settings .ds-tgs{display:flex;flex-direction:column}
-#p-d-settings .ds-tg{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--a-line);padding:10px 2px;min-height:52px;color:var(--a-text)}
-#p-d-settings .ds-tgs .ds-tg:first-child,#p-d-settings .ds-box>.ds-tg:first-child{border-top:0;padding-top:0}
-#p-d-settings .ds-lt{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1 1 180px}
-#p-d-settings .ds-lt b{font-weight:650;font-size:14px}
-#p-d-settings .ds-lt small{font-size:12.5px}
-#p-d-settings .ds-tg>i{width:42px;height:24px;border-radius:99px;background:var(--a-surface-3);position:relative;flex:none;transition:background-color .25s}
-#p-d-settings .ds-tg>i::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--a-muted);transition:transform .25s var(--ease),background-color .25s}
+#p-d-settings .ds-tg{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;padding:10px 0;min-height:52px;color:var(--a-text)}
+#p-d-settings .ds-tgs .ds-tg+.ds-tg{border-top:1px solid var(--a-line)}
+#p-d-settings .ds-tg>i{width:36px;height:20px;border-radius:99px;background:var(--a-surface-3);position:relative;flex:none}
+#p-d-settings .ds-tg>i::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--a-muted);transition:transform .25s var(--ease),background-color .25s}
 #p-d-settings .ds-tg[aria-pressed="true"]>i{background:var(--a-accent-strong)}
-#p-d-settings .ds-tg[aria-pressed="true"]>i::after{transform:translateX(18px);background:var(--a-on-accent)}
+#p-d-settings .ds-tg[aria-pressed="true"]>i::after{transform:translateX(16px);background:var(--a-on-accent)}
 #p-d-settings .ds-ch{display:flex;gap:8px;flex-wrap:wrap}
-#p-d-settings .ds-ch .chip{min-height:36px;padding:4px 14px}
-#p-d-settings .ds-ch .chip .ds-i{width:15px;height:15px}
-#p-d-settings .ds-line{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
-#p-d-settings .ds-dev{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--a-line);min-width:0;overflow:hidden;max-height:90px;transition:max-height .3s var(--ease),opacity .3s,padding .3s}
-#p-d-settings .ds-dev:first-child{border-top:0;padding-top:0}
-#p-d-settings .ds-dev.ds-gone{max-height:0;opacity:0;padding:0;border-top-width:0}
-#p-d-settings .ds-dev .ds-lt{flex:1 1 140px}
-#p-d-settings .ds-dic{width:38px;height:38px;border-radius:11px;background:var(--a-surface-2);display:grid;place-items:center;color:var(--a-soft);flex:none}
-#p-d-settings .ds-here{font-size:11.5px;color:var(--a-ok);font-weight:700;white-space:nowrap}
-#p-d-settings .ds-bad{color:var(--a-bad)}
-#p-d-settings .app .ds-bad:hover{border-color:var(--a-bad)}
-#p-d-settings .ds-bad-fill{background:var(--a-bad);border-color:var(--a-bad);color:var(--a-bg)}
-#p-d-settings .ds-danger{border-top:1px solid var(--a-line);padding-top:12px}
-#p-d-settings .ds-delbox,#p-d-settings .ds-delst{display:flex;flex-direction:column;gap:10px;background:color-mix(in srgb,var(--a-bad) 9%,transparent);border:1px solid color-mix(in srgb,var(--a-bad) 35%,transparent);border-radius:12px;padding:12px;animation:d-settings-rise .35s var(--ease)}
-#p-d-settings .ds-delst{flex-direction:row;align-items:center;flex-wrap:wrap}
-#p-d-settings .ds-delst span{flex:1 1 200px;min-width:0}
-#p-d-settings .ds-push{position:absolute;right:16px;top:64px;z-index:7;display:flex;gap:10px;align-items:center;width:min(320px,calc(100% - 32px));background:var(--a-surface);border:1px solid var(--a-line);border-radius:14px;padding:10px 12px;box-shadow:var(--a-shadow);animation:d-settings-slide .4s var(--ease);font-size:13px}
-#p-d-settings .ds-push img{width:44px;height:47px;border-radius:10px;background:var(--a-surface-2);object-fit:cover;flex:none}
-#p-d-settings .ds-push>span{display:flex;flex-direction:column;min-width:0}
-#p-d-settings .ds-push b{font-size:12px;color:var(--a-muted)}
-#p-d-settings .ds-toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:8;background:var(--a-text);color:var(--a-bg);border-radius:12px;padding:6px 6px 6px 14px;display:flex;align-items:center;gap:10px;font-size:13px;box-shadow:var(--a-shadow);width:max-content;max-width:calc(100% - 24px);animation:d-settings-pop .35s var(--ease)}
-#p-d-settings .ds-toast span{min-width:0}
-#p-d-settings .ds-toast button{border:0;background:none;color:inherit;font-weight:700;min-height:36px;padding:0 10px;border-radius:8px;text-decoration:underline;white-space:nowrap}
-#p-d-settings .ds-wgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:18px;align-items:start}
-#p-d-settings .ds-wset{display:flex;flex-direction:column;gap:12px;min-width:0}
-#p-d-settings .ds-saved{font-size:12.5px}
-#p-d-settings .ds-saved.ds-flash{color:var(--a-ok);animation:d-settings-rise .3s var(--ease)}
-#p-d-settings .ds-range{width:100%;accent-color:var(--a-accent);min-height:30px}
-#p-d-settings .ds-ends{display:flex;justify-content:space-between;font-size:12px;margin-top:-8px}
+#p-d-settings .ds-ch .chip{min-height:36px;padding:4px 12px}
+#p-d-settings .ds-ch .chip .ds-i{width:14px;height:14px}
+#p-d-settings .ds-dic{width:36px;height:36px;border-radius:8px;background:var(--a-surface-2);display:grid;place-items:center;color:var(--a-muted);flex:none}
+#p-d-settings .li:hover .ds-dic,#p-d-settings .li:focus-within .ds-dic{background:var(--a-surface-3)}
+#p-d-settings .li.open{background:var(--a-surface-2)}
+#p-d-settings .row-acts{position:absolute;right:8px;top:50%;translate:0 -50%;background:var(--a-surface-2);padding-left:12px}
+#p-d-settings .li.ds-gone,#p-d-settings .li.ds-fly{opacity:0;transform:translateX(-40px);transition:opacity .25s,transform .3s var(--ease)}
+#p-d-settings .li.ds-in-anim{animation:d-settings-rise .4s var(--ease) both}
+#p-d-settings .ds-delw{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin-top:8px}
+#p-d-settings .ds-badt{color:var(--a-bad)}
+#p-d-settings .ds-badt:hover{color:var(--a-bad)}
+#p-d-settings .ds-delbox,#p-d-settings .ds-delst{align-self:stretch;display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;background:var(--a-surface);border:1px solid var(--a-line);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--a-soft);animation:d-settings-rise .3s var(--ease)}
+#p-d-settings .ds-delbox>span,#p-d-settings .ds-delst>span{flex:1 1 240px;min-width:0}
+#p-d-settings .ds-push{position:absolute;right:16px;top:60px;z-index:7;display:flex;flex-direction:column;gap:2px;width:min(300px,calc(100% - 32px));background:var(--a-surface);border:1px solid var(--a-line-strong);border-radius:12px;padding:12px 16px;font-size:13px;animation:d-settings-slide .4s var(--ease)}
+#p-d-settings .ds-push b{font-size:12px;font-weight:600;color:var(--a-muted)}
+#p-d-settings .undo{width:max-content;max-width:calc(100% - 24px);animation:d-settings-up .3s var(--ease)}
+#p-d-settings .undo span{min-width:0}
+#p-d-settings .undo button{min-height:32px;white-space:nowrap}
+#p-d-settings .ds-wgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);gap:24px;align-items:start}
+#p-d-settings .ds-range{width:100%;accent-color:var(--a-accent);min-height:28px;margin:0}
 #p-d-settings .ds-wseg{align-self:flex-start}
-#p-d-settings .ds-mon{position:relative;aspect-ratio:16 / 9;max-width:300px;width:100%;border:3px solid var(--a-surface-3);border-radius:10px;background:linear-gradient(160deg,var(--a-surface-2),color-mix(in srgb,var(--a-accent) 12%,var(--a-surface-2)));display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;padding:4px}
-#p-d-settings .ds-mon button{border:1.5px dashed transparent;background:none;border-radius:6px;min-height:36px}
+#p-d-settings .ds-mon{position:relative;aspect-ratio:16 / 9;width:min(200px,100%);border:2px solid var(--a-line-strong);border-radius:8px;background:var(--a-surface-2);display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;padding:4px}
+#p-d-settings .ds-mon button{border:1px dashed transparent;background:none;border-radius:6px;min-height:36px}
 #p-d-settings .ds-mon button:hover{border-color:var(--a-muted)}
 #p-d-settings .ds-mon button[aria-pressed="true"]{border-color:var(--a-accent);background:var(--a-accent-soft)}
-#p-d-settings .ds-mini{position:absolute;width:16%;height:36%;border-radius:5px;background:var(--a-accent-strong);pointer-events:none;transition:left .45s var(--ease),top .45s var(--ease);left:calc(84% - 9px);top:calc(64% - 9px)}
-#p-d-settings .ds-mini[data-p="tl"]{left:9px;top:9px}
-#p-d-settings .ds-mini[data-p="tr"]{top:9px}
-#p-d-settings .ds-mini[data-p="bl"]{left:9px}
-#p-d-settings .ds-wprev{position:sticky;top:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
-#p-d-settings .ds-again{margin-left:auto;min-height:32px;padding:4px 10px;text-transform:none;letter-spacing:0}
-#p-d-settings .ds-stage{min-height:380px;border-radius:var(--a-r);border:1px solid var(--a-line);padding:16px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;background:linear-gradient(var(--a-grid) 1px,transparent 1px) 0 0 / 24px 24px,linear-gradient(90deg,var(--a-grid) 1px,transparent 1px) 0 0 / 24px 24px,var(--a-surface-2);overflow:hidden}
+#p-d-settings .ds-mini{position:absolute;width:16%;height:34%;border-radius:4px;background:var(--a-accent);pointer-events:none;transition:left .45s var(--ease),top .45s var(--ease);left:calc(84% - 8px);top:calc(66% - 8px)}
+#p-d-settings .ds-mini[data-p="tl"]{left:8px;top:8px}
+#p-d-settings .ds-mini[data-p="tr"]{top:8px}
+#p-d-settings .ds-mini[data-p="bl"]{left:8px}
+#p-d-settings .ds-wprev{position:sticky;top:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+#p-d-settings .ds-wph{display:flex;align-items:center;gap:8px;min-height:36px;flex-wrap:wrap}
+#p-d-settings .ds-wph .btn{margin-left:auto}
+#p-d-settings .ds-saved.ds-flash{color:var(--a-ok);animation:d-settings-rise .3s var(--ease)}
+#p-d-settings .ds-stage{min-height:360px;border-radius:var(--a-r);border:1px solid var(--a-line);padding:16px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;background:var(--a-surface-2);overflow:hidden}
 #p-d-settings .ds-stage[data-p="tl"],#p-d-settings .ds-stage[data-p="tr"]{justify-content:flex-start}
 #p-d-settings .ds-stage[data-p="tl"],#p-d-settings .ds-stage[data-p="bl"]{align-items:flex-start}
 #p-d-settings .ds-wgt{font-size:var(--ds-fs,14px);position:relative}
@@ -356,56 +338,42 @@
 #p-d-settings .ds-wgt.ds-left .wgt-top{flex-direction:row-reverse}
 #p-d-settings .ds-wgt.ds-left .wgt-bubble{border-radius:14px 14px 14px 4px}
 #p-d-settings .ds-wgt .wgt-row{font-size:inherit}
-#p-d-settings .ds-wt{font-weight:700;color:var(--w-accent);font-variant-numeric:tabular-nums}
-#p-d-settings .ds-wgt .wgt-ck.ds-hb{border-color:var(--c-habit)}
-#p-d-settings .ds-wgt .wgt-panel h5{color:var(--w-accent)}
+#p-d-settings .ds-wt{font-weight:700;font-variant-numeric:tabular-nums}
 #p-d-settings .ds-note{position:absolute;top:-10px;right:-6px;width:22px;height:22px;padding:4px;border-radius:50%;background:var(--w-btn);fill:none;stroke:var(--w-text);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;opacity:0}
 #p-d-settings .ds-note.ds-ping{animation:d-settings-ping .9s var(--ease)}
 #p-d-settings .ds-fx{position:absolute;right:26px;top:0;width:86px;height:60px;pointer-events:none;z-index:3}
 #p-d-settings .ds-wgt.ds-left .ds-fx{right:auto;left:26px}
 #p-d-settings .ds-fx i{position:absolute;font-style:normal;color:var(--w-gold);font-size:15px;animation:d-settings-spark .9s var(--ease) both}
-#p-d-settings .ds-trtop{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
-#p-d-settings .ds-trhead{flex:1 1 240px;min-width:0}
-#p-d-settings .ds-trn{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-#p-d-settings .ds-ask{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:color-mix(in srgb,var(--a-bad) 10%,transparent);border:1px solid color-mix(in srgb,var(--a-bad) 40%,transparent);border-radius:12px;padding:10px 12px;animation:d-settings-rise .3s var(--ease)}
-#p-d-settings .ds-ask-t{flex:1 1 220px;min-width:0}
-#p-d-settings .ds-ask-b{display:flex;gap:8px;flex-wrap:wrap}
-#p-d-settings .ds-list{display:flex;flex-direction:column;gap:14px}
-#p-d-settings .ds-kind{display:flex;flex-direction:column;background:var(--a-surface);border:1px solid var(--a-line);border-radius:var(--a-r);padding:4px 14px}
-#p-d-settings .ds-kind>p{margin:10px 0 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--a-muted)}
-#p-d-settings .ds-row{display:grid;grid-template-columns:38px minmax(0,1fr) 160px auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--a-line);max-height:140px;transition:max-height .26s var(--ease) .22s,padding .26s var(--ease) .22s,opacity .22s,transform .3s var(--ease)}
-#p-d-settings .ds-kind>p + .ds-row{border-top:0}
-#p-d-settings .ds-row.ds-in-anim{animation:d-settings-rise .4s var(--ease) both}
-#p-d-settings .ds-row.ds-fly{transform:translateX(-60px);opacity:0;max-height:0;padding:0;overflow:hidden}
-#p-d-settings .ds-row .ds-lt span{font-size:12.5px;color:var(--a-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#p-d-settings .ds-life{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--a-soft);min-width:0}
-#p-d-settings .ds-life .ds-bar{height:5px}
-#p-d-settings .ds-life .ds-bar i{background:var(--a-muted)}
-#p-d-settings .ds-life.ds-soon{color:var(--a-warn);font-weight:650}
-#p-d-settings .ds-life.ds-soon .ds-bar i{background:var(--a-warn)}
-#p-d-settings .ds-empty{text-align:center;padding:34px 12px;color:var(--a-muted);background:var(--a-surface);border:1px dashed var(--a-line);border-radius:var(--a-r);animation:d-settings-rise .4s var(--ease)}
-#p-d-settings .ds-empty b{display:block;color:var(--a-text);font:700 17px/1.3 var(--fd);margin-bottom:4px}@keyframes d-settings-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes d-settings-pop{from{opacity:0;transform:translateX(-50%) translateY(10px) scale(.96)}to{opacity:1;transform:translateX(-50%)}}@keyframes d-settings-slide{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}@keyframes d-settings-pin{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}@keyframes d-settings-ping{0%{opacity:0;transform:scale(.5)}30%{opacity:1;transform:scale(1.15)}70%{opacity:1;transform:scale(1)}100%{opacity:0}}@keyframes d-settings-spark{from{opacity:0;transform:translateY(14px) scale(.4)}50%{opacity:1}to{opacity:0;transform:translateY(-16px) scale(1.1)}}@media (max-width:900px){#p-d-settings .ds-wgrid{grid-template-columns:minmax(0,1fr)}
+#p-d-settings .ds-trtop{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#p-d-settings .ds-trtop .grow{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px}
+#p-d-settings .ds-tr .li .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#p-d-settings .ds-life{font-size:12px;color:var(--a-muted);white-space:nowrap}
+#p-d-settings .ds-more{align-self:flex-start;margin:4px 4px 8px;border-top:0}
+@keyframes d-settings-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes d-settings-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes d-settings-slide{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+@keyframes d-settings-pin{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}
+@keyframes d-settings-ping{0%{opacity:0;transform:scale(.5)}30%{opacity:1;transform:scale(1.15)}70%{opacity:1;transform:scale(1)}100%{opacity:0}}
+@keyframes d-settings-spark{from{opacity:0;transform:translateY(14px) scale(.4)}50%{opacity:1}to{opacity:0;transform:translateY(-16px) scale(1.1)}}
+@media (max-width:900px){
+#p-d-settings .ds-wgrid{grid-template-columns:minmax(0,1fr)}
 #p-d-settings .ds-wprev{position:static;order:-1}
-#p-d-settings .ds-stage{min-height:300px}
-#p-d-settings .ds-row{grid-template-columns:38px minmax(0,1fr) auto}
-#p-d-settings .ds-life{grid-column:2 / 4;grid-row:2}}@media (max-width:720px){#p-d-settings .ds-wrap{grid-template-columns:minmax(0,1fr);gap:12px}
+#p-d-settings .ds-stage{min-height:280px}
+}
+@media (max-width:720px){
+#p-d-settings .ds-wrap{grid-template-columns:minmax(0,1fr);gap:12px}
 #p-d-settings .ds-toc{position:static;flex-direction:row;overflow-x:auto;padding-bottom:2px}
 #p-d-settings .ds-toc button{white-space:nowrap;flex:none}
-#p-d-settings .ds-meters,#p-d-settings .ds-opts{grid-template-columns:minmax(0,1fr)}
-#p-d-settings .ds-meters{gap:12px}
-#p-d-settings .ds-themes{gap:6px}
-#p-d-settings .ds-themes button{padding:8px;font-size:12px}
-#p-d-settings .ds-pname{font-size:24px}
+#p-d-settings .ds-card{padding:0 12px}
+#p-d-settings .ds-card.ds-lc{padding:4px}
 #p-d-settings .ds-plan-btn{width:100%;justify-content:center}
 #p-d-settings .ds-push{top:54px;right:12px;width:calc(100% - 24px)}
-#p-d-settings .ds-toast{bottom:76px}
+#p-d-settings .undo{bottom:72px}
 #p-d-settings .ds-wgt .wgt-bubble{max-width:160px}
-#p-d-settings .ds-row{grid-template-columns:38px minmax(0,1fr)}
-#p-d-settings .ds-life{grid-column:2;grid-row:2}
-#p-d-settings .ds-row>.btn{grid-column:2;grid-row:3;justify-self:start}}
+}
 </style>
 
-  <script>(function(){
+<script>(function(){
 "use strict";
 var root=document.getElementById("p-d-settings");
 if(!root)return;
@@ -426,14 +394,24 @@ play();
 });
 var tT=null;
 function toast(frame,msg,undo){
-$$(".ds-toast").forEach(function(o){o.remove();});
+$$(".undo").forEach(function(o){o.remove();});
 clearTimeout(tT);
 var t=document.createElement("div");
-t.className="ds-toast";t.setAttribute("role","status");
+t.className="undo";t.setAttribute("role","status");
 t.innerHTML="<span>"+msg+"</span>"+(undo?'<button type="button">Отменить</button>':"");
 if(undo)t.querySelector("button").addEventListener("click",function(){t.remove();undo();});
 frame.appendChild(t);
 tT=setTimeout(function(){t.remove();},6000);
+}
+function later(fn,ms){setTimeout(fn,M.reduce?0:ms);}
+function rowTap(frame){
+frame.addEventListener("click",function(e){
+if(e.target.closest("button,input"))return;
+var li=e.target.closest(".li");if(!li||!frame.contains(li)||!li.querySelector(".row-acts"))return;
+var was=li.classList.contains("open");
+$$(".li.open",frame).forEach(function(x){x.classList.remove("open");});
+if(!was)li.classList.add("open");
+});
 }
 /*Программа*/
 var P;
@@ -441,14 +419,14 @@ function freshP(){
 P={plan:"care",next:null,pick:null,days:12,till:"9 декабря",promo:false,use:[["Сообщения",23,60],["Умные ответы",2,5],["Аудиоразбор, мин",4,30]],
 th:"sys",ac:0,quiet:true,ch:{tg:true,wgt:true,web:false},del:false,
 nt:[
-{t:"План дня утром",s:"в 8:30 пришлю дела и планы на сегодня",at:8.5,on:true},
-{t:"Напоминать о планах",s:"за 15 минут до начала",on:true},
-{t:"Спросить вечером, как прошёл день",s:"в 21:00, можно ответить одним словом",at:21,on:true},
-{t:"Пора спать",s:"в 23:15, за 15 минут до тихих часов",at:23.25,on:false},
-{t:"Новое в программе",s:"не чаще раза в месяц",on:false}
+{t:"План дня утром",s:"В 8:30 пришлю дела и планы на сегодня",at:8.5,on:true},
+{t:"Напоминать о планах",s:"За 15 минут до начала",on:true},
+{t:"Спросить вечером, как прошёл день",s:"В 21:00, можно ответить одним словом",at:21,on:true},
+{t:"Пора спать",s:"В 23:15, за 15 минут до тихих часов",at:23.25,on:false},
+{t:"Новое в программе",s:"Не чаще раза в месяц",on:false}
 ],
 devs:[
-{n:"Этот компьютер",s:"Программа на ПК · сейчас",ic:"pc",here:true},
+{n:"Этот компьютер",s:"Программа на ПК · вы здесь",ic:"pc",here:true},
 {n:"Телефон",s:"Telegram · сегодня в 9:12",ic:"ph"},
 {n:"Ноутбук",s:"Браузер · 24 ноября в 22:40",ic:"pc"},
 {n:"Рабочий компьютер",s:"Браузер · 2 ноября в 13:05",ic:"pc"}
@@ -465,10 +443,10 @@ function pn(k){for(var i=0;i<PLANS.length;i++)if(PLANS[i].k===k)return PLANS[i];
 var ACC=["Сиреневый","Голубой","Мятный","Розовый","Янтарный"];
 function rinaP(){
 var img=$(".ds-rina img",fP),p=$(".ds-rina p",fP),u=P.use[1],left=u[2]-u[1];
-if(P.del){img.src="maid/sad.webp";p.innerHTML="Мне будет вас не хватать. Сотру всё <b>4 декабря</b>, а до этого передумать можно одной кнопкой.";}
-else if(P.promo){img.src="maid/excited.webp";p.innerHTML="Промокод добавил 7 дней: «Забота» теперь до <b>"+P.till+"</b>. Платить пока ничего не нужно.";}
-else if(P.next){img.src="maid/salute.webp";p.innerHTML="Записала: с <b>9 декабря</b> будет «"+pn(P.next).n+"». До тех пор всё работает как сейчас.";}
-else{img.src="maid/present.webp";p.innerHTML="Умных ответов осталось <b>"+left+" из "+u[2]+"</b>, новые придут в полночь. «Забота» продлится сама <b>"+P.till+"</b>.";}
+if(P.del){img.src="maid/sad.webp";p.innerHTML="Мне будет вас не хватать. Сотру всё <b>4 декабря</b>, до этого можно передумать.";}
+else if(P.promo){img.src="maid/excited.webp";p.innerHTML="Промокод добавил 7 дней: «Забота» теперь до <b>"+P.till+"</b>.";}
+else if(P.next){img.src="maid/salute.webp";p.innerHTML="Записала: с <b>9 декабря</b> будет «"+pn(P.next).n+"». До тех пор всё как сейчас.";}
+else{img.src="maid/present.webp";p.innerHTML="Умных ответов осталось <b>"+left+" из "+u[2]+"</b>, новые придут в полночь.";}
 p.style.animation="none";void p.offsetWidth;p.style.animation="";
 }
 function count(el,to){
@@ -480,19 +458,19 @@ function renderPlan(anim){
 $(".ds-pname",fP).textContent="«"+pn(P.plan).n+"»";
 $(".ds-days",fP).textContent=P.days;$(".ds-dw",fP).textContent=plural(P.days,"день","дня","дней");
 $(".ds-till",fP).textContent=P.till;
-var nx=$(".ds-next",fP);nx.hidden=!P.next;if(P.next)nx.textContent="С 9 декабря: «"+pn(P.next).n+"»";
-var ring=$(".ds-ring-v",fP),off=169.6*(1-Math.min(P.days,30)/30);
-if(anim){ring.style.transition="none";ring.style.strokeDashoffset=169.6;void ring.getBoundingClientRect();ring.style.transition="";}
+var nx=$(".ds-next",fP);nx.hidden=!P.next;if(P.next)nx.textContent="С 9 декабря будет «"+pn(P.next).n+"»";
+var ring=$(".ds-ring-v",fP),off=125.7*(1-Math.min(P.days,30)/30);
+if(anim){ring.style.transition="none";ring.style.strokeDashoffset=125.7;void ring.getBoundingClientRect();ring.style.transition="";}
 ring.style.strokeDashoffset=off;
 var box=$(".ds-meters",fP);
 box.innerHTML=P.use.map(function(u){
 var left=u[2]-u[1],low=left/u[2]<=.4;
-return '<div class="ds-m'+(low?" ds-low":"")+'"><div class="ds-m-top"><b data-n="'+u[1]+'">'+u[1]+"</b><span>из "+u[2]+"</span></div>"+
-'<span class="ds-bar" role="img" aria-label="'+u[0]+": "+u[1]+" из "+u[2]+'"><i style="width:'+(u[1]/u[2]*100)+'%"></i></span>'+
-"<small>"+u[0]+" · "+(low?"! ":"")+"осталось "+left+"</small></div>";
+return '<div class="ds-m"><div class="ds-m-top"><span class="grow">'+u[0]+"</span>"+(low?'<span class="status warn">осталось мало</span>':"")+
+'<span class="num"><b data-n="'+u[1]+'">'+u[1]+"</b> из "+u[2]+"</span></div>"+
+'<div class="bar" role="img" aria-label="'+u[0]+": "+u[1]+" из "+u[2]+'"><i style="width:'+(u[1]/u[2]*100)+'%"></i></div></div>';
 }).join("");
 if(anim){
-var bars=$$(".ds-bar i",box),w=bars.map(function(b){return b.style.width;});
+var bars=$$(".bar i",box),w=bars.map(function(b){return b.style.width;});
 bars.forEach(function(b){b.style.width="0";});void box.offsetWidth;
 bars.forEach(function(b,i){b.style.width=w[i];});
 $$("[data-n]",box).forEach(function(el){count(el,+el.dataset.n);});
@@ -502,13 +480,20 @@ count($(".ds-days",fP),P.days);
 function renderOpts(){
 var sel=P.pick||P.next||P.plan;
 $(".ds-opts",fP).innerHTML=PLANS.map(function(o,i){
+var mk=o.k===P.plan?"сейчас":(o.k===P.next?"с 9 декабря":"");
 return '<button type="button" class="ds-opt" data-plan="'+o.k+'" aria-pressed="'+(o.k===sel)+'" style="animation-delay:'+i*60+'ms">'+
-"<em>"+(o.k===P.plan?"сейчас":(o.k===P.next?"с 9 декабря":"&nbsp;"))+"</em><b>"+o.n+"</b><strong>"+o.p+"</strong><small>"+o.d+"</small></button>";
+"<b>"+o.n+(mk?" <small>· "+mk+"</small>":"")+"</b><span>"+o.p+"</span><small>"+o.d+"</small></button>";
 }).join("");
 var say=$(".ds-opt-say",fP);
 if(P.pick&&P.pick!==(P.next||P.plan))say.innerHTML="<span>«"+pn(P.pick).n+"» начнётся 9 декабря, когда закончится текущий. Оплаченные дни не пропадут.</span>"+
 '<button type="button" class="btn primary" data-act="go">Перейти на «'+pn(P.pick).n+"»</button>";
 else say.innerHTML="";
+}
+function setPlans(open){
+var b=$('[data-act="plans"]',fP);
+$(".ds-plans",fP).hidden=!open;b.setAttribute("aria-expanded",open?"true":"false");
+b.textContent=open?"Свернуть":"Сменить тариф";b.classList.toggle("primary",!open);b.classList.toggle("quiet",open);
+P.pick=null;if(open)renderOpts();
 }
 $(".ds-acc",fP).innerHTML=ACC.map(function(n,i){return '<button type="button" data-ac="'+i+'" class="'+(i?"ds-ac-"+i:"")+'" aria-label="'+n+'" aria-pressed="'+(i===0)+'">'+CHECK+"</button>";}).join("");
 function applyLook(){
@@ -516,7 +501,7 @@ fP.classList.toggle("ds-dark",P.th==="dark");fP.classList.toggle("ds-light",P.th
 [fP,$(".ds-wgt",fW)].forEach(function(el){for(var i=1;i<5;i++)el.classList.toggle("ds-ac-"+i,P.ac===i);});
 $$(".ds-themes button",fP).forEach(function(b){b.setAttribute("aria-pressed",b.dataset.th===P.th?"true":"false");});
 $$(".ds-acc button",fP).forEach(function(b){b.setAttribute("aria-pressed",+b.dataset.ac===P.ac?"true":"false");});
-$(".ds-acname",fP).textContent="· "+ACC[P.ac];
+$(".ds-acname",fP).textContent=ACC[P.ac]+" · виджет возьмёт тот же";
 }
 function hhmm(x){var h=Math.floor(x),m=Math.round((x-h)*60);return h+":"+("0"+m).slice(-2);}
 function renderNotif(){
@@ -528,10 +513,10 @@ if(!n.on||n.at==null)return;
 var d=document.createElement("i");d.className="ds-pin";d.style.left=(n.at/24*100)+"%";day.appendChild(d);
 });
 var on=P.nt.filter(function(n){return n.on&&n.at!=null;}).map(function(n){return hhmm(n.at);});
-$(".ds-daycap",fP).innerHTML=(P.quiet?"<i></i>Тихие часы 23:30–8:00, в это время Рина молчит. ":"Тихие часы выключены. ")+(on.length?"Напишет в "+on.join(", ")+" и перед планами.":"По времени ничего не придёт.");
+$(".ds-daycap",fP).innerHTML=(P.quiet?"<i></i>Тихие часы 23:30–8:00. ":"Тихие часы выключены. ")+(on.length?"Рина напишет в "+on.join(", ")+" и перед планами.":"По времени ничего не придёт.");
 $(".ds-tgs",fP).innerHTML=P.nt.map(function(n,i){
-return '<button type="button" class="ds-tg" data-nt="'+i+'" aria-pressed="'+n.on+'"><span class="ds-lt"><b>'+n.t+'</b><small class="muted">'+n.s+"</small></span><i></i></button>";
-}).join("")+'<button type="button" class="ds-tg" data-nt="q" aria-pressed="'+P.quiet+'"><span class="ds-lt"><b>Тихие часы</b><small class="muted">с 23:30 до 8:00 ничего не присылать</small></span><i></i></button>';
+return '<button type="button" class="ds-tg" data-nt="'+i+'" aria-pressed="'+n.on+'"><span class="ds-lt"><b>'+n.t+"</b><small>"+n.s+"</small></span><i></i></button>";
+}).join("")+'<button type="button" class="ds-tg" data-nt="q" aria-pressed="'+P.quiet+'"><span class="ds-lt"><b>Тихие часы</b><small>С 23:30 до 8:00 ничего не присылать</small></span><i></i></button>';
 $(".ds-ch",fP).innerHTML=[["tg","Telegram"],["wgt","Виджет на ПК"],["web","Этот браузер"]].map(function(c){
 return '<button type="button" class="chip" data-ch="'+c[0]+'" aria-pressed="'+P.ch[c[0]]+'">'+(P.ch[c[0]]?CHECK:"")+c[1]+"</button>";
 }).join("");
@@ -540,9 +525,17 @@ var DIC={pc:'<svg class="ds-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3
 function renderDevs(){
 $(".ds-devs",fP).innerHTML=P.devs.filter(function(d){return!d.out;}).map(function(d){
 var i=P.devs.indexOf(d);
-return '<div class="ds-dev"><span class="ds-dic">'+DIC[d.ic]+'</span><span class="ds-lt"><b>'+d.n+(d.here?' <span class="ds-here">✓ вы здесь</span>':"")+'</b><small class="muted">'+d.s+"</small></span>"+
-(d.here?"":'<button type="button" class="btn" data-act="out" data-i="'+i+'">Выйти там</button>')+"</div>";
+return '<div class="li"><span class="ds-dic">'+DIC[d.ic]+'</span><span class="grow"><span class="t">'+d.n+'</span><span class="s">'+d.s+"</span></span>"+
+(d.here?"":'<div class="row-acts"><button type="button" class="btn" data-act="out" data-i="'+i+'">Выйти там</button></div>')+"</div>";
 }).join("");
+}
+function resetDel(){
+$(".ds-delbox",fP).hidden=true;$(".ds-delst",fP).hidden=true;
+var dl=$('[data-act="del"]',fP);dl.hidden=false;dl.setAttribute("aria-expanded","false");
+}
+function resetPromo(){
+$(".ds-promo-in",fP).hidden=true;var pb=$('[data-act="promoopen"]',fP);pb.textContent="Ввести";pb.setAttribute("aria-expanded","false");
+$(".ds-promo-msg",fP).textContent="";$("#d-settings-promo",fP).value="";
 }
 function renderAll(){renderPlan(false);applyLook();renderNotif();renderDevs();rinaP();}
 var pushT=null;
@@ -551,7 +544,7 @@ var p=$(".ds-push",fP);p.hidden=true;void p.offsetWidth;
 $(".ds-push-t",p).textContent=msg;p.hidden=false;
 clearTimeout(pushT);pushT=setTimeout(function(){p.hidden=true;},4500);
 }
-function later(fn,ms){setTimeout(fn,M.reduce?0:ms);}
+rowTap(fP);
 fP.addEventListener("click",function(e){
 var b=e.target.closest("button");if(!b||!fP.contains(b))return;
 var act=b.dataset.act;
@@ -563,7 +556,7 @@ var oldT=P.th;if(oldT===b.dataset.th)return;P.th=b.dataset.th;applyLook();
 toast(fP,"Тема: "+{dark:"тёмная",light:"светлая",sys:"как в системе"}[P.th],function(){P.th=oldT;applyLook();});
 }else if(b.dataset.ac){
 var oldA=P.ac;if(oldA===+b.dataset.ac)return;P.ac=+b.dataset.ac;applyLook();
-toast(fP,"Цвет: "+ACC[P.ac].toLowerCase()+". Виджет тоже перекрасится",function(){P.ac=oldA;applyLook();});
+toast(fP,"Цвет: "+ACC[P.ac].toLowerCase(),function(){P.ac=oldA;applyLook();});
 }else if(b.dataset.nt){
 if(b.dataset.nt==="q")P.quiet=!P.quiet;else{var n=P.nt[+b.dataset.nt];n.on=!n.on;}
 renderNotif();var nb=$('[data-nt="'+b.dataset.nt+'"]',fP);if(nb)nb.focus();
@@ -574,47 +567,43 @@ P.ch[k]=!P.ch[k];renderNotif();var cb=$('[data-ch="'+k+'"]',fP);if(cb)cb.focus()
 }else if(b.dataset.plan){
 P.pick=b.dataset.plan;renderOpts();$$(".ds-opt",fP).forEach(function(o){o.style.animation="none";});var ob=$('[data-plan="'+P.pick+'"]',fP);if(ob)ob.focus();
 }else if(act==="plans"){
-var box=$(".ds-plans",fP),open=box.hidden;box.hidden=!open;b.setAttribute("aria-expanded",open);
-b.textContent=open?"Свернуть":"Сменить тариф";P.pick=null;if(open)renderOpts();
+setPlans($(".ds-plans",fP).hidden);
 }else if(act==="go"){
-var was=P.next;P.next=P.pick===P.plan?null:P.pick;P.pick=null;renderOpts();renderPlan(false);rinaP();
-toast(fP,P.next?"С 9 декабря будет «"+pn(P.next).n+"»":"Остаётся «"+pn(P.plan).n+"»",function(){P.next=was;renderOpts();renderPlan(false);rinaP();});
+var was=P.next;P.next=P.pick===P.plan?null:P.pick;setPlans(false);renderPlan(false);rinaP();
+toast(fP,P.next?"С 9 декабря будет «"+pn(P.next).n+"»":"Остаётся «"+pn(P.plan).n+"»",function(){P.next=was;renderPlan(false);rinaP();});
+}else if(act==="promoopen"){
+var pi=$(".ds-promo-in",fP);pi.hidden=!pi.hidden;b.setAttribute("aria-expanded",pi.hidden?"false":"true");b.textContent=pi.hidden?"Ввести":"Скрыть";
+if(!pi.hidden)$("#d-settings-promo",fP).focus();
 }else if(act==="promo"){
 var inp=$("#d-settings-promo",fP),v=inp.value.trim(),msg=$(".ds-promo-msg",fP);
-if(P.promo){msg.className="ds-promo-msg ds-no";msg.textContent="Промокод уже применён. Следующий можно ввести после 16 декабря.";return;}
-if(v.length<4){msg.className="ds-promo-msg ds-no";msg.textContent="Такого промокода нет. Проверьте буквы и цифры.";return;}
+if(P.promo){msg.className="ds-promo-msg status bad";msg.textContent="Промокод уже применён. Следующий можно ввести после 16 декабря.";return;}
+if(v.length<4){msg.className="ds-promo-msg status bad";msg.textContent="Такого промокода нет. Проверьте буквы и цифры.";return;}
 P.promo=true;P.days=19;P.till="16 декабря";inp.value="";
-msg.className="ds-promo-msg ds-ok";msg.textContent="✓ Принят: +7 дней к «Заботе»";
+msg.className="ds-promo-msg status ok";msg.textContent="✓ Принят: +7 дней к «Заботе»";
 renderPlan(!M.reduce);rinaP();
 toast(fP,"Промокод добавил 7 дней",function(){P.promo=false;P.days=12;P.till="9 декабря";msg.textContent="";renderPlan(!M.reduce);rinaP();});
 }else if(act==="test"){
 var where=[P.ch.tg&&"Telegram",P.ch.wgt&&"виджет",P.ch.web&&"этот браузер"].filter(Boolean);
-push("Так выглядит напоминание. Оно придёт сюда: "+where.join(", ")+". Всё работает!");
+push("Так выглядит напоминание. Оно придёт сюда: "+where.join(", ")+".");
 }else if(act==="out"){
 var d=P.devs[+b.dataset.i];d.out=true;
-b.closest(".ds-dev").classList.add("ds-gone");
-later(renderDevs,320);
+b.closest(".li").classList.add("ds-gone");
+later(renderDevs,300);
 toast(fP,"Вышли на устройстве «"+esc(d.n)+"»",function(){d.out=false;renderDevs();});
 }else if(act==="copy"){
 b.disabled=true;b.textContent="Собираю…";
 later(function(){b.disabled=false;b.textContent="Скачать снова";$(".ds-cpy",fP).textContent="✓ Готово: файл 2,4 МБ, все записи за 214 дней";},950);
 }else if(act==="del"){
-var db=$(".ds-delbox",fP);db.hidden=!db.hidden;b.setAttribute("aria-expanded",!db.hidden);
-if(!db.hidden)$(".ds-delin",fP).focus();
+var db=$(".ds-delbox",fP);db.hidden=!db.hidden;b.setAttribute("aria-expanded",db.hidden?"false":"true");
+if(!db.hidden)$('[data-act="delno"]',fP).focus();
 }else if(act==="delno"){
-$(".ds-delbox",fP).hidden=true;$(".ds-delin",fP).value="";$('[data-act="delgo"]',fP).disabled=true;$('[data-act="del"]',fP).setAttribute("aria-expanded","false");
+resetDel();$('[data-act="del"]',fP).focus();
 }else if(act==="delgo"){
-P.del=true;$(".ds-delbox",fP).hidden=true;$(".ds-delin",fP).value="";b.disabled=true;
-$(".ds-delst",fP).hidden=false;$('[data-act="del"]',fP).hidden=true;rinaP();
+P.del=true;$(".ds-delbox",fP).hidden=true;$(".ds-delst",fP).hidden=false;$('[data-act="del"]',fP).hidden=true;rinaP();
 $('[data-act="delundo"]',fP).focus();
 }else if(act==="delundo"){
-P.del=false;$(".ds-delst",fP).hidden=true;var dl=$('[data-act="del"]',fP);dl.hidden=false;dl.setAttribute("aria-expanded","false");rinaP();
+P.del=false;resetDel();rinaP();
 toast(fP,"Удаление отменено. Всё остаётся с вами");
-}
-});
-fP.addEventListener("input",function(e){
-if(e.target.classList.contains("ds-delin")){
-$('[data-act="delgo"]',fP).disabled=e.target.value.trim().toUpperCase()!=="УДАЛИТЬ";
 }
 });
 $("#d-settings-promo",fP).addEventListener("keydown",function(e){if(e.key==="Enter")$('[data-act="promo"]',fP).click();});
@@ -623,7 +612,7 @@ var W,typeT=null,sayN=0;
 function freshW(){W={fs:14,snd:true,speed:"norm",fx:"norm",pos:"br"};sayN=0;$(".ds-range",fW).value=14;}
 freshW();
 var SAYS=["Доброе утро! В 10:00 созвон, а хлеб ещё не куплен.","Зарядка шестой день подряд, так держать!","До созвона 15 минут. Чай успеете."];
-var POSN={tl:"слева вверху",tr:"справа вверху",bl:"слева внизу",br:"справа внизу"};
+var POSN={tl:"Слева вверху",tr:"Справа вверху",bl:"Слева внизу",br:"Справа внизу"};
 var FXH={off:"Без искорок, ровный текст",norm:"Искорки не чаще одной реплики из трёх",party:"Искорки в каждой подходящей реплике"};
 var wg=$(".ds-wgt",fW);
 function saved(){var s=$(".ds-saved",fW);s.classList.remove("ds-flash");void s.offsetWidth;s.classList.add("ds-flash");s.textContent="✓ Сохранено";}
@@ -650,7 +639,7 @@ $$("button",g).forEach(function(b){b.setAttribute("aria-pressed",b.dataset.v===W
 $(".ds-fxhint",fW).textContent=FXH[W.fx];
 $$(".ds-mon button",fW).forEach(function(b){b.setAttribute("aria-pressed",b.dataset.pos===W.pos?"true":"false");});
 $(".ds-mini",fW).dataset.p=W.pos;$(".ds-stage",fW).dataset.p=W.pos;
-$(".ds-posn",fW).textContent="· "+POSN[W.pos];
+$(".ds-posn",fW).textContent=POSN[W.pos];
 wg.classList.toggle("ds-left",W.pos==="tl"||W.pos==="bl");
 }
 fW.addEventListener("click",function(e){
@@ -662,15 +651,16 @@ else if(b.dataset.act==="again"){sayN++;sayIt();}
 });
 $(".ds-range",fW).addEventListener("input",function(e){W.fs=+e.target.value;renderW();saved();});
 /*Корзина*/
-var KIND={plan:["Планы","План","вернулся в Планы"],task:["Задачи","Задача","вернулась в Задачи"],note:["Заметки","Заметка","вернулась в Заметки"],day:["Дневник","Запись","вернулась в Дневник"]};
+var KIND={plan:["План","вернулся в Планы"],task:["Задача","вернулась в Задачи"],note:["Заметка","вернулась в Заметки"],day:["Запись дневника","вернулась в Дневник"]};
 var KIC={
 plan:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
 task:'<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 12l2.5 2.5 5-5"/>',
 note:'<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/>',
 day:'<path d="M6 4h11a1 1 0 0 1 1 1v15H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M9 9h6M9 13h4"/>'
 };
-var T;
+var T,showAll=false;
 function freshT(){
+showAll=false;
 T=[
 {id:1,k:"task",t:"Оплатить интернет",m:"удалена 29 октября",l:1},
 {id:2,k:"task",t:"Позвонить в управляющую компанию",m:"отменена 30 октября",l:2},
@@ -679,12 +669,11 @@ T=[
 {id:5,k:"plan",t:"Йога в парке",m:"удалён вчера в 19:05",l:29},
 {id:6,k:"note",t:"Список книг на зиму",m:"удалена 3 ноября",l:6},
 {id:7,k:"note",t:"Рецепт сырников",m:"удалена 14 ноября",l:17},
-{id:8,k:"day",t:"Запись за 12 ноября",m:"«Длинный день, но вечер спокойный…» · удалена 18 ноября",l:21},
-{id:9,k:"day",t:"Запись за 2 ноября",m:"«Наконец выспался» · удалена 5 ноября",l:8}
+{id:8,k:"day",t:"Запись за 12 ноября",m:"удалена 18 ноября",l:21},
+{id:9,k:"day",t:"Запись за 2 ноября",m:"удалена 5 ноября",l:8}
 ];
 }
 freshT();
-function lifeTxt(l){return l===1?"! удалится завтра":l===2?"! удалится послезавтра":"удалится через "+days(l);}
 function rinaT(){
 var img=$(".ds-trina img",fT),p=$(".ds-trina p",fT);
 var soon=T.filter(function(x){return x.l<=2;}).sort(function(a,b){return a.l-b.l;})[0];
@@ -692,25 +681,25 @@ if(!T.length){img.src="maid/done.webp";p.innerHTML="Корзина пуста. �
 else if(soon){img.src="maid/worried.webp";p.innerHTML="«"+esc(soon.t)+"» сотрётся <b>"+(soon.l===1?"уже завтра":"послезавтра")+"</b>. Если ещё нужно, верните.";}
 else{img.src="maid/think.webp";var mn=Math.min.apply(null,T.map(function(x){return x.l;}));p.innerHTML="Срочного нет. Ближайшее сотрётся через <b>"+days(mn)+"</b>.";}
 }
-function rowHtml(x,i){
-return '<div class="ds-row" data-id="'+x.id+'" style="animation-delay:'+i*45+'ms"><span class="ds-dic"><svg class="ds-i" viewBox="0 0 24 24" aria-hidden="true">'+KIC[x.k]+"</svg></span>"+
-'<span class="ds-lt"><b>'+esc(x.t)+"</b><span>"+KIND[x.k][1]+" · "+esc(x.m)+"</span></span>"+
-'<span class="ds-life'+(x.l<=2?" ds-soon":"")+'"><span>'+lifeTxt(x.l)+'</span><span class="ds-bar" aria-hidden="true"><i style="width:'+(x.l/30*100).toFixed(1)+'%"></i></span></span>'+
-'<button type="button" class="btn" data-act="back" data-id="'+x.id+'">Вернуть</button></div>';
+function rowHtml(x){
+var life=x.l<=2?'<span class="status warn">'+(x.l===1?"удалится завтра":"удалится послезавтра")+"</span>":'<span class="ds-life">ещё '+days(x.l)+"</span>";
+return '<div class="li" data-id="'+x.id+'"><span class="ds-dic"><svg class="ds-i" viewBox="0 0 24 24" aria-hidden="true">'+KIC[x.k]+"</svg></span>"+
+'<span class="grow"><span class="t">'+esc(x.t)+'</span><span class="s">'+KIND[x.k][0]+" · "+esc(x.m)+"</span></span>"+life+
+'<div class="row-acts"><button type="button" class="btn" data-act="back" data-id="'+x.id+'">Вернуть</button></div></div>';
 }
 function renderT(anim){
 $(".ds-cnt",fT).textContent=T.length;
-$(".ds-trn span",fT).textContent=plural(T.length,"запись лежит","записи лежат","записей лежат")+" в корзине";
+$(".ds-cw",fT).textContent=plural(T.length,"запись","записи","записей");
 $('[data-act="clear"]',fT).disabled=!T.length;
-var cnt={all:T.length};T.forEach(function(x){cnt[x.k]=(cnt[x.k]||0)+1;});
-var list=$(".ds-list",fT),n=0;
 rinaT();
-if(!T.length){list.innerHTML='<div class="ds-empty"><b>Здесь пусто</b>Удалённое появится здесь и пролежит 30 дней.</div>';return;}
-list.innerHTML=["plan","task","note","day"].filter(function(k){return cnt[k];}).map(function(k){
-return '<div class="ds-kind"><p>'+KIND[k][0]+"</p>"+T.filter(function(x){return x.k===k;}).sort(function(a,b){return a.l-b.l;}).map(function(x){return rowHtml(x,n++);}).join("")+"</div>";
-}).join("");
-if(anim&&!M.reduce)$$(".ds-row",list).forEach(function(r){r.classList.add("ds-in-anim");});
+var list=$(".ds-list",fT),more=$(".ds-more",fT);
+if(!T.length){list.innerHTML='<div class="empty">Здесь пусто. Удалённое пролежит тут 30 дней.</div>';more.hidden=true;return;}
+var s=T.slice().sort(function(a,b){return a.l-b.l;}),vis=showAll?s:s.slice(0,7);
+list.innerHTML=vis.map(rowHtml).join("");
+more.hidden=showAll||s.length<=7;more.textContent="Показать ещё "+(s.length-7);
+if(anim&&!M.reduce)$$(".li",list).forEach(function(r,i){r.style.animationDelay=i*45+"ms";r.classList.add("ds-in-anim");});
 }
+rowTap(fT);
 fT.addEventListener("click",function(e){
 var b=e.target.closest("button");if(!b||!fT.contains(b))return;
 var act=b.dataset.act;
@@ -718,28 +707,25 @@ if(act==="back"){
 var id=+b.dataset.id,it=null;
 T.forEach(function(x){if(x.id===id)it=x;});
 if(!it)return;
-var row=b.closest(".ds-row");
+var row=b.closest(".li");
 row.classList.remove("ds-in-anim");row.classList.add("ds-fly");b.disabled=true;
 later(function(){
 var at=T.indexOf(it);if(at<0)return;T.splice(at,1);renderT(false);
-toast(fT,"«"+esc(it.t)+"» "+KIND[it.k][2],function(){
+toast(fT,"«"+esc(it.t)+"» "+KIND[it.k][1],function(){
 T.push(it);renderT(false);
-var r=$('.ds-row[data-id="'+it.id+'"]',fT);if(r&&!M.reduce){r.style.animationDelay="0ms";r.classList.add("ds-in-anim");}
+var r=$('.li[data-id="'+it.id+'"]',fT);if(r&&!M.reduce)r.classList.add("ds-in-anim");
 });
-},480);
+},320);
+}else if(act==="more"){
+showAll=true;renderT(false);
 }else if(act==="clear"){
-$(".ds-ask",fT).hidden=false;
-$(".ds-ask-t",fT).textContent="Стереть "+T.length+" "+plural(T.length,"запись","записи","записей")+" навсегда? Вернуть их будет нельзя.";
-$('[data-act="keep"]',fT).focus();
-}else if(act==="keep"){$(".ds-ask",fT).hidden=true;}
-else if(act==="wipe"){
-$(".ds-ask",fT).hidden=true;
-var keep=T.slice(),rows=$$(".ds-row",fT);
-rows.forEach(function(r,i){later(function(){r.classList.add("ds-fly");},i*50);});
+var keep=T.slice(),rows=$$(".ds-list .li",fT);
+b.disabled=true;
+rows.forEach(function(r,i){later(function(){r.classList.add("ds-fly");},i*40);});
 later(function(){
-T=[];renderT(false);
-toast(fT,"Корзина очищена. Отменить можно ещё несколько секунд",function(){T=keep;renderT(true);});
-},rows.length*50+420);
+T=[];showAll=false;renderT(false);
+toast(fT,"Корзина очищена",function(){T=keep;renderT(true);});
+},rows.length*40+300);
 }
 });
 function play(){
@@ -750,9 +736,8 @@ if(!fT.hidden)renderT(true);
 }
 root.addEventListener("replay",function(){
 freshP();freshW();freshT();
-$(".ds-plans",fP).hidden=true;var pb=$('[data-act="plans"]',fP);pb.textContent="Сменить тариф";pb.setAttribute("aria-expanded","false");
-$(".ds-delst",fP).hidden=true;$(".ds-delbox",fP).hidden=true;$('[data-act="del"]',fP).hidden=false;$(".ds-promo-msg",fP).textContent="";
-$(".ds-ask",fT).hidden=true;$$(".ds-toast").forEach(function(o){o.remove();});
+setPlans(false);resetPromo();resetDel();
+$$(".undo").forEach(function(o){o.remove();});
 renderAll();renderW();renderT(false);play();
 });
 renderAll();renderW();$(".ds-say",fW).textContent=SAYS[0];renderT(false);

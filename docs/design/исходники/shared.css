@@ -36,21 +36,21 @@ h2 { font: 700 clamp(20px, 2.6vw, 27px)/1.2 var(--fd); letter-spacing: -.015em; 
 
 /* ===== НОВЫЙ ДИЗАЙН ПОЛНОЙ ВЕРСИИ: токены ===== */
 .app {
-  --a-bg: #14101f; --a-surface: #1c1730; --a-surface-2: #251f3b; --a-surface-3: #2e2748; --a-line: #342c4d;
-  --a-text: #f1eef8; --a-soft: #cbc4de; --a-muted: #9d95b5;
-  --a-accent: #b79cff; --a-accent-strong: #7d52e6; --a-on-accent: #ffffff; --a-accent-soft: rgba(183, 156, 255, .14);
-  --a-ok: #4fd09a; --a-warn: #ffb36b; --a-bad: #ff8a9a; --a-gold: #f2c14e;
-  /* цвета данных: у каждой сущности свой, всегда один и тот же */
-  --c-pc: #3987e5; --c-game: #d95926; --c-habit: #199e70; --c-money: #c98500; --c-mood: #d55181; --c-sleep: #9085e9;
-  --a-grid: #2c2640; --a-shadow: 0 16px 40px rgba(0, 0, 0, .45);
-  --a-r: 16px; --a-r-sm: 10px;
+  --a-bg: #121118; --a-surface: #19181f; --a-surface-2: #21202a; --a-surface-3: #2a2935; --a-line: #2c2b36; --a-line-strong: #3d3c4a;
+  --a-text: #f3f2f7; --a-soft: #c3c1cd; --a-muted: #8e8c9b; --a-faint: #63616f;
+  --a-accent: #a38cf7; --a-accent-strong: #7c5cf0; --a-on-accent: #ffffff; --a-accent-soft: rgba(163, 140, 247, .13);
+  --a-ok: #4cc38f; --a-warn: #e6a552; --a-bad: #ee7482; --a-gold: #e5b94c;
+  /* цвета данных: только в графиках, кольцах, полосах и точках .dot */
+  --c-pc: #4a90e2; --c-game: #e0703f; --c-habit: #2fae7d; --c-money: #cf9a2c; --c-mood: #dc6b97; --c-sleep: #8f86ea;
+  --a-grid: #25242e; --a-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+  --a-r: 16px; --a-r-sm: 12px; --a-r-xs: 8px;
 }
 body[data-skin="light"] .app {
-  --a-bg: #f3f0fa; --a-surface: #ffffff; --a-surface-2: #f1edf9; --a-surface-3: #e6e0f3; --a-line: #ddd6ee;
-  --a-text: #1d1830; --a-soft: #4b4463; --a-muted: #736b8c;
-  --a-accent: #6b3fd4; --a-accent-strong: #6b3fd4; --a-on-accent: #ffffff; --a-accent-soft: rgba(107, 63, 212, .1);
-  --a-ok: #12805a; --a-warn: #a96200; --a-bad: #c93a52; --a-gold: #a87a00;
-  --c-pc: #2a78d6; --c-game: #eb6834; --c-habit: #1baf7a; --c-money: #c98500; --c-mood: #d55181; --c-sleep: #6250d6;
+  --a-bg: #f6f5f9; --a-surface: #ffffff; --a-surface-2: #f2f1f6; --a-surface-3: #e8e6ef; --a-line: #e5e3ec; --a-line-strong: #d3d0dc;
+  --a-text: #1b1a22; --a-soft: #4a4856; --a-muted: #75728a; --a-faint: #aaa7b8;
+  --a-accent: #6a48d8; --a-accent-strong: #6a48d8; --a-on-accent: #ffffff; --a-accent-soft: rgba(106, 72, 216, .09);
+  --a-ok: #138a5b; --a-warn: #a86400; --a-bad: #c73a50; --a-gold: #a77b00;
+  --c-pc: #2a78d6; --c-game: #d35a24; --c-habit: #16956a; --c-money: #b07e00; --c-mood: #c4437a; --c-sleep: #6553d4;
   --a-grid: #e6e1f1; --a-shadow: 0 16px 40px rgba(60, 40, 120, .14);
 }
 
@@ -65,7 +65,7 @@ body[data-skin="light"] .app {
 .app-rail .sp { flex: 1; }
 .app-body { min-width: 0; display: flex; flex-direction: column; }
 .app-top { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--a-line); flex-wrap: wrap; }
-.app-top h3 { margin: 0; font: 700 17px/1.2 var(--fd); letter-spacing: -.01em; }
+.app-top h3 { margin: 0; font: 700 18px/1.2 var(--f); letter-spacing: -.01em; }
 .app-tabs { display: flex; gap: 2px; background: var(--a-surface-2); border-radius: 10px; padding: 3px; flex-wrap: wrap; }
 .app-tabs span { padding: 4px 11px; border-radius: 8px; font-size: 12.5px; color: var(--a-muted); font-weight: 600; white-space: nowrap; }
 .app-tabs span.on { background: var(--a-surface); color: var(--a-text); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
@@ -82,33 +82,68 @@ body[data-skin="light"] .app {
 
 /* ——— детали нового дизайна (общие для всех экранов) */
 .app .card { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 16px; min-width: 0; }
-.app .card-t { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--a-muted); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.app .card-t { font-size: 12px; font-weight: 600; color: var(--a-muted); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
 .app .g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .app .g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .app .row { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .app .muted { color: var(--a-muted); } .app .soft { color: var(--a-soft); }
 .app .num { font-variant-numeric: tabular-nums; }
-.app .big { font: 800 30px/1 var(--fd); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.app .big { font: 700 30px/1 var(--f); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .app .kpi { display: flex; flex-direction: column; gap: 4px; }
-.app .kpi small { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; }
+.app .kpi small { font-size: 12px; color: var(--a-muted); font-weight: 600; }
 .app .delta { font-size: 12px; font-weight: 600; } .app .delta.up { color: var(--a-ok); } .app .delta.down { color: var(--a-bad); }
 .app .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--a-surface-2); border: 1px solid transparent; border-radius: 99px; padding: 4px 11px; font-size: 12.5px; color: var(--a-soft); white-space: nowrap; }
 .app button.chip:hover { border-color: var(--a-accent); }
-.app .chip.on, .app .chip[aria-pressed="true"] { background: var(--a-accent-soft); color: var(--a-accent); border-color: var(--a-accent); }
+.app .chip.on, .app .chip[aria-pressed="true"] { background: var(--a-accent-soft); color: var(--a-text); border-color: var(--a-accent); }
 .app .btn { display: inline-flex; align-items: center; gap: 7px; border-radius: 10px; padding: 8px 14px; font-weight: 650; font-size: 13px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-text); white-space: nowrap; }
-.app .btn:hover { border-color: var(--a-accent); }
+.app .btn:hover { border-color: var(--a-line-strong); background: var(--a-surface-3); }
 .app .btn.primary { background: var(--a-accent-strong); border-color: var(--a-accent-strong); color: var(--a-on-accent); }
-.app .btn.ghost { background: none; }
+.app .btn.ghost, .app .btn.quiet { background: none; border-color: transparent; color: var(--a-soft); }
+.app .btn.quiet:hover { color: var(--a-text); background: var(--a-surface-2); }
+.app .btn.primary:hover { background: var(--a-accent-strong); filter: brightness(1.08); }
 .app .seg { display: inline-flex; background: var(--a-surface-2); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
 .app .seg button { background: none; border: 0; border-radius: 8px; padding: 4px 11px; font-size: 12.5px; color: var(--a-muted); font-weight: 600; }
 .app .seg button[aria-pressed="true"] { background: var(--a-surface); color: var(--a-text); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
 .app .dot { width: 9px; height: 9px; border-radius: 3px; flex: none; display: inline-block; }
 /* Рина говорит: её наблюдение по экрану. Картинка: maid/<имя>.webp */
 .app .rina { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
-.app .rina img { width: 64px; height: 68px; flex: none; }
+.app .rina img, .app .rina .rina-fb { width: 48px; height: 48px; flex: none; border-radius: 50%; object-fit: cover; object-position: 50% 12%; background: var(--a-surface-2); }
 .app .rina p { background: var(--a-surface-2); border-radius: 14px 14px 14px 4px; padding: 9px 13px; color: var(--a-text); font-size: 13.5px; min-width: 0; }
 .app .rina p b { color: var(--a-accent); font-weight: 650; }
 @media (max-width: 720px) { .app .g2, .app .g3 { grid-template-columns: 1fr; } .app .big { font-size: 24px; } }
+.app h1, .app h2, .app h3, .app h4, .app h5 { font-family: var(--f); }
+.rina-fb { display: inline-grid; place-items: center; border-radius: 50%; background: var(--a-surface-2, #262038); color: var(--a-accent, #b79cff); font: 700 18px var(--f); flex: none; }
+/* ——— Дизайн-система v3 (правила — DESIGN-SYSTEM.md) */
+.app { --pad: 16px; }
+.app .label { font-size: 12px; font-weight: 600; color: var(--a-muted); }
+.app .h { font-size: 15px; font-weight: 650; color: var(--a-text); margin: 0; }
+.app .small { font-size: 13px; color: var(--a-muted); }
+.app .num-l { font-size: 24px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.app .num-xl { font-size: 36px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.app .num-l small, .app .num-xl small { font-size: .5em; font-weight: 600; color: var(--a-muted); margin-left: 2px; }
+.app .tag { display: inline-flex; align-items: center; gap: 6px; background: var(--a-surface-2); border-radius: var(--a-r-xs); padding: 2px 8px; font-size: 12px; color: var(--a-soft); white-space: nowrap; }
+.app .tag .dot, .app .dot.s { width: 8px; height: 8px; border-radius: 50%; }
+.app .status { font-size: 12px; font-weight: 600; white-space: nowrap; } .app .status.ok { color: var(--a-ok); } .app .status.warn { color: var(--a-warn); } .app .status.bad { color: var(--a-bad); }
+.app .icon-btn { width: 32px; height: 32px; display: inline-grid; place-items: center; border-radius: var(--a-r-xs); border: 0; background: none; color: var(--a-muted); flex: none; }
+.app .icon-btn:hover { background: var(--a-surface-2); color: var(--a-text); }
+.app .icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.app .list { display: flex; flex-direction: column; }
+.app .li { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 10px; border-radius: var(--a-r-sm); min-width: 0; position: relative; }
+.app .li + .li { border-top: 1px solid var(--a-line); }
+.app .li:hover, .app .li:focus-within { background: var(--a-surface-2); }
+.app .li:hover + .li, .app .li:focus-within + .li { border-top-color: transparent; }
+.app .li .grow { flex: 1; min-width: 0; }
+.app .li .t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app .li .s { display: block; font-size: 12.5px; color: var(--a-muted); }
+.app .row-acts { display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.app .li:hover .row-acts, .app .li:focus-within .row-acts, .app .li.open .row-acts { opacity: 1; }
+@media (hover: none) { .app .row-acts { display: none; } .app .li.open .row-acts { display: flex; opacity: 1; } }
+.app .empty { padding: 20px; text-align: center; color: var(--a-muted); font-size: 13px; display: grid; gap: 10px; justify-items: center; }
+.app .undo { position: absolute; left: 50%; bottom: 16px; translate: -50% 0; display: flex; align-items: center; gap: 12px; background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 8px 8px 8px 14px; font-size: 13px; z-index: 20; }
+.app .undo button { background: none; border: 0; color: var(--a-bg); font-weight: 700; padding: 4px 8px; border-radius: 8px; }
+.app .bar { height: 4px; border-radius: 2px; background: var(--a-surface-3); overflow: hidden; } .app .bar > i { display: block; height: 100%; border-radius: inherit; background: var(--a-accent); }
+.app .rina-fb { display: grid; place-items: center; font-weight: 700; color: var(--a-accent); font-size: 18px; }
+@media (max-width: 720px) { .app { --pad: 12px; } .app .num-xl { font-size: 30px; } }
 @media (prefers-reduced-motion: reduce) { .app *, .app *::before, .app *::after { animation-duration: .01s !important; animation-iteration-count: 1 !important; transition-duration: .01s !important; } }
 
 /* ===== ДОПОЛНИТЕЛЬНЫЕ РАМКИ для макетов исправлений и админки ===== */
