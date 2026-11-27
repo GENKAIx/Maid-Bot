@@ -2,7 +2,7 @@
 <header>
   <p class="eyebrow">Экран · Планы → Привычки · вариант Б</p>
   <h2>Привычки: месяц сеткой</h2>
-  <p>Месяц одной таблицей в два цвета: зелёный значит сделано, красная штриховка значит пропуск. Привычки «несколько раз в день» заполняют клетку по мере отметок. Название раскрывает привычку: время отметок за любой отрезок, путь к рекорду, сутки циферблатом.</p>
+  <p>Месяц одной таблицей, у клетки три состояния: зелёная значит сделано, красная штриховка значит пропуск, заполненная снизу значит отмечено не всё. Пустая клетка: отметки нет. Название раскрывает привычку: время отметок за любой отрезок, путь к рекорду, сутки циферблатом.</p>
 </header>
 <button class="replay" type="button">Повторить анимацию</button>
 
@@ -13,27 +13,23 @@
       <ul class="m-leg" aria-label="Обозначения">
         <li><i class="m-c" data-s="d"></i>сделано</li>
         <li><i class="m-c" data-s="s"></i>пропуск</li>
-        <li><i class="m-c" data-s="m"></i>не отмечено</li>
-        <li><i class="m-c" data-s="o"></i>не по плану</li>
         <li><i class="m-c" data-s="p"><i class="m-fill" style="height:50%"></i></i>отмечено не всё</li>
-        <li><span class="m-x">×8</span>несколько раз в день</li>
       </ul>
     </div>
     <p class="m-info" aria-live="polite">Наведите или коснитесь клетки, чтобы увидеть день. Сегодняшняя клетка нажимается, правый клик или долгое нажатие убирает отметку.</p>
   </div>
   <div class="m-wrap"><div class="m-tbl"></div></div>
-  <div class="rina"><img src="maid/analysis.webp" alt="Рина" width="64" height="68"><p class="m-say"></p></div>
 </div>
 
 <div class="notes">
   <div><h4>Что изменилось</h4><ul>
-    <li>Цветов два: зелёный значит сделано, красная штриховка значит пропуск. Не отмечено: пустая клетка с рамкой, не по плану: точка, будущие дни блёклые.</li>
-    <li>Огоньки серий и итог нейтральные, сегодня обведено цветом текста.</li>
+    <li>Состояний три: сделано (зелёная), пропуск (красная штриховка), отмечено не всё (заполнена снизу). Любой день без отметки и будущие дни: тихая пустая клетка без рамки.</li>
+    <li>Огонёк серии взрослеет по длине: до 7 дней серый, с 7 оранжевый, с 30 синий, со 100 золотой. Сегодня обведено цветом текста.</li><li>Названия в одну строку по одной линии, длинное обрезается многоточием, полное видно при наведении. Итог по правому краю, цифры одной ширины.</li><li>Наблюдение Рины под таблицей убрано, её совет остался внутри раскрытой привычки.</li>
     <li>У привычек «несколько раз в день» значок ×8 или ×2, клетка заполняется снизу и показывает 5/8 (на телефоне число только у сегодня, у других дней в строке над таблицей). Полная клетка: норма набрана.</li>
     <li>На телефоне таблица прокручивается вбок и открывается на сегодняшнем дне, столбец сегодня шире, чтобы попадать пальцем.</li>
     <li>Сегодняшняя клетка: у обычной привычки сделано, пропуск, пусто; у «несколько раз» плюс одна отметка. Правый клик, долгое нажатие или «−1» убирают ошибочную.</li>
     <li>Название раскрывает привычку под строкой. График «Во сколько отмечали» с кнопками 7 дней, 30 дней, 3 месяца, год, всё и полосой обзора: рамку можно протянуть, сдвинуть, растянуть.</li>
-    <li>Ниже серия с дорогой к рекорду и вехами, сутки циферблатом, дни недели, год клетками с лучшим месяцем, ритм отметок и совет Рины с кнопкой. Циферблат, дни недели, ритм и совет считаются по выбранному отрезку.</li>
+    <li>Ниже серия с дорогой к рекорду и вехами, сутки циферблатом, дни недели, год по месяцам с подписями и лучшим месяцем, ритм отметок и совет Рины с кнопкой. Циферблат, дни недели, ритм и совет считаются по выбранному отрезку.</li>
   </ul></div>
   <div><h4>Анимации</h4><ul>
     <li>При входе клетки месяца проявляются волной.</li>
@@ -55,37 +51,41 @@
 #p-d-habits-b .m-hr{display:flex;align-items:center;justify-content:space-between;gap:10px 18px;flex-wrap:wrap}
 #p-d-habits-b .m-month{font-size:14px}
 #p-d-habits-b .m-month > b{font:700 16px var(--fd)}
-#p-d-habits-b .m-leg{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--a-muted)}
+#p-d-habits-b .m-leg{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;line-height:16px;color:var(--a-muted)}
 #p-d-habits-b .m-leg li{display:inline-flex;align-items:center;gap:6px}
 #p-d-habits-b .m-leg .m-c{width:14px;height:14px;border-radius:4px;flex:none}
-#p-d-habits-b .m-leg .m-x{margin:0}
 #p-d-habits-b .m-info{font-size:13px;color:var(--a-soft);min-height:20px}
 #p-d-habits-b .m-wrap{overflow-x:auto;min-width:0;background:var(--a-surface);border:1px solid var(--a-line);border-radius:var(--a-r);overscroll-behavior-x:contain}
 #p-d-habits-b .m-tbl{min-width:760px}
-#p-d-habits-b .m-row{display:grid;grid-template-columns:206px repeat(30,minmax(0,1fr)) 70px;gap:3px;align-items:center;padding-right:12px}
-#p-d-habits-b .m-hd{font-size:10.5px;color:var(--a-muted);text-align:center;padding-block:8px 4px}
-#p-d-habits-b .m-hd > span:first-child{position:sticky;left:0;z-index:2;background:var(--a-surface);text-align:left;padding-left:14px}
+#p-d-habits-b .m-row{display:grid;grid-template-columns:240px repeat(30,minmax(0,1fr)) 70px;gap:3px;align-items:center;padding-right:12px}
+#p-d-habits-b .m-hd{font-size:10.5px;color:var(--a-muted);text-align:center;padding-block:8px 4px;font-variant-numeric:tabular-nums}
+#p-d-habits-b .m-hd > span:first-child{position:sticky;left:0;z-index:2;background:var(--a-surface);text-align:left;padding-left:36px}
 #p-d-habits-b .m-hd .we{color:var(--a-soft);font-weight:700}
 #p-d-habits-b .m-hd .td{color:var(--a-text);font-weight:800}
 #p-d-habits-b .m-hd > span:last-child{text-align:right}
 #p-d-habits-b .m-hab{border-top:1px solid var(--a-line)}
-#p-d-habits-b .m-nm{position:sticky;left:0;z-index:2;align-self:stretch;display:flex;align-items:center;gap:8px;min-width:0;min-height:48px;padding:6px 8px 6px 12px;background:var(--a-surface);border:0;text-align:left;color:var(--a-text)}
+#p-d-habits-b .m-nm{position:sticky;left:0;z-index:2;align-self:stretch;display:flex;align-items:center;gap:8px;min-width:0;height:52px;padding:0 8px 0 12px;background:var(--a-surface);border:0;text-align:left;color:var(--a-text)}
 #p-d-habits-b .m-nm:hover .m-nt b{text-decoration:underline;text-underline-offset:3px}
 #p-d-habits-b .m-nm[aria-expanded="true"]{background:var(--a-surface-2)}
 #p-d-habits-b .m-ar{width:16px;height:16px;flex:none;fill:none;stroke:var(--a-muted);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--ease)}
 #p-d-habits-b .m-nm[aria-expanded="true"] .m-ar{transform:rotate(90deg)}
-#p-d-habits-b .m-nt{display:flex;flex-direction:column;min-width:0;line-height:1.25}
-#p-d-habits-b .m-nt b{font-weight:700;font-size:13.5px;overflow-wrap:anywhere}
-#p-d-habits-b .m-nt small{color:var(--a-muted);font-size:11.5px;display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap}
-#p-d-habits-b .m-nt small svg{width:11px;height:11px;fill:currentColor}
-#p-d-habits-b .m-x{display:inline-block;font:800 10.5px/1 var(--fd);padding:3px 5px;border-radius:6px;border:1.5px solid var(--a-soft);color:var(--a-text);margin-left:6px;vertical-align:1px;white-space:nowrap}
-#p-d-habits-b .m-tot{text-align:right;font-size:12px;color:var(--a-muted);white-space:nowrap}
+#p-d-habits-b .m-nt{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+#p-d-habits-b .m-tl{display:flex;align-items:baseline;gap:6px;min-width:0}
+#p-d-habits-b .m-nt b{font-weight:700;font-size:13.5px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#p-d-habits-b .m-nt small{display:block;color:var(--a-muted);font-size:11.5px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#p-d-habits-b .m-hab{--fire:var(--a-muted)}
+#p-d-habits-b .m-hab[data-t="1"]{--fire:var(--a-warn)}
+#p-d-habits-b .m-hab[data-t="2"]{--fire:var(--c-pc)}
+#p-d-habits-b .m-hab[data-t="3"]{--fire:var(--a-gold)}
+#p-d-habits-b .m-fr{display:inline-flex;align-items:center;gap:3px;vertical-align:top;color:var(--fire);font-weight:700;font-variant-numeric:tabular-nums}
+#p-d-habits-b .m-fr svg{width:12px;height:12px;fill:currentColor}
+#p-d-habits-b .m-x{flex:none;font:800 10.5px/1 var(--fd);padding:3px 5px;border-radius:6px;border:1.5px solid var(--a-soft);color:var(--a-text);white-space:nowrap}
+#p-d-habits-b .m-tot{display:flex;justify-content:flex-end;align-items:baseline;gap:4px;font-size:12px;color:var(--a-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 #p-d-habits-b .m-tot b{font:800 15px var(--fd);color:var(--a-text);font-variant-numeric:tabular-nums}
-#p-d-habits-b .m-c{position:relative;display:grid;place-items:center;height:28px;min-width:0;padding:0;border:0;border-radius:5px;overflow:hidden;background:none;box-shadow:inset 0 0 0 1px var(--a-line);font:700 9px/1 var(--f);color:var(--a-text)}
+#p-d-habits-b .m-c{position:relative;display:grid;place-items:center;height:28px;min-width:0;padding:0;border:0;border-radius:5px;overflow:hidden;background:color-mix(in srgb,var(--a-text) 5%,transparent);box-shadow:none;font:700 9px/1 var(--f);color:var(--a-text)}
 #p-d-habits-b .m-c[data-s="d"],#p-d-habits-b .m-yr i[data-s="d"]{background:var(--c-habit);box-shadow:none}
 #p-d-habits-b .m-c[data-s="s"],#p-d-habits-b .m-yr i[data-s="s"]{background:repeating-linear-gradient(135deg,var(--a-bad) 0 2px,color-mix(in srgb,var(--a-bad) 18%,transparent) 2px 5px);box-shadow:inset 0 0 0 1px var(--a-bad)}
-#p-d-habits-b .m-c[data-s="o"],#p-d-habits-b .m-yr i[data-s="o"]{box-shadow:none;background:radial-gradient(circle,var(--a-muted) 0 1.7px,transparent 2.2px)}
-#p-d-habits-b .m-c[data-s="f"]{box-shadow:inset 0 0 0 1px var(--a-grid);opacity:.5}
+#p-d-habits-b .m-c[data-s="f"],#p-d-habits-b .m-yr i[data-s="f"]{background:color-mix(in srgb,var(--a-text) 2.5%,transparent)}
 #p-d-habits-b .m-c.td{outline:2px solid var(--a-text);outline-offset:1px}
 #p-d-habits-b .m-c.pick:not(.td){outline:1.5px dashed var(--a-muted);outline-offset:1px}
 #p-d-habits-b button.m-c{cursor:pointer;-webkit-touch-callout:none;user-select:none}
@@ -181,14 +181,23 @@
 #p-d-habits-b .m-wk .no i{background:none;box-shadow:inset 0 0 0 1px var(--a-line);height:2px}
 #p-d-habits-b .m-wk em{font-style:normal;font-weight:700;font-size:10.5px;color:var(--a-text);min-height:13px}
 #p-d-habits-b .m-pb.in .m-wk i{animation:d-habits-b-growy .5s var(--ease) both .25s}
-#p-d-habits-b .m-yr{display:grid;grid-template-rows:repeat(7,minmax(0,1fr));grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;touch-action:pan-y}
-#p-d-habits-b .m-yr i{display:block;aspect-ratio:1;border-radius:2px;box-shadow:inset 0 0 0 1px var(--a-line)}
-#p-d-habits-b .m-yr i[data-s="p"]{background:linear-gradient(to top,var(--c-habit) calc(var(--p) * 100%),transparent 0)}
-#p-d-habits-b .m-yr i[data-s="f"],#p-d-habits-b .m-yr i[data-s="x"]{box-shadow:none}
+#p-d-habits-b .m-yr{display:flex;gap:6px;touch-action:pan-y;min-width:0}
+#p-d-habits-b .m-ywd,#p-d-habits-b .m-ym{display:grid;grid-template-rows:16px auto;row-gap:2px;min-width:0}
+#p-d-habits-b .m-ywd{flex:none;width:18px;grid-template-rows:16px repeat(7,minmax(0,1fr))}
+#p-d-habits-b .m-ywd span,#p-d-habits-b .m-ym > span{font-size:10px;line-height:16px;color:var(--a-muted);white-space:nowrap}
+#p-d-habits-b .m-ywd span{line-height:1;align-self:center}
+#p-d-habits-b .m-ym{flex:var(--n) 1 0}
+#p-d-habits-b .m-ym > span.bst{color:var(--a-text);font-weight:800;box-shadow:inset 0 -2px var(--c-habit);justify-self:start}
+#p-d-habits-b .m-ym > div{display:grid;grid-template-rows:repeat(7,auto);grid-template-columns:repeat(var(--n),minmax(0,1fr));grid-auto-flow:column;gap:2px}
+#p-d-habits-b .m-yr i{display:block;aspect-ratio:1;border-radius:2px;background:color-mix(in srgb,var(--a-text) 5%,transparent)}
+#p-d-habits-b .m-yr i[data-s="p"]{background:linear-gradient(to top,var(--c-habit) calc(var(--p) * 100%),color-mix(in srgb,var(--a-text) 5%,transparent) 0)}
+#p-d-habits-b .m-yr i[data-s="x"],#p-d-habits-b .m-yr i.e{background:none}
 #p-d-habits-b .m-yr i.pick{outline:2px solid var(--a-text);outline-offset:1px}
+#p-d-habits-b .m-b p{margin:0}
+#p-d-habits-b .m-kv span{min-width:0}
 #p-d-habits-b .m-kv{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:13px;color:var(--a-soft);border-bottom:1px solid var(--a-line);padding-bottom:6px}
 #p-d-habits-b .m-kv:last-child{border-bottom:0;padding-bottom:0}
-#p-d-habits-b .m-kv b{font:700 15px var(--fd);color:var(--a-text);font-variant-numeric:tabular-nums;white-space:nowrap}
+#p-d-habits-b .m-kv b{font:700 15px var(--fd);color:var(--a-text);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
 #p-d-habits-b .m-rn{grid-column:1/-1;flex-direction:row;align-items:center;gap:12px}
 #p-d-habits-b .m-rn img{width:48px;height:51px;flex:none}
 #p-d-habits-b .m-rn > div{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;min-width:0;flex:1}
@@ -201,13 +210,13 @@
 #p-d-habits-b .m-chh .seg{align-self:flex-start}
 #p-d-habits-b .m-sub{flex-basis:100%}
 #p-d-habits-b .m-tbl{min-width:0;width:max-content}
-#p-d-habits-b .m-row{grid-template-columns:128px repeat(26,24px) 40px repeat(3,24px) 56px}
-#p-d-habits-b .m-nm{padding:6px 6px 6px 8px;gap:5px}
+#p-d-habits-b .m-row{grid-template-columns:150px repeat(26,24px) 40px repeat(3,24px) 56px}
+#p-d-habits-b .m-nm{padding:0 6px 0 8px;gap:5px}
+#p-d-habits-b .m-hd > span:first-child{padding-left:29px}
 #p-d-habits-b .m-nt b{font-size:12.5px}
-#p-d-habits-b .m-x{margin-left:3px}
 #p-d-habits-b .m-c{height:36px}
 #p-d-habits-b .m-c:not(.td) em{display:none}}
-@container (max-width:480px){#p-d-habits-b .m-yr{grid-auto-columns:8px;gap:1px;overflow-x:auto;padding-bottom:4px;touch-action:auto}}
+@container (max-width:760px){#p-d-habits-b .m-yr{overflow-x:auto;padding-bottom:4px;touch-action:auto}#p-d-habits-b .m-ym{flex:none}#p-d-habits-b .m-ywd{position:sticky;left:0;z-index:1;background:var(--a-surface-2);width:22px;padding-right:4px;box-sizing:border-box}#p-d-habits-b .m-ym > div{grid-template-columns:repeat(var(--n),9px)}}
 @keyframes d-habits-b-pop{0%{transform:scale(.55);opacity:.2}60%{transform:scale(1.1);opacity:1}100%{transform:none}}
 @keyframes d-habits-b-fade{from{opacity:0}to{opacity:1}}
 @keyframes d-habits-b-line{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
@@ -308,8 +317,8 @@ H.forEach(gen);
 function byId(id){for(var i=0;i<H.length;i++)if(H[i].id===id)return H[i];return null;}
 
 function stat(h,k){
-if(!planned(h,k))return "o";
 if(k>TK)return "f";
+if(!planned(h,k))return "o";
 var r=h.r[k];
 if(r.s==="s")return "s";
 if(r.n>=h.gl)return "d";
@@ -378,7 +387,7 @@ cl+="<"+tag+(tag==="button"?' type="button" data-act="today"':"")+' class="m-c'+
 s+='<div class="m-hab" data-id="'+h.id+'"><div class="m-row">'+
 '<button type="button" class="m-nm" data-act="open" aria-expanded="false" aria-controls="d-habits-b-p-'+h.id+'">'+
 '<svg class="m-ar" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'+
-'<span class="m-nt"><b>'+esc(h.t)+(h.gl>1?'<span class="m-x" aria-hidden="true">×'+h.gl+"</span>":"")+"</b><small></small></span></button>"+
+'<span class="m-nt"><span class="m-tl"><b title="'+esc(h.t)+'">'+esc(h.t)+"</b>"+(h.gl>1?'<span class="m-x" aria-hidden="true">×'+h.gl+"</span>":"")+"</span><small></small></span></button>"+
 cl+'<span class="m-tot"></span></div>'+
 '<div class="m-pan" id="d-habits-b-p-'+h.id+'" hidden><div class="m-pin"></div></div></div>';
 });
@@ -388,7 +397,7 @@ H.forEach(updRow);
 function cellLabel(h,k){
 var st=stat(h,k),r=h.r[k]||{},at=r.at||[],txt;
 if(h.gl>1&&(st==="d"||st==="p"||st==="w"))txt=r.n+" из "+h.gl+(at.length?", последняя в "+hm(at[at.length-1]):"");
-else txt={d:"сделано",s:"пропуск",m:"не отмечено",w:"ещё не отмечено",o:"не по плану",f:"ещё впереди"}[st]+(st==="d"&&at.length?" в "+hm(at[0]):"");
+else txt={d:"сделано",s:"пропуск",m:"не отмечено",w:"ещё не отмечено",o:"отмечать не нужно",f:"ещё впереди"}[st]+(st==="d"&&at.length?" в "+hm(at[0]):"");
 return h.t.split(",")[0]+" · "+dayName(k)+": "+txt;
 }
 function updCell(el,h){
@@ -404,7 +413,8 @@ if(el.tagName==="BUTTON")el.setAttribute("aria-label","Сегодня. "+cellLab
 function updRow(h){
 var el=hab(h),s=streak(h),t=tally(h,M0,TK);
 $$(".m-c",el).forEach(c=>{updCell(c,h);});
-$(".m-nt small",el).innerHTML=FIRE+days(s)+(h.sub?" · "+esc(h.sub):"");
+el.dataset.t=s>=100?3:s>=30?2:s>=7?1:0;
+$(".m-nt small",el).innerHTML='<span class="m-fr">'+FIRE+days(s)+"</span>"+(h.sub?" · "+esc(h.sub):"");
 $(".m-tot",el).innerHTML="<b>"+t[0]+"</b> из "+t[1];
 $(".m-nm",el).setAttribute("aria-label",h.t+(h.gl>1?", "+h.gl+" "+pl(h.gl,"раз","раза","раз")+" в день":"")+". Серия "+days(s)+", в ноябре "+t[0]+" из "+t[1]+". Показать подробности");
 }
@@ -412,11 +422,6 @@ function summary(){
 var dn=0,all=0;
 H.forEach(h=>{var t=tally(h,M0,TK);dn+=t[0];all+=t[1];});
 $(".m-rate").textContent=(all?Math.round(dn*100/all):0)+"%";
-var clean=H.filter(h=>{for(var k=M0;k<TK;k++){var st=stat(h,k);if(st==="m"||st==="p"||st==="s")return false;}return true;});
-var pills=byId("pills"),miss=0;
-for(var k=M0;k<TK;k++)if(stat(pills,k)==="p")miss++;
-$(".m-say").innerHTML=(clean.length?"В ноябре без единого пропуска: "+clean.map(h=>"<b>"+esc(h.t.split(",")[0])+"</b>").join(" и ")+". ":"")+
-(miss?"Вечерняя таблетка выпадала <b>"+times(miss)+"</b>. Раскройте «Таблетки»: там видно, во сколько вы о ней вспоминаете.":"Таблетки в этом месяце без пропусков, умница.");
 }
 function bump(el){if(MM.reduce||!el)return;el.classList.remove("bump");void el.offsetWidth;el.classList.add("bump");}
 
@@ -656,14 +661,22 @@ var txt=!act.length?"Пока мало отметок.":act.length===1||pr[hiD]=
 return '<p class="m-cap">Дни недели'+note+'</p><p class="m-tx">'+txt+'</p><div class="m-wk" role="img" aria-label="'+pr.map((p,i)=>WD[i]+" "+(p<0?"не по плану":Math.round(p*100)+"%")).join(", ")+'">'+bars+"</div>";
 }
 function yearHTML(h){
-var start=TK-I(TK).wd-52*7,s="",mon={},best=null;
-for(var k=start;k<=TK+6-I(TK).wd;k++){
-var st=k<h.from?"x":stat(h,k),r=h.r[k],x=I(k),key=x.y*12+x.m;
-s+='<i data-k="'+k+'" data-s="'+st+'"'+(st==="p"?' style="--p:'+(r.n/h.gl).toFixed(2)+'"':"")+"></i>";
-if(k<=TK&&k>=h.from&&st!=="o"){var mm=mon[key]=mon[key]||{y:x.y,m:x.m,d:0,a:0};if(st==="d"){mm.d++;mm.a++;}else if(st==="m"||(st==="p"&&k<TK))mm.a++;}
+var t=I(TK),s='<div class="m-ywd" aria-hidden="true"><span></span>'+WD.map((w,i)=>"<span>"+(i%2||i>4?"":w)+"</span>").join("")+"</div>",best=null,ms=[];
+for(var j=11;j>=0;j--){
+var y=t.y,m=t.m-j;if(m<0){m+=12;y--;}
+var k0=kOf(y,m,1),nd=new Date(y,m+1,0).getDate(),off=I(k0).wd,c="",mm={y:y,m:m,d:0,a:0};
+for(var i=0;i<off;i++)c+='<i class="e"></i>';
+for(var k=k0;k<k0+nd;k++){
+var st=k<h.from?"x":stat(h,k),r=h.r[k];
+c+='<i data-k="'+k+'" data-s="'+st+'"'+(st==="p"?' style="--p:'+(r.n/h.gl).toFixed(2)+'"':"")+"></i>";
+if(k<=TK&&k>=h.from){if(st==="d"){mm.d++;mm.a++;}else if(st==="m"||(st==="p"&&k<TK))mm.a++;}
 }
-Object.keys(mon).forEach(key=>{var m=mon[key];if(m.a>=6&&(!best||m.d/m.a>=best.d/best.a))best=m;});
-return '<p class="m-cap">Год по дням</p><div class="m-yr" role="img" aria-label="Год клетками, последние 12 месяцев">'+s+"</div>"+
+if(mm.a>=6&&(!best||mm.d/mm.a>=best.d/best.a))best=mm;
+ms.push([mm,Math.ceil((off+nd)/7),c]);
+}
+ms.forEach(x=>{s+='<div class="m-ym" style="--n:'+x[1]+'"><span'+(x[0]===best?' class="bst"':"")+">"+MS[x[0].m]+"</span><div>"+x[2]+"</div></div>";});
+var f=ms[0][0];
+return '<p class="m-cap">Год по месяцам</p><div class="m-yr" role="img" aria-label="Год по месяцам, с '+MG[f.m]+" "+f.y+" по "+MN[t.m]+" "+t.y+'">'+s+"</div>"+
 '<p class="m-tx m-ytx" aria-live="polite">'+(best?"Лучший месяц: <b>"+MN[best.m]+(best.y!==2026?" "+best.y:"")+"</b>, "+best.d+" из "+best.a+". ":"")+"Коснитесь клетки, чтобы увидеть день.</p>";
 }
 function rhythmHTML(h,ms,bs){
