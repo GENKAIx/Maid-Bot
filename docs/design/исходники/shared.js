@@ -49,25 +49,6 @@
     }).join("");
     adm.appendChild(side); adm.appendChild(main);
   }
-  /* картинка Рины не загрузилась — круг с буквой рядом, картинка прячется; загрузится позже — вернётся */
-  document.addEventListener("error", function (e) {
-    var im = e.target;
-    if (!im || im.tagName !== "IMG" || !im.parentNode) return;
-    if (!im.previousSibling || !im.previousSibling.classList || !im.previousSibling.classList.contains("rina-fb")) {
-      var d = document.createElement("span");
-      d.className = "rina-fb"; d.textContent = "Р"; d.setAttribute("aria-hidden", "true");
-      var w = +(im.getAttribute("width") || 0) || im.clientWidth || 48, h = +(im.getAttribute("height") || 0) || im.clientHeight || w;
-      d.style.width = Math.min(w, h, 64) + "px"; d.style.height = Math.min(w, h, 64) + "px";
-      im.parentNode.insertBefore(d, im);
-    }
-    im.style.display = "none";
-  }, true);
-  document.addEventListener("load", function (e) {
-    var im = e.target;
-    if (!im || im.tagName !== "IMG" || im.style.display !== "none") return;
-    im.style.display = "";
-    var p = im.previousSibling; if (p && p.classList && p.classList.contains("rina-fb")) p.remove();
-  }, true);
   var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   window.MaidMock = {
     reduce: reduce,

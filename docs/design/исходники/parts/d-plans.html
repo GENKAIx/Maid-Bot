@@ -13,25 +13,28 @@
   <p class="dp-advice">Советую А для ПК: видны длительность, окна и наложения. Повестку показывать на телефоне, данные общие.</p>
 
   <div class="app dp-a" data-hub="plans" data-tab="Неделя" data-title="Планы">
-    <div class="dp-head-blk">
-      <div class="dp-bar">
-        <div class="dp-nav">
-          <button type="button" class="icon-btn dp-ib" data-act="prev" aria-label="Предыдущая неделя"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-          <button type="button" class="icon-btn dp-ib" data-act="next" aria-label="Следующая неделя"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
-          <b class="dp-range" aria-live="polite">23–29 ноября</b>
-        </div>
-        <button type="button" class="btn quiet" data-act="today">Сегодня</button>
-        <div class="seg" role="group" aria-label="Вид">
-          <button type="button" data-view="week" aria-pressed="true">Неделя</button>
-          <button type="button" data-view="month" aria-pressed="false">Месяц</button>
-        </div>
-        <button type="button" class="btn primary dp-plus" data-act="new"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>План</button>
+    <div class="dp-bar">
+      <div class="dp-nav">
+        <button type="button" class="dp-ib" data-act="prev" aria-label="Предыдущая неделя"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button type="button" class="dp-ib" data-act="next" aria-label="Следующая неделя"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+        <b class="dp-range" aria-live="polite">23–29 ноября</b>
       </div>
-      <p class="small dp-sum">Занято <b class="num" data-k="busy">0 ч</b><span aria-hidden="true"> · </span>свободных вечеров <b class="num" data-k="free">0</b><span class="dp-sclash" hidden><span aria-hidden="true"> · </span><span class="status warn" data-k="clash"></span></span></p>
+      <button type="button" class="btn ghost" data-act="today">Сегодня</button>
+      <div class="seg" role="group" aria-label="Вид">
+        <button type="button" data-view="week" aria-pressed="true">Неделя</button>
+        <button type="button" data-view="month" aria-pressed="false">Месяц</button>
+      </div>
+      <button type="button" class="btn primary dp-plus" data-act="new"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>План</button>
+    </div>
+
+    <div class="dp-kpis">
+      <div class="kpi"><small>Занято за неделю</small><span class="big num" data-k="busy">0 ч</span></div>
+      <div class="kpi"><small>Свободных вечеров</small><span class="big num" data-k="free">0</span></div>
+      <div class="kpi"><small>Наложений</small><span class="big num" data-k="clash">0</span></div>
     </div>
 
     <div class="rina dp-rina">
-      <img src="maid/think.webp" alt="Рина" width="48" height="48">
+      <img src="maid/think.webp" alt="Рина" width="64" height="68">
       <div class="dp-rtx"><p></p><div class="dp-racts"></div></div>
     </div>
 
@@ -51,68 +54,64 @@
         <div class="dp-month" hidden>
           <div class="dp-mwk" aria-hidden="true"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>
           <div class="dp-mgrid"></div>
-          <p class="small dp-mleg"><i class="dp-md"></i>план <i class="dp-md dp-mdw"></i>срок задачи</p>
+          <p class="muted dp-mleg"><i class="dp-md"></i> план <i class="dp-md dp-mdw"></i> срок задачи. Нажмите на день, чтобы открыть его неделю.</p>
         </div>
       </div>
 
       <aside class="dp-side card">
         <div class="dp-tray">
-          <div class="dp-th"><p class="h">Без времени</p><span class="small dp-tn num"></span></div>
-          <p class="small dp-hint">Перетащите задачу в нужный час.</p>
-          <div class="list dp-tasks"></div>
+          <p class="card-t">Без времени <span class="dp-tn num"></span></p>
+          <p class="muted dp-hint">Перетащите задачу в день и час. Или нажмите на часы, и Рина найдёт ближайшее окно.</p>
+          <div class="dp-tasks"></div>
         </div>
         <div class="dp-card" hidden>
-          <div class="dp-th"><p class="label">План</p><button type="button" class="icon-btn dp-ib" data-act="close" aria-label="Закрыть карточку"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-          <label class="dp-lbl"><span class="label">Название</span><input type="text" class="dp-in" data-f="t" autocomplete="off"></label>
-          <div class="dp-when">
-            <b></b>
-            <div class="dp-dur">
-              <span class="small"></span>
-              <button type="button" class="icon-btn dp-ib" data-act="shorter" aria-label="Короче на 30 минут"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></button>
-              <button type="button" class="icon-btn dp-ib" data-act="longer" aria-label="Длиннее на 30 минут"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
-            </div>
-            <span class="small dp-wnote"></span>
-          </div>
+          <div class="row dp-ch"><p class="card-t" style="margin:0">План</p><button type="button" class="dp-ib" data-act="close" aria-label="Закрыть карточку"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+          <label class="dp-lbl">Название<input type="text" class="dp-in" data-f="t" autocomplete="off"></label>
+          <p class="dp-when"><b></b><span class="muted"></span></p>
           <div class="dp-move">
             <button type="button" class="btn" data-act="earlier">Раньше</button>
             <button type="button" class="btn" data-act="later">Позже</button>
             <button type="button" class="btn" data-act="tomorrow">На завтра</button>
+            <button type="button" class="btn" data-act="shorter" aria-label="Короче на 30 минут">−30 мин</button>
+            <button type="button" class="btn" data-act="longer" aria-label="Длиннее на 30 минут">+30 мин</button>
           </div>
-          <label class="dp-lbl dp-row2"><span class="label">Повтор</span><select class="dp-sel" data-f="rep"></select></label>
-          <label class="dp-lbl dp-row2"><span class="label">Напоминание</span><select class="dp-sel" data-f="rem"></select></label>
-          <div class="dp-cf">
-            <button type="button" class="btn quiet dp-del" data-act="del"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>Удалить</button>
-            <button type="button" class="btn" data-act="close">Готово</button>
+          <p class="dp-lbl">Повтор</p>
+          <div class="dp-chips" data-f="rep"></div>
+          <p class="dp-lbl">Напоминание</p>
+          <div class="dp-chips" data-f="rem"></div>
+          <div class="row dp-cf">
+            <button type="button" class="btn ghost dp-del" data-act="del"><svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>Удалить</button>
+            <button type="button" class="btn primary" data-act="close">Готово</button>
           </div>
         </div>
       </aside>
     </div>
-    <div class="undo dp-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
+    <div class="dp-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
   </div>
 
   <div class="app dp-b" data-hub="plans" data-tab="Неделя" data-title="Планы" hidden>
     <div class="dp-agenda">
       <div class="rina dp-rina">
-        <img src="maid/list.webp" alt="Рина" width="48" height="48">
+        <img src="maid/list.webp" alt="Рина" width="64" height="68">
         <div class="dp-rtx"><p></p><div class="dp-racts"></div></div>
       </div>
       <div class="dp-days"></div>
     </div>
-    <div class="undo dp-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
+    <div class="dp-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
   </div>
 
   <div class="notes">
     <div><h4>Что изменилось</h4><ul>
-      <li>Три большие плитки цифр заменены одной мелкой строкой под датами: «Занято 18,5 ч · свободных вечеров 2 · ! 1 наложение». Слово про наложение появляется, только когда оно есть.</li>
-      <li>Блоки планов серые, без оранжевой заливки и рамки. Наложение отмечено тонким кружком «!», а решение предлагает Рина: одна фраза и одна кнопка «Сдвинуть».</li>
-      <li>Фиолетовый остался только у действия и выбора: кнопка «План», выбранный блок, сегодняшний день и линия «сейчас». Сроки задач в шапке дней серые.</li>
-      <li>«Без времени» читается: название в одну-две строки, категория мелко под ним, кнопка с часами появляется при наведении или по нажатию на строку. Одна подсказка вместо двух.</li>
-      <li>В карточке плана три кнопки переноса, длительность меняется «−» и «+» рядом с ней, повтор и напоминание выбираются списком вместо девяти кнопок.</li>
-      <li>Повестка: у строки только время, название и повтор, действия в раскрытии; у поля «Добавить» нет своей кнопки, хватает Enter.</li>
+      <li>Неделя на шкале 8:00–23:00: видны длительность, окна и наложения (рамка и «!»).</li>
+      <li>План двигается мышью и пальцем с шагом 30 минут, нижний край меняет длительность. Без мыши то же делают кнопки карточки.</li>
+      <li>Сроки задач стоят плашками в днях, задачи без времени лежат справа и перетаскиваются в час.</li>
+      <li>Карточка: название, время, повтор, напоминание, удаление. Любое действие можно отменить.</li>
+      <li>Рина находит наложение и предлагает свободное время одной кнопкой.</li>
+      <li>Повестка: дни списком, прошедшие свёрнуты, план добавляется строкой «врач в 15:30».</li>
     </ul></div>
     <div><h4>Анимации</h4><ul>
-      <li>Планы вырастают по дням, часы недели досчитывают до значения.</li>
-      <li>Взятый блок чуть увеличивается и прилипает к шагу 30 минут, соседи плавно расступаются.</li>
+      <li>Планы вырастают по дням, цифры недели досчитывают до значения.</li>
+      <li>Взятый блок приподнимается тенью и прилипает к шагу 30 минут, соседи плавно расступаются.</li>
       <li>«Сдвинуть» плавно переносит блок, новый план вспыхивает, карточка выезжает справа.</li>
       <li>«Отменить» поднимается снизу и прячется через 6 секунд.</li>
     </ul></div>
@@ -132,152 +131,163 @@
 #p-d-plans .dp-advice { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
 #p-d-plans .notes code { font-size: 12.5px; color: var(--text); }
 #p-d-plans .app { --h: 44px; }
-#p-d-plans .app .app-content { gap: 16px; }
 #p-d-plans .dp-i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-#p-d-plans .dp-head-blk { display: flex; flex-direction: column; gap: 4px; }
-#p-d-plans .dp-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#p-d-plans .dp-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 #p-d-plans .dp-nav { display: flex; align-items: center; gap: 4px; margin-right: auto; min-width: 0; }
-#p-d-plans .dp-range { font: 700 18px/1.2 var(--f); letter-spacing: -.01em; margin-left: 8px; white-space: nowrap; }
-#p-d-plans .icon-btn.dp-ib { width: 36px; height: 36px; }
+#p-d-plans .dp-range { font: 700 18px/1.2 var(--fd); letter-spacing: -.01em; margin-left: 6px; white-space: nowrap; }
+#p-d-plans .dp-ib { width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-soft); flex: none; }
+#p-d-plans .dp-ib:hover { border-color: var(--a-accent); color: var(--a-text); }
 #p-d-plans .app .btn, #p-d-plans .app .seg button { min-height: 36px; }
-#p-d-plans .dp-sum { padding-left: 84px; }
-#p-d-plans .dp-sum b { color: var(--a-text); font-weight: 600; }
-#p-d-plans .dp-sclash[hidden] { display: none; }
-#p-d-plans .dp-rtx { display: flex; flex-direction: column; gap: 8px; min-width: 0; align-items: flex-start; }
+#p-d-plans .dp-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#p-d-plans .dp-kpis .kpi { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 12px 14px; min-width: 0; }
+#p-d-plans .dp-kpis .kpi[data-warn] .big { color: var(--a-warn); }
+#p-d-plans .dp-kpis .kpi[data-warn] small::after { content: " · есть"; color: var(--a-warn); }
+#p-d-plans .dp-rtx { display: flex; flex-direction: column; gap: 6px; min-width: 0; align-items: flex-start; }
+#p-d-plans .dp-racts { display: flex; gap: 6px; flex-wrap: wrap; }
 #p-d-plans .dp-racts:empty { display: none; }
 #p-d-plans .dp-rina.dp-say p { animation: d-plans-rise .45s var(--ease) both; }
-#p-d-plans .dp-main { display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: 16px; align-items: start; }
+#p-d-plans .dp-main { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 14px; align-items: start; }
 #p-d-plans .dp-cal { min-width: 0; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); overflow: hidden; }
 #p-d-plans .dp-scroll { overflow: auto; max-height: 560px; overscroll-behavior: contain; }
 #p-d-plans .dp-grid { min-width: 620px; }
 #p-d-plans .dp-head, #p-d-plans .dp-body { display: grid; grid-template-columns: 48px minmax(0, 1fr); }
 #p-d-plans .dp-head { position: sticky; top: 0; z-index: 4; background: var(--a-surface); border-bottom: 1px solid var(--a-line); grid-template-columns: 48px repeat(7, minmax(0, 1fr)); }
 #p-d-plans .dp-corner { position: sticky; left: 0; background: var(--a-surface); }
-#p-d-plans .dp-dh { padding: 8px 4px; border-left: 1px solid var(--a-grid); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-#p-d-plans .dp-dh > span { display: flex; align-items: baseline; gap: 4px; color: var(--a-muted); font-size: 12px; padding-left: 4px; }
-#p-d-plans .dp-dh > span b { font: 650 15px/1 var(--f); color: var(--a-text); font-variant-numeric: tabular-nums; }
-#p-d-plans .dp-dh.dp-td > span b { background: var(--a-accent-soft); color: var(--a-accent); border-radius: 6px; padding: 2px 6px; }
-#p-d-plans .dp-dh.dp-past { opacity: .6; }
-#p-d-plans .dp-due { display: flex; align-items: center; gap: 4px; width: 100%; min-height: 26px; border: 0; background: var(--a-surface-2); color: var(--a-soft); border-radius: 6px; padding: 2px 6px; font-size: 12px; text-align: left; min-width: 0; }
-#p-d-plans .dp-due:hover { background: var(--a-surface-3); color: var(--a-text); }
+#p-d-plans .dp-dh { padding: 8px 6px 8px; border-left: 1px solid var(--a-grid); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+#p-d-plans .dp-dh > span { display: flex; align-items: baseline; gap: 6px; color: var(--a-muted); font-size: 12px; font-weight: 600; }
+#p-d-plans .dp-dh > span b { font: 700 18px/1 var(--fd); color: var(--a-text); font-variant-numeric: tabular-nums; }
+#p-d-plans .dp-dh.dp-td > span b { background: var(--a-accent-strong); color: var(--a-on-accent); border-radius: 8px; padding: 3px 6px; }
+#p-d-plans .dp-dh.dp-past { opacity: .62; }
+#p-d-plans .dp-due { display: flex; align-items: center; gap: 5px; width: 100%; min-height: 26px; border: 1px solid color-mix(in srgb, var(--a-warn) 45%, transparent); background: color-mix(in srgb, var(--a-warn) 12%, transparent); color: var(--a-text); border-radius: 7px; padding: 2px 6px; font-size: 11.5px; font-weight: 600; text-align: left; min-width: 0; }
 #p-d-plans .dp-due span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-#p-d-plans .dp-due .dp-i { width: 12px; height: 12px; color: var(--a-muted); }
-#p-d-plans .dp-due[aria-pressed="true"] { background: none; color: var(--a-muted); }
+#p-d-plans .dp-due .dp-i { width: 13px; height: 13px; color: var(--a-warn); }
+#p-d-plans .dp-due[aria-pressed="true"] { border-color: var(--a-line); background: var(--a-surface-2); color: var(--a-muted); }
 #p-d-plans .dp-due[aria-pressed="true"] span { text-decoration: line-through; }
+#p-d-plans .dp-due[aria-pressed="true"] .dp-i { color: var(--a-ok); }
 #p-d-plans .dp-times { position: sticky; left: 0; z-index: 3; background: var(--a-surface); height: calc(var(--h) * 15); }
-#p-d-plans .dp-times span { position: absolute; right: 8px; font-size: 12px; color: var(--a-muted); font-variant-numeric: tabular-nums; transform: translateY(-50%); }
+#p-d-plans .dp-times span { position: absolute; right: 6px; font-size: 11px; color: var(--a-muted); font-variant-numeric: tabular-nums; transform: translateY(-50%); }
 #p-d-plans .dp-times span:first-child { transform: none; }
 #p-d-plans .dp-times span:last-child { transform: translateY(-100%); }
 #p-d-plans .dp-cols { position: relative; height: calc(var(--h) * 15); display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); cursor: cell;
 background: repeating-linear-gradient(to bottom, var(--a-grid) 0 1px, transparent 1px calc(var(--h) / 2), color-mix(in srgb, var(--a-grid) 45%, transparent) calc(var(--h) / 2) calc(var(--h) / 2 + 1px), transparent calc(var(--h) / 2 + 1px) var(--h)); }
 #p-d-plans .dp-col { border-left: 1px solid var(--a-grid); }
-#p-d-plans .dp-col.dp-td { background: color-mix(in srgb, var(--a-accent) 5%, transparent); }
+#p-d-plans .dp-col.dp-td { background: color-mix(in srgb, var(--a-accent) 7%, transparent); }
 #p-d-plans .dp-layer { position: absolute; inset: 0; pointer-events: none; }
-#p-d-plans .dp-b { position: absolute; pointer-events: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 4px 6px 8px; border-radius: 8px; overflow: hidden; text-align: left; touch-action: none; cursor: grab; user-select: none;
-border: 1px solid var(--a-line-strong); border-left: 3px solid var(--a-muted); background: var(--a-surface-2); color: var(--a-text);
-transition: top .18s var(--ease), left .22s var(--ease), width .22s var(--ease), height .18s var(--ease), transform .2s, background .2s; transform-origin: top center; }
-#p-d-plans .dp-b:hover { background: var(--a-surface-3); }
-#p-d-plans .dp-b b { font-size: 12px; font-weight: 650; line-height: 1.3; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#p-d-plans .dp-b small { font-size: 12px; color: var(--a-muted); display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#p-d-plans .dp-b { position: absolute; pointer-events: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 3px 6px 6px; border-radius: 8px; overflow: hidden; text-align: left; touch-action: none; cursor: grab; user-select: none;
+border: 1px solid color-mix(in srgb, var(--a-accent) 40%, transparent); border-left: 3px solid var(--a-accent); background: color-mix(in srgb, var(--a-accent) 16%, var(--a-surface)); color: var(--a-text);
+transition: top .18s var(--ease), left .22s var(--ease), width .22s var(--ease), height .18s var(--ease), box-shadow .2s, transform .2s; transform-origin: top center; }
+#p-d-plans .dp-b b { font-size: 12px; font-weight: 650; line-height: 1.25; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#p-d-plans .dp-b small { font-size: 11px; color: var(--a-soft); display: flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #p-d-plans .dp-b small .dp-i { width: 12px; height: 12px; }
-#p-d-plans .dp-b.dp-sm { flex-direction: row; align-items: center; gap: 4px; padding-block: 0; }
+#p-d-plans .dp-b.dp-sm { flex-direction: row; align-items: center; gap: 5px; padding-block: 1px; }
 #p-d-plans .dp-b.dp-sm b { width: auto; flex: 1; min-width: 0; }
-#p-d-plans .dp-b .dp-bang { display: none; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--a-warn); color: var(--a-warn); font: 700 9px/11px var(--f); text-align: center; flex: none; }
+#p-d-plans .dp-b.dp-cl { border-color: var(--a-warn); border-left-color: var(--a-warn); background: color-mix(in srgb, var(--a-warn) 15%, var(--a-surface)); }
+#p-d-plans .dp-b .dp-bang { display: none; width: 15px; height: 15px; border-radius: 50%; background: var(--a-warn); color: var(--a-bg); font: 800 10px/15px var(--f); text-align: center; flex: none; }
 #p-d-plans .dp-b.dp-cl .dp-bang { display: inline-block; }
-#p-d-plans .dp-b.dp-sel { background: var(--a-accent-soft); border-color: var(--a-accent); z-index: 2; }
-#p-d-plans .dp-b.dp-drag { cursor: grabbing; z-index: 5; transform: scale(1.03); background: var(--a-surface-3); transition: top .1s, left .12s, width .12s, height .1s, transform .2s; }
-#p-d-plans .dp-b.dp-past { opacity: .6; }
+#p-d-plans .dp-b.dp-sel { outline: 2px solid var(--a-accent); outline-offset: 1px; z-index: 2; }
+#p-d-plans .dp-b.dp-drag { cursor: grabbing; z-index: 5; box-shadow: var(--a-shadow); transform: scale(1.03); transition: top .1s, left .12s, width .12s, height .1s, transform .2s; }
+#p-d-plans .dp-b.dp-past { opacity: .62; }
 #p-d-plans .dp-rz { position: absolute; left: 0; right: 0; bottom: 0; height: 9px; cursor: ns-resize; }
-#p-d-plans .dp-rz::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 16px; height: 2px; margin-left: -8px; border-radius: 2px; background: currentColor; opacity: 0; transition: opacity .15s; }
-#p-d-plans .dp-b:hover .dp-rz::after, #p-d-plans .dp-b.dp-sel .dp-rz::after { opacity: .5; }
+#p-d-plans .dp-rz::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 18px; height: 3px; margin-left: -9px; border-radius: 2px; background: currentColor; opacity: .3; }
+#p-d-plans .dp-b:hover .dp-rz::after, #p-d-plans .dp-b.dp-sel .dp-rz::after { opacity: .7; }
 #p-d-plans .dp-grow { animation: d-plans-grow .5s var(--ease) both; animation-delay: var(--dl, 0ms); }
 #p-d-plans .dp-new { animation: d-plans-pop .6s var(--ease); }
-#p-d-plans .dp-now { position: absolute; height: 2px; background: var(--a-accent); z-index: 3; }
-#p-d-plans .dp-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--a-accent); }
-#p-d-plans .dp-now span { position: absolute; right: 2px; top: -16px; font-size: 11px; font-weight: 600; color: var(--a-accent); }
-#p-d-plans .dp-drop { position: absolute; border: 2px dashed var(--a-accent); border-radius: 8px; background: var(--a-accent-soft); font-size: 12px; font-weight: 600; color: var(--a-accent); padding: 4px 6px; transition: top .1s, left .1s; }
-#p-d-plans .dp-ghost { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; max-width: 220px; padding: 8px 12px; border-radius: 10px; font: 600 13px/1.3 var(--f); background: var(--card-2); color: var(--text); border: 1px solid var(--accent); }
-#p-d-plans .dp-side { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 12px; }
-#p-d-plans .dp-th { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
-#p-d-plans .dp-hint { margin: 4px 0 8px; }
-#p-d-plans .dp-task { gap: 8px; padding: 8px 4px 8px 4px; cursor: grab; touch-action: none; user-select: none; }
+#p-d-plans .dp-now { position: absolute; height: 2px; background: var(--a-bad); z-index: 3; }
+#p-d-plans .dp-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--a-bad); }
+#p-d-plans .dp-now span { position: absolute; right: 2px; top: -16px; font-size: 10px; font-weight: 700; color: var(--a-bad); }
+#p-d-plans .dp-drop { position: absolute; border: 2px dashed var(--a-accent); border-radius: 8px; background: var(--a-accent-soft); font-size: 11px; font-weight: 700; color: var(--a-accent); padding: 3px 6px; transition: top .1s, left .1s; }
+#p-d-plans .dp-ghost { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; max-width: 220px; padding: 7px 11px; border-radius: 10px; font: 600 13px/1.3 var(--f); background: var(--accent); color: var(--bg); box-shadow: 0 10px 24px color-mix(in srgb, var(--bg) 70%, transparent); }
+#p-d-plans .dp-side { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; }
+#p-d-plans .dp-tn { margin-left: auto; background: var(--a-surface-2); border-radius: 99px; padding: 0 8px; color: var(--a-soft); }
+#p-d-plans .dp-hint { font-size: 12.5px; margin-bottom: 8px; }
+#p-d-plans .dp-tasks { display: flex; flex-direction: column; gap: 6px; }
+#p-d-plans .dp-task { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 8px; min-height: 44px; border-radius: 10px; background: var(--a-surface-2); border: 1px solid transparent; cursor: grab; touch-action: none; user-select: none; min-width: 0; }
 #p-d-plans .dp-task.dp-lift { opacity: .45; }
-#p-d-plans .dp-task .grow { font-size: 14px; line-height: 1.35; }
-#p-d-plans .dp-grip { flex: none; width: 12px; color: var(--a-faint); font-size: 12px; letter-spacing: -2px; line-height: 1; }
-#p-d-plans .dp-task:hover .dp-grip { color: var(--a-muted); }
-#p-d-plans .dp-empty { margin-top: 4px; }
-#p-d-plans .dp-card { display: flex; flex-direction: column; gap: 12px; animation: d-plans-slide .35s var(--ease); }
+#p-d-plans .dp-task > span { flex: 1; min-width: 0; font-size: 13px; }
+#p-d-plans .dp-task small { display: block; color: var(--a-muted); font-size: 11px; }
+#p-d-plans .dp-grip { color: var(--a-muted); font-size: 14px; letter-spacing: -2px; }
+#p-d-plans .dp-task button { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--a-accent); }
+#p-d-plans .dp-task button:hover { background: var(--a-accent-soft); }
+#p-d-plans .dp-empty { font-size: 13px; color: var(--a-muted); padding: 10px; border: 1px dashed var(--a-line); border-radius: 10px; }
+#p-d-plans .dp-card { display: flex; flex-direction: column; gap: 10px; animation: d-plans-slide .35s var(--ease); }
 #p-d-plans .dp-card[hidden], #p-d-plans .dp-tray[hidden] { display: none; }
-#p-d-plans .dp-lbl { display: flex; flex-direction: column; gap: 4px; margin: 0; }
-#p-d-plans .dp-in { width: 100%; min-height: 40px; border-radius: var(--a-r-xs); border: 1px solid var(--a-line); background: var(--a-surface-2); padding: 8px 12px; font-size: 15px; font-weight: 650; color: var(--a-text); }
-#p-d-plans .dp-in:focus, #p-d-plans .dp-sel:focus { border-color: var(--a-accent); outline: none; }
-#p-d-plans .dp-when { display: flex; flex-direction: column; gap: 4px; }
-#p-d-plans .dp-when > b { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
-#p-d-plans .dp-dur { display: flex; align-items: center; gap: 4px; }
-#p-d-plans .dp-dur .small { flex: 1; }
-#p-d-plans .dp-wnote:empty { display: none; }
-#p-d-plans .dp-move { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-#p-d-plans .dp-move .btn { justify-content: center; padding: 6px 4px; }
-#p-d-plans .dp-row2 { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
-#p-d-plans .dp-sel { min-height: 34px; max-width: 60%; border-radius: var(--a-r-xs); border: 1px solid var(--a-line); background: var(--a-surface-2); padding: 4px 8px; font-size: 13px; color: var(--a-text); }
-#p-d-plans .dp-cf { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--a-line); padding-top: 12px; }
-#p-d-plans .app .dp-del { color: var(--a-bad); }
+#p-d-plans .dp-ch { justify-content: space-between; }
+#p-d-plans .dp-lbl { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--a-muted); margin: 0; }
+#p-d-plans .dp-in { width: 100%; min-height: 40px; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface-2); padding: 7px 10px; font-size: 15px; font-weight: 650; color: var(--a-text); }
+#p-d-plans .dp-in:focus { border-color: var(--a-accent); outline: none; }
+#p-d-plans .dp-when { display: flex; flex-direction: column; }
+#p-d-plans .dp-when b { font: 700 16px/1.3 var(--fd); font-variant-numeric: tabular-nums; }
+#p-d-plans .dp-when span { font-size: 12.5px; }
+#p-d-plans .dp-move { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+#p-d-plans .dp-move .btn { justify-content: center; padding: 6px 4px; font-size: 12.5px; }
+#p-d-plans .dp-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+#p-d-plans .dp-chips .chip { min-height: 32px; }
+#p-d-plans .dp-cf { justify-content: space-between; border-top: 1px solid var(--a-line); padding-top: 10px; }
+#p-d-plans .dp-del { color: var(--a-bad); }
 #p-d-plans .dp-month { padding: 12px; animation: d-plans-fade .35s var(--ease); }
 #p-d-plans .dp-mwk, #p-d-plans .dp-mgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-#p-d-plans .dp-mwk span { font-size: 12px; color: var(--a-muted); text-align: center; padding-bottom: 4px; }
-#p-d-plans .dp-mc { min-height: 64px; border-radius: var(--a-r-xs); border: 1px solid transparent; background: var(--a-surface-2); display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 8px; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--a-text); min-width: 0; animation: d-plans-fade .3s var(--ease) both; animation-delay: var(--dl, 0ms); }
-#p-d-plans .dp-mc:hover { border-color: var(--a-line-strong); }
-#p-d-plans .dp-mc.dp-out { background: none; color: var(--a-faint); font-weight: 400; }
+#p-d-plans .dp-mwk span { font-size: 11px; color: var(--a-muted); text-align: center; font-weight: 600; padding-bottom: 4px; }
+#p-d-plans .dp-mc { min-height: 64px; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface-2); display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 6px 7px; font-variant-numeric: tabular-nums; font-weight: 650; color: var(--a-text); min-width: 0; animation: d-plans-fade .3s var(--ease) both; animation-delay: var(--dl, 0ms); }
+#p-d-plans .dp-mc:hover { border-color: var(--a-accent); }
+#p-d-plans .dp-mc.dp-out { background: none; color: var(--a-muted); font-weight: 500; }
+#p-d-plans .dp-mc.dp-td { border-color: var(--a-accent); box-shadow: inset 0 0 0 1px var(--a-accent); }
 #p-d-plans .dp-mc.dp-wk { background: var(--a-accent-soft); }
-#p-d-plans .dp-mc.dp-td { border-color: var(--a-accent); }
-#p-d-plans .dp-mc > span { display: flex; gap: 4px; flex-wrap: wrap; }
-#p-d-plans .dp-md { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--a-soft); }
-#p-d-plans .dp-md.dp-mdw { background: none; border: 1.5px solid var(--a-muted); }
-#p-d-plans .dp-mleg { margin-top: 12px; display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
-#p-d-plans .dp-mleg .dp-md + .dp-md, #p-d-plans .dp-mleg .dp-mdw { margin-left: 8px; }
-#p-d-plans .dp-toast { animation: d-plans-toast .3s var(--ease); max-width: calc(100% - 24px); }
+#p-d-plans .dp-mc > span { display: flex; gap: 3px; flex-wrap: wrap; }
+#p-d-plans .dp-md { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--a-accent); }
+#p-d-plans .dp-md.dp-mdw { background: var(--a-warn); border-radius: 2px; }
+#p-d-plans .dp-mleg { font-size: 12px; margin-top: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+#p-d-plans .dp-toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px); background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 8px 8px 8px 14px; font-size: 13px; box-shadow: var(--a-shadow); animation: d-plans-toast .3s var(--ease); }
 #p-d-plans .dp-toast span { min-width: 0; }
+#p-d-plans .dp-toast button { border: 0; background: color-mix(in srgb, var(--a-bg) 14%, transparent); color: inherit; border-radius: 8px; padding: 6px 10px; min-height: 36px; font-weight: 700; flex: none; }
 #p-d-plans .dp-toast[hidden] { display: none; }
-#p-d-plans .dp-agenda { width: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-#p-d-plans .dp-days { display: flex; flex-direction: column; gap: 16px; }
+#p-d-plans .dp-agenda { width: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+#p-d-plans .dp-days { display: flex; flex-direction: column; gap: 12px; }
 #p-d-plans .dp-past-b { width: 100%; justify-content: space-between; }
-#p-d-plans .dp-day { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+#p-d-plans .dp-day { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 #p-d-plans .dp-day.dp-td { border-color: var(--a-accent); }
 #p-d-plans .dp-dt { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 0 4px 4px; }
-#p-d-plans .dp-dt .small { margin-left: auto; font-size: 12px; }
-#p-d-plans .dp-ar { border-radius: var(--a-r-sm); min-width: 0; }
+#p-d-plans .dp-dt b { font: 700 16px/1.2 var(--fd); }
+#p-d-plans .dp-dt em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--a-accent); background: var(--a-accent-soft); padding: 1px 8px; border-radius: 99px; }
+#p-d-plans .dp-dt span { margin-left: auto; font-size: 12px; color: var(--a-muted); }
+#p-d-plans .dp-ar { border-radius: 12px; min-width: 0; }
 #p-d-plans .dp-ar.dp-open { background: var(--a-surface-2); }
-#p-d-plans .dp-arow { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 4px; min-height: 48px; border: 0; background: none; border-radius: var(--a-r-sm); text-align: left; color: var(--a-text); min-width: 0; }
+#p-d-plans .dp-arow { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 6px; min-height: 48px; border: 0; background: none; border-radius: 12px; text-align: left; color: var(--a-text); min-width: 0; }
 #p-d-plans .dp-arow:hover { background: var(--a-surface-2); }
-#p-d-plans .dp-at { display: flex; flex-direction: column; width: 48px; flex: none; font-variant-numeric: tabular-nums; border-right: 2px solid var(--a-line-strong); padding-right: 8px; }
-#p-d-plans .dp-at b { font-size: 14px; font-weight: 600; }
-#p-d-plans .dp-at small { font-size: 12px; color: var(--a-muted); }
-#p-d-plans .dp-at .dp-i { color: var(--a-muted); }
+#p-d-plans .dp-at { display: flex; flex-direction: column; width: 46px; flex: none; font-variant-numeric: tabular-nums; border-right: 3px solid var(--a-accent); padding-right: 8px; }
+#p-d-plans .dp-at b { font-size: 14px; }
+#p-d-plans .dp-at small { font-size: 11.5px; color: var(--a-muted); }
+#p-d-plans .dp-ar.dp-cl .dp-at { border-right-color: var(--a-warn); }
+#p-d-plans .dp-ar.dp-isdue .dp-at { border-right-color: var(--a-warn); color: var(--a-warn); }
 #p-d-plans .dp-an { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-#p-d-plans .dp-an b { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+#p-d-plans .dp-an b { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 #p-d-plans .dp-an small { font-size: 12px; color: var(--a-muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 #p-d-plans .dp-an small .dp-i { width: 12px; height: 12px; }
+#p-d-plans .dp-tag { font-size: 11px; font-weight: 700; color: var(--a-warn); border: 1px solid color-mix(in srgb, var(--a-warn) 50%, transparent); border-radius: 99px; padding: 0 7px; white-space: nowrap; }
 #p-d-plans .dp-ar.dp-done .dp-an b { text-decoration: line-through; color: var(--a-muted); }
-#p-d-plans .dp-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 8px 12px 68px; animation: d-plans-fade .25s var(--ease); }
+#p-d-plans .dp-acts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 8px 10px 64px; animation: d-plans-fade .25s var(--ease); }
 #p-d-plans .dp-acts[hidden] { display: none; }
-#p-d-plans .dp-acts .icon-btn { width: 36px; height: 36px; margin-left: auto; }
-#p-d-plans .dp-add input { width: 100%; min-height: 40px; margin-top: 4px; border-radius: var(--a-r-xs); border: 1px dashed var(--a-line); background: none; padding: 8px 12px; color: var(--a-text); }
+#p-d-plans .dp-add { display: flex; gap: 6px; margin-top: 4px; }
+#p-d-plans .dp-add input { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 1px dashed var(--a-line); background: none; padding: 6px 12px; color: var(--a-text); }
 #p-d-plans .dp-add input:focus { border-style: solid; border-color: var(--a-accent); outline: none; background: var(--a-surface-2); }
 #p-d-plans .dp-add input::placeholder { color: var(--a-muted); }
-#p-d-plans .dp-ahint { padding-left: 4px; font-size: 12px; }
+#p-d-plans .dp-ahint { font-size: 11.5px; padding-left: 4px; }
+#p-d-plans .dp-ok { color: var(--a-ok); font-weight: 700; }
 @keyframes d-plans-grow { from { transform: scaleY(.15); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes d-plans-pop { 0% { box-shadow: 0 0 0 0 var(--a-accent); } 40% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--a-accent) 35%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+@keyframes d-plans-pop { 0% { box-shadow: 0 0 0 0 var(--a-accent); } 40% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--a-accent) 35%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
 @keyframes d-plans-rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes d-plans-slide { from { transform: translateX(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes d-plans-slide { from { transform: translateX(14px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes d-plans-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes d-plans-toast { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes d-plans-toast { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
 @media (max-width: 1000px) {
 #p-d-plans .dp-main { grid-template-columns: minmax(0, 1fr); }
 #p-d-plans .dp-side { position: static; }
 }
 @media (max-width: 720px) {
 #p-d-plans .dp-range { font-size: 16px; }
-#p-d-plans .dp-sum { padding-left: 0; }
+#p-d-plans .dp-kpis { gap: 6px; }
+#p-d-plans .dp-kpis .kpi { padding: 10px; }
+#p-d-plans .dp-kpis .kpi small { font-size: 9.5px; letter-spacing: .03em; }
+#p-d-plans .dp-kpis .kpi[data-warn] small::after { content: ""; }
 #p-d-plans .dp-scroll { max-height: 460px; }
 #p-d-plans .dp-plus { margin-left: auto; }
 #p-d-plans .dp-acts { padding-left: 8px; }
@@ -301,7 +311,7 @@ rep: '<svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a7 
 flag: '<svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4M6 4h11l-2 4 2 4H6"/></svg>',
 ok: '<svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
 clock: '<svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
-trash: '<svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>'
+bell: '<svg class="dp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20h4"/></svg>'
 };
 var uid = 0;
 function tm(x) { var a = x.split(":"); return +a[0] * 60 + +a[1]; }
@@ -350,8 +360,8 @@ var h = "";
 for (var i = 8; i <= 23; i++) h += '<span style="top:' + (i - 8) * H + 'px">' + i + ':00</span>';
 times.innerHTML = h;
 for (var c = 0; c < 7; c++) { var col = document.createElement("div"); col.className = "dp-col"; cols.insertBefore(col, layer); }
-q('[data-f="rep"]', A).innerHTML = REP.map(function (r) { return '<option value="' + r[0] + '">' + r[1] + "</option>"; }).join("");
-q('[data-f="rem"]', A).innerHTML = REM.map(function (r) { return '<option value="' + r[0] + '">' + r[1] + "</option>"; }).join("");
+q('[data-f="rep"]', A).innerHTML = REP.map(function (r) { return '<button type="button" class="chip" data-rep="' + r[0] + '" aria-pressed="false">' + r[1] + "</button>"; }).join("");
+q('[data-f="rem"]', A).innerHTML = REM.map(function (r) { return '<button type="button" class="chip" data-rem="' + r[0] + '" aria-pressed="false">' + r[1] + "</button>"; }).join("");
 })();
 
 function weekPlans() { return plans.filter(function (p) { return p.d >= off * 7 && p.d < off * 7 + 7; }); }
@@ -419,20 +429,21 @@ for (var c = 0; c < 7; c++) { var d = off * 7 + c; if (!wk.some(function (p) { r
 return { busy: busy, clash: pairs / 2, free: free };
 }
 function kpis(anim) {
-var s = stats(), busy = q('[data-k="busy"]', A);
-q('[data-k="free"]', A).textContent = s.free;
-q(".dp-sclash", A).hidden = !s.clash;
-q('[data-k="clash"]', A).textContent = "! " + s.clash + " " + pl(s.clash, "наложение", "наложения", "наложений");
-var show = function (x) { busy.textContent = (Math.round(x / 6) / 10).toString().replace(".", ",") + " ч"; };
-if (!anim) { show(s.busy); return; }
+var s = stats(), map = { busy: s.busy, free: s.free, clash: s.clash };
+Object.keys(map).forEach(function (k) {
+var el = q('[data-k="' + k + '"]', A), v = map[k];
+var show = function (x) { el.textContent = k === "busy" ? (Math.round(x / 6) / 10).toString().replace(".", ",") + " ч" : Math.round(x); };
+el.parentNode.toggleAttribute("data-warn", k === "clash" && v > 0);
+if (!anim) { show(v); return; }
 var t0 = performance.now();
-(function step(t) { var f = Math.min(1, (t - t0) / 800); show(s.busy * (1 - Math.pow(1 - f, 3))); if (f < 1) requestAnimationFrame(step); })(t0);
+(function step(t) { var f = Math.min(1, (t - t0) / 800); show(v * (1 - Math.pow(1 - f, 3))); if (f < 1) requestAnimationFrame(step); })(t0);
+});
 }
 function rina(app, img, html, acts) {
 var r = q(".dp-rina", app);
 q("img", r).src = "maid/" + img + ".webp";
 q("p", r).innerHTML = html;
-q(".dp-racts", r).innerHTML = (acts || []).slice(0, 1).map(function (a, i) { return '<button type="button" class="btn" data-ract="' + i + '">' + a[0] + "</button>"; }).join("");
+q(".dp-racts", r).innerHTML = (acts || []).map(function (a, i) { return '<button type="button" class="btn' + (i ? " ghost" : " primary") + '" data-ract="' + i + '">' + a[0] + "</button>"; }).join("");
 r._acts = acts || [];
 r.classList.remove("dp-say"); void r.offsetWidth; if (!MM.reduce) r.classList.add("dp-say");
 }
@@ -441,25 +452,26 @@ var cs = clashOf(p); if (!cs.length) return false;
 var o = cs[0], f = findFree(p.d, p.s, p.e - p.s, p.id);
 if (!f) return false;
 var where = f.d === p.d ? "на " + ft(f.s) : "на " + dname(f.d) + ", " + ft(f.s);
-rina(A, "worried", "«" + esc(p.t) + "» наложился на «" + esc(o.t) + "». Свободно " + (f.d === p.d ? "" : dname(f.d) + ", ") + "с <b>" + ft(f.s) + "</b>.",
-[["Сдвинуть " + where, function () { var od = { d: p.d, s: p.s, e: p.e }, du = p.e - p.s; p.d = f.d; p.s = f.s; p.e = f.s + du; off = Math.floor(p.d / 7); all(); flash(p.id); toast(A, "Перенесла «" + p.t + "» " + where, function () { p.d = od.d; p.s = od.s; p.e = od.e; all(); idle(); }); idle(); }]]);
+rina(A, "worried", "«" + esc(p.t) + "» наложился на «" + esc(o.t) + "». <b>Сдвинуть " + where + "?</b>",
+[["Сдвинуть " + where, function () { var od = { d: p.d, s: p.s, e: p.e }, du = p.e - p.s; p.d = f.d; p.s = f.s; p.e = f.s + du; off = Math.floor(p.d / 7); all(); flash(p.id); toast(A, "Перенесла «" + p.t + "» " + where, function () { p.d = od.d; p.s = od.s; p.e = od.e; all(); idle(); }); idle(); }],
+["Оставить", function () { idle(true); }]]);
 return true;
 }
 function idle(keep) {
 var wk = weekPlans();
 if (!keep) { var c = wk.filter(function (p) { return clashOf(p).length; }).sort(function (a, b) { return b.s - a.s; })[0]; if (c && suggest(c)) return; }
 var s = stats();
-if (off !== 0) { rina(A, "list", wk.length ? "На этой неделе <b>" + wk.length + " " + pl(wk.length, "план", "плана", "планов") + "</b>. Если что-то наложится, я подскажу." : "Эта неделя пока пустая. Нажмите на любой час, и я запишу план."); return; }
+if (off !== 0) { rina(A, "list", wk.length ? "На этой неделе " + wk.length + " " + pl(wk.length, "план", "плана", "планов") + ". Свободных вечеров: <b>" + s.free + "</b>." : "Эта неделя пока пустая. Нажмите на любой час, и я запишу план."); return; }
 var f = findFree(TODAY, NOW, 60, -1);
-rina(A, "happy", tray.length && f ? "Сегодня свободно с <b>" + ft(f.s) + "</b>. Можно взять «" + esc(tray[0].t) + "»." : "Вечеров без планов на неделе: <b>" + s.free + "</b>. Хорошо отдохнуть тоже план.",
+rina(A, "happy", "Свободных вечеров на неделе: <b>" + s.free + "</b>." + (tray.length && f ? " Сегодня окно с " + ft(f.s) + ", можно взять «" + esc(tray[0].t) + "»." : ""),
 tray.length && f ? [["Поставить на " + ft(f.s), function () { placeTask(tray[0].id, f.d, f.s); }]] : []);
 }
 function pl(n, a, b, c) { var m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; }
 function renderTray() {
-q(".dp-tn", A).textContent = tray.length || "";
+q(".dp-tn", A).textContent = tray.length;
 q(".dp-tasks", A).innerHTML = tray.length ? tray.map(function (t) {
-return '<div class="li dp-task" data-task="' + t.id + '"><span class="dp-grip" aria-hidden="true">⋮⋮</span><span class="grow">' + esc(t.t) + '<span class="s">' + esc(t.c) + '</span></span><span class="row-acts"><button type="button" class="icon-btn dp-ib" data-find="' + t.id + '" title="Найти ближайшее окно" aria-label="Найти время для «' + esc(t.t) + '»">' + IC.clock + "</button></span></div>";
-}).join("") : '<p class="empty dp-empty">Все задачи стоят в днях.</p>';
+return '<div class="dp-task" data-task="' + t.id + '"><span class="dp-grip" aria-hidden="true">⋮⋮</span><span>' + esc(t.t) + "<small>" + esc(t.c) + '</small></span><button type="button" data-find="' + t.id + '" aria-label="Найти время для «' + esc(t.t) + '»">' + IC.clock + "</button></div>";
+}).join("") : '<p class="dp-empty">Все задачи стоят в днях. Отлично!</p>';
 qa(".dp-task", A).forEach(function (el) {
 el.addEventListener("pointerdown", tDown); el.addEventListener("pointermove", tMove);
 el.addEventListener("pointerup", tUp); el.addEventListener("pointercancel", tUp);
@@ -469,11 +481,11 @@ function fillCard() {
 var p = byId(sel), card = q(".dp-card", A);
 if (!p) { closeCard(); return; }
 var inp = q(".dp-in", card); if (document.activeElement !== inp) inp.value = p.t;
-q(".dp-when > b", card).textContent = dname(p.d) + ", " + ft(p.s) + "–" + ft(p.e);
+q(".dp-when b", card).textContent = dname(p.d) + ", " + ft(p.s) + "–" + ft(p.e);
 var cs = clashOf(p);
-q(".dp-dur .small", card).textContent = fd(p.e - p.s);
-q(".dp-wnote", card).textContent = (cs.length ? "Наложение с «" + cs[0].t + "»" : "") + (p.rep !== "none" ? (cs.length ? ". " : "") + "Повтор: сдвинется только этот раз" : "");
-q('[data-f="rep"]', card).value = p.rep; q('[data-f="rem"]', card).value = p.rem;
+q(".dp-when span", card).textContent = fd(p.e - p.s) + (cs.length ? " · наложение с «" + cs[0].t + "»" : "") + (p.rep !== "none" ? " · переносится только этот раз" : "");
+qa("[data-rep]", card).forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.rep === p.rep); });
+qa("[data-rem]", card).forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.rem === p.rem); });
 }
 function openCard(id, focus) {
 sel = id; q(".dp-tray", A).hidden = true; var card = q(".dp-card", A); card.hidden = false;
@@ -516,11 +528,13 @@ all(); idle(); if (!B.hidden) rinaB();
 toast(app, "План «" + p.t + "» удалён", function () { plans.splice(i, 0, p); all(); flash(p.id); idle(); if (!B.hidden) rinaB(); });
 }
 A.addEventListener("click", function (e) {
-var b = e.target.closest("[data-act],[data-view],[data-due],[data-find]"); if (!b || b.closest(".dp-toast")) return;
+var b = e.target.closest("[data-act],[data-view],[data-rep],[data-rem],[data-due],[data-find]"); if (!b || b.closest(".dp-toast")) return;
 var p = byId(sel), a = b.dataset.act;
 if (b.dataset.view) { setView(b.dataset.view); return; }
 if (b.dataset.due) { var u = dues.filter(function (x) { return x.id === +b.dataset.due; })[0]; u.done = !u.done; renderHead(); toast(A, u.done ? "Задача «" + u.t + "» сделана" : "Задача снова открыта"); return; }
 if (b.dataset.find) { var tk = tray.filter(function (x) { return x.id === +b.dataset.find; })[0], f = findFree(TODAY, NOW, 60, -1); if (f) placeTask(tk.id, f.d, f.s); return; }
+if (b.dataset.rep && p) { p.rep = b.dataset.rep; all(); return; }
+if (b.dataset.rem && p) { p.rem = b.dataset.rem; fillCard(); return; }
 if (a === "prev" || a === "next") { var k = a === "prev" ? -1 : 1; if (view === "month") { mOff += k; renderMonth(); renderHead(); } else { off += k; closeIf(); all(); idle(); grow(); } return; }
 if (a === "today") { off = 0; mOff = 0; if (view === "month") setView("week"); else { all(); idle(); } scrollNow(); return; }
 if (a === "new") { var f2 = findFree(off === 0 ? TODAY : off * 7, off === 0 ? NOW : T0, 60, -1); if (f2) { off = Math.floor(f2.d / 7); create(f2.d, f2.s); } return; }
@@ -529,7 +543,6 @@ if (!p) return;
 if (a === "del") del(p, A); else move(p, a, A);
 });
 function closeIf() { if (sel) { var p = byId(sel); if (!p || Math.floor(p.d / 7) !== off) { sel = null; q(".dp-card", A).hidden = true; q(".dp-tray", A).hidden = false; } } }
-A.addEventListener("change", function (e) { var f = e.target.dataset && e.target.dataset.f, p = byId(sel); if (!p || (f !== "rep" && f !== "rem")) return; p[f] = e.target.value; all(); });
 q(".dp-in", A).addEventListener("input", function (e) { var p = byId(sel); if (p) { p.t = e.target.value || "Без названия"; sync(); } });
 q(".dp-in", A).addEventListener("keydown", function (e) { if (e.key === "Enter") closeCard(); });
 A.addEventListener("keydown", function (e) { if (e.key === "Escape" && sel) closeCard(); });
@@ -607,8 +620,7 @@ if (!tdrag) return;
 var t = tdrag; tdrag = null;
 q(".dp-drop", A).hidden = true; if (ghost) { ghost.remove(); ghost = null; }
 t.el.classList.remove("dp-lift");
-if (!t.mv) { var was = t.el.classList.contains("open"); qa(".dp-task.open", A).forEach(function (x) { x.classList.remove("open"); }); t.el.classList.toggle("open", !was); return; }
-if (t.hit) placeTask(t.id, t.hit.d, t.hit.s);
+if (t.mv && t.hit) placeTask(t.id, t.hit.d, t.hit.s);
 }
 function placeTask(id, d, s) {
 var i = -1; tray.forEach(function (t, k) { if (t.id === id) i = k; }); if (i < 0) return;
@@ -652,22 +664,22 @@ all();
 
 function rowB(p) {
 var cs = clashOf(p).length > 0, open = openB === p.id;
-return '<div class="dp-ar' + (cs ? " dp-cl" : "") + (open ? " dp-open" : "") + '" data-pid="' + p.id + '"><button type="button" class="dp-arow" aria-expanded="' + open + '"><span class="dp-at"><b>' + ft(p.s) + "</b><small>" + ft(p.e) + '</small></span><span class="dp-an"><b>' + esc(p.t) + "</b>" + (p.rep !== "none" ? "<small>" + IC.rep + repName(p.rep).toLowerCase() + "</small>" : "") + "</span>" + (cs ? '<span class="status warn">! наложение</span>' : "") + "</button>" +
-'<div class="dp-acts"' + (open ? "" : " hidden") + '><button type="button" class="btn" data-bact="earlier">Раньше</button><button type="button" class="btn" data-bact="later">Позже</button><button type="button" class="btn" data-bact="tomorrow">На завтра</button><button type="button" class="icon-btn dp-del" data-bact="del" aria-label="Удалить план">' + IC.trash + "</button></div></div>";
+return '<div class="dp-ar' + (cs ? " dp-cl" : "") + (open ? " dp-open" : "") + '" data-pid="' + p.id + '"><button type="button" class="dp-arow" aria-expanded="' + open + '"><span class="dp-at"><b>' + ft(p.s) + "</b><small>" + ft(p.e) + '</small></span><span class="dp-an"><b>' + esc(p.t) + "</b><small>" + fd(p.e - p.s) + (p.rep !== "none" ? " · " + IC.rep + repName(p.rep).toLowerCase() : "") + (p.rem !== "0" ? " · " + IC.bell + REM.filter(function (r) { return r[0] === p.rem; })[0][1].toLowerCase() : "") + "</small></span>" + (cs ? '<span class="dp-tag">наложение</span>' : "") + "</button>" +
+'<div class="dp-acts"' + (open ? "" : " hidden") + '><button type="button" class="btn" data-bact="earlier">Раньше</button><button type="button" class="btn" data-bact="later">Позже</button><button type="button" class="btn" data-bact="tomorrow">На завтра</button><button type="button" class="btn ghost dp-del" data-bact="del">Удалить</button></div></div>';
 }
 function renderB() {
 var h = "", past = 0;
 for (var d = 0; d < TODAY; d++) past += plans.filter(function (p) { return p.d === d; }).length;
-h += '<button type="button" class="btn quiet dp-past-b" data-bact="past" aria-expanded="' + showPast + '"><span>Пн–чт, 23–26 ноября · прошло</span><span class="small">' + past + " " + pl(past, "план", "плана", "планов") + (showPast ? " · скрыть" : " · показать") + "</span></button>";
+h += '<button type="button" class="btn ghost dp-past-b" data-bact="past" aria-expanded="' + showPast + '"><span>Пн–чт, 23–26 ноября · прошло</span><span class="muted">' + past + " " + pl(past, "план", "плана", "планов") + (showPast ? " · скрыть" : " · показать") + "</span></button>";
 for (d = showPast ? 0 : TODAY; d < 7; d++) {
 var list = plans.filter(function (p) { return p.d === d; }).sort(function (a, b) { return a.s - b.s; }), du = dues.filter(function (u) { return u.d === d; }), busy = 0;
 list.forEach(function (p) { busy += p.e - p.s; });
 var x = dt(d);
-h += '<section class="dp-day' + (d === TODAY ? " dp-td" : "") + '"><div class="dp-dt"><span class="h">' + DL[wd(d)][0].toUpperCase() + DL[wd(d)].slice(1) + ", " + x.getDate() + "</span>" + (d === TODAY ? '<span class="tag">сегодня</span>' : d === TODAY + 1 ? '<span class="tag">завтра</span>' : "") + '<span class="small">' + (list.length ? list.length + " " + pl(list.length, "план", "плана", "планов") + " · " + fd(busy) : "свободный день") + "</span></div>";
-h += du.map(function (u) { return '<div class="dp-ar dp-isdue' + (u.done ? " dp-done" : "") + '"><button type="button" class="dp-arow" data-bdue="' + u.id + '" aria-pressed="' + u.done + '"><span class="dp-at">' + (u.done ? IC.ok : IC.flag) + '<small>срок</small></span><span class="dp-an"><b>' + esc(u.t) + "</b>" + (u.done ? "<small>сделано</small>" : "") + "</span></button></div>"; }).join("");
+h += '<section class="dp-day' + (d === TODAY ? " dp-td" : "") + '"><div class="dp-dt"><b>' + DL[wd(d)][0].toUpperCase() + DL[wd(d)].slice(1) + ", " + x.getDate() + "</b>" + (d === TODAY ? "<em>сегодня</em>" : d === TODAY + 1 ? "<em>завтра</em>" : "") + "<span>" + (list.length ? list.length + " " + pl(list.length, "план", "плана", "планов") + " · " + fd(busy) : "свободный день") + "</span></div>";
+h += du.map(function (u) { return '<div class="dp-ar dp-isdue' + (u.done ? " dp-done" : "") + '"><button type="button" class="dp-arow" data-bdue="' + u.id + '" aria-pressed="' + u.done + '"><span class="dp-at">' + (u.done ? IC.ok : IC.flag) + '<small>срок</small></span><span class="dp-an"><b>' + esc(u.t) + "</b><small>" + (u.done ? '<span class="dp-ok">сделано</span>' : "нажмите, когда сделаете") + "</small></span></button></div>"; }).join("");
 h += list.map(rowB).join("");
-h += '<form class="dp-add" data-d="' + d + '"><input type="text" autocomplete="off" aria-label="Добавить на ' + DL[wd(d)] + '" placeholder="' + (d === TODAY ? "Добавить: врач в 17:30" : "Добавить: спортзал в 19 до 20:30") + '"></form>';
-if (d === TODAY) h += '<p class="small dp-ahint">Без времени запись станет задачей на этот день.</p>';
+h += '<form class="dp-add" data-d="' + d + '"><input type="text" autocomplete="off" aria-label="Добавить на ' + DL[wd(d)] + '" placeholder="' + (d === TODAY ? "Добавить: врач в 17:30" : "Добавить: спортзал в 19 до 20:30") + '"><button type="submit" class="btn">Добавить</button></form>';
+if (d === TODAY) h += '<p class="muted dp-ahint">Без времени запись станет задачей на этот день.</p>';
 h += "</section>";
 }
 q(".dp-days", B).innerHTML = h;
@@ -677,8 +689,8 @@ var rest = plans.filter(function (p) { return p.d === TODAY && p.e > NOW; }).sor
 var c = rest.filter(function (p) { return clashOf(p).length; }).sort(function (a, b) { return b.s - a.s; })[0];
 if (c) {
 var f = findFree(c.d, c.s, c.e - c.s, c.id);
-if (f && f.d === c.d) return rina(B, "worried", "«" + esc(c.t) + "» наложился на соседний план. Свободно с <b>" + ft(f.s) + "</b>.",
-[["Сдвинуть на " + ft(f.s), function () { var o = c.s, du = c.e - c.s; c.s = f.s; c.e = f.s + du; all(); flash(c.id); rinaB(); idle(); toast(B, "«" + c.t + "» теперь в " + ft(c.s), function () { c.s = o; c.e = o + du; all(); rinaB(); idle(); }); }]]);
+if (f && f.d === c.d) return rina(B, "worried", "Сегодня ещё " + rest.length + " " + pl(rest.length, "план", "плана", "планов") + ". «" + esc(c.t) + "» наложился на соседний. <b>Сдвинуть на " + ft(f.s) + "?</b>",
+[["Сдвинуть на " + ft(f.s), function () { var o = c.s, du = c.e - c.s; c.s = f.s; c.e = f.s + du; all(); flash(c.id); rinaB(); idle(); toast(B, "«" + c.t + "» теперь в " + ft(c.s), function () { c.s = o; c.e = o + du; all(); rinaB(); idle(); }); }], ["Оставить", function () { rina(B, "happy", "Хорошо, оставляю как есть. Напишите строкой, например «спортзал в 19 до 20:30», и я сама поставлю время."); }]]);
 }
 rina(B, "happy", rest.length ? "Сегодня ещё " + rest.length + " " + pl(rest.length, "план", "плана", "планов") + ". Ближайший: <b>«" + esc(rest[0].t) + "» в " + ft(rest[0].s) + "</b>." : "На сегодня планы закончились. Отдыхайте!");
 }

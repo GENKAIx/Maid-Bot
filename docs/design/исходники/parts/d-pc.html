@@ -6,38 +6,45 @@
   </header>
   <button class="replay" type="button">Повторить анимацию</button>
 
-  <div class="dp-var" role="group" aria-label="Вариант экрана">
+  <div class="seg dp-var" role="group" aria-label="Вариант экрана">
     <button type="button" data-var="a" aria-pressed="true">Вариант А · Куда ушёл день</button>
     <button type="button" data-var="b" aria-pressed="false">Вариант Б · Когда я за ПК</button>
   </div>
-  <p class="dp-adv">Советую вариант А: он работает на данных, которые трекер уже собирает. Вариант Б стоит делать вторым шагом, после доработки трекера.</p>
+  <p class="dp-adv">Советую вариант А: он работает на тех данных, что трекер уже собирает, и сразу даёт навести порядок в программах. Вариант Б стоит делать вторым шагом, после доработки трекера.</p>
 
   <div class="app" data-hub="stats" data-tab="Компьютер" data-title="Компьютер" data-v="a">
-    <section class="card dp-hero" aria-label="Время за ПК за день">
-      <div class="dp-date">
-        <button type="button" class="icon-btn dp-nav" data-step="-1" aria-label="Предыдущий день"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-        <span class="label dp-dname"></span>
-        <button type="button" class="icon-btn dp-nav" data-step="1" aria-label="Следующий день"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
-      </div>
-      <div class="dp-sum">
-        <p class="num-xl dp-total" aria-live="polite"></p>
-        <p class="small dp-cmp"></p>
-      </div>
-      <div class="dp-bar" role="img" aria-label="Доли групп за день"></div>
-      <div class="dp-legend"></div>
-      <p class="small dp-afk"></p>
-    </section>
+    <div class="dp-top">
+      <section class="card dp-hero" aria-label="Время за ПК за день">
+        <div class="dp-date">
+          <button type="button" class="dp-nav" data-step="-1" aria-label="Предыдущий день"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <b class="dp-dname"></b>
+          <button type="button" class="dp-nav" data-step="1" aria-label="Следующий день"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+          <span class="chip dp-today">сегодня</span>
+        </div>
+        <div class="dp-total" aria-live="polite"></div>
+        <p class="dp-cmp"></p>
+        <div class="dp-bar" role="img" aria-label="Доли групп за день"></div>
+        <div class="dp-legend"></div>
+      </section>
+      <section class="card dp-off" aria-label="Время не за ПК">
+        <p class="card-t">Не за ПК</p>
+        <p class="dp-offn"></p>
+        <div class="dp-day24" aria-hidden="true"><i></i></div>
+        <div class="dp-24l muted" aria-hidden="true"><span>0 ч</span><span>сутки</span><span>24 ч</span></div>
+        <p class="dp-afk soft"></p>
+      </section>
+    </div>
 
-    <div class="rina"><img class="dp-rimg" src="maid/think.webp" alt="" width="48" height="48"><p class="dp-rtext"></p></div>
+    <div class="rina"><img class="dp-rimg" src="maid/think.webp" alt="Рина" width="64" height="68"><p class="dp-rtext"></p></div>
 
     <section class="card dp-week" aria-label="Неделя по группам">
       <div class="dp-wh">
-        <p class="h">Неделя</p>
+        <p class="card-t">Неделя по группам</p>
         <label class="dp-lim"><span>Предел на игры</span>
           <input type="range" min="30" max="240" step="15" value="90" id="d-pc-lim" aria-describedby="d-pc-limv">
           <b class="num" id="d-pc-limv"></b></label>
       </div>
-      <p class="small dp-over"></p>
+      <p class="dp-over"></p>
       <div class="dp-chart">
         <div class="dp-plot">
           <div class="dp-grid" aria-hidden="true"></div>
@@ -46,54 +53,55 @@
         </div>
         <div class="dp-days" aria-hidden="true"></div>
       </div>
-      <p class="small dp-tip" aria-live="polite"></p>
+      <p class="dp-tip" aria-live="polite"></p>
     </section>
 
     <section class="card dp-progs" aria-label="Программы">
       <div class="dp-ph">
-        <p class="h">Программы за день</p>
+        <p class="card-t">Все программы за день <span class="dp-cnt num"></span></p>
         <label class="dp-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg>
           <input type="search" id="d-pc-q" placeholder="Найти программу" autocomplete="off" aria-label="Поиск программы"></label>
       </div>
       <div class="dp-pills" role="group" aria-label="Показать группу"></div>
-      <p class="small dp-hint">Перетащите строку на группу, чтобы переложить программу</p>
-      <ul class="list dp-list"></ul>
-      <p class="empty dp-empty" hidden>Такой программы за этот день нет.</p>
-      <div class="dp-foot"><button type="button" class="btn quiet dp-more" hidden></button><p class="small dp-hidden"></p></div>
+      <p class="dp-hint muted">Перетащите строку на группу или выберите группу в строке. Доли пересчитаются сразу.</p>
+      <ul class="dp-list"></ul>
+      <p class="dp-empty muted" hidden>Такой программы за этот день нет.</p>
+      <div class="dp-undo" role="status"></div>
+      <div class="dp-hidden"></div>
     </section>
-    <div class="undo dp-undo" role="status" hidden><span></span><button type="button" data-undo>Отменить</button></div>
   </div>
 
   <div class="app" data-hub="stats" data-tab="Компьютер" data-title="Компьютер" data-v="b" hidden>
-    <p class="small dp-need"><span class="tag">набросок</span><span>Трекер пока не пишет время по часам, числа ниже выдуманы для вида.</span></p>
+    <p class="dp-need"><span class="dp-needi" aria-hidden="true">!</span><span><b>Нужны почасовые данные: трекер их пока не пишет.</b> Сейчас он копит только сумму за сутки по программам. Числа ниже выдуманы, чтобы показать вид.</span></p>
     <div class="g3 dp-bk">
-      <div class="card dp-k"><span class="label">Самый долгий сеанс</span><span class="num-l dp-long"></span><span class="small dp-longw"></span></div>
-      <div class="card dp-k"><span class="label">Обычно за ПК</span><span class="num-l dp-span"></span><span class="small">первый вход и выход</span></div>
-      <div class="card dp-k"><span class="label">Перерывов в день</span><span class="num-l dp-brk"></span><span class="small">дольше 15 минут</span></div>
+      <div class="card kpi"><small>Самый долгий сеанс</small><span class="big num dp-long"></span><span class="soft dp-longw"></span></div>
+      <div class="card kpi"><small>Обычно за ПК</small><span class="big num dp-span"></span><span class="soft">первый вход и выход, в среднем</span></div>
+      <div class="card kpi"><small>Перерывов в день</small><span class="big num dp-brk"></span><span class="soft">дольше 15 минут</span></div>
     </div>
     <section class="card dp-heat" aria-label="Неделя по часам">
-      <p class="h dp-ch">Неделя по часам</p>
+      <p class="card-t">Неделя по часам</p>
       <div class="dp-hm"></div>
-      <div class="dp-hx" aria-hidden="true"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
-      <div class="dp-hleg"><span>реже</span><i style="--p:20%"></i><i style="--p:50%"></i><i style="--p:80%"></i><i style="--p:100%"></i><span>чаще</span><i class="dp-gsw"></i><span>игры</span></div>
-      <p class="small dp-htip" aria-live="polite">Нажмите на день, чтобы увидеть его сеансы</p>
+      <div class="dp-hx muted" aria-hidden="true"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+      <div class="dp-hleg muted"><span>реже</span><i style="--p:20%"></i><i style="--p:50%"></i><i style="--p:80%"></i><i style="--p:100%"></i><span>чаще</span><i class="dp-gsw"></i><span>игры</span></div>
+      <p class="dp-htip" aria-live="polite">Нажмите на день, чтобы увидеть его сеансы.</p>
     </section>
     <section class="card dp-sess" aria-label="Сеансы дня">
-      <p class="h dp-ch">Сеансы и перерывы <span class="small dp-sday"></span></p>
+      <p class="card-t">Сеансы и перерывы · <span class="dp-sday"></span></p>
       <div class="dp-strip" aria-hidden="true"></div>
-      <div class="dp-sx" aria-hidden="true"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+      <div class="dp-sx muted" aria-hidden="true"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
       <ol class="dp-slist"></ol>
     </section>
-    <div class="rina"><img src="maid/tea.webp" alt="" width="48" height="48"><p class="dp-rb"></p><button type="button" class="btn dp-move">Звать размяться</button></div>
+    <div class="rina"><img src="maid/tea.webp" alt="Рина" width="64" height="68"><p class="dp-rb"></p></div>
   </div>
 
   <div class="notes">
     <div><h4>Что изменилось</h4><ul>
-      <li>Одно главное число дня обычного размера шкалы (36 px), рядом спокойное сравнение одной строкой. Стрелка в плашке, метка «сегодня» и отдельная карточка «Не за ПК» убраны: она повторяла то же число.</li>
-      <li>Четыре плитки групп стали лёгкой легендой: точка, название, время, доля. Зелёное «✓ в пределе» убрано, остался один оранжевый статус «сверх предела» со словами.</li>
-      <li>Метки «▲ сверх» над столбиками и цветная строка про предел убраны: это видно по линии предела. Подсказка под графиком без плашки.</li>
-      <li>В строке программы только точка группы, название, доля и время. Выбор группы и «Скрыть» появляются при наведении или по нажатию на строку. Цветные значки-буквы и полоски долей убраны, видно 7 строк и «Показать ещё».</li>
-      <li>Отмена одной плашкой внизу. В варианте Б убраны оранжевая рамка и заливка «нужны данные»: теперь это серая метка «набросок».</li>
+      <li>Сверху одно крупное число за день и спокойное сравнение с обычным днём, без оценок «хорошо» и «плохо».</li>
+      <li>Программы раскладываются по четырём группам: перетаскиванием или выбором в строке. «Скрыть» убирает мусор вроде установщиков.</li>
+      <li>Список полный, с поиском, долей и временем прямо в строке: на телефоне ничего не прячется в подсказку.</li>
+      <li>У игр свой предел. Ползунок двигает линию на неделе, дни сверх предела помечены значком и словом.</li>
+      <li>Игры оранжевые, остальное синее разных оттенков. Красного нет.</li>
+      <li>Нажатие на столбик открывает этот день целиком.</li>
     </ul></div>
     <div><h4>Анимации</h4><ul>
       <li>Число дня отсчитывается, полоса дня собирается из долей слева направо.</li>
@@ -116,124 +124,154 @@
 #p-d-pc .dp-var button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
 #p-d-pc .dp-adv { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
 #p-d-pc .app { --dp-game: var(--c-game); --dp-work: var(--c-pc); --dp-talk: color-mix(in srgb, var(--c-pc) 55%, var(--a-text)); --dp-other: color-mix(in srgb, var(--c-pc) 42%, var(--a-surface-3)); }
-#p-d-pc .app-content { gap: 16px; }
-#p-d-pc .dp-search svg, #p-d-pc .dp-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-#p-d-pc .dp-hero { display: flex; flex-direction: column; gap: 12px; }
-#p-d-pc .dp-date { display: flex; align-items: center; gap: 4px; min-width: 0; margin: -4px 0 0 -8px; }
-#p-d-pc .dp-nav { width: 36px; height: 36px; }
-#p-d-pc .dp-nav:disabled { opacity: .35; cursor: default; background: none; }
-#p-d-pc .dp-dname { min-width: 0; padding: 0 4px; }
-#p-d-pc .dp-sum { display: flex; align-items: baseline; gap: 4px 16px; flex-wrap: wrap; }
-#p-d-pc .dp-total { margin: 0; white-space: nowrap; }
-#p-d-pc .dp-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--a-surface-2); }
+#p-d-pc svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+#p-d-pc .dp-top { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 14px; }
+#p-d-pc .dp-hero { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; }
+#p-d-pc .dp-date { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#p-d-pc .dp-date b { font-weight: 650; font-size: 14px; min-width: 0; }
+#p-d-pc .dp-date b::first-letter { text-transform: uppercase; }
+#p-d-pc .dp-nav { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface-2); display: grid; place-items: center; color: var(--a-soft); }
+#p-d-pc .dp-nav:hover:not(:disabled) { border-color: var(--a-accent); color: var(--a-text); }
+#p-d-pc .dp-nav:disabled { opacity: .35; cursor: default; }
+#p-d-pc .dp-today { margin-left: 4px; }
+#p-d-pc .dp-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; font-variant-numeric: tabular-nums; }
+#p-d-pc .dp-n { font: 800 52px/1 var(--fd); letter-spacing: -.03em; }
+#p-d-pc .dp-u { font: 700 20px/1 var(--fd); color: var(--a-soft); margin-right: 8px; }
+#p-d-pc .dp-lbl { font-size: 15px; color: var(--a-muted); font-weight: 600; }
+#p-d-pc .dp-cmp { display: flex; align-items: center; gap: 8px; color: var(--a-soft); flex-wrap: wrap; }
+#p-d-pc .dp-cmp .dp-ar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; background: var(--a-surface-2); color: var(--a-text); }
+#p-d-pc .dp-cmp .dp-ar svg { width: 15px; height: 15px; }
+#p-d-pc .dp-cmp small { color: var(--a-muted); font-size: 12.5px; }
+#p-d-pc .dp-bar { display: flex; height: 26px; border-radius: 9px; overflow: hidden; background: var(--a-surface-2); }
 #p-d-pc .dp-seg { height: 100%; flex: none; box-shadow: inset -2px 0 0 var(--a-surface); transition: width .65s var(--ease); }
 #p-d-pc.dp-pre .dp-bar .dp-seg { width: 0 !important; transition: none; }
 #p-d-pc.dp-in .dp-bar .dp-seg { transition-delay: calc(var(--i) * 110ms + 120ms); }
-#p-d-pc .dp-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-#p-d-pc .dp-lt { border: 1px dashed transparent; border-radius: var(--a-r-sm); padding: 4px 6px; margin: -4px -6px; min-width: 0; display: grid; gap: 2px; transition: border-color .2s, background .2s; }
-#p-d-pc .dp-ln { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--a-soft); min-width: 0; }
-#p-d-pc .dp-lv { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
-#p-d-pc .dp-ls { min-width: 0; font-size: 12px; color: var(--a-muted); }
-#p-d-pc.dp-drag [data-drop] { border-color: var(--a-line-strong); }
-#p-d-pc [data-drop].dp-hov { border-color: var(--a-accent) !important; border-style: solid !important; background: var(--a-accent-soft); }
-#p-d-pc .dp-afk { padding-top: 12px; border-top: 1px solid var(--a-line); }
-#p-d-pc .rina p { max-width: 640px; }
-#p-d-pc .dp-week { display: flex; flex-direction: column; gap: 12px; }
-#p-d-pc .dp-wh { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
-#p-d-pc .dp-lim { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--a-muted); flex-wrap: wrap; min-width: 0; }
-#p-d-pc .dp-lim input { width: 160px; max-width: 100%; accent-color: var(--a-accent); min-height: 36px; }
-#p-d-pc .dp-lim b { min-width: 76px; color: var(--a-text); font-weight: 650; }
-#p-d-pc .dp-over b { color: var(--a-text); font-weight: 650; }
-#p-d-pc .dp-chart { display: flex; flex-direction: column; gap: 8px; }
-#p-d-pc .dp-plot { position: relative; height: 200px; padding-left: 34px; }
+#p-d-pc .dp-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+#p-d-pc .dp-lt { border: 1.5px dashed transparent; border-radius: 12px; padding: 8px 10px; background: var(--a-surface-2); min-width: 0; transition: border-color .2s, background .2s, transform .2s var(--ease); }
+#p-d-pc .dp-lt .row { gap: 6px; font-size: 12.5px; font-weight: 650; color: var(--a-soft); }
+#p-d-pc .dp-lt b { display: block; font-size: 16px; font-weight: 750; font-variant-numeric: tabular-nums; margin-top: 2px; }
+#p-d-pc .dp-lt small { display: block; color: var(--a-muted); font-size: 12px; min-width: 0; }
+#p-d-pc .dp-lt small.ok { color: var(--a-ok); }
+#p-d-pc .dp-lt small.ov { color: var(--a-text); }
+#p-d-pc .dp-tri { color: var(--c-game); }
+#p-d-pc.dp-drag [data-drop] { border-color: var(--a-line); }
+#p-d-pc [data-drop].dp-hov { border-color: var(--a-accent) !important; background: var(--a-accent-soft); transform: translateY(-2px); }
+#p-d-pc .dp-off { display: flex; flex-direction: column; gap: 8px; }
+#p-d-pc .dp-offn { font: 800 34px/1 var(--fd); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+#p-d-pc .dp-offn span { font-size: 16px; color: var(--a-soft); margin: 0 6px 0 2px; }
+#p-d-pc .dp-day24 { height: 12px; border-radius: 99px; background: var(--a-surface-2); overflow: hidden; margin-top: 6px; }
+#p-d-pc .dp-day24 i { display: block; height: 100%; background: var(--dp-work); border-radius: 99px; transition: width .7s var(--ease); }
+#p-d-pc.dp-pre .dp-day24 i { width: 0 !important; transition: none; }
+#p-d-pc .dp-24l { display: flex; justify-content: space-between; font-size: 11.5px; }
+#p-d-pc .dp-afk { font-size: 13px; margin-top: auto; }
+#p-d-pc .dp-week { display: flex; flex-direction: column; gap: 10px; }
+#p-d-pc .dp-wh { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+#p-d-pc .dp-wh .card-t { margin: 0; }
+#p-d-pc .dp-lim { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--a-soft); flex-wrap: wrap; min-width: 0; }
+#p-d-pc .dp-lim input { width: 170px; max-width: 100%; accent-color: var(--c-game); min-height: 36px; }
+#p-d-pc .dp-lim b { min-width: 82px; color: var(--a-text); }
+#p-d-pc .dp-over { font-size: 13.5px; color: var(--a-text); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#p-d-pc .dp-over .ok { color: var(--a-ok); font-weight: 650; }
+#p-d-pc .dp-chart { display: flex; flex-direction: column; gap: 6px; }
+#p-d-pc .dp-plot { position: relative; height: 210px; padding-left: 34px; }
 #p-d-pc .dp-grid { position: absolute; inset: 0; }
 #p-d-pc .dp-gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--a-grid); }
-#p-d-pc .dp-gl span { position: absolute; left: 0; top: -8px; font-size: 12px; color: var(--a-muted); font-variant-numeric: tabular-nums; }
-#p-d-pc .dp-limline { position: absolute; left: 34px; right: 0; border-top: 1.5px dashed var(--c-game); z-index: 2; pointer-events: none; transition: bottom .35s var(--ease); }
-#p-d-pc .dp-limline span { position: absolute; right: 0; bottom: 4px; font-size: 12px; color: var(--a-soft); background: var(--a-surface); border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+#p-d-pc .dp-gl span { position: absolute; left: 0; top: -8px; font-size: 11px; color: var(--a-muted); font-variant-numeric: tabular-nums; }
+#p-d-pc .dp-limline { position: absolute; left: 34px; right: 0; border-top: 2px dashed var(--c-game); z-index: 2; pointer-events: none; transition: bottom .35s var(--ease); }
+#p-d-pc .dp-limline span { position: absolute; right: 0; bottom: 4px; font-size: 11px; font-weight: 650; color: var(--a-text); background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
 #p-d-pc .dp-cols { position: relative; height: 100%; display: flex; align-items: stretch; gap: 8px; }
-#p-d-pc .dp-col { flex: 1; min-width: 0; background: none; border: 0; padding: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; border-radius: var(--a-r-xs); transition: opacity .25s; }
-#p-d-pc .dp-cols.dp-sel .dp-col:not(.on) { opacity: .45; }
+#p-d-pc .dp-col { flex: 1; min-width: 0; background: none; border: 0; padding: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; border-radius: 10px; transition: opacity .25s; }
+#p-d-pc .dp-cols.dp-sel .dp-col:not(.on) { opacity: .5; }
 #p-d-pc .dp-col:hover { opacity: 1 !important; }
-#p-d-pc .dp-stack { width: min(40px, 100%); display: flex; flex-direction: column-reverse; border-radius: 6px 6px 2px 2px; overflow: hidden; transition: height .7s var(--ease); }
+#p-d-pc .dp-stack { width: min(46px, 100%); display: flex; flex-direction: column-reverse; border-radius: 8px 8px 3px 3px; overflow: hidden; transition: height .7s var(--ease); }
 #p-d-pc .dp-stack i { display: block; width: 100%; flex: none; transition: height .65s var(--ease); box-shadow: inset 0 2px 0 var(--a-surface); }
 #p-d-pc.dp-pre .dp-stack { height: 0 !important; transition: none; }
 #p-d-pc.dp-in .dp-stack { transition-delay: calc(var(--i) * 70ms + 150ms); }
+#p-d-pc .dp-ov { font-size: 10.5px; font-weight: 700; color: var(--a-text); white-space: nowrap; margin-bottom: 3px; line-height: 1.1; }
 #p-d-pc .dp-days { display: flex; gap: 8px; padding-left: 34px; }
-#p-d-pc .dp-days span { flex: 1; min-width: 0; text-align: center; font-size: 12px; color: var(--a-muted); }
-#p-d-pc .dp-days span.on { color: var(--a-text); font-weight: 600; }
-#p-d-pc .dp-tip { min-height: 40px; }
-#p-d-pc .dp-tip b { color: var(--a-text); font-weight: 600; }
-#p-d-pc .dp-ph { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
-#p-d-pc .dp-search { display: flex; align-items: center; gap: 8px; background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: var(--a-r-xs); padding: 0 12px; color: var(--a-muted); min-width: 0; flex: 0 1 240px; }
+#p-d-pc .dp-days span { flex: 1; min-width: 0; text-align: center; font-size: 12px; color: var(--a-muted); font-weight: 600; }
+#p-d-pc .dp-days span.on { color: var(--a-text); }
+#p-d-pc .dp-tip { font-size: 13px; color: var(--a-soft); background: var(--a-surface-2); border-radius: 10px; padding: 8px 12px; min-height: 38px; }
+#p-d-pc .dp-tip b { color: var(--a-text); }
+#p-d-pc .dp-ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+#p-d-pc .dp-ph .card-t { margin: 0; }
+#p-d-pc .dp-search { display: flex; align-items: center; gap: 8px; background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 10px; padding: 0 10px; color: var(--a-muted); min-width: 0; flex: 0 1 260px; }
 #p-d-pc .dp-search:focus-within { border-color: var(--a-accent); }
 #p-d-pc .dp-search input { border: 0; background: none; outline: none; min-height: 36px; width: 100%; min-width: 0; color: var(--a-text); }
-#p-d-pc .dp-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-#p-d-pc .dp-pills .chip { min-height: 36px; padding: 4px 12px; border-style: dashed; transition: border-color .2s, background .2s; }
+#p-d-pc .dp-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+#p-d-pc .dp-pills .chip { min-height: 36px; padding: 6px 12px; border-style: dashed; border-color: transparent; transition: border-color .2s, background .2s, transform .2s var(--ease); }
 #p-d-pc .dp-pills .chip[aria-pressed="true"] { border-style: solid; }
-#p-d-pc .dp-pills .chip .num { color: var(--a-muted); }
-#p-d-pc .dp-hint { margin: 8px 0 4px; }
-#p-d-pc .dp-list { list-style: none; margin: 0; padding: 0; }
-#p-d-pc .dp-row { cursor: grab; }
-#p-d-pc .dp-row .s { font-variant-numeric: tabular-nums; }
+#p-d-pc .dp-hint { font-size: 12.5px; margin: 8px 0 4px; }
+#p-d-pc .dp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+#p-d-pc .dp-row { display: grid; grid-template-columns: 18px 34px minmax(0, 1.3fr) auto minmax(0, 1fr) 82px 36px; grid-template-areas: "h i n g b t x"; align-items: center; gap: 4px 10px; padding: 8px 4px; border-bottom: 1px solid var(--a-line); border-radius: 10px; }
+#p-d-pc .dp-row:last-child { border-bottom: 0; }
 #p-d-pc .dp-row.dp-moved { animation: d-pc-flash .9s var(--ease); }
 #p-d-pc .dp-row.dp-lift { opacity: .45; }
-#p-d-pc .dp-t { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; min-width: 76px; }
-#p-d-pc .row-acts { align-items: center; }
-#p-d-pc .dp-gs select { appearance: none; border: 1px solid var(--a-line); background-color: var(--a-surface); color: var(--a-text); font-size: 13px; border-radius: var(--a-r-xs); min-height: 32px; padding: 4px 24px 4px 10px; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-size: 4px 4px; background-position: right 12px center, right 8px center; background-repeat: no-repeat; }
-#p-d-pc .dp-gs select:focus-visible { outline: 2px solid var(--a-accent); outline-offset: 1px; }
+#p-d-pc .dp-grip { grid-area: h; color: var(--a-muted); cursor: grab; display: grid; place-items: center; }
+#p-d-pc .dp-grip svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
+#p-d-pc .dp-ico { grid-area: i; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 14px; color: var(--a-text); background: color-mix(in srgb, var(--gc) 28%, var(--a-surface)); transition: background .4s; }
+#p-d-pc .dp-nm { grid-area: n; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#p-d-pc .dp-gs { grid-area: g; display: inline-flex; align-items: center; gap: 6px; background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 99px; padding: 0 4px 0 10px; min-height: 36px; justify-self: start; }
+#p-d-pc .dp-gs:focus-within { border-color: var(--a-accent); }
+#p-d-pc .dp-gs .dot { background: var(--gc); transition: background .4s; }
+#p-d-pc .dp-gs select { appearance: none; border: 0; background: none; color: var(--a-soft); font-size: 12.5px; font-weight: 600; padding: 4px 18px 4px 0; outline: none; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-size: 4px 4px; background-position: right 8px center, right 4px center; background-repeat: no-repeat; }
 #p-d-pc .dp-gs option { color: var(--a-text); background: var(--a-surface); }
-#p-d-pc .dp-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin-top: 8px; }
-#p-d-pc .dp-foot:has(.dp-more[hidden]):has(.dp-hidden:empty) { display: none; }
-#p-d-pc .dp-hidden { margin-left: auto; }
-#p-d-pc .dp-lnk { background: none; border: 0; color: var(--a-accent); font-weight: 600; font-size: 13px; min-height: 36px; padding: 0 4px; border-radius: var(--a-r-xs); }
-#p-d-pc .undo { position: sticky; left: auto; bottom: 12px; translate: none; align-self: center; max-width: 100%; }
-#p-d-pc .undo.dp-show { animation: d-pc-up .3s var(--ease); }
-#p-d-pc .undo span { min-width: 0; }
-#p-d-pc .dp-need { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-#p-d-pc .dp-k { display: flex; flex-direction: column; gap: 8px; }
-#p-d-pc .dp-ch { margin-bottom: 12px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-#p-d-pc .dp-ch .small { font-weight: 400; }
+#p-d-pc .dp-sh { grid-area: b; display: flex; align-items: center; gap: 8px; min-width: 0; }
+#p-d-pc .dp-sh i { flex: 1; height: 8px; border-radius: 99px; background: var(--a-surface-2); overflow: hidden; min-width: 30px; }
+#p-d-pc .dp-sh i b { display: block; height: 100%; border-radius: 99px; background: var(--gc); transition: width .5s var(--ease), background .4s; }
+#p-d-pc .dp-sh em { font-style: normal; font-size: 12.5px; color: var(--a-muted); min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+#p-d-pc .dp-t { grid-area: t; text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#p-d-pc .dp-hide { grid-area: x; width: 36px; height: 36px; border-radius: 10px; border: 1px solid transparent; background: none; color: var(--a-muted); display: grid; place-items: center; }
+#p-d-pc .dp-hide:hover { border-color: var(--a-line); color: var(--a-text); }
+#p-d-pc .dp-undo:not(:empty), #p-d-pc .dp-hidden:not(:empty) { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; margin-top: 10px; padding: 8px 12px; border-radius: 10px; background: var(--a-surface-2); font-size: 13px; color: var(--a-soft); }
+#p-d-pc .dp-undo:not(:empty) { animation: d-pc-up .35s var(--ease); }
+#p-d-pc .dp-lnk { background: none; border: 0; color: var(--a-accent); font-weight: 650; min-height: 36px; padding: 0 6px; border-radius: 8px; }
+#p-d-pc .dp-empty { padding: 14px 4px; }
+#p-d-pc .dp-need { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--a-warn) 45%, transparent); background: color-mix(in srgb, var(--a-warn) 10%, transparent); color: var(--a-soft); font-size: 13.5px; }
+#p-d-pc .dp-need b { color: var(--a-text); }
+#p-d-pc .dp-needi { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--a-warn); color: var(--a-bg); font-weight: 800; }
+#p-d-pc .dp-bk .card { padding: 14px 16px; }
+#p-d-pc .dp-bk .soft { font-size: 12.5px; }
 #p-d-pc .dp-hm { display: flex; flex-direction: column; gap: 4px; }
-#p-d-pc .dp-hr { display: grid; grid-template-columns: 30px repeat(24, minmax(0, 1fr)); gap: 2px; align-items: center; background: none; border: 1px solid transparent; border-radius: var(--a-r-xs); padding: 3px; min-height: 36px; width: 100%; }
+#p-d-pc .dp-hr { display: grid; grid-template-columns: 30px repeat(24, minmax(0, 1fr)); gap: 2px; align-items: center; background: none; border: 1.5px solid transparent; border-radius: 9px; padding: 3px; min-height: 36px; width: 100%; }
 #p-d-pc .dp-hr.on { border-color: var(--a-accent); background: var(--a-accent-soft); }
-#p-d-pc .dp-hr > b { font-size: 12px; color: var(--a-muted); font-weight: 600; text-align: left; }
+#p-d-pc .dp-hr > b { font-size: 12px; color: var(--a-muted); font-weight: 650; text-align: left; }
 #p-d-pc .dp-hr.on > b { color: var(--a-text); }
 #p-d-pc .dp-c { height: 24px; border-radius: 4px; background: var(--a-surface-2); transition: opacity .45s var(--ease); }
 #p-d-pc.dp-pre .dp-c { opacity: 0; transition: none; }
 #p-d-pc.dp-in .dp-c { transition-delay: calc(var(--h) * 28ms + 80ms); }
-#p-d-pc .dp-hx, #p-d-pc .dp-sx { display: flex; justify-content: space-between; font-size: 12px; color: var(--a-muted); font-variant-numeric: tabular-nums; }
-#p-d-pc .dp-hx { padding: 4px 5px 0 38px; }
-#p-d-pc .dp-hleg { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--a-muted); margin-top: 12px; }
+#p-d-pc .dp-hx, #p-d-pc .dp-sx { display: flex; justify-content: space-between; font-size: 11px; font-variant-numeric: tabular-nums; }
+#p-d-pc .dp-hx { padding: 2px 5px 0 38px; }
+#p-d-pc .dp-hleg { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; margin-top: 10px; }
 #p-d-pc .dp-hleg i { width: 16px; height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--c-pc) var(--p), transparent); }
-#p-d-pc .dp-hleg i.dp-gsw { background: var(--c-game); margin-left: 8px; }
-#p-d-pc .dp-htip { margin-top: 12px; min-height: 40px; }
-#p-d-pc .dp-htip b { color: var(--a-text); font-weight: 600; }
-#p-d-pc .dp-strip { position: relative; height: 28px; border-radius: var(--a-r-xs); background: var(--a-surface-2); overflow: hidden; }
-#p-d-pc .dp-strip i { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; background: var(--c-pc); transform-origin: left; transition: transform .6s var(--ease); }
+#p-d-pc .dp-hleg i.dp-gsw { background: var(--c-game); margin-left: 10px; }
+#p-d-pc .dp-htip { font-size: 13px; color: var(--a-soft); background: var(--a-surface-2); border-radius: 10px; padding: 8px 12px; margin-top: 10px; min-height: 38px; }
+#p-d-pc .dp-strip { position: relative; height: 30px; border-radius: 8px; background: repeating-linear-gradient(90deg, var(--a-surface-2) 0 calc(25% - 1px), var(--a-grid) calc(25% - 1px) 25%); overflow: hidden; }
+#p-d-pc .dp-strip i { position: absolute; top: 3px; bottom: 3px; border-radius: 6px; background: var(--c-pc); transform-origin: left; transition: transform .6s var(--ease); }
 #p-d-pc .dp-strip i.g { background: var(--c-game); }
 #p-d-pc .dp-strip i.lg { box-shadow: 0 0 0 2px var(--a-text); }
 #p-d-pc.dp-pre .dp-strip i { transform: scaleX(0); transition: none; }
 #p-d-pc.dp-in .dp-strip i { transition-delay: calc(var(--i) * 120ms + 100ms); }
-#p-d-pc .dp-sx { margin-top: 4px; }
-#p-d-pc .dp-slist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; }
-#p-d-pc .dp-slist li { display: flex; align-items: center; gap: 12px; padding: 8px 4px; flex-wrap: wrap; }
-#p-d-pc .dp-slist li.br { color: var(--a-muted); font-size: 12px; padding: 0 4px 0 24px; }
-#p-d-pc .dp-slist .t { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 96px; }
-#p-d-pc .rina { flex-wrap: wrap; }
-#p-d-pc .rina p { flex: 1 1 240px; }
-@keyframes d-pc-flash { 0% { background: var(--a-accent-soft); } 100% { background: transparent; } }
+#p-d-pc .dp-sx { margin-top: 3px; }
+#p-d-pc .dp-slist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+#p-d-pc .dp-slist li { display: flex; align-items: center; gap: 10px; padding: 7px 4px; font-size: 13.5px; flex-wrap: wrap; }
+#p-d-pc .dp-slist li.br { color: var(--a-muted); font-size: 12.5px; padding: 0 4px 0 24px; }
+#p-d-pc .dp-slist .t { font-variant-numeric: tabular-nums; font-weight: 650; min-width: 98px; }
+#p-d-pc .dp-slist .chip { font-size: 11.5px; padding: 2px 9px; }
+@keyframes d-pc-flash { 0% { background: var(--a-accent-soft); box-shadow: inset 0 0 0 1.5px var(--a-accent); } 100% { background: transparent; box-shadow: inset 0 0 0 1.5px transparent; } }
 @keyframes d-pc-up { from { opacity: 0; transform: translateY(6px); } }
+@media (max-width: 860px) { #p-d-pc .dp-top { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 620px) {
-  #p-d-pc .dp-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }
-  #p-d-pc .dp-cols, #p-d-pc .dp-days { gap: 4px; }
-  #p-d-pc .dp-plot { height: 180px; padding-left: 28px; }
+  #p-d-pc .dp-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #p-d-pc .dp-n { font-size: 42px; }
+  #p-d-pc .dp-hero { padding: 16px; }
+  #p-d-pc .dp-row { grid-template-columns: 16px 34px minmax(0, 1fr) auto 36px; grid-template-areas: "h i n t x" "h i b g x"; }
+  #p-d-pc .dp-cols, #p-d-pc .dp-days { gap: 5px; }
+  #p-d-pc .dp-plot { height: 190px; padding-left: 28px; }
   #p-d-pc .dp-days { padding-left: 28px; }
   #p-d-pc .dp-limline { left: 28px; }
-  #p-d-pc .dp-lim input { width: 130px; }
+  #p-d-pc .dp-lim input { width: 140px; }
   #p-d-pc .dp-search { flex: 1 1 100%; }
-  #p-d-pc .dp-row.open { flex-wrap: wrap; }
-  #p-d-pc .dp-row.open .row-acts { order: 5; flex-basis: 100%; justify-content: flex-end; }
   #p-d-pc .dp-hr { grid-template-columns: 26px repeat(24, minmax(0, 1fr)); gap: 1px; padding: 3px 2px; }
   #p-d-pc .dp-c { height: 20px; border-radius: 2px; }
   #p-d-pc .dp-hx { padding-left: 30px; }
@@ -248,7 +286,6 @@
   function $(s, el) { return (el || root).querySelector(s); }
   function $$(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
   var G = [
     { id: "game", name: "Игры" }, { id: "work", name: "Работа" },
@@ -259,7 +296,7 @@
 
   var D = [["Сб", "суббота", "21 ноября"], ["Вс", "воскресенье", "22 ноября"], ["Пн", "понедельник", "23 ноября"], ["Вт", "вторник", "24 ноября"], ["Ср", "среда", "25 ноября"], ["Чт", "четверг", "26 ноября"], ["Пт", "пятница", "27 ноября"]];
   var VIN = ["в субботу", "в воскресенье", "в понедельник", "во вторник", "в среду", "в четверг", "в пятницу"];
-  var TODAY = 6, BASE = 345, AFK = [25, 18, 52, 40, 47, 36, 42], LIMROWS = 7;
+  var TODAY = 6, BASE = 345, AFK = [25, 18, 52, 40, 47, 36, 42];
   var F = { w: [.1, .06, 1.1, 1, .95, 1.08, 1], c: [1.3, 1.4, .9, 1, 1.1, .85, 1], g: [2.2, 2.6, .5, .8, .3, 1.2, 1], o: [1.6, 1.8, .9, 1.1, 1, .8, 1] };
   var RAW = [
     ["Visual Studio Code", "w", 98, "work"], ["Excel", "w", 48, "work"], ["Zoom", "w", 35, "work"], ["Word", "w", 18, "work"],
@@ -272,7 +309,7 @@
     return { i: i, name: r[0], g: r[3], m: m, hid: false };
   });
 
-  var day = TODAY, limit = 90, filt = "all", q = "", lastUndo = null, undoT = 0, more = false, openRow = -1;
+  var day = TODAY, limit = 90, filt = "all", q = "", lastUndo = null, undoT = 0;
 
   function fmt(m) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; return h ? (r ? h + " ч " + r + " мин" : h + " ч") : r + " мин"; }
   function plural(n, a, b, c) { var t = n % 10, h = n % 100; return (t === 1 && h !== 11) ? a : (t >= 2 && t <= 4 && (h < 12 || h > 14)) ? b : c; }
@@ -288,15 +325,15 @@
   G.forEach(function (g, i) {
     var s = document.createElement("i"); s.className = "dp-seg"; s.style.setProperty("--i", i); s.style.background = gcol(g.id); s.dataset.g = g.id; bar.appendChild(s);
     var t = document.createElement("div"); t.className = "dp-lt"; t.dataset.drop = g.id;
-    t.innerHTML = '<span class="dp-ln"><i class="dot s" style="background:' + gcol(g.id) + '"></i>' + g.name + '</span><b class="dp-lv"></b><span class="dp-ls"></span>';
+    t.innerHTML = '<span class="row"><i class="dot" style="background:' + gcol(g.id) + '"></i>' + g.name + '</span><b></b><small></small>';
     legend.appendChild(t);
   });
   pills.innerHTML = '<button type="button" class="chip" data-f="all" aria-pressed="true">Все</button>' + G.map(function (g) {
-    return '<button type="button" class="chip" data-f="' + g.id + '" data-drop="' + g.id + '" aria-pressed="false"><i class="dot s" style="background:' + gcol(g.id) + '"></i>' + g.name + ' <span class="num"></span></button>';
+    return '<button type="button" class="chip" data-f="' + g.id + '" data-drop="' + g.id + '" aria-pressed="false"><i class="dot" style="background:' + gcol(g.id) + '"></i>' + g.name + ' <span class="num"></span></button>';
   }).join("");
   D.forEach(function (x, d) {
     var b = document.createElement("button"); b.type = "button"; b.className = "dp-col"; b.dataset.d = d; b.style.setProperty("--i", d);
-    b.innerHTML = '<span class="dp-stack">' + G.map(function (g) { return '<i style="background:' + gcol(g.id) + '"></i>'; }).join("") + "</span>";
+    b.innerHTML = '<span class="dp-ov"></span><span class="dp-stack">' + G.map(function (g) { return '<i style="background:' + gcol(g.id) + '"></i>'; }).join("") + "</span>";
     cols.appendChild(b);
     var l = document.createElement("span"); l.textContent = x[0]; daysRow.appendChild(l);
   });
@@ -305,25 +342,33 @@
   var shownTotal = null;
   function totalHTML(m) {
     m = Math.round(m); var h = Math.floor(m / 60), r = m % 60;
-    return (h ? h + "<small>ч</small> " : "") + r + "<small>мин</small>";
+    return (h ? '<span class="dp-n">' + h + '</span><span class="dp-u">ч</span>' : "") + '<span class="dp-n">' + r + '</span><span class="dp-u">мин</span><span class="dp-lbl">за ПК</span>';
   }
+  var UP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>', DN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
 
   function updateHero() {
     var s = sums(day), x = D[day];
-    $(".dp-dname").textContent = (day === TODAY ? "Сегодня, " + x[1] : cap(x[1])) + ", " + x[2];
+    $(".dp-dname").textContent = x[1] + ", " + x[2];
+    $(".dp-today").hidden = day !== TODAY;
     $$(".dp-nav").forEach(function (b) { var n = day + (+b.dataset.step); b.disabled = n < 0 || n > 6; });
     if (shownTotal === null) $(".dp-total").innerHTML = totalHTML(s.total);
     var diff = s.total - BASE;
-    $(".dp-cmp").textContent = (Math.abs(diff) < 5 ? "Как в обычный день" : "На " + fmt(Math.abs(diff)) + (diff > 0 ? " больше" : " меньше") + ", чем в обычный день") + " (" + fmt(BASE) + ")";
+    $(".dp-cmp").innerHTML = Math.abs(diff) < 5 ? '<span class="dp-ar" aria-hidden="true">=</span>Как в обычный день <small>· обычный день: ' + fmt(BASE) + ", в среднем за 30 дней</small>"
+      : '<span class="dp-ar">' + (diff > 0 ? UP : DN) + '</span>На ' + fmt(Math.abs(diff)) + (diff > 0 ? " больше" : " меньше") + ', чем в обычный день <small>· обычный день: ' + fmt(BASE) + ", в среднем за 30 дней</small>";
     bar.setAttribute("aria-label", G.map(function (g) { return g.name + " " + pct(s[g.id], s.total) + "%"; }).join(", "));
     $$(".dp-seg", bar).forEach(function (el) { el.style.width = (s.total ? s[el.dataset.g] / s.total * 100 : 0) + "%"; });
     $$(".dp-lt", legend).forEach(function (t) {
-      var id = t.dataset.drop, v = s[id], sm = t.querySelector(".dp-ls");
-      t.querySelector(".dp-lv").textContent = fmt(v);
-      if (id === "game" && v > limit) sm.innerHTML = '<span class="status warn">сверх предела на ' + fmt(v - limit) + "</span>";
-      else sm.textContent = pct(v, s.total) + "%";
+      var id = t.dataset.drop, v = s[id], sm = t.querySelector("small");
+      t.querySelector("b").textContent = fmt(v);
+      if (id === "game") {
+        if (v > limit) { sm.className = "ov"; sm.innerHTML = '<span class="dp-tri" aria-hidden="true">▲</span> сверх предела на ' + fmt(v - limit); }
+        else { sm.className = "ok"; sm.textContent = "✓ в пределе, " + pct(v, s.total) + "%"; }
+      } else { sm.className = ""; sm.textContent = pct(v, s.total) + "% времени за ПК"; }
     });
-    $(".dp-afk").textContent = "Ещё " + fmt(AFK[day]) + " компьютер был включён без вас, это время не считается.";
+    var off = 1440 - s.total;
+    $(".dp-offn").innerHTML = Math.floor(off / 60) + '<span>ч</span>' + (off % 60) + '<span>мин</span>';
+    $(".dp-day24 i").style.width = (s.total / 1440 * 100) + "%";
+    $(".dp-afk").textContent = "Синяя часть полосы: время за ПК. Ещё " + fmt(AFK[day]) + " компьютер был включён, пока вас не было рядом, это время не считается.";
   }
 
   function updateWeek() {
@@ -335,7 +380,7 @@
     $(".dp-grid").innerHTML = gh;
     var ll = $(".dp-limline");
     ll.style.bottom = (Math.min(limit, top) / top * 100) + "%";
-    ll.querySelector("span").textContent = "предел на игры";
+    ll.querySelector("span").textContent = "предел " + fmt(limit);
     $("#d-pc-limv").textContent = fmt(limit);
     var over = [];
     $$(".dp-col", cols).forEach(function (b, d) {
@@ -343,6 +388,7 @@
       st.style.height = (s.total / top * 100) + "%";
       $$("i", st).forEach(function (seg, k) { seg.style.height = (s.total ? s[G[k].id] / s.total * 100 : 0) + "%"; });
       var o = s.game > limit; if (o) over.push(d);
+      b.querySelector(".dp-ov").innerHTML = o ? '<span class="dp-tri" aria-hidden="true">▲</span> сверх' : "";
       b.classList.toggle("on", d === day);
       b.setAttribute("aria-pressed", d === day);
       b.setAttribute("aria-label", D[d][1] + ", " + D[d][2] + ": за ПК " + fmt(s.total) + ", игры " + fmt(s.game) + (o ? ", сверх предела" : ""));
@@ -350,52 +396,52 @@
     cols.classList.add("dp-sel");
     $$("span", daysRow).forEach(function (l, d) { l.classList.toggle("on", d === day); });
     var ov = $(".dp-over");
-    if (!over.length) ov.textContent = "Всю неделю игры в пределе.";
-    else ov.innerHTML = "Игры сверх предела <b>" + over.length + " " + plural(over.length, "день", "дня", "дней") + "</b> из 7: " + over.map(function (d) { return D[d][0].toLowerCase(); }).join(", ") + ".";
+    if (!over.length) ov.innerHTML = '<span class="ok">✓ Всю неделю игры в пределе</span>';
+    else ov.innerHTML = '<span class="dp-tri" aria-hidden="true">▲</span><span>Сверх предела <b>' + over.length + " " + plural(over.length, "день", "дня", "дней") + "</b> из 7: " + over.map(function (d) { return D[d][0].toLowerCase(); }).join(", ") + "</span>";
     tip(day);
     return { all: all, over: over };
   }
 
   function tip(d) {
-    var s = sums(d);
-    $(".dp-tip").innerHTML = "<b>" + D[d][0] + ", " + D[d][2] + ": " + fmt(s.total) + "</b> · " + G.map(function (g) { return g.name.toLowerCase() + " " + fmt(s[g.id]); }).join(" · ");
+    var s = sums(d), o = s.game > limit;
+    $(".dp-tip").innerHTML = "<b>" + D[d][0] + ", " + D[d][2] + "</b> · за ПК " + fmt(s.total) + " · " + G.map(function (g) { return g.name.toLowerCase() + " " + fmt(s[g.id]); }).join(" · ") +
+      (o ? ' · <span class="dp-tri" aria-hidden="true">▲</span> игры сверх предела на ' + fmt(s.game - limit) : "");
   }
 
+  var ICO_GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
   var ICO_EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A9.6 9.6 0 0 1 12 6c5 0 9 6 9 6a16 16 0 0 1-3 3.4M6.2 7.6C4.2 9.2 3 12 3 12s4 6 9 6c1.4 0 2.7-.4 3.8-1"/></svg>';
 
   function updateList(moved) {
     var s = sums(day), list = $(".dp-list"), ql = q.trim().toLowerCase();
     var rows = P.filter(function (p) { return !p.hid && p.m[day] > 0 && (filt === "all" || p.g === filt) && (!ql || p.name.toLowerCase().indexOf(ql) >= 0); })
       .sort(function (a, b) { return b.m[day] - a.m[day]; });
-    var total = rows.length;
-    if (!more && total > LIMROWS) rows = rows.slice(0, LIMROWS);
+    $(".dp-cnt").textContent = "· " + P.filter(function (p) { return !p.hid; }).length;
     $$(".dp-pills .chip").forEach(function (b) {
       b.setAttribute("aria-pressed", b.dataset.f === filt);
       var n = b.querySelector(".num"); if (n) n.textContent = fmt(s[b.dataset.f]);
     });
     list.innerHTML = rows.map(function (p) {
-      return '<li class="li dp-row' + (p.i === openRow ? " open" : "") + '" draggable="true" data-i="' + p.i + '">' +
-        '<i class="dot s" style="background:' + gcol(p.g) + '"></i>' +
-        '<span class="grow"><span class="t">' + esc(p.name) + '</span><span class="s">' + gname(p.g) + " · " + pct(p.m[day], s.total) + "%</span></span>" +
-        '<span class="row-acts"><label class="dp-gs"><select aria-label="Группа для ' + esc(p.name) + '">' + G.map(function (g) { return '<option value="' + g.id + '"' + (g.id === p.g ? " selected" : "") + ">" + g.name + "</option>"; }).join("") + "</select></label>" +
-        '<button type="button" class="icon-btn" data-hide="' + p.i + '" aria-label="Скрыть ' + esc(p.name) + '" title="Скрыть">' + ICO_EYE + "</button></span>" +
-        '<span class="dp-t">' + fmt(p.m[day]) + "</span></li>";
+      return '<li class="dp-row" draggable="true" data-i="' + p.i + '" style="--gc:' + gcol(p.g) + '">' +
+        '<span class="dp-grip" title="Перетащить">' + ICO_GRIP + '</span>' +
+        '<span class="dp-ico" aria-hidden="true">' + esc(p.name.charAt(0)) + '</span>' +
+        '<span class="dp-nm">' + esc(p.name) + '</span>' +
+        '<label class="dp-gs"><i class="dot"></i><select aria-label="Группа для ' + esc(p.name) + '">' + G.map(function (g) { return '<option value="' + g.id + '"' + (g.id === p.g ? " selected" : "") + ">" + g.name + "</option>"; }).join("") + "</select></label>" +
+        '<span class="dp-sh"><i><b style="width:' + pct(p.m[day], s.total) + '%"></b></i><em>' + pct(p.m[day], s.total) + '%</em></span>' +
+        '<span class="dp-t">' + fmt(p.m[day]) + "</span>" +
+        '<button type="button" class="dp-hide" data-hide="' + p.i + '" aria-label="Скрыть ' + esc(p.name) + '" title="Скрыть">' + ICO_EYE + "</button></li>";
     }).join("");
-    $(".dp-empty").hidden = total > 0;
-    var mb = $(".dp-more");
-    mb.hidden = total <= LIMROWS;
-    mb.textContent = more ? "Свернуть" : "Показать ещё " + (total - LIMROWS);
+    $(".dp-empty").hidden = rows.length > 0;
     if (moved !== undefined) { var r = $('.dp-row[data-i="' + moved + '"]'); if (r && !MM.reduce) r.classList.add("dp-moved"); }
     var hid = P.filter(function (p) { return p.hid; });
-    $(".dp-hidden").innerHTML = hid.length ? "Скрыто: " + hid.map(function (p) { return esc(p.name) + ' <button type="button" class="dp-lnk" data-show="' + p.i + '">Вернуть</button>'; }).join(", ") : "";
+    $(".dp-hidden").innerHTML = hid.length ? '<span>Скрыто и не считается:</span>' + hid.map(function (p) { return '<span>' + esc(p.name) + ' <button type="button" class="dp-lnk" data-show="' + p.i + '">Вернуть</button></span>'; }).join("") : "";
   }
 
   function updateRina(w) {
     var img = $(".dp-rimg"), t = $(".dp-rtext"), n = w.over.length;
-    if (!n) { img.src = "maid/proud.webp"; t.innerHTML = "Всю неделю игры укладывались <b>в ваш предел</b>. Я вами горжусь."; return; }
+    if (!n) { img.src = "maid/proud.webp"; t.innerHTML = "Всю неделю игры укладывались в ваш предел. А работа сегодня заняла <b>" + fmt(sums(day).work) + "</b>. Я вами горжусь."; return; }
     var big = w.over.slice().sort(function (a, b) { return w.all[b].game - w.all[a].game; })[0];
     img.src = "maid/think.webp";
-    t.innerHTML = "Игры вышли за предел <b>" + n + " " + plural(n, "раз", "раза", "раз") + "</b> за неделю, больше всего " + VIN[big] + ". Может, поставить на выходные свой предел?";
+    t.innerHTML = "Игры вышли за ваш предел <b>" + n + " " + plural(n, "раз", "раза", "раз") + "</b> за неделю, больше всего " + VIN[big] + ": <b>" + fmt(w.all[big].game) + "</b>. Будни идут ровнее. Может, на выходные поставить свой предел?";
   }
 
   function update(moved) { updateHero(); var w = updateWeek(); updateList(moved); updateRina(w); }
@@ -409,12 +455,11 @@
   function say(html, undo) {
     lastUndo = undo; clearTimeout(undoT);
     var u = $(".dp-undo");
-    u.querySelector("span").innerHTML = html;
-    u.querySelector("button").hidden = !undo;
-    u.hidden = false; u.classList.remove("dp-show"); void u.offsetWidth; u.classList.add("dp-show");
-    undoT = setTimeout(hideSay, 7000);
+    u.innerHTML = "";
+    void u.offsetWidth;
+    u.innerHTML = "<span>" + html + "</span>" + (undo ? '<button type="button" class="dp-lnk" data-undo>Отменить</button>' : "");
+    undoT = setTimeout(function () { u.innerHTML = ""; lastUndo = null; }, 7000);
   }
-  function hideSay() { $(".dp-undo").hidden = true; lastUndo = null; }
   function pickDay(d) { if (d < 0 || d > 6) return; cancelAnimationFrame(raf); day = d; shownTotal = null; update(); }
 
   root.addEventListener("click", function (e) {
@@ -424,15 +469,11 @@
     var nav = t.closest(".dp-nav"); if (nav) { pickDay(day + (+nav.dataset.step)); return; }
     var col = t.closest(".dp-col"); if (col) { pickDay(+col.dataset.d); return; }
     var f = t.closest(".dp-pills .chip"); if (f) { filt = f.dataset.f === filt ? "all" : f.dataset.f; updateList(); return; }
-    if (t.closest(".dp-more")) { more = !more; updateList(); return; }
     var h = t.closest("[data-hide]");
-    if (h) { var p = P[+h.dataset.hide]; p.hid = true; openRow = -1; update(); say(esc(p.name) + " скрыта и не считается.", function () { p.hid = false; update(); }); return; }
+    if (h) { var p = P[+h.dataset.hide]; p.hid = true; update(); say(esc(p.name) + " скрыта и больше не считается.", function () { p.hid = false; update(); }); return; }
     var sh = t.closest("[data-show]"); if (sh) { P[+sh.dataset.show].hid = false; update(+sh.dataset.show); return; }
-    if (t.closest("[data-undo]") && lastUndo) { var fn = lastUndo; hideSay(); fn(); return; }
-    var row = t.closest(".dp-row");
-    if (row && !t.closest(".row-acts")) { var ri = +row.dataset.i; openRow = openRow === ri ? -1 : ri; $$(".dp-row").forEach(function (r) { r.classList.toggle("open", +r.dataset.i === openRow); }); return; }
-    var hr = t.closest(".dp-hr"); if (hr) { pickB(+hr.dataset.d); return; }
-    var mv = t.closest(".dp-move"); if (mv) { mv.textContent = "Буду звать ✓"; mv.disabled = true; }
+    if (t.closest("[data-undo]") && lastUndo) { var fn = lastUndo; lastUndo = null; $(".dp-undo").innerHTML = ""; fn(); return; }
+    var hr = t.closest(".dp-hr"); if (hr) { pickB(+hr.dataset.d); }
   });
   root.addEventListener("change", function (e) {
     var sel = e.target.closest(".dp-gs select"); if (sel) { var r = sel.closest(".dp-row"); setGroup(+r.dataset.i, sel.value); }
@@ -487,7 +528,7 @@
       var v = hourMin(d, h), bg = v[0] ? "color-mix(in srgb, var(" + (v[1] * 2 > v[0] ? "--c-game" : "--c-pc") + ") " + Math.round(20 + 80 * v[0] / 60) + "%, transparent)" : "";
       c += '<span class="dp-c" data-h="' + h + '" style="--h:' + h + (bg ? ";background:" + bg : "") + '"></span>';
     }
-    return '<button type="button" class="dp-hr" data-d="' + d + '" aria-pressed="false" aria-label="' + D[d][1] + ", " + D[d][2] + ': показать сеансы"><b>' + x[0] + "</b>" + c + "</button>";
+    return '<button type="button" class="dp-hr" data-d="' + d + '" aria-pressed="false" aria-label="' + D[d][1] + ', ' + D[d][2] + ': показать сеансы"><b>' + x[0] + "</b>" + c + "</button>";
   }).join("");
   function cellTip(e) {
     var c = e.target.closest && e.target.closest(".dp-c"); if (!c) return;
@@ -506,7 +547,7 @@
   $(".dp-longw").textContent = D[longest.d][0] + ", " + hm(longest.s[0]) + "–" + hm(longest.s[1]);
   $(".dp-span").textContent = hm(first / 7) + "–" + hm(last / 7);
   $(".dp-brk").textContent = (Math.round(brk / 7 * 10) / 10).toString().replace(".", ",");
-  $(".dp-rb").innerHTML = cap(VIN[longest.d]) + " вы просидели <b>" + fmt(longest.len * 60) + "</b> без перерыва. Звать вас размяться каждые полтора часа?";
+  $(".dp-rb").innerHTML = VIN[longest.d].charAt(0).toUpperCase() + VIN[longest.d].slice(1) + " вы просидели <b>" + fmt(longest.len * 60) + "</b> без перерыва. Давайте я буду звать вас размяться каждые полтора часа?";
 
   function pickB(d) {
     bDay = d;
@@ -520,7 +561,7 @@
     var li = "";
     ss.forEach(function (s, k) {
       if (k) li += '<li class="br">перерыв ' + fmt((s[0] - ss[k - 1][1]) * 60) + "</li>";
-      li += '<li><span class="t">' + hm(s[0]) + "–" + hm(s[1]) + "</span><span>" + fmt((s[1] - s[0]) * 60) + '</span><span class="tag"><i class="dot" style="background:var(' + (s[2] ? "--c-game" : "--c-pc") + ')"></i>' + (s[2] ? "игры" : "работа и прочее") + "</span>" + (s[1] - s[0] === dl ? '<span class="small">самый долгий</span>' : "") + "</li>";
+      li += '<li><span class="t">' + hm(s[0]) + "–" + hm(s[1]) + '</span><span>' + fmt((s[1] - s[0]) * 60) + '</span><span class="chip"><i class="dot" style="background:var(' + (s[2] ? "--c-game" : "--c-pc") + ')"></i>' + (s[2] ? "игры" : "работа и прочее") + "</span>" + (s[1] - s[0] === dl ? '<span class="muted">самый долгий за день</span>' : "") + "</li>";
     });
     $(".dp-slist").innerHTML = li;
   }

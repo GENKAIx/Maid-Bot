@@ -16,16 +16,21 @@
     <div class="dh-wrap">
       <div class="dh-main">
         <div class="rina dh-rina">
-          <img src="maid/letter.webp" alt="Рина" width="48" height="48">
-          <div class="dh-rtx"><p>Вы чаще отвечаете на <b>вечерние письма</b>: 47% против 17% утром. Присылать итог дня в 21:00?</p><button type="button" class="btn" data-a="rina">Да, в 21:00</button></div>
+          <img src="maid/letter.webp" alt="Рина" width="64" height="68">
+          <div class="dh-rtx"><p>Вы чаще отвечаете на <b>вечерние письма</b>: 47% против 17% утром. Присылать итог дня чуть раньше, в 21:00?</p><div class="dh-racts"><button type="button" class="dh-ab dh-pri" data-a="rina">Да, в 21:00</button></div></div>
         </div>
-        <label class="dh-search"><svg class="dh-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.500-4.500"/></svg><input type="search" class="dh-q" placeholder="Найти в письмах: сон, отчёт, вода…" aria-label="Поиск по истории" autocomplete="off"></label>
-        <div class="dh-chips" role="group" aria-label="Отбор записей. Ничего не выбрано: показаны все">
-          <button type="button" class="chip" data-k="letter" aria-pressed="false">Письма</button>
-          <button type="button" class="chip" data-k="remind" aria-pressed="false">Напоминания</button>
-          <button type="button" class="chip" data-k="action" aria-pressed="false">Действия</button>
-          <button type="button" class="chip" data-k="reply" aria-pressed="false">Ответы</button>
-          <button type="button" class="chip" data-fav aria-pressed="false"><svg class="dh-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.500l2.600 5.400 5.900.800-4.300 4.100 1 5.800L12 16.800l-5.200 2.800 1-5.800-4.300-4.100 5.900-.800z"/></svg>Любимые <span class="dh-n num">0</span></button>
+        <div class="dh-bar">
+          <div class="seg" role="group" aria-label="Что показать">
+            <button type="button" data-fav="0" aria-pressed="true">Лента</button>
+            <button type="button" data-fav="1" aria-pressed="false">Любимые <span class="dh-n num">0</span></button>
+          </div>
+          <label class="dh-search"><svg class="dh-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.500-4.500"/></svg><input type="search" class="dh-q" placeholder="Найти в письмах: сон, отчёт, вода…" aria-label="Поиск по истории" autocomplete="off"></label>
+        </div>
+        <div class="dh-chips" role="group" aria-label="Виды записей. Ничего не выбрано: показаны все">
+          <button type="button" class="chip" data-k="letter" aria-pressed="false" style="--kc:var(--a-accent)"><i class="dh-kd"></i>Письма</button>
+          <button type="button" class="chip" data-k="remind" aria-pressed="false" style="--kc:var(--a-gold)"><i class="dh-kd"></i>Напоминания</button>
+          <button type="button" class="chip" data-k="action" aria-pressed="false" style="--kc:var(--c-habit)"><i class="dh-kd"></i>Действия</button>
+          <button type="button" class="chip" data-k="reply" aria-pressed="false" style="--kc:var(--a-soft)"><i class="dh-kd"></i>Ответы</button>
         </div>
         <div class="dh-feed" tabindex="0" aria-label="Лента истории по дням">
           <div class="dh-days"></div>
@@ -33,25 +38,32 @@
         </div>
       </div>
       <aside class="dh-side">
-        <div class="dh-kp">
-          <div><b class="num-l dh-bn" data-to="214">214</b><span class="small">писем с сентября</span></div>
-          <div><b class="num-l dh-bn" data-to="63">63</b><span class="small">ваших ответа</span></div>
+        <div class="dh-sum">
+          <p class="card-t">С сентября</p>
+          <div class="dh-kp">
+            <div><b class="dh-bn num" data-to="214">214</b><span>писем написала Рина</span></div>
+            <div><b class="dh-bn num" data-to="63">63</b><span>вы ответили</span></div>
+          </div>
+          <div class="dh-rate">
+            <div class="dh-rr"><span>Утро</span><i class="dh-bar0"><i class="dh-barf" style="width:17%"></i></i><b class="num">17%</b></div>
+            <div class="dh-rr"><span>Вечер</span><i class="dh-bar0"><i class="dh-barf" style="width:47%"></i></i><b class="num">47%</b></div>
+          </div>
+          <button type="button" class="dh-ab dh-caltg" data-a="caltg" aria-expanded="false"><svg class="dh-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Календарь ноября</button>
         </div>
-        <button type="button" class="btn dh-caltg" data-a="caltg" aria-expanded="false"><svg class="dh-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Календарь ноября</button>
         <div class="dh-calw">
-          <p class="label">Ноябрь 2026</p>
+          <p class="card-t">Ноябрь 2026</p>
           <div class="dh-wk" aria-hidden="true"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>
           <div class="dh-cal"></div>
-          <p class="dh-leg small">Нажмите на день, чтобы открыть его в ленте.</p>
+          <p class="dh-leg muted">Чем ярче день, тем больше записей. Нажмите на день, чтобы открыть его в ленте.</p>
         </div>
       </aside>
     </div>
-    <div class="undo dh-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-a="tundo">Отменить</button></div>
+    <div class="dh-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-a="tundo">Отменить</button></div>
   </div>
 
   <div class="app dh-b" data-hub="diary" data-tab="История" data-title="История" hidden>
     <div class="rina dh-rina">
-      <img src="maid/analysis.webp" alt="Рина" width="48" height="48">
+      <img src="maid/analysis.webp" alt="Рина" width="64" height="68">
       <div class="dh-rtx"><p class="dh-rb"></p></div>
     </div>
     <div class="dh-bar">
@@ -63,30 +75,32 @@
     </div>
     <div class="dh-bar">
       <div class="dh-chips" role="group" aria-label="Виды записей">
-        <button type="button" class="chip" data-k="letter" aria-pressed="false">Письма</button>
-        <button type="button" class="chip" data-k="remind" aria-pressed="false">Напоминания</button>
-        <button type="button" class="chip" data-k="action" aria-pressed="false">Действия</button>
-        <button type="button" class="chip" data-k="reply" aria-pressed="false">Ответы</button>
+        <button type="button" class="chip" data-k="letter" aria-pressed="false" style="--kc:var(--a-accent)"><i class="dh-kd"></i>Письма</button>
+        <button type="button" class="chip" data-k="remind" aria-pressed="false" style="--kc:var(--a-gold)"><i class="dh-kd"></i>Напоминания</button>
+        <button type="button" class="chip" data-k="action" aria-pressed="false" style="--kc:var(--c-habit)"><i class="dh-kd"></i>Действия</button>
+        <button type="button" class="chip" data-k="reply" aria-pressed="false" style="--kc:var(--a-soft)"><i class="dh-kd"></i>Ответы</button>
       </div>
-      <span class="dh-bcount small num" aria-live="polite"></span>
+      <span class="dh-bcount muted num" aria-live="polite"></span>
     </div>
     <div class="dh-tbw">
       <div class="dh-th" aria-hidden="true"><span>Дата</span><span>Время</span><span>Вид</span><span>Текст</span><span></span></div>
       <div class="dh-tb"></div>
     </div>
-    <div class="undo dh-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-a="tundo">Отменить</button></div>
+    <div class="dh-toast" role="status" aria-live="polite" hidden><span></span><button type="button" data-a="tundo">Отменить</button></div>
   </div>
+
   <div class="notes">
     <div><h4>Что изменилось</h4><ul>
-      <li>Убраны аватарки Рины у каждой записи. Рина одна, вверху, в круге 48 px. Письма Рины слева, ваши ответы справа на сером фоне вместо фиолетовой заливки.</li>
-      <li>Виды записей больше не раскрашены: серое название со значком. У действий осталась только точка цвета данных (сон, привычки, деньги). Убраны цветные полоски, золотой фон напоминаний и капслок.</li>
-      <li>«Ответить», «Исправить», «Отменить» и звёздочка появляются при наведении на запись, на телефоне по нажатию. Всегда видны только отметка привычки в напоминании и закрашенная звёздочка у любимых.</li>
-      <li>Вместо переключателя «Лента / Любимые» и четырёх цветных чипов один ряд серых чипов, «Любимые» в том же ряду.</li>
-      <li>Справа одна колонка: два числа и календарь ноября в серых оттенках. Полоски «утро / вечер» убраны: это уже говорит Рина. Счётчик записей у каждого дня убран.</li>
-      <li>Журнал Б: колонка «Вид» без цвета, шапка без капса, звёздочка видна при наведении. Кнопки записи по-прежнему в раскрытой строке.</li>
+      <li>Лента по дням, заголовок дня прилипает к верху при прокрутке. Внутри дня записи идут по порядку, как переписка.</li>
+      <li>Четыре вида записей со своим значком и цветом: письмо, напоминание, действие, ответ. У действий полоска цвета данных: сон, привычки, деньги.</li>
+      <li>«Записала сон 7 ч 10 мин» можно исправить шагом по 10 минут или отменить. Отменённое остаётся в ленте зачёркнутым, кнопка «Вернуть».</li>
+      <li>«Ответить» открывает строку прямо под письмом, ответ и реплика Рины появляются в ленте.</li>
+      <li>Из напоминания можно сразу отметить привычку. Звёздочка сохраняет письмо во вкладку «Любимые».</li>
+      <li>Вместо восьми отборов четыре чипа и поиск. Старое подгружается по неделе. Справа календарь с плотностью и сводка ответов.</li>
+      <li>Журнал Б: строка «дата · время · вид · текст», нажатие раскрывает запись с теми же кнопками.</li>
     </ul></div>
     <div><h4>Анимации</h4><ul>
-      <li>При входе записи сегодняшнего дня поднимаются по очереди, дни календаря проявляются, числа досчитывают до 214 и 63.</li>
+      <li>При входе записи сегодняшнего дня поднимаются по очереди, дни календаря проявляются, сводка досчитывает до 214 и 63, полоски ответов растут.</li>
       <li>Строка ответа выезжает под письмом. После отправки ваш пузырь въезжает справа, Рина «печатает» секунду и отвечает.</li>
       <li>Отмена прочерчивает текст линией слева направо. Исправленное значение вспыхивает.</li>
       <li>«Ещё неделя»: на месте кнопки мерцают три заготовки, затем дни выплывают сверху вниз.</li>
@@ -100,6 +114,7 @@
       <li>Сейчас в истории только письма самой Рины. Ответы в чате и действия придётся тоже складывать в эту ленту.</li>
     </ul></div>
   </div>
+
   <style>
 #p-d-history .dh-var { display: inline-flex; align-self: flex-start; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 #p-d-history .dh-var button { background: none; border: 0; border-radius: 9px; padding: 7px 14px; min-height: 36px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
@@ -107,52 +122,65 @@
 #p-d-history .dh-advice { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
 #p-d-history .dh-i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 #p-d-history .app .seg button, #p-d-history .app .chip { min-height: 36px; }
-#p-d-history .dh-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 24px; align-items: start; }
+#p-d-history .dh-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 268px; gap: 18px; align-items: start; }
 #p-d-history .dh-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-#p-d-history .dh-rtx { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; min-width: 0; }
-#p-d-history .dh-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
-#p-d-history .dh-n { color: var(--a-muted); font-size: 12px; font-weight: 600; }
-#p-d-history .dh-search { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r-sm); color: var(--a-muted); min-width: 0; }
+#p-d-history .dh-rtx { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 0; }
+#p-d-history .dh-racts { display: flex; gap: 6px; flex-wrap: wrap; }
+#p-d-history .dh-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+#p-d-history .dh-n { font-size: 11px; font-weight: 700; background: color-mix(in srgb, var(--a-gold) 22%, transparent); color: var(--a-text); border-radius: 99px; padding: 0 6px; margin-left: 4px; }
+#p-d-history .dh-search { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 12px; color: var(--a-muted); min-width: 0; }
 #p-d-history .dh-search:focus-within { border-color: var(--a-accent); }
-#p-d-history .dh-search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; color: var(--a-text); font-size: 14px; min-height: 36px; }
+#p-d-history .dh-search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; color: var(--a-text); font-size: 13.5px; min-height: 36px; }
 #p-d-history .dh-search input::placeholder { color: var(--a-muted); }
-#p-d-history .dh-chips { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
-#p-d-history .dh-chips .dh-i { width: 14px; height: 14px; }
-#p-d-history .dh-feed { position: relative; max-height: 640px; overflow: auto; overscroll-behavior: contain; padding: 0 4px 12px 0; scroll-padding-top: 44px; }
+#p-d-history .dh-chips { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+#p-d-history .dh-kd { width: 8px; height: 8px; border-radius: 50%; background: var(--kc); flex: none; }
+#p-d-history .dh-feed { position: relative; max-height: 640px; overflow: auto; overscroll-behavior: contain; border-radius: var(--a-r); padding: 0 6px 12px 0; scroll-padding-top: 46px; }
 #p-d-history .dh-day { display: flex; flex-direction: column; }
-#p-d-history .dh-dayh { position: sticky; top: 0; z-index: 3; margin: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 12px 0 8px; background: var(--a-bg); border-bottom: 1px solid var(--a-line); font-weight: 400; }
-#p-d-history .dh-dayh b { font-size: 15px; font-weight: 650; }
-#p-d-history .dh-dayh span { color: var(--a-muted); font-size: 13px; }
-#p-d-history .dh-list { display: flex; flex-direction: column; gap: 8px; padding: 12px 0 16px; }
-#p-d-history .dh-e { display: flex; min-width: 0; }
-#p-d-history .dh-bub { flex: 0 1 640px; min-width: 0; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 16px 16px 16px 4px; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
-#p-d-history .dh-meta { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 12px; color: var(--a-muted); min-width: 0; }
-#p-d-history .dh-kind { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-#p-d-history .dh-kind .dh-i { width: 14px; height: 14px; }
-#p-d-history .dh-meta time { font-variant-numeric: tabular-nums; }
-#p-d-history .dh-ra { margin-left: auto; margin-right: -8px; display: flex; gap: 2px; }
-#p-d-history .dh-ra .icon-btn { width: 36px; height: 36px; opacity: 0; transition: opacity .15s; }
-#p-d-history .dh-e:hover .dh-ra .icon-btn, #p-d-history .dh-e:focus-within .dh-ra .icon-btn, #p-d-history .dh-e.dh-open .dh-ra .icon-btn, #p-d-history .dh-ra .icon-btn[aria-pressed="true"] { opacity: 1; }
-#p-d-history .icon-btn[aria-pressed="true"] { color: var(--a-accent); }
-#p-d-history .icon-btn[aria-pressed="true"] .dh-i { fill: currentColor; }
+#p-d-history .dh-dayh { position: sticky; top: 0; z-index: 3; margin: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 10px 2px 8px; background: color-mix(in srgb, var(--a-bg) 90%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--a-line); font-weight: 400; }
+#p-d-history .dh-dayh b { font: 700 16px/1.2 var(--fd); letter-spacing: -.01em; }
+#p-d-history .dh-dayh span { color: var(--a-muted); font-size: 12.5px; }
+#p-d-history .dh-dayh em { margin-left: auto; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--a-muted); }
+#p-d-history .dh-list { display: flex; flex-direction: column; gap: 8px; padding: 12px 0 18px; }
+#p-d-history .dh-e { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
+#p-d-history .dh-ava { width: 38px; height: 38px; border-radius: 13px; overflow: hidden; background: var(--a-surface-2); flex: none; }
+#p-d-history .dh-ava img { width: 52px; height: 55px; margin: -4px 0 0 -7px; display: block; }
+#p-d-history .dh-bub { flex: 0 1 620px; min-width: 0; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 16px 16px 16px 5px; padding: 10px 12px 11px; display: flex; flex-direction: column; gap: 7px; }
+#p-d-history .dh-k-action .dh-bub { box-shadow: inset 3px 0 0 var(--kc); }
+#p-d-history .dh-k-remind .dh-bub { background: color-mix(in srgb, var(--a-gold) 6%, var(--a-surface)); }
+#p-d-history .dh-meta { display: flex; align-items: center; gap: 8px; min-height: 20px; font-size: 12px; color: var(--a-muted); }
+#p-d-history .dh-tag { display: inline-flex; align-items: center; gap: 5px; color: var(--kc); font-weight: 700; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+#p-d-history .dh-tag .dh-i { width: 14px; height: 14px; }
+#p-d-history .dh-meta time { margin-left: auto; font-variant-numeric: tabular-nums; }
+#p-d-history .dh-pill { font-size: 11px; font-weight: 700; color: var(--a-soft); background: var(--a-surface-2); border-radius: 99px; padding: 0 8px; }
+#p-d-history .dh-star { width: 36px; height: 36px; margin: -9px -8px -9px -4px; display: grid; place-items: center; border: 0; background: none; border-radius: 10px; color: var(--a-muted); flex: none; }
+#p-d-history .dh-star:hover { color: var(--a-gold); background: var(--a-surface-2); }
+#p-d-history .dh-star .dh-i { width: 18px; height: 18px; }
+#p-d-history .dh-star[aria-pressed="true"] { color: var(--a-gold); }
+#p-d-history .dh-star[aria-pressed="true"] .dh-i { fill: currentColor; }
 #p-d-history .dh-tx { font-size: 14px; color: var(--a-text); overflow-wrap: anywhere; }
 #p-d-history .dh-tx span { box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 #p-d-history .dh-undone .dh-tx { color: var(--a-muted); }
 #p-d-history .dh-undone .dh-tx span { background: linear-gradient(var(--a-muted), var(--a-muted)) no-repeat 0 58% / 100% 1.5px; }
-#p-d-history .dh-mk { background: var(--a-accent-soft); color: inherit; border-radius: 4px; padding: 0 2px; box-shadow: inset 0 -1px 0 var(--a-accent); }
-#p-d-history .dh-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-#p-d-history .dh-acts .btn, #p-d-history .dh-edit .btn, #p-d-history .dh-rf .btn { min-height: 36px; }
-#p-d-history .dh-edit { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--a-surface-2); border-radius: var(--a-r-sm); padding: 8px; margin-top: 4px; animation: d-history-open .3s var(--ease); }
-#p-d-history .dh-ev { font-size: 18px; font-weight: 650; min-width: 112px; text-align: center; font-variant-numeric: tabular-nums; }
+#p-d-history .dh-undone .dh-bub { box-shadow: inset 3px 0 0 var(--a-line); }
+#p-d-history .dh-undone .dh-tag { color: var(--a-muted); }
+#p-d-history .dh-mk { background: color-mix(in srgb, var(--a-gold) 35%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+#p-d-history .dh-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+#p-d-history .dh-ab { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 12px; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-text); font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+#p-d-history .dh-ab:hover { border-color: var(--a-accent); }
+#p-d-history .dh-ab.dh-pri { background: var(--a-accent-soft); border-color: color-mix(in srgb, var(--a-accent) 45%, transparent); color: var(--a-accent); }
+#p-d-history .dh-ab.dh-gh { background: none; }
+#p-d-history .dh-ok { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--a-ok); }
+#p-d-history .dh-edit { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--a-surface-2); border-radius: 12px; padding: 8px; animation: d-history-open .3s var(--ease); }
+#p-d-history .dh-ev { font: 700 19px/1 var(--fd); min-width: 116px; text-align: center; letter-spacing: -.01em; color: var(--kc); }
 #p-d-history .dh-grow { flex: 1; }
-#p-d-history .dh-rf { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 4px; animation: d-history-open .32s var(--ease); }
-#p-d-history .dh-rf input { flex: 1; min-width: 0; min-height: 40px; border-radius: var(--a-r-xs); border: 1px solid var(--a-accent); background: var(--a-surface-2); padding: 6px 12px; color: var(--a-text); outline: none; }
+#p-d-history .dh-rf { display: flex; gap: 6px; min-width: 0; animation: d-history-open .32s var(--ease); }
+#p-d-history .dh-rf input { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 1px solid var(--a-accent); background: var(--a-surface-2); padding: 6px 12px; color: var(--a-text); outline: none; }
 #p-d-history .dh-rf input::placeholder { color: var(--a-muted); }
-#p-d-history .dh-rf .icon-btn { width: 36px; height: 36px; }
+#p-d-history .dh-x { padding: 4px 9px; }
 #p-d-history .dh-k-you { justify-content: flex-end; }
-#p-d-history .dh-you { max-width: min(80%, 520px); min-width: 0; background: var(--a-surface-3); color: var(--a-text); border-radius: 16px 16px 4px 16px; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
-#p-d-history .dh-you small { font-size: 12px; color: var(--a-muted); align-self: flex-end; }
-#p-d-history .dh-typing { flex: 0 0 auto; flex-direction: row; gap: 4px; padding: 16px; }
+#p-d-history .dh-you { max-width: min(80%, 520px); min-width: 0; background: var(--a-accent-strong); color: var(--a-on-accent); border-radius: 16px 16px 5px 16px; padding: 9px 13px 7px; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+#p-d-history .dh-you small { font-size: 11px; opacity: .8; align-self: flex-end; }
+#p-d-history .dh-typing { flex: 0 0 auto; flex-direction: row; gap: 5px; padding: 14px 16px; }
 #p-d-history .dh-typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--a-muted); animation: d-history-dot .7s var(--ease) 2 alternate; }
 #p-d-history .dh-typing i:nth-child(2) { animation-delay: .15s; }
 #p-d-history .dh-typing i:nth-child(3) { animation-delay: .3s; }
@@ -162,88 +190,102 @@
 #p-d-history .dh-fx-flash .dh-bub, #p-d-history .dh-fx-flash.dh-tr { animation: d-history-pop .8s var(--ease); }
 #p-d-history .dh-fx-pop .dh-star .dh-i { animation: d-history-star .45s var(--ease); }
 #p-d-history .dh-fx-in { animation: d-history-in .5s var(--ease) both; animation-delay: calc(var(--j, 0) * 110ms); }
-#p-d-history .dh-day.dh-hit .dh-dayh b { animation: d-history-hit 1s var(--ease); }
-#p-d-history .dh-foot { display: flex; justify-content: center; padding: 8px 0 4px; }
-#p-d-history .dh-end { color: var(--a-muted); font-size: 13px; text-align: center; }
+#p-d-history .dh-day.dh-hit .dh-dayh { animation: d-history-hit 1s var(--ease); }
+#p-d-history .dh-foot { display: flex; justify-content: center; padding: 6px 0 4px; }
+#p-d-history .dh-more { min-height: 42px; padding: 6px 18px; }
+#p-d-history .dh-end { color: var(--a-muted); font-size: 12.5px; text-align: center; }
 #p-d-history .dh-skel { width: 100%; display: flex; flex-direction: column; gap: 8px; }
-#p-d-history .dh-skel i { height: 56px; border-radius: var(--a-r-sm); background: var(--a-surface) linear-gradient(90deg, transparent, color-mix(in srgb, var(--a-text) 7%, transparent), transparent) no-repeat -40% 0 / 40% 100%; animation: d-history-shim .55s linear 1 both; }
+#p-d-history .dh-skel i { height: 56px; border-radius: 14px; background: var(--a-surface) linear-gradient(90deg, transparent, color-mix(in srgb, var(--a-text) 7%, transparent), transparent) no-repeat -40% 0 / 40% 100%; animation: d-history-shim .55s linear 1 both; }
 #p-d-history .dh-skel i:nth-child(2) { width: 82%; }
 #p-d-history .dh-skel i:nth-child(3) { width: 64%; }
-#p-d-history .dh-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; min-width: 0; background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 16px; }
-#p-d-history .dh-kp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+#p-d-history .dh-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 36px 12px; text-align: center; color: var(--a-soft); }
+#p-d-history .dh-empty img { width: 90px; height: 96px; }
+#p-d-history .dh-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+#p-d-history .dh-sum, #p-d-history .dh-calw { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 14px; min-width: 0; }
+#p-d-history .dh-kp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 #p-d-history .dh-kp div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-#p-d-history .dh-caltg { display: none; align-self: flex-start; }
-#p-d-history .dh-calw { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--a-line); }
+#p-d-history .dh-bn { font: 800 32px/1 var(--fd); letter-spacing: -.02em; }
+#p-d-history .dh-kp span { font-size: 12px; color: var(--a-muted); }
+#p-d-history .dh-rate { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; }
+#p-d-history .dh-rr { display: grid; grid-template-columns: 48px minmax(0, 1fr) 36px; align-items: center; gap: 8px; font-size: 12.5px; color: var(--a-soft); }
+#p-d-history .dh-rr b { text-align: right; color: var(--a-text); }
+#p-d-history .dh-bar0 { height: 8px; border-radius: 99px; background: var(--a-surface-2); overflow: hidden; display: block; }
+#p-d-history .dh-barf { display: block; height: 100%; border-radius: inherit; background: var(--a-accent); transform-origin: left; }
+#p-d-history .dh-caltg { display: none; margin-top: 12px; }
 #p-d-history .dh-wk, #p-d-history .dh-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-#p-d-history .dh-wk span { font-size: 12px; color: var(--a-muted); text-align: center; }
-#p-d-history .dh-cell { position: relative; aspect-ratio: 1; min-height: 28px; border-radius: var(--a-r-xs); border: 1px solid transparent; background: color-mix(in srgb, var(--a-soft) var(--p, 0%), var(--a-surface-2)); color: var(--a-text); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; display: grid; place-items: center; padding: 0; }
-#p-d-history .dh-cell:hover { border-color: var(--a-line-strong); }
-#p-d-history .dh-cell[aria-pressed="true"] { border-color: var(--a-accent); background: var(--a-accent-soft); }
-#p-d-history .dh-cell.dh-td::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; }
-#p-d-history .dh-cell:disabled { background: none; color: var(--a-faint); cursor: default; border-color: var(--a-line); border-style: dashed; }
-#p-d-history .dh-toast { max-width: calc(100% - 24px); animation: d-history-toast .3s var(--ease); }
+#p-d-history .dh-wk span { font-size: 10.5px; font-weight: 700; color: var(--a-muted); text-align: center; padding-bottom: 2px; }
+#p-d-history .dh-cell { aspect-ratio: 1; min-height: 30px; border-radius: 8px; border: 1px solid transparent; background: color-mix(in srgb, var(--a-accent) var(--p, 0%), var(--a-surface-2)); color: var(--a-text); font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; }
+#p-d-history .dh-cell:hover { border-color: var(--a-accent); }
+#p-d-history .dh-cell[aria-pressed="true"] { border-color: var(--a-text); }
+#p-d-history .dh-cell.dh-td { box-shadow: inset 0 0 0 2px var(--a-accent); }
+#p-d-history .dh-cell:disabled { background: none; color: var(--a-muted); cursor: default; border-color: var(--a-line); border-style: dashed; }
+#p-d-history .dh-cell u { display: flex; gap: 2px; text-decoration: none; }
+#p-d-history .dh-cell u i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .75; }
+#p-d-history .dh-leg { font-size: 11.5px; margin-top: 10px; }
+#p-d-history .dh-toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px); background: var(--a-text); color: var(--a-bg); border-radius: 12px; padding: 8px 8px 8px 14px; font-size: 13px; box-shadow: var(--a-shadow); animation: d-history-toast .3s var(--ease); }
 #p-d-history .dh-toast span { min-width: 0; }
+#p-d-history .dh-toast button { border: 0; background: color-mix(in srgb, var(--a-bg) 14%, transparent); color: inherit; border-radius: 8px; padding: 6px 10px; min-height: 36px; font-weight: 700; flex: none; }
 #p-d-history .dh-toast[hidden], #p-d-history .dh-toast button[hidden] { display: none; }
 #p-d-history .dh-go .dh-day:first-child .dh-e { animation: d-history-in .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 80ms + 120ms); }
 #p-d-history .dh-go .dh-cell { animation: d-history-fade .4s var(--ease) both; animation-delay: calc(var(--c, 0) * 14ms + 200ms); }
+#p-d-history .dh-go .dh-barf { animation: d-history-grow .9s var(--ease) both .3s; }
 #p-d-history .dh-go .dh-rina p { animation: d-history-in .45s var(--ease) both; }
 #p-d-history .dh-go .dh-tr { animation: d-history-in .4s var(--ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
 #p-d-history .dh-bq { flex-basis: 320px; }
-#p-d-history .dh-bcount { margin-left: auto; }
+#p-d-history .dh-bcount { margin-left: auto; font-size: 12.5px; }
 #p-d-history .dh-tbw { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); overflow: hidden; min-width: 0; }
 #p-d-history .dh-tb { max-height: 560px; overflow: auto; overscroll-behavior: contain; }
-#p-d-history .dh-th, #p-d-history .dh-trb { display: grid; grid-template-columns: 72px 52px 132px minmax(0, 1fr); gap: 12px; align-items: center; }
-#p-d-history .dh-th { grid-template-columns: 72px 52px 132px minmax(0, 1fr) 40px; padding: 8px 12px; border-bottom: 1px solid var(--a-line); font-size: 12px; font-weight: 600; color: var(--a-muted); }
-#p-d-history .dh-tr { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: center; border-bottom: 1px solid var(--a-line); padding-right: 4px; min-width: 0; }
-#p-d-history .dh-tr.dh-sep { border-top: 1px solid var(--a-line-strong); }
-#p-d-history .dh-trb { width: 100%; min-height: 44px; border: 0; background: none; padding: 8px 0 8px 12px; text-align: left; color: var(--a-text); font-size: 13px; min-width: 0; }
+#p-d-history .dh-th, #p-d-history .dh-trb { display: grid; grid-template-columns: 74px 52px 128px minmax(0, 1fr); gap: 10px; align-items: center; }
+#p-d-history .dh-th { grid-template-columns: 74px 52px 128px minmax(0, 1fr) 40px; padding: 8px 12px; border-bottom: 1px solid var(--a-line); font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); }
+#p-d-history .dh-tr { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: center; border-bottom: 1px solid var(--a-grid); padding-right: 4px; min-width: 0; }
+#p-d-history .dh-tr.dh-sep { border-top: 1px solid var(--a-line); }
+#p-d-history .dh-trb { width: 100%; min-height: 42px; border: 0; background: none; padding: 6px 0 6px 12px; text-align: left; color: var(--a-text); font-size: 13px; min-width: 0; }
 #p-d-history .dh-tr:hover, #p-d-history .dh-tr.dh-open { background: var(--a-surface-2); }
-#p-d-history .dh-c1 { font-weight: 600; color: var(--a-soft); }
+#p-d-history .dh-c1 { font-weight: 700; color: var(--a-soft); font-size: 12.5px; }
 #p-d-history .dh-c2 { color: var(--a-muted); font-variant-numeric: tabular-nums; }
-#p-d-history .dh-c3 { display: inline-flex; align-items: center; gap: 6px; color: var(--a-muted); font-size: 12px; min-width: 0; }
-#p-d-history .dh-c3 .dh-i { width: 14px; height: 14px; }
+#p-d-history .dh-c3 { display: inline-flex; align-items: center; gap: 5px; color: var(--kc); font-weight: 650; font-size: 12px; min-width: 0; }
 #p-d-history .dh-c4 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 #p-d-history .dh-tr.dh-undone .dh-c4 { text-decoration: line-through; color: var(--a-muted); }
-#p-d-history .dh-tr .dh-star { width: 36px; height: 36px; opacity: 0; }
-#p-d-history .dh-tr:hover .dh-star, #p-d-history .dh-tr:focus-within .dh-star, #p-d-history .dh-tr.dh-open .dh-star, #p-d-history .dh-tr .dh-star[aria-pressed="true"] { opacity: 1; }
-#p-d-history .dh-trd { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px 304px; animation: d-history-open .28s var(--ease); min-width: 0; }
+#p-d-history .dh-tr .dh-star { margin: 0; }
+#p-d-history .dh-trd { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; padding: 2px 12px 12px; padding-left: 296px; animation: d-history-open .28s var(--ease); min-width: 0; }
+#p-d-history .dh-tr.dh-k-action .dh-trd { box-shadow: inset 3px 0 0 var(--kc); }
 #p-d-history .dh-nostar { width: 36px; }
-@media (hover: none) {
-#p-d-history .dh-ra .icon-btn { display: none; }
-#p-d-history .dh-e.dh-open .dh-ra .icon-btn, #p-d-history .dh-ra .icon-btn[aria-pressed="true"] { display: inline-grid; opacity: 1; }
-#p-d-history .dh-tr .dh-star { visibility: hidden; }
-#p-d-history .dh-tr.dh-open .dh-star, #p-d-history .dh-tr .dh-star[aria-pressed="true"] { visibility: visible; }
-}
 @keyframes d-history-in { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes d-history-inr { from { transform: translateX(18px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes d-history-open { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes d-history-fade { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@keyframes d-history-grow { from { transform: scaleX(0); } to { transform: none; } }
 @keyframes d-history-strike { from { background-size: 0 1.5px; } to { background-size: 100% 1.5px; } }
-@keyframes d-history-pop { 0% { box-shadow: 0 0 0 0 var(--a-accent); } 45% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--a-accent) 30%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
-@keyframes d-history-star { 0% { transform: scale(1); } 40% { transform: scale(1.4) rotate(-12deg); } 100% { transform: scale(1); } }
+@keyframes d-history-pop { 0% { box-shadow: 0 0 0 0 var(--a-accent); } 45% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--a-accent) 30%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+@keyframes d-history-star { 0% { transform: scale(1); } 40% { transform: scale(1.45) rotate(-12deg); } 100% { transform: scale(1); } }
 @keyframes d-history-dot { from { transform: translateY(0); opacity: .45; } to { transform: translateY(-4px); opacity: 1; } }
 @keyframes d-history-shim { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 @keyframes d-history-hit { 0% { color: var(--a-accent); } 100% { color: inherit; } }
-@keyframes d-history-toast { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes d-history-toast { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
 @media (max-width: 1000px) {
-#p-d-history .dh-wrap { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-#p-d-history .dh-side { position: static; order: -1; padding: 12px; gap: 12px; }
+#p-d-history .dh-wrap { grid-template-columns: minmax(0, 1fr); }
+#p-d-history .dh-side { position: static; order: -1; }
 #p-d-history .dh-caltg { display: inline-flex; }
 #p-d-history .dh-calw { display: none; }
-#p-d-history .dh-side.dh-calopen .dh-calw { display: flex; animation: d-history-open .3s var(--ease); }
+#p-d-history .dh-side.dh-calopen .dh-calw { display: block; animation: d-history-open .3s var(--ease); }
 #p-d-history .dh-trd { padding-left: 12px; }
 }
 @media (max-width: 720px) {
 #p-d-history .dh-feed { max-height: 560px; padding-right: 0; }
-#p-d-history .dh-bub { padding: 4px 12px 12px; }
+#p-d-history .dh-ava { width: 32px; height: 32px; border-radius: 11px; }
+#p-d-history .dh-ava img { width: 44px; height: 47px; margin: -3px 0 0 -6px; }
+#p-d-history .dh-e { gap: 7px; }
+#p-d-history .dh-bub { padding: 9px 10px 10px; }
 #p-d-history .dh-dayh span { display: none; }
 #p-d-history .dh-rf { flex-wrap: wrap; }
 #p-d-history .dh-rf input { flex-basis: 100%; }
+#p-d-history .dh-bn { font-size: 26px; }
+#p-d-history .dh-cell { min-height: 0; }
 #p-d-history .dh-th { display: none; }
-#p-d-history .dh-trb { grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "d t k" "x x x"; gap: 4px 8px; padding: 8px 0 8px 12px; }
+#p-d-history .dh-trb { grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "d t k" "x x x"; gap: 2px 8px; padding: 8px 0 8px 10px; }
 #p-d-history .dh-c1 { grid-area: d; } #p-d-history .dh-c2 { grid-area: t; } #p-d-history .dh-c3 { grid-area: k; justify-self: end; }
 #p-d-history .dh-c4 { grid-area: x; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-#p-d-history .dh-trd { padding: 0 12px 12px; }
+#p-d-history .dh-trd { padding: 2px 10px 12px; }
 #p-d-history .dh-bcount { margin-left: 0; width: 100%; }
 }
   </style>
@@ -257,9 +299,9 @@ function qa(s, el) { return Array.prototype.slice.call((el || root).querySelecto
 var A = q(".dh-a"), B = q(".dh-b");
 var WD = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
 var KN = { letter: "Письмо", remind: "Напоминание", action: "Действие", reply: "Ответ", you: "Вы" };
-var ENT = { sleep: "var(--c-sleep)", habit: "var(--c-habit)", money: "var(--c-money)" };
+var KC = { letter: "var(--a-accent)", remind: "var(--a-gold)", reply: "var(--a-soft)", you: "var(--a-soft)" };
+var ENT = { sleep: "var(--c-sleep)", habit: "var(--c-habit)", money: "var(--c-money)", plan: "var(--a-soft)" };
 var P = {
-  rep: '<path d="M10 8l-5 4 5 4"/><path d="M5 12h9a5 5 0 0 1 5 5v1"/>',
   letter: '<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M4 8l8 5 8-5"/>',
   remind: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.500 2h-15z"/><path d="M10 21h4"/>',
   action: '<path d="M5 12.500l4 4 10-10"/>',
@@ -351,53 +393,43 @@ for (var d = 7; d < 27; d++) {
 
 var st = { k: {}, q: "", fav: false, loaded: 7, cal: false, pick: 0 };
 var sb = { k: {}, q: "", sort: "new", open: 0 };
-var ui = { reply: 0, edit: 0, open: 0 };
+var ui = { reply: 0, edit: 0 };
 var fx = {};
 function byId(id) { for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i]; return null; }
 function kOk(s, e) { var on = false, kk = e.k === "you" || e.k === "typing" ? "reply" : e.k; for (var x in s.k) if (s.k[x]) on = true; return !on || !!s.k[kk]; }
 function qOk(s, e) { return !s.q || txt(e).toLowerCase().indexOf(s.q.toLowerCase()) > -1; }
 function cur() { return A.hidden ? B : A; }
 
-function tb(a, e, icon, label, cls) { return '<button type="button" class="btn' + (cls || "") + '" data-a="' + a + '" data-id="' + e.id + '">' + (icon ? ic(icon) : "") + label + "</button>"; }
-function ib(a, e, icon, label, extra) { return '<button type="button" class="icon-btn' + (a === "star" ? " dh-star" : "") + '" data-a="' + a + '" data-id="' + e.id + '" aria-label="' + label + '" title="' + label + '"' + (extra || "") + ">" + ic(icon) + "</button>"; }
-function starAttr(e) { return ' aria-pressed="' + !!e.star + '"'; }
-function starLab(e) { return e.star ? "Убрать из любимых" : "Сохранить в любимые"; }
-function rowActs(e) {
+function ab(a, e, icon, label, cls) { return '<button type="button" class="dh-ab' + (cls ? " " + cls : "") + '" data-a="' + a + '" data-id="' + e.id + '">' + (icon ? ic(icon) : "") + label + "</button>"; }
+function acts(e) {
   var h = "";
-  if (e.k === "letter") h += ib("reply", e, "rep", "Ответить");
-  if (e.k === "action") h += e.undone ? ib("restore", e, "undo", "Вернуть") : (e.f ? ib("edit", e, "pen", "Исправить") : "") + ib("undo", e, "undo", "Отменить");
-  if (e.k === "letter" || e.k === "reply") h += ib("star", e, "star", starLab(e), starAttr(e));
-  return h ? '<span class="dh-ra">' + h + "</span>" : "";
-}
-function goBtn(e) { return e.k === "remind" && e.go && !e.dn ? '<div class="dh-acts">' + tb("go", e, "action", e.go) + "</div>" : ""; }
-function actsB(e) {
-  var h = "";
-  if (e.k === "letter") h += tb("reply", e, "rep", "Ответить");
-  if (e.k === "action") h += e.undone ? tb("restore", e, "undo", "Вернуть") : (e.f ? tb("edit", e, "pen", "Исправить") : "") + tb("undo", e, "undo", "Отменить", " quiet");
+  if (e.k === "letter") h += ab("reply", e, "reply", "Ответить", "dh-pri");
+  if (e.k === "remind" && e.go) h += e.dn ? '<span class="dh-ok">' + ic("action") + "Сделано</span>" : ab("go", e, "action", e.go, "dh-pri");
+  if (e.k === "action") h += e.undone ? ab("restore", e, "undo", "Вернуть", "dh-pri") : (e.f ? ab("edit", e, "pen", "Исправить") : "") + ab("undo", e, "undo", "Отменить", "dh-gh");
   return h ? '<div class="dh-acts">' + h + "</div>" : "";
 }
 function editH(e) {
   if (ui.edit !== e.id) return "";
   var u = e.f === "sleep" ? 10 : 50, w = e.f === "sleep" ? "минут" : "рублей";
-  return '<div class="dh-edit"><button type="button" class="btn" data-a="step" data-s="-1" data-id="' + e.id + '" aria-label="Меньше на ' + u + " " + w + '">−' + u + '</button><b class="dh-ev" aria-live="polite">' + vl(e, e.tmp) + '</b><button type="button" class="btn" data-a="step" data-s="1" data-id="' + e.id + '" aria-label="Больше на ' + u + " " + w + '">+' + u + '</button><span class="dh-grow"></span>' + tb("ecancel", e, "", "Отмена", " quiet") + tb("esave", e, "action", "Готово", " primary") + "</div>";
+  return '<div class="dh-edit"><button type="button" class="dh-ab" data-a="step" data-s="-1" data-id="' + e.id + '" aria-label="Меньше на ' + u + " " + w + '">−' + u + '</button><b class="dh-ev num" aria-live="polite">' + vl(e, e.tmp) + '</b><button type="button" class="dh-ab" data-a="step" data-s="1" data-id="' + e.id + '" aria-label="Больше на ' + u + " " + w + '">+' + u + '</button><span class="dh-grow"></span>' + ab("ecancel", e, "", "Отмена", "dh-gh") + ab("esave", e, "action", "Готово", "dh-pri") + "</div>";
 }
 function replyH(e) {
   if (ui.reply !== e.id) return "";
-  return '<form class="dh-rf" data-id="' + e.id + '"><input type="text" class="dh-rin" placeholder="Ответить Рине…" aria-label="Ваш ответ на письмо" autocomplete="off"><button type="submit" class="btn primary">' + ic("send") + "Отправить</button>" + ib("rclose", e, "x", "Закрыть ответ") + "</form>";
+  return '<form class="dh-rf" data-id="' + e.id + '"><input type="text" class="dh-rin" placeholder="Ответить Рине…" aria-label="Ваш ответ на письмо" autocomplete="off"><button type="submit" class="dh-ab dh-pri">' + ic("send") + 'Отправить</button><button type="button" class="dh-ab dh-x" data-a="rclose" data-id="' + e.id + '" aria-label="Закрыть ответ">' + ic("x") + "</button></form>";
 }
-function starB(e) { return e.k === "letter" || e.k === "reply" ? ib("star", e, "star", starLab(e), starAttr(e)) : '<span class="dh-nostar"></span>'; }
-function kind(e) {
-  var c = e.k === "action" && ENT[e.ent];
-  return '<span class="dh-kind">' + (c ? '<i class="dot s" style="background:' + c + '"></i>' : ic(e.k)) + KN[e.k] + "</span>";
+function starH(e) {
+  if (e.k !== "letter" && e.k !== "reply") return '<span class="dh-nostar"></span>';
+  return '<button type="button" class="dh-star" data-a="star" data-id="' + e.id + '" aria-pressed="' + !!e.star + '" aria-label="' + (e.star ? "Убрать из любимых" : "Сохранить в любимые") + '">' + ic("star") + "</button>";
 }
+function kc(e) { return e.k === "action" ? ENT[e.ent] : KC[e.k]; }
 function entry(e, w, i) {
   var f = fx[e.id] ? " dh-fx-" + fx[e.id] : "";
   if (e.k === "you") return '<div class="dh-e dh-k-you' + f + '" data-id="' + e.id + '" style="--i:' + i + '"><div class="dh-you"><p>' + hl(e.x, w) + "</p><small>Вы · " + e.t + "</small></div></div>";
-  if (e.k === "typing") return '<div class="dh-e dh-k-reply dh-fx-new"><div class="dh-bub dh-typing" role="status" aria-label="Рина пишет"><i></i><i></i><i></i></div></div>';
-  var mark = e.undone ? '<span class="tag">Отменено</span>' : e.edited ? '<span class="tag">Исправлено</span>' : "";
-  var done = e.k === "remind" && e.go && e.dn ? '<span class="status ok">✓ Сделано</span>' : "";
-  return '<div class="dh-e dh-k-' + e.k + (e.undone ? " dh-undone" : "") + (ui.open === e.id ? " dh-open" : "") + f + '" data-id="' + e.id + '" style="--i:' + i + '"><div class="dh-bub"><div class="dh-meta">' + kind(e) +
-    "<time>" + e.t + "</time>" + mark + done + rowActs(e) + '</div><p class="dh-tx"><span>' + hl(txt(e), w) + "</span></p>" + goBtn(e) + editH(e) + replyH(e) + "</div></div>";
+  if (e.k === "typing") return '<div class="dh-e dh-k-reply dh-fx-new"><div class="dh-ava"><img src="maid/write.webp" alt=""></div><div class="dh-bub dh-typing" role="status" aria-label="Рина пишет"><i></i><i></i><i></i></div></div>';
+  var mark = e.undone ? '<span class="dh-pill">Отменено</span>' : e.edited ? '<span class="dh-pill">Исправлено</span>' : "";
+  return '<div class="dh-e dh-k-' + e.k + (e.undone ? " dh-undone" : "") + f + '" data-id="' + e.id + '" style="--kc:' + kc(e) + ";--i:" + i + '">' +
+    '<div class="dh-ava"><img src="maid/' + e.em + '.webp" alt="" loading="lazy"></div><div class="dh-bub"><div class="dh-meta"><span class="dh-tag">' + ic(e.k) + KN[e.k] + "</span>" + mark +
+    "<time>" + e.t + "</time>" + (e.k === "letter" || e.k === "reply" ? starH(e) : "") + '</div><p class="dh-tx"><span>' + hl(txt(e), w) + "</span></p>" + editH(e) + acts(e) + replyH(e) + "</div></div>";
 }
 
 function renderA() {
@@ -406,16 +438,16 @@ function renderA() {
   var gs = [], g = null;
   list.forEach(function (e) { if (!g || g.d !== e.d) { g = { d: e.d, es: [] }; gs.push(g); } g.es.push(e); });
   var h = gs.map(function (g) {
-    var inn = fx["d" + g.d];
-    return '<section class="dh-day' + (inn ? " dh-fx-in" : "") + '" data-d="' + g.d + '"' + (inn ? ' style="--j:' + (j++) + '"' : "") + '><h4 class="dh-dayh"><b>' + dname(g.d) + "</b><span>" + WD[wd(g.d)] + ", " + (27 - g.d) + ' ноября</span></h4><div class="dh-list">' +
+    var n = g.es.filter(function (e) { return e.k !== "typing"; }).length, inn = fx["d" + g.d];
+    return '<section class="dh-day' + (inn ? " dh-fx-in" : "") + '" data-d="' + g.d + '"' + (inn ? ' style="--j:' + (j++) + '"' : "") + '><h4 class="dh-dayh"><b>' + dname(g.d) + "</b><span>" + WD[wd(g.d)] + ", " + (27 - g.d) + " ноября</span><em>" + n + " " + pl(n, "запись", "записи", "записей") + '</em></h4><div class="dh-list">' +
       g.es.map(function (e, i) { return entry(e, st.q, i); }).join("") + "</div></section>";
   }).join("");
-  if (!gs.length) h = '<div class="empty"><p>' + (st.fav ? "Пока пусто. Нажмите звёздочку у письма, и оно сохранится здесь." : "Не нашла ничего по слову «" + esc(st.q) + "».") + '</p><button type="button" class="btn" data-a="' + (st.fav ? "tofeed" : "clear") + '">' + (st.fav ? "Вернуться к ленте" : "Сбросить отбор") + "</button></div>";
+  if (!gs.length) h = '<div class="dh-empty"><img src="maid/' + (st.fav ? "shy" : "think") + '.webp" alt=""><p>' + (st.fav ? "Здесь пока пусто. Нажмите звёздочку у письма, и оно сохранится здесь." : "Не нашла ничего по слову «" + esc(st.q) + "». Попробуйте короче или снимите отбор.") + "</p></div>";
   q(".dh-days", A).innerHTML = h;
   var ft = q(".dh-foot", A);
-  if (st.fav || !gs.length) ft.innerHTML = "";
+  if (st.fav) ft.innerHTML = "";
   else if (st.q) ft.innerHTML = '<p class="dh-end">Искала во всём ноябре: ' + list.length + " " + pl(list.length, "запись", "записи", "записей") + "</p>";
-  else if (st.loaded < 27) { var b = Math.min(27, st.loaded + 7); ft.innerHTML = '<button type="button" class="btn" data-a="more">Ещё неделя · ' + (28 - b) + "–" + (27 - st.loaded) + " ноября</button>"; }
+  else if (st.loaded < 27) { var b = Math.min(27, st.loaded + 7); ft.innerHTML = '<button type="button" class="btn dh-more" data-a="more">Ещё неделя · ' + (28 - b) + "–" + (27 - st.loaded) + " ноября</button>"; }
   else ft.innerHTML = '<p class="dh-end">Это начало ноября. Октябрь лежит в архиве, его тоже можно открыть.</p>';
   q(".dh-n", A).textContent = items.filter(function (e) { return e.star; }).length;
 }
@@ -427,14 +459,16 @@ function renderB() {
   var prev = -1;
   q(".dh-tb", B).innerHTML = list.length ? list.map(function (e, i) {
     var o = sb.open === e.id, f = fx[e.id] ? " dh-fx-" + fx[e.id] : "", nd = e.d !== prev; prev = e.d;
-    return '<div class="dh-tr dh-k-' + e.k + (e.undone ? " dh-undone" : "") + (o ? " dh-open" : "") + (nd && i ? " dh-sep" : "") + f + '" style="--i:' + Math.min(i, 14) + '">' +
-      '<button type="button" class="dh-trb" data-a="row" data-id="' + e.id + '" aria-expanded="' + o + '"><span class="dh-c1">' + (nd ? (27 - e.d) + " нояб" : "") + '</span><span class="dh-c2">' + e.t + '</span><span class="dh-c3">' + kind(e).replace(/^<span class="dh-kind">|<\/span>$/g, "") + (e.undone ? " · отменено" : "") + '</span><span class="dh-c4">' + hl(txt(e), sb.q) + "</span></button>" + starB(e) +
-      (o ? '<div class="dh-trd"><p class="dh-tx"><span>' + hl(txt(e), sb.q) + "</span></p>" + goBtn(e) + editH(e) + actsB(e) + replyH(e) + "</div>" : "") + "</div>";
-  }).join("") : '<div class="empty"><p>Ничего не нашла по такому отбору.</p><button type="button" class="btn" data-a="clear">Сбросить отбор</button></div>';
+    return '<div class="dh-tr dh-k-' + e.k + (e.undone ? " dh-undone" : "") + (o ? " dh-open" : "") + (nd && i ? " dh-sep" : "") + f + '" style="--kc:' + kc(e) + ";--i:" + Math.min(i, 14) + '">' +
+      '<button type="button" class="dh-trb" data-a="row" data-id="' + e.id + '" aria-expanded="' + o + '"><span class="dh-c1">' + (nd ? (27 - e.d) + " нояб" : "") + '</span><span class="dh-c2">' + e.t + '</span><span class="dh-c3">' + ic(e.k) + KN[e.k] + (e.undone ? " · отменено" : "") + '</span><span class="dh-c4">' + hl(txt(e), sb.q) + "</span></button>" + starH(e) +
+      (o ? '<div class="dh-trd"><p class="dh-tx"><span>' + hl(txt(e), sb.q) + "</span></p>" + editH(e) + acts(e) + replyH(e) + "</div>" : "") + "</div>";
+  }).join("") : '<div class="dh-empty"><img src="maid/think.webp" alt=""><p>Ничего не нашла. Попробуйте другое слово.</p></div>';
   q(".dh-bcount", B).textContent = "Найдено " + list.length + " " + pl(list.length, "запись", "записи", "записей");
   var rb = q(".dh-rb", B);
-  if (sb.q) rb.innerHTML = "По слову «" + esc(sb.q) + "» нашла <b>" + list.length + " " + pl(list.length, "запись", "записи", "записей") + "</b>. Нажмите на строку, чтобы открыть запись целиком.";
-  else rb.innerHTML = "Вечером вы отвечаете мне почти в <b>три раза</b> чаще, чем утром. Ищите по слову, сумме или времени, например «21:40».";
+  if (sb.q) {
+    var ev = list.filter(function (e) { return e.k === "you" && +e.t.split(":")[0] >= 18; }).length;
+    rb.innerHTML = "По слову «" + esc(sb.q) + "» нашла <b>" + list.length + " " + pl(list.length, "запись", "записи", "записей") + "</b>." + (ev ? " Ваши ответы среди них все вечерние." : " Нажмите на строку, чтобы открыть запись целиком.");
+  } else rb.innerHTML = "Вечером вы отвечаете мне почти в три раза чаще, чем утром. Ищите по слову, сумме или времени, например «21:40».";
 }
 
 function renderCal() {
@@ -442,8 +476,9 @@ function renderCal() {
   var h = "", c = 0;
   for (var b = 0; b < 6; b++) h += "<span></span>";
   for (var n = 1; n <= 30; n++) {
-    var k = cnt[n] || 0, fut = n > 27;
-    h += '<button type="button" class="dh-cell' + (n === 27 ? " dh-td" : "") + '" data-day="' + n + '" style="--p:' + (fut ? 0 : Math.min(36, k * 4)) + "%;--c:" + (c++) + '"' + (fut ? " disabled" : "") + ' aria-pressed="' + (st.pick === n) + '" aria-label="' + n + " ноября" + (n === 27 ? ", сегодня" : "") + (fut ? ", ещё впереди" : ": " + k + " " + pl(k, "запись", "записи", "записей")) + '">' + n + "</button>";
+    var k = cnt[n] || 0, fut = n > 27, dots = k >= 7 ? 3 : k >= 4 ? 2 : k ? 1 : 0, ds = "";
+    for (var x = 0; x < dots; x++) ds += "<i></i>";
+    h += '<button type="button" class="dh-cell' + (n === 27 ? " dh-td" : "") + '" data-day="' + n + '" style="--p:' + (fut ? 0 : Math.min(70, k * 8)) + "%;--c:" + (c++) + '"' + (fut ? " disabled" : "") + ' aria-pressed="' + (st.pick === n) + '" aria-label="' + n + " ноября" + (fut ? ", ещё впереди" : ": " + k + " " + pl(k, "запись", "записи", "записей")) + '">' + n + "<u>" + ds + "</u></button>";
   }
   q(".dh-cal", A).innerHTML = h;
 }
@@ -486,7 +521,7 @@ function more() {
 function jump(n) {
   var d = 27 - n, feed = q(".dh-feed", A);
   st.pick = n; st.fav = false; st.q = ""; q(".dh-q", A).value = "";
-  q("[data-fav]", A).setAttribute("aria-pressed", "false");
+  qa("[data-fav]", A).forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.fav === "0"); });
   if (d >= st.loaded) { var a = st.loaded; st.loaded = Math.min(27, Math.ceil((d + 1) / 7) * 7); for (var x = a; x < st.loaded; x++) fx["d" + x] = 1; }
   all();
   var sec = q('.dh-day[data-d="' + d + '"]', A);
@@ -513,29 +548,18 @@ root.addEventListener("click", function (ev) {
   }
   var app = ev.target.closest(".app"); if (!app) return;
   var S = app === A ? st : sb;
-  var ch = ev.target.closest(".dh-chips .chip[data-k]");
+  var ch = ev.target.closest(".dh-chips .chip");
   if (ch) { var k = ch.dataset.k; S.k[k] = !S.k[k]; ch.setAttribute("aria-pressed", S.k[k]); all(); return; }
   var fv = ev.target.closest("[data-fav]");
-  if (fv) { st.fav = !st.fav; fv.setAttribute("aria-pressed", st.fav); q(".dh-feed", A).scrollTop = 0; all(); return; }
+  if (fv) { st.fav = fv.dataset.fav === "1"; qa("[data-fav]", A).forEach(function (b) { b.setAttribute("aria-pressed", b === fv); }); q(".dh-feed", A).scrollTop = 0; all(); return; }
   var so = ev.target.closest("[data-sort]");
   if (so) { sb.sort = so.dataset.sort; qa("[data-sort]", B).forEach(function (b) { b.setAttribute("aria-pressed", b === so); }); all(); return; }
   var cell = ev.target.closest(".dh-cell");
   if (cell && !cell.disabled) { jump(+cell.dataset.day); return; }
-  var b = ev.target.closest("[data-a]");
-  if (!b) {
-    var bub = app === A && ev.target.closest(".dh-bub");
-    if (bub && !ev.target.closest("form")) {
-      var el = bub.closest(".dh-e"), id = +el.dataset.id; ui.open = ui.open === id ? 0 : id;
-      qa(".dh-e.dh-open", A).forEach(function (x) { if (x !== el) x.classList.remove("dh-open"); });
-      el.classList.toggle("dh-open", ui.open === id);
-    }
-    return;
-  }
+  var b = ev.target.closest("[data-a]"); if (!b) return;
   var a = b.dataset.a, e = byId(+b.dataset.id);
   if (a === "tundo") { var t = b.closest(".dh-toast"); t.hidden = true; if (t._undo) t._undo(); return; }
   if (a === "more") { more(); return; }
-  if (a === "tofeed") { st.fav = false; q("[data-fav]", A).setAttribute("aria-pressed", "false"); all(); return; }
-  if (a === "clear") { S.q = ""; S.k = {}; q(".dh-q", app).value = ""; qa(".dh-chips .chip[data-k]", app).forEach(function (c) { c.setAttribute("aria-pressed", "false"); }); all(); return; }
   if (a === "caltg") { st.cal = !st.cal; q(".dh-side", A).classList.toggle("dh-calopen", st.cal); b.setAttribute("aria-expanded", st.cal); return; }
   if (a === "rina") {
     var rt = q(".dh-rina .dh-rtx", A), old = rt.innerHTML;

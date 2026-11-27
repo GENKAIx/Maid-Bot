@@ -10,11 +10,11 @@
     <div class="alb-top">
       <section class="card alb-sum" aria-label="Сколько открыто">
         <div class="alb-cnt">
-          <div class="alb-cl"><span class="label">Открыто</span><p class="num-xl"><span class="alb-n">23</span><small class="alb-of">из 41</small></p></div>
-          <p class="alb-near small" data-near></p>
+          <div class="alb-cl"><small>Открыто</small><p><span class="alb-n num">23</span><span class="alb-of"> из 41</span></p></div>
+          <p class="alb-near soft" data-near></p>
         </div>
-        <div class="bar" data-hbar role="img" aria-label="Открыто 23 из 41"><i></i></div>
-        <ul class="alb-tiers" data-tiers></ul>
+        <div class="alb-hbar" data-hbar role="img" aria-label="Открытые по редкости"></div>
+        <div class="alb-tiers" data-tiers></div>
       </section>
       <div class="alb-side">
         <div class="rina"><img src="maid/giggle.webp" alt="Рина"><p>Ещё <b>2 дня зарядки</b>, и я покажу вам новый танец.</p></div>
@@ -24,7 +24,7 @@
 
     <div class="alb-tools">
       <div class="alb-fil" role="group" aria-label="Отбор карточек" data-fil="main"></div>
-      <button type="button" class="btn quiet alb-test"><span>Показать, как открывается новая</span></button>
+      <button type="button" class="btn alb-test"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg><span>Показать, как открывается новая</span></button>
     </div>
 
     <div class="alb-grid" data-grid="main"></div>
@@ -38,23 +38,23 @@
           <button type="button" class="alb-ar alb-next" aria-label="Следующая карточка"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
         </div>
         <div class="alb-side2">
-          <div class="alb-lbtop"><span class="tag alb-rar"></span><span class="alb-pos small num"></span></div>
+          <div class="alb-lbtop"><span class="alb-rar"></span><span class="alb-pos muted num"></span></div>
           <h3 id="d-album-lbt"></h3>
           <div class="alb-info"></div>
           <button type="button" class="alb-wbtn" aria-pressed="false"><span class="alb-sw" aria-hidden="true"></span><span class="alb-wtx">Поставить в виджет на главную</span></button>
-          <p class="small">Стрелки ← → листают, Esc закрывает</p>
+          <p class="alb-hint muted">Стрелки ← → листают, Esc закрывает</p>
         </div>
-        <button type="button" class="icon-btn alb-x" data-close aria-label="Закрыть просмотр"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button type="button" class="alb-x" data-close aria-label="Закрыть просмотр"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
     </div>
-    <div class="undo alb-toast" role="status" aria-live="polite" hidden></div>
+    <div class="alb-toast" role="status" aria-live="polite" hidden></div>
   </div>
 
   <div class="scene alb-scene">
     <figure>
       <div class="phone"><div class="app plain alb-ph">
-        <div class="alb-phh"><b>Альбом</b><span class="num small" data-phn>23 из 41</span></div>
-        <div class="bar" data-hbar aria-hidden="true"><i></i></div>
+        <div class="alb-phh"><b>Альбом</b><span class="num" data-phn>23 из 41</span></div>
+        <div class="alb-hbar alb-hbar-s" data-hbar aria-hidden="true"></div>
         <div class="alb-fil" role="group" aria-label="Отбор карточек на телефоне" data-fil="ph"></div>
         <div class="alb-grid alb-g3" data-grid="ph"></div>
       </div></div>
@@ -69,23 +69,22 @@
           <div class="wgt-row"><span class="wgt-ck"></span>Вода, 8 стаканов</div>
         </div>
       </div>
-      <figcaption>Виджет на ПК сразу показывает анимацию, которую вы выбрали в альбоме кнопкой «В виджет».</figcaption>
+      <figcaption>Виджет на ПК сразу показывает анимацию, которую вы выбрали в альбоме кнопкой «В виджете».</figcaption>
     </figure>
   </div>
 
   <div class="notes">
     <div><h4>Что изменилось</h4><ul>
-      <li>Редкость теперь словом в серой строке под названием: «редкая», «особая». Цветные обводы карточек, цветное свечение за картинкой и ромбы убраны.</li>
-      <li>Акцентная рамка осталась только у одной карточки: той, что стоит в виджете. Метка «в виджете» на картинке серая.</li>
-      <li>Счёт один: крупное «23 из 41» и одна тонкая полоса. Разноцветная полоса по редкостям и три плитки со своими полосами стали тремя тихими строками «Обычные 17 из 24» с наградой за набор.</li>
-      <li>Цвет данных остался только в полосе прогресса закрытой карточки: привычки, сон, деньги, компьютер.</li>
-      <li>Кнопка показа вскрытия стала тихой, без золотой звезды. Подсказка внизу одна, без золотой рамки.</li>
-      <li>Крупный просмотр без цветной рамки и свечения: редкость серой меткой, заголовок обычным шрифтом.</li>
+      <li>Один счёт на всех экранах: 23 из 41. Расхождение «27/41» уходит.</li>
+      <li>Закрытая карточка показывает, как её открыть, и полосу «5 из 7» в цвете своих данных: привычки, сон, деньги, компьютер.</li>
+      <li>Три редкости с цветным обводом и словом на карточке, у каждой своя награда за полный набор.</li>
+      <li>Крупный просмотр: дата и время открытия, за что открыта, листание стрелками и кнопка «В виджете». Смена отменяется в подсказке внизу.</li>
+      <li>Отборы: все, открытые, скоро откроются (по близости к цели), редкие.</li>
     </ul></div>
     <div><h4>Анимации</h4><ul>
-      <li>При появлении счётчик набирает 23, полоса растёт, карточки встают по очереди.</li>
+      <li>При появлении счётчик набирает 23, полосы растут, карточки встают по очереди.</li>
       <li>Щелчок по карточке: она перелетает в центр и переворачивается лицом к вам.</li>
-      <li>Вскрытие новой: силуэт вздрагивает, вокруг вспыхивает и гаснет тонкий золотой контур, проступает цвет, счёт становится 24, внизу «Новая анимация: Чаепитие».</li>
+      <li>Вскрытие новой: силуэт дрожит, вспышка, проступает цвет, счёт становится 24, всплывает «Новая анимация: Чаепитие».</li>
       <li>Листание сдвигает картинку в сторону стрелки. Без движения на экране всё видно сразу.</li>
     </ul></div>
     <div><h4>Что нужно в коде</h4><ul>
@@ -97,103 +96,132 @@
   </div>
 
   <style>
-    #p-d-album .alb-top { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; }
-    #p-d-album .alb-sum { display: flex; flex-direction: column; gap: 12px; }
+    #p-d-album .alb-top { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 14px; }
+    #p-d-album .alb-sum { display: flex; flex-direction: column; gap: 14px; }
     #p-d-album .alb-cnt { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    #p-d-album .alb-cl { display: flex; flex-direction: column; gap: 4px; }
-    #p-d-album .alb-of { margin-left: 6px; }
-    #p-d-album .alb-near { max-width: 30ch; min-width: 0; }
-    #p-d-album .alb-near b { color: var(--a-text); font-weight: 600; }
-    #p-d-album .alb-tiers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-    #p-d-album .alb-tier { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--a-line); min-width: 0; }
-    #p-d-album .alb-tier b { font-weight: 600; }
-    #p-d-album .alb-tier .small { grid-column: 1 / -1; }
-    #p-d-album .alb-tier .num { color: var(--a-soft); grid-column: auto; }
-    #p-d-album .alb-gold { color: var(--a-gold); }
-    #p-d-album .alb-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    #p-d-album .alb-cl small { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--a-muted); }
+    #p-d-album .alb-n { font: 800 56px/1 var(--fd); letter-spacing: -.03em; }
+    #p-d-album .alb-of { font: 700 22px/1 var(--fd); color: var(--a-muted); }
+    #p-d-album .alb-near { font-size: 13px; max-width: 30ch; min-width: 0; }
+    #p-d-album .alb-near b { color: var(--a-text); }
+    #p-d-album .alb-hbar { display: flex; gap: 2px; height: 12px; border-radius: 99px; background: var(--a-surface-3); overflow: hidden; }
+    #p-d-album .alb-hbar i { display: block; height: 100%; background: var(--r); }
+    #p-d-album .alb-hbar-s { height: 6px; flex: none; }
+    #p-d-album .alb-tiers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    #p-d-album .alb-tier { display: flex; gap: 10px; align-items: flex-start; background: var(--a-surface-2); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+    #p-d-album .alb-tier > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+    #p-d-album .alb-tier b { font-size: 12.5px; }
+    #p-d-album .alb-tier em { font: 800 20px/1.1 var(--fd); font-style: normal; }
+    #p-d-album .alb-tier small { font-size: 11.5px; color: var(--a-muted); line-height: 1.3; }
+    #p-d-album .alb-gem { width: 12px; height: 12px; border-radius: 3px; transform: rotate(45deg); background: var(--r); flex: none; margin-top: 4px; }
+    #p-d-album .alb-tb { display: block; height: 5px; border-radius: 99px; background: var(--a-surface-3); overflow: hidden; }
+    #p-d-album .alb-tb i { display: block; height: 100%; background: var(--r); border-radius: inherit; }
+    #p-d-album .alb-t-c, #p-d-album .alb-r-c, #p-d-album .alb-hbar .alb-sc { --r: var(--a-soft); --rw: 24%; }
+    #p-d-album .alb-t-r, #p-d-album .alb-r-r, #p-d-album .alb-hbar .alb-sr { --r: var(--a-accent); --rw: 62%; }
+    #p-d-album .alb-t-s, #p-d-album .alb-r-s, #p-d-album .alb-hbar .alb-ss { --r: var(--a-gold); --rw: 80%; }
+    #p-d-album .alb-side { display: flex; flex-direction: column; gap: 14px; justify-content: space-between; min-width: 0; }
     #p-d-album .alb-wid { display: flex; align-items: center; gap: 12px; padding: 12px; }
-    #p-d-album .alb-wid img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; background: var(--a-surface-2); flex: none; }
-    #p-d-album .alb-wid div { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
-    #p-d-album .alb-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    #p-d-album .alb-fil { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
-    #p-d-album .alb-fil .chip { min-height: 36px; padding: 0 12px; font-weight: 600; }
-    #p-d-album .alb-fc { color: var(--a-muted); font-weight: 600; }
-    #p-d-album .alb-test { min-height: 36px; }
+    #p-d-album .alb-wid img { width: 54px; height: 58px; border-radius: 12px; background: var(--a-surface-2); flex: none; }
+    #p-d-album .alb-wid div { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+    #p-d-album .alb-wid small { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; font-weight: 700; color: var(--a-muted); }
+    #p-d-album .alb-wid b { font-size: 15px; }
+    #p-d-album .alb-tools { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    #p-d-album .alb-fil { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+    #p-d-album .alb-fil .chip { min-height: 36px; padding: 6px 13px; font-weight: 600; }
+    #p-d-album .alb-fc { opacity: .7; font-weight: 700; }
+    #p-d-album .alb-test svg { width: 16px; height: 16px; fill: var(--a-gold); }
+    #p-d-album .alb-test { min-height: 38px; }
     #p-d-album .alb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px; }
-    #p-d-album .alb-card { position: relative; display: flex; flex-direction: column; text-align: left; padding: 8px; background: var(--a-surface); color: var(--a-text); border: 1px solid var(--a-line); border-radius: 16px; min-width: 0; transition: transform .2s var(--ease), border-color .2s; }
-    #p-d-album .alb-card:hover { transform: translateY(-2px); border-color: var(--a-line-strong); }
-    #p-d-album .alb-card.alb-on { border-color: var(--a-accent); background: var(--a-accent-soft); }
-    #p-d-album .alb-in { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    #p-d-album .alb-pic { position: relative; display: block; aspect-ratio: 180 / 192; border-radius: 12px; background: var(--a-surface-2); overflow: hidden; margin-bottom: 4px; }
+    #p-d-album .alb-card { position: relative; display: flex; flex-direction: column; text-align: left; padding: 8px 8px 10px; background: var(--a-surface); color: var(--a-text); border: 1.5px solid color-mix(in srgb, var(--r) var(--rw), transparent); border-radius: 16px; min-width: 0; transition: transform .2s var(--ease), border-color .2s, box-shadow .2s; }
+    #p-d-album .alb-card:hover { transform: translateY(-3px); border-color: var(--r); box-shadow: 0 10px 24px color-mix(in srgb, var(--r) 22%, transparent); }
+    #p-d-album .alb-in { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    #p-d-album .alb-pic { position: relative; display: block; aspect-ratio: 180 / 192; border-radius: 11px; background: var(--a-surface-2); overflow: hidden; margin-bottom: 5px; }
+    #p-d-album .alb-r-r:not(.alb-lock) .alb-pic { background: radial-gradient(circle at 50% 62%, color-mix(in srgb, var(--a-accent) 22%, transparent), transparent 70%), var(--a-surface-2); }
+    #p-d-album .alb-r-s:not(.alb-lock) .alb-pic { background: radial-gradient(circle at 50% 62%, color-mix(in srgb, var(--a-gold) 30%, transparent), transparent 70%), var(--a-surface-2); }
     #p-d-album .alb-pic img { display: block; width: 100%; height: 100%; object-fit: contain; }
-    #p-d-album .alb-lock .alb-pic img { filter: brightness(0); opacity: .35; }
-    #p-d-album .alb-lk { position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; display: grid; place-items: center; color: var(--a-muted); }
-    #p-d-album .alb-lk svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-    #p-d-album .alb-inw { position: absolute; left: 4px; top: 4px; font-size: 12px; font-weight: 600; background: var(--a-surface); color: var(--a-text); border-radius: 8px; padding: 0 6px; }
-    #p-d-album .alb-nm { font-weight: 600; font-size: 13px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #p-d-album .alb-lock .alb-pic { background: var(--a-surface-3); }
+    #p-d-album .alb-lock .alb-pic img { filter: brightness(0); opacity: .5; }
+    #p-d-album .alb-lk { position: absolute; right: 6px; top: 6px; width: 24px; height: 24px; border-radius: 8px; background: var(--a-surface); display: grid; place-items: center; }
+    #p-d-album .alb-lk svg { width: 14px; height: 14px; fill: none; stroke: var(--a-muted); stroke-width: 2; stroke-linecap: round; }
+    #p-d-album .alb-inw { position: absolute; left: 6px; top: 6px; font-size: 10px; font-weight: 700; background: var(--a-accent-strong); color: var(--a-on-accent); border-radius: 99px; padding: 1px 7px; }
+    #p-d-album .alb-nm { font-weight: 700; font-size: 13px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #p-d-album .alb-lock .alb-nm { color: var(--a-soft); }
-    #p-d-album .alb-meta { font-size: 12px; color: var(--a-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-    #p-d-album .alb-cond { font-size: 12px; line-height: 1.3; color: var(--a-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    #p-d-album .alb-pg { display: block; height: 4px; border-radius: 2px; background: var(--a-surface-3); overflow: hidden; margin: 4px 0 0; }
+    #p-d-album .alb-rl { font-size: 10.5px; font-weight: 700; color: var(--r); letter-spacing: .03em; }
+    #p-d-album .alb-r-c .alb-rl { color: var(--a-muted); }
+    #p-d-album .alb-dt { font-size: 11.5px; color: var(--a-muted); }
+    #p-d-album .alb-cond { font-size: 11.5px; line-height: 1.3; color: var(--a-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #p-d-album .alb-pg { display: block; height: 6px; border-radius: 99px; background: var(--a-surface-3); overflow: hidden; margin-top: 4px; }
     #p-d-album .alb-pg i { display: block; height: 100%; background: var(--e); border-radius: inherit; }
-    #p-d-album .alb-burst { position: absolute; inset: -4px; border-radius: 18px; border: 2px solid var(--a-gold); pointer-events: none; opacity: 0; z-index: 2; }
-    #p-d-album .alb-empty { grid-column: 1 / -1; }
+    #p-d-album .alb-pq { font-size: 11px; color: var(--a-muted); font-weight: 600; }
+    #p-d-album .alb-burst { position: absolute; inset: -16px; border-radius: 50%; pointer-events: none; opacity: 0; z-index: 2; background: radial-gradient(circle, color-mix(in srgb, var(--a-gold) 90%, transparent) 0, color-mix(in srgb, var(--a-gold) 40%, transparent) 32%, transparent 62%), repeating-conic-gradient(color-mix(in srgb, var(--a-gold) 35%, transparent) 0 5deg, transparent 5deg 30deg); }
+    #p-d-album .alb-empty { grid-column: 1 / -1; color: var(--a-muted); padding: 20px 0; }
 
     #p-d-album .alb-lb { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; }
     #p-d-album .alb-lb[hidden] { display: none; }
-    #p-d-album .alb-bd { position: absolute; inset: 0; background: color-mix(in srgb, var(--a-bg) 85%, transparent); }
-    #p-d-album .alb-box { position: relative; width: min(760px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 16px; }
-    #p-d-album .alb-stage { position: relative; display: grid; place-items: center; padding: 24px 56px; min-height: 340px; background: var(--a-surface-2); }
-    #p-d-album .alb-bimg { width: min(240px, 100%); height: auto; aspect-ratio: 180 / 192; display: block; }
-    #p-d-album .alb-stage.alb-lock .alb-bimg { filter: brightness(0); opacity: .35; }
+    #p-d-album .alb-bd { position: absolute; inset: 0; background: color-mix(in srgb, var(--a-bg) 80%, transparent); backdrop-filter: blur(6px); }
+    #p-d-album .alb-box { position: relative; width: min(780px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); background: var(--a-surface); border: 1.5px solid color-mix(in srgb, var(--r) var(--rw), transparent); border-radius: 22px; box-shadow: var(--a-shadow); }
+    #p-d-album .alb-stage { position: relative; display: grid; place-items: center; padding: 28px 56px; min-height: 340px; background: radial-gradient(circle at 50% 56%, color-mix(in srgb, var(--r) 26%, transparent), transparent 66%), var(--a-surface-2); }
+    #p-d-album .alb-bimg { width: min(250px, 100%); height: auto; aspect-ratio: 180 / 192; display: block; }
+    #p-d-album .alb-stage.alb-lock .alb-bimg { filter: brightness(0); opacity: .5; }
     #p-d-album .alb-ar { position: absolute; top: 50%; margin-top: -20px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-text); display: grid; place-items: center; }
-    #p-d-album .alb-ar:hover { border-color: var(--a-line-strong); }
-    #p-d-album .alb-prev { left: 8px; } #p-d-album .alb-next { right: 8px; }
-    #p-d-album .alb-ar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    #p-d-album .alb-x { position: absolute; right: 8px; top: 8px; width: 36px; height: 36px; }
-    #p-d-album .alb-side2 { padding: 24px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-    #p-d-album .alb-lbtop { display: flex; align-items: center; gap: 8px; padding-right: 40px; }
-    #p-d-album .alb-side2 h3 { margin: 0; font-size: 24px; font-weight: 650; line-height: 1.15; letter-spacing: -.01em; }
+    #p-d-album .alb-ar:hover, #p-d-album .alb-x:hover { border-color: var(--a-accent); }
+    #p-d-album .alb-prev { left: 10px; } #p-d-album .alb-next { right: 10px; }
+    #p-d-album .alb-ar svg, #p-d-album .alb-x svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    #p-d-album .alb-x { position: absolute; right: 10px; top: 10px; width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-text); display: grid; place-items: center; }
+    #p-d-album .alb-side2 { padding: 26px 24px 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    #p-d-album .alb-lbtop { display: flex; align-items: center; gap: 10px; padding-right: 40px; }
+    #p-d-album .alb-rar { font-size: 11.5px; font-weight: 700; color: var(--r); border: 1px solid var(--r); border-radius: 99px; padding: 1px 10px; }
+    #p-d-album .alb-pos { font-size: 12px; }
+    #p-d-album .alb-side2 h3 { margin: 0; font: 800 28px/1.15 var(--fd); letter-spacing: -.02em; }
     #p-d-album .alb-info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-    #p-d-album .alb-info b { font-weight: 650; }
-    #p-d-album .alb-ct { font-size: 15px; font-weight: 600; }
-    #p-d-album .alb-info .alb-pg { height: 6px; border-radius: 3px; }
-    #p-d-album .alb-wbtn { margin-top: auto; display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-text); font-weight: 600; text-align: left; }
-    #p-d-album .alb-wbtn[aria-pressed="true"] { border-color: var(--a-accent); background: var(--a-accent-soft); }
-    #p-d-album .alb-sw { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--a-surface-3); flex: none; transition: background .25s var(--ease); }
-    #p-d-album .alb-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--a-muted); transition: transform .25s var(--ease), background .25s; }
+    #p-d-album .alb-info b { font-weight: 700; }
+    #p-d-album .alb-k { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; font-weight: 700; color: var(--a-muted); }
+    #p-d-album .alb-ct { font-size: 16px; font-weight: 600; }
+    #p-d-album .alb-info .alb-pg { height: 10px; }
+    #p-d-album .alb-wbtn { margin-top: auto; display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-text); font-weight: 650; text-align: left; }
+    #p-d-album .alb-wbtn[aria-pressed="true"] { border-color: var(--a-accent); background: var(--a-accent-soft); color: var(--a-accent); }
+    #p-d-album .alb-sw { position: relative; width: 38px; height: 22px; border-radius: 99px; background: var(--a-surface-3); flex: none; transition: background .25s var(--ease); }
+    #p-d-album .alb-sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--a-muted); transition: transform .25s var(--ease), background .25s; }
     #p-d-album .alb-wbtn[aria-pressed="true"] .alb-sw { background: var(--a-accent-strong); }
     #p-d-album .alb-wbtn[aria-pressed="true"] .alb-sw::after { transform: translateX(16px); background: var(--a-on-accent); }
+    #p-d-album .alb-hint { font-size: 12px; }
 
-    #p-d-album .undo { position: fixed; bottom: 24px; z-index: 70; flex-wrap: wrap; max-width: calc(100vw - 32px); }
-    #p-d-album .undo[hidden] { display: none; }
+    #p-d-album .alb-toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: calc(100vw - 32px); background: var(--a-surface); color: var(--a-text); border: 1px solid var(--a-line); border-radius: 14px; padding: 7px 7px 7px 14px; box-shadow: var(--a-shadow); font-size: 13.5px; }
+    #p-d-album .alb-toast[hidden] { display: none; }
+    #p-d-album .alb-toast.alb-hot { border-color: var(--a-gold); }
+    #p-d-album .alb-toast.alb-hot > span::before { content: "✦ "; color: var(--a-gold); }
+    #p-d-album .alb-ta { background: none; border: 0; border-radius: 8px; padding: 6px 10px; min-height: 36px; color: var(--a-accent); font-weight: 700; }
+    #p-d-album .alb-ta:hover { background: var(--a-accent-soft); }
 
     #p-d-album .alb-scene { align-items: flex-start; }
-    #p-d-album .alb-ph { padding: 12px; height: 560px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-    #p-d-album .alb-ph .bar { flex: none; }
+    #p-d-album .alb-ph { padding: 12px; height: 560px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
     #p-d-album .alb-phh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-    #p-d-album .alb-phh b { font-size: 18px; font-weight: 700; line-height: 1.2; }
+    #p-d-album .alb-phh b { font: 700 18px/1.2 var(--fd); }
+    #p-d-album .alb-phh span { font-weight: 700; color: var(--a-soft); }
     #p-d-album .alb-ph .alb-fil { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; flex: none; }
-    #p-d-album .alb-g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-    #p-d-album .alb-g3 .alb-card { padding: 4px 4px 8px; border-radius: 12px; }
-    #p-d-album .alb-g3 .alb-cond, #p-d-album .alb-g3 .alb-meta { display: none; }
-    #p-d-album .alb-g3 .alb-nm { font-size: 12px; }
-    #p-d-album .alb-g3 .alb-lk { width: 18px; height: 18px; }
+    #p-d-album .alb-g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    #p-d-album .alb-g3 .alb-card { padding: 5px 5px 7px; border-radius: 12px; }
+    #p-d-album .alb-g3 .alb-cond, #p-d-album .alb-g3 .alb-dt, #p-d-album .alb-g3 .alb-rl { display: none; }
+    #p-d-album .alb-g3 .alb-nm { font-size: 11px; }
+    #p-d-album .alb-g3 .alb-pq { font-size: 10px; }
+    #p-d-album .alb-g3 .alb-lk { width: 18px; height: 18px; right: 4px; top: 4px; border-radius: 6px; }
     #p-d-album .alb-g3 .alb-lk svg { width: 11px; height: 11px; }
-    #p-d-album .alb-g3 .alb-inw { font-size: 10px; padding: 0 4px; }
+    #p-d-album .alb-g3 .alb-inw { font-size: 8.5px; padding: 0 5px; left: 4px; top: 4px; }
 
-    @media (max-width: 860px) { #p-d-album .alb-top { grid-template-columns: minmax(0, 1fr); } }
+    @media (max-width: 860px) { #p-d-album .alb-top { grid-template-columns: 1fr; } }
     @media (max-width: 600px) {
+      #p-d-album .alb-tiers { grid-template-columns: 1fr; }
+      #p-d-album .alb-n { font-size: 44px; }
       #p-d-album .alb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-      #p-d-album .alb-card { padding: 4px 4px 8px; border-radius: 12px; }
-      #p-d-album .alb-cond { display: none; }
-      #p-d-album .alb-nm { font-size: 12px; }
+      #p-d-album .alb-card { padding: 5px 5px 7px; border-radius: 12px; }
+      #p-d-album .alb-cond, #p-d-album .alb-rl { display: none; }
+      #p-d-album .alb-nm { font-size: 11.5px; }
       #p-d-album .alb-test { width: 100%; justify-content: center; }
-      #p-d-album .alb-box { grid-template-columns: minmax(0, 1fr); }
-      #p-d-album .alb-stage { min-height: 0; padding: 16px 56px; }
+      #p-d-album .alb-box { grid-template-columns: 1fr; }
+      #p-d-album .alb-stage { min-height: 0; padding: 22px 56px; }
       #p-d-album .alb-bimg { width: min(170px, 100%); }
-      #p-d-album .alb-side2 { padding: 16px; }
-      #p-d-album .alb-side2 h3 { font-size: 20px; }
+      #p-d-album .alb-side2 { padding: 18px; }
+      #p-d-album .alb-side2 h3 { font-size: 23px; }
     }
   </style>
 
@@ -271,11 +299,9 @@
   }
   function shortD(c) { var p = c.d.split(" "); return p[0] + " " + p[1].slice(0, 3); }
   function title(c) { return isOpen(c) || c.cond ? c.n : "Секрет"; }
-  function rw(c) { return c.r === "c" ? "" : RAR[c.r][0].toLowerCase(); }
   function bar(c) { return '<span class="alb-pg" style="--e: var(' + ENT[c.e] + ')"><i style="width:' + Math.round(ratio(c) * 100) + '%"></i></span>'; }
-  function meta(a) { a = a.filter(Boolean); return a.length ? '<span class="alb-meta">' + a.join(" · ") + "</span>" : ""; }
   function label(c) {
-    if (isOpen(c)) return c.n + ", " + RAR[c.r][0].toLowerCase() + ", открыта " + c.d + (S.w === c.id ? ", стоит в виджете" : "");
+    if (isOpen(c)) return c.n + ", " + RAR[c.r][0].toLowerCase() + ", открыта " + c.d;
     return title(c) + ", закрыта" + (c.need ? ": " + c.cond + ", " + c.have + " из " + c.need : "");
   }
   function inner(c) {
@@ -283,17 +309,18 @@
     if (!isOpen(c)) h += '<span class="alb-lk">' + LOCK + "</span>";
     if (S.w === c.id) h += '<span class="alb-inw">в виджете</span>';
     h += '</span><span class="alb-nm">' + title(c) + "</span>";
-    if (isOpen(c)) h += meta([shortD(c), rw(c)]);
-    else if (c.need) h += '<span class="alb-cond">' + c.cond + "</span>" + bar(c) + meta([c.have + " из " + c.need, rw(c)]);
-    else h += '<span class="alb-cond">Откроется сама, в нужный момент</span>' + meta([rw(c)]);
+    if (c.r !== "c") h += '<span class="alb-rl">◆ ' + RAR[c.r][0] + "</span>";
+    if (isOpen(c)) h += '<span class="alb-dt">' + shortD(c) + "</span>";
+    else if (c.need) h += '<span class="alb-cond">' + c.cond + "</span>" + bar(c) + '<span class="alb-pq num">' + c.have + " из " + c.need + "</span>";
+    else h += '<span class="alb-cond">Откроется сама, в нужный момент</span>';
     return '<span class="alb-in">' + h + "</span>";
   }
   function card(c) {
-    return '<button type="button" class="alb-card' + (isOpen(c) ? "" : " alb-lock") + (S.w === c.id ? " alb-on" : "") + '" data-id="' + c.id + '" aria-label="' + label(c) + '">' + inner(c) + '<i class="alb-burst" aria-hidden="true"></i></button>';
+    return '<button type="button" class="alb-card alb-r-' + c.r + (isOpen(c) ? "" : " alb-lock") + '" data-id="' + c.id + '" aria-label="' + label(c) + '">' + inner(c) + '<i class="alb-burst" aria-hidden="true"></i></button>';
   }
   function renderGrid(k) {
     var a = list(S.f[k]);
-    $('[data-grid="' + k + '"]').innerHTML = a.length ? a.map(card).join("") : '<p class="empty alb-empty">Здесь пока пусто.</p>';
+    $('[data-grid="' + k + '"]').innerHTML = a.length ? a.map(card).join("") : '<p class="alb-empty">Здесь пока пусто.</p>';
   }
   function renderFil(k) {
     $('[data-fil="' + k + '"]').innerHTML = FIL.map(function (f) {
@@ -302,19 +329,20 @@
   }
   function renderHead() {
     var n = nOpen(), all = C.length;
-    $(".alb-n").textContent = n; $(".alb-of").textContent = "из " + all;
+    $(".alb-n").textContent = n; $(".alb-of").textContent = " из " + all;
     $("[data-phn]").textContent = n + " из " + all;
     $$("[data-hbar]").forEach(function (b) {
-      b.innerHTML = '<i style="width:' + (n / all * 100).toFixed(1) + '%"></i>';
-      if (b.getAttribute("role")) b.setAttribute("aria-label", "Открыто " + n + " из " + all);
+      b.innerHTML = ["c", "r", "s"].map(function (r) { return '<i class="alb-s' + r + '" style="width:' + (nOpen(r) / all * 100).toFixed(2) + '%"></i>'; }).join("");
+      b.setAttribute("aria-label", "Открыто " + n + " из " + all);
     });
     $("[data-tiers]").innerHTML = ["c", "r", "s"].map(function (r) {
-      return '<li class="alb-tier"><b>' + RAR[r][1] + '</b><span class="num small">' + nOpen(r) + " из " + nAll(r) + '</span><span class="small"><span class="alb-gold" aria-hidden="true">✦</span> За все: ' + RAR[r][2] + "</span></li>";
+      var o = nOpen(r), t = nAll(r);
+      return '<div class="alb-tier alb-t-' + r + '"><span class="alb-gem" aria-hidden="true"></span><div><b>' + RAR[r][1] + '</b><span class="num"><em>' + o + "</em> из " + t + '</span><span class="alb-tb"><i style="width:' + Math.round(o / t * 100) + '%"></i></span><small>За все: ' + RAR[r][2] + "</small></div></div>";
     }).join("");
     var near = list("soon")[0];
     $("[data-near]").innerHTML = near ? "Ближе всего: <b>" + near.n + "</b>, осталось " + (near.need - near.have) + " из " + near.need : "Все близкие карточки открыты";
     var w = S.w && find(S.w);
-    $("[data-wid]").innerHTML = '<img src="maid/' + (w ? w.img : "idle") + '.webp" alt=""><div><span class="label">В виджете на главной</span><b>' + (w ? "«" + w.n + "»" : "Обычный набор") + "</b>" + (w ? "" : '<span class="small">Рина сама выбирает анимацию</span>') + "</div>" + (w ? '<button type="button" class="btn quiet" data-wopen>Открыть</button>' : "");
+    $("[data-wid]").innerHTML = '<img src="maid/' + (w ? w.img : "idle") + '.webp" alt=""><div><small>На главной в виджете</small><b>' + (w ? "«" + w.n + "»" : "Обычный набор") + "</b>" + (w ? "" : '<span class="muted">Рина сама выбирает анимацию</span>') + "</div>" + (w ? '<button type="button" class="btn ghost" data-wopen>Открыть</button>' : "");
     $("[data-wimg]").src = "maid/" + (w ? w.img : "idle") + ".webp";
     $("[data-wbub]").textContent = w ? "Сейчас на главной: «" + w.n + "»" : "Обычный набор анимаций";
   }
@@ -330,20 +358,21 @@
   }
   function riseCards(k) {
     $$('[data-grid="' + k + '"] .alb-card').forEach(function (el, i) {
-      el.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 400, delay: Math.min(i, 30) * 18, easing: EASE, fill: "backwards" });
+      el.animate([{ opacity: 0, transform: "translateY(12px) scale(.96)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: Math.min(i, 30) * 18, easing: EASE, fill: "backwards" });
     });
   }
 
   var toastEl = $(".alb-toast"), tt = 0, acts = [];
-  function toast(msg, a) {
+  function toast(msg, a, hot) {
     acts = a || [];
-    toastEl.innerHTML = "<span>" + msg + "</span>" + acts.map(function (x, i) { return '<button type="button" data-i="' + i + '">' + x[0] + "</button>"; }).join("");
+    toastEl.innerHTML = "<span>" + msg + "</span>" + acts.map(function (x, i) { return '<button type="button" class="alb-ta" data-i="' + i + '">' + x[0] + "</button>"; }).join("");
+    toastEl.classList.toggle("alb-hot", !!hot);
     toastEl.hidden = false;
-    if (!M.reduce) toastEl.animate([{ transform: "translateY(16px)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 300, easing: EASE });
+    if (!M.reduce) toastEl.animate([{ transform: "translate(-50%, 18px)", opacity: 0 }, { transform: "translate(-50%, 0)", opacity: 1 }], { duration: 320, easing: EASE });
     clearTimeout(tt); tt = setTimeout(function () { toastEl.hidden = true; }, 7000);
   }
   toastEl.addEventListener("click", function (e) {
-    var b = e.target.closest("button[data-i]"); if (!b) return;
+    var b = e.target.closest(".alb-ta"); if (!b) return;
     toastEl.hidden = true; var f = acts[+b.dataset.i]; if (f) f[1]();
   });
 
@@ -358,20 +387,21 @@
   function fillLB() {
     var c = LB.list[LB.i], op = isOpen(c);
     LB.id = c.id;
+    box.className = "alb-box alb-r-" + c.r;
     $(".alb-stage").classList.toggle("alb-lock", !op);
     $(".alb-bimg").src = "maid/" + c.img + ".webp";
     $(".alb-bimg").alt = op ? "Рина: " + c.n : "Силуэт закрытой анимации";
-    $(".alb-rar").textContent = RAR[c.r][0];
+    $(".alb-rar").textContent = "◆ " + RAR[c.r][0];
     $(".alb-pos").textContent = (LB.i + 1) + " из " + LB.list.length;
     $("#d-album-lbt").textContent = title(c);
     var h;
-    if (op) h = '<p>Открыта <b>' + c.d + '</b> в <b class="num">' + c.t + '</b></p><p class="small">За что: ' + c.how + "</p>";
-    else if (c.need) h = '<p class="label">Как открыть</p><p class="alb-ct">' + c.cond + "</p>" + bar(c) + '<p class="small num"><b>' + c.have + " из " + c.need + "</b> · осталось " + (c.need - c.have) + "</p>";
-    else h = '<p class="label">Секрет</p><p class="small">Эта карточка откроется сама, когда случится нужный момент. Подсказок нет.</p>';
+    if (op) h = '<p>Открыта <b>' + c.d + '</b> в <b class="num">' + c.t + '</b></p><p class="soft">За что: ' + c.how + "</p>";
+    else if (c.need) h = '<p class="alb-k">Как открыть</p><p class="alb-ct">' + c.cond + "</p>" + bar(c) + '<p class="num"><b>' + c.have + " из " + c.need + "</b> · осталось " + (c.need - c.have) + "</p>";
+    else h = '<p class="alb-k">Секрет</p><p class="soft">Эта карточка откроется сама, когда случится нужный момент. Подсказок нет.</p>';
     $(".alb-info").innerHTML = h;
     var wb = $(".alb-wbtn"), on = S.w === c.id;
     wb.hidden = !op; wb.setAttribute("aria-pressed", on);
-    $(".alb-wtx").textContent = on ? "В виджете на главной" : "Поставить в виджет на главную";
+    $(".alb-wtx").textContent = on ? "В виджете" : "Поставить в виджет на главную";
   }
   function openLB(k, id, from) {
     LB.k = k; LB.list = list(S.f[k]);
@@ -389,7 +419,7 @@
       { transform: "perspective(800px) translate(0,0) scale(1) rotateY(0deg)" }
     ], { duration: 680, easing: EASE });
     $(".alb-bd").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
-    $(".alb-side2").animate([{ opacity: 0, transform: "translateX(16px)" }, { opacity: 1, transform: "none" }], { duration: 400, delay: 260, easing: EASE, fill: "backwards" });
+    $(".alb-side2").animate([{ opacity: 0, transform: "translateX(16px)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 260, easing: EASE, fill: "backwards" });
   }
   function closeLB() {
     var done = function () {
@@ -397,8 +427,8 @@
       var el = $('[data-grid="' + LB.k + '"] .alb-card[data-id="' + LB.id + '"]'); if (el) el.focus();
     };
     if (M.reduce) return done();
-    var an = box.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.96)" }], { duration: 200, easing: EASE });
-    $(".alb-bd").animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
+    var an = box.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.96)" }], { duration: 180, easing: EASE });
+    $(".alb-bd").animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180 });
     an.onfinish = done;
   }
   function nav(d) {
@@ -425,10 +455,10 @@
       var n = $(".alb-n"); renderHead(); countTo(n, before, before + 1, 500);
       ["main", "ph"].forEach(renderFil);
       testBtn.querySelector("span").textContent = "Показать ещё раз";
-      toast("✦ Новая анимация: Чаепитие", [
+      toast("<b>Новая анимация: Чаепитие</b>", [
         ["Посмотреть", function () { var el = $('[data-grid="main"] .alb-card[data-id="tea"]'); openLB("main", "tea", el); }],
         ["В виджет", function () { setWidget("tea"); }]
-      ]);
+      ], true);
       busy = false;
     }
     if (!cards.length) { open(); renderAll(); finish(); return; }
@@ -437,8 +467,8 @@
     busy = true;
     setTimeout(function () {
       cards.forEach(function (el) {
-        el.animate([{ transform: "none" }, { transform: "scale(1.04) rotate(-2deg)" }, { transform: "scale(1.05) rotate(2deg)" }, { transform: "scale(1.03) rotate(-1deg)" }, { transform: "none" }], { duration: 480, easing: "ease-in-out" });
-        el.querySelector(".alb-burst").animate([{ opacity: 0, transform: "scale(.92)" }, { opacity: 1, transform: "scale(1)", offset: .35 }, { opacity: 0, transform: "scale(1.08)" }], { duration: 820, delay: 380, easing: "ease-out" });
+        el.animate([{ transform: "none" }, { transform: "scale(1.05) rotate(-2deg)" }, { transform: "scale(1.06) rotate(2deg)" }, { transform: "scale(1.04) rotate(-1deg)" }, { transform: "none" }], { duration: 480, easing: "ease-in-out" });
+        el.querySelector(".alb-burst").animate([{ opacity: 0, transform: "scale(.3) rotate(0deg)" }, { opacity: 1, transform: "scale(1.05) rotate(25deg)", offset: .35 }, { opacity: 0, transform: "scale(1.7) rotate(60deg)" }], { duration: 820, delay: 380, easing: "ease-out" });
       });
       setTimeout(function () {
         open();
@@ -446,7 +476,7 @@
           el.classList.remove("alb-lock");
           el.setAttribute("aria-label", label(c));
           el.querySelector(".alb-in").outerHTML = inner(c);
-          el.querySelector("img").animate([{ filter: "brightness(3) saturate(0)", transform: "scale(1.12)" }, { filter: "brightness(1) saturate(1)", transform: "scale(1)" }], { duration: 650, easing: EASE });
+          el.querySelector("img").animate([{ filter: "brightness(3) saturate(0)", opacity: 1, transform: "scale(1.18)" }, { filter: "brightness(1) saturate(1)", opacity: 1, transform: "scale(1)" }], { duration: 650, easing: EASE });
         });
         finish();
       }, 380 + 290);
@@ -477,9 +507,10 @@
     if (M.reduce) return;
     countTo($(".alb-n"), 0, nOpen(), 900);
     growBars("[data-hbar] i", 100);
+    growBars(".alb-tb i", 250);
     riseCards("main"); riseCards("ph");
-    growBars("[data-grid] .alb-pg i", 500);
-    $(".rina p").animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 400, delay: 600, easing: EASE, fill: "backwards" });
+    growBars('[data-grid] .alb-pg i', 500);
+    $(".rina p").animate([{ opacity: 0, transform: "translateY(8px) scale(.96)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 600, easing: EASE, fill: "backwards" });
   }
   renderAll();
   M.onSeen(root, play);

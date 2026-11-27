@@ -22,26 +22,26 @@
         <button type="button" class="btn primary report-go" data-story><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l12 8-12 8z"/></svg>Показать как историю</button>
       </div>
       <div class="rina report-say">
-        <img src="maid/analysis.webp" alt="Рина" width="48" height="48">
-        <p><span class="report-head" data-head>Ноябрь получился ровнее октября.</span><span class="report-sub" data-sub></span></p>
+        <img src="maid/analysis.webp" alt="Рина">
+        <p><span class="report-who" data-who>Рина об этом месяце</span><span class="report-head" data-head>Ноябрь получился ровнее октября.</span><span class="report-sub" data-sub></span></p>
       </div>
     </section>
 
     <section aria-label="Показатели периода">
-      <div class="report-sec"><h4 class="label">Показатели</h4><span class="small">Нажмите на плитку, чтобы увидеть каждый день</span></div>
+      <div class="report-sec"><h4>Показатели</h4><span class="muted">Нажмите на плитку, чтобы увидеть каждый день</span></div>
       <div class="report-tiles" data-tiles></div>
     </section>
 
     <div class="report-low">
       <section class="card report-calc" aria-label="Календарь настроения">
-        <div class="report-sec"><h4 class="h" data-calt>Календарь настроения</h4><span class="report-leg" aria-hidden="true">Плохо<i class="report-l1"></i><i class="report-l2"></i><i class="report-l3"></i><i class="report-l4"></i><i class="report-l5"></i>Отлично</span></div>
+        <div class="report-sec"><h4 data-calt>Календарь настроения</h4><span class="report-leg" aria-hidden="true">Плохо<i class="report-l1"></i><i class="report-l2"></i><i class="report-l3"></i><i class="report-l4"></i><i class="report-l5"></i>Отлично</span></div>
         <div class="report-calw">
           <div class="report-calbox" data-cal></div>
           <div class="report-day" data-day aria-live="polite"></div>
         </div>
       </section>
       <section class="report-links" aria-label="Связи, которые заметила Рина">
-        <div class="report-sec"><h4 class="label">Связи, которые заметила Рина</h4><span class="small" data-lsrc></span></div>
+        <div class="report-sec"><h4>Связи, которые заметила Рина</h4><span class="muted" data-lsrc></span></div>
         <div class="report-lk" data-links></div>
       </section>
     </div>
@@ -51,7 +51,7 @@
     <div class="report-story" data-sto hidden role="dialog" aria-modal="true" aria-label="Итоги как история">
       <div class="report-sbox" data-sbox tabindex="-1">
         <div class="report-prog" data-prog></div>
-        <button type="button" class="icon-btn report-x" data-sx aria-label="Закрыть историю"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button type="button" class="report-x" data-sx aria-label="Закрыть историю"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         <div class="report-stage" data-stage></div>
         <div class="report-sctl">
           <button type="button" class="report-sarr" data-sp aria-label="Предыдущая карточка"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -64,17 +64,17 @@
 
   <div class="notes">
     <div><h4>Что изменилось</h4><ul>
-      <li>Плитки стали спокойными: серое название, одно число, слово «лучше» или «хуже» и тонкая линия цвета данных. Убраны цветные точки, заливка под линией, цветная рамка и капслок.</li>
-      <li>Убраны цветной градиент в шапке и крупный заголовок другим шрифтом. Итог периода теперь фраза Рины в две строки, картинка 48 px в круге.</li>
-      <li>Одна заливная кнопка на экран: «Показать как историю». В раскрытой плитке «Открыть раздел» стала обычной кнопкой, «Свернуть» тихой.</li>
-      <li>Календарь настроения на одной шкале цвета настроения. Кружки оценки серые, выбранный выделен фиолетовым. У фактов дня убраны шесть цветных точек.</li>
-      <li>«Полезно» и «Скрыть» у связей стали значками и появляются при наведении или по нажатию на карточку. Слова в выводе Рины больше не красятся.</li>
-      <li>В истории убран цветной фон, число по общей шкале, Рина в том же круге 48 px.</li>
+      <li>Вместо пяти вкладок со своими графиками один экран-итог: семь плиток, у каждой число, стрелка со словом «лучше» или «хуже» и маленький график.</li>
+      <li>Плитка раскрывается на месте: график по дням с подсказкой и переход в подробный раздел.</li>
+      <li>Оценка дня ставится и правится в календаре настроения, любое изменение можно отменить.</li>
+      <li>Рина сама находит связи (сон и оценка, шаги и оценка, игры и оценка) и пишет их обычными словами.</li>
+      <li>Шаги и спорт больше не живут отдельно: шаги стоят в общей сетке.</li>
+      <li>Итоги можно пролистать как короткую историю из пяти карточек.</li>
     </ul></div>
     <div><h4>Анимации</h4><ul>
-      <li>Числа в плитках набегают от нуля, линии прорисовываются слева направо: глаз сразу видит, куда шёл месяц.</li>
+      <li>Числа в плитках набегают от нуля, графики прорисовываются слева направо: глаз сразу видит, куда шёл месяц.</li>
       <li>Календарь заполняется волной от первого дня к последнему.</li>
-      <li>Столбики в раскрытой плитке и полосы в связях вырастают, при выборе дня показывается подсказка.</li>
+      <li>Столбики в раскрытой плитке и в связях вырастают, при выборе дня показывается подсказка.</li>
       <li>В истории каждая карточка въезжает со стороны листания, большое число набегает.</li>
       <li>Поставленная оценка коротко вспыхивает в клетке и сразу меняет среднее в плитке.</li>
     </ul></div>
@@ -85,76 +85,92 @@
       <li>Фразу-итог Рины можно собирать по правилам без модели, как здесь, и лишь иногда просить у модели.</li>
     </ul></div>
   </div>
+
   <style>
+
 #p-d-report [hidden]{display:none !important}
 #p-d-report .app{overflow:clip;--report-step:color-mix(in srgb,var(--c-pc) 45%,var(--c-habit))}
-#p-d-report .app-content{gap:24px;position:static}
+#p-d-report .app-content{gap:20px;position:static}
 #p-d-report svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#p-d-report .report-hero{display:flex;flex-direction:column;gap:16px;min-width:0}
-#p-d-report .report-bar{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
-#p-d-report .report-bar .seg button{min-height:32px;padding:4px 12px}
+#p-d-report .report-hero{border-radius:20px;border:1px solid var(--a-line);padding:16px 20px 20px;display:flex;flex-direction:column;gap:16px;background:radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--c-mood) 16%,transparent),transparent 55%),var(--a-surface);min-width:0}
+#p-d-report .report-bar{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap}
+#p-d-report .report-bar .seg button{min-height:32px;padding:4px 13px}
 #p-d-report .report-nav{display:flex;align-items:center;gap:4px}
-#p-d-report .report-arr{width:36px;height:36px;border-radius:var(--a-r-xs);border:0;background:none;color:var(--a-muted);display:grid;place-items:center;padding:0}
-#p-d-report .report-arr:hover:not(:disabled){background:var(--a-surface-2);color:var(--a-text)}
-#p-d-report .report-arr:disabled{opacity:.35;cursor:default}
+#p-d-report .report-arr{width:36px;height:36px;border-radius:10px;border:1px solid var(--a-line);background:var(--a-surface-2);color:var(--a-text);display:grid;place-items:center;padding:0}
+#p-d-report .report-arr:disabled{opacity:.4;cursor:default}
 #p-d-report .report-arr svg{width:18px;height:18px}
-#p-d-report .report-plab{font-weight:650;min-width:128px;text-align:center;font-variant-numeric:tabular-nums}
-#p-d-report .report-go{margin-left:auto;min-height:36px}
-#p-d-report .report-go svg{width:12px;height:12px;fill:currentColor;stroke:none}
-#p-d-report .report-say p{display:flex;flex-direction:column;gap:2px;max-width:72ch}
-#p-d-report .report-head{font-weight:650}
-#p-d-report .report-sub{color:var(--a-soft)}
-#p-d-report .report-say.report-new p{animation:d-report-rise .45s var(--ease) both}
-#p-d-report .report-sec{display:flex;align-items:baseline;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;margin-bottom:8px}
-#p-d-report .report-sec h4{margin:0}
+#p-d-report .report-plab{font-weight:700;min-width:128px;text-align:center;font-variant-numeric:tabular-nums}
+#p-d-report .report-go{margin-left:auto;min-height:38px}
+#p-d-report .report-go svg{width:14px;height:14px;fill:currentColor;stroke:none}
+#p-d-report .report-say img{width:86px;height:92px}
+#p-d-report .report-say p{background:none;padding:0;display:flex;flex-direction:column;gap:6px}
+#p-d-report .report-who{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-mood)}
+#p-d-report .report-head{font:800 clamp(22px,3vw,32px)/1.15 var(--fd);letter-spacing:-.02em;color:var(--a-text);text-wrap:balance}
+#p-d-report .report-sub{color:var(--a-soft);font-size:14.5px;max-width:64ch}
+#p-d-report .report-say.report-new .report-head,#p-d-report .report-say.report-new .report-sub{animation:d-report-rise .55s var(--ease) both}
+#p-d-report .report-say.report-new .report-sub{animation-delay:.12s}
+#p-d-report .report-sec{display:flex;align-items:baseline;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;margin-bottom:10px}
+#p-d-report .report-sec h4{margin:0;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--a-muted)}
+#p-d-report .report-sec > span{font-size:12.5px}
 #p-d-report .report-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-#p-d-report .report-tile{text-align:left;background:var(--a-surface);border:1px solid var(--a-line);border-radius:var(--a-r);padding:12px 16px 8px;display:flex;flex-direction:column;gap:4px;min-width:0;min-height:136px;color:var(--a-text);transition:border-color .2s,background-color .2s}
-#p-d-report .report-tile:hover{border-color:var(--a-line-strong)}
-#p-d-report .report-tile[aria-expanded="true"]{border-color:var(--a-accent);background:var(--a-accent-soft)}
+#p-d-report .report-tile{position:relative;text-align:left;background:var(--a-surface);border:1px solid var(--a-line);border-radius:16px;padding:14px 16px 10px;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:150px;color:var(--a-text);transition:border-color .2s,background-color .2s,transform .2s var(--ease)}
+#p-d-report .report-tile:hover{border-color:var(--rc);transform:translateY(-1px)}
+#p-d-report .report-tile[aria-expanded="true"]{border-color:var(--rc);background:color-mix(in srgb,var(--rc) 8%,var(--a-surface));box-shadow:inset 0 0 0 1px var(--rc)}
 #p-d-report .report-tile.report-hot{grid-column:span 2}
-#p-d-report .report-tl{display:flex;align-items:baseline;gap:8px;min-width:0}
-#p-d-report .report-tl em{font-style:normal;font-size:12px;color:var(--a-muted);margin-left:auto;white-space:nowrap}
-#p-d-report .report-tv{margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#p-d-report .report-dl{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;font-size:12px;min-width:0}
+#p-d-report .report-tl{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--a-muted);display:flex;align-items:center;gap:7px;min-width:0}
+#p-d-report .report-tl i{width:8px;height:8px;border-radius:50%;background:var(--rc);flex:none}
+#p-d-report .report-tl em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:500;margin-left:auto;white-space:nowrap}
+#p-d-report .report-tv{font:800 27px/1.1 var(--fd);letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#p-d-report .report-tv small{font:600 13px var(--f);color:var(--a-muted);letter-spacing:0;margin:0 4px 0 2px}
+#p-d-report .report-hot .report-tv{font-size:40px}
+#p-d-report .report-dl{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;font-size:12.5px;min-width:0}
+#p-d-report .report-dw{font-weight:700;white-space:nowrap}
+#p-d-report .report-dw.good{color:var(--a-ok)}
+#p-d-report .report-dw.bad{color:var(--a-bad)}
+#p-d-report .report-dw.same{color:var(--a-muted)}
 #p-d-report .report-dx{color:var(--a-muted)}
-#p-d-report .report-sp{display:block;margin-top:auto;padding-top:8px;clip-path:inset(0 0 0 0);transition:clip-path .9s var(--ease)}
-#p-d-report .report-sp svg{width:100%;height:32px;display:block;overflow:visible}
-#p-d-report .report-hot .report-sp svg{height:44px}
-#p-d-report .report-sp path{vector-effect:non-scaling-stroke;stroke:var(--rc);stroke-width:2}
+#p-d-report .report-sp{display:block;margin-top:auto;padding-top:6px;clip-path:inset(0 0 0 0);transition:clip-path .9s var(--ease)}
+#p-d-report .report-sp svg{width:100%;height:36px;display:block;overflow:visible}
+#p-d-report .report-hot .report-sp svg{height:50px}
+#p-d-report .report-sp path{vector-effect:non-scaling-stroke}
+#p-d-report .report-sp .report-sa{fill:color-mix(in srgb,var(--rc) 16%,transparent);stroke:none}
+#p-d-report .report-sp .report-sl{stroke:var(--rc);stroke-width:2}
 #p-d-report .report-pre .report-sp{clip-path:inset(0 100% 0 0);transition:none}
-#p-d-report .report-det{grid-column:1 / -1;background:var(--a-surface);border:1px solid var(--a-line);border-radius:var(--a-r);padding:16px;display:flex;flex-direction:column;gap:12px;animation:d-report-open .35s var(--ease) both;min-width:0}
-#p-d-report .report-dh{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+#p-d-report .report-det{grid-column:1 / -1;background:var(--a-surface);border:1px solid var(--rc);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;animation:d-report-open .35s var(--ease) both;min-width:0}
+#p-d-report .report-dh{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap}
+#p-d-report .report-dh b{font:700 16px/1.2 var(--fd)}
+#p-d-report .report-dh .report-dot{width:10px;height:10px;border-radius:50%;background:var(--rc)}
 #p-d-report .report-dh .sp{flex:1}
 #p-d-report .report-chart{display:grid;grid-template-columns:52px minmax(0,1fr);gap:0 8px}
-#p-d-report .report-ya{position:relative;height:168px;font-size:12px;color:var(--a-muted)}
+#p-d-report .report-ya{position:relative;height:170px;font-size:11px;color:var(--a-muted)}
 #p-d-report .report-ya span{position:absolute;right:0;transform:translateY(-50%);white-space:nowrap;font-variant-numeric:tabular-nums}
-#p-d-report .report-pl{position:relative;height:168px;outline-offset:4px;touch-action:pan-y;cursor:crosshair}
+#p-d-report .report-pl{position:relative;height:170px;outline-offset:4px;touch-action:pan-y;cursor:crosshair}
 #p-d-report .report-gl{position:absolute;left:0;right:0;border-top:1px solid var(--a-grid)}
-#p-d-report .report-avg{position:absolute;left:0;right:0;border-top:1px dashed var(--a-muted)}
-#p-d-report .report-avg span{position:absolute;right:0;bottom:4px;font-size:12px;color:var(--a-soft);background:var(--a-surface);padding:0 4px;border-radius:4px}
+#p-d-report .report-avg{position:absolute;left:0;right:0;border-top:1.5px dashed var(--a-soft);opacity:.7}
+#p-d-report .report-avg span{position:absolute;right:0;bottom:3px;font-size:11px;color:var(--a-soft);background:var(--a-surface);padding:0 4px;border-radius:4px}
 #p-d-report .report-bs{position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px}
 #p-d-report .report-b{flex:1;min-width:0;height:var(--h);border-radius:4px 4px 1px 1px;background:color-mix(in srgb,var(--rc) 62%,transparent);transform-origin:bottom;transition:transform .6s var(--ease) calc(var(--n) * 14ms),background-color .15s}
 #p-d-report .report-b.on{background:var(--rc)}
 #p-d-report .report-b.none{background:none;border-bottom:2px dotted var(--a-line);height:0}
 #p-d-report .report-pre .report-b,#p-d-report .report-det.report-pre .report-b{transform:scaleY(0);transition:none}
-#p-d-report .report-tip{position:absolute;bottom:calc(100% + 8px);transform:translateX(-50%);background:var(--a-text);color:var(--a-bg);font-size:12px;font-weight:600;padding:4px 8px;border-radius:var(--a-r-xs);white-space:nowrap;pointer-events:none;z-index:2}
-#p-d-report .report-xa{grid-column:2;display:flex;gap:2px;font-size:12px;color:var(--a-muted);margin-top:4px}
+#p-d-report .report-tip{position:absolute;bottom:calc(100% + 6px);transform:translateX(-50%);background:var(--a-text);color:var(--a-bg);font-size:12px;font-weight:600;padding:4px 9px;border-radius:8px;white-space:nowrap;pointer-events:none;z-index:2}
+#p-d-report .report-xa{grid-column:2;display:flex;gap:2px;font-size:11px;color:var(--a-muted);margin-top:5px}
 #p-d-report .report-xa span{flex:1;min-width:0;text-align:center;white-space:nowrap;overflow:visible}
 #p-d-report .report-low{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
-#p-d-report .report-leg{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--a-muted)}
-#p-d-report .report-leg i{width:12px;height:12px;border-radius:4px}
+#p-d-report .report-leg{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--a-muted)}
+#p-d-report .report-leg i{width:14px;height:14px;border-radius:4px}
 #p-d-report .report-leg i:first-child{margin-left:4px}
 #p-d-report .report-leg i:last-child{margin-right:4px}
-#p-d-report .report-calw{display:flex;gap:24px;flex-wrap:wrap}
+#p-d-report .report-calw{display:flex;gap:18px;flex-wrap:wrap}
 #p-d-report .report-calbox{flex:1 1 290px;min-width:0}
-#p-d-report .report-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+#p-d-report .report-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 #p-d-report .report-cal.report-yr{grid-template-columns:repeat(4,minmax(0,1fr))}
-#p-d-report .report-wd{font-size:12px;color:var(--a-muted);text-align:center;padding-bottom:4px}
-#p-d-report .report-c{min-height:40px;aspect-ratio:1 / .9;border-radius:var(--a-r-xs);border:1px solid transparent;background:var(--a-surface-2);color:var(--a-text);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;padding:0;position:relative}
-#p-d-report .report-yr .report-c{aspect-ratio:auto;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-#p-d-report .report-yr .report-c small{font-size:12px;font-weight:600;opacity:.8}
-#p-d-report .report-c.report-l0{border:1px dashed var(--a-line);background:none;color:var(--a-muted)}
-#p-d-report .report-c.report-fut{background:none;border:1px dashed var(--a-line);color:var(--a-faint)}
+#p-d-report .report-wd{font-size:11px;color:var(--a-muted);text-align:center;font-weight:600;padding-bottom:2px}
+#p-d-report .report-c{min-height:40px;aspect-ratio:1 / .9;border-radius:10px;border:1.5px solid transparent;background:var(--a-surface-2);color:var(--a-text);font-size:13px;font-weight:650;font-variant-numeric:tabular-nums;padding:0;position:relative}
+#p-d-report .report-yr .report-c{aspect-ratio:auto;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:12.5px}
+#p-d-report .report-yr .report-c small{font-size:11px;font-weight:600;opacity:.8}
+#p-d-report .report-c.report-l0{border:1.5px dashed var(--a-line);background:none;color:var(--a-muted)}
+#p-d-report .report-c.report-fut{background:none;border:1.5px dashed var(--a-grid);color:var(--a-muted);opacity:.6}
 #p-d-report .report-c.report-out{visibility:hidden}
 #p-d-report .report-c.report-sel{box-shadow:0 0 0 2px var(--a-bg),0 0 0 4px var(--a-accent)}
 #p-d-report .report-c.report-wk{border-color:var(--a-accent)}
@@ -162,63 +178,69 @@
 #p-d-report .report-l1{background:color-mix(in srgb,var(--c-mood) 16%,var(--a-surface-2))}
 #p-d-report .report-l2{background:color-mix(in srgb,var(--c-mood) 34%,var(--a-surface-2))}
 #p-d-report .report-l3{background:color-mix(in srgb,var(--c-mood) 54%,var(--a-surface-2))}
-#p-d-report .report-l4{background:color-mix(in srgb,var(--c-mood) 76%,var(--a-surface-2))}
-#p-d-report .report-l5{background:var(--c-mood)}
+#p-d-report .report-l4{background:color-mix(in srgb,var(--c-mood) 76%,var(--a-surface-2));color:var(--a-on-accent)}
+#p-d-report .report-l5{background:var(--c-mood);color:var(--a-on-accent)}
 #p-d-report .report-c.report-l4,#p-d-report .report-c.report-l5{color:var(--a-on-accent)}
 #p-d-report .report-wave .report-c{animation:d-report-pop .42s var(--ease) both;animation-delay:calc(var(--w) * 26ms)}
 #p-d-report .report-c.report-flash{animation:d-report-flash .6s var(--ease)}
-#p-d-report .report-day{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:8px}
-#p-d-report .report-dn{color:var(--a-soft);font-size:13px}
-#p-d-report .report-rate{display:flex;gap:8px}
-#p-d-report .report-rate button{width:40px;height:40px;border-radius:50%;border:1px solid var(--a-line);background:var(--a-surface-2);color:var(--a-text);font-weight:650;font-variant-numeric:tabular-nums;padding:0;transition:border-color .2s,background-color .2s}
-#p-d-report .report-rate button:hover{border-color:var(--a-line-strong)}
-#p-d-report .report-rate button[aria-pressed="true"]{border-color:var(--a-accent);background:var(--a-accent-soft)}
-#p-d-report .report-rl{font-size:12px;color:var(--a-muted);min-height:18px}
-#p-d-report .report-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px;font-size:13px;padding-top:8px;border-top:1px solid var(--a-line)}
-#p-d-report .report-facts span{display:flex;align-items:baseline;gap:8px;min-width:0;color:var(--a-muted)}
-#p-d-report .report-facts b{color:var(--a-text);font-weight:600;font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap}
-#p-d-report .report-lk{display:flex;flex-direction:column;gap:12px}
-#p-d-report .report-link{background:var(--a-surface);border:1px solid var(--a-line);border-radius:var(--a-r);padding:12px 16px;display:flex;flex-direction:column;gap:8px;min-width:0;animation:d-report-rise .45s var(--ease) both}
-#p-d-report .report-lt{display:flex;align-items:flex-start;gap:8px;min-width:0}
-#p-d-report .report-lt p{flex:1;min-width:0;line-height:1.45}
-#p-d-report .report-lt p b{font-weight:650}
-#p-d-report .report-ra{display:flex;gap:2px;margin:-6px -8px 0 0;flex:none}
-#p-d-report .report-ra .icon-btn{width:36px;height:36px;opacity:0;transition:opacity .15s}
-#p-d-report .report-link:hover .icon-btn,#p-d-report .report-link:focus-within .icon-btn,#p-d-report .report-link.open .icon-btn,#p-d-report .report-ra .icon-btn[aria-pressed="true"]{opacity:1}
-#p-d-report .report-ra .icon-btn[aria-pressed="true"]{color:var(--a-accent)}
-#p-d-report .report-cmp{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 8px;align-items:center;font-size:12px;color:var(--a-soft)}
+#p-d-report .report-day{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:10px}
+#p-d-report .report-day h5{margin:0;font:700 16px/1.25 var(--fd)}
+#p-d-report .report-day .report-dn{color:var(--a-soft);font-size:13.5px;font-style:italic}
+#p-d-report .report-rate{display:flex;gap:6px}
+#p-d-report .report-rate button{width:40px;height:40px;border-radius:50%;border:2px solid color-mix(in srgb,var(--c-mood) 50%,transparent);background:none;color:var(--a-text);font-weight:700;font-variant-numeric:tabular-nums;padding:0;transition:transform .2s var(--ease)}
+#p-d-report .report-rate button:hover{transform:scale(1.08)}
+#p-d-report .report-rate button[aria-pressed="true"]{border-color:var(--c-mood);background:var(--c-mood);color:var(--a-on-accent)}
+#p-d-report .report-rl{font-size:12.5px;color:var(--a-muted);min-height:19px}
+#p-d-report .report-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:13px}
+#p-d-report .report-facts span{display:flex;align-items:center;gap:6px;min-width:0;color:var(--a-soft)}
+#p-d-report .report-facts i{width:7px;height:7px;border-radius:50%;flex:none}
+#p-d-report .report-facts b{color:var(--a-text);font-weight:650;font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap}
+#p-d-report .report-lk{display:flex;flex-direction:column;gap:10px}
+#p-d-report .report-link{background:var(--a-surface);border:1px solid var(--a-line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0;animation:d-report-rise .45s var(--ease) both}
+#p-d-report .report-link p{font-size:15px;font-weight:600;line-height:1.4}
+#p-d-report .report-link p b{color:var(--c-mood);font-weight:800}
+#p-d-report .report-cmp{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;font-size:12.5px;color:var(--a-soft)}
 #p-d-report .report-cmp > span:first-child,#p-d-report .report-cmp > span:nth-child(4){white-space:nowrap}
-#p-d-report .report-tr{height:8px;border-radius:99px;background:var(--a-surface-2);overflow:hidden}
+#p-d-report .report-tr{height:12px;border-radius:99px;background:var(--a-surface-2);overflow:hidden}
 #p-d-report .report-tr i{display:block;height:100%;border-radius:inherit;width:var(--w);background:var(--c-mood);transition:width .8s var(--ease)}
 #p-d-report .report-tr.lo i{background:color-mix(in srgb,var(--c-mood) 40%,transparent)}
 #p-d-report .report-pre .report-tr i{width:0;transition:none}
-#p-d-report .report-cmp b{color:var(--a-text);font-weight:600;font-variant-numeric:tabular-nums}
-#p-d-report .report-empty{color:var(--a-muted);font-size:13px;padding:16px;border:1px dashed var(--a-line);border-radius:var(--a-r-sm)}
-#p-d-report .report-toast{position:sticky;bottom:16px;align-self:center;z-index:4;display:flex;align-items:center;gap:12px;background:var(--a-text);color:var(--a-bg);border-radius:var(--a-r-sm);padding:8px 8px 8px 16px;font-size:13px;animation:d-report-rise .3s var(--ease) both;max-width:100%}
-#p-d-report .report-toast button{background:none;border:0;color:var(--a-bg);border-radius:var(--a-r-xs);padding:4px 8px;min-height:32px;font-weight:700}
-#p-d-report .report-story{position:absolute;inset:0;z-index:8;background:var(--a-bg)}
-#p-d-report .report-sbox{position:sticky;top:0;height:min(100vh,640px);max-height:100%;display:flex;flex-direction:column;padding:16px 24px;overflow:hidden;touch-action:pan-y}
+#p-d-report .report-cmp b{color:var(--a-text);font-variant-numeric:tabular-nums}
+#p-d-report .report-lf{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--a-muted);flex-wrap:wrap}
+#p-d-report .report-lf .sp{flex:1}
+#p-d-report .report-lf button{background:none;border:1px solid var(--a-line);border-radius:99px;padding:5px 12px;min-height:32px;font-size:12.5px;color:var(--a-soft)}
+#p-d-report .report-lf button:hover{border-color:var(--a-accent);color:var(--a-text)}
+#p-d-report .report-lf button[aria-pressed="true"]{border-color:var(--a-ok);color:var(--a-ok)}
+#p-d-report .report-empty{color:var(--a-muted);font-size:13.5px;padding:14px;border:1px dashed var(--a-line);border-radius:14px}
+#p-d-report .report-toast{position:sticky;bottom:14px;align-self:center;z-index:4;display:flex;align-items:center;gap:12px;background:var(--a-text);color:var(--a-bg);border-radius:12px;padding:9px 10px 9px 16px;font-size:13.5px;font-weight:600;box-shadow:var(--a-shadow);animation:d-report-rise .3s var(--ease) both;max-width:100%}
+#p-d-report .report-toast button{background:none;border:1px solid color-mix(in srgb,var(--a-bg) 40%,transparent);color:var(--a-bg);border-radius:8px;padding:4px 11px;min-height:32px;font-weight:700}
+#p-d-report .report-story{position:absolute;inset:0;z-index:8;background:color-mix(in srgb,var(--a-bg) 97%,transparent)}
+#p-d-report .report-sbox{position:sticky;top:0;height:min(100vh,640px);max-height:100%;display:flex;flex-direction:column;padding:18px 20px 16px;overflow:hidden;background:radial-gradient(90% 70% at 50% 28%,color-mix(in srgb,var(--rc,var(--a-accent)) 24%,transparent),transparent 70%);transition:background .5s;touch-action:pan-y}
 #p-d-report .report-sbox:focus{outline:none}
-#p-d-report .report-prog{display:flex;gap:4px;padding-right:48px}
+#p-d-report .report-prog{display:flex;gap:5px;padding-right:48px}
 #p-d-report .report-prog i{flex:1;height:4px;border-radius:99px;background:var(--a-surface-3);overflow:hidden}
 #p-d-report .report-prog i b{display:block;height:100%;width:0;background:var(--a-text);border-radius:inherit}
 #p-d-report .report-prog i.done b{width:100%}
 #p-d-report .report-prog i.on b{width:100%;transition:width .6s var(--ease)}
-#p-d-report .report-x{position:absolute;top:8px;right:12px;width:40px;height:40px}
+#p-d-report .report-x{position:absolute;top:8px;right:12px;width:40px;height:40px;border-radius:50%;border:0;background:var(--a-surface-2);color:var(--a-text);display:grid;place-items:center;padding:0}
+#p-d-report .report-x svg{width:18px;height:18px}
 #p-d-report .report-stage{flex:1;display:grid;place-items:center;min-height:0}
-#p-d-report .report-slide{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;max-width:520px;animation:d-report-in .5s var(--ease) both}
+#p-d-report .report-slide{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;max-width:520px;animation:d-report-in .5s var(--ease) both}
 #p-d-report .report-slide.back{animation-name:d-report-inb}
-#p-d-report .report-slide img{width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:50% 12%;background:var(--a-surface-2)}
-#p-d-report .report-st{font-size:18px;font-weight:650;line-height:1.3;text-wrap:balance}
-#p-d-report .report-ss{color:var(--a-soft);font-size:14px;max-width:42ch}
-#p-d-report .report-vis{display:flex;gap:4px;align-items:flex-end;justify-content:center;flex-wrap:wrap;max-width:330px;margin-top:8px}
-#p-d-report .report-vis i{width:16px;height:16px;border-radius:4px;animation:d-report-pop .4s var(--ease) both;animation-delay:calc(var(--w) * 30ms + .25s)}
-#p-d-report .report-vis.bars{height:72px;gap:3px;flex-wrap:nowrap}
+#p-d-report .report-slide img{width:118px;height:126px}
+#p-d-report .report-k{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--rc)}
+#p-d-report .report-n{font:800 clamp(46px,10vw,82px)/1 var(--fd);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--a-text)}
+#p-d-report .report-n small{font-size:.36em;color:var(--a-muted);letter-spacing:0;margin-left:4px}
+#p-d-report .report-st{font:700 clamp(18px,2.6vw,24px)/1.25 var(--fd);text-wrap:balance}
+#p-d-report .report-ss{color:var(--a-soft);font-size:14.5px;max-width:42ch}
+#p-d-report .report-vis{display:flex;gap:4px;align-items:flex-end;justify-content:center;flex-wrap:wrap;max-width:330px;margin-top:6px}
+#p-d-report .report-vis i{width:16px;height:16px;border-radius:5px;animation:d-report-pop .4s var(--ease) both;animation-delay:calc(var(--w) * 30ms + .25s)}
+#p-d-report .report-vis.bars{height:70px;gap:3px;flex-wrap:nowrap}
 #p-d-report .report-vis.bars i{width:7px;height:var(--h);border-radius:3px;background:var(--rc);transform-origin:bottom;animation-name:d-report-grow}
-#p-d-report .report-hab{display:grid;gap:8px;width:min(320px,100%);margin-top:8px;text-align:left;font-size:13px}
-#p-d-report .report-hab div{display:grid;grid-template-columns:76px minmax(0,1fr) 48px;gap:12px;align-items:center}
+#p-d-report .report-hab{display:grid;gap:8px;width:min(320px,100%);margin-top:6px;text-align:left;font-size:13.5px}
+#p-d-report .report-hab div{display:grid;grid-template-columns:76px minmax(0,1fr) 54px;gap:10px;align-items:center}
 #p-d-report .report-hab .report-tr i{background:var(--c-habit)}
-#p-d-report .report-hab b{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+#p-d-report .report-hab b{text-align:right;font-variant-numeric:tabular-nums}
 #p-d-report .report-sctl{display:flex;align-items:center;justify-content:center;gap:16px}
 #p-d-report .report-sarr{width:44px;height:44px;border-radius:50%;border:1px solid var(--a-line);background:var(--a-surface);color:var(--a-text);display:grid;place-items:center;padding:0}
 #p-d-report .report-sarr:disabled{opacity:.35;cursor:default}
@@ -227,29 +249,47 @@
 #p-d-report .report-dots button{width:28px;height:36px;border:0;background:none;padding:0;display:grid;place-items:center}
 #p-d-report .report-dots button::before{content:"";width:8px;height:8px;border-radius:99px;background:var(--a-surface-3);transition:width .3s var(--ease),background-color .3s}
 #p-d-report .report-dots button[aria-current="true"]::before{width:20px;background:var(--a-text)}
-#p-d-report .report-fin{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
-@keyframes d-report-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes d-report-open{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-@keyframes d-report-pop{from{opacity:0;transform:scale(.55)}to{opacity:1;transform:none}}
-@keyframes d-report-grow{from{transform:scaleY(0)}to{transform:none}}
-@keyframes d-report-flash{0%{transform:scale(1)}40%{transform:scale(1.15);box-shadow:0 0 0 4px color-mix(in srgb,var(--c-mood) 30%,transparent)}100%{transform:none}}
-@keyframes d-report-in{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
-@keyframes d-report-inb{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
-@media (hover:none){#p-d-report .report-ra .icon-btn{display:none}
-#p-d-report .report-link.open .icon-btn,#p-d-report .report-ra .icon-btn[aria-pressed="true"]{display:inline-grid;opacity:1}
+#p-d-report .report-fin{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+@keyframes d-report-rise{from{opacity:0;transform:translateY(10px)}
+to{opacity:1;transform:none}
+}
+@keyframes d-report-open{from{opacity:0;transform:translateY(-6px) scale(.99)}
+to{opacity:1;transform:none}
+}
+@keyframes d-report-pop{from{opacity:0;transform:scale(.55)}
+to{opacity:1;transform:none}
+}
+@keyframes d-report-grow{from{transform:scaleY(0)}
+to{transform:none}
+}
+@keyframes d-report-flash{0%{transform:scale(1)}
+40%{transform:scale(1.18);box-shadow:0 0 0 6px color-mix(in srgb,var(--c-mood) 30%,transparent)}
+100%{transform:none}
+}
+@keyframes d-report-in{from{opacity:0;transform:translateX(40px)}
+to{opacity:1;transform:none}
+}
+@keyframes d-report-inb{from{opacity:0;transform:translateX(-40px)}
+to{opacity:1;transform:none}
 }
 @media (max-width: 1080px){#p-d-report .report-low{grid-template-columns:minmax(0,1fr)}
 }
-@media (max-width: 720px){#p-d-report .report-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-#p-d-report .report-tile{padding:12px 12px 8px;min-height:128px}
+@media (max-width: 720px){#p-d-report .report-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#p-d-report .report-tile{padding:12px 12px 8px;min-height:138px}
+#p-d-report .report-tv{font-size:21px}
+#p-d-report .report-hot .report-tv{font-size:32px}
 #p-d-report .report-tl em{display:none}
+#p-d-report .report-hero{padding:14px}
 #p-d-report .report-go{margin-left:0;width:100%;justify-content:center}
+#p-d-report .report-say img{width:64px;height:68px}
 #p-d-report .report-plab{min-width:108px}
 #p-d-report .report-chart{grid-template-columns:44px minmax(0,1fr)}
-#p-d-report .report-det{padding:12px}
-#p-d-report .report-sbox{padding:12px}
+#p-d-report .report-det{padding:14px 12px}
+#p-d-report .report-sbox{padding:14px 14px 12px}
+#p-d-report .report-slide img{width:90px;height:96px}
 }
-  </style>
+
+</style>
 
   <script>(function(){
 "use strict";
@@ -351,15 +391,14 @@ return a.getUTCMonth()===b.getUTCMonth()?a.getUTCDate()+"–"+b.getUTCDate()+" "
 function title(p){ return p.mode==="month"?"Итоги "+MG[p.m]:p.mode==="year"?"Итоги "+p.y+" года":(p.off===0?"Итоги недели":"Итоги недели "+plab(p));}
 
 var GOOD={
-sleep: function(d){ return "Спите дольше: "+dMin(d)+" за ночь.";},
-pc: function(d){ return "За компьютером меньше: "+dMin(d)+" в день.";},
-game: function(d){ return "Игр меньше: "+dMin(d)+" в день.";},
-habit: function(d){ return "Привычки чаще: "+mk("habit").df(d)+".";},
-money: function(d){ return "Тратите меньше: "+Math.abs(Math.round(d))+" % в день.";},
-mood: function(d){ return "Оценка дня выше: "+mk("mood").df(d)+".";},
-steps: function(d){ return "Ходите больше: "+mk("steps").df(d)+" шагов в день.";}
+sleep: function(d){ return "Спите дольше: <b>"+dMin(d)+"</b> за ночь.";},
+pc: function(d){ return "За компьютером меньше: <b>"+dMin(d)+"</b> в день.";},
+game: function(d){ return "Игр меньше: <b>"+dMin(d)+"</b> в день.";},
+habit: function(d){ return "Привычки чаще: <b>"+mk("habit").df(d)+"</b>.";},
+money: function(d){ return "Тратите меньше: <b>"+Math.abs(Math.round(d))+" %</b> в день.";},
+mood: function(d){ return "Оценка дня выше: <b>"+mk("mood").df(d)+"</b>.";},
+steps: function(d){ return "Ходите больше: <b>"+mk("steps").df(d)+"</b> шагов в день.";}
 };
-var ICL='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 4h5a2 2 0 0 1 2 2.300l-1.200 6A2 2 0 0 1 16.800 20H7"/></svg>';
 var BAD={ sleep: "сном", pc: "временем за ПК", game: "играми", habit: "привычками", money: "тратами", mood: "настроением", steps: "шагами" };
 
 function phrase(p, pp){
@@ -376,7 +415,7 @@ else if (o-a>0.15) h=subj+" "+v+" тяжелее "+gen+". Это бывает.";
 else h=subj+" "+v+" "+(fem?"похожей":"похожим")+" на "+acc+".";
 var best=null, worst=null;
 M.forEach(function(me){ var x=delta(p, pp, me);if (!x||!x.g) return;if (x.g>0&&(!best||x.rel>best.x.rel)) best={ me: me, x: x };if (x.g<0&&(!worst||x.rel>worst.x.rel)) worst={ me: me, x: x };});
-var sub=(best?GOOD[best.me.k](best.x.d)+" ":"")+(worst?"Присмотрите за "+BAD[worst.me.k]+": "+worst.me.df(worst.x.d)+".":"Ничего не просело, так держать.");
+var sub=(best?GOOD[best.me.k](best.x.d)+" ":"")+(worst?"Присмотрите за "+BAD[worst.me.k]+": <b>"+worst.me.df(worst.x.d)+"</b>.":"Ничего не просело, так держать.");
 return { h: h, sub: sub };
 }
 
@@ -387,20 +426,20 @@ if (ok.length<2) return "";
 var lo=Math.min.apply(null, ok), hi=Math.max.apply(null, ok), n=vs.length-1, pts=[];
 if (hi-lo<1e-6){ hi=lo+1;}
 vs.forEach(function(v, j){ if (v!==null) pts.push([(j/n*100).toFixed(1), (28-(v-lo)/(hi-lo)*24).toFixed(1)]);});
-var line="M"+pts.map(function(t){ return t.join(" ");}).join("L");
-return '<span class="report-sp"><svg viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true"><path d="'+line+'"/></svg></span>';
+var line="M"+pts.map(function(t){ return t.join(" ");}).join("L"), area=line+"L"+pts[pts.length-1][0]+" 32L"+pts[0][0]+" 32Z";
+return '<span class="report-sp"><svg viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true"><path class="report-sa" d="'+area+'"/><path class="report-sl" d="'+line+'"/></svg></span>';
 }
 function tileVal(p, me){ var s=stat(p, me);return me.sum?s.sum:s.avg;}
 function renderTiles(p, pp){
 var box=q("[data-tiles]");
 box.innerHTML=M.map(function(me){
 var v=tileVal(p, me), x=delta(p, pp, me), sr=series(p, me);
-var dw=!x?'<span class="report-dx">нет данных для сравнения</span>' : x.g===0?'<span class="report-dx">≈ без перемен '+vsWord(p)+"</span>" :
-'<span class="status '+(x.g>0?"ok":"warn")+'">'+(x.d>0?"↑ ":"↓ ")+(x.g>0?"лучше":"хуже")+'</span><span class="report-dx">'+me.df(x.d)+" "+vsWord(p)+"</span>";
+var dw=!x?'<span class="report-dw same">нет данных для сравнения</span>' :
+'<span class="report-dw '+(x.g>0?"good":x.g<0?"bad":"same")+'">'+(x.g===0?"≈ без перемен":(x.d>0?"↑ ":"↓ ")+(x.g>0?"лучше":"хуже"))+'</span><span class="report-dx">'+(x.g===0?vsWord(p):me.df(x.d)+" "+vsWord(p))+"</span>";
 var lab=me.n+": "+(v===null?"нет данных":me.s(v)+" "+me.u)+(x?", "+(x.g>0?"лучше":x.g<0?"хуже":"без перемен"):"")+". Показать по дням";
 return '<button type="button" class="report-tile'+(me.hot?" report-hot":"")+'" data-k="'+me.k+'" style="--rc:'+me.c+'" aria-expanded="'+(S.open===me.k)+'" aria-label="'+lab+'">' +
-'<span class="report-tl"><span class="label">'+me.n+"</span><em>"+me.u+"</em></span>" +
-'<span class="report-tv '+(me.hot?"num-xl":"num-l")+'" data-tv>'+(v===null?"—":me.big(v))+"</span>" +
+'<span class="report-tl"><i></i>'+me.n+"<em>"+me.u+"</em></span>" +
+'<span class="report-tv" data-tv>'+(v===null?"—":me.big(v))+"</span>" +
 '<span class="report-dl">'+dw+"</span>"+spark(sr, me)+"</button>";
 }).join("");
 if (S.open) openDet(S.open, true);
@@ -420,8 +459,8 @@ el.className="report-det"+(keep||MM.reduce?"":" report-pre");el.style.setPropert
 var ticks=[0, mx/2, mx], per=p.mode==="year"?"по месяцам":"по дням";
 var fmtA=function(v){ return me.k==="money"&&p.mode==="year"?num(v/1000)+" тыс.":me.s(v);};
 var every=sr.length>20?7:1;
-el.innerHTML='<div class="report-dh"><i class="dot s" style="background:var(--rc)"></i><b class="h">'+me.n+" "+per+'</b><span class="small">'+plab(p)+'</span><span class="sp"></span>' +
-'<button type="button" class="btn quiet" data-close>Свернуть</button><button type="button" class="btn" data-goto>'+me.go+"</button></div>" +
+el.innerHTML='<div class="report-dh"><i class="report-dot"></i><b>'+me.n+" "+per+"</b><span class=\"muted\">"+plab(p)+'</span><span class="sp"></span>' +
+'<button type="button" class="btn ghost" data-close>Свернуть</button><button type="button" class="btn primary" data-goto>'+me.go+"</button></div>" +
 '<div class="report-chart"><div class="report-ya" aria-hidden="true">'+ticks.map(function(t){ return '<span style="top:'+(100-t/mx*100)+'%">'+fmtA(t)+"</span>";}).join("")+"</div>" +
 '<div class="report-pl" tabindex="0" role="slider" aria-label="'+me.n+" "+per+', стрелками выбрать" aria-valuemin="0" aria-valuemax="'+(sr.length-1)+'" aria-valuenow="0">' +
 ticks.map(function(t){ return '<i class="report-gl" style="top:'+(100-t/mx*100)+'%"></i>';}).join("") +
@@ -480,15 +519,15 @@ renderDay(p);
 }
 function renderDay(p){
 var box=q("[data-day]");
-if (p.mode==="year"){ box.innerHTML='<h5 class="h">Год клетками</h5><p class="soft">Цвет месяца означает среднюю оценку дня за этот месяц.</p>';return;}
+if (p.mode==="year"){ box.innerHTML='<h5>Год клетками</h5><p class="soft">Цвет месяца означает среднюю оценку дня. Нажмите на месяц, чтобы открыть его итоги.</p>';return;}
 var i=S.sel, x=dOf(i), d=day(i), v=mood(d);
-var h='<h5 class="h">'+DWL[(x.getUTCDay()+6) % 7]+", "+x.getUTCDate()+" "+MG[x.getUTCMonth()]+(i===TI?" · сегодня":"")+"</h5>";
+var h="<h5>"+DWL[(x.getUTCDay()+6) % 7]+", "+x.getUTCDate()+" "+MG[x.getUTCMonth()]+(i===TI?" · сегодня":"")+"</h5>";
 if (!d){ box.innerHTML=h+'<p class="soft">Этот день ещё впереди. Рина спросит про него вечером.</p>';return;}
 h+='<div class="report-rate" role="group" aria-label="Оценка дня">'+[1, 2, 3, 4, 5].map(function(n){ return '<button type="button" data-r="'+n+'" aria-pressed="'+(v===n)+'" aria-label="'+n+" из 5, "+RL[n].toLowerCase()+'">'+n+"</button>";}).join("")+"</div>" +
 '<span class="report-rl">'+(v?RL[v]+(i in RT?", поставлено сейчас":""):(i===TI?"Как прошёл день? Оценку можно поставить сразу":"Оценки нет, можно поставить"))+"</span>" +
 '<p class="report-dn">«'+d.note+"»</p>" +
-'<div class="report-facts">'+[["Сон", hmS(d.sl)], ["За ПК", hmS(d.pc)], ["Игры", d.gm?hmS(d.gm):"не было"], ["Шаги", num(d.st)], ["Траты", num(d.mn)+" ₽"], ["Привычки", d.hn+" из 3"]].map(function(f){
-return "<span>"+f[0]+"<b>"+f[1]+"</b></span>";}).join("")+"</div>";
+'<div class="report-facts">'+[["var(--c-sleep)", "Сон", hmS(d.sl)], ["var(--c-pc)", "За ПК", hmS(d.pc)], ["var(--c-game)", "Игры", d.gm?hmS(d.gm):"не было"], ["var(--report-step)", "Шаги", num(d.st)], ["var(--c-money)", "Траты", num(d.mn)+" ₽"], ["var(--c-habit)", "Привычки", d.hn+" из 3"]].map(function(f){
+return '<span><i style="background:'+f[0]+'"></i>'+f[1]+"<b>"+f[2]+"</b></span>";}).join("")+"</div>";
 box.innerHTML=h;
 }
 function setRate(i, n){
@@ -520,11 +559,10 @@ return df<0.2?null:{ r: r, aa: aa, bb: bb, df: df, na: A.length, nb: B.length };
 var box=q("[data-links]");
 if (!out.length){ box.innerHTML='<p class="report-empty">Пока Рина не видит заметных связей. Чем больше дней с оценкой, тем точнее выводы.</p>';return;}
 box.innerHTML=out.map(function(x){
-var lk=!!S.liked[x.r.id];
-return '<div class="report-link" data-lid="'+x.r.id+'"><div class="report-lt"><p>'+x.r.t(one(x.df))+'</p><span class="report-ra"><button type="button" class="icon-btn" data-like aria-pressed="'+lk+'" aria-label="Полезно" title="Полезно">'+ICL+'</button><button type="button" class="icon-btn" data-hide aria-label="Скрыть" title="Скрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span></div>' +
+return '<div class="report-link" data-lid="'+x.r.id+'"><p>'+x.r.t(one(x.df))+"</p>" +
 '<div class="report-cmp"><span>'+x.r.a+'</span><span class="report-tr"><i style="--w:'+(x.aa/5*100)+'%"></i></span><b>'+one(x.aa)+"</b>" +
 "<span>"+x.r.b+'</span><span class="report-tr lo"><i style="--w:'+(x.bb/5*100)+'%"></i></span><b>'+one(x.bb)+"</b></div>" +
-'<span class="small">Дней: '+x.na+" и "+x.nb+' · оценка из 5</span></div>';
+'<div class="report-lf"><span>Дней: '+x.na+" и "+x.nb+' · оценка из 5</span><span class="sp"></span><button type="button" data-like aria-pressed="'+!!S.liked[x.r.id]+'">'+(S.liked[x.r.id]?"✓ Полезно":"Полезно")+'</button><button type="button" data-hide>Скрыть</button></div></div>';
 }).join("");
 }
 
@@ -557,7 +595,8 @@ var p=cur(), pp=period(S.mode, S.off-1), ph=phrase(p, pp);
 q("[data-plab]").textContent=plab(p);
 q('[data-step="1"]').disabled=S.off>=0;q('[data-step="-1"]').disabled=S.off<=LIM[S.mode];
 qa("[data-mode]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.dataset.mode===S.mode));});
-q("[data-head]").textContent=ph.h;q("[data-sub]").textContent=ph.sub;
+q("[data-who]").textContent="Рина о "+(S.mode==="week"?"неделе":S.mode==="month"?"месяце":"годе");
+q("[data-head]").textContent=ph.h;q("[data-sub]").innerHTML=ph.sub;
 var h3=q(".app-top h3");if (h3) h3.textContent=title(p);
 if (S.mode!=="year"&&(S.sel<p.a||S.sel>p.b)) S.sel=Math.min(p.b, TI)>=p.a?Math.min(p.b, TI):p.a;
 renderTiles(p, pp);renderCal(p, anim);links(p);
@@ -565,7 +604,7 @@ if (anim) play(true);
 }
 function refreshSoft(){
 var p=cur(), pp=period(S.mode, S.off-1), ph=phrase(p, pp), keep=S.open;
-q("[data-head]").textContent=ph.h;q("[data-sub]").textContent=ph.sub;
+q("[data-head]").textContent=ph.h;q("[data-sub]").innerHTML=ph.sub;
 S.open=null;renderTiles(p, pp);if (keep) openDet(keep, true);
 renderCal(p, false);links(p);
 }
@@ -622,7 +661,7 @@ SI=j;runId++;
 var s=SL[j], st=q("[data-stage]"), bx=q("[data-sbox]");
 bx.style.setProperty("--rc", s.c);
 st.innerHTML='<div class="report-slide'+(dir<0?" back":"")+'" style="--rc:'+s.c+'">'+(s.img?'<img src="maid/'+s.img+'.webp" alt="">':"") +
-'<span class="label">'+s.k+'</span><span class="num-xl" data-sn2></span><span class="report-st">'+s.t+"</span>"+(s.s?'<span class="report-ss">'+s.s+"</span>":"")+(s.vis||"") +
+'<span class="report-k">'+s.k+'</span><span class="report-n" data-sn2></span><span class="report-st">'+s.t+"</span>"+(s.s?'<span class="report-ss">'+s.s+"</span>":"")+(s.vis||"") +
 (s.fin?'<div class="report-fin"><button type="button" class="btn" data-again>Сначала</button><button type="button" class="btn primary" data-done>Готово</button></div>':"")+"</div>";
 countUp(q("[data-sn2]", st), s.n===null?null:s.n, s.f, 900);
 qa(".report-prog i").forEach(function(i, n){ i.className=n<j?"done":n===j?"on":"";});
@@ -641,9 +680,8 @@ var ti=t.closest(".report-tile");if (ti){ openDet(S.open===ti.dataset.k?null:ti.
 var c=t.closest(".report-c[data-i]");if (c){ S.sel=+c.dataset.i;qa(".report-c[data-i]").forEach(function(x){ var on=x===c;x.classList.toggle("report-sel", on);x.setAttribute("aria-pressed", String(on));});renderDay(cur());return;}
 var mo=t.closest("[data-mon]");if (mo){ var p=cur();if (idx(p.y, +mo.dataset.mon, 1)>TI) return;S.mode="month";S.off=(p.y-2026)*12+(+mo.dataset.mon-10);S.sel=Math.min(idx(p.y, +mo.dataset.mon+1, 1)-1, TI);render(true);return;}
 var r=t.closest("[data-r]");if (r){ setRate(S.sel, +r.dataset.r);var nb=q('[data-r="'+r.dataset.r+'"]');if (nb) nb.focus();return;}
-var lk=t.closest("[data-like]");if (lk){ var id=lk.closest("[data-lid]").dataset.lid;S.liked[id]=!S.liked[id];lk.setAttribute("aria-pressed", String(S.liked[id]));toast(S.liked[id]?"Отметила: такие связи полезны":"Отметка «Полезно» снята");return;}
+var lk=t.closest("[data-like]");if (lk){ var id=lk.closest("[data-lid]").dataset.lid;S.liked[id]=!S.liked[id];lk.setAttribute("aria-pressed", String(S.liked[id]));lk.textContent=S.liked[id]?"✓ Полезно":"Полезно";return;}
 var hd=t.closest("[data-hide]");if (hd){ var hid=hd.closest("[data-lid]").dataset.lid;S.hide[hid]=1;links(cur());toast("Связь скрыта, Рина больше не будет её показывать", function(){ delete S.hide[hid];links(cur());});return;}
-var ln=t.closest(".report-link");if (ln&&!t.closest("button")){ qa(".report-link.open").forEach(function(o){ if (o!==ln) o.classList.remove("open");});ln.classList.toggle("open");return;}
 if (t.closest("[data-story]")){ openStory();return;}
 if (t.closest("[data-sx]")){ closeStory();return;}
 if (t.closest("[data-sp]")){ showSlide(SI-1, -1);return;}

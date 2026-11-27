@@ -2,7 +2,7 @@
   <header>
     <p class="eyebrow">Экран · Обзор → Сон</p>
     <h2>Ночи, которые можно поправить рукой</h2>
-    <p>Две недели сна видны разом, рядом с целью из «О вас». Время отбоя и подъёма правится протягиванием края полосы, а сверху три спокойные цифры: сколько вы спите, насколько ровно ложитесь и сколько недосыпа накопилось.</p>
+    <p>Две недели сна видны разом, рядом с целью из «О вас». Время отбоя и подъёма правится протягиванием края полосы, а сверху сразу видно главное: сколько вы спите, насколько ровно ложитесь и сколько недосыпа накопилось.</p>
   </header>
   <button class="replay" type="button">Повторить анимацию</button>
 
@@ -10,20 +10,20 @@
     <button type="button" data-act="var" data-v="a" aria-pressed="true">Вариант А · Ночи</button>
     <button type="button" data-act="var" data-v="b" aria-pressed="false">Вариант Б · Круг ночи</button>
   </div>
-  <p class="ds-advice">Советую вариант А: две недели видны одним взглядом и края удобно тянуть. Круг можно оставить вторым видом для одной ночи.</p>
+  <p class="ds-advice">Советую вариант А: две недели видны одним взглядом, края удобно тянуть, и сразу заметно, какие ночи вышли за цель. Круг нагляден для одной ночи, его можно оставить вторым видом.</p>
 
   <div class="app" data-hub="stats" data-tab="Сон" data-title="Сон" data-v="a">
     <div class="ds-head">
       <div class="ds-hl">
-        <p class="h">14–27 ноября</p>
-        <p class="small">Цель: отбой 23:30, подъём 07:00 · <button type="button" class="ds-link" data-act="goal">изменить</button></p>
+        <p class="ds-per">14–27 ноября</p>
+        <p class="ds-gl">Цель из «О вас»: отбой 23:30, подъём 07:00 · <button type="button" class="ds-link" data-act="goal">изменить</button></p>
       </div>
-      <button type="button" class="btn primary" data-act="rec">+ Записать сон</button>
+      <button type="button" class="btn primary ds-rec" data-act="rec">+ Записать сон</button>
     </div>
     <div class="ds-kpis"></div>
-    <div class="rina"><img src="maid/bedtime.webp" alt="" width="48" height="48"><p></p><button type="button" class="btn" data-act="remind" hidden>Напомнить в 23:00</button></div>
+    <div class="rina"><img src="maid/bedtime.webp" alt="" width="64" height="68"><p></p></div>
     <section class="card">
-      <p class="h ds-ch">Ночи за две недели</p>
+      <p class="card-t">Ночи <span class="ds-ct">2 недели · шкала 20:00–12:00</span></p>
       <div class="ds-plot">
         <div class="ds-col ds-days"><div class="ds-sp"></div></div>
         <div class="ds-col ds-lane"><div class="ds-axis" aria-hidden="true"></div><div class="ds-bg" aria-hidden="true"></div><div class="ds-tip" role="status" hidden></div></div>
@@ -31,17 +31,19 @@
       </div>
       <div class="ds-leg">
         <span><i class="ds-sw sl"></i>сон</span>
-        <span><i class="ds-sw gz"></i>цель</span>
-        <span class="ds-hint">Потяните край полосы, чтобы поправить время</span>
+        <span><i class="ds-sw gz"></i>цель 23:30–07:00</span>
+        <span><i class="ds-sw em"></i>не записано</span>
+        <span class="ds-hint">Потяните край полосы, чтобы поправить время. Шаг 15 минут.</span>
       </div>
       <div class="ds-ed"></div>
     </section>
     <section class="card">
-      <p class="h ds-ch">Сон и оценка дня</p>
+      <p class="card-t">Сон и оценка дня</p>
       <div class="ds-scg">
         <div class="ds-sct">
           <p class="ds-con"></p>
-          <p class="small ds-cons"></p>
+          <p class="ds-cons"></p>
+          <div class="ds-leg"><span><i class="ds-sw pt"></i>один день</span><span><i class="ds-sw av"></i>средняя оценка</span></div>
         </div>
         <div class="ds-scw">
           <svg class="ds-sc" viewBox="0 0 340 200" role="img" aria-label="Точки: сколько часов сна и какая оценка дня"></svg>
@@ -49,43 +51,43 @@
         </div>
       </div>
     </section>
-    <div class="undo ds-toast" role="status" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
+    <div class="ds-toast" role="status" hidden><span></span><button type="button" class="btn" data-act="undo">Отменить</button></div>
   </div>
 
   <div class="app" data-hub="stats" data-tab="Сон" data-title="Сон" data-v="b" hidden>
     <div class="ds-head">
       <div class="ds-hl">
-        <p class="h">Неделя 21–27 ноября</p>
-        <p class="small">Цель: отбой 23:30, подъём 07:00 · <button type="button" class="ds-link" data-act="goal">изменить</button></p>
+        <p class="ds-per">Неделя 21–27 ноября</p>
+        <p class="ds-gl">Цель из «О вас»: отбой 23:30, подъём 07:00 · <button type="button" class="ds-link" data-act="goal">изменить</button></p>
       </div>
-      <button type="button" class="btn primary" data-act="rec">+ Записать сон</button>
+      <button type="button" class="btn primary ds-rec" data-act="rec">+ Записать сон</button>
     </div>
     <div class="ds-kpis"></div>
     <div class="ds-b">
       <section class="card">
-        <p class="h ds-ch">Выбранная ночь</p>
+        <p class="card-t">Выбранная ночь</p>
         <svg class="ds-clock" viewBox="0 0 260 260" role="group" aria-label="Циферблат суток: дуга сна выбранной ночи"></svg>
-        <div class="ds-leg ds-cleg"><span><i class="ds-sw bd"></i>отбой</span><span><i class="ds-sw wk"></i>подъём</span><span><i class="ds-sw gl"></i>цель</span><span class="ds-hint">Ручки на круге тянутся пальцем или стрелками</span></div>
+        <div class="ds-leg ds-cleg"><span><i class="ds-sw bd"></i>отбой</span><span><i class="ds-sw wk"></i>подъём</span><span><i class="ds-sw gl"></i>цель</span><span class="ds-hint">Ручки на круге тянутся пальцем или стрелками.</span></div>
         <div class="ds-ed"></div>
       </section>
       <section class="card">
-        <p class="h ds-ch">Неделя</p>
+        <p class="card-t">Неделя</p>
         <div class="ds-week"></div>
         <ul class="ds-wsum"></ul>
-        <div class="rina"><img src="maid/bedtime.webp" alt="" width="48" height="48"><p></p><button type="button" class="btn" data-act="remind" hidden>Напомнить в 23:00</button></div>
+        <div class="rina"><img src="maid/bedtime.webp" alt="" width="64" height="68"><p></p></div>
       </section>
     </div>
-    <div class="undo ds-toast" role="status" hidden><span></span><button type="button" data-act="undo">Отменить</button></div>
+    <div class="ds-toast" role="status" hidden><span></span><button type="button" class="btn" data-act="undo">Отменить</button></div>
   </div>
 
   <div class="notes">
     <div><h4>Что изменилось</h4><ul>
-      <li>Одна заливная кнопка на экран: «+ Записать сон». «Записать по цели» и «Удалить» стали обычной и тихой кнопками.</li>
-      <li>Три плитки сверху приведены к одному виду: подпись, число, одна строка пояснения. Убраны капслок, оранжевое число долга, рамка «много» и зелёно-красные стрелки сравнения.</li>
-      <li>Зона цели на шкале стала нейтральной, без зелёного. Короткие ночи выделены жирным, а не оранжевым.</li>
-      <li>Звёзды качества больше не золотые: золото только для ✦. Шаг ±15 мин стал парой маленьких кнопок «−» и «+».</li>
-      <li>Рина в круге 48 px, фраза в две строки, одно выделенное число и не больше одной кнопки («Напомнить в 23:00»).</li>
-      <li>Из легенд убраны лишние пункты, на графике оценки линия среднего серая. Плашка отмены одна, короткая.</li>
+      <li>Строки высотой 40 px, у полосы ручки по краям: отбой и подъём правятся протягиванием с подсказкой времени, шаг 15 минут.</li>
+      <li>У выбранной ночи кнопки «−15 / +15 мин» и пять звёзд качества. Всё работает с клавиатуры и пальцем.</li>
+      <li>Цель из «О вас» видна зоной на шкале. Пустая ночь записывается одним нажатием, кнопка «+ Записать сон» всегда на виду.</li>
+      <li>Три главные цифры сверху и вывод про оценку дня одной фразой.</li>
+      <li>Удаление без окна «Вы уверены?»: вместо него плашка «Отменить» на 7 секунд.</li>
+      <li>Шкала 20:00–12:00 вместо 18:00–18:00, поэтому ночь занимает больше места.</li>
     </ul></div>
     <div><h4>Анимации</h4><ul>
       <li>Полосы по очереди вырастают слева направо, от отбоя к подъёму.</li>
@@ -96,10 +98,10 @@
     </ul></div>
     <div><h4>Что нужно в коде</h4><ul>
       <li>Своя таблица сна: отбой, подъём, качество. Сейчас время достаётся разбором текста дневника, качества нет совсем.</li>
-      <li>Запись «лёг, встал» уже есть на сервере: её нужно вызывать, когда отпускают ручку или жмут «−» и «+».</li>
+      <li>Запись «лёг, встал» уже есть на сервере: её нужно вызывать, когда отпускают ручку или жмут «±15».</li>
       <li>Желаемые отбой и подъём уже хранятся в «О вас», их надо передать во вкладку.</li>
       <li>Регулярность и долг сна считаются в программе по последним 7 ночам, сервер не нужен.</li>
-      <li>Напоминание «пора спать» в 23:00 нужно связать с уже готовыми напоминаниями Рины.</li>
+      <li>Отмена уже есть на сервере, подойдёт как есть.</li>
       <li>Сон после 12:00 (ночная смена) шкала обрежет: для него нужен отдельный вид.</li>
     </ul></div>
   </div>
@@ -112,156 +114,170 @@
 #p-d-sleep .ds-advice { color: var(--soft); font-size: 14px; max-width: 72ch; margin-top: -8px; }
 #p-d-sleep .app-content { gap: 16px; }
 #p-d-sleep .ds-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-#p-d-sleep .ds-hl { min-width: 0; display: grid; gap: 4px; }
-#p-d-sleep .ds-link { background: none; border: 0; padding: 4px 2px; color: var(--a-accent); font-weight: 600; font-size: 13px; }
-#p-d-sleep .ds-link:hover { text-decoration: underline; text-underline-offset: 3px; }
-#p-d-sleep .ds-head .btn.primary { min-height: 40px; }
-#p-d-sleep .ds-ch { margin-bottom: 12px; }
-#p-d-sleep .ds-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-#p-d-sleep .ds-kpi { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-#p-d-sleep .ds-kpi .label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-#p-d-sleep .ds-kpi .num-l { white-space: nowrap; }
-#p-d-sleep .ds-kpi .small { min-width: 0; }
-#p-d-sleep .ds-kpi .bar > i { width: 0; background: var(--c-sleep); }
-#p-d-sleep .rina { flex-wrap: wrap; }
-#p-d-sleep .rina p { flex: 1 1 240px; max-width: 640px; }
+#p-d-sleep .ds-hl { min-width: 0; }
+#p-d-sleep .ds-per { font: 700 18px/1.2 var(--fd); letter-spacing: -.01em; }
+#p-d-sleep .ds-gl { color: var(--a-muted); font-size: 13px; margin-top: 3px; }
+#p-d-sleep .ds-link { background: none; border: 0; padding: 4px 2px; color: var(--a-accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+#p-d-sleep .ds-rec { min-height: 40px; padding: 9px 16px; }
+#p-d-sleep .ds-ct { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12.5px; }
+#p-d-sleep .ds-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#p-d-sleep .ds-kpi { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: var(--a-r); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#p-d-sleep .ds-kpi small { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+#p-d-sleep .ds-big { font: 800 34px/1.05 var(--fd); letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#p-d-sleep .ds-big .u { font-size: .48em; font-weight: 700; color: var(--a-muted); margin: 0 .1em 0 .06em; letter-spacing: 0; }
+#p-d-sleep .ds-big.warn { color: var(--a-warn); }
+#p-d-sleep .ds-badge { font-style: normal; text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--a-warn); border: 1px solid color-mix(in srgb, var(--a-warn) 50%, transparent); border-radius: 99px; padding: 0 7px; }
+#p-d-sleep .ds-sub { font-size: 12.5px; color: var(--a-soft); min-width: 0; }
+#p-d-sleep .ds-sub.up { color: var(--a-ok); } #p-d-sleep .ds-sub.down { color: var(--a-bad); }
+#p-d-sleep .ds-meter { display: block; height: 6px; border-radius: 99px; background: var(--a-surface-3); overflow: hidden; }
+#p-d-sleep .ds-meter i { display: block; height: 100%; width: 0; background: var(--c-sleep); border-radius: inherit; }
 #p-d-sleep .ds-plot { display: grid; grid-template-columns: 58px minmax(0, 1fr) 64px; column-gap: 12px; }
-#p-d-sleep .ds-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+#p-d-sleep .ds-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 #p-d-sleep .ds-sp, #p-d-sleep .ds-axis { height: 20px; flex: none; }
-#p-d-sleep .ds-day { height: 40px; border: 0; background: none; border-radius: var(--a-r-xs); padding: 0 8px; text-align: left; color: var(--a-muted); font-size: 13px; white-space: nowrap; }
-#p-d-sleep .ds-day span { margin-right: 4px; }
-#p-d-sleep .ds-day b { font-weight: 650; color: var(--a-soft); font-variant-numeric: tabular-nums; }
-#p-d-sleep .ds-day[aria-pressed="true"] { background: var(--a-accent-soft); color: var(--a-text); }
-#p-d-sleep .ds-day[aria-pressed="true"] b { color: var(--a-text); }
-#p-d-sleep .ds-len { height: 40px; display: flex; align-items: center; justify-content: flex-end; font-size: 13px; color: var(--a-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-#p-d-sleep .ds-len.short { color: var(--a-text); font-weight: 650; }
+#p-d-sleep .ds-day { height: 40px; border: 0; background: none; border-radius: 10px; padding: 0 8px; text-align: left; color: var(--a-soft); font-size: 13px; white-space: nowrap; }
+#p-d-sleep .ds-day span { color: var(--a-muted); margin-right: 3px; }
+#p-d-sleep .ds-day b { font-weight: 700; color: var(--a-text); font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-day[aria-pressed="true"] { background: var(--a-accent-soft); }
+#p-d-sleep .ds-day[aria-pressed="true"] b, #p-d-sleep .ds-day[aria-pressed="true"] span { color: var(--a-accent); }
+#p-d-sleep .ds-len { height: 40px; display: flex; align-items: center; justify-content: flex-end; font-weight: 650; font-size: 13px; color: var(--a-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#p-d-sleep .ds-len.short { color: var(--a-warn); }
+#p-d-sleep .ds-len.none { color: var(--a-muted); font-weight: 500; }
 #p-d-sleep .ds-lane { position: relative; }
 #p-d-sleep .ds-axis { position: relative; }
-#p-d-sleep .ds-axis span { position: absolute; top: 0; transform: translateX(-50%); font-size: 12px; color: var(--a-muted); font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-axis span { position: absolute; top: 0; transform: translateX(-50%); font-size: 11px; color: var(--a-muted); font-variant-numeric: tabular-nums; }
 #p-d-sleep .ds-axis span:first-child { transform: none; } #p-d-sleep .ds-axis span:last-child { transform: translateX(-100%); }
-#p-d-sleep .ds-bg { position: absolute; left: 0; right: 0; top: 24px; bottom: 0; pointer-events: none; }
+#p-d-sleep .ds-bg { position: absolute; left: 0; right: 0; top: 26px; bottom: 0; pointer-events: none; }
 #p-d-sleep .ds-bg i { position: absolute; top: -4px; bottom: 0; width: 1px; background: var(--a-grid); }
-#p-d-sleep .ds-goal { position: absolute; top: -4px; bottom: 0; border-radius: var(--a-r-xs); background: color-mix(in srgb, var(--a-text) 4%, transparent); border-left: 1px dashed var(--a-line-strong); border-right: 1px dashed var(--a-line-strong); }
-#p-d-sleep .ds-tr { position: relative; height: 40px; border-radius: var(--a-r-xs); cursor: pointer; }
-#p-d-sleep .ds-tr.sel { box-shadow: inset 0 0 0 1px var(--a-accent); }
-#p-d-sleep .ds-tr.empty { cursor: default; }
-#p-d-sleep .ds-bar { position: absolute; top: 6px; bottom: 6px; border-radius: 6px; background: color-mix(in srgb, var(--c-sleep) 40%, transparent); border: 1px solid var(--c-sleep); display: flex; align-items: center; justify-content: center; transition: left .09s linear, width .09s linear; }
-#p-d-sleep .ds-tr.sel .ds-bar { background: color-mix(in srgb, var(--c-sleep) 60%, transparent); }
-#p-d-sleep .ds-bt { font-weight: 600; font-size: 12px; color: var(--a-text); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; padding: 0 16px; pointer-events: none; }
+#p-d-sleep .ds-goal { position: absolute; top: -6px; bottom: -2px; border-radius: 8px; background: color-mix(in srgb, var(--a-ok) 10%, transparent); border-left: 1.5px dashed color-mix(in srgb, var(--a-ok) 60%, transparent); border-right: 1.5px dashed color-mix(in srgb, var(--a-ok) 60%, transparent); }
+#p-d-sleep .ds-tr { position: relative; height: 40px; border-radius: 10px; background: color-mix(in srgb, var(--a-surface-3) 45%, transparent); cursor: pointer; }
+#p-d-sleep .ds-tr.sel { box-shadow: inset 0 0 0 1.5px var(--a-accent); }
+#p-d-sleep .ds-tr.empty { background: none; border: 1.5px dashed var(--a-line); cursor: default; }
+#p-d-sleep .ds-bar { position: absolute; top: 5px; bottom: 5px; border-radius: 8px; background: color-mix(in srgb, var(--c-sleep) 46%, transparent); border: 1px solid var(--c-sleep); display: flex; align-items: center; justify-content: center; transition: left .09s linear, width .09s linear; }
+#p-d-sleep .ds-tr.sel .ds-bar { border-width: 2px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-sleep) 22%, transparent); }
+#p-d-sleep .ds-bt { font-weight: 650; font-size: 11.5px; color: var(--a-text); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; padding: 0 16px; pointer-events: none; }
 #p-d-sleep .ds-bar.narrow .ds-bt { display: none; }
-#p-d-sleep .ds-h { position: absolute; top: -6px; bottom: -6px; width: 30px; display: flex; align-items: center; justify-content: center; cursor: ew-resize; touch-action: none; z-index: 2; border-radius: var(--a-r-xs); }
+#p-d-sleep .ds-h { position: absolute; top: -6px; bottom: -6px; width: 30px; display: flex; align-items: center; justify-content: center; cursor: ew-resize; touch-action: none; z-index: 2; border-radius: 8px; }
 #p-d-sleep .ds-h[data-f="bed"] { left: -16px; } #p-d-sleep .ds-h[data-f="wake"] { right: -16px; }
-#p-d-sleep .ds-h::after { content: ""; width: 4px; height: 16px; border-radius: 2px; background: var(--c-sleep); opacity: 0; transition: opacity .15s, transform .15s var(--ease); }
-#p-d-sleep .ds-tr.sel .ds-h::after, #p-d-sleep .ds-tr:hover .ds-h::after, #p-d-sleep .ds-h:focus-visible::after { opacity: 1; height: 22px; }
-#p-d-sleep .ds-h:hover::after, #p-d-sleep .ds-h.on::after { transform: scale(1.3, 1.1); }
+#p-d-sleep .ds-h::after { content: ""; width: 6px; height: 20px; border-radius: 4px; background: var(--c-sleep); box-shadow: 0 0 0 2px var(--a-surface); transition: transform .15s var(--ease); }
+#p-d-sleep .ds-tr.sel .ds-h::after { height: 26px; width: 7px; }
+#p-d-sleep .ds-h:hover::after, #p-d-sleep .ds-h.on::after { transform: scale(1.25, 1.15); }
 #p-d-sleep .ds-h:focus-visible { outline: 2px solid var(--a-accent); outline-offset: -3px; }
-#p-d-sleep .ds-add { position: absolute; top: 50%; transform: translateY(-50%); height: 32px; padding: 0 12px; border-radius: var(--a-r-xs); border: 1px dashed var(--a-line-strong); background: var(--a-surface); color: var(--a-soft); font-weight: 600; font-size: 13px; white-space: nowrap; }
-#p-d-sleep .ds-add:hover { border-color: var(--a-accent); color: var(--a-text); }
-#p-d-sleep .ds-tip { position: absolute; z-index: 5; transform: translate(-50%, -100%); background: var(--a-surface-3); color: var(--a-text); border-radius: var(--a-r-xs); padding: 4px 8px; font-weight: 600; font-size: 12px; white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
-#p-d-sleep .ds-leg { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12px; color: var(--a-muted); margin-top: 12px; }
-#p-d-sleep .ds-leg > span { display: inline-flex; align-items: center; gap: 8px; }
-#p-d-sleep .ds-hint { margin-left: auto; }
+#p-d-sleep .ds-add { position: absolute; top: 50%; transform: translateY(-50%); height: 32px; padding: 0 12px; border-radius: 8px; border: 1px dashed var(--a-accent); background: var(--a-surface); color: var(--a-accent); font-weight: 650; font-size: 12.5px; white-space: nowrap; }
+#p-d-sleep .ds-add:hover { background: var(--a-accent-soft); }
+#p-d-sleep .ds-tip { position: absolute; z-index: 5; transform: translate(-50%, -100%); background: var(--a-surface-3); color: var(--a-text); border: 1px solid var(--a-line); border-radius: 8px; padding: 4px 10px; font-weight: 650; font-size: 12px; white-space: nowrap; pointer-events: none; box-shadow: var(--a-shadow); font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-leg { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 12.5px; color: var(--a-muted); margin-top: 12px; }
+#p-d-sleep .ds-leg > span { display: inline-flex; align-items: center; gap: 6px; }
+#p-d-sleep .ds-hint { color: var(--a-soft); }
 #p-d-sleep .ds-sw { width: 16px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
-#p-d-sleep .ds-sw.sl { background: color-mix(in srgb, var(--c-sleep) 40%, transparent); border: 1px solid var(--c-sleep); }
-#p-d-sleep .ds-sw.gz { background: color-mix(in srgb, var(--a-text) 4%, transparent); border: 1px dashed var(--a-line-strong); }
+#p-d-sleep .ds-sw.sl { background: color-mix(in srgb, var(--c-sleep) 46%, transparent); border: 1px solid var(--c-sleep); }
+#p-d-sleep .ds-sw.gz { background: color-mix(in srgb, var(--a-ok) 12%, transparent); border: 1.5px dashed color-mix(in srgb, var(--a-ok) 60%, transparent); }
+#p-d-sleep .ds-sw.em { border: 1.5px dashed var(--a-line); }
+#p-d-sleep .ds-sw.pt { width: 10px; border-radius: 50%; background: var(--c-sleep); }
+#p-d-sleep .ds-sw.av { height: 0; border-top: 2.5px dashed var(--c-mood); border-radius: 0; }
 #p-d-sleep .ds-sw.bd { width: 12px; height: 12px; border-radius: 50%; background: var(--c-sleep); }
 #p-d-sleep .ds-sw.wk { width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--c-sleep); background: var(--a-surface); }
-#p-d-sleep .ds-sw.gl { height: 4px; border-radius: 2px; background: var(--a-line-strong); }
-#p-d-sleep .ds-ed { border-top: 1px solid var(--a-line); margin-top: 16px; padding-top: 16px; display: flex; flex-direction: column; gap: 12px; }
-#p-d-sleep .ds-edh { display: flex; align-items: center; gap: 8px; }
-#p-d-sleep .ds-edh > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
-#p-d-sleep .ds-nav, #p-d-sleep .ds-pm { width: 36px; height: 36px; }
-#p-d-sleep .ds-pm { background: var(--a-surface-2); font-size: 18px; font-weight: 600; color: var(--a-text); }
-#p-d-sleep .ds-nav:disabled, #p-d-sleep .ds-pm:disabled { opacity: .35; cursor: default; background: none; }
-#p-d-sleep .ds-edb { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
-#p-d-sleep .ds-step, #p-d-sleep .ds-q { display: flex; align-items: center; gap: 8px; min-width: 0; }
-#p-d-sleep .ds-lab { width: 60px; flex: none; }
-#p-d-sleep .ds-step b { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; min-width: 52px; text-align: center; }
+#p-d-sleep .ds-sw.gl { height: 5px; border-radius: 99px; background: color-mix(in srgb, var(--a-ok) 65%, transparent); }
+#p-d-sleep .ds-ed { border-top: 1px solid var(--a-line); margin-top: 14px; padding-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+#p-d-sleep .ds-edh { display: flex; align-items: center; gap: 10px; }
+#p-d-sleep .ds-edh > div { flex: 1; min-width: 0; }
+#p-d-sleep .ds-edt { display: block; font-weight: 700; font-size: 15px; }
+#p-d-sleep .ds-edl { display: block; font-size: 13px; color: var(--a-soft); }
+#p-d-sleep .ds-nav { width: 36px; height: 36px; flex: none; border-radius: 10px; border: 1px solid var(--a-line); background: var(--a-surface-2); display: grid; place-items: center; padding: 0; }
+#p-d-sleep .ds-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#p-d-sleep .ds-nav:disabled { opacity: .4; cursor: default; }
+#p-d-sleep .ds-edb { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
+#p-d-sleep .ds-step, #p-d-sleep .ds-q { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#p-d-sleep .ds-lab { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; width: 64px; flex: none; }
+#p-d-sleep .ds-step button { height: 36px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-text); font-weight: 650; font-size: 12.5px; white-space: nowrap; }
+#p-d-sleep .ds-step button:hover:not(:disabled) { border-color: var(--a-accent); }
+#p-d-sleep .ds-step button:disabled { opacity: .4; cursor: default; }
+#p-d-sleep .ds-step b { font: 800 20px/1 var(--fd); font-variant-numeric: tabular-nums; min-width: 70px; text-align: center; }
 #p-d-sleep .ds-stars { display: flex; }
-#p-d-sleep .ds-star { width: 36px; height: 36px; border: 0; background: none; padding: 0; display: grid; place-items: center; border-radius: var(--a-r-xs); color: var(--a-surface-3); }
-#p-d-sleep .ds-star svg { width: 22px; height: 22px; fill: currentColor; transition: transform .2s var(--ease); }
-#p-d-sleep .ds-star.on { color: var(--a-accent); }
-#p-d-sleep .ds-star:hover svg { transform: scale(1.12); }
+#p-d-sleep .ds-star { width: 36px; height: 36px; border: 0; background: none; padding: 0; display: grid; place-items: center; border-radius: 8px; color: var(--a-surface-3); }
+#p-d-sleep .ds-star svg { width: 24px; height: 24px; fill: currentColor; transition: transform .2s var(--ease); }
+#p-d-sleep .ds-star.on { color: var(--a-gold); }
+#p-d-sleep .ds-star:hover svg { transform: scale(1.15); }
+#p-d-sleep .ds-qw { font-size: 13px; color: var(--a-soft); margin-left: 4px; }
 #p-d-sleep .ds-del { margin-left: auto; }
-#p-d-sleep .ds-edn { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-#p-d-sleep .ds-scg { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 24px; align-items: center; }
-#p-d-sleep .ds-sct { min-width: 0; display: grid; gap: 8px; }
-#p-d-sleep .ds-con { font-size: 15px; line-height: 1.5; text-wrap: pretty; }
-#p-d-sleep .ds-con b { font-weight: 650; }
+#p-d-sleep .ds-edn { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--a-soft); }
+#p-d-sleep .ds-scg { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 20px; align-items: center; }
+#p-d-sleep .ds-sct { min-width: 0; }
+#p-d-sleep .ds-con { font-size: 17px; line-height: 1.45; text-wrap: pretty; }
+#p-d-sleep .ds-con b { font-weight: 750; }
+#p-d-sleep .ds-cons { color: var(--a-muted); font-size: 13px; margin-top: 6px; }
 #p-d-sleep .ds-scw { position: relative; min-width: 0; }
 #p-d-sleep svg.ds-sc { width: 100%; height: auto; display: block; overflow: visible; }
 #p-d-sleep .ds-sc .gl { stroke: var(--a-grid); stroke-width: 1; }
-#p-d-sleep .ds-sc .dv { stroke: var(--a-line-strong); stroke-width: 1; stroke-dasharray: 3 4; }
-#p-d-sleep .ds-sc text { fill: var(--a-muted); font-size: 11px; font-family: var(--f); }
-#p-d-sleep .ds-sc text.avt { fill: var(--a-soft); font-size: 12px; font-weight: 600; }
-#p-d-sleep .ds-sc .av { stroke: var(--a-soft); stroke-width: 2; stroke-dasharray: 6 4; stroke-linecap: round; transition: all .3s var(--ease); }
+#p-d-sleep .ds-sc .dv { stroke: var(--a-line); stroke-width: 1.5; stroke-dasharray: 3 4; }
+#p-d-sleep .ds-sc text { fill: var(--a-muted); font-size: 10.5px; font-family: var(--f); }
+#p-d-sleep .ds-sc text.avt { fill: var(--a-soft); font-size: 12px; font-weight: 700; }
+#p-d-sleep .ds-sc .av { stroke: var(--c-mood); stroke-width: 2.5; stroke-dasharray: 6 4; stroke-linecap: round; transition: all .3s var(--ease); }
 #p-d-sleep .ds-pt { cursor: pointer; outline: none; transition: transform .3s var(--ease); }
 #p-d-sleep .ds-pt .hit { fill: transparent; }
 #p-d-sleep .ds-pt .vis { fill: var(--c-sleep); stroke: var(--a-surface); stroke-width: 2; transform-box: fill-box; transform-origin: center; transition: transform .2s var(--ease); }
 #p-d-sleep .ds-pt.sel .vis { transform: scale(1.5); stroke: var(--a-text); }
 #p-d-sleep .ds-pt:focus-visible .vis { stroke: var(--a-accent); stroke-width: 3; }
-#p-d-sleep .undo { position: sticky; left: auto; bottom: 12px; translate: none; align-self: center; max-width: 100%; animation: d-sleep-rise .3s var(--ease); }
-#p-d-sleep .undo span { min-width: 0; }
-#p-d-sleep .ds-b { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 16px; align-items: start; }
+#p-d-sleep .ds-toast { position: sticky; bottom: 12px; z-index: 6; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; background: var(--a-surface-3); border: 1px solid var(--a-line); border-radius: 12px; box-shadow: var(--a-shadow); animation: d-sleep-rise .3s var(--ease); }
+#p-d-sleep .ds-toast span { flex: 1; min-width: 0; font-size: 13px; }
+#p-d-sleep .ds-b { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 14px; align-items: start; }
 #p-d-sleep svg.ds-clock { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
 #p-d-sleep .ds-clock .ring { fill: none; stroke: var(--a-surface-3); stroke-width: 18; }
-#p-d-sleep .ds-clock .goal { fill: none; stroke: var(--a-line-strong); stroke-width: 4; stroke-linecap: round; }
+#p-d-sleep .ds-clock .goal { fill: none; stroke: color-mix(in srgb, var(--a-ok) 65%, transparent); stroke-width: 6; stroke-linecap: round; }
 #p-d-sleep .ds-arc { fill: none; stroke: var(--c-sleep); stroke-width: 18; stroke-linecap: round; stroke-dasharray: 100; }
-#p-d-sleep .ds-clock .tk { stroke: var(--a-faint); stroke-width: 1; }
-#p-d-sleep .ds-clock .tk.k { stroke: var(--a-muted); stroke-width: 1.5; }
+#p-d-sleep .ds-clock .tk { stroke: var(--a-muted); stroke-width: 1.2; }
+#p-d-sleep .ds-clock .tk.k { stroke: var(--a-soft); stroke-width: 2; }
 #p-d-sleep .ds-clock .hl { fill: var(--a-muted); font-size: 11px; text-anchor: middle; dominant-baseline: middle; font-family: var(--f); }
-#p-d-sleep .ds-clock .hl.k { fill: var(--a-soft); font-weight: 600; font-size: 12px; }
-#p-d-sleep .ds-clock .cb { fill: var(--a-text); font: 700 28px var(--f); text-anchor: middle; }
-#p-d-sleep .ds-clock .cs { fill: var(--a-soft); font: 500 13px var(--f); text-anchor: middle; }
-#p-d-sleep .ds-clock .cg { fill: var(--a-muted); font: 400 12px var(--f); text-anchor: middle; }
+#p-d-sleep .ds-clock .hl.k { fill: var(--a-soft); font-weight: 700; font-size: 12px; }
+#p-d-sleep .ds-clock .cb { fill: var(--a-text); font: 800 28px var(--fd); text-anchor: middle; }
+#p-d-sleep .ds-clock .cs { fill: var(--a-soft); font: 600 13px var(--f); text-anchor: middle; }
+#p-d-sleep .ds-clock .cg { fill: var(--a-muted); font: 500 11px var(--f); text-anchor: middle; }
 #p-d-sleep .ds-hd { cursor: grab; touch-action: none; outline: none; }
 #p-d-sleep .ds-hd .hit { fill: transparent; }
 #p-d-sleep .ds-hd .v { fill: var(--a-surface); stroke: var(--c-sleep); stroke-width: 4; transition: stroke-width .15s var(--ease); }
 #p-d-sleep .ds-hd[data-f="bed"] .v { fill: var(--c-sleep); stroke: var(--a-surface); stroke-width: 3; }
 #p-d-sleep .ds-hd:focus-visible .v, #p-d-sleep .ds-hd:hover .v { stroke: var(--a-accent); stroke-width: 5; }
 #p-d-sleep .ds-cleg { justify-content: center; }
-#p-d-sleep .ds-cleg .ds-hint { margin-left: 0; flex-basis: 100%; text-align: center; justify-content: center; }
 #p-d-sleep .ds-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-#p-d-sleep .ds-mini { border: 1px solid transparent; background: none; border-radius: var(--a-r-sm); padding: 8px 1px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; color: var(--a-muted); min-width: 0; }
-#p-d-sleep .ds-mini svg { width: 100%; max-width: 44px; height: auto; display: block; }
-#p-d-sleep .ds-mini b { font-weight: 650; font-size: 12px; color: var(--a-text); font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-mini { border: 1px solid transparent; background: none; border-radius: 12px; padding: 6px 1px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11.5px; color: var(--a-muted); min-width: 0; }
+#p-d-sleep .ds-mini svg { width: 100%; max-width: 46px; height: auto; display: block; }
+#p-d-sleep .ds-mini b { font-weight: 700; font-size: 12px; color: var(--a-text); font-variant-numeric: tabular-nums; }
 #p-d-sleep .ds-mini[aria-pressed="true"] { background: var(--a-accent-soft); border-color: var(--a-accent); }
 #p-d-sleep .ds-mini .rg { fill: none; stroke: var(--a-surface-3); stroke-width: 5; }
-#p-d-sleep .ds-mini .rg.em { stroke: var(--a-line-strong); stroke-dasharray: 3 3; stroke-width: 1.5; }
+#p-d-sleep .ds-mini .rg.em { stroke: var(--a-line); stroke-dasharray: 3 3; stroke-width: 2; }
 #p-d-sleep .ds-mini .ds-arc { stroke-width: 5; }
-#p-d-sleep .ds-mini text { fill: var(--a-muted); font: 600 16px var(--f); text-anchor: middle; dominant-baseline: middle; }
-#p-d-sleep .ds-wsum { list-style: none; margin: 16px 0; padding: 0; display: grid; font-size: 13px; }
-#p-d-sleep .ds-wsum li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; }
-#p-d-sleep .ds-wsum li + li { border-top: 1px solid var(--a-line); }
+#p-d-sleep .ds-mini text { fill: var(--a-accent); font: 700 16px var(--f); text-anchor: middle; dominant-baseline: middle; }
+#p-d-sleep .ds-wsum { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; }
+#p-d-sleep .ds-wsum li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--a-line); padding-bottom: 8px; }
 #p-d-sleep .ds-wsum li span { color: var(--a-muted); }
-#p-d-sleep .ds-wsum li b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+#p-d-sleep .ds-wsum li b { font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
 #p-d-sleep.ds-play .ds-bar { animation: d-sleep-grow .7s var(--ease) both; animation-delay: calc(var(--i) * 45ms + 120ms); }
 #p-d-sleep.ds-play .ds-len { animation: d-sleep-fade .4s var(--ease) both; animation-delay: calc(var(--i) * 45ms + 500ms); }
 #p-d-sleep.ds-play .ds-pt .vis { animation: d-sleep-pop .45s var(--ease) both; animation-delay: calc(var(--i) * 40ms + 400ms); }
 #p-d-sleep.ds-play .ds-arc { animation: d-sleep-draw .9s var(--ease) both; animation-delay: calc(var(--i, 0) * 60ms + 100ms); }
 #p-d-sleep.ds-play .ds-hd { animation: d-sleep-fade .4s var(--ease) both; animation-delay: .8s; }
 #p-d-sleep .ds-tr.ds-new .ds-bar { animation: d-sleep-grow .55s var(--ease) both; }
-@keyframes d-sleep-grow { from { clip-path: inset(-10px 100% -10px -20px round 6px); } to { clip-path: inset(-10px -20px -10px -20px round 6px); } }
+@keyframes d-sleep-grow { from { clip-path: inset(-10px 100% -10px -20px round 8px); } to { clip-path: inset(-10px -20px -10px -20px round 8px); } }
 @keyframes d-sleep-fade { from { opacity: 0; } }
 @keyframes d-sleep-pop { from { transform: scale(0); } }
 @keyframes d-sleep-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-@keyframes d-sleep-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes d-sleep-rise { from { opacity: 0; transform: translateY(10px); } }
 @media (max-width: 720px) {
   #p-d-sleep .ds-b, #p-d-sleep .ds-scg { grid-template-columns: minmax(0, 1fr); }
   #p-d-sleep .ds-axis span.odd { display: none; }
-  #p-d-sleep .ds-hint { margin-left: 0; flex-basis: 100%; }
+  #p-d-sleep .ds-ct { display: none; }
 }
 @media (max-width: 560px) {
   #p-d-sleep .ds-kpis { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  #p-d-sleep .ds-kpi { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; row-gap: 4px; align-items: center; padding: 12px; }
-  #p-d-sleep .ds-kpi .num-l { grid-column: 1; grid-row: 1 / span 3; min-width: 96px; }
-  #p-d-sleep .ds-kpi .label, #p-d-sleep .ds-kpi .small, #p-d-sleep .ds-kpi .bar { grid-column: 2; }
+  #p-d-sleep .ds-kpi { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; row-gap: 4px; align-items: center; padding: 12px 14px; }
+  #p-d-sleep .ds-kpi .ds-big { grid-column: 1; grid-row: 1 / span 3; font-size: 26px; min-width: 104px; }
+  #p-d-sleep .ds-kpi small, #p-d-sleep .ds-kpi .ds-sub, #p-d-sleep .ds-kpi .ds-meter { grid-column: 2; }
   #p-d-sleep .ds-plot { grid-template-columns: 44px minmax(0, 1fr) 50px; column-gap: 8px; }
   #p-d-sleep .ds-day { padding: 0 4px; font-size: 12px; }
   #p-d-sleep .ds-day span { display: block; margin: 0; font-size: 11px; line-height: 1.1; }
   #p-d-sleep .ds-len { font-size: 12px; }
   #p-d-sleep .ds-lab { width: 56px; }
   #p-d-sleep .ds-del { margin-left: 0; }
+  #p-d-sleep .ds-hint { flex-basis: 100%; }
 }
   </style>
 
@@ -276,7 +292,7 @@
   function clk(r) { var c = (Math.round(r) + 1200) % 1440; return pad(Math.floor(c / 60)) + ":" + pad(c % 60); }
   function hm(m) { m = Math.round(m); return Math.floor(m / 60) + ":" + pad(m % 60); }
   function dur(m, sh) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; if (!h) return r + " мин"; return h + " ч" + (r ? " " + pad(r) + (sh ? "" : " мин") : ""); }
-  function big(m) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; return h + "<small>ч</small>" + (r ? " " + pad(r) + "<small>мин</small>" : ""); }
+  function big(m) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; return h + '<span class="u">ч</span>' + (r ? " " + pad(r) + '<span class="u">мин</span>' : ""); }
   function dec(x) { return x.toFixed(1).replace(".", ","); }
   function pct(v) { return v / SPAN * 100; }
   function $$(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
@@ -314,23 +330,23 @@
   var IC = { l: "M15 5l-7 7 7 7", r: "M9 5l7 7-7 7" };
   var STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 5.9L12 16.6l-5.3 2.9 1.1-5.9L3.4 9.5l6-.8z"/></svg>';
   function kpiHTML() {
-    return '<div class="ds-kpi"><span class="label">В среднем за ночь</span><b class="num-l" data-k="avg"></b><span class="small" data-k="avgd"></span></div>' +
-      '<div class="ds-kpi"><span class="label">Регулярность</span><b class="num-l" data-k="reg"></b><i class="bar"><i data-k="regm"></i></i><span class="small" data-k="regd"></span></div>' +
-      '<div class="ds-kpi"><span class="label">Долг сна за неделю <span class="status warn" data-k="badge" hidden>много</span></span><b class="num-l" data-k="debt"></b><span class="small" data-k="debtd"></span></div>';
+    return '<div class="ds-kpi"><small>В среднем за неделю</small><b class="ds-big" data-k="avg"></b><span class="ds-sub" data-k="avgd"></span></div>' +
+      '<div class="ds-kpi"><small>Регулярность</small><b class="ds-big" data-k="reg"></b><i class="ds-meter"><i data-k="regm"></i></i><span class="ds-sub" data-k="regd"></span></div>' +
+      '<div class="ds-kpi"><small>Долг сна за неделю <em class="ds-badge" data-k="badge" hidden>много</em></small><b class="ds-big" data-k="debt"></b><span class="ds-sub" data-k="debtd"></span></div>';
   }
   function edHTML() {
     var st = "";
     for (var k = 1; k <= 5; k++) st += '<button type="button" class="ds-star" data-act="star" data-q="' + k + '" aria-label="Качество ' + k + ' из 5">' + STAR + "</button>";
     function step(f, t) {
-      return '<div class="ds-step"><span class="label ds-lab">' + t + '</span><button type="button" class="icon-btn ds-pm" data-act="step" data-f="' + f + '" data-d="-15" aria-label="' + t + ' на 15 минут раньше">−</button><b data-k="' + f + '" aria-live="polite"></b><button type="button" class="icon-btn ds-pm" data-act="step" data-f="' + f + '" data-d="15" aria-label="' + t + ' на 15 минут позже">+</button></div>';
+      return '<div class="ds-step"><span class="ds-lab">' + t + '</span><button type="button" data-act="step" data-f="' + f + '" data-d="-15" aria-label="' + t + ' на 15 минут раньше">−15 мин</button><b data-k="' + f + '" aria-live="polite"></b><button type="button" data-act="step" data-f="' + f + '" data-d="15" aria-label="' + t + ' на 15 минут позже">+15 мин</button></div>';
     }
-    return '<div class="ds-edh"><button type="button" class="icon-btn ds-nav" data-act="prev" aria-label="Предыдущая ночь"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + IC.l + '"/></svg></button>' +
-      '<div><p class="h ds-edt"></p><p class="small ds-edl"></p></div>' +
-      '<button type="button" class="icon-btn ds-nav" data-act="next" aria-label="Следующая ночь"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + IC.r + '"/></svg></button></div>' +
+    return '<div class="ds-edh"><button type="button" class="ds-nav" data-act="prev" aria-label="Предыдущая ночь"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + IC.l + '"/></svg></button>' +
+      '<div><b class="ds-edt"></b><span class="ds-edl"></span></div>' +
+      '<button type="button" class="ds-nav" data-act="next" aria-label="Следующая ночь"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + IC.r + '"/></svg></button></div>' +
       '<div class="ds-edb">' + step("bed", "Отбой") + step("wake", "Подъём") +
-      '<div class="ds-q"><span class="label ds-lab">Качество</span><div class="ds-stars" role="group" aria-label="Качество ночи">' + st + '</div><span class="small ds-qw"></span></div>' +
-      '<button type="button" class="btn quiet ds-del" data-act="del">Удалить</button></div>' +
-      '<div class="ds-edn"><span class="small">Сон за эту ночь не записан.</span><button type="button" class="btn" data-act="addsel">Записать по цели</button></div>';
+      '<div class="ds-q"><span class="ds-lab">Качество</span><div class="ds-stars" role="group" aria-label="Качество ночи">' + st + '</div><span class="ds-qw"></span></div>' +
+      '<button type="button" class="btn ghost ds-del" data-act="del">Удалить сон</button></div>' +
+      '<div class="ds-edn"><span>Сон за эту ночь не записан.</span><button type="button" class="btn primary" data-act="addsel">+ Записать по цели</button></div>';
   }
   $$(".ds-kpis").forEach(function (el) { el.innerHTML = kpiHTML(); });
   $$(".ds-ed").forEach(function (el) { el.innerHTML = edHTML(); });
@@ -369,8 +385,8 @@
           hh.setAttribute("aria-label", (f === "bed" ? "Отбой" : "Подъём") + ", " + sname(i)); hh.setAttribute("aria-valuetext", clk(n[f]));
         });
       }
-      o.l.className = "ds-len" + (ok && l < GLEN - 30 ? " short" : "");
-      o.l.textContent = ok ? dur(l, true) : "нет";
+      o.l.className = "ds-len" + (!ok ? " none" : l < GLEN - 30 ? " short" : "");
+      o.l.textContent = ok ? (l < GLEN - 30 ? "↓ " : "") + dur(l, true) : "нет";
     });
   }
   function showTip(i, txt, xp) {
@@ -417,7 +433,7 @@
     var con = A.querySelector(".ds-con");
     if (s.lo != null && s.hi != null) con.innerHTML = "После ночи от 7 часов вы оцениваете день в среднем на <b>" + dec(s.hi) + " из 10</b>. После короткой ночи только на <b>" + dec(s.lo) + "</b>.";
     else con.innerHTML = "Пока все ночи " + (s.hi != null ? "длинные" : "короткие") + ", сравнивать не с чем.";
-    A.querySelector(".ds-cons").textContent = "По " + s.all + " " + plural(s.all, "записанной ночи", "записанным ночам", "записанным ночам") + ", граница 7 часов сна.";
+    A.querySelector(".ds-cons").textContent = "Считаю по " + s.all + " " + plural(s.all, "записанной ночи", "записанным ночам", "записанным ночам") + ". Граница: 7 часов сна.";
   }
   function scTip(i) {
     var n = N[i]; if (!has(n)) return;
@@ -518,50 +534,42 @@
   function paintKpis(s, e) {
     if (e == null) e = 1;
     $$('[data-k="avg"]').forEach(function (el) { el.innerHTML = big(s.avg * e); });
-    $$('[data-k="reg"]').forEach(function (el) { el.innerHTML = Math.round(s.reg * e) + "<small>%</small>"; });
+    $$('[data-k="reg"]').forEach(function (el) { el.innerHTML = Math.round(s.reg * e) + '<span class="u">%</span>'; });
     $$('[data-k="regm"]').forEach(function (el) { el.style.width = s.reg * e + "%"; });
-    $$('[data-k="debt"]').forEach(function (el) { el.innerHTML = big(s.debt * e); });
+    $$('[data-k="debt"]').forEach(function (el) { el.innerHTML = big(s.debt * e); el.classList.toggle("warn", s.debt >= 120); });
     $$('[data-k="badge"]').forEach(function (el) { el.hidden = s.debt < 120; });
-    var df = s.prev == null ? 0 : Math.round(s.avg - s.prev), t;
-    if (df >= 5) t = "на " + dur(df) + " больше прошлой недели";
-    else if (df <= -5) t = "на " + dur(-df) + " меньше прошлой недели";
-    else t = "как на прошлой неделе";
-    $$('[data-k="avgd"]').forEach(function (el) { el.textContent = t; });
+    var df = s.prev == null ? 0 : Math.round(s.avg - s.prev), t, c = "";
+    if (df >= 5) { t = "▲ на " + dur(df) + " больше, чем неделей раньше"; c = " up"; }
+    else if (df <= -5) { t = "▼ на " + dur(-df) + " меньше, чем неделей раньше"; c = " down"; }
+    else t = "как неделей раньше";
+    $$('[data-k="avgd"]').forEach(function (el) { el.textContent = t; el.className = "ds-sub" + c; });
     var sp = Math.round(s.sd / 5) * 5;
-    $$('[data-k="regd"]').forEach(function (el) { el.textContent = s.rec < 2 ? "мало ночей для оценки" : sp <= 15 ? "отбой почти минута в минуту" : "отбой гуляет на ±" + sp + " мин"; });
+    $$('[data-k="regd"]').forEach(function (el) { el.textContent = s.rec < 2 ? "мало ночей для оценки" : sp <= 15 ? "ложитесь почти минута в минуту" : "время отбоя гуляет на ±" + sp + " мин"; });
     $$('[data-k="debtd"]').forEach(function (el) {
-      el.textContent = (s.nshort ? "не добрали " + s.nshort + " из " + s.rec + " ночей" : "все ночи по цели") + (s.miss ? ", " + s.miss + " без записи" : "");
+      el.textContent = (s.nshort ? "не добрали в " + s.nshort + " из " + s.rec + " ночей" : "все ночи по цели") + (s.miss ? ", " + s.miss + " " + plural(s.miss, "не записана", "не записаны", "не записаны") : "");
     });
   }
   function rinaSay(s) {
-    if (s.debt >= 120) return s.late > 10 ? ["bedtime", "За неделю набралось <b>" + dur(s.debt) + "</b> недосыпа, в основном из-за позднего отбоя. Напомнить вам о сне в 23:00?", 1]
-      : ["bedtime", "За неделю набралось <b>" + dur(s.debt) + "</b> недосыпа, хотя ложитесь вы вовремя. Может, будильник чуть позже?"];
-    if (s.debt > 0) return ["happy", "Почти по цели: не хватило всего <b>" + dur(s.debt) + "</b>. Пара ранних вечеров, и долг уйдёт."];
-    return ["proud", "Неделя без долга сна, регулярность <b>" + s.reg + " %</b>. Я вами горжусь."];
+    if (s.debt >= 120) return ["bedtime", "За неделю набралось <b>" + dur(s.debt) + "</b> недосыпа. " + (s.late > 10 ? "Чаще всего ночь укорачивает поздний отбой: вы ложитесь в среднем на <b>" + dur(s.late) + "</b> позже цели. Сегодня напомню вам о сне в 23:00, хорошо?" : "Отбой почти вовремя, а ночь всё равно короткая. Может, будильник поставить чуть позже?")];
+    if (s.debt > 0) return ["happy", "Почти по цели: за неделю не хватило всего <b>" + dur(s.debt) + "</b>. Ещё пара ранних вечеров, и долг уйдёт."];
+    return ["proud", "Неделя без долга сна! Вы ложитесь ровно, регулярность <b>" + s.reg + " %</b>. Я вами горжусь."];
   }
-  var remind = false;
   function paintRina(s) {
     var r = rinaSay(s);
-    $$(".rina").forEach(function (el) {
-      var img = el.querySelector("img"), b = el.querySelector('[data-act="remind"]');
-      if (img.getAttribute("src") !== "maid/" + r[0] + ".webp") img.src = "maid/" + r[0] + ".webp";
-      el.querySelector("p").innerHTML = r[1];
-      b.hidden = !r[2]; b.disabled = remind; b.textContent = remind ? "Напомню в 23:00 ✓" : "Напомнить в 23:00";
-    });
+    $$(".rina").forEach(function (el) { var img = el.querySelector("img"); if (img.getAttribute("src") !== "maid/" + r[0] + ".webp") img.src = "maid/" + r[0] + ".webp"; el.querySelector("p").innerHTML = r[1]; });
   }
   var cu = 0;
   function refresh() { cu++; var s = stats(); paintA(); paintB(); paintEds(); paintKpis(s); paintScatter(s); paintRina(s); }
   function select(i) { if (i === sel) return; sel = i; refresh(); }
 
   /* ——— изменения и отмена */
-  var U = { snap: null, key: "", t: 0, remind: false };
+  var U = { snap: null, key: "", t: 0 };
   function begin(key) { if (U.key !== key || !U.snap) { U.snap = N.map(function (n) { return { bed: n.bed, wake: n.wake, q: n.q }; }); U.key = key; } }
   function toast(msg, undo) {
-    U.remind = false;
     $$(".ds-toast").forEach(function (t) { t.hidden = false; t.querySelector("span").textContent = msg; t.querySelector("button").hidden = !undo; });
     clearTimeout(U.t); U.t = setTimeout(closeToast, 7000);
   }
-  function closeToast() { U.snap = null; U.key = ""; U.remind = false; $$(".ds-toast").forEach(function (t) { t.hidden = true; }); }
+  function closeToast() { U.snap = null; U.key = ""; $$(".ds-toast").forEach(function (t) { t.hidden = true; }); }
   function doUndo() {
     if (!U.snap) return;
     U.snap.forEach(function (o, i) { N[i].bed = o.bed; N[i].wake = o.wake; N[i].q = o.q; });
@@ -578,7 +586,7 @@
     begin("add" + i); N[i].bed = GOAL.bed; N[i].wake = GOAL.wake; N[i].q = 3; sel = i;
     var tr = rows[i].tr; tr.classList.remove("ds-new"); void tr.offsetWidth; tr.classList.add("ds-new");
     setTimeout(function () { tr.classList.remove("ds-new"); }, 700);
-    refresh(); toast("Ночь на " + sname(i) + " записана по цели.", true);
+    refresh(); toast("Сон в ночь на " + sname(i) + " записан по цели: " + clk(GOAL.bed) + " → " + clk(GOAL.wake) + ". Поправьте края, если было иначе.", true);
   }
   function setVar(v) {
     $$('[data-act="var"]').forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.v === v); });
@@ -592,17 +600,16 @@
     else if (a === "prev") select(Math.max(0, sel - 1));
     else if (a === "next") select(Math.min(N.length - 1, sel + 1));
     else if (a === "step") { var f = b.dataset.f; begin(f + sel); if (setEdge(sel, f, n[f] + +b.dataset.d)) toast(edgeMsg(sel, f), true); }
-    else if (a === "star") { var q = +b.dataset.q; if (q !== n.q) { begin("q" + sel); n.q = q; refresh(); toast("Качество ночи: " + QW[q] + ".", true); } }
+    else if (a === "star") { var q = +b.dataset.q; if (q !== n.q) { begin("q" + sel); n.q = q; refresh(); toast("Качество ночи на " + sname(sel) + ": " + QW[q] + ".", true); } }
     else if (a === "add") addAt(i);
     else if (a === "addsel") addAt(sel);
-    else if (a === "del") { begin("del" + sel); n.bed = n.wake = null; n.q = 0; refresh(); toast("Ночь на " + sname(sel) + " удалена.", true); }
+    else if (a === "del") { begin("del" + sel); n.bed = n.wake = null; n.q = 0; refresh(); toast("Сон в ночь на " + sname(sel) + " удалён.", true); }
     else if (a === "rec") {
       var j = -1; for (var k2 = N.length - 1; k2 >= 0; k2--) if (!has(N[k2])) { j = k2; break; }
-      if (j >= 0) addAt(j); else { select(N.length - 1); toast("Все ночи уже записаны.", false); }
+      if (j >= 0) addAt(j); else { select(N.length - 1); toast("Все ночи уже записаны. Потяните край полосы, чтобы поправить время.", false); }
     }
-    else if (a === "undo") { if (U.remind) { U.remind = false; remind = false; closeToast(); refresh(); } else doUndo(); }
-    else if (a === "remind") { remind = true; refresh(); toast("Напомню о сне в 23:00.", true); U.remind = true; }
-    else if (a === "goal") toast("Цель меняется в «Рина → О вас».", false);
+    else if (a === "undo") doUndo();
+    else if (a === "goal") toast("Цель меняется в разделе «Рина → О вас». Здесь она только показана.", false);
     else if (a === "var") setVar(b.dataset.v);
   });
 
