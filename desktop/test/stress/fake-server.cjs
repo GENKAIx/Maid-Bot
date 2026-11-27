@@ -269,8 +269,36 @@ function create() {
       if (body?.status === "open") { const i = (srv.done ?? []).findIndex((x) => x.id === id); if (i >= 0) { srv.state.tasks.push(...srv.done.splice(i, 1)); srv.xp -= 10; } }
       return finish(200, { ok: true });
     }
+    // «⏰ Позже» (как server/src/api.ts): GET — что успевает до 00:00 по часам стенда, POST {day, in | at} — отложить (srv.snoozes).
+    if ((req.method === "GET" || req.method === "POST") && (m = p.match(/^\/api\/habits\/(\d+)\/snooze$/))) {
+      const hb = srv.state.habits?.find?.((x) => x.id === Number(m[1]));
+      const now = srv.now(), min = now.getHours() * 60 + now.getMinutes(), day = (req.method === "GET" ? url.searchParams.get("day") : body?.day) ?? dayKey(now);
+      if (!hb) return finish(409, { error: "Нет такой привычки." });
+      if (day !== dayKey(now)) return finish(409, { error: day < dayKey(now) ? "Этот день уже закончился — отложить нельзя." : "Отложить можно только на сегодня." });
+      if (hb.status) return finish(409, { error: `${hb.title} — уже отмечено.` });
+      if (req.method === "GET") {
+        const hours = [];
+        for (let h = Math.floor(min / 60) + 1; h <= 23; h++) hours.push(`${pad(h)}:00`);
+        return finish(200, { steps: [15, 30, 60, 120].filter((x) => min + x < 1440), hours, now: hm(now) });
+      }
+      const rel = Number.isInteger(body?.in) && body.in >= 1 && body.in <= 1440, abs = typeof body?.at === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(body.at);
+      if (rel === abs || (body?.in !== undefined && !rel) || (body?.at !== undefined && !abs)) return finish(400, { error: "нужно in (минут) или at (ЧЧ:ММ)" });
+      const due = rel ? min + body.in : Number(body.at.slice(0, 2)) * 60 + Number(body.at.slice(3));
+      if (due <= min) return finish(409, { error: "Это время уже прошло — выберите позже." });
+      if (due >= 1440) return finish(409, { error: "До 00:00 уже не успеть — выберите время раньше." });
+      const at = `${pad(Math.floor(due / 60))}:${pad(due % 60)}`;
+      // Последнее «Позже» заменяет прежнее (cancelReminders на сервере).
+      srv.snoozes = [...(srv.snoozes ?? []).filter((x) => !(x.id === hb.id && x.day === day)), { id: hb.id, day, in: body.in, at: body.at, due: at }];
+      return finish(200, { text: `⏰ ${hb.title} — напомню в ${at}. Не отметите до 00:00 — поставлю минус.`, at });
+    }
     if (req.method === "POST" && (m = p.match(/^\/api\/habits\/(\d+)\/(mark|unmark)$/))) {
       const hb = srv.state.habits?.find?.((x) => x.id === Number(m[1]));
+      // «Ещё нет» / прежнее «Позже» (status later) — как pipeline.habitLater: отметки нет, только ответ.
+      if (m[2] === "mark" && body?.status === "later") {
+        return finish(200, { text: hb ? `⏳ ${hb.title} — хорошо, спрошу ещё раз в 23:00. Не отметите до 00:00 — поставлю минус.` : "Нет такой привычки." });
+      }
+      // Отметка снимает отложенное «Позже» этой привычки (как markHabit на сервере).
+      if (hb && m[2] === "mark") srv.snoozes = (srv.snoozes ?? []).filter((x) => x.id !== hb.id);
       if (hb) {
         const was = hb.status === "done";
         hb.status = m[2] === "mark" ? body?.status ?? "done" : null;

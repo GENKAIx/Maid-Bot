@@ -207,7 +207,7 @@ export const FEATURES: Feature[] = [
     id: "habits",
     title: "Привычки и курсы",
     text: "Привычка — то, что делаешь регулярно; курс — то же на N дней (витамины, таблетки, челлендж). Горничная заводит их, " +
-      "когда ты сам хочешь («хочу…», «буду…»), спрашивает в своё время с кнопками «Да», «Ещё нет», «Нет» и считает серии.",
+      "когда ты сам хочешь («хочу…», «буду…»), спрашивает в своё время с кнопками «Да», «Позже», «Нет» и считает серии.",
     ai: {
       kind: "widget",
       start: { maid: "idle", input: "", rows: [{ title: "Зарядка", habit: true, done: true, note: "🔥 5" }] },
@@ -217,7 +217,7 @@ export const FEATURES: Feature[] = [
         { at: 2900, set: { maid: "write", bubble: "Завела курс «Витамин D» — 30 дней, с сегодня.",
           rows: [{ title: "Зарядка", habit: true, done: true, note: "🔥 5" }, { title: "Витамин D", habit: true, note: "0/30", fresh: true }] } },
         { at: 5600, set: { maid: "idle", bubble: undefined, rows: [{ title: "Зарядка", habit: true, done: true, note: "🔥 5" }, { title: "Витамин D", habit: true, note: "0/30" }] } },
-        { at: 6300, set: { maid: "remind", bubble: "Витамин D сегодня?", buttons: ["✅ Да", "⏳ Ещё нет", "✖ Нет"] } },
+        { at: 6300, set: { maid: "remind", bubble: "Витамин D сегодня?", buttons: ["✅ Да", "⏰ Позже", "✖ Нет"] } },
         { at: 7900, set: { pressed: 0 } },
         { at: 8300, set: { maid: "streak", bubble: "Отметила. День 1 из 30.", buttons: undefined, pressed: undefined,
           rows: [{ title: "Зарядка", habit: true, done: true, note: "🔥 5" }, { title: "Витамин D", habit: true, done: true, note: "1/30", fresh: true }] } },

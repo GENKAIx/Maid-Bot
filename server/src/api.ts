@@ -30,7 +30,7 @@ import { Push } from "./push.ts";
 import { RepeatSpec, setRepeat } from "./repeat.ts";
 import { moneyTotals, upcomingDates, yearKnown } from "./report.ts";
 import { decideTrait, profileView, saveProfile, xpOf, sameTrait, steamAvatar, traitCategory, traitView, AVATAR_MAX } from "./profile.ts";
-import { RATE_MAX, habitButtons, planEventReminders, RATE, rateDay, remindText, replanEvents as replanEventsOf, snooze, type Button, type Send } from "./scheduler.ts";
+import { HABIT_DATA, RATE_MAX, habitButtons, planEventReminders, snoozeDayRefusal, snoozeOptions, RATE, rateDay, remindText, replanEvents as replanEventsOf, snooze, type Button, type Send } from "./scheduler.ts";
 import { addDays, dayKey, isDayKey, isEveningTime, isTime, normalizeTime, shortDay, zonedToUtc } from "./time.ts";
 import { isOpusMime, transcribe, VOICE_MAX_BYTES, voiceSeconds } from "./voice.ts";
 import { moveToTomorrow, weatherFor } from "./weather.ts";
@@ -353,6 +353,13 @@ export function createApi(deps: ApiDeps) {
     const habit = data.match(HABIT);
     if (habit?.[3] === "later") return pipeline.habitLater(u, Number(habit[1]), habit[2]);
     if (habit) return pipeline.markHabit(u, Number(habit[1]), habit[2], habit[3] as "done" | "skipped", "push");
+    // Шаг «Позже» в push не приходит (там «⏰ Позже» — прежний ответ habitLater), но кнопку s<мин> / t<ЧЧММ> поймём так же, как бот.
+    const step = data.match(HABIT_DATA)?.slice(1);
+    if (step && /^[st]\d+$/.test(step[2])) {
+      const when = step[2][0] === "s" ? { in: Number(step[2].slice(1)) } : { at: `${step[2].slice(1, 3)}:${step[2].slice(3)}` };
+      if ("at" in when && !isTime(when.at)) throw new HttpError(400, "неизвестная кнопка");
+      return (await pipeline.habitSnooze(u, Number(step[0]), step[1], when)).text;
+    }
     const trait = data.match(/^trait:(\d+):(yes|no)$/);
     if (trait) return decideTrait(store, u, Number(trait[1]), trait[2] === "yes");
     const rate = data.match(RATE);
@@ -361,7 +368,7 @@ export function createApi(deps: ApiDeps) {
     if (data === "snooze") {
       const buttons: Button[] = all.filter((d) => d !== "snooze").map((d) => {
         const h = d.match(HABIT);
-        return { text: h ? (h[3] === "done" ? "✅ Да" : h[3] === "later" ? "⏳ Ещё нет" : "✖ Нет") : d, data: d };
+        return { text: h ? (h[3] === "done" ? "✅ Да" : h[3] === "later" ? "⏰ Позже" : "✖ Нет") : d, data: d };
       });
       const first = buttons[0]?.data.match(HABIT);
       const title = first ? (await store.habit(Number(first[1])))?.title : undefined;
@@ -1372,7 +1379,7 @@ export function createApi(deps: ApiDeps) {
     }
     const mark = p.match(/^\/api\/habits\/(\d+)\/mark$/);
     if (m === "POST" && mark) {
-      // later — «Ещё нет»: отметки нет, вопрос придёт снова (pipeline.habitLater).
+      // later — прежнее «Ещё нет» (виджеты до второго шага «Позже»): отметки нет, вопрос придёт снова (pipeline.habitLater).
       const b = parseBody(z.object({ status: z.enum(["done", "skipped", "later"]).default("done"), day: Day.optional() }), await readJson(req));
       // Удалённую, завершённую (день после конца) и день до начала не отметить — сайту ошибка 409 с текстом (markRefusal), и «Ещё нет» тоже.
       const h = await store.habit(Number(mark[1]));
@@ -1380,6 +1387,34 @@ export function createApi(deps: ApiDeps) {
       if (refused) throw new HttpError(409, refused);
       if (b.status === "later") return { text: await pipeline.habitLater(u, Number(mark[1]), b.day ?? today) };
       return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.status, "web") };
+    }
+    // «⏰ Позже» в виджете: GET — что можно выбрать сейчас (в поясе человека: у виджета его нет), POST — отложить вопрос.
+    // Чужая, удалённая, завершённая, уже отмеченная или не сегодняшний день — 409 с текстом; POST: не позже, чем сейчас, за 00:00,
+    // сегодня не по расписанию или тихая — тоже 409.
+    const snoozeAt = p.match(/^\/api\/habits\/(\d+)\/snooze$/);
+    if (snoozeAt && (m === "GET" || m === "POST")) {
+      const id = Number(snoozeAt[1]);
+      const h = await store.habit(id);
+      if (m === "GET") {
+        const day = q("day") ?? today;
+        if (!isDayKey(day)) throw new HttpError(400, "day: YYYY-MM-DD");
+        const refused = !h || h.user_id !== u.id ? "Нет такой привычки." : markRefusal(h, day);
+        if (refused) throw new HttpError(409, refused);
+        if ((await store.marksOf(u.id, day, day)).some((x) => x.habit_id === id)) throw new HttpError(409, `${h!.title} — уже отмечено.`);
+        // Вчерашний вопрос (виджет хранит его до утра) или будущий день — 409 с текстом, как у POST: виджет скажет его, а не уйдёт в /mark later.
+        const gone = snoozeDayRefusal(day, today);
+        if (gone) throw new HttpError(409, gone);
+        return snoozeOptions(u, day, new Date());
+      }
+      const Time = z.string().refine(isTime, "время ЧЧ:ММ");
+      const b = parseBody(
+        z.object({ day: Day.optional(), in: z.number().int().min(1).max(1440).optional(), at: Time.optional() })
+          .refine((x) => (x.in === undefined) !== (x.at === undefined), "нужно in (минут) или at (ЧЧ:ММ)"),
+        await readJson(req),
+      );
+      const r = await pipeline.habitSnooze(u, id, b.day ?? today, b.in !== undefined ? { in: b.in } : { at: b.at! });
+      if (!r.ok) throw new HttpError(409, r.text);
+      return { text: r.text, at: r.at };
     }
 
     // Снять отметку дня («Сегодня» на сайте: галочку поставили по ошибке). Отменяется («↩ Отменить» вернёт отметку).

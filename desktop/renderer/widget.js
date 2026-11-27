@@ -584,6 +584,9 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
   acts.querySelectorAll("button").forEach((btn) => {
     if (btn.dataset.p) return; // кнопки вопроса «добавить?» — startProposal
     btn.onclick = async () => {
+      // «⏰ Позже» у вопроса о привычке — второй шаг в этом же облачке (habitSnoozeStep): ответа ещё нет, облачко ждёт.
+      const lm = /^\d+$/.test(btn.dataset.i ?? "") ? /^habit:(\d+):(\d{4}-\d{2}-\d{2}):later$/.exec(buttons[Number(btn.dataset.i)]?.data ?? "") : null;
+      if (lm) return habitSnoozeStep(acts, { id: Number(lm[1]), day: lm[2], notice });
       b.dataset.ask = ""; // ответили в облачке — «вижу-вижу» не нужно
       if (notice) inboxRead(notice);
       if (btn.dataset.i === "close") return hideBubble();
@@ -605,10 +608,10 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
         hideBubble();
         return x.run();
       }
-      let m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped|later)$/);
+      let m = x.data.match(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped)$/);
       try {
         if (m) {
-          // «Ещё нет» — без звука и грусти: отметки нет, спросит позже.
+          // «Позже» (later) сюда не доходит — habitSnoozeStep выше.
           if (m[3] === "done") { popTone(3); react("streak", 4000); } else if (m[3] === "skipped") { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
           const r = await maid.api("POST", `/api/habits/${m[1]}/mark`, { status: m[3], day: m[2] });
           say(r.text, { ms: 5000 });
@@ -691,6 +694,186 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
     if (typing) { const then = typing.then; typing.then = () => { then?.(); bubblefxStart(bx); }; }
     else bubblefxStart(bx);
   }
+}
+
+// --- «⏰ Позже» у вопроса о привычке (27.11.2026): второй шаг в том же облачке ---
+// «Позже» меняет кнопки на «15 мин · 30 мин · 1 ч · 2 ч · Выбрать · ←»; «Выбрать» — поле времени (сегодня, позже «сейчас»,
+// до 00:00) с «Ок» и «←»; «←» — назад. Что успевает до полуночи, считает сервер в поясе человека (GET /api/habits/:id/snooze:
+// у виджета пояса нет), а пока облачко висит, виджет досчитывает по прошедшим минутам. Выбрали — POST …/snooze {day, in | at},
+// короткий ответ «⏰ … — напомню в 15:30»; в срок сервер спросит тот же вопрос снова (лентой, в Telegram, push).
+// Сервер без /snooze (старый) или до полуночи не успеть даже 15 минут (сразу после запроса) — прежний ответ «спрошу ещё раз»
+// (…/mark {status: "later"}). «←» и Esc только возвращают назад и ничего не отправляют. Поле времени держит клавиатуру окна
+// (maid.focusInput, как строка чата): окно «сквозное», и без этого ввод уходил бы в программу под ним.
+const HABIT_SNOOZE_LABEL = { 15: "15 мин", 30: "30 мин", 60: "1 ч", 120: "2 ч" };
+// Минуты «сейчас» в поясе человека: время сервера при запросе (opt.now, «ЧЧ:ММ») плюс целые минуты, прошедшие с него (ms).
+function habitSnoozeNow(opt, ms) {
+  const [h, m] = String(opt?.now ?? "").split(":").map(Number);
+  if (!Number.isInteger(h) || !Number.isInteger(m)) return null;
+  return h * 60 + m + Math.max(0, Math.floor(ms / 60000));
+}
+// Шаги, которые ещё успевают до 00:00 (сервер прислал на момент запроса — облачко могло провисеть).
+function habitSnoozeSteps(opt, now) {
+  if (now === null) return [];
+  return (opt?.steps ?? []).filter((s) => Number.isInteger(s) && s > 0 && now + s < 1440);
+}
+function habitSnoozeHtml(steps) {
+  return steps.map((s) => `<button data-s="${s}">${HABIT_SNOOZE_LABEL[s] ?? (s % 60 ? `${s} мин` : `${s / 60} ч`)}</button>`).join("")
+    + `<button data-s="pick">Выбрать</button><button data-s="back" title="Назад" aria-label="Назад">←</button>`;
+}
+// «Выбрать»: поле времени (предложено ближайшее «через полчаса», по 15 минут), «Ок», «←» и строка для ошибки.
+function habitSnoozePickHtml(now) {
+  const t = (x) => `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
+  const want = Math.min(1439, Math.ceil((now + 30) / 15) * 15);
+  return `<input type="time" class="snooze-time" min="${t(Math.min(1439, now + 1))}" max="23:59" value="${t(want)}" aria-label="Во сколько напомнить">`
+    + `<button data-s="ok" class="prop-yes">Ок</button><button data-s="back" title="Назад" aria-label="Назад">←</button><span class="snooze-err" role="alert"></span>`;
+}
+// Время из поля: пусто — «выберите»; не позже «сейчас» (в том числе 00:xx — это уже завтра) — нельзя.
+function habitSnoozeCheck(value, now) {
+  const m = /^(\d{2}):(\d{2})$/.exec(value ?? "");
+  if (!m) return "Выберите время.";
+  if (Number(m[1]) * 60 + Number(m[2]) <= now) return "Это время уже прошло. Отложить можно только на сегодня — до 00:00.";
+  return "";
+}
+// Тело POST /api/habits/:id/snooze: через N минут ({in}) или к «ЧЧ:ММ» ({at}).
+function habitSnoozeBody(day, s) {
+  return typeof s === "number" ? { day, in: s } : { day, at: s };
+}
+async function habitSnoozeStep(acts, { id, day, notice }) {
+  const b = $("#bubble");
+  const first = [...acts.childNodes];
+  const close = acts.querySelector('[data-i="close"]');
+  let mine = first;
+  let busy = false;
+  let opt = null;
+  let at = 0;
+  let held = null; // поле времени держит клавиатуру окна: таймер, что отпустит её, когда поле пропадёт (облачко сменилось)
+  const live = () => !b.classList.contains("hidden") && mine.length > 0 && mine[0].parentNode === acts; // облачко не сменилось
+  const nowMin = () => habitSnoozeNow(opt, Date.now() - at);
+  const release = () => {
+    if (!held) return;
+    clearInterval(held);
+    held = null;
+    maid.focusInput(false);
+  };
+  const done = (text, mood) => {
+    release();
+    b.dataset.ask = "";
+    if (notice) inboxRead(notice);
+    say(text, { ms: 5000, mood });
+    maid.changed();
+  };
+  // Прежний ответ «Ещё нет»: сервер сам скажет, когда спросит снова (или почему нельзя — отмечено, завершена…).
+  const old = async () => {
+    try {
+      done((await maid.api("POST", `/api/habits/${id}/mark`, { status: "later", day })).text, "bow");
+    } catch (e) {
+      say(errText(e), { ms: 6000 });
+    }
+  };
+  const render = (html) => {
+    release();
+    acts.innerHTML = html;
+    if (close) acts.insertBefore(close, acts.querySelector(".snooze-err")); // ✕ с кольцом — тот же, справа (строка ошибки — под рядом)
+    mine = [...acts.childNodes];
+    acts.querySelectorAll("button[data-s]").forEach((x) => {
+      x.onclick = () => choose(x.dataset.s);
+      x.onkeydown = (e) => { if (e.key === "Escape") { e.stopPropagation(); choose("back"); } }; // Esc на кнопке шага — назад
+    });
+    placeBubble();
+    fitBubble();
+  };
+  const showErr = (t, sound = true) => {
+    const err = acts.querySelector(".snooze-err");
+    if (err) err.textContent = t;
+    if (sound) play("oops");
+    fitBubble();
+  };
+  // Второй шаг. Сразу после запроса до полуночи не успеть даже 15 минут — прежний ответ (initial); позже (облачко провисело,
+  // «←» из поля) — ряд без шагов («Выбрать», «←») и строка «до 00:00 не успеть», без запроса на сервер.
+  const row = (initial = false) => {
+    const steps = habitSnoozeSteps(opt, nowMin());
+    if (!steps.length && initial) return old();
+    render(habitSnoozeHtml(steps) + `<span class="snooze-err" role="alert"></span>`);
+    if (!steps.length) showErr("До 00:00 уже не успеть 15 минут.", false);
+  };
+  const pick = () => {
+    render(habitSnoozePickHtml(nowMin()));
+    const inp = acts.querySelector(".snooze-time");
+    inp.oninput = () => (acts.querySelector(".snooze-err").textContent = "");
+    inp.onkeydown = (e) => {
+      if (e.key === "Enter") choose("ok");
+      else if (e.key === "Escape") { e.stopPropagation(); choose("back"); }
+    };
+    // Клавиатура окна — полю (как amendBox и формы): щелчок по нему держит её, уход фокуса мимо ряда — отпускает.
+    inp.onmousedown = () => maid.focusInput(true);
+    inp.onblur = (e) => { if (!acts.contains(e.relatedTarget) && !grabbed) release(); };
+    maid.focusInput(true);
+    held = setInterval(() => { if (inp.parentNode !== acts) release(); }, 500);
+    inp.focus();
+  };
+  const go = async (s) => {
+    if (busy) return;
+    const now = nowMin();
+    if (typeof s === "string") {
+      const bad = habitSnoozeCheck(s, now);
+      if (bad) return showErr(bad);
+    } else if (now + s >= 1440) { // пока облачко висело, этот шаг перестал успевать — ряд заново и почему, без запроса
+      row();
+      return showErr("До 00:00 уже не успеть — выберите время раньше.");
+    }
+    busy = true;
+    acts.classList.add("busy");
+    try {
+      const r = await maid.api("POST", `/api/habits/${id}/snooze`, habitSnoozeBody(day, s));
+      acts.classList.remove("busy");
+      // Облачко сменилось, пока ждали сервер, — ответ не затирает новое: только обновить данные и прочитать оповещение.
+      if (!live()) {
+        release();
+        if (notice) inboxRead(notice);
+        return maid.changed();
+      }
+      done(r.text, "bow");
+    } catch (e) {
+      busy = false;
+      acts.classList.remove("busy");
+      if (!live()) return release();
+      const t = errText(e);
+      // Время не подошло (прошло, за полночь) — остаться в поле времени и сказать почему; иное — ответом.
+      if (live() && /время|00:00/.test(t)) {
+        if (!acts.querySelector(".snooze-time")) pick();
+        showErr(t);
+      } else say(t, { ms: 6000 });
+    }
+  };
+  const choose = (s) => {
+    if (busy || !live()) return;
+    if (s === "back") {
+      if (acts.querySelector(".snooze-time")) return row();
+      release();
+      acts.replaceChildren(...first); // первый ряд — те же кнопки с теми же обработчиками
+      mine = first;
+      placeBubble();
+      return fitBubble();
+    }
+    if (s === "pick") return pick();
+    if (s === "ok") return go(acts.querySelector(".snooze-time")?.value ?? "");
+    return go(Number(s));
+  };
+  busy = true;
+  acts.classList.add("busy");
+  let fail = "";
+  try {
+    opt = await maid.api("GET", `/api/habits/${id}/snooze?day=${day}`);
+    at = Date.now();
+  } catch (e) {
+    fail = errText(e);
+  }
+  busy = false;
+  acts.classList.remove("busy");
+  if (!live()) return;
+  // Старый сервер (нет /snooze) — прежний ответ; отмечено, завершена, нет связи — так и сказать.
+  if (fail) return /нет такого адреса|^сервер 404$/.test(fail) ? old() : say(fail, { ms: 6000 });
+  row(true);
 }
 
 // --- печать текста в облачке: буквы появляются по одной, тихий «бип» на каждые 2–3 буквы (как речь персонажей в играх) ---

@@ -1,5 +1,5 @@
 import type { EventRow, Store, User } from "./db.ts";
-import { habitLine, habitsOfDay, markRefusal } from "./habits.ts";
+import { dueOn, habitLine, habitsOfDay, markRefusal } from "./habits.ts";
 import { asUser, type LlmCall } from "./llm.ts";
 import { persona, type Emotion } from "./personas.ts";
 import {
@@ -45,12 +45,65 @@ export interface Button {
 /** kind — вид письма для «Истории» (notices.ts); без него письмо попадёт в «Прочее». */
 export type Send = (u: User, text: string, emotion: Emotion, buttons?: Button[], kind?: NoticeKind) => Promise<void>;
 
-/** Кнопки «да / нет» для привычки на день: «нет» — пропуск (в курсе — крестик за день). */
-export const habitButtons = (habitId: number, day: string): Button[] => [
+/** Кнопки вопроса про привычку на день: «Да», «Позже», «Нет» (пропуск — в курсе крестик за день). «⏰ Позже» (later) открывает
+ *  второй шаг (habitLaterRows); later = false — до полуночи не успеть даже 15 минут (snoozeOptions), «Позже» нет.
+ *  Старые клиенты (виджеты 0.1.96/97, push, старые сообщения Telegram с «⏳ Ещё нет») шлют тот же later: виджет и push получают
+ *  прежний ответ habitLater, Telegram — второй шаг. */
+export const habitButtons = (habitId: number, day: string, later = true): Button[] => [
   { text: "✅ Да", data: `habit:${habitId}:${day}:done` },
-  { text: "⏳ Ещё нет", data: `habit:${habitId}:${day}:later` },
+  ...(later ? [{ text: "⏰ Позже", data: `habit:${habitId}:${day}:later` }] : []),
   { text: "✖ Нет", data: `habit:${habitId}:${day}:skipped` },
 ];
+
+/** На сколько минут можно отложить вопрос про привычку (второй шаг «Позже»): «15 мин», «30 мин», «1 ч», «2 ч». */
+export const SNOOZE_STEPS = [15, 30, 60, 120];
+/** Колбэк кнопок вопроса про привычку (в Telegram не длиннее 64 байт): done / skipped / later; второй шаг — s<минут> (через столько
+ *  от нажатия), pick (сетка часов), t<ЧЧММ> (к этому времени сегодня), back (вернуть первый ряд), step (из сетки часов — обратно
+ *  ко второму шагу: не later, чтобы «←» не считался новым нажатием «Позже»). */
+export const HABIT_DATA = /^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped|later|back|pick|step|s\d{1,4}|t\d{4})$/;
+/** Отложить вопрос можно только сегодня: за прошедший или будущий день — почему нельзя, иначе null. */
+export function snoozeDayRefusal(day: string, today: string): string | null {
+  if (day < today) return "Этот день уже закончился — отложить нельзя.";
+  if (day > today) return "Отложить можно только на сегодня.";
+  return null;
+}
+export interface SnoozeOptions {
+  /** Какие из SNOOZE_STEPS ещё успевают до 00:00. */
+  steps: number[];
+  /** Полные часы, что ещё впереди сегодня: от следующего до "23:00" («Выбрать» в Telegram). */
+  hours: string[];
+  /** Сейчас у человека, ЧЧ:ММ (виджету — нижняя граница поля времени). */
+  now: string;
+}
+/** Что можно выбрать в «Позже» на этот день сейчас (в поясе человека). Не сегодняшний день — ничего. */
+export function snoozeOptions(u: Pick<User, "tz">, day: string, now = new Date()): SnoozeOptions {
+  const t = timeOf(now, u.tz), m = minutesOf(t);
+  if (day !== dayKey(now, u.tz)) return { steps: [], hours: [], now: t };
+  const hours: string[] = [];
+  for (let h = Math.floor(m / 60) + 1; h <= 23; h++) hours.push(`${String(h).padStart(2, "0")}:00`);
+  return { steps: SNOOZE_STEPS.filter((x) => m + x < 1440), hours, now: t };
+}
+/** Второй шаг «Позже» рядами: подходящие из «15 мин | 30 мин | 1 ч | 2 ч», потом «Выбрать» (если остались полные часы) и «←». */
+export function habitLaterRows(habitId: number, day: string, opt: SnoozeOptions): Button[][] {
+  const at = (x: string) => `habit:${habitId}:${day}:${x}`;
+  return [
+    opt.steps.map((x) => ({ text: leadText(x), data: at(`s${x}`) })),
+    [...(opt.hours.length ? [{ text: "Выбрать", data: at("pick") }] : []), { text: "←", data: at("back") }],
+  ].filter((r) => r.length);
+}
+/** «Выбрать» в Telegram: полные часы, что остались сегодня, по четыре в ряд, и «←» (обратно ко второму шагу). */
+export function habitPickRows(habitId: number, day: string, hours: string[]): Button[][] {
+  const rows: Button[][] = [];
+  hours.forEach((h, i) => {
+    if (i % 4 === 0) rows.push([]);
+    rows.at(-1)!.push({ text: h, data: `habit:${habitId}:${day}:t${h.replace(":", "")}` });
+  });
+  return [...rows, [{ text: "←", data: `habit:${habitId}:${day}:step` }]];
+}
+/** День вопроса про привычку из его кнопок (habit:ID:день:…) или undefined. */
+export function habitDayOf(buttons: Button[] | undefined): string | undefined {
+  return buttons?.map((b) => /^habit:\d+:(\d{4}-\d{2}-\d{2}):/.exec(b.data)?.[1]).find(Boolean);
+}
 
 /** Оценка дня под вечерним итогом: от 1 до 10 → показатель «Оценка дня» (rating_day, /10), одна на день.
  *  В виджете это ряд из десяти звёзд, в Telegram — кнопки с числами в два ряда. */
@@ -138,13 +191,13 @@ export async function snooze(store: Store, u: User, text: string, buttons: Butto
   await store.addReminder(u.id, "snooze", now.getTime(), due, text, buttons.length ? JSON.stringify(buttons) : "");
 }
 
-/** У напоминания кнопки вопроса про привычку (habit:ID:день:…), а на этот день она уже отмечена, привычки больше нет
- *  или она завершена до этого дня (markRefusal). */
+/** У напоминания кнопки вопроса про привычку (habit:ID:день:…), а на этот день она уже отмечена, привычки больше нет,
+ *  она завершена до этого дня (markRefusal), этот день у неё не запланирован или она стала тихой (quiet) — вопрос не нужен. */
 export async function habitAnswered(store: Store, buttons: Button[] | undefined): Promise<boolean> {
   const m = buttons?.map((b) => /^habit:(\d+):(\d{4}-\d{2}-\d{2}):/.exec(b.data)).find(Boolean);
   if (!m) return false;
   const h = await store.habit(Number(m[1]));
-  if (!h || markRefusal(h, m[2])) return true;
+  if (!h || markRefusal(h, m[2]) || !dueOn(h, m[2]) || h.quiet) return true;
   return (await store.marksOf(h.user_id, m[2], m[2])).some((x) => x.habit_id === h.id);
 }
 
@@ -198,7 +251,16 @@ export class Scheduler {
           buttons = undefined;
         }
         // Отложенный вопрос про привычку («⏰ Через 30 мин»), а её за это время уже отметили (виджет, сайт, чат) — не шлём.
-        const stale = late || (await habitAnswered(this.store, buttons));
+        // И вопрос за день, который у человека уже кончился (отложили на «Позже», а сервер спал за полночь), — тоже нет.
+        const day = habitDayOf(buttons);
+        // Два «Позже» разом (виджет и Telegram) на Postgres могут оставить два ждущих — остаётся последнее (больший id):
+        // этот не шлём, если есть новее, а ушёл этот — прежние снимаются.
+        const others = r.ref_kind === "habit" ? (await this.store.pendingReminders("habit", r.ref_id)).filter((x) => Number(x.id) !== Number(r.id)) : [];
+        const stale = late || (day !== undefined && day < dayKey(now, u.tz)) || (await habitAnswered(this.store, buttons)) ||
+          others.some((x) => Number(x.id) > Number(r.id));
+        if (!stale) for (const x of others) await this.store.markReminder(x.id, "cancelled");
+        // Отложенный «Позже» вопрос: кнопки — по часам отправки (сервер мог опоздать, и 15 минут до полуночи уже не успеть).
+        if (!stale && r.ref_kind === "habit" && day) buttons = habitButtons(r.ref_id, day, snoozeOptions(u, day, now).steps.length > 0);
         if (!stale) await this.safeSend(u, r.text, "neutral", buttons, reminderKind(buttons));
         await this.store.markReminder(r.id, stale ? "cancelled" : "sent");
       }
@@ -244,10 +306,26 @@ export class Scheduler {
     for (const d of await habitsOfDay(this.store, u, today)) {
       if (d.status || d.habit.quiet) continue;
       for (const t of habitAskTimes(u, d.times)) {
-        if (!this.due(u, t, now, HABIT_LATE_MIN) || !(await this.store.once(`habit:${d.habit.id}:${today}:${t}`))) continue;
-        await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today), "habit");
+        if (!this.due(u, t, now, HABIT_LATE_MIN)) continue;
+        // Отложили («⏰ Позже») — вопрос придёт тогда (напоминание ref_kind "habit"). Второй вопрос в habit_last (его добавил
+        // habitAskTimes) он заменяет, если отложили на это время или позже; вопрос в своё время привычки — только если отложили
+        // ровно на ту же минуту (не два вопроса разом). Ключ once не тратим: передумают — этот вопрос ещё придёт в своё окно.
+        const last = t === u.habit_last && !d.times.includes(t);
+        if (await this.snoozedPast(u, d.habit.id, today, t, !last)) continue;
+        if (!(await this.store.once(`habit:${d.habit.id}:${today}:${t}`))) continue;
+        const later = snoozeOptions(u, today, now).steps.length > 0;
+        await this.safeSend(u, habitQuestion(d.habit.title, d.streak), "neutral", habitButtons(d.habit.id, today, later), "habit");
       }
     }
+  }
+
+  /** Есть отложенный вопрос (ждёт или уже ушёл) про эту привычку на этот день — на время t или позже, до конца дня
+   *  (exact — ровно на t). Конец дня — по местному дню (dayKey), а не через UTC: в поясах, где летнее время начинается
+   *  в полночь, «00:00 завтра» не существует. */
+  private async snoozedPast(u: User, habitId: number, day: string, t: string, exact = false) {
+    const from = zonedToUtc(day, t, u.tz);
+    const to = new Date(from.getTime() + (exact ? 60_000 : 26 * 3600_000));
+    return (await this.store.liveReminders("habit", habitId, from, to)).some((r) => dayKey(new Date(r.due_at), u.tz) === day);
   }
 
   private async daily(u: User, now: Date) {

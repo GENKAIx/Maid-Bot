@@ -9,12 +9,15 @@ import { accessOf, FROZEN_TEXT, isFrozen, RATE_AGAIN, type Access } from "./acce
 import { Billing, billingSecret, TERMS_TEXT, type StarsApi } from "./billing.ts";
 import { setSignupsOpen, signupsEnvClosed, signupsOpenNow, tariffs } from "./tariffs.ts";
 import type { Store, User } from "./db.ts";
-import { habitLine, habitsOfDay } from "./habits.ts";
+import { habitLine, habitsOfDay, markRefusal } from "./habits.ts";
 import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
 import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, esc, memoryText, plansText, tasksText, todayText } from "./report.ts";
-import { RATE, rateDay, replanEvents, type Scheduler, type Send } from "./scheduler.ts";
-import { dayKey } from "./time.ts";
+import {
+  HABIT_DATA, RATE, habitButtons, habitLaterRows, habitPickRows, rateDay, replanEvents, snoozeDayRefusal, snoozeOptions, type Button, type Scheduler,
+  type Send,
+} from "./scheduler.ts";
+import { dayKey, isTime } from "./time.ts";
 import { decideTrait } from "./profile.ts";
 import { youButton } from "./you.ts";
 import { sttReady, transcribe, VOICE_MAX_BYTES, voiceSeconds } from "./voice.ts";
@@ -254,7 +257,9 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const cmd = /^\/([a-z_]+)(@\w+)?(\s|$)/i.exec(ctx.message?.text ?? "")?.[1]?.toLowerCase();
     // /list считает сам список (showList) — и по команде, и по слову «список».
     if (cmd && cmd !== "list") countFeature(u, "telegram", `bot.${cmd}`);
-    const button = BUTTON_FEATURES[(ctx.callbackQuery?.data ?? "").split(":")[0]];
+    const data = ctx.callbackQuery?.data ?? "";
+    // У вопроса про привычку в счёт — одно нажатие на ответ: «Да», «Нет», «Позже»; шаги «Позже» (время, «Выбрать», «←») — нет.
+    const button = /^habit:.*:(back|pick|step|s\d+|t\d+)$/.test(data) ? undefined : BUTTON_FEATURES[data.split(":")[0]];
     if (button) countFeature(u, "telegram", button);
   }
 
@@ -471,15 +476,55 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     await ctx.reply(`Ключ для виджета на айфоне (никому не показывайте):\n<code>${token}</code>`, { parse_mode: "HTML" });
   });
 
-  bot.callbackQuery(/^habit:(\d+):(\d{4}-\d{2}-\d{2}):(done|skipped|later)$/, async (ctx) => {
+  /** Ряды кнопок → клавиатура Telegram. */
+  const rowsKeyboard = (rows: Button[][]) => {
+    const kb = new InlineKeyboard();
+    rows.forEach((r, i) => {
+      if (i) kb.row();
+      for (const b of r) kb.text(b.text, b.data);
+    });
+    return kb;
+  };
+  // Вопрос про привычку: «✅ Да» / «✖ Нет» — отметка; «⏰ Позже» (later, и старое «⏳ Ещё нет») — второй шаг на той же клавиатуре:
+  // «15 мин | 30 мин | 1 ч | 2 ч», «Выбрать» (pick — сетка полных часов) и «←» (back — первый ряд; step — из сетки ко второму шагу);
+  // s<мин> и t<ЧЧММ> — отложить. Ответ — всплывашкой, клавиатура снимается (как у отметки). До полуночи уже ничего не успеть:
+  // на later (первое нажатие, и старое «⏳ Ещё нет») — прежний ответ habitLater, на шаги — почему нельзя (день кончился и т. п.).
+  bot.callbackQuery(HABIT_DATA, async (ctx) => {
     const u = await userOf(ctx);
     if (!u) return ctx.answerCallbackQuery();
-    const [, id, day, status] = ctx.match;
-    const text = status === "later"
-      ? await pipeline.habitLater(u, Number(id), day)
-      : await pipeline.markHabit(u, Number(id), day, status as "done" | "skipped", "telegram");
-    await ctx.answerCallbackQuery({ text: text.replace(/<[^>]+>/g, "").slice(0, 190) });
-    await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+    const [, idText, day, act] = ctx.match;
+    const id = Number(idText), now = new Date();
+    const plain = (text: string) => text.replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    const popup = (text: string) => ctx.answerCallbackQuery({ text: plain(text).slice(0, 190) });
+    const close = () => ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+    const show = (rows: Button[][]) => ctx.editMessageReplyMarkup({ reply_markup: rowsKeyboard(rows) }).catch(() => {});
+    const step = async (rows: Button[][]) => {
+      await ctx.answerCallbackQuery();
+      await show(rows);
+    };
+    if (act === "done" || act === "skipped") {
+      await popup(await pipeline.markHabit(u, id, day, act, "telegram"));
+      return void (await close());
+    }
+    const h = await store.habit(id);
+    const marked = async () => (await store.marksOf(u.id, day, day)).some((m) => m.habit_id === id);
+    const refused = !h || h.user_id !== u.id ? "Нет такой привычки." : markRefusal(h, day) ?? ((await marked()) ? `${h.title} — уже отмечено.` : null);
+    const opt = snoozeOptions(u, day, now);
+    if (refused || !opt.steps.length) {
+      const why = refused ?? (act === "later" ? await pipeline.habitLater(u, id, day, now) : snoozeDayRefusal(day, dayKey(now, u.tz)) ?? "До 00:00 уже не успеть.");
+      await popup(why);
+      return void (await close());
+    }
+    if (act === "later" || act === "step") return void (await step(habitLaterRows(id, day, opt)));
+    if (act === "back") return void (await step([habitButtons(id, day)]));
+    if (act === "pick") return void (await step(opt.hours.length ? habitPickRows(id, day, opt.hours) : habitLaterRows(id, day, opt)));
+    const when = act[0] === "s" ? { in: Number(act.slice(1)) } : { at: `${act.slice(1, 3)}:${act.slice(3)}` };
+    if ("at" in when && !isTime(when.at)) return void (await step(habitLaterRows(id, day, opt)));
+    const r = await pipeline.habitSnooze(u, id, day, when, now);
+    await popup(r.text);
+    // Не вышло (время прошло, до полуночи не успеть) — второй шаг с тем, что ещё можно; уже отмечено — клавиатура снимается.
+    if (r.ok || (await marked())) await close();
+    else await show(habitLaterRows(id, day, opt));
   });
 
   // Закономерность: добавить в дебафы профиля или нет.

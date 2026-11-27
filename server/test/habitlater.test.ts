@@ -5,7 +5,7 @@ import { habitsOfDay } from "../src/habits.ts";
 import { Pipeline } from "../src/pipeline.ts";
 import { habitAskTimes, habitButtons, Scheduler, snooze, type Button } from "../src/scheduler.ts";
 
-// «Да / Ещё нет / Нет» у вопроса про привычку и минус за день без ответа.
+// «Да / Позже / Нет» у вопроса про привычку и минус за день без ответа.
 
 async function setup() {
   const store = await Store.open(":memory:");
@@ -16,10 +16,10 @@ async function setup() {
   return { store, u, hid, sent, sch, pipe: new Pipeline(store, async () => "{}") };
 }
 
-test("вопрос про привычку — три кнопки: Да, Ещё нет, Нет", () => {
+test("вопрос про привычку — три кнопки: Да, Позже, Нет", () => {
   assert.deepEqual(habitButtons(7, "2026-11-12").map((b) => [b.text, b.data]), [
     ["✅ Да", "habit:7:2026-11-12:done"],
-    ["⏳ Ещё нет", "habit:7:2026-11-12:later"],
+    ["⏰ Позже", "habit:7:2026-11-12:later"],
     ["✖ Нет", "habit:7:2026-11-12:skipped"],
   ]);
   const u = { habit_first: "12:00", habit_last: "23:00" };

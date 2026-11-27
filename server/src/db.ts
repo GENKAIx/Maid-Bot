@@ -2126,6 +2126,13 @@ export class Store {
   pendingReminders(refKind: string, refId: number): Promise<ReminderRow[]> {
     return this.all<ReminderRow>("SELECT * FROM reminders WHERE ref_kind = ? AND ref_id = ? AND status = 'pending'", refKind, refId);
   }
+  /** Ждущие и уже отправленные (не отменённые) на [from, to) — отложенный вопрос про привычку заменяет обычный в то же время и позже. */
+  liveReminders(refKind: string, refId: number, from: Date, to: Date): Promise<ReminderRow[]> {
+    return this.all<ReminderRow>(
+      "SELECT * FROM reminders WHERE ref_kind = ? AND ref_id = ? AND status <> 'cancelled' AND due_at >= ? AND due_at < ? ORDER BY due_at",
+      refKind, refId, from.toISOString(), to.toISOString(),
+    );
+  }
   async markReminder(id: number, status: "sent" | "cancelled") {
     await this.run("UPDATE reminders SET status = ?, sent_at = ? WHERE id = ?", status, now(), id);
   }

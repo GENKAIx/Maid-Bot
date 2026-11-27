@@ -4,12 +4,12 @@ import type { LlmCall, Picture } from "./llm.ts";
 import type { DrawCall } from "./draw.ts";
 import { asUser, extractJson, llmErrorCode } from "./llm.ts";
 import { buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
-import { finishPatch, habitBefore, markRefusal, reopenPatch, scheduleText } from "./habits.ts";
+import { finishPatch, habitBefore, habitsOfDay, markRefusal, reopenPatch, scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
 import { prompt } from "./prompts.ts";
 import { changesList, esc, upcomingDates, wholeSentences } from "./report.ts";
-import { addDays, dayKey, humanDay, timeOf } from "./time.ts";
-import { planEventReminders } from "./scheduler.ts";
+import { addDays, dayKey, humanDay, timeOf, zonedToUtc } from "./time.ts";
+import { habitButtons, habitQuestion, planEventReminders, snoozeDayRefusal, snoozeOptions } from "./scheduler.ts";
 import { EVER, answerData, linkDays } from "./ask.ts";
 import { clashLine, findClash, keepPair, overlaps, shiftTime, type Clash } from "./clash.ts";
 import { addTraitFromChat, traitPrompt } from "./profile.ts";
@@ -1333,7 +1333,41 @@ export class Pipeline {
     });
     const text = status === "done" ? `✅ Отмечено: ${esc(h.title)}` : `➖ Пропуск: ${esc(h.title)}`;
     await s.setMessage(message.id, { state: "done", reply: text });
+    // Отложенный на этот день вопрос («⏰ Позже») больше не нужен. Отметку словами в чате ловит сам планировщик (habitAnswered).
+    for (const r of await s.pendingReminders("habit", h.id)) if (/habit:\d+:(\d{4}-\d{2}-\d{2}):/.exec(r.buttons)?.[1] === day) await s.markReminder(r.id, "cancelled");
     return text;
+  }
+
+  /** «⏰ Позже» → «15 мин» / «1 ч» / «Выбрать»…: тот же вопрос придёт снова в это время (напоминание ref_kind "habit", планировщик);
+   *  отложить ещё раз можно сколько угодно — остаётся последнее. Только сегодня, позже, чем сейчас, и до 00:00 (у человека);
+   *  отмеченную, чужую, удалённую или завершённую — нет (ok: false, text — почему). at — ЧЧ:ММ, на когда поставлено. */
+  async habitSnooze(u: User, habitId: number, day: string, when: { in: number } | { at: string }, now = new Date()): Promise<{ ok: boolean; text: string; at?: string }> {
+    const s = this.store;
+    const h = await s.habit(habitId);
+    if (!h || h.user_id !== u.id) return { ok: false, text: "Нет такой привычки." };
+    const refused = markRefusal(h, day);
+    if (refused) return { ok: false, text: refused };
+    const today = dayKey(now, u.tz);
+    const gone = snoozeDayRefusal(day, today);
+    if (gone) return { ok: false, text: gone };
+    const d = (await habitsOfDay(s, u, day, today)).find((x) => x.habit.id === h.id);
+    // Сегодня не по расписанию или привычка тихая (без вопросов) — вопрос и не придёт, откладывать нечего.
+    if (!d || d.habit.quiet) return { ok: false, text: `${h.title} — сегодня не спрашиваю.` };
+    if ((await s.marksOf(u.id, day, day)).some((m) => m.habit_id === h.id)) return { ok: false, text: `${h.title} — уже отмечено.` };
+    // Через N минут — от начала текущей минуты: «напомню в 15:30» и приходит в 15:30.
+    const due = "in" in when ? new Date(Math.floor(now.getTime() / 60_000) * 60_000 + when.in * 60_000) : zonedToUtc(day, when.at, u.tz);
+    const at = timeOf(due, u.tz);
+    if (due <= now || ("at" in when && when.at <= timeOf(now, u.tz))) return { ok: false, text: "Это время уже прошло — выберите позже." };
+    if (dayKey(due, u.tz) !== day) return { ok: false, text: "До 00:00 уже не успеть — выберите время раньше." };
+    const buttons = habitButtons(h.id, day, snoozeOptions(u, day, due).steps.length > 0);
+    // Последнее «Позже» заменяет прежнее — одной транзакцией: два нажатия разом (виджет и Telegram) не оставят двух вопросов.
+    await s.transaction(async () => {
+      await s.cancelReminders("habit", h.id);
+      await s.addReminder(u.id, "habit", h.id, due, habitQuestion(h.title, d.streak), JSON.stringify(buttons));
+    });
+    // Длинное название короче: всплывашка Telegram — до 190 знаков, и «напомню в ЧЧ:ММ» не должно обрезаться.
+    const title = h.title.length > 60 ? `${h.title.slice(0, 59)}…` : h.title;
+    return { ok: true, text: `⏰ ${esc(title)} — напомню в ${at}. Не отметите до 00:00 — поставлю минус.`, at };
   }
 
   /** «Ещё нет» у вопроса про привычку: отметки нет; второй вопрос придёт в habit_last (планировщик), не отметят до полуночи — минус. */

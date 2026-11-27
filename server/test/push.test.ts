@@ -8,7 +8,8 @@ import { exportJson } from "../src/backup.ts";
 import { Store } from "../src/db.ts";
 import { Pipeline } from "../src/pipeline.ts";
 import { Push } from "../src/push.ts";
-import { habitButtons, Scheduler, type Button } from "../src/scheduler.ts";
+import { habitButtons, Scheduler, snooze, snoozeOptions, type Button } from "../src/scheduler.ts";
+import { addDays, dayKey } from "../src/time.ts";
 
 // Этап 3: push-уведомления (подпись кнопок, подписка, действие без входа, «отложить»), настройки, резервная копия.
 
@@ -38,7 +39,7 @@ test("push: подпись кнопок — верная проходит, чу�
   const p = push.payload(u, "<b>Заголовок</b>\nтело &lt;x&gt;", buttons);
   assert.equal(p.title, "Заголовок");
   assert.equal(p.body, "тело <x>");
-  assert.deepEqual(p.actions.map((a) => a.title), ["✅ Да", "⏳ Ещё нет", "✖ Нет"]);
+  assert.deepEqual(p.actions.map((a) => a.title), ["✅ Да", "⏰ Позже", "✖ Нет"]);
   await store.close();
 });
 
@@ -71,7 +72,8 @@ test("push: подписка, кнопка без входа отмечает п
     assert.equal((await call("/api/push/act", { act, action: 5 })).status, 403);
 
     // «Отложить» — у вопроса за другой, ещё не отмеченный день (отмеченный день отложенное не присылает).
-    const day2 = "2026-11-09";
+    // День — тот, что будет, когда отложенное придёт: вопрос за кончившийся день планировщик не шлёт (27.11.2026).
+    const day2 = dayKey(new Date(Date.now() + 31 * 60_000), u.tz);
     const act2 = push.sign(u.id, [...habitButtons(hid, day2), { text: "⏰", data: "snooze" }]);
     const before = Date.now();
     assert.match((await call("/api/push/act", { act: act2, action: 3 })).json.text, /Напомню/);
@@ -87,6 +89,26 @@ test("push: подписка, кнопка без входа отмечает п
     assert.equal(sent.length, 1);
     assert.match(sent[0].text, /Витамины/);
     assert.deepEqual(sent[0].buttons?.map((b) => b.data), habitButtons(hid, day2).map((b) => b.data));
+
+    // «Через 30 мин» на вопросе за вчера: в срок день уже кончился — не шлём, напоминание снято (27.11.2026).
+    sent.length = 0;
+    const now = new Date();
+    const yesterday = addDays(dayKey(now, u.tz), -1);
+    const ref = now.getTime() - 2 * 60_000;
+    await snooze(store, u, "🔁 Витамины — вчерашний вопрос", habitButtons(hid, yesterday), 1, new Date(ref));
+    await sch.tick(now);
+    assert.equal(sent.length, 0);
+    const old = await (store as any).all("SELECT status FROM reminders WHERE ref_kind = 'snooze' AND ref_id = ?", ref);
+    assert.deepEqual(old.map((r: { status: string }) => r.status), ["cancelled"]);
+
+    // Кнопка второго шага «Позже» (s<мин>) через push: тот же ответ, что в Telegram; t<ЧЧММ> с неверным временем — 400.
+    const today = dayKey(now, u.tz);
+    const s30 = (await call("/api/push/act", { act: push.sign(u.id, [{ text: "30 мин", data: `habit:${hid}:${today}:s30` }]), action: 0 })).json.text;
+    if (snoozeOptions(u, today, now).steps.includes(30)) {
+      assert.match(s30, /^⏰ Витамины — напомню в \d\d:\d\d\. Не отметите до 00:00 — поставлю минус\.$/);
+      assert.equal((await store.pendingReminders("habit", hid)).length, 1);
+    } else assert.match(s30, /не успеть/);
+    assert.equal((await call("/api/push/act", { act: push.sign(u.id, [{ text: "?", data: `habit:${hid}:${today}:t0960` }]), action: 0 })).status, 400);
 
     assert.equal((await call("/api/push/unsubscribe", { endpoint: sub.endpoint }, token)).json.ok, true);
     assert.equal((await call("/api/push/key", undefined, token)).json.subs.length, 0);

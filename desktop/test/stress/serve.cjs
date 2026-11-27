@@ -65,6 +65,7 @@ const PORT = Number(process.env.STRESS_PORT) || 8799;
           counts: srv.counts(), state: b.state ? srv.state : undefined, sessions: srv.sessions.length, inputs: srv.inputs?.length ?? 0,
           habits: srv.state.habits?.map?.((x) => `${x.id}:${x.status}`), log: b.log ? srv.log.slice(-b.log).map((r) => `${r.method} ${r.path} ${r.handled ? "ok" : "-"}`) : undefined,
           maidLog: b.maidLog ? h.log() : undefined,
+          snoozes: b.snoozes ? srv.snoozes ?? [] : undefined, // «⏰ Позже»: что отложили (fake-server.cjs, /snooze)
         });
       }
       const file = url.pathname === "/__stub.js" ? path.join(__dirname, "stub.js") : path.join(ROOT, decodeURIComponent(url.pathname));

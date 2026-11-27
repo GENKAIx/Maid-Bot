@@ -95,7 +95,8 @@ ${fn("bubbleAsk")}\n${fn("answeredInList")}\n${fn("askSettled")}\nthis.ask = bub
 // Где включено: облачко помнит вопрос (say), кнопки облачка его снимают, галочки списка и обновление данных — спрашивают.
 const sayFn = widget.match(/\nfunction say\([^]*?\n\}\r?\n/)?.[0] ?? "";
 check(/b\.dataset\.ask = bubbleAsk\(/.test(sayFn), "say не запоминает, о чём вопрос");
-check(/btn\.onclick = async \(\) => \{\s*b\.dataset\.ask = "";/.test(sayFn), "ответ кнопкой облачка — ещё и «вижу-вижу»");
+// «⏰ Позже» у привычки — ещё не ответ (habitSnoozeStep: облачко ждёт второго шага), остальные кнопки снимают вопрос сразу.
+check(/btn\.onclick = async \(\) => \{\s*(?:\/\/[^\n]*\n\s*const lm = [^\n]*\n\s*if \(lm\) return habitSnoozeStep\([^\n]*\n\s*)?b\.dataset\.ask = "";/.test(sayFn), "ответ кнопкой облачка — ещё и «вижу-вижу»");
 check(/answeredInList\(`t:\$\{id\}`\)/.test(widget) && /answeredInList\(`h:\$\{habit\}`\)/.test(widget), "галочки списка не закрывают вопрос");
 check(/askSettled\(\)/.test(fn("render")), "обновление данных не закрывает вопрос");
 check(/dataset\.ask = `t:\$\{t\.id\}`/.test(tails), "вопрос о задаче с прошедшим сроком не помечен");

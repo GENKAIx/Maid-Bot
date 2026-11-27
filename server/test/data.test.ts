@@ -109,7 +109,7 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     await sch.tick(zonedToUtc("2026-11-09", "12:00", TZ));
     await sch.tick(zonedToUtc("2026-11-09", "12:30", TZ));
     assert.equal(asks().length, 1);
-    assert.deepEqual(asks()[0].buttons?.map((b) => b.text), ["✅ Да", "⏳ Ещё нет", "✖ Нет"]);
+    assert.deepEqual(asks()[0].buttons?.map((b) => b.text), ["✅ Да", "⏰ Позже", "✖ Нет"]);
     await sch.tick(zonedToUtc("2026-11-09", "22:59", TZ));
     assert.equal(asks().length, 1);
     await sch.tick(zonedToUtc("2026-11-09", "23:00", TZ));
