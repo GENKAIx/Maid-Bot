@@ -42,6 +42,9 @@ h2 { font: 700 clamp(20px, 2.6vw, 27px)/1.2 var(--fd); letter-spacing: -.015em; 
   --a-ok: #4fd09a; --a-warn: #ffb36b; --a-bad: #ff8a9a; --a-gold: #f2c14e;
   /* цвета данных: у каждой сущности свой, всегда один и тот же */
   --c-pc: #3987e5; --c-game: #d95926; --c-habit: #199e70; --c-money: #c98500; --c-mood: #d55181; --c-sleep: #9085e9;
+  /* палитры привычек на выбор (сделано / пропуск): 2 сирень, 3 сакура, 4 мята и персик, 5 чай с молоком; 1 = --c-habit и --a-bad */
+  --hp2-done: #b39cf2; --hp2-skip: #eba08a; --hp3-done: #f2a7c3; --hp3-skip: #8d9bb6;
+  --hp4-done: #8cd6b9; --hp4-skip: #f2a383; --hp5-done: #e4b868; --hp5-skip: #c88cb6;
   --a-grid: #2c2640; --a-shadow: 0 16px 40px rgba(0, 0, 0, .45);
   --a-r: 16px; --a-r-sm: 10px;
 }
@@ -51,6 +54,9 @@ body[data-skin="light"] .app {
   --a-accent: #6b3fd4; --a-accent-strong: #6b3fd4; --a-on-accent: #ffffff; --a-accent-soft: rgba(107, 63, 212, .1);
   --a-ok: #12805a; --a-warn: #a96200; --a-bad: #c93a52; --a-gold: #a87a00;
   --c-pc: #2a78d6; --c-game: #eb6834; --c-habit: #1baf7a; --c-money: #c98500; --c-mood: #d55181; --c-sleep: #6250d6;
+  /* палитры привычек (сделано / пропуск), на светлом насыщеннее */
+  --hp2-done: #8f6ee0; --hp2-skip: #df7c5e; --hp3-done: #e27aa2; --hp3-skip: #66779a;
+  --hp4-done: #3fb68c; --hp4-skip: #e07f45; --hp5-done: #c68a36; --hp5-skip: #b36592;
   --a-grid: #e6e1f1; --a-shadow: 0 16px 40px rgba(60, 40, 120, .14);
 }
 

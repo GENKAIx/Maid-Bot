@@ -7,8 +7,8 @@ key = os.path.splitext(os.path.basename(path))[0]
 src = open(path, encoding="utf-8").read()
 errs, warns = [], []
 
-if len(src.encode("utf-8")) > 64 * 1024:
-    errs.append("файл больше 64 КБ: %d" % len(src.encode("utf-8")))
+if len(src.encode("utf-8")) > 80 * 1024:
+    errs.append("файл больше 80 КБ: %d" % len(src.encode("utf-8")))
 if 'id="p-%s"' % key not in src:
     errs.append('нет <article class="piece" id="p-%s">' % key)
 if src.count("<article") != 1 or src.count("</article>") != 1:

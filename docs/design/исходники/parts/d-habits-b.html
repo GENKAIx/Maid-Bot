@@ -2,11 +2,16 @@
 <header>
   <p class="eyebrow">Экран · Планы → Привычки · вариант Б</p>
   <h2>Привычки: месяц сеткой</h2>
-  <p>Месяц одной таблицей, у клетки три состояния: зелёная значит сделано, красная штриховка значит пропуск, заполненная снизу значит отмечено не всё. Пустая клетка: отметки нет. Название раскрывает привычку: время отметок за любой отрезок, путь к рекорду, сутки циферблатом.</p>
+  <p>Месяц одной таблицей, у клетки три состояния: залитая цветом значит сделано, штриховка значит пропуск, заполненная снизу значит отмечено не всё. Цвета можно сравнить переключателем над экраном. Пустая клетка: отметки нет. Название раскрывает привычку: время отметок за любой отрезок, путь к рекорду, сутки циферблатом.</p>
 </header>
 <button class="replay" type="button">Повторить анимацию</button>
 
-<div class="app" data-hub="plans" data-tab="Привычки" data-title="Привычки">
+<div class="m-pals"><span>Цвета:</span><div class="m-psw" role="group" aria-label="Цвета привычек">
+<button type="button" data-pal="1" aria-pressed="false">1 · Как было</button><button type="button" data-pal="2" aria-pressed="true">2 · Сирень</button><button type="button" data-pal="3" aria-pressed="false">3 · Сакура</button><button type="button" data-pal="4" aria-pressed="false">4 · Мята и персик</button><button type="button" data-pal="5" aria-pressed="false">5 · Чай с молоком</button>
+</div></div>
+<p class="m-adv">Советую «Сирень»: она в тон Рине и всему интерфейсу, а тёплый персик пропуска не ругает, только отмечает день.</p>
+
+<div class="app" data-pal="2" data-hub="plans" data-tab="Привычки" data-title="Привычки">
   <div class="card m-head">
     <div class="m-hr">
       <p class="m-month"><b>Ноябрь 2026</b> <span class="muted">· до сегодня выполнено <b class="m-rate num">0%</b></span></p>
@@ -23,7 +28,8 @@
 
 <div class="notes">
   <div><h4>Что изменилось</h4><ul>
-    <li>Состояний три: сделано (зелёная), пропуск (красная штриховка), отмечено не всё (заполнена снизу). Любой день без отметки и будущие дни: тихая пустая клетка без рамки.</li>
+    <li>Над экраном переключатель из пяти палитр: «Как было» (зелёный и красный) оставлен для сравнения, по умолчанию «Сирень». Меняются клетки, легенда и вся раскрытая привычка, огоньки серий остаются прежними. Цифры «5/8» на подложке цвета карточки, чтобы читались поверх любой палитры.</li>
+    <li>Состояний три: сделано (залита цветом), пропуск (штриховка), отмечено не всё (заполнена снизу). Любой день без отметки и будущие дни: тихая пустая клетка без рамки.</li>
     <li>Огонёк серии взрослеет по длине: до 7 дней серый, с 7 оранжевый, с 30 синий, со 100 золотой. Сегодня обведено цветом текста.</li><li>Названия в одну строку по одной линии, длинное обрезается многоточием, полное видно при наведении. Итог по правому краю, цифры одной ширины.</li><li>Наблюдение Рины под таблицей убрано, её совет остался внутри раскрытой привычки.</li>
     <li>У привычек «несколько раз в день» значок ×8 или ×2, клетка заполняется снизу и показывает 5/8 (на телефоне число только у сегодня, у других дней в строке над таблицей). Полная клетка: норма набрана.</li>
     <li>На телефоне таблица прокручивается вбок и открывается на сегодняшнем дне, столбец сегодня шире, чтобы попадать пальцем.</li>
@@ -38,6 +44,7 @@
     <li>При протягивании рамки всё пересчитывается сразу, без анимации.</li>
   </ul></div>
   <div><h4>Что нужно в коде</h4><ul>
+    <li>Цвета «сделано» и «пропуск» это просто токены темы, по паре на каждую кожу. Выбранную палитру переносим в тему, логика экрана не меняется.</li>
     <li>Уже есть: отметки по дням (habit_marks) с amount, unit и временем at; статистика GET /api/habits/:id/stats: год по дням, серии, 30 и 90 дней, дни недели.</li>
     <li>Дописать цель «N раз в день» у привычки и подписи частей, например «утро и вечер».</li>
     <li>Дописать несколько отметок в день, каждую со своим временем: сейчас новая отметка дня перезаписывает at. Нужен список времён у дня и удаление последней отметки.</li>
@@ -47,6 +54,17 @@
 
 <style>
 #p-d-habits-b [hidden]{display:none !important}
+#p-d-habits-b .m-pals{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+#p-d-habits-b .m-pals > span{font-size:14px;font-weight:700;color:var(--soft)}
+#p-d-habits-b .m-psw{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--card);border:1px solid var(--line);border-radius:12px;min-width:0}
+#p-d-habits-b .m-psw button{background:none;border:0;border-radius:9px;padding:7px 12px;min-height:36px;font-size:13.5px;font-weight:600;color:var(--muted)}
+#p-d-habits-b .m-psw button[aria-pressed="true"]{background:var(--accent);color:var(--bg)}
+#p-d-habits-b .m-adv{color:var(--soft);font-size:14px;max-width:72ch;margin-top:-8px}
+#p-d-habits-b .app{--hb-done:var(--c-habit);--hb-skip:var(--a-bad);--hb-on:var(--a-text)}
+#p-d-habits-b .app[data-pal="2"]{--hb-done:var(--hp2-done);--hb-skip:var(--hp2-skip)}
+#p-d-habits-b .app[data-pal="3"]{--hb-done:var(--hp3-done);--hb-skip:var(--hp3-skip)}
+#p-d-habits-b .app[data-pal="4"]{--hb-done:var(--hp4-done);--hb-skip:var(--hp4-skip)}
+#p-d-habits-b .app[data-pal="5"]{--hb-done:var(--hp5-done);--hb-skip:var(--hp5-skip)}
 #p-d-habits-b .m-head{display:flex;flex-direction:column;gap:8px}
 #p-d-habits-b .m-hr{display:flex;align-items:center;justify-content:space-between;gap:10px 18px;flex-wrap:wrap}
 #p-d-habits-b .m-month{font-size:14px}
@@ -82,15 +100,15 @@
 #p-d-habits-b .m-x{flex:none;font:800 10.5px/1 var(--fd);padding:3px 5px;border-radius:6px;border:1.5px solid var(--a-soft);color:var(--a-text);white-space:nowrap}
 #p-d-habits-b .m-tot{display:flex;justify-content:flex-end;align-items:baseline;gap:4px;font-size:12px;color:var(--a-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 #p-d-habits-b .m-tot b{font:800 15px var(--fd);color:var(--a-text);font-variant-numeric:tabular-nums}
-#p-d-habits-b .m-c{position:relative;display:grid;place-items:center;height:28px;min-width:0;padding:0;border:0;border-radius:5px;overflow:hidden;background:color-mix(in srgb,var(--a-text) 5%,transparent);box-shadow:none;font:700 9px/1 var(--f);color:var(--a-text)}
-#p-d-habits-b .m-c[data-s="d"],#p-d-habits-b .m-yr i[data-s="d"]{background:var(--c-habit);box-shadow:none}
-#p-d-habits-b .m-c[data-s="s"],#p-d-habits-b .m-yr i[data-s="s"]{background:repeating-linear-gradient(135deg,var(--a-bad) 0 2px,color-mix(in srgb,var(--a-bad) 18%,transparent) 2px 5px);box-shadow:inset 0 0 0 1px var(--a-bad)}
+#p-d-habits-b .m-c{position:relative;display:grid;place-items:center;height:28px;min-width:0;padding:0;border:0;border-radius:5px;overflow:hidden;background:color-mix(in srgb,var(--a-text) 5%,transparent);box-shadow:none;font:700 9px/1 var(--f);color:var(--hb-on)}
+#p-d-habits-b .m-c[data-s="d"],#p-d-habits-b .m-yr i[data-s="d"]{background:var(--hb-done);box-shadow:none}
+#p-d-habits-b .m-c[data-s="s"],#p-d-habits-b .m-yr i[data-s="s"]{background:repeating-linear-gradient(135deg,var(--hb-skip) 0 2px,color-mix(in srgb,var(--hb-skip) 18%,transparent) 2px 5px);box-shadow:inset 0 0 0 1px var(--hb-skip)}
 #p-d-habits-b .m-c[data-s="f"],#p-d-habits-b .m-yr i[data-s="f"]{background:color-mix(in srgb,var(--a-text) 2.5%,transparent)}
 #p-d-habits-b .m-c.td{outline:2px solid var(--a-text);outline-offset:1px}
 #p-d-habits-b .m-c.pick:not(.td){outline:1.5px dashed var(--a-muted);outline-offset:1px}
 #p-d-habits-b button.m-c{cursor:pointer;-webkit-touch-callout:none;user-select:none}
-#p-d-habits-b .m-fill{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--c-habit);transition:height .45s var(--ease)}
-#p-d-habits-b .m-c em{position:relative;font-style:normal;text-shadow:0 0 3px var(--a-surface)}
+#p-d-habits-b .m-fill{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--hb-done);transition:height .45s var(--ease)}
+#p-d-habits-b .m-c em{position:relative;font-style:normal;padding:0;border-radius:2px;background:color-mix(in srgb,var(--a-surface) 80%,transparent)}#p-d-habits-b .m-c em:empty{display:none}
 #p-d-habits-b .m-c.bump{animation:d-habits-b-pop .45s var(--ease)}
 #p-d-habits-b .m-tbl.play .m-c{animation:d-habits-b-pop .42s var(--ease) both;animation-delay:var(--dl)}
 #p-d-habits-b .m-pan{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--ease);position:sticky;left:0;width:var(--vw,100%)}
@@ -117,13 +135,13 @@
 #p-d-habits-b .m-chart svg{display:block;width:100%;height:auto}
 #p-d-habits-b .m-chart text,#p-d-habits-b .m-clk text{fill:var(--a-muted);font-size:10.5px;font-family:var(--f)}
 #p-d-habits-b .m-chart .gr{stroke:var(--a-grid)}
-#p-d-habits-b .m-chart .bd{fill:color-mix(in srgb,var(--c-habit) 16%,transparent)}
+#p-d-habits-b .m-chart .bd{fill:color-mix(in srgb,var(--hb-done) 16%,transparent)}
 #p-d-habits-b .m-chart text.bt,#p-d-habits-b .m-chart text.rt{fill:var(--a-soft);font-weight:600}
 #p-d-habits-b .m-chart .rm{stroke:var(--a-soft);stroke-width:1.3;stroke-dasharray:5 4}
-#p-d-habits-b .m-chart .vt{stroke:color-mix(in srgb,var(--c-habit) 55%,transparent);stroke-width:1.5}
-#p-d-habits-b .m-chart .ln{fill:none;stroke:var(--c-habit);stroke-width:1.6;stroke-linejoin:round}
-#p-d-habits-b .m-chart .pt{fill:var(--c-habit);stroke:var(--a-surface-2)}
-#p-d-habits-b .m-chart .pt.now{fill:var(--a-surface-2);stroke:var(--c-habit);stroke-width:2}
+#p-d-habits-b .m-chart .vt{stroke:color-mix(in srgb,var(--hb-done) 55%,transparent);stroke-width:1.5}
+#p-d-habits-b .m-chart .ln{fill:none;stroke:var(--hb-done);stroke-width:1.6;stroke-linejoin:round}
+#p-d-habits-b .m-chart .pt{fill:var(--hb-done);stroke:var(--a-surface-2)}
+#p-d-habits-b .m-chart .pt.now{fill:var(--a-surface-2);stroke:var(--hb-done);stroke-width:2}
 #p-d-habits-b .m-chart .cr{stroke:var(--a-muted);stroke-dasharray:2 3;opacity:0}
 #p-d-habits-b .m-chart .hl{fill:none;stroke:var(--a-text);stroke-width:2;opacity:0}
 #p-d-habits-b .m-chart .on{opacity:1}
@@ -154,21 +172,21 @@
 #p-d-habits-b .m-bign{font-size:13px;color:var(--a-soft)}
 #p-d-habits-b .m-bign b{font:800 32px/1 var(--fd);color:var(--a-text);letter-spacing:-.02em;margin-right:4px;font-variant-numeric:tabular-nums}
 #p-d-habits-b .m-prog{position:relative;height:8px;border-radius:4px;background:var(--a-surface-3);margin:4px 0 16px}
-#p-d-habits-b .m-prog i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--c-habit);transform-origin:left}
+#p-d-habits-b .m-prog i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--hb-done);transform-origin:left}
 #p-d-habits-b .m-prog span{position:absolute;top:12px;font-size:11px;color:var(--a-muted);white-space:nowrap;transform:translateX(-50%)}
 #p-d-habits-b .m-prog span.end{right:0;transform:none}
 #p-d-habits-b .m-pb.in .m-prog i{animation:d-habits-b-grow .8s var(--ease) both .2s}
 #p-d-habits-b .m-ms{list-style:none;margin:0;padding:0;display:flex;gap:6px;flex-wrap:wrap}
 #p-d-habits-b .m-ms li{font-size:12px;padding:3px 9px;border-radius:99px;border:1px dashed var(--a-line);color:var(--a-muted)}
-#p-d-habits-b .m-ms li.got{border:1px solid var(--c-habit);color:var(--a-text)}
+#p-d-habits-b .m-ms li.got{border:1px solid var(--hb-done);color:var(--a-text)}
 #p-d-habits-b .m-ms li.got::before{content:"✓ ";font-weight:800}
 #p-d-habits-b .m-clkw{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 #p-d-habits-b .m-clk{width:168px;max-width:100%;flex:none;touch-action:pan-y}
 #p-d-habits-b .m-clkw .m-tx{flex:1;min-width:120px}
 #p-d-habits-b .m-clk .fc{fill:var(--a-surface);stroke:var(--a-line)}
 #p-d-habits-b .m-clk .tk{stroke:var(--a-line);stroke-width:1.5}
-#p-d-habits-b .m-clk .arc{fill:none;stroke:color-mix(in srgb,var(--c-habit) 45%,transparent);stroke-width:9;stroke-linecap:round}
-#p-d-habits-b .m-clk .cd{fill:var(--c-habit);opacity:.8}
+#p-d-habits-b .m-clk .arc{fill:none;stroke:color-mix(in srgb,var(--hb-done) 45%,transparent);stroke-width:9;stroke-linecap:round}
+#p-d-habits-b .m-clk .cd{fill:var(--hb-done);opacity:.8}
 #p-d-habits-b .m-clk .hand{stroke:var(--a-text);stroke-width:2;stroke-linecap:round}
 #p-d-habits-b .m-clk .mid{fill:var(--a-surface)}
 #p-d-habits-b .m-clk text.ct{fill:var(--a-text);font:700 13px var(--fd)}
@@ -176,8 +194,8 @@
 #p-d-habits-b .m-clk .sec.on{opacity:1}
 #p-d-habits-b .m-wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;height:92px}
 #p-d-habits-b .m-wk span{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-width:0;font-size:11px;color:var(--a-muted)}
-#p-d-habits-b .m-wk i{display:block;width:100%;max-width:24px;height:calc(var(--h) * 54px + 2px);border-radius:4px 4px 2px 2px;background:var(--c-habit);transform-origin:bottom}
-#p-d-habits-b .m-wk .lo i{background:none;box-shadow:inset 0 0 0 1.5px var(--c-habit)}
+#p-d-habits-b .m-wk i{display:block;width:100%;max-width:24px;height:calc(var(--h) * 54px + 2px);border-radius:4px 4px 2px 2px;background:var(--hb-done);transform-origin:bottom}
+#p-d-habits-b .m-wk .lo i{background:none;box-shadow:inset 0 0 0 1.5px var(--hb-done)}
 #p-d-habits-b .m-wk .no i{background:none;box-shadow:inset 0 0 0 1px var(--a-line);height:2px}
 #p-d-habits-b .m-wk em{font-style:normal;font-weight:700;font-size:10.5px;color:var(--a-text);min-height:13px}
 #p-d-habits-b .m-pb.in .m-wk i{animation:d-habits-b-growy .5s var(--ease) both .25s}
@@ -187,10 +205,10 @@
 #p-d-habits-b .m-ywd span,#p-d-habits-b .m-ym > span{font-size:10px;line-height:16px;color:var(--a-muted);white-space:nowrap}
 #p-d-habits-b .m-ywd span{line-height:1;align-self:center}
 #p-d-habits-b .m-ym{flex:var(--n) 1 0}
-#p-d-habits-b .m-ym > span.bst{color:var(--a-text);font-weight:800;box-shadow:inset 0 -2px var(--c-habit);justify-self:start}
+#p-d-habits-b .m-ym > span.bst{color:var(--a-text);font-weight:800;box-shadow:inset 0 -2px var(--hb-done);justify-self:start}
 #p-d-habits-b .m-ym > div{display:grid;grid-template-rows:repeat(7,auto);grid-template-columns:repeat(var(--n),minmax(0,1fr));grid-auto-flow:column;gap:2px}
 #p-d-habits-b .m-yr i{display:block;aspect-ratio:1;border-radius:2px;background:color-mix(in srgb,var(--a-text) 5%,transparent)}
-#p-d-habits-b .m-yr i[data-s="p"]{background:linear-gradient(to top,var(--c-habit) calc(var(--p) * 100%),color-mix(in srgb,var(--a-text) 5%,transparent) 0)}
+#p-d-habits-b .m-yr i[data-s="p"]{background:linear-gradient(to top,var(--hb-done) calc(var(--p) * 100%),color-mix(in srgb,var(--a-text) 5%,transparent) 0)}
 #p-d-habits-b .m-yr i[data-s="x"],#p-d-habits-b .m-yr i.e{background:none}
 #p-d-habits-b .m-yr i.pick{outline:2px solid var(--a-text);outline-offset:1px}
 #p-d-habits-b .m-b p{margin:0}
@@ -740,6 +758,8 @@ var press=null,drag=null,raf=0,lp=0;
 function habOf(el){var x=el.closest(".m-hab");return x?byId(x.dataset.id):null;}
 function redraw(h){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(openId===h.id)drawAll(h,false);});}
 root.addEventListener("click",e=>{
+var pb=e.target.closest(".m-psw button");
+if(pb){$(".app").dataset.pal=pb.dataset.pal;$$(".m-psw button").forEach(x=>{x.setAttribute("aria-pressed",String(x===pb));});return;}
 var b=e.target.closest("[data-act]");if(!b||!root.contains(b))return;
 var act=b.dataset.act,h=habOf(b);if(!h)return;
 if(act==="open"){if(openId===h.id)closePanel(h);else openPanel(h);}
