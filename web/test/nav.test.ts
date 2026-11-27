@@ -1,28 +1,55 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { NAV_TABS, navCount, oldPath, settingsTab, settingsTabs, YOU_FIELDS } from "../src/nav.ts";
+import { hubs, NAV_TABS, navCount, oldPath, settingsTab, settingsTabs, whereAmI, YOU_FIELDS } from "../src/nav.ts";
 
-// Меню сайта (web/src/App.tsx), 19.11.2026: Виджет и Настройки — один экран «Настройки» с вкладками; Поиск — строкой под
-// логотипом (и Ctrl+K), а не пунктом меню; Каталог из меню убран (ссылка — внизу «Возможностей»).
-// 20.11.2026: Персонализация — снова своим пунктом, сразу под «Профилем», со счётчиком «О вас» в названии («2/7»).
+// Меню сайта (web/src/App.tsx). 27.11.2026 (дизайн v2): пять разделов (Сегодня, Планы, Дневник, Обзор, Рина) и Настройки,
+// экраны — вкладки своего раздела; шторки «Ещё» нет. Поиск — строкой в шапке (и Ctrl+K), Каталог — ссылкой внизу «Возможностей».
 
-test("в меню нет Виджета, Поиска и Каталога; Персонализация и Настройки есть", () => {
-  const titles = NAV_TABS.map((t) => t.title);
-  for (const gone of ["Виджет", "Поиск", "Каталог"]) assert.ok(!titles.includes(gone), `${gone} в меню`);
-  assert.ok(titles.includes("Настройки") && titles.includes("Персонализация"));
-  assert.ok(titles.includes("Корзина") && titles.includes("Возможности"));
+test("разделы меню: пять главных и Настройки, у «Сегодня» вкладок нет", () => {
+  assert.deepEqual(hubs(false).map((h) => h.title), ["Сегодня", "Планы", "Дневник", "Обзор", "Рина", "Настройки"]);
+  assert.deepEqual(hubs(false)[0].tabs, []);
+  const tabs = (id: string, desk = false) => hubs(desk).find((h) => h.id === id)!.tabs.map((t) => t.title);
+  assert.deepEqual(tabs("plans"), ["Неделя", "Привычки", "Даты"]);
+  assert.deepEqual(tabs("diary"), ["Дни", "Заметки", "История"]);
+  assert.deepEqual(tabs("stats"), ["Статистика", "Деньги", "Здоровье"]);
+  assert.deepEqual(tabs("rina"), ["Персонализация", "Профиль", "Альбом", "Возможности"]);
+  assert.deepEqual(tabs("settings", true), ["Виджет", "Программа", "Корзина"]);
+  assert.deepEqual(tabs("settings", false), ["Программа", "Корзина"]);
 });
 
-test("порядок меню: Персонализация сразу после Профиля", () => {
-  assert.deepEqual(NAV_TABS.map((t) => t.id), [
-    "today", "plans", "habits", "diary", "profile", "persona", "notes", "health", "money", "stats", "trash", "history", "album", "features", "settings",
-  ]);
-  const p = NAV_TABS.find((t) => t.id === "persona")!;
-  assert.equal(p.path, "/persona");
-  assert.ok(p.more, "на телефоне — в «Ещё», рядом с Профилем");
+test("каждый экран сайта, кроме «Сегодня», — вкладка ровно одного раздела; вкладки ведут на экраны", () => {
+  const all = hubs(true).flatMap((h) => h.tabs);
+  for (const t of NAV_TABS) {
+    if (t.id === "today") continue;
+    const n = all.filter((x) => x.path === t.path || x.path.startsWith(t.path + "/")).length;
+    assert.ok(n >= 1, `экрана ${t.id} нет в меню`);
+  }
+  const keys = all.map((t) => t.key);
+  assert.equal(new Set(keys).size, keys.length, "вкладка в двух разделах");
 });
 
-test("счётчик Персонализации: «N/7» по заполненному «О вас», у других пунктов — нет", () => {
+test("где я: раздел и вкладка по адресу", () => {
+  const at = (p: string, desk = false) => whereAmI(p, desk);
+  assert.deepEqual(at("/"), { hub: "today", tab: null });
+  assert.deepEqual(at("/plans"), { hub: "plans", tab: "plans" });
+  assert.deepEqual(at("/plans/dates"), { hub: "plans", tab: "plans/dates" });
+  assert.deepEqual(at("/habits/2026-11"), { hub: "plans", tab: "habits" });
+  assert.deepEqual(at("/diary/2026-11-08"), { hub: "diary", tab: "diary" });
+  assert.deepEqual(at("/notes"), { hub: "diary", tab: "notes" });
+  assert.deepEqual(at("/history/tasks"), { hub: "diary", tab: "history" });
+  assert.deepEqual(at("/money"), { hub: "stats", tab: "money" });
+  assert.deepEqual(at("/persona"), { hub: "rina", tab: "persona" });
+  assert.deepEqual(at("/features"), { hub: "rina", tab: "features" });
+  assert.deepEqual(at("/trash"), { hub: "settings", tab: "trash" });
+  assert.deepEqual(at("/settings"), { hub: "settings", tab: "settings/app" });
+  assert.deepEqual(at("/settings", true), { hub: "settings", tab: "settings/widget" });
+  assert.deepEqual(at("/settings/widget"), { hub: "settings", tab: "settings/app" }, "виджет вне программы — Программа");
+  assert.deepEqual(at("/search/кофе"), { hub: null, tab: null });
+  assert.deepEqual(at("/catalog"), { hub: null, tab: null });
+  assert.deepEqual(at("/непонятно"), { hub: "today", tab: null });
+});
+
+test("счётчик Персонализации: «N/7» по заполненному «О вас», у других вкладок — нет", () => {
   assert.equal(YOU_FIELDS, 7);
   assert.equal(navCount("persona", 0), "0/7");
   assert.equal(navCount("persona", 3), "3/7");

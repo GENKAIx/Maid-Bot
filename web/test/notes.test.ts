@@ -40,7 +40,7 @@ test("«Случайное»: только из ждущих и не то же �
 
 test("экран в меню и в адресах; готовое у полок с оценкой спрашивает оценку", () => {
   const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
-  assert.match(readFileSync(new URL("../src/nav.ts", import.meta.url), "utf8"), /\{ id: "notes", path: "\/notes", title: "Заметки", icon: "notes", more: true \}/);
+  assert.match(readFileSync(new URL("../src/nav.ts", import.meta.url), "utf8"), /\{ id: "notes", path: "\/notes", title: "Заметки", icon: "notes" \}/);
   assert.match(app, /tab === "notes" \? <Notes version=\{version\} onChanged=\{onChanged\} \/>/);
   assert.match(readFileSync(new URL("../src/icons.tsx", import.meta.url), "utf8"), /\n  notes: "M/);
   const screen = readFileSync(new URL("../src/screens/Notes.tsx", import.meta.url), "utf8");

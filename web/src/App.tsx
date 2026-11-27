@@ -1,7 +1,7 @@
-import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { get, getToken, post, setToken, whenUnauthorized } from "./api";
 import { Composer } from "./Composer";
-import { NAV_TABS, navCount, oldPath } from "./nav";
+import { hubs, navCount, oldPath, whereAmI } from "./nav";
 import { navigate, parsePath, usePath } from "./router";
 import { Album } from "./screens/Album";
 import { Diary } from "./screens/Diary";
@@ -20,6 +20,7 @@ import { Today } from "./screens/Today";
 import { Search } from "./screens/Search";
 import { Trash } from "./screens/Trash";
 import { Features } from "./screens/Features";
+import { desktop } from "./screens/Widget";
 import { Icon } from "./icons";
 import { NewsBar } from "./NewsBar";
 import { dropUsage, logoutUsage, screenFeature, startUsage, track } from "./usage";
@@ -29,17 +30,13 @@ const Catalog = lazy(() => import("./screens/Catalog").then((m) => ({ default: m
 // Админка — тоже отдельным куском и на весь экран, без меню сайта (screens/Admin.tsx; доступ решает сервер).
 const Admin = lazy(() => import("./screens/Admin").then((m) => ({ default: m.Admin })));
 
-// Каркас: вход, навигация (слева на ПК; снизу на телефоне — четыре экрана и «Ещё»), экран, строка ввода.
+// Каркас: вход, меню разделов (узкая колонка слева на ПК; на телефоне — пять разделов внизу), шапка раздела с вкладками
+// и строкой поиска, экран, строка ввода. Разделы и вкладки — nav.ts hubs (27.11.2026, дизайн v2).
 // version растёт после каждой записи — экраны перечитывают данные.
-
-const TABS = NAV_TABS;
-/** Пункты над главными экранами на ПК (на телефоне — первыми в «Ещё»). */
-const NAV_TOP = new Set(["profile", "persona"]);
 
 export function App() {
   const [authed, setAuthed] = useState(Boolean(getToken()));
   const [version, setVersion] = useState(0);
-  const [more, setMore] = useState(false);
   const path = usePath();
   const { tab, arg } = parsePath(path);
   // Прежние адреса: /maid, /settings/persona — «Персонализация», /widget — вкладка «Настроек» (его открывает виджет на ПК).
@@ -79,7 +76,6 @@ export function App() {
     document.addEventListener("visibilitychange", on);
     return () => document.removeEventListener("visibilitychange", on);
   }, [onChanged]);
-  useEffect(() => setMore(false), [path]);
   // Ctrl+K (⌘K) или «/» вне поля ввода — поиск по задачам и планам.
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
@@ -124,55 +120,55 @@ export function App() {
     : tab === "catalog" ? <Suspense fallback={null}><Catalog chapter={arg} /></Suspense>
     : <Today version={version} onChanged={onChanged} />;
 
-  const item = (t: (typeof TABS)[number]) => {
-    const count = navCount(t.id, youFilled);
-    return (
-      <a key={t.id} className={`nav-item ${tab === t.id ? "on" : ""}`} href={t.path} onClick={(e) => { e.preventDefault(); navigate(t.path); }}>
-        <span className="nav-icon"><Icon name={t.icon} /></span><span>{t.title}</span>
-        {count && <span className="nav-count" title="Заполнено в «О вас»">{count}</span>}
-      </a>
-    );
-  };
-  // Перед первым пунктом группы («Учёт», «Служебное») — тонкая линия.
-  const grouped = (t: (typeof TABS)[number]) => (t.group ? <Fragment key={t.id}><div className="nav-sep" />{item(t)}</Fragment> : item(t));
-  const inMore = TABS.some((t) => t.more && t.id === tab);
-  // Поиск — не пункт меню, а строка под логотипом (на телефоне — первой в «Ещё»); Ctrl+K и «/» открывают его отовсюду.
-  const find = (
-    <a key="search" className={`nav-find ${tab === "search" ? "on" : ""}`} href="/search" onClick={(e) => { e.preventDefault(); navigate("/search"); }}>
-      <span className="nav-icon"><Icon name="search" /></span><span className="grow">Поиск</span><kbd>Ctrl K</kbd>
+  const desk = Boolean(desktop());
+  const HUBS = hubs(desk);
+  const here = whereAmI(path, desk);
+  const hub = HUBS.find((h) => h.id === here.hub) ?? null;
+  const go = (to: string, replace = false) => (e: React.MouseEvent) => { e.preventDefault(); navigate(to, replace); };
+  const hubLink = (h: (typeof HUBS)[number]) => (
+    <a key={h.id} className={`rail-item ${here.hub === h.id ? "on" : ""} ${h.id === "settings" ? "rail-gear" : ""}`} href={h.path}
+      aria-current={here.hub === h.id ? "page" : undefined} onClick={go(h.path)}>
+      <Icon name={h.icon} /><span>{h.title}</span>
     </a>
+  );
+  // Заголовок шапки: раздел; вне разделов — экран (Поиск, Каталог).
+  const title = hub ? hub.title : tab === "catalog" ? "Каталог" : "Поиск";
+  const gear = HUBS.find((h) => h.id === "settings")!;
+  const adminLink = admin && (
+    <a className="rail-item rail-admin" href="/admin" onClick={go("/admin")}><Icon name="profile" /><span>Админка</span></a>
   );
 
   return (
     <div className="app">
-      <nav className="nav">
-        <div className="brand"><img src="/icon.svg" alt="" width={28} height={28} /><span>Горничная</span></div>
-        <div className="nav-more-group">{find}</div>
-        <div className="nav-more-group nav-profile">{TABS.filter((t) => NAV_TOP.has(t.id)).map(item)}</div>
-        {TABS.filter((t) => !t.more).map(item)}
-        <div className="nav-more-group">{TABS.filter((t) => t.more && !NAV_TOP.has(t.id)).map(grouped)}</div>
-        <button className={`nav-item nav-more ${more || inMore ? "on" : ""}`} onClick={() => setMore(!more)}>
-          <span className="nav-icon"><Icon name="more" /></span><span>Ещё</span>
-        </button>
+      <nav className="rail" aria-label="Разделы">
+        <img className="rail-me" src="/maid/idle.webp" alt="" width={44} height={44} />
+        {HUBS.filter((h) => h.id !== "settings").map(hubLink)}
         <div className="spacer" />
-        {admin && (
-          <a className="nav-item nav-admin" href="/admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}>
-            <span className="nav-icon"><Icon name="profile" /></span><span>Админка</span>
-          </a>
-        )}
+        {adminLink}
+        {hubLink(gear)}
       </nav>
-      {more && (
-        <div className="sheet-back" onClick={() => setMore(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            {find}
-            {TABS.filter((t) => t.more).map(grouped)}
-            {admin && <a className="nav-item" href="/admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}><span className="nav-icon"><Icon name="profile" /></span><span>Админка</span></a>}
-          </div>
-        </div>
-      )}
       <main className="main">
         {/* Объявления владельца (этап 6, NewsBar.tsx): плашка с крестиком над экраном. */}
         <NewsBar />
+        <header className="top">
+          <h1 className="top-title">{title}</h1>
+          {hub && hub.tabs.length > 0 && (
+            <div className="top-tabs" role="tablist" aria-label={`Вкладки: ${hub.title}`}>
+              {hub.tabs.map((t) => {
+                const count = navCount(t.key, youFilled);
+                return (
+                  <a key={t.key} role="tab" aria-selected={here.tab === t.key} className={here.tab === t.key ? "on" : ""} href={t.path} onClick={go(t.path, true)}>
+                    {t.title}{count && <span className="top-count" title="Заполнено в «О вас»">{count}</span>}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+          <a className={`top-find ${tab === "search" ? "on" : ""}`} href="/search" onClick={go("/search")}>
+            <Icon name="search" size={18} /><span>Найти…</span><kbd>Ctrl K</kbd>
+          </a>
+          <a className={`top-gear ${here.hub === "settings" ? "on" : ""}`} href={gear.path} onClick={go(gear.path)} aria-label="Настройки"><Icon name="settings" /></a>
+        </header>
         <div className="content" key={tab}>{screen}</div>
         <Composer onChanged={onChanged} />
       </main>

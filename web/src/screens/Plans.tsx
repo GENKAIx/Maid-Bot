@@ -2,33 +2,23 @@ import { useEffect, useState } from "react";
 import { get, post } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
 import { WEEKDAYS, addDays, shortDay, todayKey } from "../format";
-import { navigate } from "../router";
 import type { EventRow, TaskRow } from "../types";
 import { Dates } from "./Dates";
 
-// Планы: две вкладки (19.11.2026) — «Планы» (неделя днями, что дальше, все задачи) и «Даты» (важные даты, screens/Dates.tsx;
-// раньше — список внизу этой страницы). Вкладка — в адресе: /plans и /plans/dates.
+// Планы: неделя днями, что дальше, все задачи; «Даты» (screens/Dates.tsx) — по адресу /plans/dates. Вкладки «Неделя», «Привычки»,
+// «Даты» — в шапке раздела «Планы» (App.tsx, nav.ts hubs; 27.11.2026, раньше — свой ряд вкладок здесь).
 
 export function Plans({ tab, version, onChanged }: { tab?: string; version: number; onChanged: () => void }) {
-  const tabs = (
-    <div className="stat-tabs" role="tablist">
-      {([["", "Планы"], ["dates", "Даты"]] as const).map(([id, title]) => (
-        <button key={id} role="tab" aria-selected={(tab === "dates" ? "dates" : "") === id} className={(tab === "dates" ? "dates" : "") === id ? "on" : ""}
-          onClick={() => navigate(id ? `/plans/${id}` : "/plans", true)}>{title}</button>
-      ))}
-    </div>
-  );
   if (tab === "dates") return (
     <div className="screen">
       <h2 className="screen-title">Важные даты</h2>
-      {tabs}
       <Dates version={version} onChanged={onChanged} />
     </div>
   );
-  return <Week tabs={tabs} version={version} onChanged={onChanged} />;
+  return <Week version={version} onChanged={onChanged} />;
 }
 
-function Week({ tabs, version, onChanged }: { tabs: React.ReactNode; version: number; onChanged: () => void }) {
+function Week({ version, onChanged }: { version: number; onChanged: () => void }) {
   const today = todayKey();
   const [start, setStart] = useState(addDays(today, -((new Date().getDay() + 6) % 7)));
   const [events, setEvents] = useState<EventRow[] | null>(null);
@@ -67,7 +57,6 @@ function Week({ tabs, version, onChanged }: { tabs: React.ReactNode; version: nu
         <button className="ghost" onClick={() => setStart(addDays(start, 7))} aria-label="Следующая неделя">›</button>
         {!week.includes(today) && <button className="link" onClick={() => setStart(addDays(today, -((new Date().getDay() + 6) % 7)))}>эта неделя</button>}
       </div>
-      {tabs}
 
       <div className="week reveal">
         {week.map((d, i) => {

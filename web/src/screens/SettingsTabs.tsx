@@ -1,27 +1,12 @@
-import { navigate } from "../router";
-import { settingsTab, settingsTabs } from "../nav";
+import { settingsTab } from "../nav";
 import { Settings } from "./Settings";
 import { desktop, Widget } from "./Widget";
 
-// «Настройки» — один экран с вкладками (19.11.2026; раньше — три пункта меню): «Виджет» — только в программе на ПК
-// (Widget); «Программа» — обновление, тема, вход, копия (Settings). Персонализация с 20.11.2026 — свой пункт меню (Persona.tsx).
-// Вкладка — в адресе: /settings/widget, /settings/app; прежние /widget, /maid, /settings/persona ведут куда надо (nav.ts oldPath).
+// «Настройки»: вкладка по адресу — /settings/widget (только в программе на ПК, Widget) и /settings/app (обновление, тема,
+// вход, копия — Settings); прежние /widget, /maid, /settings/persona ведут куда надо (nav.ts oldPath). Сами вкладки
+// («Виджет», «Программа», «Корзина») — в шапке раздела «Настройки» (App.tsx, nav.ts hubs; 27.11.2026).
 
 export function SettingsTabs({ tab, onLogout }: { tab?: string; onLogout: () => void }) {
-  const desk = Boolean(desktop());
-  const on = settingsTab(tab, desk);
-  const tabs = settingsTabs(desk);
-  return (
-    <div className="screen">
-      <h2 className="screen-title">Настройки</h2>
-      {tabs.length > 1 && (
-        <div className="stat-tabs" role="tablist">
-          {tabs.map((t) => (
-            <button key={t.id} role="tab" aria-selected={t.id === on} className={t.id === on ? "on" : ""} onClick={() => navigate(`/settings/${t.id}`, true)}>{t.title}</button>
-          ))}
-        </div>
-      )}
-      {on === "widget" ? <Widget /> : <Settings onLogout={onLogout} />}
-    </div>
-  );
+  const on = settingsTab(tab, Boolean(desktop()));
+  return <div className="screen">{on === "widget" ? <Widget /> : <Settings onLogout={onLogout} />}</div>;
 }
