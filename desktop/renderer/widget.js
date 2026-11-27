@@ -70,9 +70,8 @@ let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, hab
 const MAID_W = { s: 160, m: 196, l: 236 };
 // Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
 const ACCENTS = { violet: ["#b79cff", "#4fd09a"], blue: ["#8ab8ff", "#5ec8f0"], green: ["#7fd9a8", "#4fd09a"], pink: ["#ff9cc8", "#ff7eb3"], amber: ["#ffc46b", "#f2b84b"] };
-// Значок на круге «сделано» / «пропуск» привычки и цвет пропуска под цвет панели: на светлых голубом и янтарном белый значок
-// почти не виден (контраст ~1,9:1) — тёмный; у розового «сделано» красный пропуск почти того же цвета — приглушённый серо-красный.
-const MARK_LOOK = { blue: ["var(--ink)", ""], amber: ["var(--ink)", ""], pink: ["", "#9a6a74"] };
+// Галочка на круге «сделано» привычки под цвет панели: на светлых голубом и янтарном белая почти не видна (контраст ~1,9:1) — тёмная.
+const MARK_LOOK = { blue: "var(--ink)", amber: "var(--ink)" };
 const TEXT_ZOOM = { s: 0.9, m: 1, l: 1.12 }; // «Размер текста» — список планов и задач
 
 
@@ -2113,7 +2112,7 @@ const ROW_SHUT = 220;
 const DONE_PEEK = 30000; // запасной срок: обычно сделанное прячется, когда мышь уходит со списка
 const UNDO_MARK = "<i>✓</i><b>×</b>";
 // --- Отметка привычки (28.11.2026, как в примере дизайна d-habits-b): сделано — залитый зелёный круг с жирной белой галочкой,
-// пропуск — залитый красный круг с жирным белым минусом (красный — как пропуск на сайте, --red #e0566a). Привычка «несколько раз
+// пропуск — залитый серый круг (--muted, как был) с жирным белым минусом. Привычка «несколько раз
 // в день» (×N, шаг 42 сервера: /api/today отдаёт count и need, need > 1) — вместо пустого кружка кольцо из need долей: отмеченные —
 // зелёные и толще, остальные — тонкие, цвета пустого кружка; справа от названия мелко «3/5». Больше 10 раз в день — доли уже не
 // различить: круг заливается сектором. Сделано, опыт и салют — только когда count >= need (status с сервера — «done» только тогда).
@@ -3070,9 +3069,7 @@ function applyCfg() {
   const [accent, done] = ACCENTS[cfg.accent] ?? ACCENTS.violet;
   st.style.setProperty("--accent", accent);
   st.style.setProperty("--accent-2", done);
-  const [markInk, markSkip] = MARK_LOOK[cfg.accent] ?? [];
-  st.style.setProperty("--mark-ink", markInk || "#fff");
-  st.style.setProperty("--mark-skip", markSkip || "#e0566a");
+  st.style.setProperty("--mark-ink", MARK_LOOK[cfg.accent] || "#fff");
   for (const id of ["#pins", "#next", "#body"]) $(id).style.zoom = String(TEXT_ZOOM[cfg.textSize] ?? 1);
   xpApplyCfg();
 }

@@ -224,34 +224,35 @@ function stand(fail = false) {
     }
   }
 
-  // Стиль: svg на месте кружка (поле на 1 px шире с каждой стороны), галочка и минус жирные белые, пропуск красный, доли 2,6 / 1,3.
+  // Стиль: svg на месте кружка (поле на 1 px шире с каждой стороны), галочка и минус жирные белые, пропуск серый, доли 2,6 / 1,3.
   check(/\.w \.mark svg\.mk \{[^}]*inset: -1px[^}]*pointer-events: none/.test(css), "svg отметки не вровень с кружком или ловит щелчки (e.target)");
   check(/\.w \.mark \.mk-fg \{[^}]*stroke: var\(--mark-ink, #fff\); stroke-width: 1\.8; stroke-linecap: round; stroke-linejoin: round/.test(css), "галочка/минус не белые (--mark-ink) 1,8 с круглыми концами");
-  check(/\.w \.mark\.skipped \.mk-bg \{ fill: var\(--mark-skip, #e0566a\); \}/.test(css), "пропуск не красный #e0566a (--mark-skip)");
-  // Цвет панели: на голубом и янтарном значок тёмный, у розового пропуск не красный (иначе одного цвета со «сделано»).
+  // 28.11.2026 пользователь: «я не просил менять серый фон на красный» — круг пропуска серый (--muted), как был до новой отметки.
+  check(/\.w \.mark\.skipped \.mk-bg \{ fill: var\(--muted\); \}/.test(css), "круг пропуска не серый (--muted)");
+  check(!/#e0566a|--mark-skip|9a6a74/.test(widget) && !/\.mark[^{]*\{[^}]*(#e0566a|--mark-skip)/.test(css), "пропуск снова красный или подкрашивается под цвет панели");
+  // Цвет панели: на голубом и янтарном галочка тёмная.
   {
     const look = widget.match(/\nconst MARK_LOOK = (\{[^\n]*\});/)?.[1] ?? "";
     let L = {};
     try { L = vm.runInNewContext(`(${look})`); } catch {}
     const accents = vm.runInNewContext(`(${widget.match(/\nconst ACCENTS = (\{[^\n]*\});/)?.[1] ?? "{}"})`);
-    check(L.blue?.[0] === "var(--ink)" && L.amber?.[0] === "var(--ink)" && !L.violet && !L.green, `MARK_LOOK: значок на голубом/янтарном не тёмный (${look})`);
+    check(L.blue === "var(--ink)" && L.amber === "var(--ink)" && !L.violet && !L.green && !L.pink, `MARK_LOOK: галочка на голубом/янтарном не тёмная (${look})`);
     // Белый значок — только где контраст не хуже, чем у одобренного зелёного #4fd09a; тёмный — где круг светлее.
     const lum = (hex) => { const c = hex.match(/\w\w/g).map((x) => { const v = parseInt(x, 16) / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
     const white = (hex) => 1.05 / (lum(hex) + 0.05);
     for (const [k, [, done]] of Object.entries(accents)) {
-      if (L[k]?.[0]) check(white(done) < white("#4fd09a"), `${k}: значок тёмный, а белый был бы не хуже зелёного`);
+      if (L[k]) check(white(done) < white("#4fd09a"), `${k}: значок тёмный, а белый был бы не хуже зелёного`);
       else check(white(done) >= white("#4fd09a") - 0.01, `${k}: белый значок на ${done} хуже, чем на одобренном зелёном (${white(done).toFixed(2)}:1)`);
     }
-    // Пропуск и «сделано» заметно разного цвета при любом цвете панели.
+    // Серый пропуск и «сделано» заметно разного цвета при любом цвете панели.
     const rgb = (hex) => hex.match(/\w\w/g).map((x) => parseInt(x, 16));
     const far = (a, b) => { const [x, y] = [rgb(a), rgb(b)]; return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]); };
     for (const [k, [, done]] of Object.entries(accents)) {
-      const skip = L[k]?.[1] || "#e0566a";
+      const skip = css.match(/--muted: (#\w{6})/)?.[1] ?? "";
       check(far(skip, done) > 90, `${k}: пропуск ${skip} почти того же цвета, что «сделано» ${done} (${far(skip, done).toFixed(0)})`);
     }
-    const apply = widget.match(/st\.style\.setProperty\("--accent-2", done\);\n[^]*?--mark-skip[^\n]*\n/)?.[0] ?? "";
-    check(/MARK_LOOK\[cfg\.accent\]/.test(apply) && /"--mark-ink", markInk \|\| "#fff"/.test(apply) && /"--mark-skip", markSkip \|\| "#e0566a"/.test(apply), "цвет панели не ставит --mark-ink / --mark-skip");
-    check(/\.w \.mark\.skipped \.mk-fg \{ stroke: #fff; \}/.test(css), "минус пропуска потемнел вместе с галочкой (на красном он белый)");
+    check(/st\.style\.setProperty\("--mark-ink", MARK_LOOK\[cfg\.accent\] \|\| "#fff"\);/.test(widget), "цвет панели не ставит --mark-ink");
+    check(/\.w \.mark\.skipped \.mk-fg \{ stroke: #fff; \}/.test(css), "минус пропуска потемнел вместе с галочкой (на сером он белый)");
   }
   check(/\.w \.mark \.mk-bg \{ fill: var\(--accent-2\); \}/.test(css), "сделано не цветом галочек --accent-2");
   check(/\.mk-on \{ stroke: var\(--accent-2\); stroke-width: 2\.6; \}/.test(css) && /\.mk-off \{ stroke: var\(--muted\); stroke-width: 1\.3;/.test(css), "доли кольца не 2,6 зелёные / 1,3 цвета пустого кружка");
