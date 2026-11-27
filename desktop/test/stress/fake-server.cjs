@@ -74,6 +74,23 @@ const DATASETS = {
     ],
     upcoming: [],
   }),
+  // Привычки «несколько раз в день» (×N, шаг 42 сервера): count — сколько отмечено сегодня, need — сколько нужно; status «done»
+  // только при count >= need (иначе null). Рядом обычные: сделанная, пропуск, неотмеченная (без count/need — как старый сервер).
+  multi: (now) => ({
+    tasks: [{ id: 61, title: "Оплатить интернет", priority: "normal", due_date: dayKey(now) }],
+    habits: [
+      { id: 51, title: "Пить воду", status: null, streak: 3, count: 0, need: 5 },
+      { id: 52, title: "Отжимания по 10", status: null, streak: 6, count: 3, need: 5 },
+      { id: 58, title: "Чистить зубы", status: null, streak: 2, count: 1, need: 2 },
+      { id: 54, title: "Шаги по тысяче", status: null, streak: 1, count: 7, need: 12 },
+      { id: 57, title: "Читать 20 минут", status: null, streak: 0 },
+      { id: 53, title: "Витамины", status: "done", streak: 8, count: 5, need: 5 },
+      { id: 55, title: "Зарядка", status: "done", streak: 4 },
+      { id: 56, title: "Медитация", status: "skipped", streak: 0 },
+    ],
+    events: [],
+    upcoming: [],
+  }),
   // Данные «не той формы»: сервер другой версии или прокси подменил ответ.
   broken: () => ({ tasks: null, habits: "нет", events: [{ id: 1 }], upcoming: [{ id: 2, title: null, date_iso: null, time: "25:99" }] }),
 };
@@ -316,16 +333,30 @@ function create() {
       }
       // Отметка снимает отложенное «Позже» этой привычки (как markHabit на сервере).
       if (hb && m[2] === "mark") srv.snoozes = (srv.snoozes ?? []).filter((x) => x.id !== hb.id);
+      // ×N (как stepMark на сервере): step 1 — ещё одна отметка (у сделанного дня — ничего), −1 — снять последнюю (пропуск — снять
+      // пропуск); status «done» у ×N — тоже одна отметка. Сделано — только при count >= need. Ответ — {text, count, need, status}.
+      const need = Number.isInteger(hb?.need) && hb.need > 1 ? hb.need : 1;
+      const step = body?.step === 1 || body?.step === -1 ? body.step : m[2] === "mark" && need > 1 && (body?.status ?? "done") === "done" ? 1 : 0;
+      let text = "Отметила ✓";
       if (hb) {
         const was = hb.status === "done";
-        hb.status = m[2] === "mark" ? body?.status ?? "done" : null;
+        const had = hb.status === "skipped" ? 0 : was ? need : Math.min(need, Number(hb.count) || 0);
+        if (m[2] === "unmark") { hb.status = null; if (need > 1) hb.count = 0; }
+        else if (step === 1 && was) text = `${hb.title} — уже отмечено ${need}/${need}.`;
+        else if (step === -1 && !had && !hb.status) text = `${hb.title} — отметок нет.`;
+        else if (step) {
+          hb.count = hb.status === "skipped" && step === -1 ? 0 : Math.max(0, Math.min(need, had + step));
+          hb.status = hb.count >= need ? "done" : null;
+          text = step === -1 ? `↩ ${hb.title}: ${hb.count}/${need}` : `${hb.status ? "✅" : "◐"} ${hb.title}: ${hb.count}/${need}`;
+        } else { hb.status = body?.status ?? "done"; if (need > 1) hb.count = hb.status === "done" ? need : 0; }
         hb.at_time = hb.status ? hm(srv.now()) : null; // когда отметили (сервер: markTime), «ЧЧ:ММ»
         hb.at_day = null;
         srv.xp += (hb.status === "done" ? 5 : 0) - (was ? 5 : 0);
         // Серия как на сервере (habits.ts streak): сегодняшняя отметка «сделано» продлевает её на день, снятие — убирает этот день.
         hb.streak = Math.max(0, (hb.streak ?? 0) + (hb.status === "done" ? 1 : 0) - (was ? 1 : 0));
       }
-      return finish(200, { text: "Отметила ✓" });
+      if (m[2] === "unmark") return finish(200, { undo: null });
+      return finish(200, { text, count: hb ? (hb.status === "skipped" ? 0 : hb.status === "done" ? need : Math.min(need, Number(hb.count) || 0)) : 0, need, status: hb?.status ?? null });
     }
     if (req.method === "POST" && (p === "/api/input" || p === "/api/voice")) {
       // Как настоящий: повтор с тем же id второй раз не записывается.

@@ -70,6 +70,9 @@ let cfg = { opacity: 0.92, side: "right", size: "m", sections: { next: true, hab
 const MAID_W = { s: 160, m: 196, l: 236 };
 // Цвет панели (настройка «Цвет»): акцент (ссылки, выделение) и цвет галочек.
 const ACCENTS = { violet: ["#b79cff", "#4fd09a"], blue: ["#8ab8ff", "#5ec8f0"], green: ["#7fd9a8", "#4fd09a"], pink: ["#ff9cc8", "#ff7eb3"], amber: ["#ffc46b", "#f2b84b"] };
+// Значок на круге «сделано» / «пропуск» привычки и цвет пропуска под цвет панели: на светлых голубом и янтарном белый значок
+// почти не виден (контраст ~1,9:1) — тёмный; у розового «сделано» красный пропуск почти того же цвета — приглушённый серо-красный.
+const MARK_LOOK = { blue: ["var(--ink)", ""], amber: ["var(--ink)", ""], pink: ["", "#9a6a74"] };
 const TEXT_ZOOM = { s: 0.9, m: 1, l: 1.12 }; // «Размер текста» — список планов и задач
 
 
@@ -612,8 +615,13 @@ function say(text, { buttons = [], emotion = "neutral", ms = 14000, changes = []
       try {
         if (m) {
           // «Позже» (later) сюда не доходит — habitSnoozeStep выше.
-          if (m[3] === "done") { popTone(3); react("streak", 4000); } else if (m[3] === "skipped") { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
+          // ×N («Пить воду» ×5): «Сделал» — одна отметка из нормы (сервер ставит step 1), поэтому сначала тихий «чпок», а праздник —
+          // только если ответ говорит, что норма набрана (status «done» или count >= need). Обычная привычка — как раньше.
+          const multi = m[3] === "done" && habitNeed(data?.habits?.find((v) => v.id === Number(m[1]))) > 1;
+          if (multi) popTone(1, { vol: 0.18, soft: true });
+          else if (m[3] === "done") { popTone(3); react("streak", 4000); } else if (m[3] === "skipped") { popTone(-5, { vol: 0.2, soft: true }); react("sad", 3500); }
           const r = await maid.api("POST", `/api/habits/${m[1]}/mark`, { status: m[3], day: m[2] });
+          if (multi && (r?.status === "done" || (Number.isInteger(r?.count) && Number.isInteger(r?.need) && r.count >= r.need))) { popTone(3); react("streak", 4000); }
           say(r.text, { ms: 5000 });
           maid.changed();
         } else if ((m = x.data.match(/^trait:(\d+):(yes|no)$/))) {
@@ -1894,10 +1902,13 @@ function render() {
       : flameHtml(h); // огонёк серии с возрастом 7 / 30 / 100 (habitparty.js)
     const go = leavingRows.get(`h${h.id}`);
     if (go?.gone) return `<li class="undo-row${undoFresh(go)}" data-key="h${h.id}"><button type="button" class="undo-back" data-undo="h${h.id}">↶ Вернуть</button></li>`;
-    const name = i >= 0 ? `<span class="t">${esc(h.title)}</span>${sub}` : `<span class="t">${esc(h.title)}${sub}</span>`;
-    if (go) return `<li class="habit ${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить">${UNDO_MARK}</span>${name}</li>`;
+    // ×N — «3/5» сразу за названием (улетающая строка — уже «5/5»).
+    const n = habitNHtml(go ? { ...h, status: "done" } : h);
+    const name = i >= 0 ? `<span class="t">${esc(h.title)}${n}</span>${sub}` : `<span class="t">${esc(h.title)}${n}${sub}</span>`;
+    if (go) return `<li class="habit ${rowLeaving(go)}" data-key="h${h.id}"><span class="mark done" data-habit="${h.id}" title="Отменить"><i>${HABIT_TICK}</i><b>×</b></span>${name}</li>`;
     const fresh = habitArriving(h) ? ` arrive" data-arrive="h${h.id}` : "";
-    return `<li class="habit${h.status ? " did" : ""}${i < 0 ? flameRowClass(h) : ""}${fresh}"><span class="mark ${h.status ?? ""}" data-habit="${h.id}">${h.status === "done" ? "✓" : h.status === "skipped" ? "–" : ""}</span>${name}${i < 0 ? flameTagHtml(h) : ""}</li>`;
+    const tip = habitNeed(h) > 1 && !h.status ? ` title="Отмечено ${habitCount(h)} из ${habitNeed(h)} · правый щелчок по кольцу — снять одну"` : "";
+    return `<li class="habit${h.status ? " did" : ""}${i < 0 ? flameRowClass(h) : ""}${fresh}"><span class="mark ${habitMarkClass(h)}" data-habit="${h.id}"${tip}>${habitMarkHtml(h)}</span>${name}${i < 0 ? flameTagHtml(h) : ""}</li>`;
   };
   const allTasks = taskRows();
   const later = allTasks.filter(asleep).sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -2101,6 +2112,65 @@ const ROW_FLY = 380;
 const ROW_SHUT = 220;
 const DONE_PEEK = 30000; // запасной срок: обычно сделанное прячется, когда мышь уходит со списка
 const UNDO_MARK = "<i>✓</i><b>×</b>";
+// --- Отметка привычки (28.11.2026, как в примере дизайна d-habits-b): сделано — залитый зелёный круг с жирной белой галочкой,
+// пропуск — залитый красный круг с жирным белым минусом (красный — как пропуск на сайте, --red #e0566a). Привычка «несколько раз
+// в день» (×N, шаг 42 сервера: /api/today отдаёт count и need, need > 1) — вместо пустого кружка кольцо из need долей: отмеченные —
+// зелёные и толще, остальные — тонкие, цвета пустого кружка; справа от названия мелко «3/5». Больше 10 раз в день — доли уже не
+// различить: круг заливается сектором. Сделано, опыт и салют — только когда count >= need (status с сервера — «done» только тогда).
+// Старый сервер без count/need — обычная привычка, как раньше.
+const HABIT_TICK = `<svg class="mk" viewBox="0 0 18 18" aria-hidden="true"><circle class="mk-bg" cx="9" cy="9" r="8"/><path class="mk-fg" d="M5.5 9.2l2.3 2.3 4.6-4.8"/></svg>`;
+const HABIT_SKIP = `<svg class="mk" viewBox="0 0 18 18" aria-hidden="true"><circle class="mk-bg" cx="9" cy="9" r="8"/><path class="mk-fg" d="M5.5 9h7"/></svg>`;
+const habitNeed = (h) => (Number.isInteger(h?.need) && h.need > 1 ? h.need : 1);
+const habitCount = (h) => (h?.status === "done" ? habitNeed(h) : h?.status === "skipped" ? 0 : Math.max(0, Math.min(habitNeed(h), Math.floor(Number(h?.count) || 0))));
+// Кольцо ×N: r = 7 в поле 18×18, доли с зазором ~0,35 рад и круглыми концами, первая — от верха по часовой; need > 10 — сектор.
+// Зазор — видимый: круглый конец выступает за конец дуги на полтолщины, поэтому каждая доля укорочена с обоих концов на
+// (толщина / 2) / r — у отмеченной (2,6) на 0,186 рад, у пустой (1,3) на 0,093. Мелкие доли (8–10 в день) — зазор не больше
+// 0,4 доли, а отмеченная доля не короче точки (иначе зазор съел бы её целиком).
+function habitRing(count, need) {
+  const pt = (a) => `${(9 + 7 * Math.cos(a)).toFixed(2)} ${(9 + 7 * Math.sin(a)).toFixed(2)}`;
+  const top = -Math.PI / 2;
+  if (need > 10) {
+    const a = top + (2 * Math.PI * Math.min(count, need)) / need;
+    const fill = count >= need ? `<circle class="mk-pie" cx="9" cy="9" r="7"/>`
+      : count > 0 ? `<path class="mk-pie" d="M9 9L${pt(top)}A7 7 0 ${a - top > Math.PI ? 1 : 0} 1 ${pt(a)}Z"/>` : "";
+    return `<svg class="mk" viewBox="0 0 18 18" aria-hidden="true"><circle class="mk-off" cx="9" cy="9" r="7"/>${fill}</svg>`;
+  }
+  const part = (2 * Math.PI) / need;
+  const gap = Math.min(0.35, part * 0.4);
+  let segs = "";
+  for (let k = 0; k < need; k++) {
+    const cap = (k < count ? 2.6 : 1.3) / 2 / 7;
+    const len = Math.max(0.02, part - gap - 2 * cap);
+    const a0 = top + k * part + part / 2 - len / 2;
+    segs += `<path class="${k < count ? "mk-on" : "mk-off"}" d="M${pt(a0)}A7 7 0 0 1 ${pt(a0 + len)}"/>`;
+  }
+  return `<svg class="mk" viewBox="0 0 18 18" aria-hidden="true">${segs}</svg>`;
+}
+// Класс и содержимое отметки в строке: сделано — галочка, пропуск — минус, ×N — кольцо, обычная неотмеченная — пустой кружок.
+const habitMarkClass = (h) => h.status ?? (habitNeed(h) > 1 ? "multi" : "");
+const habitMarkHtml = (h) => (h.status === "done" ? HABIT_TICK : h.status === "skipped" ? HABIT_SKIP : habitNeed(h) > 1 ? habitRing(habitCount(h), habitNeed(h)) : "");
+// «3/5» справа от названия ×N (у пропуска — нет: отметок нет).
+const habitNHtml = (h) => (habitNeed(h) > 1 && h.status !== "skipped" ? `<span class="habit-n">${habitCount(h)}/${habitNeed(h)}</span>` : "");
+// Что отправить, когда день закрывается галочкой: у ×N — ещё одна отметка (step 1), у обычной — «сделано» целиком.
+// Шаги ×N «в пути» (id → { n: сколько запросов ждут ответа, seq: номер последнего, count, status: что показано }). Опрос раз
+// в 5 с и load() после каждого шага приносят снимок, где ещё нет шагов, ушедших позже, — пока шаги идут, у этих привычек
+// остаётся показанное (habitHold), иначе кольцо мигает назад, а следующий щелчок считает от устаревшего числа. Когда ответили
+// все, запись живёт до снимка, запрошенного уже после последнего ответа (after — номер load на тот момент): GET, ушедший раньше,
+// мог не увидеть последний шаг.
+const habitPending = new Map();
+function habitHold(d, seq = Infinity) {
+  for (const h of d?.habits ?? []) {
+    const p = habitPending.get(h.id);
+    if (!p) continue;
+    if (!p.n && seq > p.after) { habitPending.delete(h.id); continue; }
+    h.count = p.count;
+    h.status = p.status;
+  }
+}
+function habitDoneBody(id) {
+  const h = data?.habits?.find((v) => v.id === id);
+  return habitNeed(h) > 1 ? { day: data.day, step: 1 } : { status: "done" };
+}
 const UNDO_WINDOW = 3000; // сколько после улёта висит «↶ Вернуть»; отметка уходит на сервер только после него
 let bumpAt = 0; // когда счётчик последний раз получил «+1»
 let lastLeft = -1;
@@ -2217,12 +2287,13 @@ async function rowCommit(key) {
   const id = Number(key.slice(1));
   const task = key[0] === "t";
   if (task) { keepDone(id, x.title); countDone(data.day); }
-  else { const h = data?.habits?.find((v) => v.id === id); if (h) h.status = "done"; }
+  const body = task ? { status: "done" } : habitDoneBody(id); // ×N — последняя отметка нормы (step 1), до смены статуса
+  if (!task) { const h = data?.habits?.find((v) => v.id === id); if (h) { h.status = "done"; if (habitNeed(h) > 1) h.count = habitNeed(h); } }
   leavingRows.delete(key);
   render();
   xpHold();
   try {
-    await maid.api("POST", task ? `/api/tasks/${id}` : `/api/habits/${id}/mark`, { status: "done" });
+    await maid.api("POST", task ? `/api/tasks/${id}` : `/api/habits/${id}/mark`, body);
     xpSent();
     maid.changed();
     if (!task) load();
@@ -2235,7 +2306,7 @@ async function rowCommit(key) {
 }
 // Виджет закрывают, пока висит «Вернуть», — отметить сразу, чтобы не потерять.
 window.addEventListener("beforeunload", () => {
-  for (const [key, x] of leavingRows) if (x.gone && !x.sent) maid.api("POST", key[0] === "t" ? `/api/tasks/${key.slice(1)}` : `/api/habits/${key.slice(1)}/mark`, { status: "done" });
+  for (const [key, x] of leavingRows) if (x.gone && !x.sent) maid.api("POST", key[0] === "t" ? `/api/tasks/${key.slice(1)}` : `/api/habits/${key.slice(1)}/mark`, key[0] === "t" ? { status: "done" } : habitDoneBody(Number(key.slice(1))));
 });
 // «Вернуть» под мышью не исчезает; ушла — ещё 1,2 с.
 $("#body").addEventListener("mouseover", (e) => {
@@ -2355,6 +2426,7 @@ async function load() {
     setLineCall(data.call); // обращение из «Персонализации» (lines.js): «хозяйка» или имя вместо «хозяин»
     forgetReopened(data.tasks);
     takeServerDone(data.done_today);
+    habitHold(data, seq); // шаги ×N в пути — поверх снимка (до hpSync: «все привычки дня» и серии считают по показанному)
     hpSync(data); // перекаты огоньков, рубежи серий, «все привычки дня» (habitparty.js) — до сравнения
     xpSync(data.xp); // полоса опыта в шапке (xp.js) — до сравнения, сама решает, рисовать ли
     if (!online) backOnline();
@@ -2998,6 +3070,9 @@ function applyCfg() {
   const [accent, done] = ACCENTS[cfg.accent] ?? ACCENTS.violet;
   st.style.setProperty("--accent", accent);
   st.style.setProperty("--accent-2", done);
+  const [markInk, markSkip] = MARK_LOOK[cfg.accent] ?? [];
+  st.style.setProperty("--mark-ink", markInk || "#fff");
+  st.style.setProperty("--mark-skip", markSkip || "#e0566a");
   for (const id of ["#pins", "#next", "#body"]) $(id).style.zoom = String(TEXT_ZOOM[cfg.textSize] ?? 1);
   xpApplyCfg();
 }
@@ -3270,6 +3345,9 @@ $("#body").addEventListener("contextmenu", (e) => {
   const h = (data?.habits ?? []).find((x) => x.id === Number(mark.dataset.habit));
   if (!h) return;
   e.preventDefault();
+  // ×N: правый щелчок по самому кольцу (или галочке набранной нормы) — снять одну отметку; по строке — меню, как у всех.
+  // Отметок нет или пропуск — снимать нечего, по кольцу тоже меню.
+  if (e.target.closest(".mark[data-habit]") && habitNeed(h) > 1 && habitCount(h) > 0) return stepHabit(h, -1, mark);
   openHabitMenu(h, li, e.clientX, e.clientY);
 });
 function openHabitMenu(h, li, x, y) {
@@ -3278,7 +3356,12 @@ function openHabitMenu(h, li, x, y) {
   const menu = document.createElement("div");
   menu.className = "pl-menu";
   // Снять отметку — как повторный щелчок по галочке: день снова пустой (/unmark), крестик ставит полночь.
-  menu.innerHTML = (h.status === "done" ? "" : item("done", "✓ Сделано сегодня")) + (h.status ? item("unmark", "↶ Снять отметку") : "")
+  // ×N: «+1» и «−1» по одной отметке (как щелчок и правый щелчок по кольцу), «Снять» — все отметки дня сразу.
+  const need = habitNeed(h), got = habitCount(h);
+  menu.innerHTML = (need > 1
+    ? (h.status === "done" ? "" : item("step+", `✓ Отметить ещё раз · ${got + 1}/${need}`)) + (got ? item("step-", `− Снять одну · ${got - 1}/${need}`) : "")
+      + (h.status || got ? item("unmark", "↶ Снять все отметки") : "")
+    : (h.status === "done" ? "" : item("done", "✓ Сделано сегодня")) + (h.status ? item("unmark", "↶ Снять отметку") : ""))
     + (h.status ? "" : item("skip", "– Пропустить сегодня"))
     + `<hr>`
     + item("rename", "✎ Переименовать")
@@ -3293,6 +3376,7 @@ function openHabitMenu(h, li, x, y) {
     closePlanMenu();
     if (act === "rename") return openRename({ habit: true, id: h.id, title: h.title }, li);
     if (act === "unmark") return unmarkHabitDay(h);
+    if (act === "step+" || act === "step-") return stepHabit(h, act === "step+" ? 1 : -1, li.querySelector(".mark[data-habit]"));
     if (act === "done" || act === "skip") return markHabitDay(h, act === "done" ? "done" : "skipped");
     editHabit(h, act, li);
   });
@@ -3318,6 +3402,79 @@ async function markHabitDay(h, status) {
     say(errText(err), { ms: 6000 });
   }
   load();
+}
+// ×N — одна отметка: +1 (щелчок по кольцу, «Отметить ещё раз») или −1 (правый щелчок по кольцу, «Снять одну»): POST …/mark
+// {day, step}, ответ {text, count, need, status}. Кольцо меняется сразу, «чпок» — тихий; набралась норма — как галочка обычной
+// привычки (звук, брызги, опыт +5, «серия»); сняли одну с набранной — опыт назад. Ошибка — всё назад и её слова.
+async function stepHabit(h, step, mark) {
+  const id = h.id;
+  h = data?.habits?.find((v) => v.id === id) ?? h; // после load() строка — уже новый объект (с шагами в пути, habitHold)
+  const need = habitNeed(h), was = habitCount(h), wasDone = h.status === "done";
+  if (step > 0 ? wasDone : !was) return;
+  const count = Math.max(0, Math.min(need, was + step));
+  const full = count >= need;
+  const back = { count: h.count, status: h.status };
+  h.count = count;
+  h.status = full ? "done" : null;
+  const p = habitPending.get(id) ?? { n: 0, seq: 0, after: 0 };
+  const seq = ++p.seq;
+  p.n++;
+  p.count = h.count;
+  p.status = h.status;
+  habitPending.set(id, p);
+  const li = mark?.closest("li");
+  if (mark?.isConnected) {
+    mark.className = `mark ${habitMarkClass(h)}`;
+    void mark.offsetWidth;
+    mark.classList.add("pressed");
+    mark.innerHTML = habitMarkHtml(h);
+    li?.classList.toggle("did", Boolean(h.status));
+    const n = li?.querySelector(".habit-n");
+    if (n) n.textContent = `${count}/${need}`;
+    // Список не перерисовывать, пока идёт «чпок» (и брызги у набранной нормы): иначе строка пересоздастся посреди анимации,
+    // а сделанная уедет вниз раньше, чем брызги отлетят (перерисовка потом сдвинет её плавно, flipHabits).
+    animUntil = Math.max(animUntil, Date.now() + (full && !wasDone ? 600 : 450));
+  }
+  let xpBack = null;
+  if (full && !wasDone) {
+    popTone(2);
+    if (mark?.isConnected) burst(mark);
+    xpGain(mark?.isConnected ? mark : null, "habit");
+    xpBack = () => xpUndo("habit");
+    react("streak", 4000);
+    habitDoneAt.set(id, Date.now());
+    answeredInList(`h:${id}`);
+  } else if (wasDone) {
+    popTone(-5, { vol: 0.2, soft: true });
+    xpTake("habit");
+    xpBack = () => xpUndo("habit", 1);
+  } else popTone(step > 0 ? 1 : -3, { vol: 0.18, soft: true });
+  // Ответ и откат — к тому объекту привычки, что сейчас в data (load() мог заменить его), и к записи шагов в пути.
+  const settle = () => {
+    p.n--;
+    if (!p.n) p.after = loadSeq;
+    for (const x of [h, data?.habits?.find((v) => v.id === id)]) if (x) { x.count = p.count; x.status = p.status; }
+  };
+  try {
+    const r = await maid.api("POST", `/api/habits/${id}/mark`, { day: data.day, step });
+    // Слова сервера о счёте — только у последнего шага, когда других в пути нет: ответ раннего шага старее показанного.
+    if (Number.isInteger(r?.count) && seq === p.seq && p.n === 1) { p.count = r.count; p.status = r.status ?? null; }
+    settle();
+    if (xpBack) xpSent();
+    maid.changed();
+  } catch (err) {
+    // Назад — только свой шаг: шаги, ушедшие рядом, остаются; шёл один — ровно как было (и пропуск тоже).
+    if (p.n === 1) { p.count = back.count; p.status = back.status; } else {
+      p.count = Math.max(0, Math.min(need, p.count - step));
+      p.status = p.count >= need ? "done" : null;
+    }
+    settle();
+    xpBack?.();
+    play("oops");
+    say(errText(err), { ms: 6000 });
+    render(); // опрос может прийти тем же, что был, — кольцо вернуть самим
+    load();
+  }
 }
 async function editHabit(h, act, li) {
   const body = act === "quiet" ? { quiet: true } : act === "loud" ? { quiet: false } : act === "finish" ? { finish: true } : { status: "stopped" };
@@ -3360,6 +3517,13 @@ $("#body").addEventListener("click", async (e) => {
   if (tick) {
     const key = tick.dataset.done ? `t${tick.dataset.done}` : `h${tick.dataset.habit}`;
     if (leavingRows.has(key)) return cancelLeave(key);
+    // ×N: щелчок — ещё одна отметка (step 1), по галочке набранной нормы — снять последнюю (step −1). В режиме «улетают» строка
+    // улетает только с последней отметкой нормы — тогда отметку шлёт rowCommit (habitDoneBody).
+    const hx = tick.dataset.habit ? (data?.habits ?? []).find((v) => v.id === Number(tick.dataset.habit)) : null;
+    if (hx && habitNeed(hx) > 1 && !tick.closest("li.leaving, li.undo-row")) {
+      const last = hx.status !== "done" && habitCount(hx) + 1 >= habitNeed(hx);
+      if (!(cfg.doneTasks === "hide" && last && !tick.closest("li.did"))) return stepHabit(hx, hx.status === "done" ? -1 : 1, tick);
+    }
     if (cfg.doneTasks === "hide" && !tick.closest("li.did")) return startLeave(key, tick);
   }
   const row = !tick ? e.target.closest("ul.list li") : null;
@@ -3400,10 +3564,12 @@ $("#body").addEventListener("click", async (e) => {
       maid.changed();
     } else if (habit) {
       const was = e.target.classList.contains("done");
-      e.target.classList.toggle("done", !was);
+      // Сделано — сразу новая галочка (залитый круг, HABIT_TICK); пропуск, отмеченный щелчком, становится «сделано».
+      e.target.className = was ? "mark" : "mark done";
+      e.target.innerHTML = was ? "" : HABIT_TICK;
       e.target.classList.add("pressed");
       // Сняли галочку — день снова пустой, а не пропуск: можно сделать позже; крестик ставит полночь, если так и не сделали.
-      if (was) { e.target.textContent = ""; popTone(-5, { vol: 0.2, soft: true }); xpTake("habit"); xpBack = () => xpUndo("habit", 1); }
+      if (was) { popTone(-5, { vol: 0.2, soft: true }); xpTake("habit"); xpBack = () => xpUndo("habit", 1); }
       else { popTone(2); burst(e.target); xpGain(e.target, "habit"); xpBack = () => xpUndo("habit"); react("streak", 4000); habitDoneAt.set(Number(habit), Date.now()); answeredInList(`h:${habit}`); }
       await maid.api("POST", was ? `/api/habits/${habit}/unmark` : `/api/habits/${habit}/mark`, was ? {} : { status: "done" });
       xpSent();

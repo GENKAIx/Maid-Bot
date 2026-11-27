@@ -205,8 +205,26 @@ body.widget { background: transparent; overflow: hidden; user-select: none; }
 .stage.grab .w button, .stage.grab .w input, .stage.grab .w textarea, .stage.grab .check, .stage.grab .mark { -webkit-app-region: no-drag; }
 .stage.grab .maid { -webkit-app-region: drag; }
 .w .mark { width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid var(--muted); flex: none; font-size: 12px; display: grid; place-items: center; cursor: pointer; }
-.w .mark.done { background: var(--accent-2); border-color: var(--accent-2); color: var(--ink); }
-.w .mark.skipped { background: var(--muted); border-color: var(--muted); color: var(--ink); }
+/* Отметка привычки рисуется svg (widget.js: HABIT_TICK, HABIT_SKIP, habitRing): поле 18×18 на 1 px шире рамки 16 px с каждой стороны,
+   так что круг r 8 — ровно на месте прежнего кружка, строка той же высоты. Сделано — залитый зелёный (--accent-2, цвет галочек
+   из «Вида панели») с жирной белой галочкой, пропуск — залитый красный, как на сайте (--red #e0566a), с жирным белым минусом;
+   ×N — кольцо долей: отмеченные зелёные 2,6, остальные тонкие 1,3 цвета пустого кружка; больше 10 в день — сектор.
+   Цвет круга «сделано» идёт за настройкой «Цвет» (--accent-2), поэтому значок и пропуск подстраиваются (widget.js, MARK_LOOK):
+   на светлых голубом и янтарном галочка тёмная (--mark-ink = --ink), у розового пропуск приглушённый (--mark-skip), иначе
+   розовое «сделано» и красный пропуск почти одного цвета. */
+.w .mark.done, .w .mark.skipped, .w .mark.multi { border: 0; background: none; color: #fff; }
+.w .mark svg.mk { position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); overflow: visible; pointer-events: none; }
+.w .mark .mk-bg { fill: var(--accent-2); }
+.w .mark.skipped .mk-bg { fill: var(--mark-skip, #e0566a); }
+.w .mark .mk-fg { fill: none; stroke: var(--mark-ink, #fff); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.w .mark.skipped .mk-fg { stroke: #fff; } /* минус на красном (и приглушённом у розового) — всегда белый: круг пропуска не светлый */
+.w .mark .mk-on, .w .mark .mk-off { fill: none; stroke-linecap: round; }
+.w .mark .mk-on { stroke: var(--accent-2); stroke-width: 2.6; }
+.w .mark .mk-off { stroke: var(--muted); stroke-width: 1.3; transition: stroke .15s; }
+.w .mark .mk-pie { fill: var(--accent-2); }
+.w .mark.multi:hover .mk-off { stroke: color-mix(in srgb, var(--accent-2) 70%, var(--muted)); }
+/* «3/5» у ×N — мелко и тихо сразу за названием. */
+.w .list .habit-n { margin-left: 6px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* --- горничная --- */
 .maid { position: relative; flex: none; width: var(--maid-w, 196px); aspect-ratio: 400 / 427; cursor: pointer; }
