@@ -40,7 +40,7 @@ script = """</div>
   var toc = document.getElementById("toc-design");
   document.querySelectorAll("#ch-design .piece").forEach(function (p) {
     var h = p.querySelector("header h2"), app = p.querySelector(".app[data-title]"), a = document.createElement("a");
-    a.href = "#"; a.textContent = p.id === "p-d-nav" ? "Навигация и поиск" : p.id === "p-d-widget" ? "Виджет" : /^p-d-buffs-/.test(p.id) ? "Бафы: " + h.textContent : (app ? app.dataset.title : h.textContent);
+    a.href = "#"; a.textContent = p.id === "p-d-nav" ? "Навигация и поиск" : p.id === "p-d-widget" ? "Виджет" : p.id === "p-d-habits-b" ? "Привычки: месяц сеткой" : /^p-d-buffs-/.test(p.id) ? "Бафы: " + h.textContent : (app ? app.dataset.title : h.textContent);
     a.addEventListener("click", function (e) { e.preventDefault(); p.scrollIntoView({ block: "start", behavior: MaidMock.reduce ? "auto" : "smooth" }); });
     toc.appendChild(a);
   });
