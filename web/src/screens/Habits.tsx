@@ -9,7 +9,7 @@ import { cellTitle, daysBetween, finishedSummary, habitPlace } from "../habitvie
 import type { HabitFinished, HabitMarkReply, HabitMonth } from "../types";
 import { HabitStatsPanel } from "./HabitStats";
 
-// Привычки (27.11.2026 — макет «Привычки: месяц сеткой», цвета «Сирень»): сетка месяца (строка — привычка, столбец — день),
+// Привычки (27.11.2026 — макет «Привычки: месяц сеткой», цвета — зелёный и красный с 28.11.2026, в сделанных клетках ✓): сетка месяца (строка — привычка, столбец — день),
 // у клетки три состояния — сделано (залита), пропуск (штриховка), отмечено не всё (×N: заполнена снизу, «5/8»). Щелчок отмечает
 // (обычная: сделал → пропуск → сделал; ×N: всегда +1 — пропуск только кнопкой в панели), правый клик или долгое нажатие — минус
 // одна отметка.
@@ -283,7 +283,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
               {all.due > 0 && <span className="muted"> · {isNow ? "до сегодня выполнено" : "выполнено"} <b className="num">{Math.round((all.done / all.due) * 100)} %</b></span>}
             </p>
             <ul className="hg-leg" aria-label="Обозначения">
-              <li><i className="hg-cell" data-s="done" />сделано</li>
+              <li><i className="hg-cell" data-s="done"><b className="hg-ok">✓</b></i>сделано</li>
               <li><i className="hg-cell" data-s="skip" />пропуск</li>
               <li><i className="hg-cell" data-s="part"><i className="hg-fill" style={{ height: "50%" }} /></i>отмечено не всё</li>
             </ul>
@@ -347,7 +347,7 @@ export function Habits({ month, version, onChanged }: { month?: string; version:
                         title={title} aria-label={`${h.title} · ${now}`}
                       >
                         {per > 1 && <i className="hg-fill" style={{ height: `${cellFill(one) * 100}%` }} />}
-                        {label && <em>{label}</em>}
+                        {label ? <em>{label}</em> : kind === "done" && <b className="hg-ok" aria-hidden="true">✓</b>}
                       </button>
                     );
                   }),

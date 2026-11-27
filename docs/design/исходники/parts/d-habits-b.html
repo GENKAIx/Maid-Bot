@@ -7,11 +7,11 @@
 <button class="replay" type="button">Повторить анимацию</button>
 
 <div class="m-pals"><span>Цвета:</span><div class="m-psw" role="group" aria-label="Цвета привычек">
-<button type="button" data-pal="1" aria-pressed="false">1 · Как было</button><button type="button" data-pal="2" aria-pressed="true">2 · Сирень</button><button type="button" data-pal="3" aria-pressed="false">3 · Сакура</button><button type="button" data-pal="4" aria-pressed="false">4 · Мята и персик</button><button type="button" data-pal="5" aria-pressed="false">5 · Чай с молоком</button>
+<button type="button" data-pal="1" aria-pressed="false">1 · Как было</button><button type="button" data-pal="2" aria-pressed="false">2 · Сирень</button><button type="button" data-pal="3" aria-pressed="false">3 · Сакура</button><button type="button" data-pal="4" aria-pressed="false">4 · Мята и персик</button><button type="button" data-pal="5" aria-pressed="false">5 · Чай с молоком</button><button type="button" data-pal="6" aria-pressed="true">6 · Зелёный с галочками</button>
 </div></div>
-<p class="m-adv">Советую «Сирень»: она в тон Рине и всему интерфейсу, а тёплый персик пропуска не ругает, только отмечает день.</p>
+<p class="m-adv">Выбрано в приложение: «Зелёный с галочками» — цвета как было, в сделанных клетках ✓.</p>
 
-<div class="app" data-pal="2" data-hub="plans" data-tab="Привычки" data-title="Привычки">
+<div class="app" data-pal="6" data-hub="plans" data-tab="Привычки" data-title="Привычки">
   <div class="card m-head">
     <div class="m-hr">
       <p class="m-month"><b>Ноябрь 2026</b> <span class="muted">· до сегодня выполнено <b class="m-rate num">0%</b></span></p>
@@ -65,6 +65,7 @@
 #p-d-habits-b .app[data-pal="3"]{--hb-done:var(--hp3-done);--hb-skip:var(--hp3-skip)}
 #p-d-habits-b .app[data-pal="4"]{--hb-done:var(--hp4-done);--hb-skip:var(--hp4-skip)}
 #p-d-habits-b .app[data-pal="5"]{--hb-done:var(--hp5-done);--hb-skip:var(--hp5-skip)}
+#p-d-habits-b .app[data-pal="6"] .m-c[data-s="d"]:not(:has(em:not(:empty)))::after{content:"✓";position:relative;font:800 13px/1 var(--f);color:var(--a-on-accent)}
 #p-d-habits-b .m-head{display:flex;flex-direction:column;gap:8px}
 #p-d-habits-b .m-hr{display:flex;align-items:center;justify-content:space-between;gap:10px 18px;flex-wrap:wrap}
 #p-d-habits-b .m-month{font-size:14px}

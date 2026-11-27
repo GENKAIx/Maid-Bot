@@ -247,7 +247,7 @@ test("Рина заметила: по данным отрезка, без выд
   assert.match(weak.text, /Чаще всего пропускаете в пятницу/);
 });
 
-test("страница: клетки, ×N, минус отметка, раскрытие, токены «Сирени» в обеих темах", () => {
+test("страница: клетки, ×N, минус отметка, раскрытие, зелёный и красный в обеих темах, ✓ в сделанных", () => {
   const src = readFileSync(new URL("../src/screens/Habits.tsx", import.meta.url), "utf8");
   assert.match(src, /data-s=\{kind\}/);
   assert.match(src, /onContextMenu=\{\(e\) => \{ e\.preventDefault\(\);[^}]*mark\(h, x, true\)/, "правый клик — минус одна отметка");
@@ -259,8 +259,9 @@ test("страница: клетки, ×N, минус отметка, раскр
   const panel = readFileSync(new URL("../src/screens/HabitStats.tsx", import.meta.url), "utf8");
   for (const t of ["Во сколько отмечали", "По отметкам", "Сутки целиком", "Серия", "Сутки", "Дни недели", "Год по месяцам", "Отклик на напоминание", "Ритм дня", "Рина заметила"]) assert.ok(panel.includes(t), t);
   const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
-  assert.match(css, /:root \{[^}]*--habit-done: #8f6ee0; --habit-skip: #df7c5e;/, "светлая тема");
-  assert.match(css, /:root\[data-theme="dark"\] \{[^}]*--habit-done: #b39cf2; --habit-skip: #eba08a;/, "тёмная тема");
+  assert.match(css, /:root \{[^}]*--habit-done: var\(--green\); --habit-skip: var\(--red\);/, "светлая тема");
+  assert.match(css, /:root\[data-theme="dark"\] \{[^}]*--habit-done: var\(--green\); --habit-skip: var\(--red\);/, "тёмная тема");
+  assert.match(src, /kind === "done" && <b className="hg-ok" aria-hidden="true">✓<\/b>/, "галочка в сделанной клетке");
   assert.match(css, /\.hg-cell\[data-s="done"\] \{ background: var\(--habit-done\); \}/);
   assert.match(css, /\.hg-cell\[data-s="skip"\] \{ background: repeating-linear-gradient\(135deg, var\(--habit-skip\)/);
   assert.match(css, /\.hg-title\[data-t="3"\] \{ --fire: var\(--habit-gold\); \}/);
