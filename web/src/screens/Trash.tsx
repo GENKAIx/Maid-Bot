@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { get, post } from "../api";
-import { Card, Chip, Empty, Spinner } from "../components";
-import { MONTHS_GEN, shortDay, todayKey } from "../format";
+import { Empty, Spinner } from "../components";
+import { MONTHS_GEN, shortDay } from "../format";
+import { Icon } from "../icons";
+import { deletedWhen, leftText, soon, soonest, soonestText, trashLeft } from "../trash";
 import type { EventRow, NoteRow, TaskRow } from "../types";
 
-// Корзина: удалённые и отменённые задачи и планы, удалённые заметки и важные даты (даты — с 19.11.2026) за последние дни (сервер держит их TRASH_DAYS дней). «Вернуть» —
-// задача снова открыта, план снова в планах; то же, что «верни … из корзины» словами. «✕» — удалить навсегда,
-// «Очистить корзину» — всё сразу (после вопроса «точно?»); вернуть такое уже нельзя.
+// Корзина (27.11.2026 — дизайн v2, docs/design/дизайн-v2-2026-11-27.html, «Настройки → Корзина»): сверху — сколько записей
+// и сколько дней хранится, «Очистить всё»; строка Рины — о записи, что сотрётся через 3 дня или раньше; ниже группы
+// Планы, Задачи, Заметки, Даты (пустые не показываются). В строке — что и когда удалено, «удалится через N дней» с полоской
+// срока (красной, если осталось 3 дня или меньше), «Вернуть» и «✕» — удалить навсегда (после вопроса «точно?»).
+// «Вернуть» — задача снова открыта, план снова в планах; то же, что «верни … из корзины» словами. Сервер держит удалённое TRASH_DAYS дней.
 
 type Trash = {
   days: number;
@@ -16,27 +20,9 @@ type Trash = {
   dates?: { id: number; title: string; date_iso: string; closed_at: string | null }[];
 };
 type Kind = "task" | "event" | "note" | "date";
+type Item = { kind: Kind; id: number; title: string; sub: string; at: string | null };
 
-/** Когда удалено: «сегодня 14:05», «вчера», «8 ноя». */
-function when(iso: string | null) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const ago = Math.round((day(new Date()) - day(d)) / 86_400_000);
-  if (ago === 0) return `сегодня ${d.toTimeString().slice(0, 5)}`;
-  if (ago === 1) return "вчера";
-  return shortDay(todayKey(d));
-}
-
-/** Сколько ещё пролежит в корзине: «ещё 13 дней», «до завтра», «последний день». */
-function left(iso: string | null, days: number) {
-  if (!iso) return "";
-  const n = Math.ceil((new Date(iso).getTime() + days * 86_400_000 - Date.now()) / 86_400_000);
-  if (n <= 1) return "последний день";
-  if (n === 2) return "ещё 2 дня";
-  const w = n % 10 === 1 && n % 100 !== 11 ? "день" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "дня" : "дней";
-  return `ещё ${n} ${w}`;
-}
+const GROUPS: [Kind, string, string][] = [["event", "Планы", "plans"], ["task", "Задачи", "habits"], ["note", "Заметки", "notes"], ["date", "Даты", "plans"]];
 
 export function Trash({ version, onChanged }: { version: number; onChanged: () => void }) {
   const [trash, setTrash] = useState<Trash | null>(null);
@@ -79,92 +65,73 @@ export function Trash({ version, onChanged }: { version: number; onChanged: () =
 
   if (error) return <Empty>Нет связи: {error}</Empty>;
   if (!trash) return <Spinner />;
-  // Меньше 3 дней до исчезновения — красным.
-  const stays = (iso: string | null) => (iso && new Date(iso).getTime() + (trash.days - 3) * 86_400_000 < Date.now() ? "bad" : "");
-  const back = (kind: Kind, id: number) => (
-    <button className="link" disabled={busy === `${kind}${id}`} onClick={() => restore(kind, id)}>↩ Вернуть</button>
-  );
-  const gone = (kind: Kind, id: number, title: string) => (
-    <button className="link forever" disabled={busy === `${kind}${id}`} title="Удалить навсегда" aria-label={`Удалить навсегда: ${title}`}
-      onClick={() => purge(kind === "task" ? { tasks: [id] } : kind === "note" ? { notes: [id] } : kind === "date" ? { dates: [id] } : { events: [id] }, `Удалить «${title}» навсегда? Вернуть будет нельзя.`, `${kind}${id}`)}>✕</button>
-  );
-  const dates = trash.dates ?? [];
-  const total = trash.tasks.length + trash.events.length + trash.notes.length + dates.length;
+
+  const items: Item[] = [
+    ...trash.events.map((e): Item => ({ kind: "event", id: e.id, at: e.updated_at,
+      title: `${e.title}${e.time ? `, ${e.time}` : ""}`,
+      sub: `план на ${shortDay(e.date_iso)} · ${e.status === "deleted" ? "удалён" : "отменён"} ${deletedWhen(e.updated_at)}` })),
+    ...trash.tasks.map((t): Item => ({ kind: "task", id: t.id, at: t.closed_at, title: t.title,
+      sub: `задача${t.due_date ? ` до ${shortDay(t.due_date)}` : ""} · ${t.status === "deleted" ? "удалена" : "отменена"} ${deletedWhen(t.closed_at)}` })),
+    ...trash.notes.map((n): Item => ({ kind: "note", id: n.id, at: n.closed_at, title: n.title,
+      sub: `заметка${n.note ? ` · ${n.note}` : ""} · удалена ${deletedWhen(n.closed_at)}` })),
+    ...(trash.dates ?? []).map((d): Item => ({ kind: "date", id: d.id, at: d.closed_at, title: d.title,
+      sub: `дата ${Number(d.date_iso.slice(8, 10))} ${MONTHS_GEN[Number(d.date_iso.slice(5, 7)) - 1]} · удалена ${deletedWhen(d.closed_at)}` })),
+  ];
+  const total = items.length;
+  const urgent = soonest(items, trash.days);
+
+  const row = (x: Item) => {
+    const l = trashLeft(x.at, trash.days);
+    const key = `${x.kind}${x.id}`;
+    const body = x.kind === "task" ? { tasks: [x.id] } : x.kind === "note" ? { notes: [x.id] } : x.kind === "date" ? { dates: [x.id] } : { events: [x.id] };
+    return (
+      <div key={key} className="trash-row">
+        <span className="trash-ico"><Icon name={GROUPS.find((g) => g[0] === x.kind)![2]} size={18} /></span>
+        <div className="trash-text"><b>{x.title}</b><span>{x.sub}</span></div>
+        {l && (
+          <div className={`trash-left${soon(l.n) ? " soon" : ""}`}>
+            <span>{leftText(l.n)}</span>
+            <div className="trash-line" role="meter" aria-label={leftText(l.n)} aria-valuemin={0} aria-valuemax={trash.days} aria-valuenow={l.n}>
+              <i style={{ width: `${Math.round(l.part * 100)}%` }} />
+            </div>
+          </div>
+        )}
+        <div className="trash-acts">
+          <button disabled={busy === key} onClick={() => void restore(x.kind, x.id)}>Вернуть</button>
+          <button className="ghost trash-forever" disabled={busy === key} title="Удалить навсегда" aria-label={`Удалить навсегда: ${x.title}`}
+            onClick={() => void purge(body, `Удалить «${x.title}» навсегда? Вернуть будет нельзя.`, key)}>✕</button>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="screen">
-      <h2 className="screen-title">Корзина</h2>
+    <div className="screen trash">
       <div className="trash-top">
-        <p className="muted small trash-note">Удалённое и отменённое лежит здесь {trash.days} дней — справа видно, сколько ещё осталось, потом пропадёт.</p>
+        <div>
+          <p className="trash-count"><b className="num">{total}</b> {total ? "в корзине" : "— корзина пуста"}</p>
+          <p className="muted small">Удалённое и отменённое хранится {trash.days} дней, потом стирается само.</p>
+        </div>
         {total > 0 && (
-          <button className="ghost" disabled={busy === "all"}
-            onClick={() => purge({ all: true }, `Очистить корзину? ${total} — навсегда, вернуть будет нельзя.`, "all")}>Очистить корзину</button>
+          <button className="trash-clear" disabled={busy === "all"}
+            onClick={() => void purge({ all: true }, `Очистить корзину? ${total} — навсегда, вернуть будет нельзя.`, "all")}>Очистить всё</button>
         )}
       </div>
-      <div className="cards">
-        <Card title={`Задачи · ${trash.tasks.length}`} className="reveal wide">
-          {trash.tasks.length ? (
-            <ul className="list trash">
-              {trash.tasks.map((t) => (
-                <li key={t.id}>
-                  <span className="grow">{t.title}{t.due_date && <span className="muted small"> · до {shortDay(t.due_date)}</span>}</span>
-                  <span className="muted small">{t.status === "deleted" ? "удалена" : "отменена"} {when(t.closed_at)}</span>
-                  <Chip tone={stays(t.closed_at)}>{left(t.closed_at, trash.days)}</Chip>
-                  {back("task", t.id)}
-                  {gone("task", t.id, t.title)}
-                </li>
-              ))}
-            </ul>
-          ) : <Empty>Удалённых задач нет</Empty>}
-        </Card>
-        <Card title={`Планы · ${trash.events.length}`} className="reveal wide">
-          {trash.events.length ? (
-            <ul className="list trash">
-              {trash.events.map((e) => (
-                <li key={e.id}>
-                  <span className="time">{shortDay(e.date_iso)}</span>
-                  <span className="grow">{e.title}{e.time && <span className="muted small"> · {e.time}</span>}</span>
-                  <span className="muted small">{e.status === "deleted" ? "удалён" : "отменён"} {when(e.updated_at)}</span>
-                  <Chip tone={stays(e.updated_at)}>{left(e.updated_at, trash.days)}</Chip>
-                  {back("event", e.id)}
-                  {gone("event", e.id, e.title)}
-                </li>
-              ))}
-            </ul>
-          ) : <Empty>Удалённых планов нет</Empty>}
-        </Card>
-        {trash.notes.length > 0 && (
-          <Card title={`Заметки · ${trash.notes.length}`} className="reveal wide">
-            <ul className="list trash">
-              {trash.notes.map((n) => (
-                <li key={n.id}>
-                  <span className="grow">{n.title}{n.note && <span className="muted small"> · {n.note}</span>}</span>
-                  <span className="muted small">удалена {when(n.closed_at)}</span>
-                  <Chip tone={stays(n.closed_at)}>{left(n.closed_at, trash.days)}</Chip>
-                  {back("note", n.id)}
-                  {gone("note", n.id, n.title)}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-        {dates.length > 0 && (
-          <Card title={`Даты · ${dates.length}`} className="reveal wide">
-            <ul className="list trash">
-              {dates.map((d) => (
-                <li key={d.id}>
-                  <span className="time">{Number(d.date_iso.slice(8, 10))} {MONTHS_GEN[Number(d.date_iso.slice(5, 7)) - 1].slice(0, 3)}</span>
-                  <span className="grow">{d.title}</span>
-                  <span className="muted small">удалена {when(d.closed_at)}</span>
-                  <Chip tone={stays(d.closed_at)}>{left(d.closed_at, trash.days)}</Chip>
-                  {back("date", d.id)}
-                  {gone("date", d.id, d.title)}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-      </div>
+      {urgent && (
+        <div className="trash-say">
+          <img src="/maid/idle.webp" alt="" width={56} height={56} />
+          <p>«{urgent.title}» <b>{soonestText(urgent.n)}</b>. Если ещё нужно — верните.</p>
+        </div>
+      )}
+      {GROUPS.map(([kind, title]) => {
+        const list = items.filter((x) => x.kind === kind);
+        return list.length > 0 && (
+          <section key={kind} className="card trash-group reveal">
+            <h3>{title} · {list.length}</h3>
+            {list.map(row)}
+          </section>
+        );
+      })}
     </div>
   );
 }

@@ -199,11 +199,8 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
   .notes-row.closed .notes-title { flex-basis: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .notes-rate { animation: none; } }
-.trash-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 14px; }
-.trash-top .trash-note { margin: 0; flex: 1 1 320px; }
 button.link.forever { color: var(--muted); }
 button.link.forever:hover { color: var(--bad-ink); text-decoration: none; }
-.list.trash li { flex-wrap: wrap; row-gap: 2px; }
 .list .time { color: var(--accent); min-width: 54px; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13.5px; }
 .empty { color: var(--muted); margin: 4px 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1480,4 +1477,38 @@ h3.cat-h { margin: 24px 0 6px; font-size: 17px; font-weight: 650; }
   .set-plan { flex-wrap: wrap; }
   .set-plan-acts { flex-basis: 100%; }
   .set-row { flex-wrap: wrap; gap: 8px; }
+}
+
+/* «Настройки → Корзина» (27.11.2026, дизайн v2; screens/Trash.tsx, trash.ts). */
+.trash { display: flex; flex-direction: column; gap: 14px; max-width: 980px; }
+.trash-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.trash-top p { margin: 0; }
+.trash-count { font-size: 15px; }
+.trash-count .num { font-size: 34px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.trash-clear { color: var(--bad-ink); }
+.trash-say { display: flex; align-items: flex-end; gap: 10px; }
+.trash-say img { flex: none; }
+.trash-say p { margin: 0 0 6px; padding: 9px 14px; border-radius: 14px 14px 14px 4px; background: var(--panel-2); font-size: 14px; }
+.trash-say b { color: var(--accent); }
+.trash-group { display: flex; flex-direction: column; padding-top: 12px; padding-bottom: 6px; }
+.trash-group h3 { margin: 0 0 4px; font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.trash-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); min-width: 0; }
+.trash-group h3 + .trash-row { border-top: 0; }
+.trash-ico { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--panel-2); color: var(--muted); }
+.trash-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.trash-text b { font-weight: 600; overflow-wrap: anywhere; }
+.trash-text span { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trash-left { flex: none; width: 170px; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); }
+.trash-line { height: 4px; border-radius: 99px; background: var(--ring-bg); overflow: hidden; }
+.trash-line i { display: block; height: 100%; border-radius: 99px; background: var(--accent); animation: growX .6s ease both; transform-origin: left; }
+.trash-left.soon { color: var(--bad-ink); }
+.trash-left.soon .trash-line i { background: var(--bad-ink); }
+.trash-acts { flex: none; display: flex; align-items: center; gap: 4px; }
+.trash-forever { color: var(--muted); padding: 6px 9px; }
+.trash-forever:hover { color: var(--bad-ink); }
+@media (max-width: 700px) {
+  .trash-row { flex-wrap: wrap; gap: 8px 12px; }
+  .trash-text { flex-basis: calc(100% - 48px); }
+  .trash-text span { white-space: normal; }
+  .trash-left { flex: 1; width: auto; margin-left: 46px; }
 }
