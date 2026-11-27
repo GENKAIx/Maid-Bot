@@ -71,7 +71,7 @@ for (const [name, open] of BASES) {
   test(`${name}: шаг 40 — версии промптов в базе`, async () => {
     const store = await open();
     try {
-      assert.equal(await store.kvGet("schema_version"), "41");
+      assert.equal(await store.kvGet("schema_version"), "42");
       assert.deepEqual(await store.promptActive(), []);
       assert.equal(await store.addPromptVersion("chat.rules", "первый", NOW.toISOString(), 7, "проба"), 1);
       assert.equal(await store.addPromptVersion("chat.rules", "второй", NOW.toISOString(), 8, "x".repeat(400)), 2);

@@ -2,6 +2,7 @@ import { shortDay } from "./format";
 import type { HabitFinished, HabitMonth } from "./types";
 
 // Чистые расчёты страницы «Привычки» (26.11.2026): время отметки в подсказке клетки, строка «Завершённых», куда ведёт «?h=».
+// Клетки ×N, отрезок графика и блоки раскрытой привычки — habitpanel.ts.
 // Проверка — web/test/habit-finished.test.ts.
 
 /** Дней от a до b (ГГГГ-ММ-ДД), b позже — плюс. */
@@ -17,12 +18,19 @@ export function markTip(x: Marked): string {
   return `${x.status === "done" ? "сделано" : "пропуск"} в ${x.at_time}`;
 }
 
-/** Подсказка клетки сетки: «2026-11-26 — сделано в 21:14 · 35 стр.», задним числом — «… — сделано · отмечено 26 ноя в 10:02». */
-export function cellTitle(x: Marked & { day: string; due: boolean; amount?: number | null; unit?: string }): string {
+/** Подсказка клетки сетки: «2026-11-26 — сделано в 21:14 · 35 стр.», задним числом — «… — сделано · отмечено 26 ноя в 10:02».
+ *  ×N (27.11.2026): «2026-11-26 — отмечено 5 из 8 · последняя в 21:14», норма набрана — «сделано 8 из 8 · …». */
+export function cellTitle(x: Marked & { day: string; due: boolean; amount?: number | null; unit?: string; count?: number; need?: number }): string {
+  const need = x.need ?? 1, count = x.count ?? 0;
+  const amount = x.amount != null ? ` · ${x.amount}${x.unit ? " " + x.unit : ""}` : "";
+  if (need > 1 && count > 0 && x.status !== "skipped") {
+    const when = !x.at_time ? "" : x.at_day ? `отмечено ${shortDay(x.at_day)} в ${x.at_time}` : `последняя в ${x.at_time}`;
+    return `${x.day} — ${[`${x.status === "done" ? "сделано" : "отмечено"} ${Math.min(count, need)} из ${need}`, when].filter(Boolean).join(" · ")}${amount}`;
+  }
   const tip = markTip(x);
   const word = x.status === "done" ? "сделано" : x.status === "skipped" ? "пропуск" : x.due ? "запланировано" : "";
   const what = tip && !x.at_day ? tip : [word, tip].filter(Boolean).join(" · ");
-  return `${x.day}${what ? ` — ${what}` : ""}${x.amount != null ? ` · ${x.amount}${x.unit ? " " + x.unit : ""}` : ""}`;
+  return `${x.day}${what ? ` — ${what}` : ""}${amount}`;
 }
 
 /** Строка завершённой привычки после названия: «3 окт – 25 ноя · 42 из 50 (84 %)»; запланированных дней не было — без процента. */

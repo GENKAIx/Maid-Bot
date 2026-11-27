@@ -90,6 +90,7 @@ test("шаг 14 базы: старый расход (без людей) сохр
     INSERT INTO llm_usage VALUES ('2026-11-10', 'answer', 'm', 4, 40, 20, 1500000, 4);
     ALTER TABLE habits DROP COLUMN finished_at;
     ALTER TABLE users DROP COLUMN is_test;
+    ALTER TABLE habits DROP COLUMN per_day; ALTER TABLE habit_marks DROP COLUMN count; ALTER TABLE habit_marks DROP COLUMN stamps;
     UPDATE kv SET value = '13' WHERE key = 'schema_version';`);
   db.close();
   const store = await Store.open(file);

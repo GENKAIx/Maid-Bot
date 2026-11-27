@@ -61,5 +61,5 @@ test("страница привычек: «Завершить», карточк�
   const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
   assert.match(css, /\.hg-done-text \{[^}]*overflow-wrap: anywhere/);
   assert.match(css, /\.hg-done-head \{[^}]*flex-wrap: wrap/);
-  assert.match(css, /\.hg-done \.hs-charts \{[^}]*minmax\(min\(240px, 100%\), 1fr\)/, "графики статистики не шире карточки на 320 px");
+  assert.match(css, /\.hg-done \.hp-gr \{[^}]*minmax\(min\(250px, 100%\), 1fr\)/, "блоки статистики не шире карточки на 320 px");
 });

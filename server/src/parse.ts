@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { DateRow, EventRow, HabitRow, MemoryRow, NoteRow, TaskRow } from "./db.ts";
-import { habitFinished, timesOf } from "./habits.ts";
+import { habitFinished, perDayOf, timesOf } from "./habits.ts";
 import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, SHELF_KEYS, sameNote, shelfKey, type Shelf } from "./notes.ts";
 import { EMOTIONS } from "./personas.ts";
 import { prompt, setPromptPreview } from "./prompts.ts";
@@ -77,6 +77,8 @@ const Habit = z.object({
   start_iso: optStr,
   end_iso: optStr,
   duration_days: z.number().int().positive().nullable().optional(),
+  // Сколько раз в день (шаг 42): «пить 8 стаканов воды в день» — 8; нет — 1.
+  per_day: z.number().int().min(1).max(12).nullable().optional().catch(null),
 });
 const HabitMark = z.object({
   habit_id: z.number().int(),
@@ -132,7 +134,7 @@ const Stash = z.object({
   note: optStr,
 });
 const Edit = z.object({
-  action: z.enum(["cancel", "done", "move", "reopen", "rename", "remind"]),
+  action: z.enum(["cancel", "done", "move", "reopen", "rename", "remind", "per_day"]),
   kind: z.enum(["event", "task", "date", "memory", "habit", "note"]),
   id: z.number().int(),
   // Только заметка: move — на какую полку переложить; done — оценка 1–10, если названа.
@@ -143,6 +145,8 @@ const Edit = z.object({
   new_time: optStr,
   // remind (только привычка): время напоминаний; пусто — без напоминаний.
   new_times: z.array(z.string()).optional().catch(undefined),
+  // per_day (только привычка): сколько раз в день, 1..12.
+  new_per_day: z.number().int().min(1).max(12).nullable().optional().catch(null),
 });
 
 const arr = <T extends z.ZodTypeAny>(t: T) =>
@@ -223,17 +227,17 @@ export interface Parsed {
   /** Дебафы и бафы профиля, которые пользователь назвал сам («у меня аллергия на арахис»). */
   traits: { kind: "debuff" | "buff"; category: string; title: string; note: string }[];
   metrics: { key: string; label: string; value: number; unit: string; note: string; dayKey: string }[];
-  habits: { title: string; days: string; times: string[]; start: string; end: string | null }[];
+  habits: { title: string; days: string; times: string[]; start: string; end: string | null; perDay: number }[];
   /** Предложить, а не записывать: привычки из рассказа о распорядке, задачи из «надо бы когда-нибудь».
    *  remind — ситуативная кнопка («Напоминать перед сном») и её время. */
   suggest: {
-    habits: { title: string; days: string; times: string[]; start: string; end: string | null }[];
+    habits: { title: string; days: string; times: string[]; start: string; end: string | null; perDay: number }[];
     tasks: { title: string; priority: "high" | "normal" | "low"; due: string | null; category: string }[];
     remind: { label: string; time: string } | null;
   };
   marks: { habitId: number; status: "done" | "skipped"; dayKey: string; amount: number | null; unit: string }[];
   money: { kind: "income" | "expense"; amount: number; currency: string; category: string; note: string; dayKey: string }[];
-  edits: { action: "cancel" | "done" | "move" | "reopen" | "rename" | "remind"; kind: "event" | "task" | "date" | "memory" | "habit" | "note"; id: number; newDate: string | null; newTime: string | null; newTitle?: string; newTimes?: string[]; newShelf?: Shelf; rating?: number | null }[];
+  edits: { action: "cancel" | "done" | "move" | "reopen" | "rename" | "remind" | "per_day"; kind: "event" | "task" | "date" | "memory" | "habit" | "note"; id: number; newDate: string | null; newTime: string | null; newTitle?: string; newTimes?: string[]; newShelf?: Shelf; rating?: number | null; newPerDay?: number }[];
   question: string | null;
   lookup: { from: string; to: string } | null;
   /** Вопрос про заметки «на потом» («что посмотреть?») — с каких полок отвечать; пусто — вопрос не про них. */
@@ -284,11 +288,11 @@ const parseSchema = () => `{
  "date_iso": "YYYY-MM-DD — день, к которому относится запись дневника (по умолчанию сегодня)",
  "diary": [{"section": "notes|sleep|food|sport|health|hobby|mood", "topic": "только для health: ${Object.keys(HEALTH_TOPICS).join("|")} или новое слово латиницей", "text": "...", "day_iso": "если не date_iso"}],
  "metrics": [{"key": "${Object.keys(METRICS).join("|")} или новый ключ латиницей", "label": "подпись по-русски для нового ключа", "value": 85.3, "unit": "", "note": "", "day_iso": null}],
- "habits": [{"title": "...", "days": "1234567 (1 — пн … 7 — вс)", "times": ["ЧЧ:ММ"], "start_iso": null, "end_iso": null, "duration_days": 30}],
+ "habits": [{"title": "...", "days": "1234567 (1 — пн … 7 — вс)", "times": ["ЧЧ:ММ"], "start_iso": null, "end_iso": null, "duration_days": 30, "per_day": 1}] — per_day: сколько раз в день (1–12): «пить 8 стаканов воды в день» — 8, «таблетки утром и вечером» — 2 и два времени в times,
  "suggest_habits": [то же, что habits] — регулярные дела из рассказа о распорядке: не заводить, а спросить,
  "suggest_tasks": [то же, что tasks] — дела из размышлений «надо бы как-нибудь…»: не записывать, а спросить,
  "suggest_remind": {"label": "текст кнопки по смыслу, до 28 символов", "time": "ЧЧ:ММ"} или null,
- "habit_marks": [{"habit_id": 3, "status": "done|skipped", "day_iso": null, "amount": null, "unit": ""}],
+ "habit_marks": [{"habit_id": 3, "status": "done|skipped", "day_iso": null, "amount": null, "unit": ""}] — у привычки «N раз в день» одна запись done — одна отметка из N («выпил стакан воды»),
  "money": [{"kind": "income|expense", "amount": 450, "currency": "RUB|USD|EUR…", "category": "${MONEY_CATEGORIES.join("|")}", "note": "на что / от кого", "day_iso": null}],
  "tags": ["короткие теги"],
  "summary": "[ЧЧ:ММ] почти дословная очищенная выжимка сообщения",
@@ -299,7 +303,7 @@ const parseSchema = () => `{
  "memory": [{"kind": "fact|preference|person|goal", "subject": "о ком/о чём", "text": "...", "replaces": null}],
  "about": {"city": "город, где человек живёт, или null", "wake": "час обычного подъёма числом или null"} или null,
  "traits": [{"kind": "debuff|buff", "category": "allergy|food|med|condition|body|habit|other", "title": "коротко: «Аллергия на арахис»", "note": "подробности, если названы"}],
- "edits": [{"action": "cancel|done|move|reopen|rename|remind", "kind": "event|task|date|memory|habit|note", "id": 12, "new_date": null, "new_time": null, "new_title": null, "new_times": null, "new_shelf": null, "rating": null}],
+ "edits": [{"action": "cancel|done|move|reopen|rename|remind|per_day", "kind": "event|task|date|memory|habit|note", "id": 12, "new_date": null, "new_time": null, "new_title": null, "new_times": null, "new_shelf": null, "rating": null, "new_per_day": null}] — per_day (только kind=habit): «пить воду 6 раз в день» — new_per_day 6,
  "question": "если пользователь спрашивает о своих данных — вопрос, иначе null",
  "lookup": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} или null — какие дни нужны для ответа (null — за всё время),
  "search": ["корни слов для поиска по записям, напр. сердц, кардиолог"] — только если вопрос про конкретную вещь,
@@ -325,7 +329,7 @@ export function buildPrompt(ctx: ParseContext, voice: string, rules = prompt("pa
     return h.quiet ? "без напоминаний" : t.length ? `напоминания ${t.join(", ")}` : "напоминания — общее время";
   };
   // Завершённая (habitFinished) — «завершена»: её не отмечают, только «верни» (reopen).
-  const hab = ctx.habits.map((h) => `#${h.id} ${h.title} (${habitFinished(h, ctx.today) ? "завершена; " : ""}дни ${h.days}${h.end_date ? ", до " + h.end_date : ""}; ${remindOf(h)})`).join("\n") || "нет";
+  const hab = ctx.habits.map((h) => `#${h.id} ${h.title} (${habitFinished(h, ctx.today) ? "завершена; " : ""}дни ${h.days}${h.end_date ? ", до " + h.end_date : ""}${perDayOf(h) > 1 ? `; ${perDayOf(h)} раз в день` : ""}; ${remindOf(h)})`).join("\n") || "нет";
   return `Ты разбираешь сообщения пользователя для его личного дневника-помощника.
 ${promptHeader(ctx.today, ctx.now, ctx.tz)}
 
@@ -489,6 +493,15 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
       clarify ??= "Как назвать?";
       continue;
     }
+    if (e.action === "per_day") {
+      if (e.kind !== "habit" || !e.new_per_day) {
+        dropped.push(`edits: сколько раз в день #${e.id} без числа`);
+        clarify ??= "Сколько раз в день?";
+        continue;
+      }
+      edits.push({ action: "per_day", kind: "habit", id: e.id, newDate: null, newTime: null, newPerDay: e.new_per_day });
+      continue;
+    }
     let newTimes: string[] | undefined;
     if (e.action === "remind") {
       newTimes = [...new Set((e.new_times ?? []).map((t) => normalizeTime(t)).filter((t): t is string => Boolean(t)))].sort().slice(0, 4);
@@ -530,7 +543,7 @@ export function normalize(raw: unknown, ctx: { today: string; now: string; text:
       dropped.push(`habits: срок до начала «${h.title}»`);
       end = null;
     }
-    return { title: h.title, days, times: [...new Set(times)].sort(), start, end };
+    return { title: h.title, days, times: [...new Set(times)].sort(), start, end, perDay: h.per_day ?? 1 };
   };
   const habits = r.habits.map(habitOf);
   const known = new Set([...habits.map((h) => h.title.toLowerCase()), ...tasks.map((t) => t.title.toLowerCase())]);

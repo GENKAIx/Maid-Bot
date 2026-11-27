@@ -1,5 +1,5 @@
 import type { EventRow, Store, User } from "./db.ts";
-import { dueOn, habitLine, habitsOfDay, markRefusal } from "./habits.ts";
+import { dueOn, habitLine, habitsOfDay, markClosed, markRefusal } from "./habits.ts";
 import { asUser, type LlmCall } from "./llm.ts";
 import { persona, type Emotion } from "./personas.ts";
 import {
@@ -198,7 +198,8 @@ export async function habitAnswered(store: Store, buttons: Button[] | undefined)
   if (!m) return false;
   const h = await store.habit(Number(m[1]));
   if (!h || markRefusal(h, m[2]) || !dueOn(h, m[2]) || h.quiet) return true;
-  return (await store.marksOf(h.user_id, m[2], m[2])).some((x) => x.habit_id === h.id);
+  // Отмечено не всё (×N, part) — день не закрыт: вопрос ещё нужен.
+  return (await store.marksOf(h.user_id, m[2], m[2])).some((x) => x.habit_id === h.id && markClosed(x));
 }
 
 /** Окно, в котором ещё не поздно прислать дайджест после простоя сервера. */
@@ -371,7 +372,8 @@ export class Scheduler {
     // Привычки вчерашнего дня, на которые так и не ответили, — минус (без сообщения: попросив горничную, его ещё можно исправить задним числом).
     if (await s.once(`habitMinus:${u.id}:${today}`)) {
       const y = addDays(today, -1);
-      for (const d of await habitsOfDay(s, u, y)) if (!d.status) await s.markHabit(d.habit.id, y, "skipped", null);
+      // Отмеченное не всё (×N) остаётся как есть: не сделано, но отметки дня не стираются.
+      for (const d of await habitsOfDay(s, u, y)) if (!d.status && !d.count) await s.markHabit(d.habit.id, y, "skipped", null);
     }
     // Закономерности в самочувствии: раз в день днём — предложить дебаф (добавится, только если человек согласится).
     const llm = this.llmOf(u, now);

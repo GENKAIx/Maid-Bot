@@ -51,11 +51,13 @@ export const traitCard = (t: Pick<TraitRow, "id" | "kind" | "title" | "note">): 
   ({ kind: "trait", title: t.title, detail: t.note || (t.kind === "buff" ? "Баф профиля" : "Дебаф профиля"), ref: { tbl: "traits", id: t.id } });
 
 /** Привычка: расписание и время напоминаний; без времени и «в список» (quiet) — «без напоминаний», как у кнопки «Добавить в привычки». */
-export function habitCard(h: Pick<HabitRow, "id" | "title" | "days" | "times" | "start_date" | "end_date" | "quiet">): Change {
+export function habitCard(h: Pick<HabitRow, "id" | "title" | "days" | "times" | "start_date" | "end_date" | "quiet" | "per_day">): Change {
   const times = timesOf(h as HabitRow);
+  // ×N — сколько раз в день (шаг 42), у обычной привычки не пишется.
+  const many = (h.per_day ?? 1) > 1 ? ` · ×${h.per_day}` : "";
   return {
     kind: "habit", title: h.title,
-    detail: `${scheduleText(h)}${times.length ? " · " + times.join(", ") : h.quiet ? " · без напоминаний" : ""}`,
+    detail: `${scheduleText(h)}${many}${times.length ? " · " + times.join(", ") : h.quiet ? " · без напоминаний" : ""}`,
     ref: { tbl: "habits", id: h.id },
   };
 }

@@ -66,6 +66,9 @@ export interface HabitToday {
    *  отметили задним числом. Нет отметки или минус в полночь — null. */
   at_time?: string | null;
   at_day?: string | null;
+  /** ×N (27.11.2026): сколько раз отмечено сегодня и сколько нужно (per_day); отмечено не всё — status null и count < need. */
+  count?: number;
+  need?: number;
 }
 /** «Завершённые» на странице «Привычки» (GET /api/habits → finished): done из planned — за весь срок, best — лучшая серия. */
 export interface HabitFinished {
@@ -131,14 +134,17 @@ export interface HabitMonthRow {
   start_date: string;
   end_date: string | null;
   quiet?: number;
+  /** Сколько раз в день (×N, 27.11.2026): 1..12, у обычной — 1. */
+  per_day?: number;
   days_: never;
 }
 export interface HabitMonth {
   month: string;
-  today: { habit: { id: number; title: string }; status: "done" | "skipped" | null; streak: number; doneDays: number; plannedDays: number; at_time?: string | null; at_day?: string | null }[];
+  today: { habit: { id: number; title: string }; status: "done" | "skipped" | null; count?: number; need?: number; streak: number; doneDays: number; plannedDays: number; at_time?: string | null; at_day?: string | null }[];
   /** amount — сколько сделано за день, если человек сам назвал число («прочитал 35 страниц»); unit — «стр.», «км».
-   *  at_time / at_day — когда отметили (как HabitToday). Завершённых здесь нет — они в finished. */
-  habits: (Omit<HabitMonthRow, "days_"> & { days: { day: string; due: boolean; status: string | null; amount?: number | null; unit?: string; at_time?: string | null; at_day?: string | null }[] })[];
+   *  at_time / at_day — когда отметили (как HabitToday; у ×N — последняя отметка). count из need — ×N: status null и count > 0 —
+   *  отмечено не всё (клетка заполнена снизу). Завершённых здесь нет — они в finished. */
+  habits: (Omit<HabitMonthRow, "days_" | "days"> & { days: { day: string; due: boolean; status: string | null; count?: number; need?: number; amount?: number | null; unit?: string; at_time?: string | null; at_day?: string | null }[] })[];
   /** «Завершённые»: свежие (по концу срока) сверху. */
   finished?: HabitFinished[];
   /** Общее время вопросов из настроек (habit_first, habit_last). */
@@ -164,7 +170,8 @@ export interface HabitStats {
   title: string;
   start_date: string;
   end_date: string | null;
-  year: { day: string; s: HabitStatCell }[];
+  /** k — чем был не сделанный день: skip — пропуск, part — отмечено не всё (p — доля 0..1, заливка снизу). */
+  year: { day: string; s: HabitStatCell; k?: "skip" | "part"; p?: number }[];
   streak: number;
   best: number;
   rate30: { done: number; planned: number };
@@ -174,13 +181,22 @@ export interface HabitStats {
   months: { month: string; done: number; planned: number }[];
   /** Сколько сделано — если человек хоть раз называл число: суммы за неделю (с пн), месяц, всё время, лучший день, 30 дней. */
   amount?: { unit: string; week: number; month: number; total: number; best: { day: string; value: number }; days: { day: string; value: number | null }[] } | null;
-  /** «Во сколько отмечали» (26.11.2026): последние 30 дней срока; points — «сделал» в тот же день, время в поясе человека;
-   *  gap — до точки был день по расписанию без такой отметки; remind — время напоминаний, как у 🔔. */
+  /** «Во сколько отмечали» (27.11.2026): весь срок (from — начало, to — сегодня или конец срока); points — каждая отметка того же
+   *  дня (n — номер в дне, с 1), время в поясе человека; gap — у первой точки дня, если до неё был день по расписанию без отметок;
+   *  remind — время напоминаний, как у 🔔; per_day — сколько раз в день. */
   mark_times?: MarkTimes;
 }
 export interface MarkTimes {
   from: string;
   to: string;
-  points: { day: string; time: string; min: number; gap: boolean }[];
+  per_day: number;
+  points: { day: string; time: string; min: number; gap: boolean; n: number }[];
   remind: string[];
+}
+/** POST /api/habits/:id/mark: что теперь у дня — count из need, status — закрыт ли день (null — не отмечен или отмечено не всё). */
+export interface HabitMarkReply {
+  text: string;
+  count: number;
+  need: number;
+  status: "done" | "skipped" | null;
 }

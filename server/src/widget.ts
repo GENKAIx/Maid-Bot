@@ -27,7 +27,8 @@ export async function widgetState(store: Store, u: User, now = new Date()): Prom
   const habits = await habitsOfDay(store, u, today);
   const all = await store.allTasks(u.id);
   const open: WidgetItem[] = [
-    ...habits.filter((d) => !d.status).map((d): WidgetItem => [`h${d.habit.id}`, d.habit.title, 0]),
+    // ×N (шаг 42): не закрытая — в открытых, в названии сколько отмечено из скольких; «отметить» — одна отметка.
+    ...habits.filter((d) => !d.status).map((d): WidgetItem => [`h${d.habit.id}`, d.need > 1 ? `${d.habit.title} ${d.count}/${d.need}` : d.habit.title, 0]),
     ...(await store.openTasks(u.id)).map((t): WidgetItem => [`t${t.id}`, t.title, t.priority === "high" ? 2 : 0]),
   ];
   const done: WidgetItem[] = [

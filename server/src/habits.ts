@@ -1,4 +1,4 @@
-import type { HabitRow, MarkRow, Store, User } from "./db.ts";
+import { stampsOf, type HabitRow, type MarkRow, type Store, type User } from "./db.ts";
 import { esc } from "./report.ts";
 import { addDays, dayKey, timeOf, weekdayOf } from "./time.ts";
 
@@ -10,6 +10,18 @@ export const isoWeekday = (day: string) => weekdayOf(day) || 7;
 export function dueOn(h: HabitRow, day: string): boolean {
   return h.status === "active" && day >= h.start_date && (!h.end_date || day <= h.end_date) && h.days.includes(String(isoWeekday(day)));
 }
+
+/** Сколько раз в день (per_day, шаг 42): 1..12; у старых строк — 1. */
+export const perDayOf = (h: Pick<HabitRow, "per_day">) => Math.min(12, Math.max(1, Math.round(Number(h.per_day ?? 1)) || 1));
+
+/** День закрыт отметкой: «сделано» (отмечено per_day раз) или «пропуск». part (отмечено не всё) — не закрыт: напоминания идут,
+ *  «Позже» можно, в сериях и процентах — не сделано. */
+export const markClosed = (m: Pick<MarkRow, "status"> | undefined) => m?.status === "done" || m?.status === "skipped";
+
+/** Сколько отмечено за день для показа («5/8»): одна мера везде — число времён отметок (stampsOf), не больше нормы (норму снизили —
+ *  отметок может быть больше); пропуск и нет отметки — 0. */
+export const dayCount = (m: Pick<MarkRow, "status" | "at"> & { stamps?: string | null } | undefined, need: number) =>
+  m && m.status !== "skipped" ? Math.min(stampsOf(m).length, Math.max(1, need)) : 0;
 
 export function timesOf(h: HabitRow): string[] {
   try {
@@ -36,7 +48,11 @@ export function streak(h: HabitRow, done: Set<string>, today: string): number {
 export interface HabitDay {
   habit: HabitRow;
   times: string[];
-  status: MarkRow["status"] | null;
+  /** done / skipped — день закрыт; null — не отмечен или отмечен не весь (part: count < need). */
+  status: "done" | "skipped" | null;
+  /** Сколько раз отмечено за день и сколько нужно (per_day); у обычной привычки need 1. */
+  count: number;
+  need: number;
   streak: number;
   /** Сделано из запланированного за срок (или за 30 дней, если срока нет). */
   doneDays: number;
@@ -45,7 +61,7 @@ export interface HabitDay {
   course: CourseDay[] | null;
   /** Вчера по расписанию и не отмечено «сделал» — «none» (можно спасти задним числом), иначе его отметка; не по расписанию — null. */
   yesterday: "done" | "skipped" | "none" | null;
-  /** Когда отметили этот день (markTime): «ЧЧ:ММ» в поясе человека; at_day — день отметки, если задним числом. Нет отметки или
+  /** Когда отметили этот день (последняя отметка, markTime): «ЧЧ:ММ» в поясе человека; at_day — день отметки, если задним числом. Нет отметки или
    *  минус в полночь — null. */
   at_time: string | null;
   at_day: string | null;
@@ -80,8 +96,8 @@ function yesterdayOf(h: HabitRow, own: MarkRow[], day: string): HabitDay["yester
   const y = addDays(day, -1);
   if (y < h.start_date || !dueOn({ ...h, status: "active" }, y)) return null;
   const m = own.find((x) => x.day_key === y);
-  // Минус, поставленный сам в полночь (без сообщения, autoMinus), — как «не отмечено»: вчера ещё можно спасти.
-  return !m || isAutoMinus(m) ? "none" : m.status;
+  // Минус, поставленный сам в полночь (без сообщения, autoMinus), и отмеченное не всё (part) — как «не отмечено»: вчера ещё можно спасти.
+  return !m || isAutoMinus(m) || m.status === "part" ? "none" : m.status;
 }
 
 /** Минус за день без ответа ставит планировщик в полночь — отметка без сообщения. */
@@ -107,13 +123,15 @@ export function habitFinished(h: Pick<HabitRow, "status" | "end_date" | "finishe
 /** Как было — для журнала отмены: «Отменить» возвращает всё (статус, название, срок, «закончена», время напоминаний). */
 export const habitBefore = (h: HabitRow) => ({
   status: h.status, title: h.title, end_date: h.end_date, finished_at: h.finished_at ?? null, quiet: h.quiet ?? 0, times: h.times,
+  per_day: perDayOf(h),
 });
 
 /** Закончить вручную (сайт, виджет, чат — одна логика): конец — сегодня, если сегодня уже отмечена, иначе вчера; не раньше начала
  *  и не позже прежнего конца. Уже завершённая или удалённая — null (ничего не менять: повтор не продлевает прошедший срок). */
 export async function finishPatch(store: Store, h: HabitRow, today: string, now = new Date()): Promise<Pick<HabitRow, "end_date" | "finished_at"> | null> {
   if (h.status !== "active" || habitFinished(h, today)) return null;
-  const marked = (await store.marksOf(h.user_id, today, today)).some((x) => x.habit_id === h.id);
+  // Отмечено не всё (part) — сегодня не в счёт: конец вчера.
+  const marked = (await store.marksOf(h.user_id, today, today)).some((x) => x.habit_id === h.id && markClosed(x));
   let end = marked ? today : addDays(today, -1);
   if (end < h.start_date) end = h.start_date;
   if (h.end_date && h.end_date < end) end = h.end_date;
@@ -157,7 +175,9 @@ export async function habitsOfDay(store: Store, u: User, day: string, today = da
     return {
       habit: h,
       times: timesOf(h),
-      status: today?.status ?? null,
+      status: markClosed(today) ? (today!.status as "done" | "skipped") : null,
+      count: dayCount(today, perDayOf(h)),
+      need: perDayOf(h),
       streak: streak(h, done, day),
       doneDays: [...done].filter((d) => d <= end && (h.end_date || d > addDays(day, -30))).length,
       plannedDays: planned,
@@ -177,12 +197,17 @@ export async function habitMonth(store: Store, u: User, month: string, today = d
   const habits = (await store.activeHabits(u.id)).filter((h) => !habitFinished(h, today));
   const marks = await store.marksOf(u.id, from, to);
   return habits.map((h) => {
-    const days: { day: string; due: boolean; status: string | null; amount: number | null; unit: string; at_time: string | null; at_day: string | null }[] = [];
+    const need = perDayOf(h);
+    const days: { day: string; due: boolean; status: "done" | "skipped" | null; count: number; need: number; amount: number | null; unit: string; at_time: string | null; at_day: string | null }[] = [];
     for (let d = from; d <= to; d = addDays(d, 1)) {
       const m = marks.find((x) => x.habit_id === h.id && x.day_key === d);
-      days.push({ day: d, due: dueOn(h, d), status: m?.status ?? null, amount: m?.amount == null ? null : Number(m.amount), unit: m?.unit ?? "", ...markTime(m, u.tz) });
+      // status — закрыт ли день (markClosed); отмечено не всё — null и count < need (клетка заполнена частично).
+      days.push({
+        day: d, due: dueOn(h, d), status: markClosed(m) ? (m!.status as "done" | "skipped") : null, count: dayCount(m, need), need,
+        amount: m?.amount == null ? null : Number(m.amount), unit: m?.unit ?? "", ...markTime(m, u.tz),
+      });
     }
-    return { ...h, times: timesOf(h), days };
+    return { ...h, per_day: need, times: timesOf(h), days };
   });
 }
 
@@ -217,10 +242,11 @@ export async function finishedHabits(store: Store, u: User, today: string): Prom
 }
 
 export function habitLine(d: HabitDay): string {
-  const mark = d.status === "done" ? "✅" : d.status === "skipped" ? "➖" : "⬜";
+  const mark = d.status === "done" ? "✅" : d.status === "skipped" ? "➖" : d.count > 0 ? "◐" : "⬜";
+  const many = d.need > 1 && d.status !== "skipped" ? ` ${Math.min(d.count, d.need)}/${d.need}` : "";
   const at = d.times.length ? ` <i>${d.times.join(", ")}</i>` : "";
   const fire = d.streak >= 2 ? ` 🔥${d.streak}` : "";
-  return `${mark} ${esc(d.habit.title)}${at}${fire}`;
+  return `${mark} ${esc(d.habit.title)}${many}${at}${fire}`;
 }
 
 const WEEK = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
@@ -237,8 +263,9 @@ export interface HabitStats {
   title: string;
   start_date: string;
   end_date: string | null;
-  /** Год клетками: с понедельника 52 недели назад по воскресенье этой недели. */
-  year: { day: string; s: StatCell }[];
+  /** Год клетками: с понедельника 52 недели назад по воскресенье этой недели. k — чем был не сделанный день (habitStats): skip —
+   *  пропуск, part — отмечено не всё (p — доля, 0..1, для заливки снизу); нет k — просто не отмечен. */
+  year: { day: string; s: StatCell; k?: "skip" | "part"; p?: number }[];
   streak: number;
   best: number;
   /** Сделано / запланировано (сегодня, ещё не отмеченное, не считается) — за 30 дней, 90 и за всё время. */
@@ -317,37 +344,48 @@ function amountStats(amounts: Map<string, { amount: number; unit: string }>, tod
   return { unit, week: sum(addDays(today, -(isoWeekday(today) - 1))), month: sum(`${today.slice(0, 7)}-01`), total: sum(""), best, days };
 }
 
-/** «Во сколько отмечали» (26.11.2026) — график под «По дням недели» / «По месяцам». Окно — последние 30 дней срока: у идущей —
- *  по сегодня, у законченной — по конец срока (не раньше начала). points — дни со «сделал», по порядку: time «ЧЧ:ММ» и min (минут с
- *  полуночи) в поясе человека; пропуски, минус в полночь и отмеченные задним числом (время другого дня ничего не говорит) — не идут.
- *  gap — между этой точкой и прошлой был день по расписанию без такой отметки: линия на нём рвётся. remind — время напоминаний,
- *  как у 🔔 на странице: своё время привычки, нет своего — общее из настроек (habit_first), «без напоминаний» — пусто. */
+/** «Во сколько отмечали» (26.11.2026; весь срок и каждая отметка — 27.11.2026) — график под «По дням недели» / «По месяцам».
+ *  Окно — весь срок: from — начало привычки, to — сегодня (у законченной — конец срока, не раньше начала); интервалы (7 дней, месяц,
+ *  год…) выбирает приложение. points — каждая отметка отдельно, по порядку: у ×N несколько точек в день (n — номер отметки в дне,
+ *  с 1), и у отмеченного не всё (part) тоже; time «ЧЧ:ММ» и min (минут с полуночи) в поясе человека. Пропуски, минус в полночь и
+ *  отметки задним числом (время другого дня ничего не говорит) — не идут. gap — между первой точкой дня и прошлой был день по
+ *  расписанию без отметок: линия на нём рвётся. remind — время напоминаний, как у 🔔 на странице: своё время привычки, нет своего —
+ *  общее из настроек (habit_first), «без напоминаний» — пусто. per_day — сколько раз в день. */
 export interface MarkTimes {
   from: string;
   to: string;
-  points: { day: string; time: string; min: number; gap: boolean }[];
+  per_day: number;
+  points: { day: string; time: string; min: number; gap: boolean; n: number }[];
   remind: string[];
 }
 
 export function markTimesOf(h: HabitRow, marks: MarkRow[], today: string, tz: string, first: string): MarkTimes {
   const to = h.end_date && h.end_date < today ? h.end_date : today;
-  const back = addDays(to, -29);
-  const from = back < h.start_date ? (h.start_date < to ? h.start_date : to) : back;
+  const from = h.start_date < to ? h.start_date : to;
   const byDay = new Map(marks.filter((m) => m.habit_id === h.id).map((m) => [m.day_key, m] as const));
   const live = { ...h, status: "active" };
   const points: MarkTimes["points"] = [];
   let gap = false;
   for (let d = from; d <= to; d = addDays(d, 1)) {
     const m = byDay.get(d);
-    const t = m?.status === "done" ? markTime(m, tz) : null;
-    if (t?.at_time && !t.at_day) {
-      const [hh, mm] = t.at_time.split(":").map(Number);
-      points.push({ day: d, time: t.at_time, min: hh * 60 + mm, gap: points.length > 0 && gap });
-      gap = false;
-    } else if (dueOn(live, d) && d < today) gap = true; // сегодня, ещё не отмеченное, линию не рвёт
+    let n = 0;
+    if (m && m.status !== "skipped") {
+      for (const iso of stampsOf(m)) {
+        const at = new Date(iso);
+        // Отметка задним числом (сделана после конца дня) — время другого дня, не идёт. Сравнение «позже», а не «другой день»: после
+        // смены пояса (поездка) старые отметки могут сдвинуться за полночь, но остаются отметками этого дня.
+        if (Number.isNaN(at.getTime()) || dayKey(at, tz) > d) continue;
+        const time = timeOf(at, tz);
+        const [hh, mm] = time.split(":").map(Number);
+        n++;
+        points.push({ day: d, time, min: hh * 60 + mm, gap: n === 1 && points.length > 0 && gap, n });
+      }
+    }
+    if (n) gap = false;
+    else if (dueOn(live, d) && d < today) gap = true; // сегодня, ещё не отмеченное, линию не рвёт
   }
   const remind = h.quiet ? [] : timesOf(h).length ? [...timesOf(h)].sort() : [first];
-  return { from, to, points, remind };
+  return { from, to, per_day: perDayOf(h), points, remind };
 }
 
 export async function habitStats(store: Store, u: User, h: HabitRow, today: string): Promise<HabitStats & { mark_times: MarkTimes }> {
@@ -355,8 +393,15 @@ export async function habitStats(store: Store, u: User, h: HabitRow, today: stri
   const yearFrom = addDays(today, -380);
   const marks = (await store.marksOf(u.id, from < yearFrom ? from : yearFrom, addDays(today, 7))).filter((m) => m.habit_id === h.id);
   const amounts = new Map(marks.filter((m) => m.amount != null).map((m) => [m.day_key, { amount: Number(m.amount), unit: m.unit ?? "" }] as const));
-  return {
-    ...habitStatsOf(h, new Map(marks.map((m) => [m.day_key, m.status] as const)), today, amounts),
-    mark_times: markTimesOf(h, marks, today, u.tz, u.habit_first),
-  };
+  const st = habitStatsOf(h, new Map(marks.map((m) => [m.day_key, m.status] as const)), today, amounts);
+  const byDay = new Map(marks.map((m) => [m.day_key, m] as const));
+  const need = perDayOf(h);
+  // Не сделанный день в годе: пропуск — штриховка, отмечено не всё — заливка снизу (как клетки месяца).
+  st.year = st.year.map((c) => {
+    const m = c.s === "miss" || c.s === "today" ? byDay.get(c.day) : undefined;
+    if (m?.status === "skipped") return { ...c, k: "skip" as const };
+    if (m?.status === "part") return { ...c, k: "part" as const, p: Math.round((dayCount(m, need) / need) * 100) / 100 };
+    return c;
+  });
+  return { ...st, mark_times: markTimesOf(h, marks, today, u.tz, u.habit_first) };
 }

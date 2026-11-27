@@ -9,7 +9,7 @@ import { accessOf, FROZEN_TEXT, isFrozen, RATE_AGAIN, type Access } from "./acce
 import { Billing, billingSecret, TERMS_TEXT, type StarsApi } from "./billing.ts";
 import { setSignupsOpen, signupsEnvClosed, signupsOpenNow, tariffs } from "./tariffs.ts";
 import type { Store, User } from "./db.ts";
-import { habitLine, habitsOfDay, markRefusal } from "./habits.ts";
+import { habitLine, habitsOfDay, markClosed, markRefusal } from "./habits.ts";
 import type { Pipeline, Proposal, Reply } from "./pipeline.ts";
 import { PERSONAS, type Emotion } from "./personas.ts";
 import { datesText, esc, memoryText, plansText, tasksText, todayText } from "./report.ts";
@@ -432,7 +432,8 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
     const list = await habitsOfDay(store, u, today);
     if (!list.length) return ctx.reply("На сегодня привычек нет. Напишите, например: «каждый день в 8 утра зарядка, 30 дней».");
     const kb = new InlineKeyboard();
-    for (const d of list) if (!d.status) kb.text(`✅ ${d.habit.title}`.slice(0, 60), `habit:${d.habit.id}:${today}:done`).row();
+    // ×N (шаг 42): кнопка — одна отметка, в подписи сколько уже из скольких.
+    for (const d of list) if (!d.status) kb.text(`✅ ${d.habit.title}${d.need > 1 ? ` ${d.count}/${d.need}` : ""}`.slice(0, 60), `habit:${d.habit.id}:${today}:done`).row();
     await ctx.reply(`<b>Привычки сегодня</b>\n${list.map(habitLine).join("\n")}`, { parse_mode: "HTML", reply_markup: kb });
   });
 
@@ -507,7 +508,7 @@ export function createBot(store: Store, pipeline: Pipeline, scheduler: () => Sch
       return void (await close());
     }
     const h = await store.habit(id);
-    const marked = async () => (await store.marksOf(u.id, day, day)).some((m) => m.habit_id === id);
+    const marked = async () => (await store.marksOf(u.id, day, day)).some((m) => m.habit_id === id && markClosed(m));
     const refused = !h || h.user_id !== u.id ? "Нет такой привычки." : markRefusal(h, day) ?? ((await marked()) ? `${h.title} — уже отмечено.` : null);
     const opt = snoozeOptions(u, day, now);
     if (refused || !opt.steps.length) {

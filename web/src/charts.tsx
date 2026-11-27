@@ -3,7 +3,7 @@ import { scoreNum } from "./dayscore";
 import { shortDay } from "./format";
 import { DAY_SEC, dayParts } from "./pcday";
 import { hoursAxis, sleepHoursText, sleepScorePoints, sleepScoreSummary, sleepScoreTip, type SleepScorePair } from "./sleepscore";
-import { axisLabels, dayPos, dayTicks, gapLinks, hitBands, lineRuns, markerSize, pointTip, timeScale, timeSummary, tipLeft, tipTop, toMin } from "./timechart";
+import { tipLeft, tipTop } from "./timechart";
 
 // Графики без библиотек: столбики по дням/неделям/месяцам, подпись при наведении.
 
@@ -191,95 +191,6 @@ export function Segment<T extends string>({ value, options, onChange }: { value:
       {options.map((o) => (
         <button key={o.id} className={o.id === value ? "on" : ""} onClick={() => onChange(o.id)}>{o.title}</button>
       ))}
-    </div>
-  );
-}
-
-/** «Во сколько отмечали» (статистика привычки, 26.11.2026): линия времени суток по дням — X по дате (пропущенные дни — пробел),
- *  Y — время, позже — выше (до 23:59). Напоминания (remind) — подпись «🔔 12:00» на оси слева, засечка поперёк оси и бледный
- *  пунктир через весь график (час рядом с напоминанием не подписывается). Через дни по расписанию без отметки (gap) линия
- *  идёт бледным пунктиром. Точки густо (ближе 12 px) — мельче. Подсказка — в одну строку над точкой (у верха — под ней),
- *  у краёв прижата к краю по своей ширине (ближайший день по X: наведение, фокус, касание; вертикальная линия-прицел);
- *  таблица день → время — под графиком в «Таблицей». */
-export function MarkTimeLine({ data, color = "var(--green)", height = 160 }: {
-  data: { from: string; to: string; points: { day: string; time: string; min: number; gap: boolean }[]; remind: string[] };
-  color?: string; height?: number;
-}) {
-  const box = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(320);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    if (el.clientWidth) setW(el.clientWidth);
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((es) => { const x = Math.round(es[0]?.contentRect.width ?? 0); if (x) setW(x); });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const [hover, setHover] = useState<number | null>(null);
-  const tipRef = useRef<HTMLDivElement>(null);
-  const [tipW, setTipW] = useState(0);
-  useLayoutEffect(() => { const el = tipRef.current; if (el && el.offsetWidth !== tipW) setTipW(el.offsetWidth); });
-  const remind = data.remind.map(toMin);
-  const sc = timeScale([...data.points.map((p) => p.min), ...remind]);
-  const L = remind.length ? 56 : 40, R = 8, T = 8, B = 20;
-  const pw = Math.max(40, w - L - R), ph = height - T - B;
-  const x = (day: string) => L + 6 + dayPos(day, data.from, data.to) * (pw - 12);
-  const y = (min: number) => T + ((sc.hi - min) / (sc.hi - sc.lo)) * ph;
-  const tip = hover !== null ? data.points[hover] : null;
-  const xs = data.points.map((p) => x(p.day));
-  const mk = markerSize(xs);
-  const axis = axisLabels(sc.ticks, remind, y);
-  return (
-    <div className="hs-time" ref={box} onMouseLeave={() => setHover(null)}>
-      <svg width={w} height={height} viewBox={`0 0 ${w} ${height}`} role="group" aria-label={timeSummary(data)}>
-        {/* Линия сетки — только у подписанного часа: час, скрытый ради «🔔 …» рядом, не оставляет пустую линию (26.11.2026). */}
-        {sc.ticks.filter((t) => axis.some((a) => !a.bell && a.min === t)).map((t) => <line key={t} x1={L} x2={L + pw} y1={y(t)} y2={y(t)} className="hs-grid" />)}
-        {remind.map((r, i) => (
-          <g key={i}>
-            <title>{`Напоминание в ${data.remind[i]}`}</title>
-            <line x1={L} x2={L + pw} y1={y(r)} y2={y(r)} className="hs-remind" />
-            <line x1={L - 4} x2={L + 4} y1={y(r)} y2={y(r)} className="hs-remind-tick" />
-          </g>
-        ))}
-        {axis.map((a) => (
-          <text key={`${a.bell ? "b" : "t"}${a.min}`} x={L - 6} y={a.y + 3.5} textAnchor="end" className={a.bell ? "hs-axis hs-axis-bell" : "hs-axis"}>{a.label}</text>
-        ))}
-        {dayTicks(data.from, data.to).map((d, i, all) => (
-          <text key={d.day} x={x(d.day)} y={height - 5} textAnchor={i === 0 && all.length > 1 ? "start" : i === all.length - 1 && all.length > 1 ? "end" : "middle"} className="hs-axis">{d.label}</text>
-        ))}
-        {hover !== null && tip && <line x1={x(tip.day)} x2={x(tip.day)} y1={T} y2={T + ph} className="hs-cross" />}
-        {gapLinks(data.points).map(([a, b]) => (
-          <line key={`g${b.day}`} x1={x(a.day)} y1={y(a.min)} x2={x(b.day)} y2={y(b.min)} stroke={color} strokeWidth={2} strokeDasharray="3 4" strokeLinecap="round" className="hs-gap" />
-        ))}
-        {lineRuns(data.points).filter((r) => r.length > 1).map((r) => (
-          <polyline key={r[0].day} points={r.map((p) => `${x(p.day)},${y(p.min)}`).join(" ")} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-        ))}
-        {data.points.map((p, i) => (
-          <circle key={p.day} cx={x(p.day)} cy={y(p.min)} r={hover === i ? mk.hover : mk.r} fill={color} stroke="var(--panel-2)" strokeWidth={mk.ring} />
-        ))}
-        {hitBands(xs, L, L + pw).map((band, i) => {
-          // Попадание — полоса во всю высоту от середины к левому соседу до середины к правому: без нахлёста, под курсором — ближайший день.
-          const p = data.points[i];
-          return (
-            <rect
-              key={`h${p.day}`} x={band.x} y={T} width={band.w} height={ph} className="hs-hit" tabIndex={0} role="img" aria-label={pointTip(p)}
-              onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} onClick={() => setHover(i)}
-            />
-          );
-        })}
-      </svg>
-      {tip && (
-        <div ref={tipRef} className="chart-tip hs-time-tip" style={{ left: tipLeft(x(tip.day), tipW, w), top: tipTop(y(tip.min)), visibility: tipW ? undefined : "hidden" }}>
-          {pointTip(tip)}
-        </div>
-      )}
-      <details className="hs-time-table muted small">
-        <summary>Таблицей</summary>
-        <table>
-          <tbody>{data.points.map((p) => <tr key={p.day}><td>{pointTip(p).split(" — ")[0]}</td><td>{p.time}</td></tr>)}</tbody>
-        </table>
-      </details>
     </div>
   );
 }

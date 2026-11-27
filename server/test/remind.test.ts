@@ -109,7 +109,7 @@ test("шаг 12 базы: ночное время вечернего итога 
     "ALTER TABLE sessions DROP COLUMN client; ALTER TABLE sessions DROP COLUMN version; ALTER TABLE messages DROP COLUMN llm_calls; ALTER TABLE messages DROP COLUMN route;" +
     " ALTER TABLE users DROP COLUMN plan; ALTER TABLE users DROP COLUMN access_until; ALTER TABLE users DROP COLUMN tg_user_id; ALTER TABLE users DROP COLUMN sub_charge_id; ALTER TABLE users DROP COLUMN sub_canceled; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
   // Шаг 39 (habits.finished_at) — миграция добавит снова.
-  await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at; ALTER TABLE users DROP COLUMN is_test;");
+  await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at; ALTER TABLE users DROP COLUMN is_test; ALTER TABLE habits DROP COLUMN per_day; ALTER TABLE habit_marks DROP COLUMN count; ALTER TABLE habit_marks DROP COLUMN stamps;");
   await store.kvSet("schema_version", "11");
   await store.close();
   store = await Store.open(file);

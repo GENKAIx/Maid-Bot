@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { get, post } from "../api";
 import { Card, Chip, Empty, Spinner } from "../components";
-import { SECTIONS, SECTION_ORDER, dateWhen, dur, metricText, money, parts, shortDay } from "../format";
+import { SECTIONS, SECTION_ORDER, dateWhen, dur, metricText, money, parts, plainReply, shortDay } from "../format";
 import { markTip } from "../habitview";
 import { navigate } from "../router";
-import type { EventRow, HabitToday, TaskRow, TodayData } from "../types";
+import type { EventRow, HabitMarkReply, HabitToday, TaskRow, TodayData } from "../types";
 
 // «Сегодня» — как панель виджета ПК: сверху «что сейчас» с горничной и полосой дня; задачи (квадратная галочка, срок справа,
 // просроченное сверху, дальние спят до недели, «+ Новая задача»); план дня и привычки; строка фактов. Ниже — даты и дневник.
@@ -347,11 +347,15 @@ function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; 
   }
 
   // Щелчок по кружку: не отмечено — «сделал»; отмечено (или пропуск) — снять отметку, с «↩ Отменить».
+  // ×N (несколько раз в день): щелчок — ещё одна отметка («2/8»), у полного дня — минус одна (не все N сразу); пропуск — снять.
   async function toggle(h: HabitToday) {
     if (busy !== null) return;
     setBusy(h.id);
     try {
-      if (h.status) {
+      if ((h.need ?? 1) > 1 && h.status !== "skipped") {
+        const r = await post<HabitMarkReply>(`/api/habits/${h.id}/mark`, { step: h.status === "done" ? -1 : 1 });
+        say({ text: plainReply(r.text) });
+      } else if (h.status) {
         const r = await post<{ undo: number | null }>(`/api/habits/${h.id}/unmark`, {});
         if (r.undo) say({ text: `«${h.title}» — отметка снята`, undo: r.undo });
       } else {
@@ -383,12 +387,18 @@ function Daily({ habits, day, onChanged }: { habits: HabitToday[]; day: string; 
         <ul className="list habit-list">
           {habits.map((h) => {
             const c = courseOf(h, day);
+            const need = h.need ?? 1, cnt = h.count ?? 0;
+            const many = need > 1 && h.status !== "skipped";
+            const part = many && !h.status && cnt > 0;
+            const act = many ? (h.status === "done" ? "Убрать одну отметку" : `Ещё отметка (${cnt} из ${need})`) : h.status ? "Снять отметку" : "Отметить";
             return (
               <li key={h.id} className={`habit ${h.status ?? ""}`}>
-                <button className={`dot ${h.status ?? ""}`} onClick={() => toggle(h)} disabled={busy === h.id}
-                  title={h.status ? "Снять отметку" : "Сделал"} aria-label={`${h.status ? "Снять отметку" : "Отметить"}: ${h.title}`} />
+                <button className={`dot ${h.status ?? ""} ${part ? "part" : ""}`} onClick={() => toggle(h)} disabled={busy === h.id}
+                  style={part ? ({ "--p": `${Math.round((cnt / need) * 100)}%` } as CSSProperties) : undefined}
+                  title={many ? act : h.status ? "Снять отметку" : "Сделал"} aria-label={`${act}: ${h.title}`} />
                 {h.status === "done" && h.at_time && <span className="habit-at" title={markTip(h)}>{h.at_time}</span>}
                 <span className="grow">{h.title}</span>
+                {many && <span className="count">{Math.min(cnt, need)}/{need}</span>}
                 {c ? <span className="count">{c.done}/{c.total}</span> : h.streak >= 2 ? <span className="count fire">🔥 {h.streak}</span> : null}
               </li>
             );

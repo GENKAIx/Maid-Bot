@@ -199,7 +199,7 @@ export async function diaryDigest(store: Store, u: User, from: string, to: strin
   const habits = new Map((await store.activeHabits(u.id)).map((h) => [h.id, h.title]));
   for (const mk of await store.marksOf(u.id, from, to)) {
     const t = habits.get(mk.habit_id) ?? (await store.habit(mk.habit_id))?.title;
-    if (t) add(mk.day_key, `Привычка «${t}»: ${mk.status === "done" ? "сделано" : "пропуск"}`);
+    if (t) add(mk.day_key, `Привычка «${t}»: ${mk.status === "done" ? "сделано" : mk.status === "part" ? `отмечено не всё (${mk.count ?? 0} раз)` : "пропуск"}`);
   }
   for (const a of act) {
     const l = days.get(a.day_key) ?? [];

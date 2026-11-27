@@ -16,7 +16,7 @@ import { featureOfApi } from "./feature-list.ts";
 import type { DateRow, Store, UsageRow, User } from "./db.ts";
 import { ActivityInput, IconsInput, iconKey, recordActivity } from "./activity.ts";
 import { ALBUM, albumOf, albumSee } from "./album.ts";
-import { finishedHabits, finishPatch, habitBefore, habitMonth, habitsOfDay, habitStats, markRefusal, reopenPatch } from "./habits.ts";
+import { dayCount, finishedHabits, finishPatch, habitBefore, habitMonth, habitsOfDay, habitStats, markClosed, markRefusal, perDayOf, reopenPatch } from "./habits.ts";
 import { MAID_EYES, MAID_HAIR } from "./look.ts";
 import { historyOf, NOTICE_KINDS } from "./notices.ts";
 import { NOTE_TEXT_MAX, NOTE_TITLE_MAX, RATED_SHELVES, SHELF_KEYS, SHELVES, noteCounts, sameNote, type Shelf } from "./notes.ts";
@@ -160,6 +160,8 @@ export async function dayJson(store: Store, u: User, day: string) {
     habits: (await habitsOfDay(store, u, day)).map((d) => ({
       id: d.habit.id, title: d.habit.title, times: d.times, status: d.status, streak: d.streak, done: d.doneDays, planned: d.plannedDays,
       start: d.habit.start_date, end: d.habit.end_date, course: d.course, yesterday: d.yesterday, quiet: d.habit.quiet ?? 0,
+      // ×N (шаг 42): сколько раз отмечено сегодня и сколько нужно; status null при count < need — отмечено не всё.
+      count: d.count, need: d.need,
       // Когда отметили (сайт «Сегодня», виджет: «✓ 21:14»): «ЧЧ:ММ» в поясе человека; at_day — день отметки, если задним числом.
       at_time: d.at_time, at_day: d.at_day,
     })),
@@ -1395,13 +1397,20 @@ export function createApi(deps: ApiDeps) {
     const mark = p.match(/^\/api\/habits\/(\d+)\/mark$/);
     if (m === "POST" && mark) {
       // later — прежнее «Ещё нет» (виджеты до второго шага «Позже»): отметки нет, вопрос придёт снова (pipeline.habitLater).
-      const b = parseBody(z.object({ status: z.enum(["done", "skipped", "later"]).default("done"), day: Day.optional() }), await readJson(req));
+      // step (шаг 42): 1 — ещё одна отметка, -1 — снять последнюю (или пропуск); вместо status. У ×N и status done — одна отметка.
+      const b = parseBody(z.object({
+        status: z.enum(["done", "skipped", "later"]).default("done"), day: Day.optional(), step: z.union([z.literal(1), z.literal(-1)]).optional(),
+      }), await readJson(req));
       // Удалённую, завершённую (день после конца) и день до начала не отметить — сайту ошибка 409 с текстом (markRefusal), и «Ещё нет» тоже.
       const h = await store.habit(Number(mark[1]));
       const refused = h && h.user_id === u.id ? markRefusal(h, b.day ?? today) : null;
       if (refused) throw new HttpError(409, refused);
-      if (b.status === "later") return { text: await pipeline.habitLater(u, Number(mark[1]), b.day ?? today) };
-      return { text: await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.status, "web") };
+      if (b.step === undefined && b.status === "later") return { text: await pipeline.habitLater(u, Number(mark[1]), b.day ?? today) };
+      const text = await pipeline.markHabit(u, Number(mark[1]), b.day ?? today, b.step ?? (b.status as "done" | "skipped"), "web");
+      // Что теперь у дня: count из need, status — закрыт ли день (null — не отмечен или отмечено не всё).
+      const now = h && h.user_id === u.id ? (await store.marksOf(u.id, b.day ?? today, b.day ?? today)).find((x) => x.habit_id === h.id) : undefined;
+      const need = h ? perDayOf(h) : 1;
+      return { text, count: dayCount(now, need), need, status: markClosed(now) ? now!.status : null };
     }
     // «⏰ Позже» в виджете: GET — что можно выбрать сейчас (в поясе человека: у виджета его нет), POST — отложить вопрос.
     // Чужая, удалённая, завершённая, уже отмеченная или не сегодняшний день — 409 с текстом; POST: не позже, чем сейчас, за 00:00,
@@ -1415,7 +1424,7 @@ export function createApi(deps: ApiDeps) {
         if (!isDayKey(day)) throw new HttpError(400, "day: YYYY-MM-DD");
         const refused = !h || h.user_id !== u.id ? "Нет такой привычки." : markRefusal(h, day);
         if (refused) throw new HttpError(409, refused);
-        if ((await store.marksOf(u.id, day, day)).some((x) => x.habit_id === id)) throw new HttpError(409, `${h!.title} — уже отмечено.`);
+        if ((await store.marksOf(u.id, day, day)).some((x) => x.habit_id === id && markClosed(x))) throw new HttpError(409, `${h!.title} — уже отмечено.`);
         // Вчерашний вопрос (виджет хранит его до утра) или будущий день — 409 с текстом, как у POST: виджет скажет его, а не уйдёт в /mark later.
         const gone = snoozeDayRefusal(day, today);
         if (gone) throw new HttpError(409, gone);
@@ -1459,10 +1468,12 @@ export function createApi(deps: ApiDeps) {
         title: z.string().trim().min(1).max(200).optional(), quiet: z.boolean().optional(),
         times: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "время ЧЧ:ММ")).max(4).optional(), finish: z.literal(true).optional(),
         reopen: z.literal(true).optional(), status: z.enum(["active", "stopped"]).optional(),
+        // Сколько раз в день (шаг 42): сегодняшняя отметка пересчитывается, прошлые дни — как были.
+        per_day: z.number().int().min(1).max(12).optional(),
       }), await readJson(req));
       const h = await store.habit(Number(habitEdit[1]));
       if (!h || h.user_id !== u.id) throw new HttpError(404, "нет привычки");
-      if (!b.title && b.quiet === undefined && !b.times && !b.finish && !b.reopen && !b.status) throw new HttpError(400, "нужно title, quiet, times, finish, reopen или status");
+      if (!b.title && b.quiet === undefined && !b.times && !b.finish && !b.reopen && !b.status && b.per_day === undefined) throw new HttpError(400, "нужно title, quiet, times, finish, reopen, status или per_day");
       const finish = b.finish ? await finishPatch(store, h, today) : null;
       const patch = {
         ...(b.title ? { title: b.title } : {}),
@@ -1471,13 +1482,15 @@ export function createApi(deps: ApiDeps) {
         ...(finish ?? {}),
         ...(b.reopen ? reopenPatch(h, today) : {}),
         ...(b.status ? { status: b.status } : {}),
+        ...(b.per_day !== undefined && b.per_day !== perDayOf(h) ? { per_day: b.per_day } : {}),
       };
       // Завершить уже завершённую — ничего не делать (и не писать в журнал): повтор не продлевает срок.
       if (!Object.keys(patch).length) return { ...h, undo: null };
       const what = b.status === "stopped" ? "🗑" : finish ? "🏁" : b.reopen ? "↺" : b.times && !b.title ? "🔔" : "✎";
       const undo = await pipeline.manual(u, `${what} ${h.title}`, async (log) => {
         await log("habits", h.id, habitBefore(h));
-        await store.updateHabit(h.id, patch);
+        // Пересчитанные сменой per_day отметки — в журнал после привычки: отмена вернёт их как были (в любой день).
+        for (const r of await store.updateHabit(h.id, patch, today)) await log("habit_marks", r.id, r);
       });
       return { ...(await store.habit(h.id)), undo };
     }

@@ -38,6 +38,9 @@
   --score-mid: #746e86; --score-mid-ink: #fff;
   --score-high1: #4fb882; --score-high1-ink: #1d1830;
   --score-high2: #1d7f50; --score-high2-ink: #fff;
+  /* Привычки (27.11.2026, палитра «Сирень» из макета — shared.css --hp2-*): сделано — сирень, пропуск — тёплый персик (не ругает,
+     только отмечает день); золото — огонёк серии от 100 дней. На светлом насыщеннее. */
+  --habit-done: #8f6ee0; --habit-skip: #df7c5e; --habit-gold: #a87a00;
   color-scheme: light;
   font-family: "Onest Variable", "Segoe UI", -apple-system, system-ui, sans-serif;
 }
@@ -73,6 +76,7 @@
   --score-mid: #575070; --score-mid-ink: #fff;
   --score-high1: #26784f; --score-high1-ink: #fff;
   --score-high2: #5fd69a; --score-high2-ink: #1d1830;
+  --habit-done: #b39cf2; --habit-skip: #eba08a; --habit-gold: #f2c14e;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -265,6 +269,8 @@ button.link.forever:hover { color: var(--bad-ink); text-decoration: none; }
 .habit-list .dot.done { background: var(--green); border-color: var(--green); opacity: 1; }
 .habit-list .dot.done:hover, .habit-list .dot.skipped:hover { background: var(--panel-2); border-color: var(--grey); }
 .habit-list .dot.skipped { background: var(--grey); border-color: var(--grey); opacity: 1; }
+/* ×N на «Сегодня»: отмечено не всё — кружок заполнен снизу на долю нормы (--p), рядом «2/8». */
+.habit-list .dot.part { background: linear-gradient(to top, var(--habit-done) var(--p), transparent var(--p)); border-color: var(--habit-done); }
 .habit-list li.done .grow { color: var(--muted); }
 .habit-list .habit-at { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: -2px; flex: none; }
 .habit-list .count { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -358,33 +364,64 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .day-nav { display: flex; align-items: center; gap: 8px; }
 .day-nav .ghost { font-size: 20px; padding: 2px 10px; }
 
-/* сетка привычек */
-.grid-card { overflow-x: auto; container-type: inline-size; }
-.habit-grid { display: grid; gap: 3px; isolation: isolate; overflow-y: clip; /* полосу «сегодня» обрезает край сетки */ align-items: center; min-width: 760px; }
-.hg-day { text-align: center; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; line-height: 1.1; padding-bottom: 4px; }
-.hg-day i { font-style: normal; font-size: 10px; opacity: .7; }
-.hg-day.weekend { color: var(--accent); }
-.hg-day.today { color: var(--text); font-weight: 700; }
-.hg-title { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding-right: 8px; font-size: 14px; min-width: 0; }
-.hg-name { display: flex; align-items: center; gap: 6px; }
-.hg-fire { font-size: 12px; color: var(--orange); font-weight: 700; white-space: nowrap; }
-.hg-bell { align-self: flex-start; border: none; background: transparent; padding: 1px 6px; margin-left: -6px; border-radius: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.hg-tools { display: flex; align-items: center; gap: 2px; min-width: 0; }
-.hg-tools .hg-bell { min-width: 0; }
-/* 🔔 со временем не ужимается: сжимается лишь подпись «Статистика», «🏁» — одна иконка (26.11.2026). */
-.hg-tools .hg-bell:first-child { flex-shrink: 0; }
-.hg-chart { flex-shrink: 0; margin-left: 0; }
-.hg-bell i { font-style: normal; opacity: .7; }
-.hg-bell:hover, .hg-bell.on { color: var(--accent); background: var(--accent-soft); }
-.hg-times { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); /* видимая ширина карточки — кнопки не уезжают вправо за прокрутку */ display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; margin: 2px 0 6px; background: var(--panel-2); border-radius: 10px; }
-.hg-open { border: none; background: transparent; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.hg-open:hover, .hg-open.on { color: var(--accent); }
+/* Привычки (27.11.2026, макет «Привычки: месяц сеткой», цвета «Сирень»): клетки-таблетки трёх состояний — сделано
+   (--habit-done), пропуск (штриховка --habit-skip), отмечено не всё (×N: заливка снизу и «5/8» на подложке). Огонёк серии —
+   цветом по длине: до 7 дней приглушённый, с 7 тёплый, с 30 синий, со 100 золотой. Таблица прокручивается внутри карточки. */
+.hg-card { display: flex; flex-direction: column; gap: 8px; }
+.hg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 18px; flex-wrap: wrap; }
+.hg-month { margin: 0; font-size: 14px; }
+.hg-month > b { font-size: 16px; }
+.hg-month .num { font-variant-numeric: tabular-nums; }
+.hg-leg { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; line-height: 16px; color: var(--muted); }
+.hg-leg li { display: inline-flex; align-items: center; gap: 6px; }
+.hg-leg .hg-cell { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.hg-info { margin: 0; font-size: 13px; color: var(--muted); min-height: 20px; }
+.hg-wrap { overflow-x: auto; min-width: 0; container-type: inline-size; overscroll-behavior-x: contain; border: 1px solid var(--line); border-radius: var(--r); }
+.habit-grid { display: grid; grid-template-columns: var(--hg-wide); gap: 3px; align-items: center; padding-right: 12px; min-width: 760px; }
+.hg-corner, .hg-day { font-size: 10.5px; color: var(--muted); text-align: center; padding: 8px 0 4px; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; line-height: 1.15; }
+.hg-day i { font-style: normal; font-size: 9.5px; opacity: .75; }
+.hg-day.weekend { color: var(--text); opacity: .8; font-weight: 700; }
+.hg-day.today { color: var(--text); font-weight: 800; opacity: 1; }
+.hg-corner { position: sticky; left: 0; z-index: 2; align-self: stretch; justify-content: flex-end; text-align: left; padding-left: 36px; background: var(--panel); }
+.hg-tot-h { text-align: right; align-items: flex-end; justify-content: flex-end; }
+/* Название привычки — кнопка, раскрывает привычку; колонка прилипает слева при прокрутке вбок. */
+.hg-title { position: sticky; left: 0; z-index: 2; align-self: stretch; display: flex; align-items: center; gap: 8px; min-width: 0; height: 52px; padding: 0 8px 0 12px; background: var(--panel); border: 0; border-top: 1px solid var(--line); border-radius: 0; text-align: left; color: var(--text); }
+.hg-title:hover { border-color: var(--line); }
+.hg-title:active { transform: none; }
+.hg-title:hover .hg-tl b { text-decoration: underline; text-underline-offset: 3px; }
+.hg-title[aria-expanded="true"] { background: var(--panel-2); }
+.hg-ar { width: 16px; height: 16px; flex: none; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .3s; }
+.hg-title[aria-expanded="true"] .hg-ar { transform: rotate(90deg); }
+.hg-nt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hg-tl { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.hg-tl b { font-weight: 700; font-size: 13.5px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hg-nt small { display: block; color: var(--muted); font-size: 11.5px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hg-title { --fire: var(--muted); }
+.hg-title[data-t="1"] { --fire: var(--orange); }
+.hg-title[data-t="2"] { --fire: var(--blue); }
+.hg-title[data-t="3"] { --fire: var(--habit-gold); }
+.hg-fr { display: inline-flex; align-items: center; gap: 3px; vertical-align: top; color: var(--fire); font-weight: 700; font-variant-numeric: tabular-nums; }
+.hg-fr svg { width: 12px; height: 12px; fill: currentColor; }
+.hg-x { flex: none; font-size: 10.5px; font-weight: 800; line-height: 1; padding: 3px 5px; border-radius: 6px; border: 1.5px solid var(--muted); color: var(--text); white-space: nowrap; }
+.hg-tot { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hg-tot b { font-size: 15px; font-weight: 800; color: var(--text); }
+/* Клетка дня: пусто — тихий фон, не по расписанию и будущее — тише, сегодня — обводка цветом текста. */
+.hg-cell { position: relative; display: grid; place-items: center; height: 28px; min-width: 0; padding: 0; border: 0; border-radius: 5px; overflow: hidden; background: color-mix(in srgb, var(--text) 6%, transparent); font-size: 9px; font-weight: 700; line-height: 1; color: var(--text); -webkit-touch-callout: none; user-select: none; }
+.hg-cell:hover { border-color: transparent; }
+.hg-cell:disabled { opacity: 1; cursor: default; }
+.hg-cell:not(:disabled):hover { box-shadow: inset 0 0 0 1.5px var(--hover-line); }
+.hg-cell[data-s="rest"], .hg-cell[data-s="future"], .hg-cell[data-s="off"] { background: color-mix(in srgb, var(--text) 2.5%, transparent); }
+.hg-cell[data-s="done"] { background: var(--habit-done); }
+.hg-cell[data-s="skip"] { background: repeating-linear-gradient(135deg, var(--habit-skip) 0 2px, color-mix(in srgb, var(--habit-skip) 18%, transparent) 2px 5px); box-shadow: inset 0 0 0 1px var(--habit-skip); }
+.hg-cell.today { outline: 2px solid var(--text); outline-offset: 1px; }
+.hg-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--habit-done); transition: height .45s cubic-bezier(.3, .7, .3, 1); }
+.hg-cell em { position: relative; font-style: normal; padding: 1px 2px; border-radius: 2px; background: color-mix(in srgb, var(--panel) 80%, transparent); }
 /* Привычка, на которую пришли из виджета (?h=): плашка названия вспыхивает дважды, по клеткам слева направо бежит волна. */
-.hg-title.hg-flash { border-radius: 10px; animation: hg-flash-title 1.2s ease-in-out 2; }
+.hg-title.hg-flash { animation: hg-flash-title 1.2s ease-in-out 2; }
 .hg-cell.hg-flash { animation: hg-flash-cell .7s ease-out backwards; }
 @keyframes hg-flash-title {
-  0%, 100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
-  40% { background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft), 0 0 0 8px var(--accent); }
+  0%, 100% { background: var(--panel); box-shadow: 0 0 0 0 transparent; }
+  40% { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
 }
 @keyframes hg-flash-cell {
   0% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
@@ -392,77 +429,198 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
   100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hg-title.hg-flash { animation: none; background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft); }
+  .hg-title.hg-flash { animation: none; background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
   .hg-cell.hg-flash { animation: none; }
+  .hg-fill, .hg-ar { transition: none; }
 }
-.hg-panel { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); margin: 2px 0 8px; padding: 12px 14px; background: var(--panel-2); border-radius: 12px; }
-.hs { display: flex; flex-direction: column; gap: 14px; }
+.hg-foot { margin: 0; }
+.hg-sum { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: -4px 0 10px; font-size: 14px; }
+.hg-add { margin-left: auto; color: var(--accent); }
+.hg-note { margin: 0 0 10px; }
+.hg-bell { border: none; background: transparent; padding: 4px 8px; border-radius: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.hg-bell:hover, .hg-bell.on { color: var(--accent); background: var(--accent-soft); }
+/* Время напоминаний и «раз в день» — под верхней строкой раскрытой привычки. */
+.hg-times { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.hg-time { display: inline-flex; align-items: center; gap: 2px; }
+.hg-time input { width: auto; padding: 4px 6px; }
+.hg-time .ghost { padding: 2px 6px; }
+.hg-per { display: inline-flex; align-items: center; gap: 6px; }
+.hg-per input { width: 4.2em; padding: 4px 6px; }
+.hg-times-hint { flex-basis: 100%; }
+@media (max-width: 720px) {
+  .habit-grid { grid-template-columns: var(--hg-narrow); min-width: 0; width: max-content; }
+  .hg-title { padding: 0 6px 0 8px; gap: 5px; }
+  .hg-corner { padding-left: 29px; }
+  .hg-tl b { font-size: 12.5px; }
+  .hg-cell { height: 36px; }
+  /* «5/8» на телефоне — только у сегодня, у других дней — в строке над таблицей. */
+  .hg-cell.pt:not(.today) em { display: none; }
+}
+
+/* Раскрытая привычка — строкой во всю видимую ширину таблицы (100cqw — ширина .hg-wrap), прилипает слева. */
+.hg-panel { position: sticky; left: 0; justify-self: start; box-sizing: border-box; width: min(100%, 100cqw); margin: 0 0 8px; padding: 6px 14px 18px; background: var(--panel-2); border-radius: 0 0 12px 12px; }
+.hp { display: flex; flex-direction: column; gap: 12px; container-type: inline-size; }
+.hp-top { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.hp-subl { flex: 1; min-width: 180px; margin: 0; font-size: 13px; color: var(--muted); }
+.hp-subl b { color: var(--text); }
+.hp-acts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hp-step { display: inline-flex; align-items: center; gap: 6px; }
+.hp-step button { min-width: 46px; min-height: 38px; font-size: 15px; }
+.hp-cnt { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 64px; text-align: center; }
+.hp-close { width: 38px; height: 38px; padding: 0; display: inline-grid; place-items: center; }
+.hp-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.hp-cap { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.hp-tx { margin: 0; font-size: 13px; }
+.hp-chc { background: var(--panel); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.hp-chh { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; justify-content: space-between; }
+.hp-rng { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.hp-rng b { font-size: 15px; color: var(--text); }
+.hp-seg { flex-wrap: wrap; }
+.hp-seg button { white-space: nowrap; }
+.hp-chart { position: relative; min-width: 0; border-radius: 8px; touch-action: pan-y; outline-offset: 2px; }
+.hp-chart svg { display: block; }
+.hp-chart text, .hp-clk text { fill: var(--muted); font-size: 10.5px; }
+.hp-chart .gr { stroke: var(--line); }
+.hp-chart .bd { fill: color-mix(in srgb, var(--habit-done) 16%, transparent); }
+.hp-chart text.bt, .hp-chart text.rt { fill: var(--text); opacity: .8; font-weight: 600; }
+.hp-chart .rm { stroke: var(--muted); stroke-width: 1.3; stroke-dasharray: 5 4; }
+.hp-chart .vt { stroke: color-mix(in srgb, var(--habit-done) 55%, transparent); stroke-width: 1.5; }
+.hp-chart .ln { fill: none; stroke: var(--habit-done); stroke-width: 1.6; stroke-linejoin: round; }
+.hp-chart .pt { fill: var(--habit-done); stroke: var(--panel); }
+.hp-chart .pt.now { fill: var(--panel); stroke: var(--habit-done); stroke-width: 2; }
+.hp-chart .cr { stroke: var(--muted); stroke-dasharray: 2 3; }
+.hp-chart .hl { fill: none; stroke: var(--text); stroke-width: 2; }
+.hp-tip { position: absolute; z-index: 3; pointer-events: none; background: var(--ink-bg); color: var(--on-ink); font-size: 12px; font-weight: 600; border-radius: 8px; padding: 4px 9px; white-space: nowrap; }
+.hp-empty { margin: 0; font-size: 13px; color: var(--muted); padding: 24px 0; text-align: center; }
+.hp-chart .hp-empty { position: absolute; left: 0; right: 0; top: 40%; padding: 0; }
+.hp-ov { position: relative; height: 46px; border-radius: 8px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); touch-action: none; cursor: crosshair; user-select: none; margin-inline: 24px; }
+.hp-ov svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hp-ov path { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; }
+.hp-ov path.q { fill: var(--muted); stroke: none; opacity: .35; }
+.hp-dim { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--text) 10%, transparent); pointer-events: none; }
+.hp-dim.l { left: 0; border-radius: 8px 0 0 8px; }
+.hp-dim.r { right: 0; border-radius: 0 8px 8px 0; }
+.hp-br { position: absolute; top: -2px; bottom: -2px; min-width: 12px; box-sizing: border-box; border: 2px solid var(--text); border-radius: 7px; background: color-mix(in srgb, var(--text) 7%, transparent); cursor: grab; }
+.hp-br:active { cursor: grabbing; }
+.hp-hl, .hp-hr { position: absolute; top: 50%; width: 36px; height: 44px; margin-top: -22px; cursor: ew-resize; }
+.hp-hl { right: 100%; }
+.hp-hr { left: 100%; }
+.hp-hl::after, .hp-hr::after { content: ""; position: absolute; top: 10px; bottom: 10px; width: 6px; border-radius: 3px; background: var(--text); }
+.hp-hl::after { right: 2px; }
+.hp-hr::after { left: 2px; }
+.hp-ovx { display: flex; justify-content: space-between; gap: 10px; margin: 0; font-size: 11.5px; color: var(--muted); }
+.hp-gr { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.hp-b { background: var(--panel); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@container (min-width: 640px) { .hp-b.wide { grid-column: span 2; } }
+.hp-bign { margin: 0; font-size: 13px; color: var(--muted); }
+.hp-bign b { font-size: 32px; line-height: 1; font-weight: 800; color: var(--text); letter-spacing: -.02em; margin-right: 4px; font-variant-numeric: tabular-nums; }
+.hp-prog { position: relative; height: 8px; border-radius: 4px; background: var(--ring-bg); margin: 4px 0 16px; }
+.hp-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: var(--habit-done); }
+.hp-prog span { position: absolute; top: 12px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.hp-prog span.end { right: 0; }
+.hp-ms { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.hp-ms li { font-size: 12px; padding: 3px 9px; border-radius: 99px; border: 1px dashed var(--line); color: var(--muted); }
+.hp-ms li.got { border: 1px solid var(--habit-done); color: var(--text); }
+.hp-ms li.got::before { content: "✓ "; font-weight: 800; }
+.hp-clkw { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hp-clk { width: 168px; max-width: 100%; flex: none; touch-action: pan-y; }
+.hp-clkw .hp-tx { flex: 1; min-width: 120px; }
+.hp-clk .fc { fill: var(--panel-2); stroke: var(--line); }
+.hp-clk .tk { stroke: var(--line); stroke-width: 1.5; }
+.hp-clk .arc { fill: none; stroke: color-mix(in srgb, var(--habit-done) 45%, transparent); stroke-width: 9; stroke-linecap: round; }
+.hp-clk .cd { fill: var(--habit-done); opacity: .8; }
+.hp-clk .hand { stroke: var(--text); stroke-width: 2; stroke-linecap: round; }
+.hp-clk .mid { fill: var(--panel); }
+.hp-clk text.ct { fill: var(--text); font-size: 13px; font-weight: 700; }
+.hp-clk .sec { fill: color-mix(in srgb, var(--text) 12%, transparent); }
+.hp-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; height: 92px; }
+.hp-wk span { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; min-width: 0; font-size: 11px; color: var(--muted); }
+.hp-wk i { display: block; width: 100%; max-width: 24px; height: calc(var(--h) * 54px + 2px); border-radius: 4px 4px 2px 2px; background: var(--habit-done); }
+.hp-wk .lo i { background: none; box-shadow: inset 0 0 0 1.5px var(--habit-done); }
+.hp-wk .no i { background: none; box-shadow: inset 0 0 0 1px var(--line); height: 2px; }
+.hp-wk em { font-style: normal; font-weight: 700; font-size: 10.5px; color: var(--text); min-height: 13px; }
+.hp-yr { display: flex; gap: 6px; touch-action: pan-y; min-width: 0; }
+.hp-ywd, .hp-ym { display: grid; grid-template-rows: 16px auto; row-gap: 2px; min-width: 0; }
+.hp-ywd { flex: none; width: 18px; grid-template-rows: 16px repeat(7, minmax(0, 1fr)); }
+.hp-ywd span, .hp-ym > span { font-size: 10px; line-height: 16px; color: var(--muted); white-space: nowrap; }
+.hp-ywd span { line-height: 1; align-self: center; }
+.hp-ym { flex: var(--n) 1 0; }
+.hp-ym > span.bst { color: var(--text); font-weight: 800; box-shadow: inset 0 -2px var(--habit-done); justify-self: start; }
+.hp-ym > div { display: grid; grid-template-rows: repeat(7, auto); grid-template-columns: repeat(var(--n), minmax(0, 1fr)); grid-auto-flow: column; gap: 2px; }
+.hp-yr i { display: block; aspect-ratio: 1; border-radius: 2px; background: color-mix(in srgb, var(--text) 6%, transparent); }
+.hp-yr i[data-s="done"] { background: var(--habit-done); }
+.hp-yr i[data-s="today"] { box-shadow: inset 0 0 0 1.5px var(--text); }
+.hp-yr i[data-s="rest"], .hp-yr i[data-s="wait"] { background: color-mix(in srgb, var(--text) 2.5%, transparent); }
+.hp-yr i[data-s="off"], .hp-yr i.e { background: none; }
+.hp-yr i.pick { outline: 2px solid var(--text); outline-offset: 1px; }
+/* Год: пропуск — штриховка, отмечено не всё (×N) — заливка снизу на долю (--p), как клетки месяца. */
+.hp-yr i[data-k="skip"] { background: repeating-linear-gradient(135deg, var(--habit-skip) 0 1.5px, color-mix(in srgb, var(--habit-skip) 18%, transparent) 1.5px 3.5px); }
+.hp-yr i[data-k="part"] { background: linear-gradient(to top, var(--habit-done) var(--p), color-mix(in srgb, var(--text) 6%, transparent) var(--p)); }
+.hp-kv { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.hp-kv:last-child { border-bottom: 0; padding-bottom: 0; }
+.hp-kv span { min-width: 0; }
+.hp-kv b { font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.hp-rn { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 12px; }
+.hp-rn img { width: 48px; height: 51px; flex: none; }
+.hp-rn > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.hp-rn p:not(.hp-cap) { margin: 0; font-size: 13.5px; }
+.hp-rn button { align-self: flex-start; margin-top: 2px; }
+/* «Сделано / Пропуск / Не отмечено» на узком экране переносится, а не вылезает за край панели. */
+.hp-acts .segment { flex-wrap: wrap; max-width: 100%; }
+@media (max-width: 400px) { .hp-acts .segment button { padding: 5px 8px; } }
+/* Движение из макета: клетки появляются волной, панель вырастает, блоки поднимаются по очереди, полосы растут,
+   линия графика рисуется; клетка «вздрагивает», когда норма набрана (hg-bump). Без движения — всё сразу. */
+.habit-grid .hg-cell:not(.hg-flash) { animation: hg-pop .32s cubic-bezier(.3, .7, .3, 1.2) backwards; }
+.hg-panel.hp { animation: hp-grow .28s ease-out; transform-origin: top; }
+.hp-chc, .hp-gr > * { animation: hp-rise .35s ease-out backwards; }
+.hp-gr > :nth-child(2) { animation-delay: .04s; } .hp-gr > :nth-child(3) { animation-delay: .08s; } .hp-gr > :nth-child(4) { animation-delay: .12s; }
+.hp-gr > :nth-child(5) { animation-delay: .16s; } .hp-gr > :nth-child(n+6) { animation-delay: .2s; }
+.hp-prog i { animation: hp-bar .6s cubic-bezier(.3, .7, .3, 1) backwards; transform-origin: left; }
+.hp-wk i { animation: hp-bar-y .5s cubic-bezier(.3, .7, .3, 1) backwards; transform-origin: bottom; }
+.hp-chart .ln { stroke-dasharray: 4000; animation: hp-line .9s ease-out backwards; }
+.hg-cell[data-s="done"].pt-full { animation: hg-bump .4s ease-out; }
+@keyframes hg-pop { from { opacity: 0; transform: scale(.6); } }
+@keyframes hp-grow { from { opacity: 0; transform: scaleY(.96); } }
+@keyframes hp-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes hp-bar { from { transform: scaleX(0); } }
+@keyframes hp-bar-y { from { transform: scaleY(0); } }
+@keyframes hp-line { from { stroke-dashoffset: 4000; } to { stroke-dashoffset: 0; } }
+@keyframes hg-bump { 40% { transform: scale(1.22); } }
+@media (prefers-reduced-motion: reduce) {
+  .habit-grid .hg-cell:not(.hg-flash), .hg-panel.hp, .hp-chc, .hp-gr > *, .hp-prog i, .hp-wk i, .hp-chart .ln, .hg-cell[data-s="done"].pt-full { animation: none; }
+}
+.hs-amount { grid-column: 1 / -1; }
 .hs-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
 .hs-figure { display: flex; flex-direction: column; gap: 2px; }
 .hs-figure b { font-size: 22px; line-height: 1.1; }
-.hs-year { overflow-x: auto; }
-.hs-year svg { display: block; }
-.hs-label { font-size: 9px; fill: var(--muted); }
-.hs-c { fill: var(--ring-bg); }
-.hs-c.done { fill: var(--green); }
-.hs-c.miss { fill: color-mix(in srgb, var(--red) 55%, var(--ring-bg)); }
-.hs-c.rest, .hs-c.off, .hs-c.wait { fill: var(--ring-bg); opacity: .45; }
-.hs-c.today { fill: var(--ring-bg); stroke: var(--accent); stroke-width: 1.5; }
-.hs-legend { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
-.hs-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2.5px; background: var(--ring-bg); }
-.hs-legend i.done { background: var(--green); }
-.hs-legend i.miss { background: color-mix(in srgb, var(--red) 55%, var(--ring-bg)); }
-.hs-legend i.rest { opacity: .45; }
-.hs-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-.hs-sub { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
-.hs-hint { margin: 0; }
-.hs-times { margin-top: 14px; min-width: 0; }
-.hs-times .hs-hint { margin-bottom: 4px; }
+@media (max-width: 720px) {
+  .hp-chh { flex-direction: column; align-items: stretch; }
+  .hp-chh .hp-seg { align-self: flex-start; }
+  .hp-subl { flex-basis: 100%; }
+}
+@container (max-width: 760px) {
+  .hp-yr { overflow-x: auto; padding-bottom: 4px; touch-action: auto; }
+  .hp-ym { flex: none; }
+  .hp-ywd { position: sticky; left: 0; z-index: 1; background: var(--panel); width: 22px; padding-right: 4px; box-sizing: border-box; }
+  .hp-ym > div { grid-template-columns: repeat(var(--n), 9px); }
+}
+/* Графики «Сна и оценки дня» (charts.tsx SleepScoreChart): сетка, подписи, точки наведения и подсказка. */
 .hs-time { position: relative; width: 100%; min-width: 0; overflow: hidden; }
 .hs-time svg { display: block; }
 .hs-grid { stroke: var(--line); stroke-width: 1; }
 .hs-axis { font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
-.hs-remind { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; opacity: .55; }
-.hs-remind-tick { stroke: var(--muted); stroke-width: 1.5; }
-.hs-axis-bell { fill: var(--text); font-weight: 700; font-size: 10.5px; }
-.hs-gap { opacity: .4; }
 .hs-hit { fill: transparent; cursor: pointer; outline: none; }
 .hs-hit:focus-visible { stroke: var(--accent); stroke-width: 1.5; }
-.hs-cross { stroke: var(--hover-line); stroke-width: 1; pointer-events: none; }
 .chart-tip.hs-time-tip { transform: none; white-space: nowrap; }
 .hs-time-table summary { cursor: pointer; width: fit-content; }
 .hs-time-table table { border-collapse: collapse; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .hs-time-table td { padding: 1px 12px 1px 0; }
+.hs-time-table th { padding: 1px 12px 1px 0; text-align: left; font-weight: 600; }
 /* «Сон и оценка дня» (Статистика → Сон, 27.11.2026): точки — SleepScoreChart в charts.tsx. */
 .ss-dot { pointer-events: none; transition: r .12s; }
 .ss-chart svg { touch-action: pan-y; }
 .ss-chart .chart-tip.hs-time-tip { white-space: normal; max-width: calc(100% - 8px); }
-.hs-time-table th { padding: 1px 12px 1px 0; text-align: left; font-weight: 600; }
 .ss-takeaway { margin: 8px 0 0; }
-.hg-time { display: inline-flex; align-items: center; gap: 2px; }
-.hg-time input { width: auto; padding: 4px 6px; }
-.hg-time .ghost { padding: 2px 6px; }
-.hg-times-hint { flex-basis: 100%; }
-.hg-sum { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: -4px 0 10px; font-size: 14px; }
-.hg-add { margin-left: auto; color: var(--accent); }
-.hg-span { line-height: 1.2; }
-/* Колонка «сегодня» — полоса на всю высоту сетки: подложка за клетками дня тянется выше и ниже строки (строки бывают в 3 строки текста),
-   соседние подложки сливаются, лишнее обрезает край сетки. */
-.hg-now { position: relative; }
-.hg-now::after { content: ""; position: absolute; top: -60px; bottom: -60px; left: -2px; right: -2px; z-index: -1; background: var(--accent-soft); pointer-events: none; }
-.hg-cell { aspect-ratio: 1; padding: 0; border-radius: 7px; border: none; background: transparent; font-size: 12px; font-weight: 700; color: transparent; }
-.hg-cell.due { background: var(--ring-bg); }
-.hg-cell.due:hover { background: var(--accent-soft); }
-.hg-cell.done { background: var(--green); color: #fff; }
-.hg-cell.skipped { background: var(--grey); color: #fff; }
-.hg-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; }
-.hg-cell.future { opacity: .4; }
-.hg-cell.num { font-size: 10.5px; letter-spacing: -.02em; }
-.hg-much { color: var(--green); }
-.hs-amount { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
-.hg-cell:not(.due):not(.done):not(.skipped):not(:disabled):hover { background: var(--panel-2); }
-.hg-tools .hg-finish { flex-shrink: 0; margin-left: 0; }
-.hg-note { margin: 0 0 10px; }
 /* «Завершённые» (26.11.2026): отдельная карточка под сеткой — её не касается прокрутка сетки вбок; на узком экране строка переносится. */
 .hg-done { min-width: 0; }
 .hg-done summary { cursor: pointer; font-size: 15px; }
@@ -471,10 +629,9 @@ img.sticker { width: 22px; height: 22px; object-fit: contain; vertical-align: mi
 .hg-done-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: 14px; }
 .hg-done-text { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
 .hg-done-tools { display: flex; gap: 2px; flex-wrap: wrap; }
-.hg-done-tools .hg-bell { margin-left: 0; }
-.hg-done .hg-panel { position: static; width: 100%; margin-top: 6px; }
-/* Узкий телефон (~320 px): графики статистики в «Завершённых» не шире карточки — без прокрутки вбок. */
-.hg-done .hs-charts { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
+.hg-done .hg-panel { position: static; width: 100%; margin-top: 6px; border-radius: 12px; }
+/* Узкий телефон (~320 px): блоки раскрытой завершённой привычки не шире карточки — без прокрутки вбок. */
+.hg-done .hp-gr { grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
 
 /* ввод и ответ: плавающая панель над лентой */
 .composer-wrap { padding: 8px 32px calc(14px + env(safe-area-inset-bottom)); }

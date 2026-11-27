@@ -38,11 +38,11 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
     try {
       await store.driver.exec("DROP TABLE tariff_settings; DROP TABLE tariff_history; ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
       // Шаг 39 (habits.finished_at) — миграция добавит снова.
-      await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at; ALTER TABLE users DROP COLUMN is_test;");
+      await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at; ALTER TABLE users DROP COLUMN is_test; ALTER TABLE habits DROP COLUMN per_day; ALTER TABLE habit_marks DROP COLUMN count; ALTER TABLE habit_marks DROP COLUMN stamps;");
       await store.kvSet("schema_version", "29");
       await store.kvSet("signups:closed", "1");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "41");
+      assert.equal(await again.kvGet("schema_version"), "42");
       assert.equal(await again.kvGet("signups:closed"), undefined, "старое место удалено");
       assert.deepEqual((await again.tariffSettings()).map((r) => [r.key, r.value]), [["signupsOpen", "false"]]);
       assert.equal((await loadTariffs(again)).signupsOpen, false);
@@ -403,10 +403,10 @@ for (const [kind, open] of Object.entries(BACKENDS)) {
       await store.addBillingEvent({ user_id: g.id, kind: "gift", at: now });
       await store.driver.exec("ALTER TABLE users DROP COLUMN trial_len_days; ALTER TABLE users DROP COLUMN frozen_at; ALTER TABLE admin_log DROP COLUMN reason;");
       // Шаг 39 (habits.finished_at) — миграция добавит снова.
-      await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at; ALTER TABLE users DROP COLUMN is_test;");
+      await store.driver.exec("ALTER TABLE habits DROP COLUMN finished_at; ALTER TABLE users DROP COLUMN is_test; ALTER TABLE habits DROP COLUMN per_day; ALTER TABLE habit_marks DROP COLUMN count; ALTER TABLE habit_marks DROP COLUMN stamps;");
       await store.kvSet("schema_version", "30");
       const again = await Store.over(store.driver);
-      assert.equal(await again.kvGet("schema_version"), "41");
+      assert.equal(await again.kvGet("schema_version"), "42");
       assert.equal((await again.user(t.id))!.trial_len_days, null);
       assert.equal(Number((await again.user(g.id))!.trial_len_days), 0);
       assert.equal(endedOf((await again.user(g.id))!), "gift");

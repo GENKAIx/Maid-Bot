@@ -4,7 +4,7 @@ import type { LlmCall, Picture } from "./llm.ts";
 import type { DrawCall } from "./draw.ts";
 import { asUser, extractJson, llmErrorCode } from "./llm.ts";
 import { buildPrompt, normalize, type Parsed, type Section } from "./parse.ts";
-import { finishPatch, habitBefore, habitsOfDay, markRefusal, reopenPatch, scheduleText } from "./habits.ts";
+import { finishPatch, habitBefore, habitsOfDay, markClosed, markRefusal, perDayOf, reopenPatch, scheduleText } from "./habits.ts";
 import { persona, pick, type Emotion } from "./personas.ts";
 import { prompt } from "./prompts.ts";
 import { changesList, esc, upcomingDates, wholeSentences } from "./report.ts";
@@ -715,7 +715,7 @@ export class Pipeline {
           const h = it.habit;
           // «Добавить в привычки» — только в список: без напоминаний и вечерних вопросов.
           const times = remind ? [remind.time] : [];
-          const row = { title: h.title, days: h.days, times: JSON.stringify(times), start_date: h.start, end_date: h.end, quiet: remind ? 0 : 1 };
+          const row = { title: h.title, days: h.days, times: JSON.stringify(times), start_date: h.start, end_date: h.end, quiet: remind ? 0 : 1, per_day: h.perDay ?? 1 };
           const hid = await s.addHabit({ user_id: u.id, ...row, message_id: p.message_id });
           await s.logAction(u.id, p.message_id, "add", "habits", hid);
           habits.push(h.title);
@@ -883,7 +883,7 @@ export class Pipeline {
       changes.push(moneyCard({ id, ...m }));
     }
     for (const h of r.habits) {
-      const row = { title: h.title, days: h.days, times: JSON.stringify(h.times), start_date: h.start, end_date: h.end };
+      const row = { title: h.title, days: h.days, times: JSON.stringify(h.times), start_date: h.start, end_date: h.end, per_day: h.perDay ?? 1 };
       const id = await s.addHabit({ user_id: u.id, ...row, message_id: msg.id });
       await log("add", "habits", id);
       changes.push(habitCard({ id, ...row, quiet: 0 }));
@@ -897,9 +897,25 @@ export class Pipeline {
         markLines.push(`⛔ ${esc(h.title)}: ${esc(refused.charAt(0).toLowerCase() + refused.slice(1))}`);
         continue;
       }
-      const { id, before } = await s.markHabit(h.id, m.dayKey, m.status, msg.id, m.amount ? { amount: m.amount, unit: m.unit } : undefined);
-      await log("mark", "habit_marks", id, before ?? null);
+      const add = m.amount ? { amount: m.amount, unit: m.unit } : undefined;
       const much = m.amount ? ` · ${m.amount}${m.unit ? " " + m.unit : ""}` : "";
+      // ×N (per_day > 1): «выпил стакан воды» — одна отметка из N (stepMark); день сделан, когда отмечено N раз.
+      const need = perDayOf(h);
+      if (m.status === "done" && need > 1) {
+        const r = await s.stepMark(h.id, m.dayKey, 1, need, msg.id, add);
+        if (!r.changed) {
+          markLines.push(`✅ ${esc(h.title)}: уже ${need}/${need}`);
+          continue;
+        }
+        await log("mark", "habit_marks", r.id, r.before ?? null);
+        const n = Math.min(r.count, need);
+        const full = r.status === "done";
+        markLines.push(`${full ? "✅" : "◐"} ${esc(h.title)} ${n}/${need}${esc(much)}`);
+        changes.push({ kind: "mark", title: h.title, detail: `${full ? "отмечено ✅" : "отмечено"} ${n}/${need}${much}` });
+        continue;
+      }
+      const { id, before } = await s.markHabit(h.id, m.dayKey, m.status, msg.id, add, need);
+      await log("mark", "habit_marks", id, before ?? null);
       markLines.push(`${m.status === "done" ? "✅" : "➖"} ${esc(h.title)}${esc(much)}`);
       changes.push({ kind: "mark", title: h.title, detail: (m.status === "done" ? "отмечено ✅" : "пропуск ➖") + much });
     }
@@ -1003,6 +1019,15 @@ export class Pipeline {
           await s.updateHabit(h.id, times.length ? { times: JSON.stringify(times), quiet: 0 } : { times: "[]", quiet: 1 });
           editLines.push(times.length ? `🔔 ${esc(h.title)}: напомню в ${times.join(", ")}` : `🔕 ${esc(h.title)}: без напоминаний`);
         }
+      } else if (e.kind === "habit" && e.action === "per_day" && e.newPerDay) {
+        // «Пить воду 6 раз в день» — сколько раз в день (шаг 42): как правка мышью (POST /api/habits/:id per_day); сегодняшняя отметка
+        // пересчитывается (updateHabit с today), прошлые дни — как были. Журнал помнит всё (habitBefore) — «Отменить» вернёт.
+        const h = await s.habit(e.id);
+        if (!h || h.user_id !== u.id) continue;
+        await log("update", "habits", h.id, habitBefore(h));
+        // Пересчитанные отметки — в журнал (после привычки: отмена идёт от новых к старым и сперва вернёт их как были).
+        for (const m of await s.updateHabit(h.id, { per_day: e.newPerDay }, dayKey(at, u.tz))) await log("mark", "habit_marks", m.id, m);
+        editLines.push(`✎ ${esc(h.title)}: ${e.newPerDay === 1 ? "раз в день" : `${e.newPerDay} раз в день`}`);
       }
     }
 
@@ -1066,7 +1091,7 @@ export class Pipeline {
         else if (a.tbl === "habits") {
           // Правка мышью (POST /api/habits/:id) помнит и название, конец, «без напоминаний», время напоминаний; старые записи — только статус.
           if (a.kind === "add") await s.updateHabit(a.row_id, { status: "deleted" });
-          else await s.updateHabit(a.row_id, before && Object.keys(before).length > 1 ? before : { status: before?.status ?? "active" });
+          else await s.updateHabit(a.row_id, before && Object.keys(before).length > 1 ? before : { status: before?.status ?? "active" }, dayKey(new Date(), u.tz));
         }
         else if (a.tbl === "habit_marks") await s.restoreMark(a.row_id, before as MarkRow | null);
         await s.markUndone(a.id);
@@ -1310,31 +1335,52 @@ export class Pipeline {
     return view(saved.reply, saved.o);
   }
 
-  /** Отметить привычку кнопкой (уведомление, приложение). Отменяется, как сообщение. */
-  async markHabit(u: User, habitId: number, day: string, status: MarkRow["status"], source = "button"): Promise<string> {
-    const r = await this.markHabitOne(u, habitId, day, status, source);
+  /** Отметить привычку кнопкой (уведомление, приложение). Отменяется, как сообщение. act: done / skipped — как раньше (у ×N
+   *  «done» — одна отметка, как step 1); 1 — ещё одна отметка, -1 — снять последнюю (или пропуск). */
+  async markHabit(u: User, habitId: number, day: string, act: "done" | "skipped" | 1 | -1, source = "button"): Promise<string> {
+    const r = await this.markHabitOne(u, habitId, day, act, source);
     this.changed(u);
     return r;
   }
-  private async markHabitOne(u: User, habitId: number, day: string, status: MarkRow["status"], source: string): Promise<string> {
+  private async markHabitOne(u: User, habitId: number, day: string, act: "done" | "skipped" | 1 | -1, source: string): Promise<string> {
     const s = this.store;
     const h = await s.habit(habitId);
     if (!h || h.user_id !== u.id) return "Нет такой привычки.";
     // Старая кнопка в Telegram у завершённой или удалённой привычки — короткий ответ, отметки нет (сайт получает 409 раньше, api.ts).
     const refused = markRefusal(h, day);
     if (refused) return refused;
+    const need = perDayOf(h);
+    // По одной отметке (шаг 42): +1 / −1, и «сделал» у ×N. Обычная привычка с «done» — как раньше (markHabit целиком).
+    const step = act === 1 || act === -1 ? act : act === "done" && need > 1 ? 1 : null;
+    const was = step ? (await s.marksOf(u.id, day, day)).find((x) => x.habit_id === h.id) : undefined;
+    const of = (n: number) => (need > 1 ? ` ${Math.min(n, need)}/${need}` : "");
+    // Быстрый ответ без записи; что стало у дня, считает stepMark в транзакции (два нажатия сразу не дадут оба «2/3»).
+    if (step === 1 && was?.status === "done") return `${h.title} — уже отмечено${of(need)}.`;
+    if (step === -1 && !was) return `${h.title} — отметок нет.`;
     const { message } = await s.saveMessage({
       userId: u.id, source, sourceId: `mark:${habitId}:${day}:${Date.now()}`,
-      text: `${status === "done" ? "✅" : "➖"} ${h.title}`, dayKey: day,
+      text: step === -1 ? `↩ ${h.title}` : `${act === "skipped" ? "➖" : "✅"} ${h.title}`, dayKey: day,
     });
-    await s.transaction(async () => {
-      const { id, before } = await s.markHabit(h.id, day, status, message.id);
-      await s.logAction(u.id, message.id, "mark", "habit_marks", id, before ?? null);
+    const r = await s.transaction(async () => {
+      const r = step ? await s.stepMark(h.id, day, step, need, message.id) : { ...(await s.markHabit(h.id, day, act as "done" | "skipped", message.id, undefined, need)), changed: true };
+      if (r.changed) await s.logAction(u.id, message.id, "mark", "habit_marks", r.id, r.before ?? null);
+      return r;
     });
-    const text = status === "done" ? `✅ Отмечено: ${esc(h.title)}` : `➖ Пропуск: ${esc(h.title)}`;
+    const n = "count" in r ? r.count : 0;
+    const full = "status" in r ? r.status === "done" : act === "done";
+    const text = !r.changed
+      ? (step === 1 ? `${h.title} — уже отмечено${of(need)}.` : `${h.title} — отметок нет.`)
+      : step === -1
+      ? (r.before?.status === "skipped" ? `↩ Пропуск снят: ${esc(h.title)}` : n ? `↩ ${esc(h.title)}:${of(n)}` : `↩ Отметка снята: ${esc(h.title)}`)
+      : act === "skipped" ? `➖ Пропуск: ${esc(h.title)}`
+      : need > 1 ? `${full ? "✅" : "◐"} ${esc(h.title)}:${of(n)}${full ? " — на сегодня всё" : ""}`
+      : `✅ Отмечено: ${esc(h.title)}`;
     await s.setMessage(message.id, { state: "done", reply: text });
-    // Отложенный на этот день вопрос («⏰ Позже») больше не нужен. Отметку словами в чате ловит сам планировщик (habitAnswered).
-    for (const r of await s.pendingReminders("habit", h.id)) if (/habit:\d+:(\d{4}-\d{2}-\d{2}):/.exec(r.buttons)?.[1] === day) await s.markReminder(r.id, "cancelled");
+    // Отложенный на этот день вопрос («⏰ Позже») больше не нужен, когда день закрыт (сделано целиком или пропуск); отмечено не всё —
+    // вопрос остаётся. Отметку словами в чате ловит сам планировщик (habitAnswered). Снятый так «Позже» после −1 (день снова открыт)
+    // не возвращается — так задумано: обычные вопросы по расписанию идут дальше (habitAnswered смотрит markClosed).
+    const closed = r.changed && (act === "skipped" || (step === null && act === "done") || (step === 1 && full));
+    if (closed) for (const x of await s.pendingReminders("habit", h.id)) if (/habit:\d+:(\d{4}-\d{2}-\d{2}):/.exec(x.buttons)?.[1] === day) await s.markReminder(x.id, "cancelled");
     return text;
   }
 
@@ -1353,7 +1399,7 @@ export class Pipeline {
     const d = (await habitsOfDay(s, u, day, today)).find((x) => x.habit.id === h.id);
     // Сегодня не по расписанию или привычка тихая (без вопросов) — вопрос и не придёт, откладывать нечего.
     if (!d || d.habit.quiet) return { ok: false, text: `${h.title} — сегодня не спрашиваю.` };
-    if ((await s.marksOf(u.id, day, day)).some((m) => m.habit_id === h.id)) return { ok: false, text: `${h.title} — уже отмечено.` };
+    if ((await s.marksOf(u.id, day, day)).some((m) => m.habit_id === h.id && markClosed(m))) return { ok: false, text: `${h.title} — уже отмечено.` };
     // Через N минут — от начала текущей минуты: «напомню в 15:30» и приходит в 15:30.
     const due = "in" in when ? new Date(Math.floor(now.getTime() / 60_000) * 60_000 + when.in * 60_000) : zonedToUtc(day, when.at, u.tz);
     const at = timeOf(due, u.tz);

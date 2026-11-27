@@ -801,6 +801,16 @@ CREATE TABLE IF NOT EXISTS prompt_active (
   `
 ALTER TABLE users ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0;
 `,
+  // Шаг 42: несколько отметок в день у привычки (27.11.2026, habits.ts). habits.per_day — сколько раз в день (1..12, «пить воду 8 раз»);
+  // habit_marks.count — сколько раз отмечено за день, stamps — JSON-список времён отметок (UTC ISO, по порядку; длина = count).
+  // status: done — count >= per_day, part — отмечено не всё (0 < count < per_day; не «сделано» нигде), skipped — пропуск (count 0).
+  // Старые «сделано» — одна отметка во время at.
+  `
+ALTER TABLE habits ADD COLUMN per_day INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE habit_marks ADD COLUMN count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE habit_marks ADD COLUMN stamps TEXT NOT NULL DEFAULT '[]';
+UPDATE habit_marks SET count = 1, stamps = '["' || at || '"]' WHERE status = 'done';
+`,
 ];
 
 /** Строка «Счёта OpenRouter» (шаг 38, openrouter-bill.ts): день UTC × модель × провайдер; деньги — миллионные доллара. */
@@ -1080,6 +1090,8 @@ export interface HabitRow {
   quiet?: number;
   /** Когда закончили вручную (UTC ISO); null — нет. Завершена ли — habits.ts habitFinished. */
   finished_at?: string | null;
+  /** Сколько раз в день (шаг 42): 1 — обычная, 8 — «пить воду 8 раз»; день сделан, когда отмечено столько раз. */
+  per_day?: number;
 }
 export interface ProposalRow {
   id: number;
@@ -1116,13 +1128,19 @@ export interface MarkRow {
   id: number;
   habit_id: number;
   day_key: string;
-  status: "done" | "skipped";
+  /** part — отмечено не всё из per_day (шаг 42): не «сделано» ни в сериях, ни в процентах, ни в напоминаниях. */
+  status: "done" | "skipped" | "part";
+  /** Последняя отметка (UTC ISO). */
   at: string;
   message_id: number | null;
   /** Сколько сделано за день (35 страниц) — только из слов человека; null — просто отметка. */
   amount: number | null;
   /** «стр.», «км», «мин»; пусто, если числа нет. */
   unit: string;
+  /** Сколько раз отмечено за день (шаг 42); у пропуска 0. Нет поля — строка из старого журнала отмены (как stampsOf). */
+  count?: number;
+  /** JSON-список времён отметок (UTC ISO, по порядку), длина = count. */
+  stamps?: string;
 }
 export interface MoneyRow {
   id: number;
@@ -1238,6 +1256,17 @@ export const USER_KEEP = [
 ] as const satisfies readonly (keyof User)[];
 /** Строки не тестовых людей (users.is_test, шаг 41): условие для таблиц со столбцом user_id. */
 const NOT_TEST_SQL = "user_id NOT IN (SELECT id FROM users WHERE is_test = 1)";
+
+/** Статус дня привычки по числу отметок (шаг 42): done — отмечено per_day раз, part — меньше (не «сделано»). */
+export const markNeed = (count: number, need: number): "done" | "part" => (count >= Math.max(1, need) ? "done" : "part");
+/** Времена отметок дня (stamps); старая строка без них — «сделано» одной отметкой в at, пропуск — ни одной. */
+export function stampsOf(m: Pick<MarkRow, "status" | "at"> & { stamps?: string | null }): string[] {
+  try {
+    const t = JSON.parse(m.stamps ?? "");
+    if (Array.isArray(t)) return t.filter((x): x is string => typeof x === "string");
+  } catch { /* старая запись */ }
+  return m.status === "done" ? [m.at] : [];
+}
 
 export class Store {
   private constructor(readonly driver: Driver) {}
@@ -1968,15 +1997,31 @@ export class Store {
   // --- привычки ---
   addHabit(h: Omit<HabitRow, "id" | "status"> & { status?: string }): Promise<number> {
     return this.insert(
-      "INSERT INTO habits (user_id, title, days, times, start_date, end_date, status, message_id, quiet, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      h.user_id, h.title, h.days, h.times, h.start_date, h.end_date, h.status ?? "active", h.message_id, h.quiet ?? 0, now(),
+      "INSERT INTO habits (user_id, title, days, times, start_date, end_date, status, message_id, quiet, per_day, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      h.user_id, h.title, h.days, h.times, h.start_date, h.end_date, h.status ?? "active", h.message_id, h.quiet ?? 0, h.per_day ?? 1, now(),
     );
   }
   habit(id: number): Promise<HabitRow | undefined> {
     return this.get<HabitRow>("SELECT * FROM habits WHERE id = ?", id);
   }
-  async updateHabit(id: number, patch: Partial<Pick<HabitRow, "title" | "days" | "times" | "end_date" | "status" | "quiet" | "finished_at">>) {
+  /** today — день человека. Сменилось per_day (шаг 42) — отметки пересчитываются, времена (stamps) не обрезаются: с этого дня статус
+   *  по новой норме (markNeed), прошлые «сделано» остаются сделанными; норма меньше — прошлый неполный день, где отмечено уже не
+   *  меньше новой нормы, становится «сделано» (иначе клетка «5/3» не закрывается). Возвращает строки отметок до пересчёта — их пишут
+   *  в журнал отмены (habit_marks), чтобы «Отменить» вернуло их точно, в какой бы день ни отменяли. Норма та же — ничего не трогает. */
+  async updateHabit(id: number, patch: Partial<Pick<HabitRow, "title" | "days" | "times" | "end_date" | "status" | "quiet" | "finished_at" | "per_day">>, today?: string): Promise<MarkRow[]> {
+    const was = patch.per_day !== undefined && today ? await this.habit(id) : undefined;
     for (const [k, v] of Object.entries(patch)) await this.run(`UPDATE habits SET ${k} = ? WHERE id = ?`, v as never, id);
+    const need = patch.per_day;
+    if (need === undefined || !today || !was || Math.max(1, Number(was.per_day ?? 1)) === need) return [];
+    const changed: MarkRow[] = [];
+    for (const m of await this.all<MarkRow>("SELECT * FROM habit_marks WHERE habit_id = ? AND status <> 'skipped'", id)) {
+      const n = stampsOf(m).length;
+      const status = m.day_key >= today ? markNeed(n, need) : m.status === "part" && n >= need ? "done" : m.status;
+      if (status === m.status) continue;
+      changed.push(m);
+      await this.run("UPDATE habit_marks SET status = ? WHERE id = ?", status, m.id);
+    }
+    return changed;
   }
   /** Привычки, которые идут в этот день (по датам; день недели проверяет habits.ts). */
   habitsOn(userId: number, day: string): Promise<HabitRow[]> {
@@ -1989,29 +2034,72 @@ export class Store {
     return this.all<HabitRow>("SELECT * FROM habits WHERE user_id = ? AND status = 'active' ORDER BY id", userId);
   }
   /** Отметить день; вернуть номер отметки и что было до неё (для отмены). add — сколько сделано (из слов человека):
-   *  прибавляется к числу дня в той же единице; без add число дня остаётся как было. */
-  async markHabit(habitId: number, day: string, status: MarkRow["status"], messageId: number | null, add?: { amount: number; unit: string }) {
+   *  прибавляется к числу дня в той же единице; без add число дня остаётся как было. need — per_day привычки: «сделано» целиком
+   *  (count = need, недостающие отметки — сейчас); пропуск — count 0. По одной отметке — stepMark. */
+  async markHabit(habitId: number, day: string, status: "done" | "skipped", messageId: number | null, add?: { amount: number; unit: string }, need = 1) {
     const before = await this.get<MarkRow>("SELECT * FROM habit_marks WHERE habit_id = ? AND day_key = ?", habitId, day);
+    const at = now();
+    const had = before && before.status !== "skipped" && need > 1 ? stampsOf(before).slice(0, need) : [];
+    const stamps = status === "skipped" ? [] : need > 1 ? [...had, ...Array.from({ length: need - had.length }, () => at)] : [at];
+    const id = await this.writeMark(habitId, day, status, at, messageId, before, add, stamps);
+    return { id, before };
+  }
+  /** Одна отметка (шаг 42): step 1 — ещё раз (день уже «сделано» — не меняется, changed false; неполный, где отмечено не меньше
+   *  need, — норму снизили, — становится «сделано» без новой отметки), -1 — снять последнюю (последняя или пропуск — строка
+   *  удаляется, removed; нет отметки — ничего; отметок больше нормы — остаётся need − 1). count и status — что стало у дня
+   *  (status null — строки нет). Статус — markNeed. */
+  async stepMark(habitId: number, day: string, step: 1 | -1, need: number, messageId: number | null, add?: { amount: number; unit: string }) {
+    const before = await this.get<MarkRow>("SELECT * FROM habit_marks WHERE habit_id = ? AND day_key = ?", habitId, day);
+    const had = before && before.status !== "skipped" ? stampsOf(before) : [];
+    const keep = { id: before?.id ?? 0, before, changed: false, removed: false, count: had.length, status: before?.status ?? null };
+    if (step === 1) {
+      if (before?.status === "done") return keep;
+      if (had.length >= need) {
+        await this.run("UPDATE habit_marks SET status = 'done' WHERE id = ?", before!.id);
+        return { ...keep, changed: true, status: "done" as const };
+      }
+      const at = now();
+      const stamps = [...had, at];
+      const status = markNeed(stamps.length, need);
+      const id = await this.writeMark(habitId, day, status, at, messageId, before, add, stamps);
+      return { id, before, changed: true, removed: false, count: stamps.length, status };
+    }
+    if (!before) return keep;
+    const stamps = had.slice(0, Math.max(1, need)).slice(0, -1);
+    if (!stamps.length) {
+      await this.run("DELETE FROM habit_marks WHERE id = ?", before.id);
+      return { id: before.id, before, changed: true, removed: true, count: 0, status: null };
+    }
+    const status = markNeed(stamps.length, need);
+    await this.run("UPDATE habit_marks SET count = ?, stamps = ?, status = ?, at = ? WHERE id = ?",
+      stamps.length, JSON.stringify(stamps), status, stamps.at(-1)!, before.id);
+    return { id: before.id, before, changed: true, removed: false, count: stamps.length, status };
+  }
+  private writeMark(habitId: number, day: string, status: MarkRow["status"], at: string, messageId: number | null, before: MarkRow | undefined,
+    add: { amount: number; unit: string } | undefined, stamps: string[]) {
     const same = before?.amount != null && before.unit === add?.unit;
     const amount = add ? (same ? Number(before!.amount) : 0) + add.amount : before?.amount ?? null;
     const unit = add ? add.unit : before?.unit ?? "";
-    const id = await this.insert(
-      `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id, amount, unit) VALUES (?, ?, ?, ?, ?, ?, ?)
+    return this.insert(
+      `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id, amount, unit, count, stamps) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (habit_id, day_key) DO UPDATE SET status = excluded.status, at = excluded.at, message_id = excluded.message_id,
-         amount = excluded.amount, unit = excluded.unit`,
-      habitId, day, status, now(), messageId, amount, unit,
+         amount = excluded.amount, unit = excluded.unit, count = excluded.count, stamps = excluded.stamps`,
+      habitId, day, status, at, messageId, amount, unit, stamps.length, JSON.stringify(stamps),
     );
-    return { id, before };
   }
   async restoreMark(id: number, before: MarkRow | null) {
     if (!before) await this.run("DELETE FROM habit_marks WHERE id = ?", id);
-    // Строки может уже не быть (отметку сняли) — тогда вставляется заново с прежними значениями.
-    else await this.run(
-      `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id, amount, unit) VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (habit_id, day_key) DO UPDATE SET status = excluded.status, at = excluded.at, message_id = excluded.message_id,
-         amount = excluded.amount, unit = excluded.unit`,
-      before.habit_id, before.day_key, before.status, before.at, before.message_id, before.amount ?? null, before.unit ?? "",
-    );
+    // Строки может уже не быть (отметку сняли) — тогда вставляется заново с прежними значениями. Записи журнала до шага 42 — без
+    // count и stamps: «сделано» — одна отметка в at.
+    else {
+      const stamps = stampsOf(before);
+      await this.run(
+        `INSERT INTO habit_marks (habit_id, day_key, status, at, message_id, amount, unit, count, stamps) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (habit_id, day_key) DO UPDATE SET status = excluded.status, at = excluded.at, message_id = excluded.message_id,
+           amount = excluded.amount, unit = excluded.unit, count = excluded.count, stamps = excluded.stamps`,
+        before.habit_id, before.day_key, before.status, before.at, before.message_id, before.amount ?? null, before.unit ?? "", stamps.length, JSON.stringify(stamps),
+      );
+    }
   }
   /** Снять отметку дня (галочку поставили по ошибке). */
   async deleteMark(id: number) {
