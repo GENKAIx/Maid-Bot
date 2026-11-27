@@ -1,0 +1,538 @@
+<article class="piece" id="p-d-buffs-a">
+  <header>
+    <p class="eyebrow">Профиль · бафы и дебафы · вариант А</p>
+    <h2>Как в игре: полоска эффектов над героем</h2>
+    <p>Ваш портрет в рамке, под ним значки эффектов, как над персонажем в ролевой игре. Временные тают по кругу, у повторяющихся растёт счёт. Напишите Рине что-нибудь: задетый значок вспыхнет, над ним всплывёт «−» или «+», а Рина ответит с учётом эффекта.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="app" data-hub="rina" data-tab="О вас" data-title="Профиль">
+    <section class="card bf-hero" aria-label="Герой и его эффекты">
+      <div class="bf-port">
+        <div class="bf-frame" aria-hidden="true"><span>А</span></div>
+        <span class="bf-lvl num">день <b data-days>214</b></span>
+      </div>
+      <div class="bf-side">
+        <div class="bf-name">
+          <p>Алексей</p>
+          <span class="bf-sum" data-sum></span>
+        </div>
+        <div class="bf-bars" data-bars>
+          <div class="bf-bar">
+            <p class="bf-lab bf-labok">▲ Бафы</p>
+            <div class="bf-row" data-row="ok" role="list" aria-label="Бафы"></div>
+          </div>
+          <div class="bf-bar">
+            <p class="bf-lab bf-labbad">▼ Дебафы</p>
+            <div class="bf-row" data-row="bad" role="list" aria-label="Дебафы"></div>
+          </div>
+          <div class="bf-tip" data-tip role="dialog" aria-label="Описание эффекта" hidden></div>
+        </div>
+        <form class="bf-add" data-add hidden>
+          <p class="bf-addh" data-addh>Новый баф</p>
+          <input type="text" maxlength="40" data-addinp aria-label="Название эффекта" placeholder="Например: «Пью витамин D»">
+          <div class="seg" role="group" aria-label="Срок">
+            <button type="button" data-dur="0" aria-pressed="true">Постоянно</button>
+            <button type="button" data-dur="1" aria-pressed="false">До вечера</button>
+          </div>
+          <button type="submit" class="btn primary">Добавить</button>
+          <button type="button" class="btn ghost" data-addx>Отмена</button>
+        </form>
+        <div class="bf-shelf" data-shelf hidden>
+          <p class="bf-lab">Снято</p>
+          <div class="bf-gone" data-gone></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="bf-cols">
+      <section class="card bf-chat" aria-labelledby="d-buffs-a-hchat">
+        <h4 class="card-t" id="d-buffs-a-hchat">Написать Рине <span class="bf-wcnt">Рина предупредила <b class="num" data-warns>11</b> раз за месяц</span></h4>
+        <div class="rina"><img src="maid/think.webp" alt="Рина" data-rimg><p data-rsay aria-live="polite"></p></div>
+        <div class="bf-ex" data-ex role="group" aria-label="Готовые примеры"></div>
+        <form class="bf-send" data-send>
+          <input type="text" maxlength="90" data-msg aria-label="Сообщение Рине" placeholder="Или напишите своё: «у меня аллергия на мёд»">
+          <button type="submit" class="btn primary">Отправить</button>
+        </form>
+        <div class="bf-clock">
+          <span>Время в макете <b class="num" data-now>13:20</b></span>
+          <button type="button" class="btn" data-hour>⏩ Прошёл час</button>
+        </div>
+      </section>
+
+      <div class="bf-right">
+        <section class="card bf-loot" aria-labelledby="d-buffs-a-hloot">
+          <h4 class="card-t" id="d-buffs-a-hloot">Горничная заметила <span class="bf-at">проверка дневника в 13:00</span></h4>
+          <div data-sugg></div>
+        </section>
+        <section class="card bf-log" aria-labelledby="d-buffs-a-hlog">
+          <h4 class="card-t" id="d-buffs-a-hlog">Журнал эффектов</h4>
+          <ul data-log></ul>
+        </section>
+      </div>
+    </div>
+
+    <div class="bf-toast" data-toast role="status" aria-live="polite" hidden><span data-ttext></span><button type="button" data-undo>↩ Отменить</button></div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Вместо сетки квадратов в углу профиля эффекты висят полоской под портретом, как статус над героем в игре. Бафы сверху, дебафы снизу, у каждого рамка своего цвета и значок ▲ или ▼.</li>
+      <li>Видно, как эффект живёт: временный тает по кругу (зарядка бодрит до 14:00), у повторяющегося растёт счёт (третий час за ПК, пятый стакан воды).</li>
+      <li>Сработавший эффект вспыхивает, и над ним всплывает «−» или «+». Сразу видно, что Рина правда пользуется профилем.</li>
+      <li>Карточка по клику, как в игре: что делает, откуда взялся, сколько раз сработал. Там же «Убрать из профиля», а снятые значки лежат серыми на полке «Снято» и возвращаются одним нажатием.</li>
+      <li>Снимите «Аллергию на креветки» и снова закажите пиццу: Рина промолчит. Так видно, что снятый эффект правда выключен.</li>
+      <li>Слабее: игровой вид может показаться несерьёзным для здоровья (аллергия рядом с «+бодрость»). Длинные названия не помещаются в значок, их видно только в карточке. Больше 8–10 эффектов в ряд читаются хуже списка.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Вход: значки выскакивают по одному слева направо, круговые таймеры доматываются от полного до остатка, счётчик предупреждений считает до 11.</li>
+      <li>Срабатывание: значок вспыхивает своим цветом и подпрыгивает, над ним всплывает и тает «−сон» или «+сон» (около 0,9 с).</li>
+      <li>Новый эффект: значок появляется с «хлопком» и подписью «Новый». Предложение Рины уезжает в полоску.</li>
+      <li>«Прошёл час»: таймеры убывают, закончившийся эффект гаснет и пропадает, в журнале строка.</li>
+      <li>Снятие: значок сереет и падает на полку «Снято». «Вернуть» поднимает его обратно.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Есть: таблица traits (вид, категория, название, заметка, источник user / chat / pattern, статус active / suggested / declined / removed, дни-доказательства), строка «🛡 в профиль» с «↩ Отменить» в чате, активные эффекты в каждом запросе к модели, поиск закономерностей в 13:00 с «Добавить» / «Не надо».</li>
+      <li>Дописать: срок действия (начало и конец, статус «закончился»), без него нет кругового таймера. Счёт: число и что считаем (часы за ПК, стаканы, ночи подряд), сброс в полночь.</li>
+      <li>Дописать: журнал срабатываний (когда, какое сообщение, предупредила или похвалила) и счётчики «сработал N раз», «Рина предупредила N раз». Модель должна сообщать, какой эффект она учла в ответе.</li>
+      <li>Дописать: значок (эмодзи) у эффекта, сейчас его подбирает экран по категории. Добавление «сам» с выбором «постоянно / до вечера».</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-buffs-a [hidden] { display: none !important; }
+#p-d-buffs-a .app-content { gap: 16px; position: relative; }
+#p-d-buffs-a .bf-hero { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 20px; padding: 20px; background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--a-accent) 12%, transparent), transparent 60%), var(--a-surface); }
+#p-d-buffs-a .bf-port { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#p-d-buffs-a .bf-frame { width: 124px; height: 124px; border-radius: 26px; padding: 5px; background: linear-gradient(150deg, var(--a-gold), color-mix(in srgb, var(--a-gold) 35%, transparent) 45%, var(--a-gold)); box-shadow: 0 10px 26px color-mix(in srgb, var(--a-gold) 25%, transparent); }
+#p-d-buffs-a .bf-frame span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 21px; font: 800 52px/1 var(--fd); color: var(--a-on-accent); background: linear-gradient(140deg, var(--a-accent-strong), var(--c-mood)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--a-bg) 40%, transparent); }
+#p-d-buffs-a .bf-lvl { margin-top: -20px; position: relative; background: var(--a-bg); border: 2px solid var(--a-gold); color: var(--a-gold); border-radius: 99px; padding: 1px 12px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+#p-d-buffs-a .bf-lvl b { color: var(--a-text); }
+#p-d-buffs-a .bf-side { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+#p-d-buffs-a .bf-name { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
+#p-d-buffs-a .bf-name p { font: 800 26px/1.1 var(--fd); letter-spacing: -.02em; }
+#p-d-buffs-a .bf-sum { font-size: 13px; color: var(--a-muted); }
+#p-d-buffs-a .bf-sum b { color: var(--a-text); }
+#p-d-buffs-a .bf-bars { position: relative; display: flex; flex-direction: column; gap: 10px; }
+#p-d-buffs-a .bf-lab { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--a-muted); margin-bottom: 5px; }
+#p-d-buffs-a .bf-labok { color: var(--a-ok); } #p-d-buffs-a .bf-labbad { color: var(--a-bad); }
+#p-d-buffs-a .bf-row { display: flex; flex-wrap: wrap; gap: 10px; min-height: 58px; padding-top: 6px; }
+
+#p-d-buffs-a .bf-ic { --k: var(--a-ok); position: relative; width: 54px; height: 54px; flex: none; border-radius: 13px; border: 2px solid var(--k); padding: 0; display: grid; place-items: center; font-size: 26px; line-height: 1; overflow: visible;
+  background: radial-gradient(90% 80% at 30% 20%, color-mix(in srgb, var(--k) 45%, transparent), color-mix(in srgb, var(--k) 14%, transparent) 70%), var(--a-surface-2);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--k) 45%, transparent), 0 6px 14px color-mix(in srgb, var(--k) 20%, transparent); transition: transform .2s var(--ease), box-shadow .2s; }
+#p-d-buffs-a .bf-ic.bad { --k: var(--a-bad); }
+#p-d-buffs-a .bf-ic::before { content: ""; position: absolute; inset: 3px 3px 50% 3px; border-radius: 9px 9px 14px 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--a-on-accent) 38%, transparent), transparent); pointer-events: none; z-index: 2; }
+#p-d-buffs-a .bf-ic .bf-cd { position: absolute; inset: 0; border-radius: 11px; pointer-events: none; z-index: 1; background: conic-gradient(color-mix(in srgb, var(--a-bg) 62%, transparent) 0 calc((1 - var(--t, 1)) * 360deg), transparent 0); }
+#p-d-buffs-a .bf-ic .bf-ring { position: absolute; inset: -5px; width: calc(100% + 10px); height: calc(100% + 10px); pointer-events: none; overflow: visible; }
+#p-d-buffs-a .bf-ring rect { fill: none; stroke: var(--k); stroke-width: 2.5; stroke-linecap: round; transition: stroke-dashoffset .8s var(--ease); }
+#p-d-buffs-a .bf-ic .bf-tm { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 3; font: 700 10.5px/1 var(--f); background: var(--a-bg); color: var(--a-text); border: 1px solid var(--k); border-radius: 99px; padding: 2px 5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#p-d-buffs-a .bf-ic .bf-st { position: absolute; right: -7px; top: -7px; z-index: 3; min-width: 22px; height: 22px; display: grid; place-items: center; font: 800 12px/1 var(--fd); background: var(--k); color: var(--a-bg); border: 2px solid var(--a-surface); border-radius: 99px; padding: 0 4px; font-variant-numeric: tabular-nums; }
+#p-d-buffs-a .bf-ic .bf-em { position: relative; z-index: 0; }
+#p-d-buffs-a .bf-ic:hover, #p-d-buffs-a .bf-ic[aria-expanded="true"] { transform: translateY(-2px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--k) 35%, transparent), 0 8px 18px color-mix(in srgb, var(--k) 30%, transparent); }
+#p-d-buffs-a .bf-plus.pop, #p-d-buffs-a .bf-ic.pop { animation: d-buffs-a-pop .5s var(--ease) both; }
+#p-d-buffs-a .bf-ic.hit { animation: d-buffs-a-hit .75s var(--ease); }
+#p-d-buffs-a .bf-ic.fade { animation: d-buffs-a-fade .55s var(--ease) forwards; pointer-events: none; }
+#p-d-buffs-a .bf-ic.fresh::after { content: "Новый"; position: absolute; left: 50%; top: -20px; transform: translateX(-50%); font: 700 10.5px/1 var(--f); color: var(--k); white-space: nowrap; animation: d-buffs-a-in .4s var(--ease); }
+#p-d-buffs-a .bf-plus { width: 54px; height: 54px; flex: none; border-radius: 13px; border: 2px dashed var(--a-line); background: none; color: var(--a-muted); font-size: 24px; font-weight: 300; }
+#p-d-buffs-a .bf-plus:hover { border-color: var(--a-accent); color: var(--a-accent); }
+#p-d-buffs-a .bf-fl { position: absolute; left: 50%; top: -6px; z-index: 6; transform: translateX(-50%); font: 800 16px/1 var(--fd); white-space: nowrap; pointer-events: none; color: var(--k); text-shadow: 0 2px 0 var(--a-bg), 0 0 6px var(--a-bg); animation: d-buffs-a-float .95s var(--ease) forwards; }
+
+#p-d-buffs-a .bf-tip { position: absolute; z-index: 8; width: min(300px, 100%); background: var(--a-bg); border: 1px solid var(--a-line); border-top: 3px solid var(--k, var(--a-accent)); border-radius: 12px; padding: 12px 14px; box-shadow: var(--a-shadow); display: flex; flex-direction: column; gap: 6px; animation: d-buffs-a-in .2s var(--ease); }
+#p-d-buffs-a .bf-tip h5 { margin: 0; font: 700 15px/1.25 var(--fd); color: var(--k); }
+#p-d-buffs-a .bf-tip .bf-kind { font-size: 12px; color: var(--a-muted); font-weight: 600; }
+#p-d-buffs-a .bf-tip p { font-size: 13.5px; color: var(--a-text); }
+#p-d-buffs-a .bf-tip dl { margin: 2px 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; font-size: 12.5px; }
+#p-d-buffs-a .bf-tip dt { color: var(--a-muted); }
+#p-d-buffs-a .bf-tip dd { margin: 0; color: var(--a-soft); min-width: 0; }
+#p-d-buffs-a .bf-tip dd b { color: var(--a-text); font-variant-numeric: tabular-nums; }
+#p-d-buffs-a .bf-tip .row { gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+#p-d-buffs-a .bf-tip .btn { min-height: 36px; }
+#p-d-buffs-a .bf-x { color: var(--a-bad); }
+
+#p-d-buffs-a .bf-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--a-surface-2); border-radius: 12px; padding: 10px; animation: d-buffs-a-in .3s var(--ease); }
+#p-d-buffs-a .bf-addh { flex: 1 1 100%; font-size: 12.5px; font-weight: 700; }
+#p-d-buffs-a input[type="text"] { background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 10px; padding: 7px 11px; min-height: 38px; color: var(--a-text); min-width: 0; flex: 1 1 200px; width: 100%; }
+#p-d-buffs-a .bf-add input[type="text"] { background: var(--a-surface); }
+#p-d-buffs-a input:focus-visible { border-color: var(--a-accent); outline: 2px solid var(--a-accent); outline-offset: 1px; }
+#p-d-buffs-a .seg button { min-height: 36px; }
+#p-d-buffs-a .btn { min-height: 38px; }
+#p-d-buffs-a .bf-shelf { border-top: 1px dashed var(--a-line); padding-top: 10px; }
+#p-d-buffs-a .bf-gone { display: flex; flex-wrap: wrap; gap: 8px; }
+#p-d-buffs-a .bf-ret { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 3px 10px 3px 4px; border-radius: 12px; border: 1px solid var(--a-line); background: var(--a-surface-2); color: var(--a-soft); font-size: 12.5px; font-weight: 600; max-width: 100%; animation: d-buffs-a-drop .45s var(--ease); }
+#p-d-buffs-a .bf-ret i { font-style: normal; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; font-size: 17px; background: var(--a-surface-3); filter: grayscale(1); opacity: .7; flex: none; }
+#p-d-buffs-a .bf-ret span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#p-d-buffs-a .bf-ret em { font-style: normal; color: var(--a-accent); white-space: nowrap; }
+#p-d-buffs-a .bf-ret:hover { border-color: var(--a-accent); }
+
+#p-d-buffs-a .bf-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+#p-d-buffs-a .bf-right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+#p-d-buffs-a .bf-chat { display: flex; flex-direction: column; gap: 12px; }
+#p-d-buffs-a .bf-chat .card-t { flex-wrap: wrap; margin: 0; }
+#p-d-buffs-a .bf-wcnt, #p-d-buffs-a .bf-at { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--a-soft); }
+#p-d-buffs-a .bf-wcnt b { color: var(--a-bad); }
+#p-d-buffs-a .rina { min-height: 76px; }
+#p-d-buffs-a .rina p { transition: opacity .2s; }
+#p-d-buffs-a .rina p.new { animation: d-buffs-a-in .35s var(--ease); }
+#p-d-buffs-a .rina p .bf-you { display: block; font-size: 12px; color: var(--a-muted); margin-bottom: 3px; }
+#p-d-buffs-a .rina p .bf-tag { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; font-size: 12.5px; color: var(--a-soft); }
+#p-d-buffs-a .rina p .bf-tag button { background: none; border: 1px solid var(--a-line); border-radius: 8px; min-height: 36px; padding: 0 9px; font-size: 12.5px; font-weight: 600; color: var(--a-accent); }
+#p-d-buffs-a .rina p .bf-quiet { display: block; margin-top: 6px; font-size: 12px; color: var(--a-muted); }
+#p-d-buffs-a .bf-ex { display: flex; flex-wrap: wrap; gap: 6px; }
+#p-d-buffs-a .bf-ex .chip { min-height: 36px; cursor: pointer; white-space: normal; text-align: left; }
+#p-d-buffs-a .bf-send { display: flex; gap: 8px; }
+#p-d-buffs-a .bf-clock { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--a-muted); border-top: 1px solid var(--a-line); padding-top: 10px; }
+#p-d-buffs-a .bf-clock b { color: var(--a-text); }
+
+#p-d-buffs-a .bf-loot .card-t { flex-wrap: wrap; }
+#p-d-buffs-a .bf-sg { --k: var(--a-ok); border: 1.5px dashed color-mix(in srgb, var(--k) 60%, transparent); background: color-mix(in srgb, var(--k) 8%, transparent); border-radius: 14px; padding: 12px; display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 10px 12px; animation: d-buffs-a-in .45s var(--ease); }
+#p-d-buffs-a .bf-sg.bad { --k: var(--a-bad); }
+#p-d-buffs-a .bf-sg .bf-ic { cursor: default; animation: d-buffs-a-glow 2.4s ease-in-out 1; }
+#p-d-buffs-a .bf-sg h5 { margin: 0; font: 700 14.5px/1.3 var(--fd); color: var(--k); }
+#p-d-buffs-a .bf-sg p { font-size: 13px; color: var(--a-soft); }
+#p-d-buffs-a .bf-month { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; }
+#p-d-buffs-a .bf-month i { height: 12px; border-radius: 3px; background: var(--a-surface-3); }
+#p-d-buffs-a .bf-month i.on { background: var(--k); }
+#p-d-buffs-a .bf-mcap { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 11px; color: var(--a-muted); margin-top: -6px; }
+#p-d-buffs-a .bf-sg .row { grid-column: 1 / -1; gap: 6px; flex-wrap: wrap; }
+#p-d-buffs-a .bf-sg.gone { animation: d-buffs-a-fade .45s var(--ease) forwards; }
+#p-d-buffs-a .bf-empty { font-size: 13px; color: var(--a-muted); }
+
+#p-d-buffs-a .bf-log ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+#p-d-buffs-a .bf-log li { display: grid; grid-template-columns: 42px 20px minmax(0, 1fr); gap: 6px; font-size: 12.5px; color: var(--a-soft); align-items: baseline; }
+#p-d-buffs-a .bf-log li time { color: var(--a-muted); font-variant-numeric: tabular-nums; }
+#p-d-buffs-a .bf-log li b { font-weight: 800; }
+#p-d-buffs-a .bf-log li.ok b { color: var(--a-ok); } #p-d-buffs-a .bf-log li.bad b { color: var(--a-bad); } #p-d-buffs-a .bf-log li.mute b { color: var(--a-muted); }
+#p-d-buffs-a .bf-log li.new { animation: d-buffs-a-in .35s var(--ease); }
+
+#p-d-buffs-a .bf-toast { position: sticky; bottom: 8px; align-self: center; z-index: 9; display: flex; align-items: center; gap: 12px; background: var(--a-text); color: var(--a-bg); border-radius: 14px; padding: 6px 6px 6px 16px; font-size: 13.5px; box-shadow: var(--a-shadow); max-width: 100%; animation: d-buffs-a-in .3s var(--ease); }
+#p-d-buffs-a .bf-toast span { min-width: 0; }
+#p-d-buffs-a .bf-toast button { border: 0; border-radius: 10px; min-height: 36px; padding: 0 12px; font-weight: 700; background: color-mix(in srgb, var(--a-bg) 14%, transparent); color: var(--a-bg); white-space: nowrap; }
+
+@keyframes d-buffs-a-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes d-buffs-a-pop { 0% { opacity: 0; transform: scale(.3) rotate(-12deg); } 60% { opacity: 1; transform: scale(1.15) rotate(3deg); } 100% { opacity: 1; transform: none; } }
+@keyframes d-buffs-a-hit { 0% { transform: none; } 18% { transform: scale(1.22); box-shadow: 0 0 0 6px color-mix(in srgb, var(--k) 45%, transparent), 0 0 26px var(--k); filter: brightness(1.35); } 40% { transform: scale(.94) rotate(-4deg); } 62% { transform: scale(1.06) rotate(3deg); } 100% { transform: none; } }
+@keyframes d-buffs-a-float { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.7); } 20% { opacity: 1; transform: translate(-50%, -10px) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -46px) scale(1); } }
+@keyframes d-buffs-a-fade { to { opacity: 0; transform: translateY(14px) scale(.8); filter: grayscale(1); } }
+@keyframes d-buffs-a-drop { from { opacity: 0; transform: translateY(-18px); } to { opacity: 1; transform: none; } }
+@keyframes d-buffs-a-glow { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--k) 30%, transparent), 0 0 18px color-mix(in srgb, var(--k) 45%, transparent); } }
+
+@media (max-width: 900px) { #p-d-buffs-a .bf-cols { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) {
+  #p-d-buffs-a .bf-hero { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 14px; }
+  #p-d-buffs-a .bf-port { flex-direction: row; gap: 14px; }
+  #p-d-buffs-a .bf-frame { width: 84px; height: 84px; border-radius: 20px; padding: 4px; }
+  #p-d-buffs-a .bf-frame span { border-radius: 16px; font-size: 36px; }
+  #p-d-buffs-a .bf-lvl { margin-top: 0; }
+  #p-d-buffs-a .bf-name p { font-size: 21px; }
+  #p-d-buffs-a .bf-row { gap: 12px 10px; }
+  #p-d-buffs-a .bf-tip { left: 0 !important; width: 100%; }
+  #p-d-buffs-a .bf-send .btn { padding: 8px 10px; }
+}
+  </style>
+
+  <script>(function () {
+  "use strict";
+  var root = document.getElementById("p-d-buffs-a");
+  if (!root) return;
+  var M = window.MaidMock || { reduce: false, onSeen: function (el, fn) { fn(); } };
+  function $(s, el) { return (el || root).querySelector(s); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function hm(m) { m = ((Math.round(m) % 1440) + 1440) % 1440; return Math.floor(m / 60) + ":" + ("0" + (m % 60)).slice(-2); }
+  function left(m) { m = Math.max(0, Math.round(m)); var h = Math.floor(m / 60), r = m % 60; return h ? h + " ч" + (r ? " " + r : "") : r + " мин"; }
+  function pl(n, a, b, c) { var d = n % 10, e = n % 100; return d === 1 && e !== 11 ? a : d >= 2 && d <= 4 && (e < 12 || e > 14) ? b : c; }
+  var SRC = { chat: "💬 сказали Рине в чате", user: "✍ добавили сами", pattern: "🔍 Рина нашла в дневнике" };
+  var PER = 4 * (60 - 32) + 2 * Math.PI * 16;
+
+  var S = { now: 800, warns: 11, nid: 100, lastRemoved: null, open: null };
+  var E = [
+    { id: "walk", k: "ok", ic: "🌳", t: "Прогулка → лучше сон", fx: "После прогулки вы засыпаете на 20 минут быстрее.", src: "pattern", when: "8 ноября", st: "active", hits: 9, fl: "+сон",
+      say: "Отличная мысль! После прогулок вы засыпаете быстрее. Повесила «Свежий воздух» до ночи.", re: /гуля|прогул|пройд/ },
+    { id: "gym", k: "ok", ic: "🤸", t: "Зарядка утром → бодрость", fx: "Полдня бодрее, меньше тянет на кофе.", src: "user", when: "1 ноября", st: "active", hits: 14, fl: "+бодрость", dur: [490, 840],
+      say: "Зарядка снова в деле! Бодрость продлила ещё на 4 часа.", re: /зарядк|отжим|упражн/ },
+    { id: "water", k: "ok", ic: "💧", t: "Вода → меньше болит голова", fx: "Когда за день больше 6 стаканов, голова к вечеру не болит.", src: "pattern", when: "15 ноября", st: "active", hits: 22, fl: "+1 стакан", stack: 4, stackT: "стакана сегодня",
+      say: function (e) { return "Записала: " + e.stack + "-й стакан. Ещё пара, и к вечеру голова не заболит."; }, re: /вод[аыуе]|стакан|попил|выпил вод/ },
+    { id: "shrimp", k: "bad", ic: "🦐", t: "Аллергия на креветки", fx: "Рина отговаривает от блюд с креветками и морепродуктами.", src: "chat", when: "3 октября", st: "active", hits: 4, fl: "−♥",
+      say: "Лучше без креветок: у вас на них аллергия. Возьмём пиццу с курицей или «Четыре сыра»?", re: /кревет|морепрод/ },
+    { id: "sleep", k: "bad", ic: "🥱", t: "Мало сна → болит голова", fx: "Если спите меньше 6 часов, наутро болит голова.", src: "pattern", when: "20 октября", st: "active", hits: 6, fl: "−сон", stack: 2, stackT: "ночи подряд меньше 6 ч",
+      say: "Две короткие ночи подряд уже есть, третья ударит по голове.", re: /кофе.*(сном|ноч)|не спать|лягу поздно|до ночи|не высплюсь/ },
+    { id: "eyes", k: "bad", ic: "👁", t: "Долго за ПК → глаза устают", fx: "После 2 часов без перерыва глаза краснеют и устают.", src: "pattern", when: "12 ноября", st: "active", hits: 11, fl: "−глаза", stack: 2, stackT: "часа без перерыва",
+      say: function (e) { return "Это уже " + e.stack + "-й час без перерыва. Каждые 50 минут смотрите в окно, ладно?"; }, re: /пк|компьют|игра|поиграю|сериал|монитор/ },
+    { id: "coffee", k: "bad", ic: "☕", t: "Кофе натощак → изжога", fx: "Кофе до еды заканчивается изжогой к обеду.", src: "pattern", st: "suggested", hits: 0, fl: "−живот", days: [4, 11, 19], why: "3 раза за месяц: 4, 11 и 19 ноября",
+      say: "Если кофе, то после еды: натощак у вас бывает изжога.", re: /кофе|эспрессо|капучино/ },
+    { id: "read", k: "ok", ic: "📖", t: "Чтение перед сном → засыпаете быстрее", fx: "В дни с чтением вы засыпаете на 15 минут раньше.", src: "pattern", st: "suggested", hits: 0, fl: "+сон", days: [2, 9, 14, 21, 25], why: "5 вечеров за месяц, сон пришёл быстрее",
+      say: "Хорошее чтение лучше любого снотворного.", re: /почита|книг|чтени/ }
+  ];
+  var LOG = [
+    { t: "13:00", k: "ok", m: "🔍", x: "Рина нашла закономерность: <b>кофе натощак</b>" },
+    { t: "11:52", k: "bad", m: "−", x: "<b>Глаза</b>: второй час за ПК, Рина напомнила о перерыве" },
+    { t: "8:10", k: "ok", m: "+", x: "<b>Бодрость</b> до 14:00 после зарядки" }
+  ];
+  function cp(o) { var c = {}; for (var k in o) c[k] = Array.isArray(o[k]) ? o[k].slice() : o[k]; return c; }
+  var E0 = E.map(cp), LOG0 = LOG.map(cp);
+  function reset() {
+    E = E0.map(cp); LOG = LOG0.map(cp); S = { now: 800, warns: 11, nid: 100, lastRemoved: null, open: null };
+    addK = "ok"; addDur = 0; clearTimeout(toastT); clearTimeout(hoverT);
+    $("[data-toast]").hidden = true; $("[data-add]").hidden = true; $("[data-msg]").value = ""; $("[data-addinp]").value = "";
+    root.querySelectorAll("[data-dur]").forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.dur === "0")); });
+  }
+  function byId(id) { for (var i = 0; i < E.length; i++) if (E[i].id === id) return E[i]; return null; }
+  function frac(e) { if (!e.dur) return 1; return Math.max(0, Math.min(1, (e.dur[1] - S.now) / (e.dur[1] - e.dur[0]))); }
+
+  function iconHTML(e, opts) {
+    opts = opts || {};
+    var label = e.t + (e.k === "ok" ? ", баф" : ", дебаф") + (e.dur ? ", осталось " + left(e.dur[1] - S.now) : "") + (e.stack ? ", счёт " + e.stack : "");
+    var tag = opts.still ? "span" : "button";
+    var h = "<" + tag + (opts.still ? ' role="img"' : ' type="button" role="listitem" aria-expanded="false"') + ' class="bf-ic ' + e.k + '" data-id="' + e.id + '" aria-label="' + esc(label) + '" style="--t:' + frac(e).toFixed(3) + '">';
+    if (e.dur) h += '<span class="bf-cd"></span><svg class="bf-ring" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="16" style="stroke-dasharray:' + PER.toFixed(1) + ';stroke-dashoffset:' + (PER * (1 - frac(e))).toFixed(1) + '"/></svg>';
+    h += '<span class="bf-em" aria-hidden="true">' + e.ic + "</span>";
+    if (e.stack) h += '<span class="bf-st" aria-hidden="true">' + e.stack + "</span>";
+    if (e.dur) h += '<span class="bf-tm" aria-hidden="true">' + left(e.dur[1] - S.now) + "</span>";
+    return h + "</" + tag + ">";
+  }
+
+  function render() {
+    ["ok", "bad"].forEach(function (k) {
+      var row = $('[data-row="' + k + '"]');
+      row.innerHTML = E.filter(function (e) { return e.k === k && e.st === "active"; }).map(function (e) { return iconHTML(e); }).join("") +
+        '<button type="button" class="bf-plus" data-plus="' + k + '" aria-label="Добавить ' + (k === "ok" ? "баф" : "дебаф") + ' самому">+</button>';
+    });
+    var gone = E.filter(function (e) { return e.st === "removed"; });
+    $("[data-shelf]").hidden = !gone.length;
+    $("[data-gone]").innerHTML = gone.map(function (e) {
+      return '<button type="button" class="bf-ret" data-ret="' + e.id + '"><i aria-hidden="true">' + e.ic + "</i><span>" + esc(e.t) + "</span><em>Вернуть</em></button>";
+    }).join("");
+    var nOk = E.filter(function (e) { return e.k === "ok" && e.st === "active"; }).length, nBad = E.filter(function (e) { return e.k === "bad" && e.st === "active"; }).length;
+    $("[data-sum]").innerHTML = "<b>" + nOk + "</b> " + pl(nOk, "баф", "бафа", "бафов") + " · <b>" + nBad + "</b> " + pl(nBad, "дебаф", "дебафа", "дебафов");
+    $("[data-warns]").textContent = S.warns;
+    $("[data-now]").textContent = hm(S.now);
+    renderSugg(); renderLog();
+    if (S.open && byId(S.open) && byId(S.open).st === "active") openTip(S.open, true); else closeTip();
+  }
+
+  function renderSugg() {
+    var box = $("[data-sugg]"), e = E.filter(function (x) { return x.st === "suggested"; })[0];
+    if (!e) { box.innerHTML = '<p class="bf-empty">Новых закономерностей нет. Завтра в 13:00 Рина снова просмотрит дневник.</p>'; return; }
+    var cells = ""; for (var d = 1; d <= 30; d++) cells += "<i" + (e.days.indexOf(d) >= 0 ? ' class="on"' : "") + "></i>";
+    box.innerHTML = '<div class="bf-sg ' + e.k + '" data-sgid="' + e.id + '">' + iconHTML(e, { still: true }) +
+      "<div><h5>" + (e.k === "ok" ? "Возможный баф" : "Возможный дебаф") + ": " + esc(e.t) + "</h5><p>" + esc(e.why) + ". Добавить в профиль, чтобы я об этом помнила?</p></div>" +
+      '<div class="bf-month" role="img" aria-label="Ноябрь, отмечены дни: ' + e.days.join(", ") + '">' + cells + '</div><div class="bf-mcap" aria-hidden="true"><span>1 ноя</span><span>30 ноя</span></div>' +
+      '<div class="row"><button type="button" class="btn primary" data-acc>Добавить</button><button type="button" class="btn ghost" data-dec>Не надо</button></div></div>';
+  }
+
+  function renderLog() {
+    $("[data-log]").innerHTML = LOG.slice(0, 6).map(function (l, i) {
+      return '<li class="' + l.k + (l.fresh && i === 0 ? " new" : "") + '"><time>' + l.t + '</time><b aria-hidden="true">' + l.m + "</b><span>" + l.x + "</span></li>";
+    }).join("");
+    LOG.forEach(function (l) { l.fresh = false; });
+  }
+  function log(k, m, x) { LOG.unshift({ t: hm(S.now), k: k, m: m, x: x, fresh: true }); }
+
+  function ic(id) { return $('.bf-row [data-id="' + id + '"]'); }
+  function hit(id, text) {
+    var el = ic(id); if (!el) return;
+    if (M.reduce) return;
+    el.classList.remove("hit"); void el.offsetWidth; el.classList.add("hit");
+    var f = document.createElement("span"); f.className = "bf-fl"; f.textContent = text; f.setAttribute("aria-hidden", "true");
+    el.appendChild(f); setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 1000);
+  }
+  function popIn(id, fresh) {
+    var el = ic(id); if (!el || M.reduce) return;
+    el.classList.add("pop"); if (fresh) el.classList.add("fresh");
+    setTimeout(function () { el.classList.remove("pop", "fresh"); }, 1800);
+  }
+
+  /* карточка-подсказка */
+  var tip = $("[data-tip]");
+  function openTip(id, keep) {
+    var e = byId(id), el = ic(id); if (!e || !el) return;
+    root.querySelectorAll(".bf-ic[aria-expanded]").forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+    el.setAttribute("aria-expanded", "true"); S.open = id;
+    tip.style.setProperty("--k", e.k === "ok" ? "var(--a-ok)" : "var(--a-bad)");
+    var kind = (e.k === "ok" ? "▲ Баф" : "▼ Дебаф") + " · " + (e.dur ? "до " + hm(e.dur[1]) + ", осталось " + left(e.dur[1] - S.now) : e.stack ? "растёт за день" : "постоянный");
+    tip.innerHTML = "<h5>" + e.ic + " " + esc(e.t) + '</h5><span class="bf-kind">' + kind + "</span><p>" + esc(e.fx) + "</p><dl>" +
+      "<dt>Откуда</dt><dd>" + SRC[e.src] + (e.when ? ", " + e.when : "") + "</dd>" +
+      (e.days ? "<dt>Дни</dt><dd>" + e.days.join(", ") + " ноября</dd>" : "") +
+      (e.stack ? "<dt>Счёт</dt><dd><b>" + e.stack + "</b> " + esc(e.stackT) + "</dd>" : "") +
+      "<dt>Сработал</dt><dd><b>" + e.hits + "</b> " + pl(e.hits, "раз", "раза", "раз") + (e.k === "bad" ? ", Рина предупредила" : ", Рина похвалила") + "</dd></dl>" +
+      '<div class="row"><button type="button" class="btn bf-x" data-rm="' + e.id + '">Убрать из профиля</button><button type="button" class="btn ghost" data-tclose>Закрыть</button></div>';
+    tip.hidden = false;
+    var bars = $("[data-bars]"), r = bars.getBoundingClientRect(), b = el.getBoundingClientRect();
+    var w = Math.min(300, r.width), x = Math.max(0, Math.min(r.width - w, b.left - r.left - 10));
+    tip.style.left = x + "px"; tip.style.top = (b.bottom - r.top + 14) + "px";
+    if (!keep) tip.style.animation = "none", void tip.offsetWidth, tip.style.animation = "";
+  }
+  function closeTip() { tip.hidden = true; S.open = null; root.querySelectorAll(".bf-ic[aria-expanded]").forEach(function (b) { b.setAttribute("aria-expanded", "false"); }); }
+
+  /* Рина отвечает */
+  var said = $("[data-rsay]"), rimg = $("[data-rimg]");
+  function rina(img, html) { rimg.src = "maid/" + img + ".webp"; said.innerHTML = html; said.classList.remove("new"); void said.offsetWidth; said.classList.add("new"); }
+  function idle() {
+    rina("think", "Сегодня сработали <b>глаза</b> и <b>бодрость</b>. Напишите, что собираетесь делать, а я проверю по вашим эффектам. Значки вспыхнут, если что-то задето.");
+  }
+
+  function freshAir() {
+    var e = byId("air");
+    if (!e) { e = { id: "air", k: "ok", ic: "🍃", t: "Свежий воздух", fx: "После прогулки вечером легче уснуть.", src: "chat", when: "сегодня", st: "active", hits: 0, fl: "+сон", dur: [S.now, Math.max(1380, S.now + 60)] }; E.splice(1, 0, e); return true; }
+    var was = e.st === "active"; e.st = "active"; e.dur = [S.now, Math.max(1380, S.now + 60)]; return !was;
+  }
+
+  function send(text) {
+    text = String(text || "").trim(); if (!text) return;
+    var low = text.toLowerCase(), you = '<span class="bf-you">Вы: «' + esc(text) + "»</span>";
+    var al = low.match(/(?:аллерги[яюи]|не переношу|нельзя)\s+(?:на\s+)?([а-яё-]{3,20})/);
+    if (al) {
+      var name = "Аллергия на " + al[1];
+      var dup = E.filter(function (x) { return x.t.toLowerCase() === name.toLowerCase(); })[0];
+      if (dup) {
+        if (dup.st !== "active") { dup.st = "active"; log("bad", "↩", "Вернули: <b>" + esc(dup.t) + "</b>"); }
+        dup.hits++; render(); popIn(dup.id); setTimeout(function () { hit(dup.id, dup.fl); }, 60);
+        rina("salute", you + "Это уже в профиле, помню и слежу.");
+        return;
+      }
+      var ne = { id: "n" + (S.nid++), k: "bad", ic: "⚠", t: name, fx: "Рина будет отговаривать от этого и напоминать.", src: "chat", when: "сегодня", st: "active", hits: 0, fl: "−♥", say: "", re: null };
+      E.push(ne); log("bad", "🛡", "Из чата в профиль: <b>" + esc(name.toLowerCase()) + "</b>"); render(); popIn(ne.id, true);
+      rina("salute", you + "Запомнила, буду следить за едой." + '<span class="bf-tag">🛡 в профиль, дебаф: ' + esc(name.toLowerCase()) + ' <button type="button" data-unchat="' + ne.id + '">↩ Отменить</button></span>');
+      return;
+    }
+    var lines = [], hits = [], quiet = [], img = "happy", added = false;
+    E.forEach(function (e) {
+      if (!e.re || !e.re.test(low)) return;
+      if (e.st === "ended" && e.dur) { e.st = "active"; e.dur = [S.now, S.now + 240]; }
+      if (e.st !== "active") { quiet.push(e.t); return; }
+      e.hits++; if (e.k === "bad") { S.warns++; img = "worried"; }
+      if (e.stack && e.id !== "sleep") e.stack++;
+      if (e.id === "gym" && e.dur) e.dur = [S.now, Math.max(S.now + 240, e.dur[1])];
+      if (e.id === "walk") added = freshAir();
+      lines.push(typeof e.say === "function" ? e.say(e) : e.say); hits.push(e);
+      log(e.k, e.k === "ok" ? "+" : "−", "<b>" + esc(e.t.split(" →")[0]) + "</b>: «" + esc(text) + "»");
+    });
+    if (!lines.length) lines.push(quiet.length ? "Хорошо, приятного!" : "Записала. Ни один эффект это не задевает.");
+    var q = quiet.length ? '<span class="bf-quiet">Эффект «' + esc(quiet[0]) + "» сейчас не в профиле, поэтому Рина его не учла.</span>" : "";
+    render();
+    if (added) popIn("air", true);
+    hits.forEach(function (e, i) { setTimeout(function () { hit(e.id, e.fl); }, i * 160); });
+    if (hits.some(function (e) { return e.id === "walk"; })) setTimeout(function () { hit("air", "+сон"); }, 450);
+    rina(hits.length ? img : "listen", you + lines.join(" ") + q);
+  }
+
+  /* снять, вернуть, отменить */
+  var toastT;
+  function toast(text, undo) {
+    var t = $("[data-toast]"); $("[data-ttext]").textContent = text; t.hidden = false; S.undo = undo;
+    clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; S.undo = null; }, 6000);
+  }
+  function removeE(id) {
+    var e = byId(id), el = ic(id); if (!e) return;
+    closeTip();
+    function fin() { e.st = "removed"; log("mute", "×", "Снято: <b>" + esc(e.t) + "</b>"); render(); toast("«" + e.t + "» убрано из профиля", function () { restore(id); }); }
+    if (M.reduce || !el) fin(); else { el.classList.add("fade"); setTimeout(fin, 500); }
+  }
+  function restore(id) { var e = byId(id); if (!e) return; e.st = "active"; log(e.k, "↩", "Вернули: <b>" + esc(e.t) + "</b>"); render(); popIn(id); $("[data-toast]").hidden = true; }
+
+  function accept(yes) {
+    var e = E.filter(function (x) { return x.st === "suggested"; })[0]; if (!e) return;
+    var card = $(".bf-sg");
+    function fin() {
+      e.st = yes ? "active" : "declined";
+      if (yes) { e.when = "сегодня"; log(e.k, "🔍", "Добавили закономерность: <b>" + esc(e.t) + "</b>"); }
+      else log("mute", "✕", "Отказались: <b>" + esc(e.t) + "</b>, Рина больше не предложит");
+      render(); if (yes) popIn(e.id, true);
+      rina(yes ? "proud" : "bow", yes ? "Повесила значок <b>" + e.ic + " " + esc(e.t) + "</b>. Теперь буду учитывать это в разговоре." : "Поняла, больше не предлагаю. Если передумаете, добавьте сами через «+».");
+    }
+    if (M.reduce || !card) fin(); else { card.classList.add("gone"); setTimeout(fin, 420); }
+  }
+
+  /* добавить самому */
+  var addK = "ok", addDur = 0;
+  function openAdd(k) {
+    addK = k; var f = $("[data-add]"); f.hidden = false;
+    $("[data-addh]").textContent = k === "ok" ? "Новый баф: что вам помогает?" : "Новый дебаф: что вам вредит?";
+    $("[data-addinp]").placeholder = k === "ok" ? "Например: «Витамин D → меньше устаю»" : "Например: «Сладкое вечером → плохо сплю»";
+    $("[data-addinp]").focus();
+  }
+
+  /* время в макете */
+  function tick() {
+    S.now = Math.min(S.now + 60, 1435);
+    var ended = E.filter(function (e) { return e.st === "active" && e.dur && e.dur[1] <= S.now; });
+    var eyes = byId("eyes"); if (eyes.st === "active") eyes.stack++;
+    function fin() {
+      ended.forEach(function (e) { e.st = "ended"; log("mute", "⌛", "Закончился эффект <b>" + esc(e.t.split(" →")[0]) + "</b>"); });
+      render();
+      if (eyes.st === "active") setTimeout(function () { hit("eyes", "−глаза"); }, 60);
+      if (ended.some(function (e) { return e.id === "air"; })) rina("sleep", "«Свежий воздух» закончился. Самое время спать.");
+      else if (ended.length) rina("sad", "Эффект <b>" + esc(ended[0].t.split(" →")[0]) + "</b> закончился. Завтра утром зарядка вернёт его.");
+    }
+    var els = ended.map(function (e) { return ic(e.id); }).filter(Boolean);
+    if (M.reduce || !els.length) fin(); else { els.forEach(function (el) { el.classList.add("fade"); }); setTimeout(fin, 500); }
+  }
+
+  /* примеры */
+  var EX = ["Закажу пиццу с креветками", "Выпью кофе перед сном", "Пойду гулять", "Посижу за ПК до ночи", "Выпил стакан воды", "У меня аллергия на орехи", "Почитаю перед сном"];
+  $("[data-ex]").innerHTML = EX.map(function (x) { return '<button type="button" class="chip" data-say="' + esc(x) + '">' + esc(x) + "</button>"; }).join("");
+
+  root.addEventListener("click", function (ev) {
+    var t = ev.target, b;
+    if ((b = t.closest("[data-say]"))) { send(b.getAttribute("data-say")); return; }
+    if ((b = t.closest(".bf-row .bf-ic"))) { if (S.open === b.dataset.id && !S.byHover) closeTip(); else openTip(b.dataset.id); S.byHover = false; return; }
+    if ((b = t.closest("[data-rm]"))) { removeE(b.dataset.rm); return; }
+    if (t.closest("[data-tclose]")) { var o = S.open; closeTip(); if (o && ic(o)) ic(o).focus(); return; }
+    if ((b = t.closest("[data-ret]"))) { restore(b.dataset.ret); return; }
+    if ((b = t.closest("[data-plus]"))) { openAdd(b.dataset.plus); return; }
+    if (t.closest("[data-addx]")) { $("[data-add]").hidden = true; return; }
+    if ((b = t.closest("[data-dur]"))) { addDur = +b.dataset.dur; root.querySelectorAll("[data-dur]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); return; }
+    if (t.closest("[data-acc]")) { accept(true); return; }
+    if (t.closest("[data-dec]")) { accept(false); return; }
+    if (t.closest("[data-hour]")) { tick(); return; }
+    if (t.closest("[data-undo]")) { if (S.undo) S.undo(); $("[data-toast]").hidden = true; return; }
+    if ((b = t.closest("[data-unchat]"))) {
+      var e = byId(b.dataset.unchat); if (e) { E.splice(E.indexOf(e), 1); log("mute", "↩", "Отменили: <b>" + esc(e.t.toLowerCase()) + "</b>"); render(); }
+      rina("bow", "Отменила, в профиль не записываю.");
+      return;
+    }
+    if (!t.closest("[data-tip]") && S.open) closeTip();
+  });
+  root.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && S.open) { var o = S.open; closeTip(); if (ic(o)) ic(o).focus(); } });
+  var hoverT;
+  root.addEventListener("mouseover", function (ev) {
+    var b = ev.target.closest && ev.target.closest(".bf-row .bf-ic"); if (!b || b.dataset.id === S.open) return;
+    clearTimeout(hoverT); hoverT = setTimeout(function () { openTip(b.dataset.id); S.byHover = true; }, 250);
+  });
+  root.addEventListener("mouseout", function (ev) { if (ev.target.closest && ev.target.closest(".bf-row .bf-ic")) clearTimeout(hoverT); });
+  $("[data-send]").addEventListener("submit", function (ev) { ev.preventDefault(); var i = $("[data-msg]"); send(i.value); i.value = ""; });
+  $("[data-add]").addEventListener("submit", function (ev) {
+    ev.preventDefault(); var i = $("[data-addinp]"), v = i.value.trim(); if (!v) { i.focus(); return; }
+    var ne = { id: "n" + (S.nid++), k: addK, ic: addK === "ok" ? "✨" : "⚠", t: v, fx: "Вы добавили это сами. Рина будет учитывать в разговоре.", src: "user", when: "сегодня", st: "active", hits: 0, fl: addK === "ok" ? "+" : "−", re: null };
+    if (addDur) ne.dur = [S.now, 1260];
+    E.push(ne); i.value = ""; $("[data-add]").hidden = true;
+    log(addK, "✍", "Добавили сами: <b>" + esc(v) + "</b>" + (addDur ? " до 21:00" : ""));
+    render(); popIn(ne.id, true);
+    toast("Добавлено: «" + v + "»", function () { E.splice(E.indexOf(ne), 1); render(); });
+  });
+
+  /* вход */
+  function count(el, from, to) {
+    if (M.reduce) { el.textContent = to; return; }
+    var t0 = performance.now();
+    (function step(t) { var p = Math.min(1, (t - t0) / 800); el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); })(t0);
+  }
+  function play() {
+    closeTip(); render();
+    if (M.reduce) return;
+    root.querySelectorAll(".bf-row .bf-ic, .bf-row .bf-plus").forEach(function (el, i) {
+      el.style.animationDelay = (i * 70) + "ms"; el.classList.add("pop");
+      setTimeout(function () { el.classList.remove("pop"); el.style.animationDelay = ""; }, 600 + i * 70);
+    });
+    root.querySelectorAll(".bf-row .bf-ring rect").forEach(function (r) {
+      var end = r.style.strokeDashoffset; r.style.transition = "none"; r.style.strokeDashoffset = "0";
+      void r.getBoundingClientRect(); r.style.transition = ""; setTimeout(function () { r.style.strokeDashoffset = end; }, 300);
+    });
+    count($("[data-warns]"), 0, S.warns);
+    count($("[data-days]"), 180, 214);
+  }
+  idle(); render();
+  M.onSeen(root, play);
+  root.addEventListener("replay", function () { reset(); idle(); play(); });
+})();</script>
+</article>

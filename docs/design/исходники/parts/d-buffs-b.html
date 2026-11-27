@@ -1,0 +1,540 @@
+<article class="piece" id="p-d-buffs-b">
+  <header>
+    <p class="eyebrow">Профиль · бафы и дебафы · вариант Б</p>
+    <h2>Состояния на шкале: что с вами и откуда Рина это знает</h2>
+    <p>Каждое состояние стало строкой с понятной плашкой «✓ хорошо» или «! внимание» и шкалой последних 30 дней: видно, когда это проявлялось и когда Рина вас предупредила. Временные состояния, вроде простуды или «выспались», стоят сверху и тают по полоске. Напишите Рине из примеров ниже и посмотрите, как строка вспыхнет и получит новую точку.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="app" data-hub="rina" data-tab="О вас" data-title="Профиль">
+    <div class="rina"><img src="maid/analysis.webp" alt="Рина"><p data-rina></p></div>
+
+    <div class="bb-top">
+      <section class="card" aria-labelledby="d-buffs-b-h-tmp">
+        <h4 class="card-t" id="d-buffs-b-h-tmp">Сейчас, на время</h4>
+        <ul class="bb-temps" data-temps></ul>
+        <p class="bb-empty muted" data-tempty hidden>Временных состояний нет. Скажите Рине «я простыл» или «отлично выспался», и она добавит их сюда со сроком.</p>
+      </section>
+
+      <section class="card bb-chat" aria-labelledby="d-buffs-b-h-chat">
+        <h4 class="card-t" id="d-buffs-b-h-chat">Написать Рине</h4>
+        <div class="bb-log" data-log aria-live="polite"></div>
+        <div class="bb-ex" role="group" aria-label="Готовые примеры">
+          <button type="button" class="chip" data-ex>Закажу пиццу с креветками</button>
+          <button type="button" class="chip" data-ex>Выпью кофе перед сном</button>
+          <button type="button" class="chip" data-ex>Пойду гулять</button>
+          <button type="button" class="chip" data-ex>Посижу за ПК до ночи</button>
+          <button type="button" class="chip" data-ex>Сегодня без зарядки</button>
+          <button type="button" class="chip" data-ex>У меня аллергия на орехи</button>
+        </div>
+        <form class="bb-send" data-send>
+          <input type="text" maxlength="90" placeholder="Или напишите своё…" aria-label="Сообщение Рине" data-inp>
+          <button type="submit" class="btn primary">Отправить</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="card" aria-labelledby="d-buffs-b-h-list">
+      <div class="bb-lhead">
+        <h4 class="card-t" id="d-buffs-b-h-list">Постоянные <span class="muted num" data-lcnt></span></h4>
+        <div class="seg" role="group" aria-label="Показать">
+          <button type="button" data-f="all" aria-pressed="true">Все</button>
+          <button type="button" data-f="bad" aria-pressed="false">! Внимание</button>
+          <button type="button" data-f="good" aria-pressed="false">✓ Хорошо</button>
+        </div>
+        <button type="button" class="btn ghost bb-addbtn" data-addopen aria-expanded="false">+ Добавить сам</button>
+      </div>
+      <form class="bb-add" data-add hidden>
+        <input type="text" maxlength="50" placeholder="Например: «Молоко → тяжесть в животе»" aria-label="Название состояния" data-addinp>
+        <div class="seg" role="group" aria-label="Вид">
+          <button type="button" data-kind="bad" aria-pressed="true">! Внимание</button>
+          <button type="button" data-kind="good" aria-pressed="false">✓ Хорошо</button>
+        </div>
+        <button type="submit" class="btn primary">Добавить</button>
+      </form>
+      <p class="bb-legend muted"><span><i class="bb-lg bb-lgon"></i>проявлялось или помогло</span><span><i class="bb-lg bb-lgw"></i>Рина предупредила</span><span>30 дней, справа сегодня. Наведите или коснитесь шкалы</span></p>
+      <ul class="bb-list" data-list></ul>
+      <details class="bb-gone" data-gonebox hidden>
+        <summary>Убрано из профиля <span class="num" data-gcnt></span></summary>
+        <ul class="bb-glist" data-gone></ul>
+      </details>
+    </section>
+
+    <div class="bb-toast" data-toast role="status" aria-live="polite" hidden><span data-ttext></span><button type="button" data-undo>↩ Отменить</button></div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Вместо сетки глянцевых значков список строк. У каждой понятная плашка «✓ хорошо» или «! внимание», значок и короткая строка «откуда»: сказали в чате, добавили сами или Рина заметила.</li>
+      <li>Шкала 30 дней на каждой строке: точка, когда это проявлялось, кольцо, когда Рина предупредила. Сразу видно, что состояние живое и Рина им пользуется.</li>
+      <li>Нажатие на строку открывает «Откуда Рина знает»: исходная фраза или дни из дневника и вся история срабатываний.</li>
+      <li>Временные состояния живут отдельно сверху, с полоской «сколько осталось» и кнопкой «Закончить».</li>
+      <li>Предложение Рины стоит прямо в списке как строка «? ждёт ответа», с днями-доказательствами на той же шкале.</li>
+      <li>Убранное уходит в «Убрано из профиля», оттуда его можно вернуть.</li>
+      <li>Сильные стороны: спокойно, читается без объяснений, история на виду. Слабее: меньше «игрового» чувства, чем у значков, и длинный список на телефоне требует прокрутки.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Вход: точки на шкалах проявляются слева направо, полоски временных состояний тают от полной до текущей.</li>
+      <li>Сообщение задевает состояние: строка вспыхивает рамкой своего цвета, справа появляется новое кольцо «сегодня», счётчик прибавляет единицу.</li>
+      <li>«Добавить» на предложение: строка из «ждёт ответа» становится обычной, плашка меняется. «Убрать» уводит строку вниз, «Отменить» возвращает на место.</li>
+      <li>Сказали в чате «у меня аллергия на…»: новая строка въезжает в список, в ответе Рины строка «🛡 В профиль» с отменой.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Есть: таблица traits (вид, категория, название, заметка, источник user/chat/pattern, статус active/suggested/declined/removed, дни-доказательства), добавление из чата с «↩ Отменить», бафы и дебафы в каждом запросе к модели, поиск закономерностей в 13:00.</li>
+      <li>Шкала «проявлялось»: для pattern есть дни-доказательства. Для остальных надо дописать отметку дней, когда в дневнике или чате это упоминалось.</li>
+      <li>Нет и надо дописать: журнал срабатываний (дата, сообщение, что ответила Рина). Из него берутся кольца на шкале, счётчик «предупредила N раз» и история в «Откуда Рина знает».</li>
+      <li>Нет и надо дописать: временные состояния со сроком (поле «до когда»), полоска считается от срока, по окончании статус removed.</li>
+      <li>Статус removed и declined уже есть, нужен только экран «Убрано» с «Вернуть».</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-buffs-b [hidden] { display: none !important; }
+#p-d-buffs-b .app-content { position: relative; gap: 14px; }
+#p-d-buffs-b .bb-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 14px; }
+#p-d-buffs-b ul { list-style: none; margin: 0; padding: 0; }
+#p-d-buffs-b input[type="text"] { background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 10px; padding: 7px 11px; min-height: 38px; color: var(--a-text); min-width: 0; width: 100%; flex: 1; }
+#p-d-buffs-b input:focus-visible { border-color: var(--a-accent); outline: 2px solid var(--a-accent); outline-offset: 1px; }
+#p-d-buffs-b .seg button { min-height: 32px; }
+
+#p-d-buffs-b .bb-temps { display: flex; flex-direction: column; gap: 10px; }
+#p-d-buffs-b .bb-tmp { --k: var(--a-ok); display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--a-surface-2); border: 1px solid transparent; }
+#p-d-buffs-b .bb-tmp.bad { --k: var(--a-warn); }
+#p-d-buffs-b .bb-tmp .bb-ico { grid-row: span 2; }
+#p-d-buffs-b .bb-tmp > span { min-width: 0; }
+#p-d-buffs-b .bb-tmp b { font-weight: 650; }
+#p-d-buffs-b .bb-tmp.flash { animation: d-buffs-b-flash .9s var(--ease); }
+#p-d-buffs-b .bb-tmp small { color: var(--a-muted); font-size: 12px; display: block; }
+#p-d-buffs-b .bb-bar { grid-column: 2 / -1; height: 6px; border-radius: 99px; background: var(--a-surface-3); overflow: hidden; }
+#p-d-buffs-b .bb-bar i { display: block; height: 100%; border-radius: 99px; background: var(--k); transition: width .9s var(--ease); }
+#p-d-buffs-b .bb-tleft { grid-column: 2 / -1; display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--a-soft); flex-wrap: wrap; }
+#p-d-buffs-b .bb-link { background: none; border: 0; padding: 0 2px; min-height: 28px; color: var(--a-accent); font-size: 12.5px; font-weight: 600; }
+#p-d-buffs-b .bb-link:hover { text-decoration: underline; }
+
+#p-d-buffs-b .bb-ico { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 19px; background: color-mix(in srgb, var(--k) 16%, transparent); border: 1px solid color-mix(in srgb, var(--k) 40%, transparent); flex: none; }
+#p-d-buffs-b .bb-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 99px; color: var(--k); background: color-mix(in srgb, var(--k) 13%, transparent); white-space: nowrap; }
+
+#p-d-buffs-b .bb-chat { display: flex; flex-direction: column; gap: 10px; }
+#p-d-buffs-b .bb-log { display: flex; flex-direction: column; gap: 6px; max-height: 190px; min-height: 76px; overflow-y: auto; padding-right: 2px; }
+#p-d-buffs-b .bb-me, #p-d-buffs-b .bb-she { max-width: 88%; padding: 7px 12px; border-radius: 14px; font-size: 13.5px; animation: d-buffs-b-msg .3s var(--ease) both; }
+#p-d-buffs-b .bb-me { align-self: flex-end; background: var(--a-accent-strong); color: var(--a-on-accent); border-bottom-right-radius: 4px; }
+#p-d-buffs-b .bb-she { align-self: flex-start; background: var(--a-surface-2); border-bottom-left-radius: 4px; }
+#p-d-buffs-b .bb-she b { color: var(--a-accent); font-weight: 650; }
+#p-d-buffs-b .bb-sys { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--a-line); font-size: 12.5px; color: var(--a-soft); }
+#p-d-buffs-b .bb-note { align-self: center; font-size: 12px; color: var(--a-muted); text-align: center; }
+#p-d-buffs-b .bb-ex { display: flex; flex-wrap: wrap; gap: 6px; }
+#p-d-buffs-b .bb-ex .chip { min-height: 34px; white-space: normal; text-align: left; }
+#p-d-buffs-b .bb-send, #p-d-buffs-b .bb-add { display: flex; gap: 8px; flex-wrap: wrap; }
+
+#p-d-buffs-b .bb-lhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+#p-d-buffs-b .bb-lhead .card-t { margin: 0; margin-right: auto; }
+#p-d-buffs-b .bb-addbtn { border-style: dashed; color: var(--a-accent); min-height: 36px; }
+#p-d-buffs-b .bb-add { margin-bottom: 10px; padding: 10px; border-radius: 12px; background: var(--a-surface-2); align-items: center; }
+#p-d-buffs-b .bb-add .seg { background: var(--a-surface); }
+#p-d-buffs-b .bb-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; margin-bottom: 8px; }
+#p-d-buffs-b .bb-legend span { display: inline-flex; align-items: center; gap: 6px; }
+#p-d-buffs-b .bb-lg { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+#p-d-buffs-b .bb-lgon { background: var(--a-soft); }
+#p-d-buffs-b .bb-lgw { border: 2px solid var(--a-soft); }
+
+#p-d-buffs-b .bb-list { display: flex; flex-direction: column; gap: 6px; }
+#p-d-buffs-b .bb-row { --k: var(--a-ok); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 74px; gap: 4px 14px; align-items: center; padding: 6px 8px 6px 6px; border-radius: 14px; border: 1px solid var(--a-line); background: var(--a-surface); transition: border-color .2s, background .2s; }
+#p-d-buffs-b .bb-row.bad { --k: var(--a-warn); }
+#p-d-buffs-b .bb-row.sug { --k: var(--a-accent); border-style: dashed; background: var(--a-accent-soft); }
+#p-d-buffs-b .bb-row.open { border-color: color-mix(in srgb, var(--k) 55%, transparent); }
+#p-d-buffs-b .bb-row.flash { animation: d-buffs-b-flash .9s var(--ease); }
+#p-d-buffs-b .bb-row.new { animation: d-buffs-b-in .5s var(--ease) both; }
+#p-d-buffs-b .bb-head { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 10px; align-items: center; background: none; border: 0; border-radius: 10px; padding: 4px; text-align: left; color: var(--a-text); min-width: 0; min-height: 44px; }
+#p-d-buffs-b .bb-head:hover .bb-nm { color: var(--a-accent); }
+#p-d-buffs-b .bb-tx { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#p-d-buffs-b .bb-nm { font-weight: 650; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; transition: color .15s; }
+#p-d-buffs-b .bb-src { font-size: 12px; color: var(--a-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#p-d-buffs-b .bb-src::before { content: attr(data-i) " "; }
+
+#p-d-buffs-b .bb-scale { position: relative; display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; align-items: center; height: 36px; padding: 0 2px; border-radius: 8px; cursor: crosshair; touch-action: pan-y; }
+#p-d-buffs-b .bb-scale::before { content: ""; position: absolute; left: 2px; right: 2px; top: 50%; height: 1px; background: var(--a-grid); }
+#p-d-buffs-b .bb-d { position: relative; justify-self: center; width: 5px; height: 5px; border-radius: 50%; background: var(--a-surface-3); }
+#p-d-buffs-b .bb-d.on { width: 9px; height: 9px; background: var(--k); }
+#p-d-buffs-b .bb-d.w { width: 10px; height: 10px; background: var(--a-surface); border: 2px solid var(--k); }
+#p-d-buffs-b .bb-d.on.w { background: var(--k); box-shadow: 0 0 0 2px var(--a-surface), 0 0 0 4px var(--k); width: 8px; height: 8px; border: 0; }
+#p-d-buffs-b .bb-d.t::after { content: ""; position: absolute; left: 50%; top: -9px; width: 1px; height: 5px; background: var(--a-muted); }
+#p-d-buffs-b .bb-d.sel { outline: 2px solid var(--a-text); outline-offset: 2px; }
+#p-d-buffs-b .bb-go .bb-d { animation: d-buffs-b-pop .45s var(--ease) both; animation-delay: calc(var(--i) * 16ms); }
+#p-d-buffs-b .bb-d.pop { animation: d-buffs-b-ping .7s var(--ease); }
+#p-d-buffs-b .bb-tip { position: absolute; bottom: calc(100% + 4px); transform: translateX(-50%); background: var(--a-text); color: var(--a-bg); font-size: 12px; padding: 4px 9px; border-radius: 8px; width: max-content; max-width: 100%; white-space: normal; text-align: center; pointer-events: none; z-index: 4; }
+#p-d-buffs-b .bb-cnt { justify-self: end; text-align: right; font-size: 11.5px; color: var(--a-muted); line-height: 1.2; }
+#p-d-buffs-b .bb-cnt b { display: block; font: 800 17px/1.1 var(--fd); color: var(--a-text); }
+
+#p-d-buffs-b .bb-det { grid-column: 1 / -1; display: grid; gap: 8px; padding: 6px 6px 8px 54px; font-size: 13px; color: var(--a-soft); animation: d-buffs-b-msg .3s var(--ease) both; }
+#p-d-buffs-b .bb-why { background: var(--a-surface-2); border-radius: 10px; padding: 8px 12px; color: var(--a-text); }
+#p-d-buffs-b .bb-why b { color: var(--a-accent); }
+#p-d-buffs-b .bb-hist { display: grid; gap: 3px; max-height: 140px; overflow-y: auto; }
+#p-d-buffs-b .bb-hist li { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px; }
+#p-d-buffs-b .bb-hist li span:first-child { color: var(--a-muted); font-variant-numeric: tabular-nums; }
+#p-d-buffs-b .bb-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+#p-d-buffs-b .bb-acts .btn { min-height: 36px; }
+
+#p-d-buffs-b .bb-gone { margin-top: 10px; }
+#p-d-buffs-b .bb-gone summary { cursor: pointer; font-size: 13px; color: var(--a-muted); font-weight: 600; padding: 6px 2px; min-height: 36px; }
+#p-d-buffs-b .bb-glist { display: grid; gap: 6px; margin-top: 4px; }
+#p-d-buffs-b .bb-glist li { --k: var(--a-muted); display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px; border-radius: 12px; border: 1px dashed var(--a-line); color: var(--a-muted); }
+#p-d-buffs-b .bb-glist li small { display: block; font-size: 12px; }
+
+#p-d-buffs-b .bb-toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: var(--a-text); color: var(--a-bg); padding: 8px 10px 8px 16px; border-radius: 12px; font-size: 13px; box-shadow: var(--a-shadow); z-index: 6; max-width: calc(100% - 24px); animation: d-buffs-b-msg .3s var(--ease) both; }
+#p-d-buffs-b .bb-toast button { background: none; border: 0; color: inherit; font-weight: 700; min-height: 34px; padding: 0 6px; white-space: nowrap; text-decoration: underline; }
+
+@keyframes d-buffs-b-pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes d-buffs-b-ping { 0% { transform: scale(2.2); } 100% { transform: scale(1); } }
+@keyframes d-buffs-b-msg { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes d-buffs-b-in { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+@keyframes d-buffs-b-flash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--k) 0%, transparent); border-color: var(--k); } 30% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--k) 30%, transparent); border-color: var(--k); background: color-mix(in srgb, var(--k) 10%, var(--a-surface)); } 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--k) 0%, transparent); } }
+
+@media (max-width: 860px) { #p-d-buffs-b .bb-top { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  #p-d-buffs-b .bb-row { grid-template-columns: minmax(0, 1fr) 64px; }
+  #p-d-buffs-b .bb-head { grid-column: 1 / -1; }
+  #p-d-buffs-b .bb-det { padding-left: 6px; }
+  #p-d-buffs-b .bb-src { white-space: normal; }
+  #p-d-buffs-b .bb-toast { left: 12px; right: 12px; transform: none; }
+}
+  </style>
+  <script>(function () {
+    "use strict";
+    var root = document.getElementById("p-d-buffs-b");
+    if (!root) return;
+    var $ = function (s) { return root.querySelector(s); };
+    var MON = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "нояб", "дек"];
+    function dn(i) { var d = new Date(2026, 10, 27); d.setDate(d.getDate() - (29 - i)); return d.getDate() + " " + MON[d.getMonth()]; }
+    var TODAY = 29, uid = 0, gen = 0;
+    var SRC = { chat: "💬", user: "✍", pattern: "🔍" };
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+    var T = [
+      { id: "shrimp", kind: "bad", ico: "🦐", name: "Аллергия на креветки", src: "chat", short: "Сказали в чате 3 сентября",
+        why: "Вы написали Рине 3 сентября: <b>«у меня аллергия на креветки, сыпь и отёк»</b>. Она сразу занесла это в профиль.",
+        onT: "", on: [], warn: [8, 21], hist: [["19 нояб", "«Что взять в суши-баре?» → Рина отсоветовала роллы с креветкой"], ["6 нояб", "Рецепт пасты → Рина заменила креветки на курицу"], ["3 сен", "Добавлено из чата"]] },
+      { id: "coffee", kind: "bad", ico: "☕", name: "Кофе натощак → изжога", src: "pattern", short: "Рина заметила: 3 раза за месяц",
+        why: "<b>Рина заметила в дневнике.</b> В дни, когда вы пили кофе до завтрака, вы 3 раза писали про изжогу: 1, 8 и 16 ноября. В 13:00 она предложила, вы нажали «Добавить».",
+        onT: "изжога после кофе натощак", on: [3, 10, 18], warn: [24], hist: [["22 нояб", "«С утра только кофе» → Рина напомнила позавтракать"], ["17 нояб", "Рина предложила, вы согласились"]] },
+      { id: "sleep", kind: "bad", ico: "😴", name: "Мало сна → болит голова", src: "pattern", short: "Рина заметила: 5 из 6 коротких ночей",
+        why: "<b>Рина заметила в дневнике.</b> После ночей короче 6 часов вы 5 раз из 6 писали «болит голова». Сон берётся из отметок подъёма и отбоя.",
+        onT: "сон меньше 6 ч, болела голова", on: [2, 7, 13, 20, 26], warn: [12, 25], hist: [["25 нояб", "«Досмотрю сериал» в 0:40 → Рина напомнила про голову"], ["11 нояб", "«Лягу в два» → Рина предупредила"], ["30 окт", "Рина предложила, вы согласились"]] },
+      { id: "pc", kind: "bad", ico: "🖥", name: "Долго за ПК → устают глаза", src: "pattern", status: "suggested", short: "Рина заметила сегодня в 13:00",
+        why: "<b>Рина заметила в дневнике.</b> В дни, когда вы сидели за ПК больше 9 часов, вы 5 раз писали «глаза устали»: 2, 9, 14, 19 и 24 ноября. Добавить это в профиль?",
+        onT: "больше 9 ч за ПК, устали глаза", on: [5, 12, 17, 22, 27], warn: [], hist: [] },
+      { id: "walk", kind: "good", ico: "🚶", name: "Прогулка → лучше сон", src: "pattern", short: "Рина заметила: 9 из 11 прогулок",
+        why: "<b>Рина заметила в дневнике.</b> После 9 прогулок из 11 вы спали дольше 7 часов. Без прогулок такое было реже, в 4 днях из 19.",
+        onT: "прогулка, сон дольше 7 ч", on: [1, 4, 6, 9, 11, 15, 19, 23, 27], warn: [16], hist: [["14 нояб", "«Скучный вечер» → Рина предложила выйти пройтись"], ["5 нояб", "Рина предложила, вы согласились"]] },
+      { id: "gym", kind: "good", ico: "🤸", name: "Зарядка утром → бодрость", src: "user", short: "Добавили сами 14 октября",
+        why: "<b>Вы добавили это сами</b> 14 октября через «+ Добавить сам». Точки на шкале: дни, когда привычка «Зарядка» отмечена.",
+        onT: "зарядка сделана", on: [0, 1, 3, 5, 8, 9, 12, 14, 15, 19, 22, 23, 26, 28], warn: [], hist: [["14 окт", "Добавлено вами"]] },
+      { id: "water", kind: "good", ico: "💧", name: "Вода → реже болит голова", src: "chat", short: "Сказали в чате 20 октября",
+        why: "Вы написали Рине 20 октября: <b>«когда пью воду, голова болит реже»</b>. Точки: дни, когда выпито 6 стаканов и больше.",
+        onT: "6 стаканов воды", on: [2, 4, 5, 9, 10, 14, 16, 17, 21, 24, 28], warn: [20], hist: [["18 нояб", "«Голова гудит» → Рина напомнила про воду"], ["20 окт", "Добавлено из чата"]] }
+    ];
+    var TMP = [
+      { id: "cold", kind: "bad", ico: "🤧", name: "Простуда", src: "Вы написали вчера утром: «кажется, простыл»", left: "Ещё 2 дня из 3", pct: 66 },
+      { id: "rest", kind: "good", ico: "🌙", name: "Выспались", src: "Сон этой ночью 8 ч 10 мин", left: "До вечера, ещё 6 ч", pct: 45 }
+    ];
+    T.forEach(function (t) { t.status = t.status || "active"; t.base = JSON.stringify({ on: t.on, warn: t.warn, hist: t.hist, status: t.status }); });
+    TMP.forEach(function (t) { t.status = "active"; });
+    var initTemps = JSON.stringify(TMP.map(function (t) { return t.status; }));
+    var filt = "all", addKind = "bad", openId = null, toastTimer = 0;
+
+    function byId(id) { for (var i = 0; i < T.length; i++) if (T[i].id === id) return T[i]; return null; }
+    function tmpById(id) { for (var i = 0; i < TMP.length; i++) if (TMP[i].id === id) return TMP[i]; return null; }
+    function tag(t) { return t.status === "suggested" ? "? ждёт ответа" : t.kind === "bad" ? "! внимание" : "✓ хорошо"; }
+
+    function dotTip(t, i) {
+      var a = [];
+      if (t.on.indexOf(i) >= 0) a.push(t.onT || "проявлялось");
+      if (t.warn.indexOf(i) >= 0) a.push(t.kind === "bad" ? "Рина предупредила" : "Рина напомнила");
+      return dn(i) + (i === TODAY ? ", сегодня" : "") + ": " + (a.length ? a.join(", ") : "ничего");
+    }
+    function scaleHTML(t) {
+      var h = "";
+      for (var i = 0; i < 30; i++) {
+        var c = "bb-d" + (t.on.indexOf(i) >= 0 ? " on" : "") + (t.warn.indexOf(i) >= 0 ? " w" : "") + (i === TODAY ? " t" : "");
+        h += '<i class="' + c + '" style="--i:' + i + '"></i>';
+      }
+      return h + '<span class="bb-tip" hidden></span>';
+    }
+    function rowHTML(t) {
+      var op = openId === t.id || t.status === "suggested";
+      var nWarn = t.warn.length;
+      var h = '<button type="button" class="bb-head" aria-expanded="' + op + '"><span class="bb-ico" aria-hidden="true">' + t.ico + '</span><span class="bb-tx"><span class="bb-nm">' + esc(t.name) + ' <span class="bb-tag">' + tag(t) + '</span></span><span class="bb-src" data-i="' + SRC[t.src] + '">' + esc(t.short) + "</span></span></button>";
+      h += '<div class="bb-scale" tabindex="0" role="img" aria-label="' + esc(t.name) + ": за 30 дней проявлялось " + t.on.length + ", Рина предупредила " + nWarn + '. Стрелки влево и вправо листают дни">' + scaleHTML(t) + "</div>";
+      h += t.status === "suggested" ? '<span class="bb-cnt"><b class="num">' + t.on.length + "</b>раз в дневнике</span>"
+        : '<span class="bb-cnt"><b class="num" data-cnt>' + nWarn + "</b>" + (t.kind === "bad" ? "предупредила" : "напомнила") + "</span>";
+      if (op) {
+        h += '<div class="bb-det"><p class="bb-why">' + t.why + "</p>";
+        if (t.status === "suggested") {
+          h += '<div class="bb-acts"><button type="button" class="btn primary" data-act="accept">Добавить</button><button type="button" class="btn" data-act="decline">Не надо</button></div>';
+        } else {
+          h += '<p>За 30 дней: ' + (t.kind === "bad" ? "проявлялось " : "помогло ") + '<b class="num">' + t.on.length + "</b> раз, Рина " + (t.kind === "bad" ? "предупредила " : "напомнила ") + '<b class="num">' + nWarn + "</b> раз.</p>";
+          if (t.hist.length) h += '<ul class="bb-hist" aria-label="История">' + t.hist.map(function (x) { return "<li><span>" + x[0] + "</span><span>" + esc(x[1]) + "</span></li>"; }).join("") + "</ul>";
+          h += '<div class="bb-acts"><button type="button" class="btn" data-act="remove">Убрать из профиля</button></div>';
+        }
+        h += "</div>";
+      }
+      return h;
+    }
+    function renderRow(t, li) {
+      li.className = "bb-row " + t.kind + (t.status === "suggested" ? " sug" : "") + (openId === t.id ? " open" : "");
+      li.dataset.id = t.id; li.innerHTML = rowHTML(t);
+    }
+    function render() {
+      var list = $("[data-list]"), gone = $("[data-gone]"), n = 0, g = 0;
+      list.innerHTML = ""; gone.innerHTML = "";
+      var order = T.filter(function (t) { return t.status === "suggested"; }).concat(T.filter(function (t) { return t.status === "active"; }));
+      order.forEach(function (t) {
+        if (filt !== "all" && t.kind !== filt) return;
+        var li = document.createElement("li"); renderRow(t, li); list.appendChild(li); n++;
+      });
+      T.forEach(function (t) {
+        if (t.status !== "removed" && t.status !== "declined") return;
+        var li = document.createElement("li"); li.dataset.id = t.id; g++;
+        li.innerHTML = '<span class="bb-ico" aria-hidden="true">' + t.ico + "</span><span>" + esc(t.name) + "<small>" + (t.status === "declined" ? "Вы ответили «Не надо», Рина не предлагает снова" : "Рина больше не учитывает это в советах") + '</small></span><button type="button" class="btn" data-act="restore">Вернуть</button>';
+        gone.appendChild(li);
+      });
+      $("[data-lcnt]").textContent = "· " + T.filter(function (t) { return t.status === "active"; }).length;
+      $("[data-gonebox]").hidden = !g; $("[data-gcnt]").textContent = "· " + g;
+      renderTemps(); rinaSay();
+    }
+    function renderTemps() {
+      var ul = $("[data-temps]"), any = false; ul.innerHTML = "";
+      TMP.forEach(function (t) {
+        if (t.status !== "active") return; any = true;
+        var li = document.createElement("li"); li.className = "bb-tmp " + t.kind; li.dataset.tmp = t.id;
+        li.innerHTML = '<span class="bb-ico" aria-hidden="true">' + t.ico + '</span><span><b>' + t.name + ' </b><span class="bb-tag">' + (t.kind === "bad" ? "! внимание" : "✓ хорошо") + "</span><small>" + esc(t.src) + "</small></span><span></span>" +
+          '<div class="bb-bar" role="img" aria-label="Осталось ' + t.pct + ' процентов"><i data-pct="' + t.pct + '" style="width:' + t.pct + '%"></i></div><div class="bb-tleft"><span>' + t.left + '</span><button type="button" class="bb-link" data-end="' + t.id + '">Закончить сейчас</button></div>';
+        ul.appendChild(li);
+      });
+      $("[data-tempty]").hidden = any;
+    }
+    function rinaSay() {
+      var w = 0; T.forEach(function (t) { if (t.status === "active" && t.kind === "bad") w += t.warn.length; });
+      var sug = byId("pc").status === "suggested";
+      $("[data-rina]").innerHTML = "За месяц я предупредила вас <b>" + w + " раз</b>, чаще всего про сон. А прогулки работают: после них вы спите лучше в <b>9 из 11</b> дней." +
+        (sug ? " И я кое-что заметила про глаза, посмотрите строку «ждёт ответа»." : "");
+    }
+
+    function toast(text, undo) {
+      var el = $("[data-toast]"); $("[data-ttext]").textContent = text; el.hidden = false;
+      el.style.animation = "none"; void el.offsetWidth; el.style.animation = "";
+      $("[data-undo]").onclick = function () { el.hidden = true; undo(); };
+      clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.hidden = true; }, 6000);
+    }
+    function snap(t) { return JSON.stringify({ on: t.on, warn: t.warn, hist: t.hist, status: t.status }); }
+    function restoreSnap(t, s) { var o = JSON.parse(s); t.on = o.on; t.warn = o.warn; t.hist = o.hist; t.status = o.status; }
+    function flash(id, newDot) {
+      var li = $('.bb-row[data-id="' + id + '"]');
+      if (!li) return;
+      if (!MaidMock.reduce) { li.classList.remove("flash"); void li.offsetWidth; li.classList.add("flash"); }
+      if (newDot && !MaidMock.reduce) { var d = li.querySelectorAll(".bb-d")[TODAY]; if (d) d.classList.add("pop"); }
+      try { li.scrollIntoView({ block: "nearest", behavior: MaidMock.reduce ? "auto" : "smooth" }); } catch (e) { li.scrollIntoView(false); }
+    }
+    function flashTmp(id) {
+      var li = $('.bb-tmp[data-tmp="' + id + '"]');
+      if (!li || MaidMock.reduce) return;
+      li.classList.remove("flash"); void li.offsetWidth; li.classList.add("flash");
+    }
+
+    function act(kind, t) {
+      var before = snap(t);
+      if (kind === "accept") {
+        t.status = "active"; t.short = "Рина заметила: 5 раз за месяц"; t.hist = [["27 нояб", "Рина предложила, вы согласились"]];
+        t.why = t.why.replace(" Добавить это в профиль?", " Вы согласились 27 ноября.");
+        openId = null; render(); var li = $('.bb-row[data-id="pc"]'); if (li && !MaidMock.reduce) li.classList.add("new");
+        toast("Добавлено в профиль: «" + t.name + "»", function () { restoreSnap(t, before); t.short = "Рина заметила сегодня в 13:00"; t.why = t.why.replace(" Вы согласились 27 ноября.", " Добавить это в профиль?"); render(); });
+      } else if (kind === "decline") {
+        t.status = "declined"; render();
+        toast("Хорошо, Рина не будет это предлагать", function () { restoreSnap(t, before); render(); });
+      } else if (kind === "remove") {
+        t.status = "removed"; openId = null; render();
+        toast("Убрано. Рина больше не будет об этом предупреждать", function () { restoreSnap(t, before); openId = t.id; render(); flash(t.id); });
+      } else if (kind === "restore") {
+        var wasDecl = t.status === "declined";
+        if (t.id === "pc") { t.short = "Рина заметила: 5 раз за месяц"; t.why = t.why.replace(" Добавить это в профиль?", " Вы согласились 27 ноября."); }
+        t.status = "active"; t.hist.unshift(["27 нояб", wasDecl ? "Вы передумали и вернули" : "Возвращено в профиль"]); render(); flash(t.id);
+        toast("Снова в профиле: «" + t.name + "»", function () { restoreSnap(t, before); if (t.id === "pc") { t.short = "Рина заметила сегодня в 13:00"; t.why = t.why.replace(" Вы согласились 27 ноября.", " Добавить это в профиль?"); } render(); });
+      }
+    }
+
+    function hit(id, text, word) {
+      var t = byId(id);
+      if (!t || t.status !== "active") return false;
+      if (t.warn.indexOf(TODAY) < 0) t.warn.push(TODAY);
+      t.hist.unshift(["27 нояб", "«" + text + "» → Рина " + word]);
+      return true;
+    }
+    function respond(text) {
+      var s = text.toLowerCase(), say = [], hits = [], quiet = [], sys = "", undo = null, tmpHit = [];
+      var cold = tmpById("cold").status === "active";
+      function want(id, line, word) { if (hit(id, text, word || "предупредила")) { say.push(line); hits.push(id); } else if (byId(id).status !== "suggested") quiet.push(byId(id).name); }
+      var m = s.match(/аллерги\S*\s+на\s+([а-яё -]{2,30})/);
+      if (m) {
+        var what = m[1].trim().replace(/[ .!]+$/, "");
+        var same = T.filter(function (x) { return x.status === "active" && x.name.toLowerCase() === ("аллергия на " + what).toLowerCase(); })[0];
+        if (same) {
+          if (same.warn.indexOf(TODAY) < 0) same.warn.push(TODAY);
+          same.hist.unshift(["27 нояб", "«" + text + "» → Рина напомнила, что уже знает"]);
+          return { say: "Я это уже помню, оно у меня в профиле.", hits: [same.id], quiet: [], sys: "", undo: null, tmp: [], mood: "bad" };
+        }
+        var nt = { id: "u" + (++uid), kind: "bad", ico: "🛡", name: "Аллергия на " + what, src: "chat", short: "Сказали в чате сегодня",
+          why: "Вы написали Рине 27 ноября: <b>«" + esc(text) + "»</b>. Она сразу занесла это в профиль.", onT: "", on: [], warn: [], hist: [["27 нояб", "Добавлено из чата"]], status: "active" };
+        T.splice(1, 0, nt);
+        say.push("Запомнила. Буду следить, чтобы в рецептах и заказах этого не было.");
+        sys = "🛡 В профиль, «! внимание»: аллергия на " + esc(what);
+        undo = function () { var k = T.indexOf(nt); if (k < 0) return; T.splice(k, 1); render(); note("Отменено: «" + nt.name + "» убрано из профиля"); };
+        hits.push(nt.id); nt.isNew = true;
+      } else {
+        if (/кревет/.test(s)) want("shrimp", "Лучше без креветок: у вас на них аллергия. Может, «Маргариту» или с курицей?");
+        if (/кофе/.test(s)) {
+          if (/сн|ноч|вечер|поздн/.test(s)) want("sleep", "Кофе на ночь мешает уснуть, а после короткой ночи у вас <b>болит голова</b>. Может, ромашковый чай?");
+          else want("coffee", "Сначала позавтракайте: кофе натощак у вас 3 раза за месяц заканчивался <b>изжогой</b>.");
+        }
+        if (/гуля|прогул/.test(s)) {
+          want("walk", "Отличная мысль: после прогулки вы <b>спите лучше</b>.", "напомнила");
+          if (cold) { say.push("Только у вас простуда: оденьтесь теплее и не дольше получаса."); tmpHit.push("cold"); }
+        }
+        if (/зарядк/.test(s)) {
+          if (/без|не буду|пропущ|не сдела/.test(s)) want("gym", "Жаль: в дни с зарядкой вы <b>бодрее до обеда</b>. Может, хотя бы 5 минут?", "напомнила");
+          else want("gym", "Умница! После зарядки вы бодрее до обеда.", "напомнила");
+          if (cold) { say.push("Пока простуда, лучше лёгкая разминка."); tmpHit.push("cold"); }
+        }
+        if (/пк|компьют|игр|монитор/.test(s)) {
+          want("pc", "Глаза у вас устают после 9 часов за ПК, сегодня уже 6. Сделайте перерыв через час.");
+          if (/ноч|поздн/.test(s)) want("sleep", "И лягте до полуночи: после короткой ночи у вас <b>болит голова</b>.");
+          if (tmpById("rest").status === "active") { say.push("Вы сегодня выспались, не тратьте это на ночь у монитора."); tmpHit.push("rest"); }
+        }
+        if (/вод[аыу]|попью|пить/.test(s) && !/кофе/.test(s)) want("water", "Да, пейте: в дни с водой голова у вас болит реже.", "напомнила");
+        if (/простыл|простуд/.test(s) && !cold) {
+          var c = tmpById("cold"); c.status = "active"; c.left = "Ещё 3 дня из 3"; c.pct = 100; c.src = "Вы написали сейчас: «" + text + "»";
+          say.push("Ох. Поставила «Простуда» на 3 дня, пока буду беречь вас."); tmpHit.push("cold");
+        }
+      }
+      if (!say.length) say.push(quiet.length ? "Хорошо!" : "Записала в дневник. Из профиля это ничего не задевает.");
+      var mood = hits.some(function (id) { var x = byId(id); return x && x.kind === "bad"; }) || tmpHit.indexOf("cold") >= 0 ? "bad" : hits.length || tmpHit.length ? "good" : "";
+      return { say: say.join(" "), hits: hits, quiet: quiet, sys: sys, undo: undo, tmp: tmpHit, mood: mood };
+    }
+    function note(t) { var p = document.createElement("p"); p.className = "bb-note"; p.textContent = t; logAdd(p); }
+    function logAdd(el) { var log = $("[data-log]"); log.appendChild(el); while (log.children.length > 8) log.removeChild(log.firstChild); log.scrollTop = log.scrollHeight; }
+    function send(text) {
+      text = text.trim(); if (!text) return;
+      var me = document.createElement("p"); me.className = "bb-me"; me.textContent = text; logAdd(me);
+      var r = respond(text), my = gen;
+      setTimeout(function () {
+        if (my !== gen) return;
+        var img = $(".rina img");
+        if (img) img.src = r.mood === "bad" ? "maid/worried.webp" : r.mood === "good" ? "maid/happy.webp" : "maid/listen.webp";
+        var she = document.createElement("div"); she.className = "bb-she"; she.innerHTML = r.say;
+        if (r.sys) {
+          var sy = document.createElement("div"); sy.className = "bb-sys"; sy.innerHTML = "<span>" + r.sys + "</span>";
+          var b = document.createElement("button"); b.type = "button"; b.className = "bb-link"; b.textContent = "↩ Отменить";
+          b.addEventListener("click", function () { if (r.undo) { r.undo(); r.undo = null; b.disabled = true; b.textContent = "Отменено"; } });
+          sy.appendChild(b); she.appendChild(sy);
+        }
+        logAdd(she);
+        if (r.quiet.length) note("«" + r.quiet.join("», «") + "» убрано из профиля, поэтому Рина промолчала");
+        if (r.hits.length) {
+          if (filt !== "all") setFilter("all");
+          render();
+          r.hits.forEach(function (id) {
+            var t = byId(id);
+            if (t && t.isNew) { t.isNew = false; var li = $('.bb-row[data-id="' + id + '"]'); if (li && !MaidMock.reduce) li.classList.add("new"); flash(id); }
+            else flash(id, true);
+          });
+        } else renderTemps();
+        r.tmp.forEach(flashTmp);
+      }, MaidMock.reduce ? 0 : 420);
+    }
+
+    function setFilter(f) {
+      filt = f;
+      root.querySelectorAll("[data-f]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.f === f)); });
+    }
+
+    root.addEventListener("click", function (e) {
+      var b;
+      if ((b = e.target.closest("[data-ex]"))) { send(b.textContent); return; }
+      if ((b = e.target.closest("[data-f]"))) { setFilter(b.dataset.f); render(); return; }
+      if ((b = e.target.closest("[data-kind]"))) { addKind = b.dataset.kind; root.querySelectorAll("[data-kind]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); return; }
+      if ((b = e.target.closest("[data-addopen]"))) { var f = $("[data-add]"); f.hidden = !f.hidden; b.setAttribute("aria-expanded", String(!f.hidden)); if (!f.hidden) $("[data-addinp]").focus(); return; }
+      if ((b = e.target.closest("[data-end]"))) {
+        var tm = tmpById(b.dataset.end); tm.status = "removed"; renderTemps();
+        toast("«" + tm.name + "» закончилось", function () { tm.status = "active"; renderTemps(); flashTmp(tm.id); });
+        return;
+      }
+      if ((b = e.target.closest("[data-act]"))) { var li = b.closest("[data-id]"); act(b.dataset.act, byId(li.dataset.id)); return; }
+      if ((b = e.target.closest(".bb-head"))) {
+        var id = b.closest(".bb-row").dataset.id, t = byId(id);
+        if (t.status === "suggested") return;
+        openId = openId === id ? null : id; render();
+        var nb = $('.bb-row[data-id="' + id + '"] .bb-head'); if (nb) nb.focus();
+      }
+    });
+    $("[data-send]").addEventListener("submit", function (e) { e.preventDefault(); var i = $("[data-inp]"); send(i.value); i.value = ""; });
+    $("[data-add]").addEventListener("submit", function (e) {
+      e.preventDefault(); var i = $("[data-addinp]"), v = i.value.trim(); if (!v) { i.focus(); return; }
+      var nt = { id: "u" + (++uid), kind: addKind, ico: addKind === "bad" ? "⚠" : "✨", name: v, src: "user", short: "Добавили сами сегодня",
+        why: "<b>Вы добавили это сами</b> 27 ноября. Рина будет учитывать это, когда сообщение его касается, и отмечать дни на шкале.", onT: "", on: [], warn: [], hist: [["27 нояб", "Добавлено вами"]], status: "active" };
+      T.splice(0, 0, nt); i.value = ""; setFilter("all"); render();
+      var li = $('.bb-row[data-id="' + nt.id + '"]'); if (li && !MaidMock.reduce) li.classList.add("new");
+      toast("Добавлено: «" + v + "»", function () { T.splice(T.indexOf(nt), 1); render(); });
+    });
+
+    function tipAt(sc, i) {
+      root.querySelectorAll(".bb-scale").forEach(function (o) { if (o !== sc) tipOff(o); });
+      var t = byId(sc.closest(".bb-row").dataset.id), tip = sc.querySelector(".bb-tip"), dots = sc.querySelectorAll(".bb-d");
+      dots.forEach(function (d, k) { d.classList.toggle("sel", k === i); });
+      tip.textContent = dotTip(t, i); tip.hidden = false;
+      var r = sc.getBoundingClientRect(), dr = dots[i].getBoundingClientRect(), x = dr.left + dr.width / 2 - r.left;
+      var w = tip.offsetWidth, x2 = Math.max(w / 2, Math.min(r.width - w / 2, x));
+      tip.style.left = x2 + "px"; sc.dataset.sel = i;
+    }
+    function tipOff(sc) { var tip = sc.querySelector(".bb-tip"); if (tip) tip.hidden = true; sc.querySelectorAll(".bb-d.sel").forEach(function (d) { d.classList.remove("sel"); }); }
+    function idxFrom(sc, x) { var r = sc.getBoundingClientRect(); return Math.max(0, Math.min(29, Math.floor((x - r.left) / r.width * 30))); }
+    root.addEventListener("pointermove", function (e) { var sc = e.target.closest(".bb-scale"); if (sc) tipAt(sc, idxFrom(sc, e.clientX)); });
+    root.addEventListener("pointerdown", function (e) { var sc = e.target.closest(".bb-scale"); if (sc) tipAt(sc, idxFrom(sc, e.clientX)); });
+    root.addEventListener("pointerout", function (e) { if (e.pointerType === "touch") return; var sc = e.target.closest(".bb-scale"); if (sc && !sc.contains(e.relatedTarget) && document.activeElement !== sc) tipOff(sc); });
+    root.addEventListener("focusin", function (e) { if (e.target.classList && e.target.classList.contains("bb-scale")) tipAt(e.target, TODAY); });
+    root.addEventListener("focusout", function (e) { if (e.target.classList && e.target.classList.contains("bb-scale")) tipOff(e.target); });
+    root.addEventListener("keydown", function (e) {
+      var sc = e.target.closest && e.target.closest(".bb-scale"); if (!sc) return;
+      var i = +(sc.dataset.sel || TODAY);
+      if (e.key === "ArrowLeft") i = Math.max(0, i - 1); else if (e.key === "ArrowRight") i = Math.min(29, i + 1); else if (e.key === "Home") i = 0; else if (e.key === "End") i = 29; else return;
+      e.preventDefault(); tipAt(sc, i);
+    });
+
+    function reset() {
+      gen++; clearTimeout(toastTimer);
+      var im = $(".rina img"); if (im) im.src = "maid/analysis.webp";
+      T = T.filter(function (t) { return !/^u\d/.test(t.id); });
+      T.forEach(function (t) { var o = JSON.parse(t.base); t.on = o.on; t.warn = o.warn; t.hist = o.hist.slice(); t.status = o.status; });
+      var pc = byId("pc"); pc.short = "Рина заметила сегодня в 13:00"; pc.why = pc.why.replace(" Вы согласились 27 ноября.", " Добавить это в профиль?");
+      var st = JSON.parse(initTemps); TMP.forEach(function (t, k) { t.status = st[k]; });
+      var c = tmpById("cold"); c.left = "Ещё 2 дня из 3"; c.pct = 66; c.src = "Вы написали вчера утром: «кажется, простыл»";
+      openId = null; setFilter("all"); $("[data-toast]").hidden = true;
+      var log = $("[data-log]"); log.innerHTML = "";
+      var p = document.createElement("div"); p.className = "bb-she"; p.innerHTML = "Напишите, что собираетесь сделать, или нажмите пример. Если это заденет что-то из профиля, я скажу."; log.appendChild(p);
+      render();
+    }
+    function play() {
+      reset();
+      if (MaidMock.reduce) return;
+      var list = $("[data-list]"); list.classList.remove("bb-go"); void list.offsetWidth; list.classList.add("bb-go"); setTimeout(function () { list.classList.remove("bb-go"); }, 1100);
+      root.querySelectorAll(".bb-bar i").forEach(function (b) {
+        b.style.transition = "none"; b.style.width = "100%"; void b.offsetWidth;
+        b.style.transition = ""; setTimeout(function () { b.style.width = b.dataset.pct + "%"; }, 120);
+      });
+      root.querySelectorAll("[data-cnt]").forEach(function (el) {
+        var n = +el.textContent, k = 0; if (!n) return; el.textContent = "0";
+        var iv = setInterval(function () { k++; el.textContent = String(k); if (k >= n) clearInterval(iv); }, 220);
+      });
+    }
+    reset();
+    MaidMock.onSeen(root, play);
+    root.addEventListener("replay", play);
+  })();</script>
+</article>

@@ -1,0 +1,651 @@
+<article class="piece" id="p-d-buffs-d">
+  <header>
+    <p class="eyebrow">Профиль · бафы и дебафы · вариант Г</p>
+    <h2>Персонаж: эффекты на теле и характеристики дня</h2>
+    <p>Профиль похож на экран героя в игре. В центре человек, каждый баф и дебаф прикреплён линией к своей части тела. Справа три числа дня: Бодрость, Сон, Пищеварение. Сработал эффект, и число сразу меняется. Напишите Рине, что собираетесь сделать, и увидите, как эффект вспыхивает и Рина отвечает.</p>
+  </header>
+  <button class="replay" type="button">Повторить анимацию</button>
+
+  <div class="app" data-hub="rina" data-tab="О вас" data-title="Профиль">
+    <div class="rina"><img data-rface src="maid/think.webp" alt="Рина"><p data-rsay></p></div>
+
+    <div class="bd-main">
+      <section class="card bd-stage" aria-labelledby="d-buffs-d-h-st">
+        <div class="bd-sthead">
+          <h4 class="card-t" id="d-buffs-d-h-st">Персонаж</h4>
+          <span class="muted bd-hint">Нажмите на часть тела или на значок</span>
+          <button type="button" class="btn bd-addopen" data-addopen aria-expanded="false">+ Свой эффект</button>
+        </div>
+        <form class="bd-addf" data-addf hidden>
+          <input type="text" maxlength="40" placeholder="Например: «От молока тяжело»" aria-label="Название эффекта" data-addname required>
+          <div class="seg" role="group" aria-label="Вид">
+            <button type="button" data-kind="debuff" aria-pressed="true">! Дебаф</button>
+            <button type="button" data-kind="buff" aria-pressed="false">✓ Баф</button>
+          </div>
+          <select data-addzone aria-label="Часть тела">
+            <option value="head">Голова</option><option value="eyes">Глаза</option><option value="heart">Сердце и силы</option><option value="belly" selected>Живот</option><option value="legs">Ноги</option>
+          </select>
+          <button type="submit" class="btn primary">Добавить</button>
+        </form>
+        <div class="bd-grid" data-grid>
+          <svg class="bd-lines" data-lines aria-hidden="true"></svg>
+          <div class="bd-col" data-col="l"></div>
+          <div class="bd-doll" data-doll>
+            <svg viewBox="0 0 200 400" aria-hidden="true">
+              <circle class="bd-glow" data-glow="head" cx="100" cy="40" r="44"/>
+              <circle class="bd-glow" data-glow="eyes" cx="112" cy="46" r="24"/>
+              <circle class="bd-glow" data-glow="heart" cx="84" cy="132" r="36"/>
+              <ellipse class="bd-glow" data-glow="belly" cx="100" cy="196" rx="44" ry="36"/>
+              <ellipse class="bd-glow" data-glow="legs" cx="100" cy="320" rx="50" ry="74"/>
+              <g class="bd-body">
+                <path d="M62 102 Q100 88 138 102 L150 112 Q160 170 168 232 L156 236 Q146 186 136 150 L132 232 L68 232 L64 150 Q54 186 44 236 L32 232 Q40 170 50 112 Z"/>
+                <path d="M70 230 L130 230 L128 384 Q118 392 106 386 L102 262 L98 262 L94 386 Q82 392 72 384 Z"/>
+                <rect x="89" y="68" width="22" height="26" rx="8"/>
+                <circle cx="100" cy="42" r="30"/>
+              </g>
+              <g class="bd-face">
+                <circle cx="90" cy="44" r="3"/><circle cx="110" cy="44" r="3"/>
+                <path d="M91 56 Q100 62 109 56"/>
+              </g>
+            </svg>
+            <div data-zbtns></div>
+          </div>
+          <div class="bd-col" data-col="r"></div>
+        </div>
+        <div class="bd-detail" data-detail aria-live="polite"></div>
+      </section>
+
+      <aside class="card bd-stats" aria-labelledby="d-buffs-d-h-ch">
+        <h4 class="card-t" id="d-buffs-d-h-ch">Характеристики дня</h4>
+        <div data-stats></div>
+        <p class="bd-leg">Черта на полосе: каким был бы день без эффектов. Считаются только эффекты, которые сработали сегодня.</p>
+        <div class="bd-shelf">
+          <p class="bd-sht">Снятые с персонажа</p>
+          <div data-shelf></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="bd-low">
+      <section class="card bd-chat" aria-labelledby="d-buffs-d-h-ct">
+        <h4 class="card-t" id="d-buffs-d-h-ct">Написать Рине</h4>
+        <div class="bd-log" data-log aria-live="polite"></div>
+        <form class="bd-send" data-send>
+          <input type="text" maxlength="80" placeholder="Что собираетесь делать?" aria-label="Сообщение Рине" data-msg>
+          <button type="submit" class="btn primary">Отправить</button>
+        </form>
+        <p class="bd-exl">Попробуйте:</p>
+        <div class="bd-ex" data-ex></div>
+      </section>
+      <section class="card bd-note" aria-labelledby="d-buffs-d-h-nt">
+        <h4 class="card-t" id="d-buffs-d-h-nt">Горничная заметила <span class="bd-when">каждый день в 13:00</span></h4>
+        <div data-sugg></div>
+      </section>
+    </div>
+
+    <div class="bd-toast" data-toast role="status" aria-live="polite" hidden><span data-ttext></span><button type="button" data-undo>↩ Отменить</button></div>
+  </div>
+
+  <div class="notes">
+    <div><h4>Что изменилось</h4><ul>
+      <li>Бафы и дебафы висят на теле: голова, глаза, сердце, живот, ноги. С первого взгляда видно, где у человека слабое место, а где опора.</li>
+      <li>Три характеристики дня считаются из эффектов. Сработал дебаф, и Пищеварение падает с 75 до 25. Пошли гулять, и Сон растёт. Каждое число раскладывается на вклады: «Зарядка +15».</li>
+      <li>Эффект бывает «спит» и «сработал сегодня». Сработавший светится, спящий тусклый: аллергия есть, но креветок сегодня не было.</li>
+      <li>Все три пути появления видны: сказали в чате («У меня аллергия на арахис»), добавили сами кнопкой «+ Свой эффект», Рина нашла закономерность в дневнике (дни-доказательства на полоске месяца).</li>
+      <li>Убрали эффект, и он ложится на полку «Снятые». Рина про него больше не предупреждает. Кнопка «Вернуть» ставит его на место.</li>
+      <li>Слабее: картинка тела занимает место, на телефоне линии пропадают и остаётся список по частям тела. Для эффектов без части тела («Сова по натуре») нужна зона «Общее». Числа пока условные.</li>
+    </ul></div>
+    <div><h4>Анимации</h4><ul>
+      <li>Вход: линии-выноски прорисовываются от значков к телу, значки выскакивают по очереди, числа дня отсчитываются от «без эффектов» до сегодняшних.</li>
+      <li>Сообщение задевает эффект: значок и часть тела вспыхивают красным или зелёным, линия загорается, над числом всплывает «−50» или «+15».</li>
+      <li>Выбор части тела: остальные значки приглушаются, у выбранной горит линия.</li>
+      <li>Временный баф «Выспались» показывает срок «до 22:00»; «Промотать до 22:00» покажет, как он гаснет.</li>
+      <li>Убрать и вернуть: значок растворяется и появляется на полке, при возврате встаёт на место со вспышкой.</li>
+    </ul></div>
+    <div><h4>Что нужно в коде</h4><ul>
+      <li>Есть: таблица эффектов (вид, название, заметка, откуда взялся, статус, дни-доказательства), запись из чата с «↩ Отменить», бафы в каждом запросе к модели, поиск закономерностей в 13:00.</li>
+      <li>Дописать: часть тела у эффекта, состояние «сработал сегодня», влияние на три характеристики и их расчёт.</li>
+      <li>Дописать: срок у временных бафов, счётчик предупреждений, кнопки ответа после предупреждения.</li>
+      <li>Полка «Снятые» по сути есть: это статус «убран», нужна кнопка «Вернуть».</li>
+    </ul></div>
+  </div>
+
+  <style>
+#p-d-buffs-d [hidden] { display: none !important; }
+#p-d-buffs-d .app-content { position: relative; }
+#p-d-buffs-d .bd-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 290px); gap: 14px; align-items: start; }
+#p-d-buffs-d .bd-sthead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+#p-d-buffs-d .bd-sthead .card-t { margin: 0; }
+#p-d-buffs-d .bd-hint { font-size: 12.5px; }
+#p-d-buffs-d .bd-addopen { margin-left: auto; min-height: 36px; }
+#p-d-buffs-d .bd-addf { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--a-surface-2); border-radius: 12px; padding: 10px; margin-bottom: 10px; animation: d-buffs-d-in .3s var(--ease); }
+#p-d-buffs-d .bd-addf input, #p-d-buffs-d .bd-send input, #p-d-buffs-d select { background: var(--a-surface); border: 1px solid var(--a-line); border-radius: 10px; padding: 7px 11px; min-height: 38px; color: var(--a-text); min-width: 0; }
+#p-d-buffs-d .bd-addf input { flex: 1 1 180px; }
+#p-d-buffs-d .bd-addf .seg button { min-height: 36px; }
+#p-d-buffs-d input:focus, #p-d-buffs-d select:focus { border-color: var(--a-accent); outline: none; }
+
+#p-d-buffs-d .bd-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 190px) minmax(0, 1fr); gap: 10px 26px; align-items: stretch; }
+#p-d-buffs-d .bd-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; }
+#p-d-buffs-d .bd-lines path { fill: none; stroke: var(--a-line); stroke-width: 1.5; stroke-dasharray: 4 3; transition: stroke .25s, opacity .25s; }
+#p-d-buffs-d .bd-lines circle { fill: var(--a-muted); transition: fill .25s; }
+#p-d-buffs-d .bd-lines .sel path { stroke: var(--a-accent); stroke-width: 2; stroke-dasharray: none; }
+#p-d-buffs-d .bd-lines .sel circle { fill: var(--a-accent); }
+#p-d-buffs-d .bd-lines .dim { opacity: .35; }
+#p-d-buffs-d .bd-lines .fl-bad path { animation: d-buffs-d-lbad .9s var(--ease); }
+#p-d-buffs-d .bd-lines .fl-ok path { animation: d-buffs-d-lok .9s var(--ease); }
+#p-d-buffs-d .bd-lines .draw path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: d-buffs-d-draw .7s var(--ease) forwards; animation-delay: var(--d, 0s); }
+#p-d-buffs-d .bd-col { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; position: relative; z-index: 1; min-width: 0; }
+#p-d-buffs-d .bd-zone { background: var(--a-surface-2); border: 1px solid var(--a-line); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; transition: opacity .25s, border-color .25s, box-shadow .25s; min-width: 0; }
+#p-d-buffs-d .bd-zone.sel { border-color: var(--a-accent); box-shadow: 0 0 0 3px var(--a-accent-soft); }
+#p-d-buffs-d .bd-zone.dim { opacity: .45; }
+#p-d-buffs-d .bd-zt { background: none; border: 0; border-radius: 8px; text-align: left; display: flex; align-items: center; gap: 6px; padding: 2px 4px; min-height: 36px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--a-muted); }
+#p-d-buffs-d .bd-zt:hover { color: var(--a-accent); }
+#p-d-buffs-d .bd-zt b { font-variant-numeric: tabular-nums; background: var(--a-surface); border-radius: 99px; padding: 0 7px; letter-spacing: 0; color: var(--a-soft); }
+#p-d-buffs-d .bd-empty { font-size: 12px; color: var(--a-muted); padding: 0 4px 2px; }
+#p-d-buffs-d .bd-e { display: flex; align-items: center; gap: 9px; min-height: 46px; padding: 4px 8px 4px 4px; border-radius: 12px; border: 1px solid transparent; background: var(--a-surface); text-align: left; color: var(--a-text); min-width: 0; transition: border-color .2s, opacity .2s; }
+#p-d-buffs-d .bd-e:hover, #p-d-buffs-d .bd-e[aria-pressed="true"] { border-color: var(--a-accent); }
+#p-d-buffs-d .bd-ic { --k: var(--a-bad); position: relative; flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 19px; line-height: 1; background: linear-gradient(160deg, color-mix(in srgb, var(--k) 30%, var(--a-surface-3)), color-mix(in srgb, var(--k) 10%, var(--a-surface-2))); border: 1.5px solid color-mix(in srgb, var(--k) 45%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--a-text) 18%, transparent); filter: saturate(.55); opacity: .8; transition: filter .25s, opacity .25s, box-shadow .25s; }
+#p-d-buffs-d .ok .bd-ic { --k: var(--a-ok); }
+#p-d-buffs-d .on .bd-ic { filter: none; opacity: 1; border-color: var(--k); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--a-text) 25%, transparent), 0 0 12px color-mix(in srgb, var(--k) 45%, transparent); }
+#p-d-buffs-d .bd-ic i { position: absolute; right: -5px; bottom: -5px; width: 17px; height: 17px; border-radius: 50%; background: var(--k); color: var(--a-bg); font: 800 10.5px/17px var(--f); font-style: normal; text-align: center; border: 2px solid var(--a-surface); }
+#p-d-buffs-d .bd-en { min-width: 0; font-size: 13px; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+#p-d-buffs-d .bd-en small { display: block; font-size: 11.5px; font-weight: 500; color: var(--a-muted); margin-top: 1px; }
+#p-d-buffs-d .on .bd-en small { color: var(--a-soft); }
+#p-d-buffs-d .bd-en small em { font-style: normal; color: var(--a-gold); font-weight: 650; }
+#p-d-buffs-d .bd-e.fl { animation: d-buffs-d-pop .9s var(--ease); }
+#p-d-buffs-d .bd-e.fl .bd-ic { animation: d-buffs-d-glow .9s var(--ease); }
+#p-d-buffs-d .bd-e.gone { animation: d-buffs-d-gone .5s var(--ease) forwards; pointer-events: none; }
+#p-d-buffs-d .bd-grid.enter .bd-e { animation: d-buffs-d-in .45s var(--ease) both; animation-delay: var(--d, 0s); }
+
+#p-d-buffs-d .bd-doll { position: relative; align-self: center; width: 100%; max-width: 190px; justify-self: center; z-index: 1; }
+#p-d-buffs-d .bd-doll svg { width: 100%; height: auto; display: block; }
+#p-d-buffs-d .bd-body path, #p-d-buffs-d .bd-body rect, #p-d-buffs-d .bd-body circle { fill: var(--a-surface-3); stroke: var(--a-line); stroke-width: 2; }
+#p-d-buffs-d .bd-face circle { fill: var(--a-muted); }
+#p-d-buffs-d .bd-face path { fill: none; stroke: var(--a-muted); stroke-width: 2.4; stroke-linecap: round; }
+#p-d-buffs-d .bd-glow { fill: var(--a-accent); opacity: 0; transition: opacity .3s; }
+#p-d-buffs-d .bd-glow.sel { opacity: .16; }
+#p-d-buffs-d .bd-glow.fl-bad { fill: var(--a-bad); animation: d-buffs-d-zone 1s var(--ease); }
+#p-d-buffs-d .bd-glow.fl-ok { fill: var(--a-ok); animation: d-buffs-d-zone 1s var(--ease); }
+#p-d-buffs-d .bd-zb { position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; border: 2px solid var(--a-surface); background: color-mix(in srgb, var(--a-accent) 22%, var(--a-surface-2)); color: var(--a-text); font: 700 12px/1 var(--f); font-variant-numeric: tabular-nums; display: grid; place-items: center; box-shadow: 0 0 0 1px var(--a-line); transition: transform .2s var(--ease), background .2s; padding: 0; }
+#p-d-buffs-d .bd-zb:hover, #p-d-buffs-d .bd-zb[aria-pressed="true"] { transform: scale(1.12); background: var(--a-accent-strong); color: var(--a-on-accent); }
+#p-d-buffs-d .bd-zb.bad { box-shadow: 0 0 0 2px var(--a-bad); }
+#p-d-buffs-d .bd-zb.ok { box-shadow: 0 0 0 2px var(--a-ok); }
+
+#p-d-buffs-d .bd-detail { margin-top: 14px; }
+#p-d-buffs-d .bd-dhint { font-size: 13px; color: var(--a-muted); background: var(--a-surface-2); border-radius: 12px; padding: 10px 14px; }
+#p-d-buffs-d .bd-d { --k: var(--a-bad); display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 4px 14px; background: var(--a-surface-2); border: 1px solid color-mix(in srgb, var(--k) 40%, transparent); border-radius: 14px; padding: 14px; animation: d-buffs-d-in .3s var(--ease); }
+#p-d-buffs-d .bd-d.ok { --k: var(--a-ok); }
+#p-d-buffs-d .bd-d.zone { --k: var(--a-accent); }
+#p-d-buffs-d .bd-d .bd-ic { width: 54px; height: 54px; font-size: 27px; border-radius: 14px; }
+#p-d-buffs-d .bd-dk { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--k); }
+#p-d-buffs-d .bd-d h5 { margin: 2px 0 4px; font: 700 16px/1.25 var(--fd); }
+#p-d-buffs-d .bd-d > div { min-width: 0; }
+#p-d-buffs-d .bd-d p { font-size: 13.5px; color: var(--a-soft); }
+#p-d-buffs-d .bd-dl { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; font-size: 13px; }
+#p-d-buffs-d .bd-dl li { min-width: 0; }
+#p-d-buffs-d .bd-dl span { display: block; font-size: 11px; font-weight: 700; color: var(--a-muted); letter-spacing: .05em; text-transform: uppercase; }
+#p-d-buffs-d .bd-dact { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#p-d-buffs-d .bd-dact .btn { min-height: 38px; }
+#p-d-buffs-d .bd-rm:hover { border-color: var(--a-bad); color: var(--a-bad); }
+#p-d-buffs-d .bd-zl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#p-d-buffs-d .bd-zl .chip { white-space: normal; text-align: left; min-height: 36px; max-width: 100%; overflow-wrap: anywhere; }
+
+#p-d-buffs-d .bd-days { margin-top: 10px; }
+#p-d-buffs-d .bd-days > span { font-size: 11px; font-weight: 700; color: var(--a-muted); letter-spacing: .05em; text-transform: uppercase; }
+#p-d-buffs-d .bd-strip { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; margin-top: 5px; }
+#p-d-buffs-d .bd-strip i { height: 14px; border-radius: 3px; background: var(--a-surface-3); }
+#p-d-buffs-d .bd-strip i.hit { background: var(--k, var(--a-accent)); }
+#p-d-buffs-d .bd-strip + small { display: flex; justify-content: space-between; font-size: 11px; color: var(--a-muted); margin-top: 3px; }
+
+#p-d-buffs-d .bd-stats { display: flex; flex-direction: column; gap: 14px; }
+#p-d-buffs-d .bd-stats .card-t { margin: 0; }
+#p-d-buffs-d .bd-s { display: flex; flex-direction: column; gap: 6px; position: relative; }
+#p-d-buffs-d .bd-sh { display: flex; align-items: baseline; gap: 8px; }
+#p-d-buffs-d .bd-sh span { font-weight: 650; font-size: 14px; }
+#p-d-buffs-d .bd-sh b { margin-left: auto; font: 800 26px/1 var(--fd); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+#p-d-buffs-d .bd-sh em { font-style: normal; font-size: 12px; font-weight: 650; min-width: 62px; text-align: right; }
+#p-d-buffs-d .bd-sh em.ok { color: var(--a-ok); } #p-d-buffs-d .bd-sh em.warn { color: var(--a-warn); } #p-d-buffs-d .bd-sh em.bad { color: var(--a-bad); }
+#p-d-buffs-d .bd-bar { position: relative; height: 12px; border-radius: 99px; background: var(--a-surface-3); }
+#p-d-buffs-d .bd-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--sc); transition: width .7s var(--ease); }
+#p-d-buffs-d .bd-bar u { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--a-text); opacity: .55; border-radius: 2px; }
+#p-d-buffs-d .bd-mods { display: flex; flex-wrap: wrap; gap: 4px; }
+#p-d-buffs-d .bd-mods span { font-size: 11.5px; padding: 1px 8px; border-radius: 99px; background: var(--a-surface-2); color: var(--a-soft); max-width: 100%; overflow-wrap: anywhere; }
+#p-d-buffs-d .bd-mods span.p b { color: var(--a-ok); } #p-d-buffs-d .bd-mods span.m b { color: var(--a-bad); }
+#p-d-buffs-d .bd-mods .no { color: var(--a-muted); background: none; padding: 0; }
+#p-d-buffs-d .bd-float { position: absolute; right: 70px; top: -6px; font: 800 15px/1 var(--fd); pointer-events: none; animation: d-buffs-d-float 1.1s var(--ease) forwards; }
+#p-d-buffs-d .bd-float.p { color: var(--a-ok); } #p-d-buffs-d .bd-float.m { color: var(--a-bad); }
+#p-d-buffs-d .bd-leg { font-size: 12px; color: var(--a-muted); }
+#p-d-buffs-d .bd-shelf { border-top: 1px solid var(--a-line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+#p-d-buffs-d .bd-sht { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--a-muted); }
+#p-d-buffs-d .bd-shelf [data-shelf] { display: flex; flex-direction: column; gap: 6px; }
+#p-d-buffs-d .bd-off { display: flex; align-items: center; gap: 8px; background: var(--a-surface-2); border-radius: 10px; padding: 4px 4px 4px 10px; font-size: 13px; color: var(--a-soft); animation: d-buffs-d-in .35s var(--ease); min-width: 0; }
+#p-d-buffs-d .bd-off span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#p-d-buffs-d .bd-off button { border: 0; background: var(--a-surface); border-radius: 8px; min-height: 36px; padding: 0 10px; font-size: 12.5px; font-weight: 650; color: var(--a-accent); }
+#p-d-buffs-d .bd-off button:hover { background: var(--a-accent-soft); }
+
+#p-d-buffs-d .bd-low { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+#p-d-buffs-d .bd-log { display: flex; flex-direction: column; gap: 8px; min-height: 120px; max-height: 330px; overflow-y: auto; padding-right: 2px; }
+#p-d-buffs-d .bd-m { max-width: 88%; padding: 8px 12px; border-radius: 14px; font-size: 13.5px; animation: d-buffs-d-in .3s var(--ease); min-width: 0; overflow-wrap: anywhere; }
+#p-d-buffs-d .bd-m.me { align-self: flex-end; background: var(--a-accent-strong); color: var(--a-on-accent); border-bottom-right-radius: 4px; }
+#p-d-buffs-d .bd-r { display: flex; align-items: flex-end; gap: 8px; max-width: 92%; animation: d-buffs-d-in .3s var(--ease); }
+#p-d-buffs-d .bd-r img { width: 38px; height: 40px; flex: none; }
+#p-d-buffs-d .bd-r .bd-m { max-width: none; background: var(--a-surface-2); border-bottom-left-radius: 4px; animation: none; }
+#p-d-buffs-d .bd-m b { color: var(--a-accent); font-weight: 650; }
+#p-d-buffs-d .bd-tag { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--a-line); font-size: 12.5px; color: var(--a-soft); }
+#p-d-buffs-d .bd-tag button, #p-d-buffs-d .bd-opts button { border: 1px solid var(--a-line); background: var(--a-surface); border-radius: 9px; min-height: 36px; padding: 0 11px; font-size: 12.5px; font-weight: 650; color: var(--a-text); }
+#p-d-buffs-d .bd-tag button:hover, #p-d-buffs-d .bd-opts button:hover { border-color: var(--a-accent); }
+#p-d-buffs-d .bd-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#p-d-buffs-d .bd-opts .risk { color: var(--a-bad); }
+#p-d-buffs-d .bd-send { display: flex; gap: 8px; margin-top: 10px; }
+#p-d-buffs-d .bd-send input { flex: 1; width: 100%; }
+#p-d-buffs-d .bd-send .btn { min-height: 38px; }
+#p-d-buffs-d .bd-exl { font-size: 12px; color: var(--a-muted); margin-top: 10px; }
+#p-d-buffs-d .bd-ex { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+#p-d-buffs-d .bd-ex .chip { min-height: 36px; white-space: normal; text-align: left; }
+
+#p-d-buffs-d .bd-when { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; }
+#p-d-buffs-d .bd-sg { --k: var(--a-bad); border: 1.5px dashed color-mix(in srgb, var(--a-accent) 55%, transparent); background: var(--a-accent-soft); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; animation: d-buffs-d-in .45s var(--ease); }
+#p-d-buffs-d .bd-sg.ok { --k: var(--a-ok); }
+#p-d-buffs-d .bd-sg .row { align-items: flex-start; }
+#p-d-buffs-d .bd-sg .row > div { min-width: 0; }
+#p-d-buffs-d .bd-sg p { font-size: 13.5px; }
+#p-d-buffs-d .bd-sg p small { display: block; color: var(--a-muted); font-size: 12px; margin-top: 2px; }
+#p-d-buffs-d .bd-sg .bd-dk { font-size: 11px; }
+#p-d-buffs-d .bd-sgb { display: flex; gap: 6px; flex-wrap: wrap; }
+#p-d-buffs-d .bd-sgb .btn { min-height: 38px; }
+#p-d-buffs-d .bd-sg.gone { animation: d-buffs-d-gone .45s var(--ease) forwards; }
+#p-d-buffs-d .bd-decl { font-size: 12px; color: var(--a-muted); margin-top: 10px; }
+
+#p-d-buffs-d .bd-toast { position: sticky; bottom: 8px; align-self: center; z-index: 5; display: flex; align-items: center; gap: 12px; background: var(--a-text); color: var(--a-bg); border-radius: 14px; padding: 6px 6px 6px 16px; font-size: 13.5px; box-shadow: var(--a-shadow); max-width: 100%; animation: d-buffs-d-in .3s var(--ease); }
+#p-d-buffs-d .bd-toast span { min-width: 0; }
+#p-d-buffs-d .bd-toast button { border: 0; border-radius: 10px; min-height: 36px; padding: 0 12px; font-weight: 700; background: color-mix(in srgb, var(--a-bg) 14%, transparent); color: var(--a-bg); white-space: nowrap; }
+
+@keyframes d-buffs-d-in { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes d-buffs-d-gone { to { opacity: 0; transform: scale(.85); filter: blur(4px); } }
+@keyframes d-buffs-d-pop { 0%, 100% { transform: none; } 25% { transform: scale(1.06); } 50% { transform: scale(.98); } 70% { transform: scale(1.03); } }
+@keyframes d-buffs-d-glow { 0%, 100% { } 30%, 65% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--k) 40%, transparent), 0 0 22px var(--k); filter: none; opacity: 1; } }
+@keyframes d-buffs-d-zone { 0% { opacity: 0; } 25% { opacity: .55; } 55% { opacity: .2; } 75% { opacity: .45; } 100% { opacity: 0; } }
+@keyframes d-buffs-d-lbad { 0%, 100% { } 20%, 70% { stroke: var(--a-bad); stroke-width: 3; } }
+@keyframes d-buffs-d-lok { 0%, 100% { } 20%, 70% { stroke: var(--a-ok); stroke-width: 3; } }
+@keyframes d-buffs-d-draw { to { stroke-dashoffset: 0; } }
+@keyframes d-buffs-d-float { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-18px); } }
+
+@media (max-width: 1000px) { #p-d-buffs-d .bd-main, #p-d-buffs-d .bd-low { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  #p-d-buffs-d .bd-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  #p-d-buffs-d .bd-doll { max-width: 150px; order: -1; }
+  #p-d-buffs-d .bd-lines { display: none; }
+  #p-d-buffs-d .bd-hint { display: none; }
+  #p-d-buffs-d .bd-dl { grid-template-columns: minmax(0, 1fr); }
+  #p-d-buffs-d .bd-d { grid-template-columns: 44px minmax(0, 1fr); padding: 12px; }
+  #p-d-buffs-d .bd-d .bd-ic { width: 44px; height: 44px; font-size: 22px; }
+  #p-d-buffs-d .bd-r, #p-d-buffs-d .bd-m { max-width: 100%; }
+}
+  </style>
+
+  <script>(function () {
+  "use strict";
+  var root = document.getElementById("p-d-buffs-d");
+  if (!root) return;
+  var M = window.MaidMock || { reduce: false, onSeen: function (el, fn) { fn(); } };
+  function $(s, el) { return (el || root).querySelector(s); }
+  function $$(s, el) { return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function pl(n, a, b, c) { var d = n % 10, e = n % 100; return d === 1 && e !== 11 ? a : d >= 2 && d <= 4 && (e < 12 || e > 14) ? b : c; }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  var ZONES = [
+    { k: "head", n: "Голова", side: "l", x: 50, y: 4 },
+    { k: "eyes", n: "Глаза", side: "l", x: 61, y: 13.5 },
+    { k: "heart", n: "Сердце и силы", side: "l", x: 41, y: 33 },
+    { k: "belly", n: "Живот", side: "r", x: 52, y: 49 },
+    { k: "legs", n: "Ноги", side: "r", x: 58, y: 80 }
+  ];
+  var ZN = {}; ZONES.forEach(function (z) { ZN[z.k] = z; });
+  var STATS = [
+    { k: "energy", n: "Бодрость", ic: "⚡", base: 60, c: "var(--a-gold)" },
+    { k: "sleep", n: "Сон", ic: "☾", base: 65, c: "var(--c-sleep)" },
+    { k: "digest", n: "Пищеварение", ic: "🍽", base: 75, c: "var(--a-accent)" }
+  ];
+  var SN = { energy: "бодрость", sleep: "сон", digest: "пищеварение" };
+  var SRC = { user: "вы добавили сами", chat: "вы сказали Рине в чате", pattern: "Рина нашла в дневнике" };
+
+  var START = {
+    fx: [
+      { id: "nosleep", z: "head", kind: "debuff", ic: "🥱", n: "Мало сна → болит голова", note: "Если спите меньше 6 часов, к обеду болит голова.", src: "pattern", when: "15 октября", days: [2, 9, 15, 22], mod: { energy: -20, sleep: -25 }, fired: false, warns: 3 },
+      { id: "water", z: "head", kind: "buff", ic: "💧", n: "Вода → голова болит меньше", note: "Два стакана воды до обеда снимают головную боль.", src: "user", when: "2 ноября", mod: { energy: 5 }, fired: true, warns: 0, kw: ["вод"] },
+      { id: "pc", z: "eyes", kind: "debuff", ic: "🖥", n: "Долго за ПК → глаза устают", note: "Больше 4 часов подряд. Сегодня уже 5 ч 10 мин.", src: "user", when: "14 октября", mod: { energy: -10 }, fired: true, warns: 7, kw: ["пк", "компьютер", "поиграю", "игр", "сериал"] },
+      { id: "charge", z: "heart", kind: "buff", ic: "🤸", n: "Зарядка утром → бодрость", note: "10 минут зарядки, и до обеда вы бодрее.", src: "pattern", when: "8 ноября", days: [3, 5, 8, 12, 19, 24], mod: { energy: 15 }, fired: true, warns: 0, kw: ["зарядк", "спорт", "трениров"] },
+      { id: "shrimp", z: "belly", kind: "debuff", ic: "🦐", n: "Аллергия на креветки", note: "Сыпь и отёк. Рина проверяет заказы еды и рецепты.", src: "chat", when: "3 октября", mod: { digest: -50 }, fired: false, warns: 2, kw: ["креветк", "морепрод"] },
+      { id: "coffee", z: "belly", kind: "debuff", ic: "☕", n: "Кофе натощак → изжога", note: "Сначала завтрак, потом кофе.", src: "pattern", when: "24 октября", days: [4, 11, 23], mod: { digest: -30 }, fired: false, warns: 5 },
+      { id: "walk", z: "legs", kind: "buff", ic: "🚶", n: "Прогулка → лучше сон", note: "После получаса на улице вы засыпаете на 20 минут быстрее.", src: "pattern", when: "1 ноября", days: [6, 10, 14, 20, 27], mod: { sleep: 15, energy: 5 }, fired: false, warns: 0, kw: ["гулять", "прогул", "погуля", "на улиц"] }
+    ],
+    sugg: [
+      { id: "late", z: "belly", kind: "debuff", ic: "🌙", n: "Поздний ужин → хуже сон", note: "Ужин после 22:00, и ночью вы просыпаетесь.", why: "4 раза за месяц", days: [6, 13, 19, 26], mod: { sleep: -10, digest: -10 }, kw: ["ужин", "поем на ночь", "перекус"] },
+      { id: "read", z: "head", kind: "buff", ic: "📖", n: "Чтение перед сном → засыпаете быстрее", note: "Полчаса книги вместо телефона, и вы спите дольше.", why: "3 раза за месяц", days: [3, 10, 17], mod: { sleep: 10 }, kw: ["почита", "книг"] }
+    ],
+    declined: [],
+    log: [{ face: "listen", t: "Напишите, что собираетесь делать. Если это заденет ваш баф или дебаф, я скажу сразу." }]
+  };
+  var WARN = {
+    shrimp: { face: "worried", t: "Лучше без креветок: у вас на них <b>аллергия</b>. Может, пиццу с курицей?", safe: ["Возьму с курицей", "Отличный выбор! Записала заказ без креветок."], risk: ["Всё равно с креветками", "Хорошо. Держите таблетку от аллергии под рукой, я отметила это в дневнике."] },
+    nosleep: { face: "worried", t: "Кофе перед сном отнимет час сна, а когда <b>мало сна</b>, у вас болит голова. Может, ромашковый чай?", safe: ["Выпью чай", "Спасибо! Завтра проснётесь бодрее."], risk: ["Всё равно кофе", "Поняла. Утром напомню про воду: она у вас снимает головную боль."] },
+    coffee: { face: "think", t: "Только сначала позавтракайте: <b>кофе натощак</b> даёт вам изжогу.", safe: ["Сначала поем", "Умница! Тогда кофе без последствий."], risk: ["Выпью так", "Ладно. Если начнётся изжога, выпейте воды и поешьте."] },
+    pc: { face: "pout", t: "Глаза и так устали: сегодня <b>5 ч 10 мин за ПК</b>. Сделайте перерыв 10 минут, а потом можно.", safe: ["Сделаю перерыв", "Спасибо! Глазам станет легче, бодрость вернётся."], risk: ["Сяду сразу", "Хорошо. Через час напомню про перерыв."] }
+  };
+  var EXAMPLES = ["Закажу пиццу с креветками", "Выпью кофе перед сном", "Пойду гулять", "Посижу ещё за ПК", "Я сегодня отлично выспался", "У меня аллергия на арахис"];
+
+  var S, nid, shown = {}, toastTimer = 0, undoFn = null, firstPlay = true, lineTimer = 0, lineSize = "";
+
+  function reset() { S = clone(START); S.removed = []; S.sel = null; S.zsel = null; nid = 1; }
+  function fx(id) { for (var i = 0; i < S.fx.length; i++) if (S.fx[i].id === id) return S.fx[i]; return null; }
+  function k2(e) { return e.kind === "buff" ? "ok" : "bad"; }
+  function modTxt(e) {
+    if (!e.mod) return "";
+    return Object.keys(e.mod).map(function (k) { var v = e.mod[k]; return (v > 0 ? "+" : "−") + Math.abs(v) + " " + SN[k]; }).join(", ");
+  }
+  function calc() {
+    var v = {}, c = {};
+    STATS.forEach(function (s) { v[s.k] = s.base; c[s.k] = []; });
+    S.fx.forEach(function (e) {
+      if (!e.fired || !e.mod) return;
+      Object.keys(e.mod).forEach(function (k) { v[k] += e.mod[k]; c[k].push([e, e.mod[k]]); });
+    });
+    Object.keys(v).forEach(function (k) { v[k] = Math.max(0, Math.min(100, v[k])); });
+    return { v: v, c: c };
+  }
+
+  function effBtn(e, i) {
+    var st = e.fired ? "сработал сегодня" : "спит";
+    var sub = e.until ? '<em>до ' + e.until + '</em> · ' + st : st;
+    return '<button type="button" class="bd-e ' + k2(e) + (e.fired ? " on" : "") + '" data-e="' + e.id + '" style="--d:' + (i * 0.06).toFixed(2) + 's" aria-pressed="' + (S.sel === e.id) + '" aria-label="' + (e.kind === "buff" ? "Баф" : "Дебаф") + ": " + esc(e.n) + ", " + st + '">' +
+      '<span class="bd-ic" aria-hidden="true">' + e.ic + "<i>" + (e.kind === "buff" ? "✓" : "!") + "</i></span>" +
+      '<span class="bd-en">' + esc(e.n) + "<small>" + sub + "</small></span></button>";
+  }
+  function renderZones() {
+    var n = 0;
+    ["l", "r"].forEach(function (side) {
+      $('[data-col="' + side + '"]').innerHTML = ZONES.filter(function (z) { return z.side === side; }).map(function (z) {
+        var list = S.fx.filter(function (e) { return e.z === z.k; });
+        var cls = S.zsel ? (S.zsel === z.k ? " sel" : " dim") : "";
+        return '<div class="bd-zone' + cls + '" data-zone="' + z.k + '"><button type="button" class="bd-zt" data-zsel="' + z.k + '" aria-pressed="' + (S.zsel === z.k) + '">' + z.n + " <b>" + list.length + "</b></button>" +
+          (list.length ? list.map(function (e) { return effBtn(e, n++); }).join("") : '<p class="bd-empty">Пока ничего</p>') + "</div>";
+      }).join("");
+    });
+    $("[data-zbtns]").innerHTML = ZONES.map(function (z) {
+      var list = S.fx.filter(function (e) { return e.z === z.k && e.fired; });
+      var bad = list.some(function (e) { return e.kind === "debuff"; }), ok = list.some(function (e) { return e.kind === "buff"; });
+      var all = S.fx.filter(function (e) { return e.z === z.k; }).length;
+      return '<button type="button" class="bd-zb' + (bad ? " bad" : ok ? " ok" : "") + '" data-zsel="' + z.k + '" style="left:' + z.x + "%;top:" + z.y + '%" aria-pressed="' + (S.zsel === z.k) + '" aria-label="' + z.n + ": " + all + " " + pl(all, "эффект", "эффекта", "эффектов") + '">' + all + "</button>";
+    }).join("");
+    $$(".bd-glow").forEach(function (g) { g.classList.toggle("sel", S.zsel === g.getAttribute("data-glow")); });
+  }
+
+  function drawLines(anim) {
+    var grid = $("[data-grid]"), svg = $("[data-lines]");
+    var gr = grid.getBoundingClientRect();
+    if (!gr.width) return;
+    svg.setAttribute("viewBox", "0 0 " + gr.width + " " + gr.height); lineSize = Math.round(gr.width) + "x" + Math.round(gr.height);
+    var doll = $("[data-doll]").getBoundingClientRect();
+    svg.innerHTML = ZONES.map(function (z, i) {
+      var box = $('.bd-zone[data-zone="' + z.k + '"]');
+      if (!box) return "";
+      var b = box.getBoundingClientRect();
+      var ax = doll.left - gr.left + doll.width * z.x / 100, ay = doll.top - gr.top + doll.height * z.y / 100;
+      var sx = z.side === "l" ? b.right - gr.left : b.left - gr.left, sy = b.top - gr.top + Math.min(22, b.height / 2);
+      var mx = sx + (z.side === "l" ? 12 : -12);
+      var cls = (S.zsel ? (S.zsel === z.k ? "sel" : "dim") : "") + (anim ? " draw" : "");
+      return '<g class="' + cls + '" data-line="' + z.k + '" style="--d:' + (i * 0.08).toFixed(2) + 's"><path' + (anim ? ' pathLength="1"' : "") + ' d="M' + sx.toFixed(1) + " " + sy.toFixed(1) + " H" + mx.toFixed(1) + " L" + ax.toFixed(1) + " " + ay.toFixed(1) + '"/><circle cx="' + sx.toFixed(1) + '" cy="' + sy.toFixed(1) + '" r="3"/></g>';
+    }).join("");
+    clearTimeout(lineTimer);
+    if (anim) lineTimer = setTimeout(function () { $$("g", svg).forEach(function (g) { g.classList.remove("draw"); }); $$("path", svg).forEach(function (p) { p.removeAttribute("pathLength"); }); }, 1200);
+  }
+
+  function renderStats(anim) {
+    var r = calc();
+    $("[data-stats]").innerHTML = STATS.map(function (s) {
+      var v = r.v[s.k], lvl = v >= 70 ? ["ok", "хорошо"] : v >= 40 ? ["warn", "так себе"] : ["bad", "плохо"];
+      var from = shown[s.k] == null ? v : shown[s.k];
+      var mods = r.c[s.k].length ? r.c[s.k].map(function (p) { return '<span class="' + (p[1] > 0 ? "p" : "m") + '">' + esc(p[0].n.split(" →")[0]) + " <b>" + (p[1] > 0 ? "+" : "−") + Math.abs(p[1]) + "</b></span>"; }).join("") : '<span class="no">Сегодня ничего не повлияло</span>';
+      return '<div class="bd-s" data-s="' + s.k + '" style="--sc:' + s.c + '"><div class="bd-sh"><span>' + s.ic + " " + s.n + '</span><b class="num" data-sv="' + s.k + '">' + from + '</b><em class="' + lvl[0] + '">' + lvl[1] + "</em></div>" +
+        '<div class="bd-bar" role="img" aria-label="' + s.n + ": " + v + " из 100, без эффектов " + s.base + '"><i style="width:' + from + '%" data-sb="' + s.k + '"></i><u style="left:' + s.base + '%" title="Без эффектов: ' + s.base + '"></u></div>' +
+        '<div class="bd-mods">' + mods + "</div></div>";
+    }).join("");
+    STATS.forEach(function (s) {
+      var to = r.v[s.k], from = shown[s.k] == null ? to : shown[s.k];
+      shown[s.k] = to;
+      var bar = $('[data-sb="' + s.k + '"]'), num = $('[data-sv="' + s.k + '"]');
+      if (from === to || M.reduce) { bar.style.width = to + "%"; num.textContent = to; return; }
+      void bar.offsetWidth; bar.style.width = to + "%";
+      if (!anim) {
+        var f = document.createElement("span"); f.className = "bd-float " + (to > from ? "p" : "m"); f.textContent = (to > from ? "+" : "−") + Math.abs(to - from);
+        $('[data-s="' + s.k + '"]').appendChild(f);
+      }
+      var t0 = performance.now(), d = 650;
+      (function tick(t) { var p = Math.min(1, (t - t0) / d); p = 1 - Math.pow(1 - p, 3); num.textContent = Math.round(from + (to - from) * p); if (p < 1) requestAnimationFrame(tick); })(t0);
+    });
+  }
+
+  function strip(days) {
+    var h = ""; for (var d = 1; d <= 30; d++) h += '<i class="' + (days.indexOf(d) >= 0 ? "hit" : "") + '" title="' + d + ' ноября"></i>';
+    return '<div class="bd-strip" aria-label="Дни: ' + days.join(", ") + ' ноября">' + h + "</div><small><span>1 ноя</span><span>30 ноя</span></small>";
+  }
+  function renderDetail() {
+    var box = $("[data-detail]");
+    var e = S.sel && fx(S.sel);
+    if (e) {
+      var src = SRC[e.src] + (e.when ? " " + e.when : "");
+      box.innerHTML = '<div class="bd-d ' + k2(e) + '"><span class="bd-ic" aria-hidden="true">' + e.ic + "<i>" + (e.kind === "buff" ? "✓" : "!") + "</i></span><div>" +
+        '<p class="bd-dk">' + (e.kind === "buff" ? "✓ Баф" : "! Дебаф") + " · " + ZN[e.z].n + " · " + (e.until ? "до " + e.until : "постоянный") + "</p><h5>" + esc(e.n) + "</h5><p>" + esc(e.note) + "</p>" +
+        '<ul class="bd-dl"><li><span>Откуда</span>' + src + "</li><li><span>Сегодня</span>" + (e.fired ? "сработал" : "спит, не сработал") + "</li>" +
+        "<li><span>Влияет</span>" + (e.mod ? modTxt(e) : "Рина узнает по дневнику, когда наберётся 3 случая") + "</li>" +
+        "<li><span>Рина предупредила</span>" + (e.kind === "buff" ? "баф, напоминает с похвалой" : e.warns + " " + pl(e.warns, "раз", "раза", "раз") + " за месяц") + "</li></ul>" +
+        (e.days ? '<div class="bd-days" style="--k:var(--a-' + k2(e) + ')"><span>Когда это было</span>' + strip(e.days) + "</div>" : "") +
+        "</div>" + '<div class="bd-dact"><button type="button" class="btn bd-rm" data-rm="' + e.id + '">Убрать из профиля</button>' +
+        (e.until ? '<button type="button" class="btn" data-skip="' + e.id + '">⏩ Промотать до ' + e.until + "</button>" : "") +
+        '<button type="button" class="btn ghost" data-close>Закрыть</button></div></div>';
+      return;
+    }
+    if (S.zsel) {
+      var z = ZN[S.zsel], list = S.fx.filter(function (x) { return x.z === z.k; });
+      box.innerHTML = '<div class="bd-d zone"><span class="bd-ic" aria-hidden="true">◎</span><div><p class="bd-dk">Часть тела</p><h5>' + z.n + "</h5><p>" + (list.length ? list.length + " " + pl(list.length, "эффект", "эффекта", "эффектов") + ", сработало сегодня: " + list.filter(function (x) { return x.fired; }).length + ". Выберите значок, чтобы узнать подробнее." : "Здесь пока пусто. Добавьте свой эффект кнопкой «+ Свой эффект».") + "</p>" +
+        '<div class="bd-zl">' + list.map(function (x) { return '<button type="button" class="chip" data-pick="' + x.id + '">' + x.ic + " " + esc(x.n) + "</button>"; }).join("") + "</div></div>" +
+        '<div class="bd-dact"><button type="button" class="btn ghost" data-close>Показать всё тело</button></div></div>';
+      return;
+    }
+    box.innerHTML = '<p class="bd-dhint">Яркий значок сработал сегодня и меняет характеристики. Тусклый спит: эффект есть, но сегодня его не было. ✓ баф помогает, ! дебаф мешает.</p>';
+  }
+  function renderShelf() {
+    $("[data-shelf]").innerHTML = S.removed.length ? S.removed.map(function (e) {
+      return '<div class="bd-off"><span>' + e.ic + " " + esc(e.n) + '</span><button type="button" data-back="' + e.id + '">Вернуть</button></div>';
+    }).join("") : '<p class="bd-leg">Пусто. Убранный эффект ляжет сюда, и Рина перестанет о нём напоминать.</p>';
+  }
+  function renderSugg() {
+    var s = S.sugg[0], box = $("[data-sugg]");
+    var decl = S.declined.length ? '<p class="bd-decl">Больше не предложу: ' + S.declined.map(function (x) { return "«" + esc(x.n) + "»"; }).join(", ") + "</p>" : "";
+    if (!s) { box.innerHTML = '<div class="bd-r"><img src="maid/done.webp" alt=""><p class="bd-m">Пока ничего нового. Загляну в дневник завтра в 13:00.</p></div>' + decl; return; }
+    box.innerHTML = '<div class="bd-sg ' + k2(s) + '" data-sg><div class="row"><span class="bd-ic" aria-hidden="true">' + s.ic + "<i>" + (s.kind === "buff" ? "✓" : "!") + "</i></span><div>" +
+      '<p class="bd-dk" style="color:var(--a-' + k2(s) + ')">' + (s.kind === "buff" ? "✓ Похоже на баф" : "! Похоже на дебаф") + " · " + ZN[s.z].n + "</p><p><b>" + esc(s.n) + "</b><small>" + esc(s.note) + " Было " + s.why + ".</small></p></div></div>" +
+      '<div class="bd-days" style="--k:var(--a-' + k2(s) + ')">' + strip(s.days) + "</div>" +
+      '<div class="bd-sgb"><button type="button" class="btn primary" data-acc>Добавить</button><button type="button" class="btn" data-dec>Не надо</button></div></div>' + decl;
+  }
+  function renderChat() {
+    var log = $("[data-log]");
+    log.innerHTML = S.log.slice(-8).map(function (m, i, arr) {
+      if (m.me) return '<p class="bd-m me">' + esc(m.t) + "</p>";
+      var idx = S.log.length - arr.length + i;
+      var tag = m.made ? '<div class="bd-tag"><span>🛡 в профиль, ' + m.made + "</span>" + (m.undone ? "<span>отменено</span>" : '<button type="button" data-unmake="' + idx + '">↩ Отменить</button>') + "</div>" : "";
+      var opts = m.opts && !m.done ? '<div class="bd-opts">' + m.opts.map(function (o, j) { return '<button type="button" class="' + (j ? "risk" : "") + '" data-opt="' + idx + ":" + j + '">' + o + "</button>"; }).join("") + "</div>" : "";
+      return '<div class="bd-r"><img src="maid/' + (m.face || "neutral") + '.webp" alt="Рина"><div class="bd-m">' + m.t + tag + opts + "</div></div>";
+    }).join("");
+    log.scrollTop = log.scrollHeight;
+  }
+  function renderRina() {
+    var c = calc().v, e = fx("pc"), ns = fx("nosleep"), face = "think", t;
+    if (ns && ns.fired) { face = "worried"; t = "Сегодня <b>мало сна</b>, к обеду может заболеть голова. Выпейте воды: у вас это помогает."; }
+    else if (c.digest < 40) { face = "worried"; t = "Пищеварение сегодня <b>" + c.digest + "</b>. Лёгкий ужин и вода помогут, а я присмотрю за заказами."; }
+    else if (e && e.fired) { t = "Глаза устали: <b>5 ч 10 мин за ПК</b>. Перерыв на 10 минут вернёт <b>+10 к бодрости</b>. А вечерняя прогулка поднимет Сон."; }
+    else if (fx("walk") && !fx("walk").fired) { face = "happy"; t = "Бодрость <b>" + c.energy + "</b>, отличный день. Если вечером погуляете, Сон поднимется до <b>" + Math.min(100, c.sleep + 15) + "</b>."; }
+    else { face = "proud"; t = "Сегодня всё в вашу пользу: бодрость <b>" + c.energy + "</b>, сон <b>" + c.sleep + "</b>. Так держать!"; }
+    $("[data-rface]").src = "maid/" + face + ".webp"; $("[data-rsay]").innerHTML = t;
+  }
+  function renderAll(anim) { renderZones(); renderDetail(); renderShelf(); renderSugg(); renderChat(); renderStats(anim); renderRina(); drawLines(anim); }
+  function refresh() { renderZones(); renderDetail(); renderShelf(); renderStats(false); renderRina(); drawLines(false); }
+
+  function flash(id) {
+    var e = fx(id); if (!e || M.reduce) return;
+    var c = e.kind === "buff" ? "fl-ok" : "fl-bad";
+    var b = $('[data-e="' + id + '"]'), g = $('[data-glow="' + e.z + '"]'), l = $('[data-line="' + e.z + '"]');
+    [[b, "fl"], [g, c], [l, c]].forEach(function (p) {
+      var x = p[0]; if (!x) return;
+      clearTimeout(x.bdT); x.classList.remove("fl", "fl-ok", "fl-bad"); void x.getBoundingClientRect(); x.classList.add(p[1]);
+      x.bdT = setTimeout(function () { x.classList.remove("fl", "fl-ok", "fl-bad"); }, 1050);
+    });
+  }
+  function toast(t, undo) {
+    var el = $("[data-toast]"); $("[data-ttext]").textContent = t; undoFn = undo || null;
+    $("[data-undo]").hidden = !undo; el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = "";
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.hidden = true; undoFn = null; }, 6000);
+  }
+
+  function removeFx(id, why) {
+    var e = fx(id); if (!e) return;
+    var b = $('[data-e="' + id + '"]');
+    if (b && b.classList.contains("gone")) return;
+    var go = function () {
+      var idx = S.fx.indexOf(e); if (idx < 0) return;
+      S.fx.splice(idx, 1); if (!e.until) S.removed.unshift(e); if (S.sel === id) S.sel = null; refresh();
+      toast(why || "«" + e.n + "» убран из профиля", function () {
+        if (S.fx.indexOf(e) >= 0) return;
+        S.fx.splice(Math.min(idx, S.fx.length), 0, e); S.removed = S.removed.filter(function (x) { return x !== e; }); refresh(); flash(e.id);
+      });
+    };
+    if (b && !M.reduce) { b.classList.add("gone"); setTimeout(go, 450); } else go();
+  }
+
+  function addFx(e) { S.fx.push(e); refresh(); flash(e.id); }
+  function stems(name) { return name.toLowerCase().replace(/ё/g, "е").split(/[^а-яa-z]+/).filter(function (w) { return w.length > 3 && ["аллергия", "после", "тяжело", "лучше", "хуже"].indexOf(w) < 0; }).map(function (w) { return w.slice(0, 5); }); }
+  function matches(e, low) {
+    if (e.id === "coffee") return /натощак/.test(low) || (/кофе/.test(low) && !/сном|вечер|ночь/.test(low));
+    if (e.id === "nosleep") return /перед сном|на ночь кофе|лягу поздно|до утра|не высп/.test(low) || (/кофе/.test(low) && /сном|вечер|ночь/.test(low));
+    return (e.kw || []).some(function (k) { return low.indexOf(k) >= 0; });
+  }
+  function say(m) { S.log.push(m); renderChat(); }
+  function send(text) {
+    text = text.trim(); if (!text) return;
+    S.log.push({ me: 1, t: text });
+    var low = text.toLowerCase().replace(/ё/g, "е");
+    var al = low.match(/аллерги[а-я]* на ([а-я\- ]{3,30})/);
+    if (al && !/креветк/.test(low)) {
+      var what = al[1].trim(), same = S.fx.filter(function (x) { return x.n.toLowerCase() === "аллергия на " + what; })[0];
+      if (same) { flash(same.id); say({ face: "smug", t: "Помню: <b>" + esc(same.n) + "</b> уже есть в профиле." }); return; }
+      var id = "u" + nid++;
+      var ne = { id: id, z: "belly", kind: "debuff", ic: "🥜", n: "Аллергия на " + what, note: "Рина проверяет заказы еды и рецепты.", src: "chat", when: "сегодня", mod: { digest: -50 }, fired: false, warns: 0, kw: [what.slice(0, 5)] };
+      addFx(ne);
+      say({ face: "write", t: "Запомнила. Буду следить, чтобы <b>" + esc(what) + "</b> не попадал в еду и рецепты.", made: "дебаф: аллергия на " + esc(what), mid: id });
+      return;
+    }
+    if (/выспал/.test(low)) {
+      var old = fx("slept");
+      if (!old) addFx({ id: "slept", z: "head", kind: "buff", ic: "😴", n: "Выспались", note: "Сегодня вы спали 8 ч 20 мин. Баф действует до вечера.", src: "chat", when: "сегодня", until: "22:00", mod: { energy: 20, sleep: 10 }, fired: true, warns: 0 });
+      else flash("slept");
+      say({ face: "happy", t: "Как хорошо! Добавила баф на сегодня: <b>бодрость +20</b> до 22:00.", made: old ? null : "баф до 22:00: выспались", mid: "slept" });
+      return;
+    }
+    var hits = S.fx.filter(function (e) { return matches(e, low); });
+    if (!hits.length) {
+      var gone = S.removed.filter(function (e) { return matches(e, low); })[0];
+      say(gone ? { face: "neutral", t: "Записала. Про «" + esc(gone.n) + "» молчу: вы убрали это из профиля." } : { face: "listen", t: "Записала в дневник. Ни один ваш баф или дебаф это не задевает." });
+      refresh(); return;
+    }
+    var d = hits.filter(function (e) { return e.kind === "debuff"; })[0];
+    var bf = hits.filter(function (e) { return e.kind === "buff"; });
+    if (bf.length && !d) {
+      bf.forEach(function (e) { e.fired = true; });
+      refresh(); bf.forEach(function (e) { flash(e.id); });
+      say({ face: "excited", t: "Отличная мысль! Это ваш баф <b>«" + esc(bf[0].n) + "»</b>: " + (bf[0].mod ? modTxt(bf[0]) : "засчитала") + "." });
+      return;
+    }
+    d.warns++;
+    var w = WARN[d.id] || { face: "worried", t: "Осторожно: это задевает ваш дебаф <b>«" + esc(d.n) + "»</b>.", safe: ["Учту", "Спасибо, что слушаете!"], risk: ["Всё равно сделаю", "Хорошо. Отметила это в дневнике."] };
+    refresh(); hits.forEach(function (e) { flash(e.id); });
+    say({ face: w.face, t: w.t, opts: [w.safe[0], w.risk[0]], eid: d.id });
+  }
+  function opt(idx, j) {
+    var m = S.log[idx]; if (!m || m.done) return;
+    var e = fx(m.eid), w = WARN[m.eid] || { safe: ["", "Спасибо, что слушаете!"], risk: ["", "Хорошо. Отметила это в дневнике."] };
+    m.done = true; S.log.push({ me: 1, t: m.opts[j] });
+    if (j === 1 && e) { e.fired = true; }
+    if (j === 0 && e && e.id === "pc") { e.fired = false; }
+    S.log.push({ face: j ? "sad" : "thumbsup", t: j ? w.risk[1] : w.safe[1] });
+    renderChat(); refresh(); if (e) flash(e.id);
+  }
+
+  root.addEventListener("click", function (ev) {
+    var t = ev.target.closest("button"); if (!t || !root.contains(t)) return;
+    var a;
+    if ((a = t.getAttribute("data-e"))) { S.sel = S.sel === a ? null : a; S.zsel = null; renderZones(); renderDetail(); drawLines(false); var nb = $('[data-e="' + a + '"]'); if (nb) nb.focus(); return; }
+    if ((a = t.getAttribute("data-zsel"))) { var zc = t.classList.contains("bd-zb") ? ".bd-zb" : ".bd-zt"; S.zsel = S.zsel === a ? null : a; S.sel = null; renderZones(); renderDetail(); drawLines(false); var nz = $(zc + '[data-zsel="' + a + '"]'); if (nz) nz.focus(); return; }
+    if ((a = t.getAttribute("data-pick"))) { S.sel = a; S.zsel = null; renderZones(); renderDetail(); drawLines(false); return; }
+    if (t.hasAttribute("data-close")) { S.sel = null; S.zsel = null; renderZones(); renderDetail(); drawLines(false); return; }
+    if ((a = t.getAttribute("data-rm"))) { removeFx(a); return; }
+    if ((a = t.getAttribute("data-skip"))) { removeFx(a, "22:00. Баф «Выспались» закончился сам"); return; }
+    if ((a = t.getAttribute("data-back"))) {
+      var e = S.removed.filter(function (x) { return x.id === a; })[0]; if (!e) return;
+      S.removed = S.removed.filter(function (x) { return x !== e; }); addFx(e); toast("«" + e.n + "» снова в профиле"); return;
+    }
+    if (t.hasAttribute("data-acc") || t.hasAttribute("data-dec")) {
+      var s = S.sugg[0], acc = t.hasAttribute("data-acc"), card = $("[data-sg]");
+      if (!s || (card && card.classList.contains("gone"))) return;
+      var done = function () {
+        S.sugg.shift();
+        if (acc) { var ne = clone(s); ne.src = "pattern"; ne.when = "сегодня"; ne.fired = false; ne.warns = 0; addFx(ne); toast("«" + s.n + "» добавлен: " + ZN[s.z].n.toLowerCase(), function () { S.fx = S.fx.filter(function (x) { return x.id !== s.id; }); S.sugg.unshift(s); refresh(); renderSugg(); }); }
+        else { S.declined.push(s); toast("Хорошо, больше не предложу", function () { S.declined.pop(); S.sugg.unshift(s); renderSugg(); }); }
+        renderSugg();
+      };
+      if (card && !M.reduce) { card.classList.add("gone"); setTimeout(done, 400); } else done();
+      return;
+    }
+    if ((a = t.getAttribute("data-opt"))) { var p = a.split(":"); opt(+p[0], +p[1]); return; }
+    if ((a = t.getAttribute("data-unmake"))) {
+      var m = S.log[+a]; if (!m || m.undone) return;
+      m.undone = true; S.fx = S.fx.filter(function (x) { return x.id !== m.mid; }); if (S.sel === m.mid) S.sel = null;
+      renderChat(); refresh(); toast("Отменено: в профиль не попало"); return;
+    }
+    if ((a = t.getAttribute("data-ex"))) { send(a); return; }
+    if (t.hasAttribute("data-undo")) { if (undoFn) undoFn(); undoFn = null; $("[data-toast]").hidden = true; return; }
+    if (t.hasAttribute("data-addopen")) { var f = $("[data-addf]"); f.hidden = !f.hidden; t.setAttribute("aria-expanded", String(!f.hidden)); if (!f.hidden) $("[data-addname]").focus(); return; }
+    if ((a = t.getAttribute("data-kind"))) { $$("[data-kind]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === t)); }); return; }
+  });
+  $("[data-send]").addEventListener("submit", function (ev) { ev.preventDefault(); var i = $("[data-msg]"); send(i.value); i.value = ""; });
+  $("[data-addf]").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var name = $("[data-addname]").value.trim(); if (!name) return;
+    var kind = $('[data-kind][aria-pressed="true"]').getAttribute("data-kind"), z = $("[data-addzone]").value, id = "u" + nid++;
+    var ne = { id: id, z: z, kind: kind, ic: kind === "buff" ? "⭐" : "⚠", n: name, note: "Вы добавили сами. Рина будет напоминать, когда речь зайдёт об этом.", src: "user", when: "сегодня", mod: null, fired: false, warns: 0, kw: stems(name) };
+    addFx(ne); $("[data-addname]").value = ""; ev.target.hidden = true; $("[data-addopen]").setAttribute("aria-expanded", "false");
+    toast("«" + name + "» добавлен: " + ZN[z].n.toLowerCase(), function () { S.fx = S.fx.filter(function (x) { return x.id !== id; }); refresh(); });
+  });
+  $("[data-ex]").innerHTML = EXAMPLES.map(function (x) { return '<button type="button" class="chip" data-ex="' + esc(x) + '">' + esc(x) + "</button>"; }).join("");
+
+  var rt = 0;
+  function relayout() { clearTimeout(rt); rt = setTimeout(function () { var r = $("[data-grid]").getBoundingClientRect(); if (Math.round(r.width) + "x" + Math.round(r.height) !== lineSize) drawLines(false); }, 120); }
+  window.addEventListener("resize", relayout);
+  if ("ResizeObserver" in window) new ResizeObserver(relayout).observe($("[data-grid]"));
+
+  function play() {
+    reset();
+    var grid = $("[data-grid]");
+    $("[data-toast]").hidden = true; clearTimeout(toastTimer); undoFn = null;
+    $("[data-addf]").hidden = true; $("[data-addopen]").setAttribute("aria-expanded", "false"); $("[data-addname]").value = ""; $("[data-msg]").value = "";
+    if (M.reduce) { shown = {}; renderAll(false); return; }
+    shown = {}; STATS.forEach(function (s) { shown[s.k] = s.base; });
+    grid.classList.remove("enter"); void grid.offsetWidth; grid.classList.add("enter");
+    renderAll(true);
+    setTimeout(function () { grid.classList.remove("enter"); }, 1400);
+  }
+  reset(); shown = {}; renderAll(false);
+  M.onSeen(root, function () { if (firstPlay) { firstPlay = false; play(); } });
+  root.addEventListener("replay", play);
+})();</script>
+</article>
